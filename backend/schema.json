@@ -23502,7 +23502,7 @@ components:
           maxLength: 255
         urgency:
           allOf:
-          - $ref: '#/components/schemas/UrgencyEnum'
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
           description: |-
             Urgency level
 
@@ -23606,7 +23606,7 @@ components:
           maxLength: 255
         urgency:
           allOf:
-          - $ref: '#/components/schemas/UrgencyEnum'
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
           description: |-
             Urgency level
 
@@ -23718,6 +23718,16 @@ components:
         * `TRANSFERRED_OUT` - Transferred Out
         * `DECEASED` - Deceased
         * `ABSCONDED` - Absconded
+    AdmissionUrgencyPriorityEnum:
+      enum:
+      - ROUTINE
+      - URGENT
+      - EMERGENCY
+      type: string
+      description: |-
+        * `ROUTINE` - Routine
+        * `URGENT` - Urgent
+        * `EMERGENCY` - Emergency
     AlertTypeEnum:
       enum:
       - LOW_STOCK
@@ -23822,7 +23832,7 @@ components:
           description: Actual end datetime
         status:
           allOf:
-          - $ref: '#/components/schemas/Status753Enum'
+          - $ref: '#/components/schemas/SchedulingStatusEnum'
           description: |-
             Current appointment status
 
@@ -23895,7 +23905,7 @@ components:
           description: Notes upon completion
         priority:
           allOf:
-          - $ref: '#/components/schemas/Priority5a1Enum'
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
           description: |-
             Appointment priority
 
@@ -23998,7 +24008,7 @@ components:
           description: Additional notes
         priority:
           allOf:
-          - $ref: '#/components/schemas/Priority5a1Enum'
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
           description: |-
             Appointment priority
 
@@ -24052,7 +24062,7 @@ components:
           description: Additional notes
         priority:
           allOf:
-          - $ref: '#/components/schemas/Priority5a1Enum'
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
           description: |-
             Appointment priority
 
@@ -24113,7 +24123,7 @@ components:
           description: Scheduled end datetime
         status:
           allOf:
-          - $ref: '#/components/schemas/Status753Enum'
+          - $ref: '#/components/schemas/SchedulingStatusEnum'
           description: |-
             Current appointment status
 
@@ -24126,7 +24136,7 @@ components:
             * `NO_SHOW` - No Show
         priority:
           allOf:
-          - $ref: '#/components/schemas/Priority5a1Enum'
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
           description: |-
             Appointment priority
 
@@ -24176,7 +24186,7 @@ components:
           description: Scheduled end datetime
         status:
           allOf:
-          - $ref: '#/components/schemas/Status753Enum'
+          - $ref: '#/components/schemas/SchedulingStatusEnum'
           description: |-
             Current appointment status
 
@@ -24196,7 +24206,7 @@ components:
           description: Additional notes
         priority:
           allOf:
-          - $ref: '#/components/schemas/Priority5a1Enum'
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
           description: |-
             Appointment priority
 
@@ -24869,20 +24879,6 @@ components:
       - assignment_type
       - scheduled_end
       - scheduled_start
-    AutoCalculatedCategoryEnum:
-      enum:
-      - RED
-      - ORANGE
-      - YELLOW
-      - GREEN
-      - BLUE
-      type: string
-      description: |-
-        * `RED` - Emergency - Immediate
-        * `ORANGE` - Very Urgent - <10 min
-        * `YELLOW` - Urgent - <60 min
-        * `GREEN` - Standard - <240 min
-        * `BLUE` - Non-Urgent/Referral
     Bed:
       type: object
       description: Serializer for Bed model.
@@ -25042,32 +25038,6 @@ components:
           type: string
       required:
       - case_number
-    Category6daEnum:
-      enum:
-      - HEMATOLOGY
-      - CHEMISTRY
-      - MICROBIOLOGY
-      - SEROLOGY
-      - PARASITOLOGY
-      - IMMUNOLOGY
-      - URINALYSIS
-      - HISTOPATHOLOGY
-      - CYTOLOGY
-      - MOLECULAR
-      - OTHER
-      type: string
-      description: |-
-        * `HEMATOLOGY` - Hematology
-        * `CHEMISTRY` - Clinical Chemistry
-        * `MICROBIOLOGY` - Microbiology
-        * `SEROLOGY` - Serology
-        * `PARASITOLOGY` - Parasitology
-        * `IMMUNOLOGY` - Immunology
-        * `URINALYSIS` - Urinalysis
-        * `HISTOPATHOLOGY` - Histopathology
-        * `CYTOLOGY` - Cytology
-        * `MOLECULAR` - Molecular Diagnostics
-        * `OTHER` - Other
     CertaintyEnum:
       enum:
       - confirmed
@@ -25094,7 +25064,7 @@ components:
           description: TRIAGE or clinic ID
         visit_type:
           allOf:
-          - $ref: '#/components/schemas/VisitTypeAbeEnum'
+          - $ref: '#/components/schemas/CheckInVisitTypeEnum'
           nullable: true
           description: |-
             Visit type (auto-detected if not provided)
@@ -25154,7 +25124,7 @@ components:
           nullable: true
         visit_type:
           allOf:
-          - $ref: '#/components/schemas/VisitTypeAbeEnum'
+          - $ref: '#/components/schemas/CheckInVisitTypeEnum'
           description: |-
             Type of visit (auto-detected or specified)
 
@@ -25182,7 +25152,7 @@ components:
           description: Whether triage was bypassed
         status:
           allOf:
-          - $ref: '#/components/schemas/Status2f9Enum'
+          - $ref: '#/components/schemas/CheckInStatusEnum'
           description: |-
             Current check-in status
 
@@ -25229,6 +25199,38 @@ components:
       - patient_mrn
       - patient_name
       - queue_position
+    CheckInStatusEnum:
+      enum:
+      - WAITING
+      - IN_TRIAGE
+      - TRIAGED
+      - IN_CONSULTATION
+      - COMPLETED
+      - CANCELLED
+      - NO_SHOW
+      type: string
+      description: |-
+        * `WAITING` - Waiting
+        * `IN_TRIAGE` - In Triage
+        * `TRIAGED` - Triaged
+        * `IN_CONSULTATION` - In Consultation
+        * `COMPLETED` - Completed
+        * `CANCELLED` - Cancelled
+        * `NO_SHOW` - No Show
+    CheckInVisitTypeEnum:
+      enum:
+      - NEW
+      - RETURN
+      - FOLLOW_UP
+      - EMERGENCY
+      - SCHEDULED
+      type: string
+      description: |-
+        * `NEW` - New Patient
+        * `RETURN` - Returning Patient
+        * `FOLLOW_UP` - Follow-up Visit
+        * `EMERGENCY` - Emergency
+        * `SCHEDULED` - Scheduled Appointment
     ChiefComplaintCategoryEnum:
       enum:
       - CHEST_PAIN
@@ -25454,7 +25456,7 @@ components:
           format: int64
           description: Number of patients that can be seen simultaneously
         status:
-          $ref: '#/components/schemas/Status145Enum'
+          $ref: '#/components/schemas/ClinicStatusEnum'
         status_display:
           type: string
           readOnly: true
@@ -25561,7 +25563,7 @@ components:
           format: date
           description: Date of enrollment
         status:
-          $ref: '#/components/schemas/Status7c2Enum'
+          $ref: '#/components/schemas/ClinicEnrollmentStatusEnum'
         status_display:
           type: string
           readOnly: true
@@ -25953,7 +25955,7 @@ components:
           format: date
           description: Date of enrollment
         status:
-          $ref: '#/components/schemas/Status7c2Enum'
+          $ref: '#/components/schemas/ClinicEnrollmentStatusEnum'
         next_appointment:
           type: string
           format: date
@@ -26016,7 +26018,7 @@ components:
           format: date
           description: Date of enrollment
         status:
-          $ref: '#/components/schemas/Status7c2Enum'
+          $ref: '#/components/schemas/ClinicEnrollmentStatusEnum'
         enrollment_data:
           nullable: true
           description: "\n        Clinic-specific enrollment data. Examples:\n\n        CCC:
@@ -26243,6 +26245,22 @@ components:
       - clinic
       - enrollment_date
       - patient
+    ClinicEnrollmentStatusEnum:
+      enum:
+      - ACTIVE
+      - COMPLETED
+      - TRANSFERRED_OUT
+      - LOST_TO_FOLLOW_UP
+      - DECEASED
+      - SUSPENDED
+      type: string
+      description: |-
+        * `ACTIVE` - Active
+        * `COMPLETED` - Completed/Graduated
+        * `TRANSFERRED_OUT` - Transferred Out
+        * `LOST_TO_FOLLOW_UP` - Lost to Follow-up
+        * `DECEASED` - Deceased
+        * `SUSPENDED` - Suspended
     ClinicList:
       type: object
       description: Lightweight serializer for listing clinics.
@@ -26298,7 +26316,7 @@ components:
           description: Physical location (e.g., 'Block A, Room 12')
           maxLength: 100
         status:
-          $ref: '#/components/schemas/Status145Enum'
+          $ref: '#/components/schemas/ClinicStatusEnum'
         is_sensitive:
           type: boolean
           description: Whether this clinic handles sensitive data (HIV, GBV, Mental
@@ -26378,7 +26396,7 @@ components:
           format: int64
           description: Number of patients that can be seen simultaneously
         status:
-          $ref: '#/components/schemas/Status145Enum'
+          $ref: '#/components/schemas/ClinicStatusEnum'
         requires_appointment:
           type: boolean
           description: Whether patients need prior appointment
@@ -26743,6 +26761,16 @@ components:
       required:
       - start_date
       - user
+    ClinicStatusEnum:
+      enum:
+      - ACTIVE
+      - INACTIVE
+      - TEMPORARILY_CLOSED
+      type: string
+      description: |-
+        * `ACTIVE` - Active
+        * `INACTIVE` - Inactive
+        * `TEMPORARILY_CLOSED` - Temporarily Closed
     ClinicTypeEnum:
       enum:
       - GENERAL_OPD
@@ -26832,12 +26860,12 @@ components:
           type: string
           readOnly: true
         priority:
-          $ref: '#/components/schemas/Priority2eaEnum'
+          $ref: '#/components/schemas/ClinicVisitPriorityEnum'
         priority_display:
           type: string
           readOnly: true
         visit_type:
-          $ref: '#/components/schemas/VisitType1dcEnum'
+          $ref: '#/components/schemas/ClinicVisitTypeEnum'
         visit_type_display:
           type: string
           readOnly: true
@@ -26961,9 +26989,9 @@ components:
         patient:
           type: integer
         priority:
-          $ref: '#/components/schemas/Priority2eaEnum'
+          $ref: '#/components/schemas/ClinicVisitPriorityEnum'
         visit_type:
-          $ref: '#/components/schemas/VisitType1dcEnum'
+          $ref: '#/components/schemas/ClinicVisitTypeEnum'
         source:
           $ref: '#/components/schemas/SourceEnum'
         chief_complaint:
@@ -26988,9 +27016,9 @@ components:
         patient:
           type: integer
         priority:
-          $ref: '#/components/schemas/Priority2eaEnum'
+          $ref: '#/components/schemas/ClinicVisitPriorityEnum'
         visit_type:
-          $ref: '#/components/schemas/VisitType1dcEnum'
+          $ref: '#/components/schemas/ClinicVisitTypeEnum'
         source:
           $ref: '#/components/schemas/SourceEnum'
         chief_complaint:
@@ -27084,6 +27112,20 @@ components:
       - id
       - last_name
       - mrn
+    ClinicVisitPriorityEnum:
+      enum:
+      - EMERGENCY
+      - URGENT
+      - PRIORITY
+      - STANDARD
+      - NON_URGENT
+      type: string
+      description: |-
+        * `EMERGENCY` - Emergency (RED)
+        * `URGENT` - Urgent (ORANGE)
+        * `PRIORITY` - Priority (YELLOW)
+        * `STANDARD` - Standard (GREEN)
+        * `NON_URGENT` - Non-urgent (BLUE)
     ClinicVisitRefer:
       type: object
       description: Serializer for referring a patient to another clinic.
@@ -27118,9 +27160,9 @@ components:
         status:
           $ref: '#/components/schemas/ClinicVisitStatusEnum'
         priority:
-          $ref: '#/components/schemas/Priority2eaEnum'
+          $ref: '#/components/schemas/ClinicVisitPriorityEnum'
         visit_type:
-          $ref: '#/components/schemas/VisitType1dcEnum'
+          $ref: '#/components/schemas/ClinicVisitTypeEnum'
         source:
           $ref: '#/components/schemas/SourceEnum'
         triage_assessment:
@@ -27177,6 +27219,22 @@ components:
         * `REFERRED` - Referred to another clinic
         * `NO_SHOW` - No Show
         * `CANCELLED` - Cancelled
+    ClinicVisitTypeEnum:
+      enum:
+      - NEW
+      - RETURN
+      - FOLLOW_UP
+      - REFERRAL
+      - SCHEDULED
+      - EMERGENCY
+      type: string
+      description: |-
+        * `NEW` - New Patient
+        * `RETURN` - Return Visit
+        * `FOLLOW_UP` - Follow-up
+        * `REFERRAL` - Referral from another clinic
+        * `SCHEDULED` - Scheduled Appointment
+        * `EMERGENCY` - Emergency
     ClinicalSnapshot:
       type: object
       description: |-
@@ -29186,7 +29244,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/StatusEabEnum'
+          - $ref: '#/components/schemas/EncounterStatusEnum'
           readOnly: true
           description: |-
             Encounter status lifecycle
@@ -29521,7 +29579,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/StatusEabEnum'
+          - $ref: '#/components/schemas/EncounterStatusEnum'
           readOnly: true
           description: |-
             Encounter status lifecycle
@@ -29754,6 +29812,30 @@ components:
       - chief_complaint
       - encounter_type
       - patient
+    EncounterStatusEnum:
+      enum:
+      - CREATED
+      - CHECKED_IN
+      - TRIAGED
+      - IN_PROGRESS
+      - ON_HOLD
+      - ORDERS_PLACED
+      - RESULTS_PENDING
+      - READY_TO_CLOSE
+      - CLOSED
+      - CANCELLED
+      type: string
+      description: |-
+        * `CREATED` - Created
+        * `CHECKED_IN` - Checked In
+        * `TRIAGED` - Triaged
+        * `IN_PROGRESS` - In Progress
+        * `ON_HOLD` - On Hold
+        * `ORDERS_PLACED` - Orders Placed
+        * `RESULTS_PENDING` - Results Pending
+        * `READY_TO_CLOSE` - Ready to Close
+        * `CLOSED` - Closed
+        * `CANCELLED` - Cancelled
     EncounterTypeEnum:
       enum:
       - OPD
@@ -29864,16 +29946,6 @@ components:
           additionalProperties: {}
       required:
       - found
-    FallRiskEnum:
-      enum:
-      - LOW
-      - MODERATE
-      - HIGH
-      type: string
-      description: |-
-        * `LOW` - Low
-        * `MODERATE` - Moderate
-        * `HIGH` - High
     FormEnum:
       enum:
       - TABLET
@@ -30184,7 +30256,7 @@ components:
           type: string
           readOnly: true
         priority:
-          $ref: '#/components/schemas/Priority0b7Enum'
+          $ref: '#/components/schemas/OrderPriorityEnum'
         clinical_indication:
           type: string
           description: Clinical reason for imaging
@@ -30247,7 +30319,7 @@ components:
         encounter:
           type: integer
         priority:
-          $ref: '#/components/schemas/Priority0b7Enum'
+          $ref: '#/components/schemas/OrderPriorityEnum'
         clinical_indication:
           type: string
           description: Clinical reason for imaging
@@ -30267,7 +30339,7 @@ components:
         encounter:
           type: integer
         priority:
-          $ref: '#/components/schemas/Priority0b7Enum'
+          $ref: '#/components/schemas/OrderPriorityEnum'
         clinical_indication:
           type: string
           minLength: 1
@@ -30385,7 +30457,7 @@ components:
         encounter:
           type: integer
         priority:
-          $ref: '#/components/schemas/Priority0b7Enum'
+          $ref: '#/components/schemas/OrderPriorityEnum'
         clinical_indication:
           type: string
           minLength: 1
@@ -31244,7 +31316,7 @@ components:
           description: External lab name if applicable
           maxLength: 100
         priority:
-          $ref: '#/components/schemas/Priority0b7Enum'
+          $ref: '#/components/schemas/OrderPriorityEnum'
         clinical_notes:
           type: string
           description: Clinical context for laboratory
@@ -31294,7 +31366,7 @@ components:
           description: External lab name if applicable
           maxLength: 100
         priority:
-          $ref: '#/components/schemas/Priority0b7Enum'
+          $ref: '#/components/schemas/OrderPriorityEnum'
         clinical_notes:
           type: string
           description: Clinical context for laboratory
@@ -31316,7 +31388,7 @@ components:
           description: External lab name if applicable
           maxLength: 100
         priority:
-          $ref: '#/components/schemas/Priority0b7Enum'
+          $ref: '#/components/schemas/OrderPriorityEnum'
         clinical_notes:
           type: string
           description: Clinical context for laboratory
@@ -31432,7 +31504,7 @@ components:
           description: External lab name if applicable
           maxLength: 100
         priority:
-          $ref: '#/components/schemas/Priority0b7Enum'
+          $ref: '#/components/schemas/OrderPriorityEnum'
         clinical_notes:
           type: string
           description: Clinical context for laboratory
@@ -32002,6 +32074,32 @@ components:
           type: boolean
       required:
       - order_item
+    LabTestCategoryEnum:
+      enum:
+      - HEMATOLOGY
+      - CHEMISTRY
+      - MICROBIOLOGY
+      - SEROLOGY
+      - PARASITOLOGY
+      - IMMUNOLOGY
+      - URINALYSIS
+      - HISTOPATHOLOGY
+      - CYTOLOGY
+      - MOLECULAR
+      - OTHER
+      type: string
+      description: |-
+        * `HEMATOLOGY` - Hematology
+        * `CHEMISTRY` - Clinical Chemistry
+        * `MICROBIOLOGY` - Microbiology
+        * `SEROLOGY` - Serology
+        * `PARASITOLOGY` - Parasitology
+        * `IMMUNOLOGY` - Immunology
+        * `URINALYSIS` - Urinalysis
+        * `HISTOPATHOLOGY` - Histopathology
+        * `CYTOLOGY` - Cytology
+        * `MOLECULAR` - Molecular Diagnostics
+        * `OTHER` - Other
     LateralityEnum:
       enum:
       - NA
@@ -32592,7 +32690,7 @@ components:
           description: Frequency of care tasks (e.g., 'Wound dressing BD')
         fall_risk:
           allOf:
-          - $ref: '#/components/schemas/FallRiskEnum'
+          - $ref: '#/components/schemas/NursingKardexRiskEnum'
           description: |-
             Patient fall risk level
 
@@ -32604,7 +32702,7 @@ components:
           readOnly: true
         pressure_sore_risk:
           allOf:
-          - $ref: '#/components/schemas/PressureSoreRiskEnum'
+          - $ref: '#/components/schemas/NursingKardexRiskEnum'
           description: |-
             Patient pressure sore risk level
 
@@ -32685,7 +32783,7 @@ components:
           description: Frequency of care tasks (e.g., 'Wound dressing BD')
         fall_risk:
           allOf:
-          - $ref: '#/components/schemas/FallRiskEnum'
+          - $ref: '#/components/schemas/NursingKardexRiskEnum'
           description: |-
             Patient fall risk level
 
@@ -32694,7 +32792,7 @@ components:
             * `HIGH` - High
         pressure_sore_risk:
           allOf:
-          - $ref: '#/components/schemas/PressureSoreRiskEnum'
+          - $ref: '#/components/schemas/NursingKardexRiskEnum'
           description: |-
             Patient pressure sore risk level
 
@@ -32708,6 +32806,26 @@ components:
           type: string
           description: Type of isolation (e.g., Contact, Droplet, Airborne)
           maxLength: 100
+    NursingKardexRiskEnum:
+      enum:
+      - LOW
+      - MODERATE
+      - HIGH
+      type: string
+      description: |-
+        * `LOW` - Low
+        * `MODERATE` - Moderate
+        * `HIGH` - High
+    OrderPriorityEnum:
+      enum:
+      - ROUTINE
+      - URGENT
+      - STAT
+      type: string
+      description: |-
+        * `ROUTINE` - Routine
+        * `URGENT` - Urgent
+        * `STAT` - STAT (Immediate)
     OrderTypeEnum:
       enum:
       - IN_HOUSE
@@ -34274,7 +34392,7 @@ components:
           maxLength: 255
         urgency:
           allOf:
-          - $ref: '#/components/schemas/UrgencyEnum'
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
           description: |-
             Urgency level
 
@@ -34379,7 +34497,7 @@ components:
           description: Scheduled end datetime
         status:
           allOf:
-          - $ref: '#/components/schemas/Status753Enum'
+          - $ref: '#/components/schemas/SchedulingStatusEnum'
           description: |-
             Current appointment status
 
@@ -34399,7 +34517,7 @@ components:
           description: Additional notes
         priority:
           allOf:
-          - $ref: '#/components/schemas/Priority5a1Enum'
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
           description: |-
             Appointment priority
 
@@ -34548,7 +34666,7 @@ components:
           format: date
           description: Date of enrollment
         status:
-          $ref: '#/components/schemas/Status7c2Enum'
+          $ref: '#/components/schemas/ClinicEnrollmentStatusEnum'
         enrollment_data:
           nullable: true
           description: "\n        Clinic-specific enrollment data. Examples:\n\n        CCC:
@@ -34835,7 +34953,7 @@ components:
           format: int64
           description: Number of patients that can be seen simultaneously
         status:
-          $ref: '#/components/schemas/Status145Enum'
+          $ref: '#/components/schemas/ClinicStatusEnum'
         requires_appointment:
           type: boolean
           description: Whether patients need prior appointment
@@ -34969,9 +35087,9 @@ components:
         status:
           $ref: '#/components/schemas/ClinicVisitStatusEnum'
         priority:
-          $ref: '#/components/schemas/Priority2eaEnum'
+          $ref: '#/components/schemas/ClinicVisitPriorityEnum'
         visit_type:
-          $ref: '#/components/schemas/VisitType1dcEnum'
+          $ref: '#/components/schemas/ClinicVisitTypeEnum'
         source:
           $ref: '#/components/schemas/SourceEnum'
         triage_assessment:
@@ -35539,7 +35657,7 @@ components:
         encounter:
           type: integer
         priority:
-          $ref: '#/components/schemas/Priority0b7Enum'
+          $ref: '#/components/schemas/OrderPriorityEnum'
         clinical_indication:
           type: string
           minLength: 1
@@ -35639,7 +35757,7 @@ components:
           description: External lab name if applicable
           maxLength: 100
         priority:
-          $ref: '#/components/schemas/Priority0b7Enum'
+          $ref: '#/components/schemas/OrderPriorityEnum'
         clinical_notes:
           type: string
           description: Clinical context for laboratory
@@ -35890,7 +36008,7 @@ components:
           description: Frequency of care tasks (e.g., 'Wound dressing BD')
         fall_risk:
           allOf:
-          - $ref: '#/components/schemas/FallRiskEnum'
+          - $ref: '#/components/schemas/NursingKardexRiskEnum'
           description: |-
             Patient fall risk level
 
@@ -35899,7 +36017,7 @@ components:
             * `HIGH` - High
         pressure_sore_risk:
           allOf:
-          - $ref: '#/components/schemas/PressureSoreRiskEnum'
+          - $ref: '#/components/schemas/NursingKardexRiskEnum'
           description: |-
             Patient pressure sore risk level
 
@@ -38271,50 +38389,6 @@ components:
         * `DISPENSED` - Fully Dispensed
         * `CANCELLED` - Cancelled
         * `EXPIRED` - Expired
-    PressureSoreRiskEnum:
-      enum:
-      - LOW
-      - MODERATE
-      - HIGH
-      type: string
-      description: |-
-        * `LOW` - Low
-        * `MODERATE` - Moderate
-        * `HIGH` - High
-    Priority0b7Enum:
-      enum:
-      - ROUTINE
-      - URGENT
-      - STAT
-      type: string
-      description: |-
-        * `ROUTINE` - Routine
-        * `URGENT` - Urgent
-        * `STAT` - STAT (Immediate)
-    Priority2eaEnum:
-      enum:
-      - EMERGENCY
-      - URGENT
-      - PRIORITY
-      - STANDARD
-      - NON_URGENT
-      type: string
-      description: |-
-        * `EMERGENCY` - Emergency (RED)
-        * `URGENT` - Urgent (ORANGE)
-        * `PRIORITY` - Priority (YELLOW)
-        * `STANDARD` - Standard (GREEN)
-        * `NON_URGENT` - Non-urgent (BLUE)
-    Priority5a1Enum:
-      enum:
-      - ROUTINE
-      - URGENT
-      - EMERGENCY
-      type: string
-      description: |-
-        * `ROUTINE` - Routine
-        * `URGENT` - Urgent
-        * `EMERGENCY` - Emergency
     QueueStatusEnum:
       enum:
       - PENDING
@@ -38841,7 +38915,7 @@ components:
           $ref: '#/components/schemas/ClaimTypeEnum'
         status:
           allOf:
-          - $ref: '#/components/schemas/StatusEc5Enum'
+          - $ref: '#/components/schemas/ShaClaimStatusEnum'
           readOnly: true
         service_date:
           type: string
@@ -39103,7 +39177,7 @@ components:
           $ref: '#/components/schemas/ClaimTypeEnum'
         status:
           allOf:
-          - $ref: '#/components/schemas/StatusEc5Enum'
+          - $ref: '#/components/schemas/ShaClaimStatusEnum'
           readOnly: true
         service_date:
           type: string
@@ -39344,7 +39418,7 @@ components:
           readOnly: true
         status:
           allOf:
-          - $ref: '#/components/schemas/SHAClaimItemStatusEnum'
+          - $ref: '#/components/schemas/ShaClaimItemStatusEnum'
           readOnly: true
         approved_quantity:
           type: string
@@ -39384,18 +39458,6 @@ components:
       - tariff_name
       - unit_price
       - updated_at
-    SHAClaimItemStatusEnum:
-      enum:
-      - pending
-      - approved
-      - rejected
-      - adjusted
-      type: string
-      description: |-
-        * `pending` - Pending Review
-        * `approved` - Approved
-        * `rejected` - Rejected
-        * `adjusted` - Adjusted
     SHAClaimRequest:
       type: object
       description: Serializer for SHA claims.
@@ -39497,7 +39559,7 @@ components:
           maxLength: 20
         status:
           allOf:
-          - $ref: '#/components/schemas/Status05dEnum'
+          - $ref: '#/components/schemas/ShaMemberStatusEnum'
           readOnly: true
         eligibility_display:
           type: string
@@ -39603,7 +39665,7 @@ components:
           maxLength: 20
         status:
           allOf:
-          - $ref: '#/components/schemas/Status05dEnum'
+          - $ref: '#/components/schemas/ShaMemberStatusEnum'
           readOnly: true
         eligibility_display:
           type: string
@@ -39740,7 +39802,7 @@ components:
         description:
           type: string
         category:
-          $ref: '#/components/schemas/SHATariffCategoryEnum'
+          $ref: '#/components/schemas/ShaTariffCategoryEnum'
         sha_amount:
           type: string
           format: decimal
@@ -39803,38 +39865,6 @@ components:
       - name
       - sha_amount
       - updated_at
-    SHATariffCategoryEnum:
-      enum:
-      - consultation
-      - laboratory
-      - radiology
-      - pharmacy
-      - procedure
-      - surgery
-      - inpatient
-      - maternity
-      - dental
-      - optical
-      - physiotherapy
-      - dialysis
-      - oncology
-      - other
-      type: string
-      description: |-
-        * `consultation` - Consultation
-        * `laboratory` - Laboratory
-        * `radiology` - Radiology/Imaging
-        * `pharmacy` - Pharmacy/Drugs
-        * `procedure` - Procedures
-        * `surgery` - Surgery
-        * `inpatient` - Inpatient Services
-        * `maternity` - Maternity
-        * `dental` - Dental
-        * `optical` - Optical
-        * `physiotherapy` - Physiotherapy
-        * `dialysis` - Dialysis
-        * `oncology` - Oncology
-        * `other` - Other Services
     SHAValidateGetResponse:
       type: object
       properties:
@@ -40301,6 +40331,24 @@ components:
         * `RECURRING` - Recurring Weekly
         * `ONE_TIME` - One-Time
         * `BLOCK` - Blocked Time
+    SchedulingStatusEnum:
+      enum:
+      - CREATED
+      - CONFIRMED
+      - CHECKED_IN
+      - IN_PROGRESS
+      - COMPLETED
+      - CANCELLED
+      - NO_SHOW
+      type: string
+      description: |-
+        * `CREATED` - Created
+        * `CONFIRMED` - Confirmed
+        * `CHECKED_IN` - Checked In
+        * `IN_PROGRESS` - In Progress
+        * `COMPLETED` - Completed
+        * `CANCELLED` - Cancelled
+        * `NO_SHOW` - No Show
     Service:
       type: object
       description: Serializer for Service model.
@@ -40476,6 +40524,94 @@ components:
         * `MEDIUM` - Medium
         * `HIGH` - High
         * `CRITICAL` - Critical
+    ShaClaimItemStatusEnum:
+      enum:
+      - pending
+      - approved
+      - rejected
+      - adjusted
+      type: string
+      description: |-
+        * `pending` - Pending Review
+        * `approved` - Approved
+        * `rejected` - Rejected
+        * `adjusted` - Adjusted
+    ShaClaimStatusEnum:
+      enum:
+      - draft
+      - validated
+      - pending_submission
+      - submitted
+      - acknowledged
+      - under_review
+      - query
+      - approved
+      - partial
+      - rejected
+      - appealed
+      - paid
+      - written_off
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `validated` - Validated
+        * `pending_submission` - Pending Submission (Queued)
+        * `submitted` - Submitted
+        * `acknowledged` - Acknowledged by SHA
+        * `under_review` - Under Review
+        * `query` - Query Raised
+        * `approved` - Approved
+        * `partial` - Partially Approved
+        * `rejected` - Rejected
+        * `appealed` - Appealed
+        * `paid` - Paid
+        * `written_off` - Written Off
+    ShaMemberStatusEnum:
+      enum:
+      - active
+      - inactive
+      - suspended
+      - expired
+      - pending_verification
+      type: string
+      description: |-
+        * `active` - Active
+        * `inactive` - Inactive
+        * `suspended` - Suspended
+        * `expired` - Expired
+        * `pending_verification` - Pending Verification
+    ShaTariffCategoryEnum:
+      enum:
+      - consultation
+      - laboratory
+      - radiology
+      - pharmacy
+      - procedure
+      - surgery
+      - inpatient
+      - maternity
+      - dental
+      - optical
+      - physiotherapy
+      - dialysis
+      - oncology
+      - other
+      type: string
+      description: |-
+        * `consultation` - Consultation
+        * `laboratory` - Laboratory
+        * `radiology` - Radiology/Imaging
+        * `pharmacy` - Pharmacy/Drugs
+        * `procedure` - Procedures
+        * `surgery` - Surgery
+        * `inpatient` - Inpatient Services
+        * `maternity` - Maternity
+        * `dental` - Dental
+        * `optical` - Optical
+        * `physiotherapy` - Physiotherapy
+        * `dialysis` - Dialysis
+        * `oncology` - Oncology
+        * `other` - Other Services
     ShiftEndingEnum:
       enum:
       - DAY
@@ -41095,136 +41231,6 @@ components:
       - primary_department
       - primary_role
       - user
-    Status05dEnum:
-      enum:
-      - active
-      - inactive
-      - suspended
-      - expired
-      - pending_verification
-      type: string
-      description: |-
-        * `active` - Active
-        * `inactive` - Inactive
-        * `suspended` - Suspended
-        * `expired` - Expired
-        * `pending_verification` - Pending Verification
-    Status145Enum:
-      enum:
-      - ACTIVE
-      - INACTIVE
-      - TEMPORARILY_CLOSED
-      type: string
-      description: |-
-        * `ACTIVE` - Active
-        * `INACTIVE` - Inactive
-        * `TEMPORARILY_CLOSED` - Temporarily Closed
-    Status2f9Enum:
-      enum:
-      - WAITING
-      - IN_TRIAGE
-      - TRIAGED
-      - IN_CONSULTATION
-      - COMPLETED
-      - CANCELLED
-      - NO_SHOW
-      type: string
-      description: |-
-        * `WAITING` - Waiting
-        * `IN_TRIAGE` - In Triage
-        * `TRIAGED` - Triaged
-        * `IN_CONSULTATION` - In Consultation
-        * `COMPLETED` - Completed
-        * `CANCELLED` - Cancelled
-        * `NO_SHOW` - No Show
-    Status753Enum:
-      enum:
-      - CREATED
-      - CONFIRMED
-      - CHECKED_IN
-      - IN_PROGRESS
-      - COMPLETED
-      - CANCELLED
-      - NO_SHOW
-      type: string
-      description: |-
-        * `CREATED` - Created
-        * `CONFIRMED` - Confirmed
-        * `CHECKED_IN` - Checked In
-        * `IN_PROGRESS` - In Progress
-        * `COMPLETED` - Completed
-        * `CANCELLED` - Cancelled
-        * `NO_SHOW` - No Show
-    Status7c2Enum:
-      enum:
-      - ACTIVE
-      - COMPLETED
-      - TRANSFERRED_OUT
-      - LOST_TO_FOLLOW_UP
-      - DECEASED
-      - SUSPENDED
-      type: string
-      description: |-
-        * `ACTIVE` - Active
-        * `COMPLETED` - Completed/Graduated
-        * `TRANSFERRED_OUT` - Transferred Out
-        * `LOST_TO_FOLLOW_UP` - Lost to Follow-up
-        * `DECEASED` - Deceased
-        * `SUSPENDED` - Suspended
-    StatusEabEnum:
-      enum:
-      - CREATED
-      - CHECKED_IN
-      - TRIAGED
-      - IN_PROGRESS
-      - ON_HOLD
-      - ORDERS_PLACED
-      - RESULTS_PENDING
-      - READY_TO_CLOSE
-      - CLOSED
-      - CANCELLED
-      type: string
-      description: |-
-        * `CREATED` - Created
-        * `CHECKED_IN` - Checked In
-        * `TRIAGED` - Triaged
-        * `IN_PROGRESS` - In Progress
-        * `ON_HOLD` - On Hold
-        * `ORDERS_PLACED` - Orders Placed
-        * `RESULTS_PENDING` - Results Pending
-        * `READY_TO_CLOSE` - Ready to Close
-        * `CLOSED` - Closed
-        * `CANCELLED` - Cancelled
-    StatusEc5Enum:
-      enum:
-      - draft
-      - validated
-      - pending_submission
-      - submitted
-      - acknowledged
-      - under_review
-      - query
-      - approved
-      - partial
-      - rejected
-      - appealed
-      - paid
-      - written_off
-      type: string
-      description: |-
-        * `draft` - Draft
-        * `validated` - Validated
-        * `pending_submission` - Pending Submission (Queued)
-        * `submitted` - Submitted
-        * `acknowledged` - Acknowledged by SHA
-        * `under_review` - Under Review
-        * `query` - Query Raised
-        * `approved` - Approved
-        * `partial` - Partially Approved
-        * `rejected` - Rejected
-        * `appealed` - Appealed
-        * `paid` - Paid
-        * `written_off` - Written Off
     StockAdjustment:
       type: object
       description: Serializer for StockAdjustment model.
@@ -41707,7 +41713,7 @@ components:
           description: Test abbreviation
           maxLength: 50
         category:
-          $ref: '#/components/schemas/Category6daEnum'
+          $ref: '#/components/schemas/LabTestCategoryEnum'
         specimen_type:
           $ref: '#/components/schemas/SpecimenTypeEnum'
         cost:
@@ -41758,7 +41764,7 @@ components:
           description: LOINC code for interoperability
           maxLength: 20
         category:
-          $ref: '#/components/schemas/Category6daEnum'
+          $ref: '#/components/schemas/LabTestCategoryEnum'
         specimen_type:
           $ref: '#/components/schemas/SpecimenTypeEnum'
         requires_fasting:
@@ -41870,7 +41876,7 @@ components:
           nullable: true
         visit_type:
           allOf:
-          - $ref: '#/components/schemas/VisitTypeAbeEnum'
+          - $ref: '#/components/schemas/CheckInVisitTypeEnum'
           description: |-
             Type of visit (auto-detected or specified)
 
@@ -41895,7 +41901,7 @@ components:
             * `OTHER` - Other
         status:
           allOf:
-          - $ref: '#/components/schemas/Status2f9Enum'
+          - $ref: '#/components/schemas/CheckInStatusEnum'
           description: |-
             Current check-in status
 
@@ -42572,7 +42578,7 @@ components:
             * `BLUE` - Non-Urgent/Referral
         auto_calculated_category:
           allOf:
-          - $ref: '#/components/schemas/AutoCalculatedCategoryEnum'
+          - $ref: '#/components/schemas/TriageCategoryEnum'
           readOnly: true
           description: |-
             System-suggested category before nurse override
@@ -42952,7 +42958,7 @@ components:
           nullable: true
         auto_calculated_category:
           allOf:
-          - $ref: '#/components/schemas/AutoCalculatedCategoryEnum'
+          - $ref: '#/components/schemas/TriageCategoryEnum'
           writeOnly: true
           nullable: true
         category_override_reason:
@@ -43395,16 +43401,6 @@ components:
       - id
       - updated_at
       - vital_type
-    UrgencyEnum:
-      enum:
-      - ROUTINE
-      - URGENT
-      - EMERGENCY
-      type: string
-      description: |-
-        * `ROUTINE` - Routine
-        * `URGENT` - Urgent
-        * `EMERGENCY` - Emergency
     VerificationStatusEnum:
       enum:
       - UNVERIFIED
@@ -43474,36 +43470,6 @@ components:
         * `LAB_REVIEW` - Lab Results Review
         * `REFERRAL_VISIT` - Referral from Another Facility
         * `OTHER` - Other
-    VisitType1dcEnum:
-      enum:
-      - NEW
-      - RETURN
-      - FOLLOW_UP
-      - REFERRAL
-      - SCHEDULED
-      - EMERGENCY
-      type: string
-      description: |-
-        * `NEW` - New Patient
-        * `RETURN` - Return Visit
-        * `FOLLOW_UP` - Follow-up
-        * `REFERRAL` - Referral from another clinic
-        * `SCHEDULED` - Scheduled Appointment
-        * `EMERGENCY` - Emergency
-    VisitTypeAbeEnum:
-      enum:
-      - NEW
-      - RETURN
-      - FOLLOW_UP
-      - EMERGENCY
-      - SCHEDULED
-      type: string
-      description: |-
-        * `NEW` - New Patient
-        * `RETURN` - Returning Patient
-        * `FOLLOW_UP` - Follow-up Visit
-        * `EMERGENCY` - Emergency
-        * `SCHEDULED` - Scheduled Appointment
     VitalTypeEnum:
       enum:
       - SPO2
