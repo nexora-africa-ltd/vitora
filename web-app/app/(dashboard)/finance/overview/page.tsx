@@ -403,12 +403,19 @@ export default function FinanceOverviewPage() {
     0
   );
 
-  // Payer mix - ensure it's always an array
-  const payerMix = Array.isArray(payerMixData?.by_method) ? payerMixData.by_method : [];
+  // Payer mix - convert object to array for charting
+  const payerMix = payerMixData?.by_method
+    ? Object.entries(payerMixData.by_method).map(([method, data]) => ({
+        method: method.toUpperCase(),
+        count: data.count,
+        total: data.total,
+        average: data.average,
+      }))
+    : [];
 
   // Today's collection
-  const todayCollection = dailyCollection?.total_amount || 0;
-  const todayTransactions = dailyCollection?.total_transactions || 0;
+  const todayCollection = dailyCollection?.total_collections || 0;
+  const todayTransactions = dailyCollection?.invoice_count || 0;
 
   return (
     <div className="container mx-auto py-6 space-y-6">

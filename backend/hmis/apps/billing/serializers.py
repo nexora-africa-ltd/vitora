@@ -94,6 +94,12 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
     """Serializer for InvoiceItem model."""
 
     service_name = serializers.CharField(source="service.name", read_only=True, allow_null=True)
+    drug_name = serializers.CharField(source="drug.name", read_only=True, allow_null=True)
+    lab_order_name = serializers.SerializerMethodField()
+    # Alias discount_amount as discount_percentage for frontend compatibility
+    discount_percentage = serializers.DecimalField(
+        source="discount_amount", max_digits=10, decimal_places=2, read_only=True
+    )
 
     class Meta:
         model = InvoiceItem
@@ -102,17 +108,42 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
             "invoice",
             "service",
             "service_name",
+            "drug",
+            "drug_name",
+            "lab_order",
+            "lab_order_name",
             "description",
             "quantity",
             "unit_price",
             "discount_amount",
+            "discount_percentage",
             "line_total",
             "is_covered_by_insurance",
             "insurance_approved_amount",
             "sha_code",
+            "is_converted",
+            "converted_at",
+            "converted_from_item",
             "created_at",
+            "updated_at",
         ]
-        read_only_fields = ["id", "invoice", "line_total", "created_at"]
+        read_only_fields = [
+            "id",
+            "invoice",
+            "line_total",
+            "discount_percentage",
+            "is_converted",
+            "converted_at",
+            "converted_from_item",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_lab_order_name(self, obj) -> str | None:
+        """Return lab order test name if available."""
+        if obj.lab_order:
+            return obj.lab_order.test_name if hasattr(obj.lab_order, "test_name") else str(obj.lab_order)
+        return None
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -123,7 +154,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
     created_by_username = serializers.CharField(source="created_by.username", read_only=True)
     items = InvoiceItemSerializer(many=True, read_only=True)
     balance = serializers.SerializerMethodField()
-    balance_due = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    balance_due = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True, coerce_to_string=True)
 
     # Proforma-specific fields
     is_valid = serializers.BooleanField(read_only=True)
@@ -208,9 +239,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
         ]
         extra_kwargs = {"due_date": {"required": False}, "invoice_date": {"required": False}}
 
-    def get_balance(self, obj) -> Decimal:
-        """Calculate balance dynamically."""
-        return obj.total_amount - obj.amount_paid
+    def get_balance(self, obj) -> str:
+        """Calculate balance dynamically and return as string for consistency."""
+        balance = obj.total_amount - obj.amount_paid
+        return str(balance)
 
     def get_qr_code(self, obj) -> str:
         """Generate QR code data URI containing a verification URL."""

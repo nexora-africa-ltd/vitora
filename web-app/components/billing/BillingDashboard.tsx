@@ -93,9 +93,9 @@ export function BillingDashboard({
     return <DashboardSkeleton />;
   }
 
-  const totalCollected = parseFloat(dailyReport?.total_collected || '0');
+  const totalCollected = dailyReport?.total_collections || 0;
   const invoiceCount = dailyReport?.invoice_count || 0;
-  const byMethod: Record<string, string> = dailyReport?.by_payment_method || {};
+  const byMethod: Record<string, number | string> = dailyReport?.by_payment_method || {};
 
   return (
     <div className="space-y-6">

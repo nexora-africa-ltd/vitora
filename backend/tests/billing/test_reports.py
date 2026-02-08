@@ -166,11 +166,17 @@ class TestBillingReportService:
         assert len(report) > 0
         # Check structure of outstanding balance items
         for item in report:
+            assert "invoice_id" in item
             assert "invoice_number" in item
             assert "patient_name" in item
             assert "total_amount" in item
+            assert "amount_paid" in item
             assert "balance_due" in item
             assert "days_overdue" in item
+            # Verify amounts are strings (for frontend compatibility)
+            assert isinstance(item["total_amount"], str)
+            assert isinstance(item["amount_paid"], str)
+            assert isinstance(item["balance_due"], str)
 
     def test_outstanding_balances_days_overdue(self, sample_invoice, sample_invoice_item):
         """Test outstanding balances report calculates correct aging."""

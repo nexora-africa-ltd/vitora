@@ -133,9 +133,10 @@ export interface InvoiceItem {
   id: number;
   invoice: number;
   description: string;
-  quantity: number;
+  quantity: string; // DecimalField serialized as string
   unit_price: string;
   discount_percentage: string;
+  discount_amount?: string | null;
   line_total: string;
 
   // Linked entities (optional)
@@ -149,6 +150,7 @@ export interface InvoiceItem {
   // Insurance
   is_covered_by_insurance: boolean;
   sha_code?: string | null;
+  insurance_approved_amount?: string | null;
 
   // Proforma conversion tracking
   is_converted: boolean;
@@ -516,19 +518,15 @@ export interface PaymentMethodBreakdown {
 
 export interface DailyCollectionReport {
   date: string;
-  total_collected: string;
-  total_amount: number;
-  total_transactions: number;
+  total_collections: number;
   invoice_count: number;
-  by_payment_method: Record<PaymentMethod, string>;
-  by_method?: Record<PaymentMethod, PaymentMethodBreakdown>;
-  recent_payments?: Array<{
-    id: number;
-    payment_reference: string;
-    amount: string;
-    method: PaymentMethod;
-    created_at: string;
+  by_payment_method: Record<string, number | string>;
+  top_services: Array<{
+    service__name: string | null;
+    total_revenue: number | string;
+    count: number;
   }>;
+  outstanding_balance: number;
 }
 
 export interface RevenueSummary {
@@ -567,18 +565,22 @@ export interface ServiceUtilization {
 }
 
 export interface PaymentMethodAnalysis {
-  start_date: string;
-  end_date: string;
-  total_payments: number;
-  total_amount: string;
-  by_method: Array<{
-    method: PaymentMethod;
+  period: {
+    start: string;
+    end: string;
+  };
+  by_method: Record<string, {
+    total: number;
     count: number;
-    amount: string;
-    percentage: string;
+    average: number;
   }>;
-  mpesa_success_rate?: string;
-  average_payment_amount: string;
+  average_transaction: number;
+  mpesa_metrics: {
+    total_transactions: number;
+    successful_transactions: number;
+    failed_transactions: number;
+    success_rate: number;
+  };
 }
 
 // ============================================================================
