@@ -267,10 +267,15 @@ class EncounterSerializer(serializers.ModelSerializer):
     systolic_bp = serializers.SerializerMethodField()
     diastolic_bp = serializers.SerializerMethodField()
     vitals_summary = serializers.SerializerMethodField()
+    patient_id = serializers.IntegerField(source="patient.id", read_only=True)
     patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
     patient_name = serializers.CharField(source="patient.full_name", read_only=True)
     patient_gender = serializers.CharField(source="patient.gender", read_only=True)
     patient_date_of_birth = serializers.DateField(source="patient.date_of_birth", read_only=True)
+    patient_age = serializers.SerializerMethodField()
+
+    # Display labels
+    encounter_type_display = serializers.SerializerMethodField()
 
     # Status-related fields
     finalized_by = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -284,6 +289,11 @@ class EncounterSerializer(serializers.ModelSerializer):
         source="triage_bypassed_by.username", read_only=True, allow_null=True
     )
     wait_time_minutes = serializers.SerializerMethodField()
+    triage_category = serializers.SerializerMethodField()
+    triage_completed_at = serializers.SerializerMethodField()
+    arrival_time = serializers.SerializerMethodField()
+    # Override triage_bypass_reason to return null instead of empty string
+    triage_bypass_reason = serializers.SerializerMethodField()
 
     # Chief complaint edit tracking
     chief_complaint_edited_by_username = serializers.CharField(
@@ -310,11 +320,14 @@ class EncounterSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "patient",
+            "patient_id",
             "patient_mrn",
             "patient_name",
             "patient_gender",
             "patient_date_of_birth",
+            "patient_age",
             "encounter_type",
+            "encounter_type_display",
             "encounter_date",
             "chief_complaint",
             "temperature",
@@ -364,12 +377,15 @@ class EncounterSerializer(serializers.ModelSerializer):
             "triage_bypassed_by",
             "triage_bypassed_by_username",
             "triage_bypassed_at",
+            "triage_category",
+            "triage_completed_at",
             # Consultation fields (Phase 2 - Consultation Queue)
             "consultation_status",
             "called_at",
             "consultation_started_at",
             "can_enter_consultation",
             "wait_time_minutes",
+            "arrival_time",
             # Chief complaint edit tracking
             "chief_complaint_original",
             "chief_complaint_edited",
@@ -398,10 +414,13 @@ class EncounterSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
+            "patient_id",
             "patient_mrn",
             "patient_name",
             "patient_gender",
             "patient_date_of_birth",
+            "patient_age",
+            "encounter_type_display",
             "has_critical_vitals",
             "alerts",
             "bmi",
@@ -422,12 +441,15 @@ class EncounterSerializer(serializers.ModelSerializer):
             "triage_bypassed_by",
             "triage_bypassed_by_username",
             "triage_bypassed_at",
+            "triage_category",
+            "triage_completed_at",
             # Consultation fields are read-only - use actions to change
             "consultation_status",
             "called_at",
             "consultation_started_at",
             "can_enter_consultation",
             "wait_time_minutes",
+            "arrival_time",
             # Chief complaint edit fields - read-only except via action
             "chief_complaint_original",
             "chief_complaint_edited",
@@ -528,6 +550,69 @@ class EncounterSerializer(serializers.ModelSerializer):
         now = timezone.now()
         delta = now - obj.created_at
         return int(delta.total_seconds() / 60)
+
+    def get_patient_age(self, obj: Encounter) -> int | None:
+        """Calculate patient age from date of birth."""
+        from datetime import date
+
+        if obj.patient and obj.patient.date_of_birth:
+            today = date.today()
+            dob = obj.patient.date_of_birth
+            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            return age
+        return None
+
+    def get_encounter_type_display(self, obj: Encounter) -> str:
+        """Get the display label for encounter type."""
+        display_map = {
+            "OPD": "Outpatient Department",
+            "IPD": "Inpatient Department",
+            "EMERGENCY": "Emergency",
+            "ANC": "Antenatal Clinic",
+            "PAEDIATRIC": "Paediatric Clinic",
+            "DIALYSIS": "Dialysis Unit",
+            "ONCOLOGY": "Oncology Clinic",
+            "SCHEDULED_OPD": "Scheduled Outpatient",
+            "FOLLOW_UP": "Follow-up Visit",
+            "CONSULTANT_REVIEW": "Consultant Review",
+            "CHRONIC_STABLE": "Stable Chronic Care",
+            "SPECIALIST_CLINIC": "Specialist Clinic",
+            "PROCEDURE": "Scheduled Procedure",
+            "DAY_CASE": "Day Case",
+            "WARD_ROUND": "Ward Round",
+            "DISCHARGE_REVIEW": "Discharge Review",
+        }
+        return display_map.get(obj.encounter_type, obj.encounter_type)
+
+    def get_triage_category(self, obj: Encounter) -> str | None:
+        """Get triage category from linked TriageAssessment."""
+        # Check if there's a related triage assessment (OneToOne relationship)
+        try:
+            if hasattr(obj, "triage_assessment") and obj.triage_assessment:
+                return obj.triage_assessment.triage_category
+        except Exception:
+            pass
+        return None
+
+    def get_triage_completed_at(self, obj: Encounter) -> str | None:
+        """Get triage completion timestamp from linked TriageAssessment."""
+        try:
+            if hasattr(obj, "triage_assessment") and obj.triage_assessment:
+                if obj.triage_assessment.completed_at:
+                    return obj.triage_assessment.completed_at.isoformat()
+        except Exception:
+            pass
+        return None
+
+    def get_arrival_time(self, obj: Encounter) -> str:
+        """Get arrival time (alias for created_at)."""
+        return obj.created_at.isoformat()
+
+    def get_triage_bypass_reason(self, obj: Encounter) -> str | None:
+        """Get triage bypass reason (returns null instead of empty string)."""
+        if obj.triage_bypass_reason:
+            return obj.triage_bypass_reason
+        return None
 
     def validate_blood_pressure(self, value: str) -> str:
         """Validate blood pressure format."""

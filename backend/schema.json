@@ -29059,6 +29059,9 @@ components:
         patient:
           type: integer
           description: Patient associated with this encounter
+        patient_id:
+          type: integer
+          readOnly: true
         patient_mrn:
           type: string
           readOnly: true
@@ -29071,6 +29074,11 @@ components:
         patient_date_of_birth:
           type: string
           format: date
+          readOnly: true
+        patient_age:
+          type: integer
+          nullable: true
+          description: Calculate patient age from date of birth.
           readOnly: true
         encounter_type:
           allOf:
@@ -29094,6 +29102,10 @@ components:
             * `DAY_CASE` - Day Case
             * `WARD_ROUND` - Ward Round
             * `DISCHARGE_REVIEW` - Discharge Review
+        encounter_type_display:
+          type: string
+          description: Get the display label for encounter type.
+          readOnly: true
         encounter_date:
           type: string
           format: date
@@ -29299,18 +29311,10 @@ components:
             * `BYPASSED` - Bypassed - Triage skipped
             * `NOT_APPLICABLE` - Not Applicable - Triage not required
         triage_bypass_reason:
-          allOf:
-          - $ref: '#/components/schemas/TriageBypassReasonEnum'
+          type: string
+          nullable: true
+          description: Get triage bypass reason (returns null instead of empty string).
           readOnly: true
-          description: |-
-            Reason for bypassing triage (if applicable)
-
-            * `STABLE_FOLLOW_UP` - Stable follow-up patient
-            * `CONSULTANT_DECISION` - Consultant/senior decision
-            * `CHRONIC_CARE_REVIEW` - Chronic care review
-            * `STAFF_SHORTAGE` - Staff shortage
-            * `PATIENT_PREFERENCE` - Patient preference
-            * `OTHER` - Other reason
         triage_bypassed_by:
           type: integer
           readOnly: true
@@ -29326,6 +29330,16 @@ components:
           readOnly: true
           nullable: true
           description: Timestamp when triage was bypassed
+        triage_category:
+          type: string
+          nullable: true
+          description: Get triage category from linked TriageAssessment.
+          readOnly: true
+        triage_completed_at:
+          type: string
+          nullable: true
+          description: Get triage completion timestamp from linked TriageAssessment.
+          readOnly: true
         consultation_status:
           allOf:
           - $ref: '#/components/schemas/ConsultationStatusEnum'
@@ -29357,6 +29371,10 @@ components:
           type: integer
           nullable: true
           description: Calculate wait time in minutes since encounter creation.
+          readOnly: true
+        arrival_time:
+          type: string
+          description: Get arrival time (alias for created_at).
           readOnly: true
         chief_complaint_original:
           type: string
@@ -29467,6 +29485,7 @@ components:
           readOnly: true
       required:
       - alerts
+      - arrival_time
       - assigned_clinician
       - assigned_clinician_name
       - assigned_clinician_username
@@ -29494,14 +29513,17 @@ components:
       - created_by_name
       - diastolic_bp
       - encounter_type
+      - encounter_type_display
       - finalized_at
       - finalized_by
       - finalized_by_username
       - has_critical_vitals
       - id
       - patient
+      - patient_age
       - patient_date_of_birth
       - patient_gender
+      - patient_id
       - patient_mrn
       - patient_name
       - status
@@ -29510,6 +29532,8 @@ components:
       - triage_bypassed_at
       - triage_bypassed_by
       - triage_bypassed_by_username
+      - triage_category
+      - triage_completed_at
       - triage_requirement
       - triage_status
       - updated_at
@@ -31325,9 +31349,9 @@ components:
         specimen_collected:
           type: boolean
         total_cost:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          type: number
+          format: double
+          readOnly: true
         items:
           type: array
           items:
@@ -31341,7 +31365,16 @@ components:
           type: string
           format: date-time
           nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
       required:
+      - created_at
       - encounter
       - id
       - items
@@ -31351,6 +31384,8 @@ components:
       - ordered_by_name
       - patient
       - patient_name
+      - total_cost
+      - updated_at
     LabOrderCreate:
       type: object
       description: Create order with items.
@@ -31408,6 +31443,12 @@ components:
         id:
           type: integer
           readOnly: true
+        lab_order:
+          type: integer
+          readOnly: true
+        test:
+          type: integer
+          readOnly: true
         test_name:
           type: string
           readOnly: true
@@ -31417,9 +31458,9 @@ components:
         status:
           $ref: '#/components/schemas/LabOrderItemStatusEnum'
         unit_cost:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          type: number
+          format: double
+          readOnly: true
         special_instructions:
           type: string
         has_result:
@@ -31430,10 +31471,17 @@ components:
           additionalProperties: {}
           nullable: true
           readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
       required:
+      - created_at
       - has_result
       - id
+      - lab_order
       - result
+      - test
       - test_code
       - test_name
       - unit_cost
@@ -31462,19 +31510,10 @@ components:
       type: object
       description: Order item with test details.
       properties:
-        test:
-          type: integer
-          writeOnly: true
         status:
           $ref: '#/components/schemas/LabOrderItemStatusEnum'
-        unit_cost:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
         special_instructions:
           type: string
-      required:
-      - unit_cost
     LabOrderItemStatusEnum:
       enum:
       - PENDING
@@ -31512,10 +31551,6 @@ components:
           $ref: '#/components/schemas/LabOrderStatusEnum'
         specimen_collected:
           type: boolean
-        total_cost:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
         completed_at:
           type: string
           format: date-time
@@ -35765,10 +35800,6 @@ components:
           $ref: '#/components/schemas/LabOrderStatusEnum'
         specimen_collected:
           type: boolean
-        total_cost:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
         completed_at:
           type: string
           format: date-time
@@ -43160,22 +43191,6 @@ components:
       - mobility
       - triage_category
       - triage_start_time
-    TriageBypassReasonEnum:
-      enum:
-      - STABLE_FOLLOW_UP
-      - CONSULTANT_DECISION
-      - CHRONIC_CARE_REVIEW
-      - STAFF_SHORTAGE
-      - PATIENT_PREFERENCE
-      - OTHER
-      type: string
-      description: |-
-        * `STABLE_FOLLOW_UP` - Stable follow-up patient
-        * `CONSULTANT_DECISION` - Consultant/senior decision
-        * `CHRONIC_CARE_REVIEW` - Chronic care review
-        * `STAFF_SHORTAGE` - Staff shortage
-        * `PATIENT_PREFERENCE` - Patient preference
-        * `OTHER` - Other reason
     TriageCategoryEnum:
       enum:
       - RED
