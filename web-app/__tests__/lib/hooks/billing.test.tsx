@@ -757,16 +757,16 @@ describe('useRevenueSummary', () => {
 
   it('should fetch revenue summary', async () => {
     mockBillingApi.getRevenueSummary.mockResolvedValue({
-      start_date: '2026-01-01',
-      end_date: '2026-01-31',
-      total_revenue: '500000.00',
-      by_category: [],
+      period: { start: '2026-01-01', end: '2026-01-31' },
+      total_revenue: 500000,
+      by_category: {
+        'Consultation': { revenue: 150000, count: 300 },
+        'Laboratory': { revenue: 200000, count: 250 },
+      },
       by_payment_method: {
-        CASH: '200000.00',
-        MPESA: '250000.00',
-        CARD: '50000.00',
-        INSURANCE: '0.00',
-        BANK_TRANSFER: '0.00',
+        cash: 200000,
+        mpesa: 250000,
+        card: 50000,
       },
     });
 
@@ -777,7 +777,7 @@ describe('useRevenueSummary', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data?.total_revenue).toBe('500000.00');
+    expect(result.current.data?.total_revenue).toBe(500000);
   });
 });
 

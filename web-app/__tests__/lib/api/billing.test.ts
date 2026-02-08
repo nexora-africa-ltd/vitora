@@ -932,20 +932,17 @@ describe('Billing API - Reports', () => {
   describe('getRevenueSummary', () => {
     it('should fetch revenue summary for date range', async () => {
       const mockReport = {
-        start_date: '2026-01-01',
-        end_date: '2026-01-31',
-        total_revenue: '500000.00',
-        by_category: [
-          { category: 'Consultation', revenue: '150000.00', count: 300 },
-          { category: 'Laboratory', revenue: '200000.00', count: 250 },
-          { category: 'Pharmacy', revenue: '150000.00', count: 400 },
-        ],
+        period: { start: '2026-01-01', end: '2026-01-31' },
+        total_revenue: 500000,
+        by_category: {
+          'Consultation': { revenue: 150000, count: 300 },
+          'Laboratory': { revenue: 200000, count: 250 },
+          'Pharmacy': { revenue: 150000, count: 400 },
+        },
         by_payment_method: {
-          CASH: '200000.00',
-          MPESA: '250000.00',
-          CARD: '50000.00',
-          INSURANCE: '0.00',
-          BANK_TRANSFER: '0.00',
+          cash: 200000,
+          mpesa: 250000,
+          card: 50000,
         },
       };
       mockApiClient.get.mockResolvedValue({ data: mockReport });
@@ -955,8 +952,8 @@ describe('Billing API - Reports', () => {
       expect(mockApiClient.get).toHaveBeenCalledWith(
         '/api/billing/reports/revenue-summary/?start_date=2026-01-01&end_date=2026-01-31'
       );
-      expect(result.total_revenue).toBe('500000.00');
-      expect(result.by_category).toHaveLength(3);
+      expect(result.total_revenue).toBe(500000);
+      expect(Object.keys(result.by_category)).toHaveLength(3);
     });
   });
 
