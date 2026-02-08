@@ -25,11 +25,14 @@ export interface InpatientWard {
 
 export type BedStatus = 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE' | 'RESERVED';
 
+export type BedType = 'STANDARD' | 'PRIVATE' | 'ICU' | 'HDU' | 'ISOLATION';
+
 export interface Bed {
   id: number;
   ward: number;
   ward_name?: string;
   bed_number: string;
+  bed_type?: BedType | string;
   status: BedStatus;
   status_display?: string;
   notes?: string;

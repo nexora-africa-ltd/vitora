@@ -655,6 +655,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "clinical_notes", "status",
             "specimen_collected", "total_cost",
             "items", "ordered_at", "completed_at",
+            "created_at", "updated_at",
         }),
     ),
     (

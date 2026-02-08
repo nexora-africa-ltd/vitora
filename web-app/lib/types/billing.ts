@@ -69,6 +69,11 @@ export type InvoiceStatus =
   | 'OVERDUE'
   | 'WRITTEN_OFF';
 
+/**
+ * Invoice payment type matching backend Invoice.PaymentType
+ */
+export type InvoicePaymentType = 'CASH' | 'MPESA' | 'INSURANCE' | 'CORPORATE' | 'MIXED';
+
 export interface Invoice {
   id: number;
   invoice_number: string;
@@ -77,6 +82,7 @@ export interface Invoice {
   patient_mrn?: string | null;
   encounter?: number | null;
   status: InvoiceStatus;
+  payment_type?: InvoicePaymentType;
   invoice_date: string;
   due_date: string;
 

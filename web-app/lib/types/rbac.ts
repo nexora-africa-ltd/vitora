@@ -7,7 +7,17 @@
 // Department Types
 // =============================================================================
 
-export type DepartmentType = 'CLINICAL' | 'ANCILLARY' | 'ADMINISTRATIVE' | 'SUPPORT';
+/**
+ * Department type categories matching backend DEPARTMENT_TYPES
+ */
+export type DepartmentType =
+  | 'CLINICAL'
+  | 'ADMINISTRATIVE'
+  | 'SUPPORT'
+  | 'LABORATORY'
+  | 'PHARMACY'
+  | 'RADIOLOGY'
+  | 'RECORDS';
 
 export interface Department {
   id: number;

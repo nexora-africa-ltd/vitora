@@ -96,8 +96,15 @@ export type ClinicSessionStatus = 'SCHEDULED' | 'OPEN' | 'CLOSED' | 'CANCELLED';
 
 /**
  * Enrollment status (for chronic care)
+ * Matches backend ClinicEnrollment.STATUS_CHOICES
  */
-export type EnrollmentStatus = 'ACTIVE' | 'INACTIVE' | 'TRANSFERRED' | 'LOST_TO_FOLLOW_UP' | 'DECEASED' | 'COMPLETED';
+export type EnrollmentStatus =
+  | 'ACTIVE'
+  | 'COMPLETED'
+  | 'TRANSFERRED_OUT'
+  | 'LOST_TO_FOLLOW_UP'
+  | 'DECEASED'
+  | 'SUSPENDED';
 
 /**
  * Staff role in clinic

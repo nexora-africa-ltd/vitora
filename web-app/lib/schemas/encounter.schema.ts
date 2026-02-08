@@ -194,13 +194,13 @@ export const EncounterSchema = z.object({
   visit_reason: VisitReasonSchema.optional(),
 
   // Vitals
-  temperature: z.number().nullable(),
-  pulse: z.number().nullable(),
-  blood_pressure: z.string().nullable(),
-  respiratory_rate: z.number().nullable(),
-  spo2: z.number().nullable(),
-  weight: z.number().nullable(),
-  height: z.number().nullable(),
+  temperature: z.number().optional().nullable(),
+  pulse: z.number().optional().nullable(),
+  blood_pressure: z.string().optional().nullable(),
+  respiratory_rate: z.number().optional().nullable(),
+  spo2: z.number().optional().nullable(),
+  weight: z.number().optional().nullable(),
+  height: z.number().optional().nullable(),
 
   // Computed vitals
   bmi: z.number().optional().nullable(),
@@ -221,15 +221,15 @@ export const EncounterSchema = z.object({
   clinical_template_data: z.record(z.record(z.unknown())).optional().nullable(),
 
   // Medical history
-  allergies: z.string(),
-  chronic_conditions: z.string(),
-  current_medications: z.string(),
-  past_surgeries: z.string(),
-  family_history: z.string(),
-  social_history: z.string(),
+  allergies: z.string().optional().nullable().default(''),
+  chronic_conditions: z.string().optional().nullable().default(''),
+  current_medications: z.string().optional().nullable().default(''),
+  past_surgeries: z.string().optional().nullable().default(''),
+  family_history: z.string().optional().nullable().default(''),
+  social_history: z.string().optional().nullable().default(''),
 
   // Clinical notes
-  notes: z.string(),
+  notes: z.string().optional().nullable().default(''),
   history_of_present_illness: z.string().optional().nullable(),
   physical_examination: z.string().optional().nullable(),
   assessment: z.string().optional().nullable(),
@@ -280,13 +280,38 @@ export const EncounterSchema = z.object({
   created_by: z.number().optional().nullable(),
   created_by_name: z.string().optional().nullable(),
   created_at: z.string(),
-  updated_at: z.string(),
+  updated_at: z.string().optional(),
 });
 
 export type EncounterSchemaType = z.infer<typeof EncounterSchema>;
 
-// Alias for list items (same schema but can be extended if needed)
-export const EncounterListItemSchema = EncounterSchema;
+// =============================================================================
+// ENCOUNTER LIST ITEM SCHEMA (matches EncounterListSerializer)
+// =============================================================================
+
+/**
+ * Lighter schema for encounter list responses.
+ * Matches backend EncounterListSerializer which returns fewer fields.
+ */
+export const EncounterListItemSchema = z.object({
+  id: z.number(),
+  patient: z.number(),
+  patient_mrn: z.string().optional().nullable(),
+  patient_name: z.string().optional().nullable(),
+  encounter_type: EncounterTypeSchema,
+  encounter_date: z.string(),
+  chief_complaint: z.string(),
+  has_critical_vitals: z.boolean().optional(),
+  status: EncounterStatusSchema,
+  finalized_at: z.string().optional().nullable(),
+  clinic_visit_id: z.number().optional().nullable(),
+  clinic_name: z.string().optional().nullable(),
+  clinic_type: z.string().optional().nullable(),
+  visit_reason: VisitReasonSchema.optional(),
+  created_at: z.string(),
+});
+
+export type EncounterListItemSchemaType = z.infer<typeof EncounterListItemSchema>;
 
 // =============================================================================
 // CLAIM/RELEASE RESPONSE SCHEMAS
@@ -328,21 +353,23 @@ export const AllClaimedEncountersResponseSchema = MyClaimedEncountersResponseSch
 
 export const ConsultationQueueItemSchema = z.object({
   id: z.number(),
-  patient_id: z.number(),
+  patient_id: z.number().optional(),  // May be accessed via `patient` in some contexts
+  patient: z.number().optional(),     // Alternative FK reference
   patient_name: z.string(),
   patient_mrn: z.string(),
-  patient_age: z.number(),
+  patient_age: z.number().nullable().optional(),  // May be null if DOB not set
   patient_gender: GenderSchema,
   encounter_type: z.string(),
-  encounter_type_display: z.string(),
+  encounter_type_display: z.string().optional(),  // May not always be present
   chief_complaint: z.string(),
   triage_status: TriageStatusSchema,
-  triage_category: TriageCategorySchema.nullable(),
-  triage_bypass_reason: TriageBypassReasonSchema.nullable(),
+  triage_category: TriageCategorySchema.nullable().optional(),  // From TriageAssessment, may be absent
+  triage_bypass_reason: TriageBypassReasonSchema.nullable().optional(),
   consultation_status: ConsultationStatusSchema,
-  arrival_time: z.string(),
-  triage_completed_at: z.string().nullable(),
-  wait_time_minutes: z.number(),
+  arrival_time: z.string().optional(),  // Alias for created_at
+  created_at: z.string().optional(),    // May be used instead of arrival_time
+  triage_completed_at: z.string().nullable().optional(),  // From TriageAssessment, may be absent
+  wait_time_minutes: z.number().nullable().optional(),
   called_at: z.string().nullable(),
   assigned_clinician: z.number().optional().nullable(),
   assigned_clinician_username: z.string().optional().nullable(),
@@ -429,7 +456,7 @@ export const PaginatedEncounterSchema = z.object({
   count: z.number(),
   next: z.string().nullable(),
   previous: z.string().nullable(),
-  results: z.array(EncounterSchema),
+  results: z.array(EncounterListItemSchema),  // Uses lightweight list schema
 });
 
 export const PaginatedICD10CodeSchema = z.object({

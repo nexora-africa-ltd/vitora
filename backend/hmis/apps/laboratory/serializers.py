@@ -38,21 +38,91 @@ class TestCatalogDetailSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class LabResultNestedSerializer(serializers.ModelSerializer):
+    """Nested result serializer for LabOrderItem - returns all fields frontend expects."""
+
+    entered_by_name = serializers.SerializerMethodField()
+    verified_by_name = serializers.SerializerMethodField()
+    # Coerce numeric_value to float for frontend compatibility
+    numeric_value = serializers.SerializerMethodField()
+    # Ensure result_flag returns null instead of empty string
+    result_flag = serializers.SerializerMethodField()
+    # Use model's get_formatted_value method
+    formatted_value = serializers.CharField(source="get_formatted_value", read_only=True)
+
+    class Meta:
+        model = LabResult
+        fields = [
+            "id",
+            "order_item",
+            "numeric_value",
+            "text_value",
+            "option_value",
+            "formatted_value",
+            "result_unit",
+            "reference_low",
+            "reference_high",
+            "reference_range_text",
+            "result_flag",
+            "interpretation",
+            "is_critical_result",
+            "method",
+            "equipment",
+            "verification_status",
+            "verified_by",
+            "verified_by_name",
+            "verified_at",
+            "entered_by",
+            "entered_by_name",
+            "entered_at",
+            "is_amended",
+            "amendment_reason",
+            "original_value",
+            "is_external_result",
+            "external_result_attachment",
+            "external_result_date",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_numeric_value(self, obj) -> Optional[float]:
+        if obj.numeric_value is not None:
+            return float(obj.numeric_value)
+        return None
+
+    def get_result_flag(self, obj) -> Optional[str]:
+        # Return null instead of empty string for frontend enum compatibility
+        return obj.result_flag if obj.result_flag else None
+
+    def get_entered_by_name(self, obj) -> Optional[str]:
+        if obj.entered_by:
+            return obj.entered_by.get_full_name() or obj.entered_by.username
+        return None
+
+    def get_verified_by_name(self, obj) -> Optional[str]:
+        if obj.verified_by:
+            return obj.verified_by.get_full_name() or obj.verified_by.username
+        return None
+
+
 class LabOrderItemSerializer(serializers.ModelSerializer):
     """Order item with test details."""
 
+    lab_order = serializers.PrimaryKeyRelatedField(read_only=True)
+    test = serializers.PrimaryKeyRelatedField(read_only=True)
     test_name = serializers.CharField(source="test.name", read_only=True)
     test_code = serializers.CharField(source="test.code", read_only=True)
-    test = serializers.PrimaryKeyRelatedField(
-        queryset=TestCatalog.objects.all(), write_only=True, required=False
-    )
     has_result = serializers.SerializerMethodField()
     result = serializers.SerializerMethodField()
+    # Coerce unit_cost to float for frontend compatibility
+    unit_cost = serializers.SerializerMethodField()
 
     class Meta:
         model = LabOrderItem
         fields = [
             "id",
+            "lab_order",
             "test",
             "test_name",
             "test_code",
@@ -61,30 +131,19 @@ class LabOrderItemSerializer(serializers.ModelSerializer):
             "special_instructions",
             "has_result",
             "result",
+            "created_at",
         ]
 
     def get_has_result(self, obj) -> bool:
         return hasattr(obj, "result")
 
+    def get_unit_cost(self, obj) -> float:
+        return float(obj.unit_cost) if obj.unit_cost else 0.0
+
     def get_result(self, obj) -> Optional[dict]:
         if not hasattr(obj, "result"):
             return None
-        result = obj.result
-        return {
-            "id": result.id,
-            "numeric_value": (
-                str(result.numeric_value) if result.numeric_value is not None else None
-            ),
-            "text_value": result.text_value,
-            "option_value": result.option_value,
-            "result_unit": result.result_unit,
-            "result_flag": result.result_flag,
-            "interpretation": result.interpretation,
-            "verification_status": result.verification_status,
-            "is_critical_result": result.is_critical_result,
-            "reference_range_text": result.reference_range_text,
-            "entered_at": result.entered_at.isoformat() if result.entered_at else None,
-        }
+        return LabResultNestedSerializer(obj.result).data
 
 
 class LabOrderSerializer(serializers.ModelSerializer):
@@ -93,6 +152,8 @@ class LabOrderSerializer(serializers.ModelSerializer):
     items = LabOrderItemSerializer(many=True, read_only=True)
     patient_name = serializers.SerializerMethodField()
     ordered_by_name = serializers.SerializerMethodField()
+    # Coerce total_cost to float for frontend compatibility
+    total_cost = serializers.SerializerMethodField()
 
     class Meta:
         model = LabOrder
@@ -114,8 +175,13 @@ class LabOrderSerializer(serializers.ModelSerializer):
             "items",
             "ordered_at",
             "completed_at",
+            "created_at",
+            "updated_at",
         ]
-        read_only_fields = ["order_number", "ordered_at"]
+        read_only_fields = ["order_number", "ordered_at", "created_at", "updated_at"]
+
+    def get_total_cost(self, obj) -> float:
+        return float(obj.total_cost) if obj.total_cost else 0.0
 
     def get_patient_name(self, obj) -> str:
         return f"{obj.patient.first_name} {obj.patient.last_name}"
