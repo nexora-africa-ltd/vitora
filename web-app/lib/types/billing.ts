@@ -88,7 +88,7 @@ export interface Invoice {
 
   // Totals
   subtotal: string;
-  discount_type: 'PERCENTAGE' | 'FIXED' | null;
+  discount_type: 'PERCENTAGE' | 'FIXED' | '' | null;
   discount_value: string;
   discount_amount: string;
   tax_amount: string;
@@ -98,7 +98,7 @@ export interface Invoice {
 
   // Insurance/SHA
   sha_claim_number?: string | null;
-  insurance_coverage: string;
+  insurance_coverage: string;  // Percentage as decimal string (e.g., "80.00")
 
   // Notes
   notes: string;

@@ -167,10 +167,34 @@ class Invoice(models.Model):
     invoice_date = models.DateField(default=date.today)
     due_date = models.DateField()
 
+    # Discount configuration
+    class DiscountType(models.TextChoices):
+        PERCENTAGE = "percentage", "Percentage"
+        FIXED = "fixed", "Fixed Amount"
+
+    discount_type = models.CharField(
+        max_length=12,
+        choices=DiscountType.choices,
+        blank=True,
+        default="",
+        help_text="Type of discount applied (percentage or fixed amount)",
+    )
+    discount_value = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Discount value (percentage 0-100 or fixed amount in KES)",
+    )
+
     # Amounts (calculated from items)
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
-    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    discount_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Computed discount amount in KES (derived from discount_type + discount_value)",
+    )
     discount_reason = models.CharField(max_length=200, blank=True)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     amount_paid = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
@@ -181,6 +205,12 @@ class Invoice(models.Model):
     insurance_member_no = models.CharField(max_length=50, blank=True)
     sha_claim_number = models.CharField(max_length=50, blank=True)
     insurance_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    insurance_coverage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Insurance coverage percentage (0-100)",
+    )
 
     # Notes
     notes = models.TextField(blank=True)
@@ -324,15 +354,51 @@ class Invoice(models.Model):
         return f"{prefix}{new_seq:04d}"
 
     def calculate_totals(self):
-        """Calculate invoice totals from items."""
+        """Calculate invoice totals from items.
+
+        Recomputes discount_amount from discount_type/discount_value,
+        then derives total_amount and balance_due.
+        """
         items = self.items.all()
         self.subtotal = sum(item.line_total for item in items) if items else Decimal("0.00")
+
+        # Compute discount_amount from discount_type + discount_value
+        if self.discount_type == self.DiscountType.PERCENTAGE and self.discount_value > 0:
+            self.discount_amount = (self.subtotal * self.discount_value / Decimal("100")).quantize(
+                Decimal("0.01")
+            )
+        elif self.discount_type == self.DiscountType.FIXED and self.discount_value > 0:
+            self.discount_amount = min(self.discount_value, self.subtotal)
+        # If no discount_type is set, keep existing discount_amount (backward compat)
+
         self.total_amount = self.subtotal - self.discount_amount + self.tax_amount
         self.balance_due = self.total_amount - self.amount_paid
-        self.save(update_fields=["subtotal", "total_amount", "balance_due", "updated_at"])
+        self.save(
+            update_fields=[
+                "subtotal",
+                "discount_amount",
+                "total_amount",
+                "balance_due",
+                "updated_at",
+            ]
+        )
 
-    def apply_discount(self, amount: Decimal, reason: str):
-        """Apply discount to invoice."""
+    def apply_discount(
+        self,
+        amount: Decimal,
+        reason: str,
+        discount_type: str = "",
+        discount_value: Decimal | None = None,
+    ):
+        """Apply discount to invoice.
+
+        Args:
+            amount: The absolute discount amount in KES (used as fallback
+                    if discount_type/discount_value are not provided).
+            reason: Human-readable reason for the discount.
+            discount_type: 'percentage' or 'fixed' (optional).
+            discount_value: The percentage (0-100) or fixed amount (optional).
+        """
         if amount < 0:
             raise ValidationError("Discount amount must be positive.")
 
@@ -342,6 +408,11 @@ class Invoice(models.Model):
 
         if amount > self.subtotal:
             raise ValidationError("Discount cannot exceed subtotal.")
+
+        # Store structured discount if provided
+        if discount_type and discount_value is not None:
+            self.discount_type = discount_type
+            self.discount_value = discount_value
 
         self.discount_amount = amount
         self.discount_reason = reason
