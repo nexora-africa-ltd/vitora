@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, Stethoscope, Pill, AlertTriangle, ArrowRight, UserCheck } from 'lucide-react';
+import { Users, Stethoscope, Pill, AlertTriangle, ArrowRight, UserCheck, Clock } from 'lucide-react';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { TrendBadge } from '@/components/charts';
 import { RecentPatients } from '@/components/dashboard/recent-patients';
@@ -11,11 +11,20 @@ import { AlertsWidget } from '@/components/dashboard/alerts-widget';
 import { AllClaimedEncountersWidget } from '@/components/dashboard/all-claimed-widget';
 import { MyClaimedEncountersWidget } from '@/components/dashboard/my-claimed-widget';
 import { useDashboardStats, formatNumber } from '@/lib/hooks/use-dashboard-stats';
+import { useTriageWaitTimeStats } from '@/lib/hooks/use-triage';
 import { useIsSupervisor } from '@/lib/auth';
+import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { data: stats, isLoading } = useDashboardStats();
+  const { data: triageStats, isLoading: isTriageLoading } = useTriageWaitTimeStats({ dateRange: 'today' });
   const isSupervisor = useIsSupervisor();
+
+  // Triage queue metrics
+  const triageQueueCount = triageStats?.current_queue?.count ?? 0;
+  const triageAvgWait = triageStats?.current_queue?.avg_wait_minutes ?? 0;
+  const isTriageWarning = triageQueueCount > 5 || triageAvgWait > 15;
+  const isTriageCritical = triageQueueCount > 10 || triageAvgWait > 30;
 
   // Calculate week-over-week changes (mock for now - would come from API in production)
   const weeklyChanges = {
@@ -35,47 +44,56 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Stats cards - 5 cards: Patients, Triage, Encounters, Prescriptions, Alerts */}
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         <StatsCard
           title="Total Patients"
-          value={isLoading ? '—' : formatNumber(stats?.patients.total ?? 0)}
+          value={formatNumber(stats?.patients.total ?? 0)}
           description={
-            isLoading ? (
-              'Loading...'
-            ) : (
-              <span className="flex items-center gap-2">
-                +{stats?.patients.today ?? 0} today
-                {weeklyChanges.patients > 0 && (
-                  <TrendBadge
-                    change={((weeklyChanges.patients / Math.max(1, (stats?.patients.total ?? 1) - weeklyChanges.patients)) * 100)}
-                    size="sm"
-                  />
-                )}
-              </span>
-            )
+            <span className="flex items-center gap-2">
+              +{stats?.patients.today ?? 0} today
+              {weeklyChanges.patients > 0 && (
+                <TrendBadge
+                  change={((weeklyChanges.patients / Math.max(1, (stats?.patients.total ?? 1) - weeklyChanges.patients)) * 100)}
+                  size="sm"
+                />
+              )}
+            </span>
           }
           icon={Users}
           trend="up"
           loading={isLoading}
         />
         <StatsCard
-          title="Today's Encounters"
-          value={isLoading ? '—' : String(stats?.encounters.today ?? 0)}
+          title="Triage Queue"
+          value={String(triageQueueCount)}
           description={
-            isLoading ? (
-              'Loading...'
-            ) : (
-              <span className="flex items-center gap-2">
-                {stats?.encounters.in_progress ?? 0} in progress
-                {(stats?.encounters.today ?? 0) > 0 && (
-                  <TrendBadge
-                    change={12.5} // Would come from API comparison in production
-                    size="sm"
-                  />
-                )}
-              </span>
-            )
+            <span className={cn(
+              isTriageCritical && 'text-destructive font-medium',
+              isTriageWarning && !isTriageCritical && 'text-warning font-medium'
+            )}>
+              {triageAvgWait}m avg wait
+            </span>
+          }
+          icon={Clock}
+          trend={triageQueueCount > 0 ? 'up' : 'neutral'}
+          variant={isTriageCritical ? 'warning' : isTriageWarning ? 'warning' : 'default'}
+          loading={isTriageLoading}
+          href="/triage"
+        />
+        <StatsCard
+          title="Today's Encounters"
+          value={String(stats?.encounters.today ?? 0)}
+          description={
+            <span className="flex items-center gap-2">
+              {stats?.encounters.in_progress ?? 0} in progress
+              {(stats?.encounters.today ?? 0) > 0 && (
+                <TrendBadge
+                  change={12.5} // Would come from API comparison in production
+                  size="sm"
+                />
+              )}
+            </span>
           }
           icon={Stethoscope}
           trend="up"
@@ -83,38 +101,26 @@ export default function DashboardPage() {
         />
         <StatsCard
           title="Prescriptions"
-          value={isLoading ? '—' : String(stats?.pharmacy.prescriptions_today ?? 0)}
-          description={
-            isLoading ? (
-              'Loading...'
-            ) : (
-              <span className="flex items-center gap-2">
-                {stats?.pharmacy.pending_dispensing ?? 0} pending
-              </span>
-            )
-          }
+          value={String(stats?.pharmacy.prescriptions_today ?? 0)}
+          description={`${stats?.pharmacy.pending_dispensing ?? 0} pending`}
           icon={Pill}
           trend="neutral"
           loading={isLoading}
         />
         <StatsCard
           title="Alerts"
-          value={isLoading ? '—' : String(stats?.alerts.total_unresolved ?? 0)}
+          value={String(stats?.alerts.total_unresolved ?? 0)}
           description={
-            isLoading ? (
-              'Loading...'
-            ) : (
-              <span className="flex items-center gap-2">
-                {stats?.alerts.critical ?? 0} critical
-                {(stats?.alerts.critical ?? 0) > 0 && (
-                  <TrendBadge
-                    change={stats?.alerts.critical ?? 0}
-                    invertColors
-                    size="sm"
-                  />
-                )}
-              </span>
-            )
+            <span className="flex items-center gap-2">
+              {stats?.alerts.critical ?? 0} critical
+              {(stats?.alerts.critical ?? 0) > 0 && (
+                <TrendBadge
+                  change={stats?.alerts.critical ?? 0}
+                  invertColors
+                  size="sm"
+                />
+              )}
+            </span>
           }
           icon={AlertTriangle}
           trend={stats?.alerts.critical && stats.alerts.critical > 0 ? 'up' : 'down'}
