@@ -243,6 +243,23 @@ export const EncounterSchema = z.object({
 
   // Triage fields
   triage_status: TriageStatusSchema.optional(),
+  triage_requirement: TriageRequirementSchema.optional().nullable(),
+  triage_bypass_reason: TriageBypassReasonSchema.optional().nullable(),
+  triage_bypassed_by: z.number().optional().nullable(),
+  triage_bypassed_by_username: z.string().optional().nullable(),
+  triage_bypassed_at: z.string().optional().nullable(),
+
+  // Consultation workflow
+  consultation_status: ConsultationStatusSchema.optional().nullable(),
+  called_at: z.string().optional().nullable(),
+  consultation_started_at: z.string().optional().nullable(),
+  can_enter_consultation: z.boolean().optional(),
+  wait_time_minutes: z.number().optional().nullable(),
+
+  // Clinic context
+  clinic_visit_id: z.number().optional().nullable(),
+  clinic_name: z.string().optional().nullable(),
+  clinic_type: z.string().optional().nullable(),
 
   // Clinician Assignment
   assigned_clinician: z.number().optional().nullable(),
