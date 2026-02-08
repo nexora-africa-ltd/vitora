@@ -101,7 +101,7 @@ export function InvoiceForm({
 }: InvoiceFormProps) {
   const isEditing = !!invoice;
 
-  const form = useForm<InvoiceFormValues>({
+  const form = useForm<InvoiceFormValues, unknown, InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: {
       patient: invoice?.patient || initialPatient || 0,
