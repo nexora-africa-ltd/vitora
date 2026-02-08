@@ -419,7 +419,7 @@ describe('SHA Contract Tests', () => {
   describe('MemberStatusSchema (enum)', () => {
     it('should match OpenAPI Status05dEnum values', () => {
       const zodValues = normalizeEnumValues(getZodEnumValues(MemberStatusSchema));
-      const apiValues = getSchemaEnumValues(openapi, 'Status05dEnum');
+        const apiValues = getSchemaEnumValues(openapi, 'Status05dEnum');
 
       expect(apiValues).not.toBeNull();
       if (!apiValues) return;

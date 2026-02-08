@@ -28,7 +28,16 @@ export const GenderSchema = z.enum(['M', 'F', 'O']);
 
 export const ReferralSourceSchema = z.enum(['self', 'clinic', 'other_facility']);
 
-export const PaymentModeSchema = z.enum(['cash', 'sha', 'insurance_private', 'insurance_corporate']);
+export const PaymentModeSchema = z.enum([
+  'cash',
+  'sha',
+  'insurance_private',
+  'insurance_corporate',
+  'mpesa',
+  'insurance',
+  'corporate',
+  'mixed',
+]);
 
 export const EncounterStatusSchema = z.enum(['CREATED', 'CHECKED_IN', 'TRIAGED', 'IN_PROGRESS', 'ON_HOLD', 'ORDERS_PLACED', 'RESULTS_PENDING', 'READY_TO_CLOSE', 'CLOSED', 'CANCELLED']);
 

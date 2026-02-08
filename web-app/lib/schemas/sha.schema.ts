@@ -53,7 +53,18 @@ export const ClaimItemStatusSchema = z.enum(['pending', 'approved', 'rejected', 
 
 export const MembershipTypeSchema = z.enum(['PRINCIPAL', 'SPOUSE', 'CHILD', 'PARENT', 'OTHER']);
 
-export const MemberStatusSchema = z.enum(['ACTIVE', 'INACTIVE', 'PENDING_VERIFICATION', 'SUSPENDED']);
+export const MemberStatusSchema = z.enum([
+  'ACTIVE',
+  'INACTIVE',
+  'PENDING_VERIFICATION',
+  'SUSPENDED',
+  'EXPIRED',
+  'active',
+  'inactive',
+  'pending_verification',
+  'suspended',
+  'expired',
+]);
 
 // Use SHAGenderSchema internally to avoid conflict with patient.schema GenderSchema
 const SHAGenderSchema = z.enum(['M', 'F', 'O']);
@@ -121,6 +132,7 @@ export const SHAMemberSchema = z.object({
   patient_name: z.string().optional(),
   patient_mrn: z.string().optional(),
   sha_member_number: z.string(),
+  sha_number: z.string().optional(),
   scheme_category: SchemeCategorySchema,
   coverage_start_date: z.string(),
   coverage_end_date: z.string().optional(),
@@ -128,6 +140,10 @@ export const SHAMemberSchema = z.object({
   membership_type: MembershipTypeSchema.optional(),
   principal_sha_number: z.string().optional(),
   status: MemberStatusSchema.optional(),
+  national_id: z.string().optional(),
+  eligibility_display: z.string().optional(),
+  eligibility_valid_until: z.string().optional().nullable(),
+  last_eligibility_check: z.string().optional().nullable(),
   is_pfms_eligible: z.boolean(),
   pfms_category: PFMSCategorySchema.optional(),
   pfms_category_display: z.string().optional(),

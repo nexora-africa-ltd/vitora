@@ -92,9 +92,12 @@ export const LabQueueStatusSchema = QueueStatusSchema;
 export const LabResultSchema = z.object({
   id: z.number(),
   order_item: z.number(),
+  test_name: z.string().optional().nullable(),
+  test_code: z.string().optional().nullable(),
   numeric_value: z.number().nullable().optional(),
   text_value: z.string().nullable().optional(),
   option_value: z.string().nullable().optional(),
+  formatted_value: z.string().nullable().optional(),
   result_unit: z.string().nullable().optional(),
   reference_low: z.number().nullable().optional(),
   reference_high: z.number().nullable().optional(),

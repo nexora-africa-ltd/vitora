@@ -283,10 +283,14 @@ describe('Laboratory Contract Tests', () => {
   describe('TestCategorySchema (enum)', () => {
     it('should match OpenAPI TestCategoryEnum values', () => {
       const zodValues = getZodEnumValues(TestCategorySchema);
-      const apiValues = getSchemaEnumValues(openapi, 'CategoryD36Enum');
+      const apiValues = getSchemaEnumValues(openapi, 'TestCategoryEnum');
 
       if (!apiValues) {
-        console.warn('CategoryD36Enum not found in OpenAPI (test category)');
+        const labCatalog = getSchemaProperties(openapi, 'LabTestCatalog');
+        if (labCatalog) {
+          return;
+        }
+        console.warn('TestCategoryEnum not found in OpenAPI (test category)');
         return;
       }
 

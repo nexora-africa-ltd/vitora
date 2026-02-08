@@ -348,12 +348,12 @@ describe('Patient Contract Tests', () => {
   });
 
   describe('PaymentModeSchema (enum)', () => {
-    it('should match OpenAPI PaymentModeEnum values', () => {
+    it('should match OpenAPI PaymentTypeEnum values', () => {
       const zodValues = getZodEnumValues(PaymentModeSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'PaymentModeEnum');
+      const apiValues = getSchemaEnumValues(openapi, 'PaymentTypeEnum');
 
       if (!apiValues) {
-        console.warn('PaymentModeEnum not found in OpenAPI');
+        console.warn('PaymentTypeEnum not found in OpenAPI');
         return;
       }
 

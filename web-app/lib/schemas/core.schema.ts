@@ -25,6 +25,7 @@ export type CountySchemaType = z.infer<typeof CountySchema>;
 export const SubCountySchema = z.object({
   id: z.number(),
   county: z.number(),
+  county_name: z.string().optional(),
   name: z.string(),
 });
 
@@ -34,6 +35,7 @@ export type SubCountySchemaType = z.infer<typeof SubCountySchema>;
 export const LocationWardSchema = z.object({
   id: z.number(),
   sub_county: z.number(),
+  sub_county_name: z.string().optional(),
   name: z.string(),
 });
 

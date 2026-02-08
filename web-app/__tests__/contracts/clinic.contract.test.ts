@@ -370,10 +370,10 @@ describe('Clinic Contract Tests', () => {
   describe('ClinicVisitStatusSchema (enum)', () => {
     it('should match OpenAPI ClinicVisitStatusEnum values', () => {
       const zodValues = getZodEnumValues(ClinicVisitStatusSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'StatusC5bEnum');
+        const apiValues = getSchemaEnumValues(openapi, 'ClinicVisitStatusEnum');
 
       if (!apiValues) {
-        console.warn('StatusC5bEnum not found in OpenAPI (visit status)');
+          console.warn('ClinicVisitStatusEnum not found in OpenAPI (visit status)');
         return;
       }
 
@@ -390,10 +390,10 @@ describe('Clinic Contract Tests', () => {
   describe('ClinicVisitPrioritySchema (enum)', () => {
     it('should match OpenAPI priority enum values', () => {
       const zodValues = getZodEnumValues(ClinicVisitPrioritySchema);
-      const apiValues = getSchemaEnumValues(openapi, 'Priority882Enum');
+        const apiValues = getSchemaEnumValues(openapi, 'Priority2eaEnum');
 
       if (!apiValues) {
-        console.warn('Priority882Enum not found in OpenAPI');
+          console.warn('Priority2eaEnum not found in OpenAPI');
         return;
       }
 
@@ -410,10 +410,10 @@ describe('Clinic Contract Tests', () => {
   describe('ClinicVisitTypeSchema (enum)', () => {
     it('should match OpenAPI visit type enum values', () => {
       const zodValues = getZodEnumValues(ClinicVisitTypeSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'VisitTypeEnum');
+        const apiValues = getSchemaEnumValues(openapi, 'VisitType1dcEnum');
 
       if (!apiValues) {
-        console.warn('VisitTypeEnum not found in OpenAPI');
+          console.warn('VisitType1dcEnum not found in OpenAPI');
         return;
       }
 
@@ -450,10 +450,10 @@ describe('Clinic Contract Tests', () => {
   describe('ClinicSessionStatusSchema (enum)', () => {
     it('should match OpenAPI session status enum values', () => {
       const zodValues = getZodEnumValues(ClinicSessionStatusSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'StatusF1fEnum');
+        const apiValues = getSchemaEnumValues(openapi, 'ClinicSessionStatusEnum');
 
       if (!apiValues) {
-        console.warn('StatusF1fEnum not found in OpenAPI (session status)');
+          console.warn('ClinicSessionStatusEnum not found in OpenAPI (session status)');
         return;
       }
 
@@ -490,10 +490,10 @@ describe('Clinic Contract Tests', () => {
   describe('ClinicStaffRoleSchema (enum)', () => {
     it('should match OpenAPI staff role enum values', () => {
       const zodValues = getZodEnumValues(ClinicStaffRoleSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'Role71cEnum');
+        const apiValues = getSchemaEnumValues(openapi, 'RoleEnum');
 
       if (!apiValues) {
-        console.warn('Role71cEnum not found in OpenAPI (staff role)');
+          console.warn('RoleEnum not found in OpenAPI (staff role)');
         return;
       }
 
