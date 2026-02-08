@@ -39,7 +39,6 @@ import {
   User,
   FileText,
   CheckCircle2,
-  ArrowLeft,
   Printer,
   ExternalLink,
   AlertCircle,
@@ -276,12 +275,8 @@ function PaymentStep({ invoice, onBack, onSuccess }: PaymentStepProps) {
 
   return (
     <div className="space-y-4">
-      {/* Back Button & Invoice Summary */}
+      {/* Invoice Summary */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back
-        </Button>
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <span className="font-mono text-sm">{invoice.invoice_number}</span>

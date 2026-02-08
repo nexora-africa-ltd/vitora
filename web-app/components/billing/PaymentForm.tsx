@@ -22,7 +22,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CreditCard, Smartphone, Banknote, Building, Receipt } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Loader2, CreditCard, Smartphone, Banknote, Building, Receipt, Lock, Info } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
@@ -31,7 +37,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePaymentPoints } from '@/lib/hooks/billing';
 import type { Invoice, PaymentMethod, PaymentCreateData } from '@/lib/types/billing';
 import { formatCurrency } from '@/lib/utils/format';
@@ -251,15 +256,20 @@ export function PaymentForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col max-h-[70vh]">
-        <ScrollArea className="flex-1 pr-4">
-          <div className="space-y-6 pb-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col">
+        <div className="space-y-6 pb-4">
         {/* Invoice Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">Invoice: {invoice.invoice_number}</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Card className="cursor-help border-muted">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                    Invoice: {invoice.invoice_number}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Total:</span>
@@ -282,6 +292,12 @@ export function PaymentForm({
             </div>
           </CardContent>
         </Card>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs">
+              <p>Invoice details are read-only. To modify, go to the invoice page.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
 
         {/* Payment Method */}
         <FormField
@@ -304,27 +320,45 @@ export function PaymentForm({
                     { value: 'MPESA' as const, label: 'M-Pesa', icon: paymentMethodIcons.MPESA },
                     { value: 'CARD' as const, label: 'Card', icon: paymentMethodIcons.CARD },
                     { value: 'BANK_TRANSFER' as const, label: 'Bank Transfer', icon: paymentMethodIcons.BANK_TRANSFER },
-                  ]).map((method) => (
-                    <div key={method.value} className="flex items-center space-x-3">
-                      <RadioGroupItem
-                        value={method.value}
-                        id={`method-${method.value}`}
-                        disabled={isInsuranceOrSHAInvoice && method.value !== 'BANK_TRANSFER'}
-                      />
-                      <label
-                        htmlFor={`method-${method.value}`}
-                        className="flex items-center gap-2 text-sm font-medium leading-none"
-                      >
-                        {method.icon}
-                        {method.label}
-                      </label>
-                    </div>
-                  ))}
+                  ]).map((method) => {
+                    const isDisabled = isInsuranceOrSHAInvoice && method.value !== 'BANK_TRANSFER';
+                    return (
+                      <TooltipProvider key={method.value}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center space-x-3">
+                              <RadioGroupItem
+                                value={method.value}
+                                id={`method-${method.value}`}
+                                disabled={isDisabled}
+                              />
+                              <label
+                                htmlFor={`method-${method.value}`}
+                                className={`flex items-center gap-2 text-sm font-medium leading-none ${
+                                  isDisabled ? 'text-muted-foreground cursor-not-allowed' : 'cursor-pointer'
+                                }`}
+                              >
+                                {method.icon}
+                                {method.label}
+                                {isDisabled && <Lock className="h-3 w-3" />}
+                              </label>
+                            </div>
+                          </TooltipTrigger>
+                          {isDisabled && (
+                            <TooltipContent side="right">
+                              <p>Not available for SHA/insurance invoices</p>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })}
                 </RadioGroup>
               </FormControl>
               {isInsuranceOrSHAInvoice && (
-                <FormDescription>
-                  SHA/insurance invoices are paid via bank transfer (method is locked).
+                <FormDescription className="flex items-center gap-1">
+                  <Lock className="h-3 w-3" />
+                  SHA/insurance invoices require bank transfer payment.
                 </FormDescription>
               )}
               <FormMessage />
@@ -541,10 +575,9 @@ export function PaymentForm({
             </FormItem>
           )}
         />
-          </div>
-        </ScrollArea>
+        </div>
 
-        {/* Form Actions - Outside ScrollArea so always visible */}
+        {/* Form Actions - Outside scroll area so always visible */}
         <div className="flex justify-end gap-2 pt-4 border-t mt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel

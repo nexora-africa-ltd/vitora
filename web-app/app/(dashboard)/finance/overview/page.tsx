@@ -18,6 +18,7 @@ import {
   Clock,
   CreditCard,
   FileText,
+  HelpCircle,
   Receipt,
   TrendingUp,
   Wallet,
@@ -31,6 +32,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -79,7 +91,7 @@ function StatCard({
   variant = 'default',
   isLoading,
 }: StatCardProps) {
-  const content = (
+  const cardContent = (
     <Card variant={variant} className={href ? 'cursor-pointer' : ''}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -89,13 +101,10 @@ function StatCard({
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-7 sm:h-8 w-20 sm:w-24" />
         ) : (
           <>
-            <div className="text-2xl font-bold">{value}</div>
-            {description && (
-              <p className="text-xs text-muted-foreground mt-1">{description}</p>
-            )}
+            <div className="text-xl sm:text-2xl font-bold truncate">{value}</div>
             {trend && (
               <div className={`flex items-center gap-1 text-xs mt-1 ${
                 trend.isPositive ? 'text-green-600' : 'text-red-600'
@@ -114,11 +123,26 @@ function StatCard({
     </Card>
   );
 
+  const wrappedContent = description ? (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div>{cardContent}</div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{description}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  ) : (
+    cardContent
+  );
+
   if (href) {
-    return <Link href={href}>{content}</Link>;
+    return <Link href={href}>{wrappedContent}</Link>;
   }
 
-  return content;
+  return wrappedContent;
 }
 
 function ClaimsStatusCard({
@@ -142,41 +166,51 @@ function ClaimsStatusCard({
             <SHALogo size="md" />
             <CardTitle className="text-base">SHA Claims Status</CardTitle>
           </div>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/transactions/sha-claims" className="gap-1">
-              View All <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+                    <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <Link href="/transactions/sha-claims">
+                    <ArrowRight className="h-4 w-4" />
+                    <span className="sr-only">View all SHA claims</span>
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>View all claims</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30">
-            <Clock className="h-8 w-8 text-amber-600" />
-            <div>
-              <p className="text-2xl font-bold">{isLoading ? '-' : pending}</p>
-              <p className="text-xs text-muted-foreground">Pending</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30">
+            <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-amber-600 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-lg sm:text-2xl font-bold">{isLoading ? '-' : pending}</p>
+              <p className="text-xs text-muted-foreground truncate">Pending</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30">
-            <AlertCircle className="h-8 w-8 text-blue-600" />
-            <div>
-              <p className="text-2xl font-bold">{isLoading ? '-' : submitted}</p>
-              <p className="text-xs text-muted-foreground">Submitted</p>
+          <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30">
+            <AlertCircle className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-lg sm:text-2xl font-bold">{isLoading ? '-' : submitted}</p>
+              <p className="text-xs text-muted-foreground truncate">Submitted</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-950/30">
-            <CheckCircle2 className="h-8 w-8 text-green-600" />
-            <div>
-              <p className="text-2xl font-bold">{isLoading ? '-' : approved}</p>
-              <p className="text-xs text-muted-foreground">Approved</p>
+          <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-green-50 dark:bg-green-950/30">
+            <CheckCircle2 className="h-6 w-6 sm:h-8 sm:w-8 text-green-600 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-lg sm:text-2xl font-bold">{isLoading ? '-' : approved}</p>
+              <p className="text-xs text-muted-foreground truncate">Approved</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/30">
-            <XCircle className="h-8 w-8 text-red-600" />
-            <div>
-              <p className="text-2xl font-bold">{isLoading ? '-' : rejected}</p>
-              <p className="text-xs text-muted-foreground">Rejected</p>
+          <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-red-50 dark:bg-red-950/30">
+            <XCircle className="h-6 w-6 sm:h-8 sm:w-8 text-red-600 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-lg sm:text-2xl font-bold">{isLoading ? '-' : rejected}</p>
+              <p className="text-xs text-muted-foreground truncate">Rejected</p>
             </div>
           </div>
         </div>
@@ -218,11 +252,21 @@ function PayerMixCard({
             <Wallet className="h-5 w-5 text-muted-foreground" />
             <CardTitle className="text-base">Payer Mix</CardTitle>
           </div>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/transactions/reports/revenue" className="gap-1">
-              Details <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+                    <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <Link href="/transactions/reports/revenue">
+                    <ArrowRight className="h-4 w-4" />
+                    <span className="sr-only">View payer mix details</span>
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>View details</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </CardHeader>
       <CardContent>
@@ -240,9 +284,9 @@ function PayerMixCard({
           <div className="space-y-3">
             {data.map((item) => (
               <div key={item.method} className="space-y-1">
-                <div className="flex items-center justify-between text-sm">
-                  <span>{paymentMethodLabels[item.method] || item.method}</span>
-                  <span className="font-medium">
+                <div className="flex items-center justify-between text-xs sm:text-sm gap-2">
+                  <span className="truncate">{paymentMethodLabels[item.method] || item.method}</span>
+                  <span className="font-medium whitespace-nowrap">
                     {formatCurrency(parseFloat(item.amount))} ({item.percentage}%)
                   </span>
                 </div>
@@ -279,11 +323,21 @@ function OutstandingReceivablesCard({
             <Receipt className="h-5 w-5 text-muted-foreground" />
             <CardTitle className="text-base">Outstanding Receivables</CardTitle>
           </div>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/transactions/invoices?status=OVERDUE" className="gap-1">
-              View All <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+                    <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <Link href="/transactions/invoices?status=OVERDUE">
+                    <ArrowRight className="h-4 w-4" />
+                    <span className="sr-only">View all overdue invoices</span>
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>View all</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </CardHeader>
       <CardContent>
@@ -299,15 +353,16 @@ function OutstandingReceivablesCard({
             <span className="text-sm">No outstanding receivables</span>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Invoice</TableHead>
-                <TableHead>Patient</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-                <TableHead className="text-right">Overdue</TableHead>
-              </TableRow>
-            </TableHeader>
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <Table className="min-w-[400px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="whitespace-nowrap">Invoice</TableHead>
+                  <TableHead className="whitespace-nowrap">Patient</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Balance</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">Overdue</TableHead>
+                </TableRow>
+              </TableHeader>
             <TableBody>
               {data.slice(0, 5).map((item) => (
                 <TableRow key={item.invoice_number}>
@@ -319,7 +374,7 @@ function OutstandingReceivablesCard({
                       {item.invoice_number}
                     </Link>
                   </TableCell>
-                  <TableCell className="text-sm">{item.patient_name}</TableCell>
+                  <TableCell className="text-sm truncate max-w-[120px]">{item.patient_name}</TableCell>
                   <TableCell className="text-right font-medium">
                     {formatCurrency(parseFloat(item.balance_due))}
                   </TableCell>
@@ -341,6 +396,7 @@ function OutstandingReceivablesCard({
               ))}
             </TableBody>
           </Table>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -421,25 +477,35 @@ export default function FinanceOverviewPage() {
   const todayTransactions = dailyCollection?.invoice_count || 0;
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
       {/* Header with Action Button */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <PageHeader
-          title="Finance Dashboard"
-          description="Receivables, collections, claims status, and payer mix at a glance"
-        />
+        <div className="flex items-center gap-2">
+          <PageHeader title="Finance Dashboard" />
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-full hover:bg-muted">
+                <HelpCircle className="h-4 w-4" />
+                <span className="sr-only">About this dashboard</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="start" className="max-w-xs text-sm">
+              <p>Receivables, collections, claims status, and payer mix at a glance</p>
+            </PopoverContent>
+          </Popover>
+        </div>
         <ReceivePaymentModal
           trigger={
-            <Button size="lg" className="gap-2">
+            <Button size="lg" className="gap-2 w-full sm:w-auto">
               <Banknote className="h-5 w-5" />
-              Receive Payment
+              <span className="sm:inline">Receive Payment</span>
             </Button>
           }
         />
       </div>
 
       {/* Quick Stats Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Today's Collections"
           value={formatCurrency(todayCollection)}
@@ -492,7 +558,7 @@ export default function FinanceOverviewPage() {
       />
 
       {/* Two Column Layout: Payer Mix + Outstanding Receivables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <PayerMixCard data={payerMix} isLoading={payerMixLoading} />
         <OutstandingReceivablesCard
           data={outstandingBalances.slice(0, 5)}
@@ -502,30 +568,30 @@ export default function FinanceOverviewPage() {
 
       {/* Quick Links */}
       <Card variant="muted">
-        <CardContent className="py-4">
-          <div className="grid gap-4 md:grid-cols-4">
-            <Button variant="outline" asChild className="justify-start">
+        <CardContent className="py-3 sm:py-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-4">
+            <Button variant="outline" asChild className="justify-start text-xs sm:text-sm">
               <Link href="/transactions/invoices">
-                <FileText className="h-4 w-4 mr-2" />
-                Invoices
+                <FileText className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                <span className="truncate">Invoices</span>
               </Link>
             </Button>
-            <Button variant="outline" asChild className="justify-start">
+            <Button variant="outline" asChild className="justify-start text-xs sm:text-sm">
               <Link href="/transactions/payments">
-                <CreditCard className="h-4 w-4 mr-2" />
-                Payments
+                <CreditCard className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                <span className="truncate">Payments</span>
               </Link>
             </Button>
-            <Button variant="outline" asChild className="justify-start">
+            <Button variant="outline" asChild className="justify-start text-xs sm:text-sm">
               <Link href="/transactions/reports">
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Reports
+                <BarChart3 className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+                <span className="truncate">Reports</span>
               </Link>
             </Button>
-            <Button variant="outline" asChild className="justify-start">
+            <Button variant="outline" asChild className="justify-start text-xs sm:text-sm">
               <Link href="/insurance">
-                <SHALogo size="sm" className="mr-2" />
-                Insurance
+                <SHALogo size="sm" className="mr-1 sm:mr-2 shrink-0" />
+                <span className="truncate">Insurance</span>
               </Link>
             </Button>
           </div>
