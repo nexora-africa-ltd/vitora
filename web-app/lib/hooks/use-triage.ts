@@ -115,11 +115,22 @@ interface CalculateCategoryResponse {
   alerts: TriageAlert[];
 }
 
+interface CurrentQueueStats {
+  count: number;
+  avg_wait_minutes: number;
+  max_wait_minutes: number;
+  longest_waiting_patient: number;
+}
+
 interface WaitTimeStatsResponse {
+  total_assessments: number;
   avg_wait_minutes: number;
   median_wait_minutes: number;
+  max_wait_minutes: number;
+  min_wait_minutes: number;
   target_met_percentage: number;
   by_category: WaitTimeStats[];
+  current_queue: CurrentQueueStats;
 }
 
 // =============================================================================
@@ -483,7 +494,7 @@ export function useTriageWaitTimeStats(params: { dateRange: string }) {
       );
       return response.data;
     },
-    refetchInterval: 60000, // Refresh every minute
+    refetchInterval: 30000, // Refresh every 30 seconds for more real-time updates
   });
 }
 
