@@ -232,6 +232,8 @@ setup-db: migrate import-all createsuperuser
 setup-db-quick: migrate import-all create-test-user
 	@echo "Database setup complete with test user (admin/voXOQkM4Tn6qCNQTy)!"
 
+
+
 # ============================================================================
 # Docker Commands
 # ============================================================================

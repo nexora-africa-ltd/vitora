@@ -172,8 +172,8 @@ export const InvoiceSchema = z.object({
 
   // Totals
   subtotal: z.string(),
-  discount_type: DiscountTypeSchema.optional().nullable(),
-  discount_value: z.string().optional().nullable(),
+  discount_type: DiscountTypeSchema.or(z.literal('')).optional().nullable(),
+  discount_value: z.string(),
   discount_amount: z.string(),
   tax_amount: z.string(),
   total_amount: z.string(),
@@ -183,7 +183,7 @@ export const InvoiceSchema = z.object({
 
   // Insurance/SHA
   sha_claim_number: z.string().optional().nullable(),
-  insurance_coverage: z.string().optional().nullable(),
+  insurance_coverage: z.string(),
   insurance_provider: z.string().optional().nullable(),
   insurance_member_no: z.string().optional().nullable(),
   insurance_amount: z.string().optional().nullable(),
