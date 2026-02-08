@@ -303,30 +303,104 @@ export type ActiveComponentSchemaType = z.infer<typeof ActiveComponentSchema>;
 // CLAIM SCHEMAS
 // =============================================================================
 
+/**
+ * ClaimSchema - Validates SHA claim responses from the backend.
+ *
+ * Note: Some fields have aliases for backward compatibility:
+ * - total_amount (frontend) ↔ claimed_amount (backend)
+ * - copay_amount (frontend) ↔ patient_copay (backend)
+ * - sha_reference (frontend) ↔ sha_claim_reference (backend)
+ * - invoice_id/encounter_id/patient_id (frontend) ↔ invoice/encounter/patient (backend)
+ */
 export const ClaimSchema = z.object({
+  // Primary identifiers
   id: z.number(),
   claim_number: z.string().optional(),
-  invoice_id: z.number(),
-  invoice_number: z.string().optional(),
-  encounter_id: z.number(),
-  patient_id: z.number().optional(),
-  patient_name: z.string().optional(),
-  patient_mrn: z.string().optional(),
+
+  // Backend uses 'sha_claim_reference', frontend alias 'sha_reference'
+  sha_claim_reference: z.string().nullable().optional(),
+  sha_reference: z.string().nullable().optional(), // Backward compatibility alias
+
+  // Foreign keys - backend uses plain names, frontend uses _id suffix
+  patient: z.number().nullable().optional(),
+  patient_id: z.number().nullable().optional(), // Backward compatibility alias
+  sha_member: z.number().nullable().optional(),
+  sha_member_number: z.string().nullable().optional(),
+  encounter: z.number().nullable().optional(),
+  encounter_id: z.number().nullable().optional(), // Backward compatibility alias
+  invoice: z.number().nullable().optional(),
+  invoice_id: z.number().nullable().optional(), // Backward compatibility alias
+
+  // Display fields
+  patient_name: z.string().nullable().optional(),
+  patient_mrn: z.string().nullable().optional(),
+  invoice_number: z.string().nullable().optional(),
+  submitted_by_username: z.string().nullable().optional(),
+
+  // Claim details
+  claim_type: z.string().nullable().optional(),
   status: ClaimStatusSchema,
-  sha_reference: z.string().optional(),
-  total_amount: z.string(),
-  approved_amount: z.string().optional(),
-  rejected_amount: z.string().optional(),
-  copay_amount: z.string().optional(),
-  submitted_at: z.string().optional(),
-  processed_at: z.string().optional(),
+
+  // Clinical dates
+  service_date: z.string().nullable().optional(),
+  admission_date: z.string().nullable().optional(),
+  discharge_date: z.string().nullable().optional(),
+
+  // Diagnosis
+  primary_diagnosis_code: z.string().nullable().optional(),
+  primary_diagnosis_description: z.string().nullable().optional(),
+  secondary_diagnosis_codes: z.union([z.array(z.string()), z.record(z.unknown())]).nullable().optional(),
+
+  // Amounts - backend uses claimed_amount, frontend alias total_amount
+  claimed_amount: z.string().nullable().optional(),
+  total_amount: z.string().optional(), // Backward compatibility alias
+  approved_amount: z.string().nullable().optional(),
+  paid_amount: z.string().nullable().optional(),
+  rejected_amount: z.string().nullable().optional(), // Frontend-specific, may not be in backend
+  patient_copay: z.string().nullable().optional(),
+  copay_amount: z.string().nullable().optional(), // Backward compatibility alias
+
+  // Submission
+  submission_method: z.string().nullable().optional(),
+  submitted_at: z.string().nullable().optional(),
+  submitted_by: z.number().nullable().optional(),
+
+  // Adjudication
+  adjudication_date: z.string().nullable().optional(),
+  adjudication_notes: z.string().nullable().optional(),
+  rejection_reason: z.string().nullable().optional(),
+  rejection_code: z.string().nullable().optional(),
+  rejection_codes: z.array(z.string()).nullable().optional(), // Frontend-specific array
+
+  // Payment
+  payment_date: z.string().nullable().optional(),
+  payment_reference: z.string().nullable().optional(),
+
+  // Preauthorization
+  preauth_number: z.string().nullable().optional(),
+  preauth_date: z.string().nullable().optional(),
+  preauth_valid_until: z.string().nullable().optional(),
+
+  // Facility
+  facility_code: z.string().nullable().optional(),
+  facility_level: z.string().nullable().optional(),
+
+  // Versioning
+  version: z.number().nullable().optional(),
+  parent_claim: z.number().nullable().optional(),
+
+  // Computed counts
+  items_count: z.number().nullable().optional(),
+  attachments_count: z.number().nullable().optional(),
+
+  // Timestamps
   created_at: z.string(),
   updated_at: z.string(),
-  rejection_reason: z.string().optional(),
-  rejection_codes: z.array(z.string()).optional(),
-  fhir_bundle_id: z.string().optional(),
-  created_by: z.number().optional(),
-  submitted_by: z.number().optional(),
+  processed_at: z.string().nullable().optional(), // Frontend-specific
+
+  // FHIR reference
+  fhir_bundle_id: z.string().nullable().optional(),
+  created_by: z.number().nullable().optional(),
 });
 
 export type ClaimSchemaType = z.infer<typeof ClaimSchema>;
