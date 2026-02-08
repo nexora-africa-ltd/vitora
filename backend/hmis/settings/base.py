@@ -5,6 +5,7 @@ These are common settings shared across all environments.
 """
 
 import os
+from importlib import import_module
 from pathlib import Path
 
 from django.core.management.utils import get_random_secret_key
@@ -173,6 +174,15 @@ REST_FRAMEWORK = {
 }
 
 # drf-spectacular settings
+def _model_attr(dotted_path: str, attr: str):
+    module_path, class_name = dotted_path.rsplit(".", 1)
+    module = import_module(module_path)
+    obj = getattr(getattr(module, class_name), attr)
+    if hasattr(obj, "choices"):
+        return obj.choices
+    return obj
+
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "Vitora HMIS API",
     "DESCRIPTION": "Hospital Management Information System for Kenya",
@@ -182,6 +192,114 @@ SPECTACULAR_SETTINGS = {
     # Reduce enum collision warnings - these are cosmetic and don't affect functionality
     # The auto-generated hash names (e.g. Status753Enum) work correctly, just have non-ideal names
     "ENUM_ADD_EXPLICIT_BLANK_NULL_CHOICE": False,
+    "ENUM_NAME_OVERRIDES": {
+        # Status enums
+        "ClinicVisitStatusEnum": lambda: _model_attr(
+            "hmis.apps.clinics.models.ClinicVisit", "STATUS_CHOICES"
+        ),
+        "ClinicStatusEnum": lambda: _model_attr(
+            "hmis.apps.clinics.models.Clinic", "STATUS_CHOICES"
+        ),
+        "ClinicSessionStatusEnum": lambda: _model_attr(
+            "hmis.apps.clinics.models.ClinicSession", "STATUS_CHOICES"
+        ),
+        "ClinicEnrollmentStatusEnum": lambda: _model_attr(
+            "hmis.apps.clinics.models.ClinicEnrollment", "STATUS_CHOICES"
+        ),
+        "CheckInStatusEnum": lambda: _model_attr(
+            "hmis.apps.checkin.models.CheckIn", "STATUS_CHOICES"
+        ),
+        "WaitingQueueStatusEnum": lambda: _model_attr(
+            "hmis.apps.triage.models.WaitingQueue", "STATUS_CHOICES"
+        ),
+        "TriageQueueStatusEnum": lambda: _model_attr(
+            "hmis.apps.triage.models.TriageQueue", "STATUS_CHOICES"
+        ),
+        "LabOrderStatusEnum": lambda: _model_attr(
+            "hmis.apps.laboratory.models.LabOrder", "ORDER_STATUS"
+        ),
+        "LabOrderItemStatusEnum": lambda: _model_attr(
+            "hmis.apps.laboratory.models.LabOrderItem", "ITEM_STATUS"
+        ),
+        "ImagingOrderStatusEnum": lambda: _model_attr(
+            "hmis.apps.imaging.models.ImagingOrder", "ORDER_STATUS"
+        ),
+        "PrescriptionStatusEnum": lambda: _model_attr(
+            "hmis.apps.pharmacy.models.Prescription", "PRESCRIPTION_STATUS"
+        ),
+        "StockBatchStatusEnum": lambda: _model_attr(
+            "hmis.apps.pharmacy.models.StockBatch", "STOCK_STATUS"
+        ),
+        "InvoiceStatusEnum": lambda: _model_attr("hmis.apps.billing.models.Invoice", "Status"),
+        "PaymentStatusEnum": lambda: _model_attr("hmis.apps.billing.models.Payment", "Status"),
+        "CreditNoteStatusEnum": lambda: _model_attr(
+            "hmis.apps.billing.models.CreditNote", "Status"
+        ),
+        "ShaClaimStatusEnum": lambda: _model_attr(
+            "hmis.apps.billing.models.SHAClaim", "ClaimStatus"
+        ),
+        "ShaClaimItemStatusEnum": lambda: _model_attr(
+            "hmis.apps.billing.models.SHAClaimItem", "ItemStatus"
+        ),
+        "ShaMemberStatusEnum": lambda: _model_attr(
+            "hmis.apps.billing.models.SHAMember", "MembershipStatus"
+        ),
+        "EncounterStatusEnum": lambda: _model_attr(
+            "hmis.apps.encounters.models.Encounter", "STATUS_CHOICES"
+        ),
+        "TreatmentPlanStatusEnum": lambda: _model_attr(
+            "hmis.apps.encounters.models.TreatmentPlan", "STATUS_CHOICES"
+        ),
+        "SchedulingStatusEnum": lambda: _model_attr(
+            "hmis.apps.scheduling.models.Appointment", "STATUS_CHOICES"
+        ),
+        "BedStatusEnum": lambda: _model_attr(
+            "hmis.apps.inpatient.models.Bed", "BED_STATUS_CHOICES"
+        ),
+        "AdmissionRecommendationStatusEnum": lambda: _model_attr(
+            "hmis.apps.inpatient.models.AdmissionRecommendation", "STATUS_CHOICES"
+        ),
+        "SyncQueueStatusEnum": lambda: _model_attr(
+            "hmis.apps.core.models.SyncQueue", "STATUS_CHOICES"
+        ),
+        "SyncConflictStatusEnum": lambda: _model_attr(
+            "hmis.apps.core.models.SyncConflict", "STATUS_CHOICES"
+        ),
+        # Priority enums
+        "ClinicVisitPriorityEnum": lambda: _model_attr(
+            "hmis.apps.clinics.models.ClinicVisit", "PRIORITY_CHOICES"
+        ),
+        "OrderPriorityEnum": lambda: _model_attr(
+            "hmis.apps.laboratory.models.LabOrder", "PRIORITY_LEVELS"
+        ),
+        "LabQueuePriorityEnum": lambda: _model_attr(
+            "hmis.apps.laboratory.models.LabQueue", "Priority"
+        ),
+        "AdmissionUrgencyPriorityEnum": lambda: _model_attr(
+            "hmis.apps.inpatient.models.AdmissionRecommendation", "URGENCY_CHOICES"
+        ),
+        # Visit type enums
+        "ClinicVisitTypeEnum": lambda: _model_attr(
+            "hmis.apps.clinics.models.ClinicVisit", "VISIT_TYPE_CHOICES"
+        ),
+        "CheckInVisitTypeEnum": lambda: _model_attr(
+            "hmis.apps.checkin.models.CheckIn", "VISIT_TYPE_CHOICES"
+        ),
+        # Category enums
+        "LabTestCategoryEnum": lambda: _model_attr(
+            "hmis.apps.laboratory.models.TestCatalog", "TEST_CATEGORIES"
+        ),
+        "ShaTariffCategoryEnum": lambda: _model_attr(
+            "hmis.apps.billing.models.SHATariff", "TariffCategory"
+        ),
+        # Shared choice sets
+        "TriageCategoryEnum": lambda: _model_attr(
+            "hmis.apps.triage.models.TriageAssessment", "TRIAGE_CATEGORY_CHOICES"
+        ),
+        "NursingKardexRiskEnum": lambda: _model_attr(
+            "hmis.apps.inpatient.models.NursingKardex", "RISK_CHOICES"
+        ),
+    },
 }
 
 # Simple JWT settings
