@@ -7,14 +7,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -27,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/shared/page-header';
 import { useToast } from '@/lib/hooks/use-toast';
 import {
   Plus,
@@ -328,28 +322,26 @@ export default function ProformasPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight">Proforma Invoices</h1>
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader title="Proforma Invoices" />
         <ProformasPageSkeleton />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Proforma Invoices</h1>
-          <p className="text-muted-foreground">
-            Manage quotations and convert to invoices
-          </p>
-        </div>
-        <Button onClick={handleCreateNew} className="bg-purple-600 hover:bg-purple-700">
-          <Plus className="h-4 w-4 mr-2" />
-          New Proforma
-        </Button>
-      </div>
+      <PageHeader
+        title="Proforma Invoices"
+        helpContent="Proformas are quotations that can be converted to invoices. Active proformas are valid and awaiting conversion. Expired proformas need renewal before conversion."
+        actions={
+          <Button onClick={handleCreateNew} className="bg-purple-600 hover:bg-purple-700 w-full sm:w-auto">
+            <Plus className="h-4 w-4 mr-2" />
+            New Proforma
+          </Button>
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -411,57 +403,103 @@ export default function ProformasPage() {
       {filteredProformas.length === 0 ? (
         <EmptyState onCreateNew={handleCreateNew} />
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Proforma #</TableHead>
-                <TableHead>Patient</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Valid Until</TableHead>
-                <TableHead className="w-[150px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredProformas.map((proforma) => (
-                <TableRow
-                  key={proforma.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleSelectProforma(proforma)}
-                >
-                  <TableCell className="font-medium font-mono">
-                    {proforma.invoice_number}
-                  </TableCell>
-                  <TableCell>
+        <Card>
+          <CardContent className="p-0 sm:p-6">
+            <ResponsiveTable
+              data={filteredProformas}
+              keyExtractor={(p) => p.id}
+              onRowClick={handleSelectProforma}
+              columns={[
+                {
+                  key: 'invoice_number',
+                  header: 'Proforma #',
+                  cell: (p) => <span className="font-mono font-medium">{p.invoice_number}</span>,
+                },
+                {
+                  key: 'patient',
+                  header: 'Patient',
+                  cell: (p) => (
                     <div>
-                      <div className="font-medium">{proforma.patient_name}</div>
-                      {proforma.patient_mrn && (
-                        <div className="text-sm text-muted-foreground">
-                          {proforma.patient_mrn}
-                        </div>
+                      <div className="font-medium">{p.patient_name}</div>
+                      {p.patient_mrn && (
+                        <div className="text-sm text-muted-foreground">{p.patient_mrn}</div>
                       )}
                     </div>
-                  </TableCell>
-                  <TableCell>{formatDate(proforma.invoice_date)}</TableCell>
-                  <TableCell className="font-medium">
-                    {formatCurrency(parseFloat(proforma.total_amount))}
-                  </TableCell>
-                  <TableCell>
+                  ),
+                },
+                {
+                  key: 'invoice_date',
+                  header: 'Date',
+                  cell: (p) => formatDate(p.invoice_date),
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'total_amount',
+                  header: 'Amount',
+                  cell: (p) => <span className="font-medium">{formatCurrency(parseFloat(p.total_amount))}</span>,
+                },
+                {
+                  key: 'status',
+                  header: 'Status',
+                  cell: (p) => <ExpiryBadge invoice={p} />,
+                },
+                {
+                  key: 'valid_until',
+                  header: 'Valid Until',
+                  cell: (p) => (p.valid_until ? formatDate(p.valid_until) : '-'),
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'actions',
+                  header: 'Actions',
+                  className: 'w-[100px]',
+                  hideOnMobile: true,
+                  cell: (p) => (
+                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      {p.can_convert && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenConvertDialog(p)}
+                          title="Convert to Invoice"
+                        >
+                          <ArrowRightCircle className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {!p.is_valid && !p.is_converted && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleOpenRenewDialog(p)}
+                          title="Renew Proforma"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ),
+                },
+              ]}
+              mobileCard={(proforma) => (
+                <Card className="p-3">
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono font-medium text-sm">{proforma.invoice_number}</p>
+                      <p className="font-medium truncate">{proforma.patient_name}</p>
+                      {proforma.patient_mrn && (
+                        <p className="text-sm text-muted-foreground">{proforma.patient_mrn}</p>
+                      )}
+                    </div>
                     <ExpiryBadge invoice={proforma} />
-                  </TableCell>
-                  <TableCell>
-                    {proforma.valid_until ? formatDate(proforma.valid_until) : '-'}
-                  </TableCell>
-                  <TableCell>
+                  </div>
+                  <div className="flex justify-between items-center mt-3 pt-3 border-t">
+                    <span className="font-medium">{formatCurrency(parseFloat(proforma.total_amount))}</span>
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                       {proforma.can_convert && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleOpenConvertDialog(proforma)}
-                          title="Convert to Invoice"
                         >
                           <ArrowRightCircle className="h-4 w-4" />
                         </Button>
@@ -471,18 +509,17 @@ export default function ProformasPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleOpenRenewDialog(proforma)}
-                          title="Renew Proforma"
                         >
                           <RefreshCw className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                  </div>
+                </Card>
+              )}
+            />
+          </CardContent>
+        </Card>
       )}
 
       {/* Dialogs */}
