@@ -1,13 +1,14 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, PlayCircle, User, Calendar, Stethoscope, Eye } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { PlayCircle, User, Calendar, Stethoscope, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/shared/page-header';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useEncounterDiagnoses, useEncounterTreatmentPlan } from '@/lib/hooks/use-encounters';
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
@@ -40,11 +41,10 @@ function parseBP(bp: string | null | undefined): { systolic: number | null; dias
 
 export default function EncounterDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const encounterId = Number(params.id);
 
   // Use encounter context instead of independent fetch
-  const { encounter, isLoading, error, canPlaceOrders } = useEncounterContext();
+  const { encounter, isLoading, error } = useEncounterContext();
   const { data: diagnoses } = useEncounterDiagnoses(encounterId);
   const { data: treatmentPlan } = useEncounterTreatmentPlan(encounterId);
   const { data: labOrders } = useEncounterLabOrders(encounterId);
@@ -106,13 +106,13 @@ export default function EncounterDetailPage() {
 
   if (error || !encounter) {
     return (
-      <div className="container mx-auto py-12 text-center">
+      <div className="container mx-auto px-3 py-12 sm:px-4 text-center">
         <h2 className="text-xl font-semibold">Encounter not found</h2>
         <p className="text-muted-foreground mt-2">
           The encounter you&apos;re looking for doesn&apos;t exist.
         </p>
-        <Button onClick={() => router.push('/encounters')} className="mt-4">
-          Back to Encounters
+        <Button className="mt-4" asChild>
+          <Link href="/encounters">Back to Encounters</Link>
         </Button>
       </div>
     );
@@ -121,66 +121,65 @@ export default function EncounterDetailPage() {
   const status = ENCOUNTER_STATUS.find((s) => s.value === encounter.status);
   const type = ENCOUNTER_TYPES.find((t) => t.value === encounter.encounter_type);
 
+  // Action buttons for header
+  const actionButtons = (
+    <>
+      {/* Show "Continue Encounter" for active encounters, "View Details" for completed */}
+      {encounter.status === 'CLOSED' || encounter.status === 'CANCELLED' ? (
+        <Button variant="outline" className="w-full sm:w-auto" asChild>
+          <Link href={`/encounters/${encounter.id}/edit`}>
+            <Eye className="h-4 w-4 mr-2" />
+            View Details
+          </Link>
+        </Button>
+      ) : (
+        <Button className="w-full sm:w-auto" asChild>
+          <Link href={`/encounters/${encounter.id}/edit`}>
+            <PlayCircle className="h-4 w-4 mr-2" />
+            Continue Encounter
+          </Link>
+        </Button>
+      )}
+
+      {encounter.encounter_type === 'OPD' && (
+        <Button variant="secondary" className="w-full sm:w-auto text-sm" asChild>
+          <Link href={`/admissions/recommendations/new?encounter=${encounter.id}`}>
+            <span className="sm:hidden">Admit</span>
+            <span className="hidden sm:inline">Recommend for Admission</span>
+          </Link>
+        </Button>
+      )}
+    </>
+  );
+
   return (
     <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:gap-4">
-        <div className="flex items-start gap-2 sm:gap-4">
-          <Button variant="ghost" size="icon" className="shrink-0 h-9 w-9 sm:h-10 sm:w-10" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-          </Button>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg sm:text-2xl font-bold truncate">
-                {type?.label} Encounter
-              </h1>
-              <Badge className={status?.color}>{status?.label}</Badge>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs sm:text-sm text-muted-foreground">
-              <Link
-                href={`/patients/${encounter.patient}`}
-                className="flex items-center gap-1 hover:text-primary truncate max-w-[200px] sm:max-w-none"
-              >
-                <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
-                <span className="truncate">{encounter.patient_name}</span>
-                <span className="hidden sm:inline">({encounter.patient_mrn})</span>
-              </Link>
-              <span className="flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                {formatDate(encounter.encounter_date)}
-              </span>
-            </div>
-          </div>
-        </div>
+      {/* Header with PageHeader component */}
+      <PageHeader
+        title={`${type?.label || ''} Encounter`}
+        helpContent="View encounter details including vitals, diagnoses, treatment plans, lab orders, imaging, and prescriptions."
+        actions={actionButtons}
+      />
 
-        {/* Action buttons - Full width on mobile, inline on desktop */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:self-end">
-          {/* Show "Continue Encounter" for active encounters, "View Details" for completed */}
-          {encounter.status === 'CLOSED' || encounter.status === 'CANCELLED' ? (
-            <Button variant="outline" className="w-full sm:w-auto" asChild>
-              <Link href={`/encounters/${encounter.id}/edit`}>
-                <Eye className="h-4 w-4 mr-2" />
-                View Details
-              </Link>
-            </Button>
-          ) : (
-            <Button className="w-full sm:w-auto" asChild>
-              <Link href={`/encounters/${encounter.id}/edit`}>
-                <PlayCircle className="h-4 w-4 mr-2" />
-                Continue Encounter
-              </Link>
-            </Button>
-          )}
-
-          {encounter.encounter_type === 'OPD' && (
-            <Button variant="secondary" className="w-full sm:w-auto text-sm" asChild>
-              <Link href={`/admissions/recommendations/new?encounter=${encounter.id}`}>
-                <span className="sm:hidden">Admit</span>
-                <span className="hidden sm:inline">Recommend for Admission</span>
-              </Link>
-            </Button>
-          )}
+      {/* Patient Summary Bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
+        <div className="flex flex-col gap-1 min-w-0">
+          <Link
+            href={`/patients/${encounter.patient}`}
+            className="flex items-center gap-1.5 hover:text-primary text-sm font-medium"
+          >
+            <User className="h-4 w-4 shrink-0" />
+            <span className="truncate">{encounter.patient_name}</span>
+            <span className="text-muted-foreground">({encounter.patient_mrn})</span>
+          </Link>
+          <p className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
+            <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            {formatDate(encounter.encounter_date)}
+          </p>
         </div>
+        <Badge className={`${status?.color} shrink-0 w-fit self-start sm:self-auto`}>
+          {status?.label}
+        </Badge>
       </div>
 
       <ClinicalSnapshotBanner encounterId={encounterId} />
@@ -319,22 +318,34 @@ export default function EncounterDetailPage() {
 
 function EncounterDetailSkeleton() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-start gap-4">
-        <Skeleton className="h-10 w-10" />
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-64" />
+    <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 space-y-4 sm:space-y-6">
+      {/* Header skeleton */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-10 w-full sm:w-40" />
+      </div>
+      {/* Summary bar skeleton */}
+      <div className="p-3 sm:p-4 rounded-lg bg-muted/50">
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+          <Skeleton className="h-6 w-20" />
         </div>
       </div>
+      {/* Chief complaint card skeleton */}
       <Card>
-        <CardHeader>
+        <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
           <Skeleton className="h-6 w-40" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6">
           <Skeleton className="h-4 w-full" />
         </CardContent>
       </Card>
+      {/* Vitals skeleton */}
+      <Skeleton className="h-32 w-full" />
+      {/* Tabs skeleton */}
       <Skeleton className="h-48 w-full" />
     </div>
   );
