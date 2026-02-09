@@ -1,29 +1,36 @@
 import { QueryClient, DefaultOptions, QueryCache, MutationCache } from '@tanstack/react-query';
-import { transformAxiosError, type ApiError } from './api/client';
+import { transformAxiosError } from './api/client';
 import { AxiosError } from 'axios';
+import { ZodError } from 'zod';
 
 /**
  * Global error handler for queries and mutations.
- * Transforms Axios errors into a consistent ApiError format for logging/monitoring.
+ * Handles Axios errors, Zod validation errors, and other errors consistently.
  */
-function handleGlobalError(error: Error): ApiError | null {
+function handleGlobalError(error: Error): void {
+  if (process.env.NODE_ENV !== 'development') return;
+
   if (error instanceof AxiosError) {
     const apiError = transformAxiosError(error);
-    
-    // Log error for monitoring (could integrate with Sentry, etc.)
-    if (process.env.NODE_ENV === 'development') {
-      console.error('[Query Error]', {
-        message: apiError.message,
-        status: apiError.status,
-        code: apiError.code,
-        details: apiError.details,
-      });
-    }
-    
-    return apiError;
+    console.error('[Query Error] API:', {
+      message: apiError.message,
+      status: apiError.status,
+      code: apiError.code,
+      details: apiError.details,
+    });
+  } else if (error instanceof ZodError) {
+    const context = (error as ZodError & { context?: string }).context;
+    console.error('[Query Error] Validation:', {
+      context: context || 'unknown',
+      issues: error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join(', '),
+    });
+  } else {
+    console.error('[Query Error] Unknown:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack?.split('\n').slice(0, 3).join('\n'),
+    });
   }
-  
-  return null;
 }
 
 const defaultOptions: DefaultOptions = {
