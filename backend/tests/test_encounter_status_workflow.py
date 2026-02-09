@@ -189,6 +189,8 @@ class TestEncounterStatusTransitions:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="READY_TO_CLOSE",
+            disposition="ADVICE_ONLY",
+            disposition_notes="Test completed - no further action needed.",
         )
         encounter.finalize(test_user)
         assert encounter.status == "CLOSED"
@@ -202,6 +204,8 @@ class TestEncounterStatusTransitions:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="READY_TO_CLOSE",
+            disposition="ADVICE_ONLY",
+            disposition_notes="Test completed - no further action needed.",
         )
         encounter.finalize(test_user)
         assert encounter.finalized_by == test_user
@@ -215,6 +219,8 @@ class TestEncounterStatusTransitions:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="READY_TO_CLOSE",
+            disposition="ADVICE_ONLY",
+            disposition_notes="Test completed - no further action needed.",
         )
         before = timezone.now()
         encounter.finalize(test_user)
@@ -232,6 +238,8 @@ class TestEncounterStatusTransitions:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="READY_TO_CLOSE",
+            disposition="ADVICE_ONLY",
+            disposition_notes="Test completed - no further action needed.",
         )
         encounter.finalize(test_user)
         assert encounter.status == "CLOSED"
@@ -455,6 +463,8 @@ class TestEncounterStatusAPI:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="READY_TO_CLOSE",
+            disposition="ADVICE_ONLY",
+            disposition_notes="Test completed - no further action needed.",
         )
 
         response = authenticated_client.post(f"/api/encounters/{encounter.id}/finalize/")
@@ -638,6 +648,8 @@ class TestEncounterStatusAuditTrail:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="READY_TO_CLOSE",
+            disposition="ADVICE_ONLY",
+            disposition_notes="Test completed - no further action needed.",
         )
 
         initial_count = AuditLog.objects.filter(action="encounter_finalize").count()
@@ -656,6 +668,8 @@ class TestEncounterStatusAuditTrail:
             encounter_type="OPD",
             chief_complaint="Test complaint",
             status="READY_TO_CLOSE",
+            disposition="ADVICE_ONLY",
+            disposition_notes="Test completed - no further action needed.",
         )
         encounter.finalize(test_user)
 

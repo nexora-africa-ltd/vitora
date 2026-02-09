@@ -381,6 +381,9 @@ class EncounterSerializer(serializers.ModelSerializer):
             "finalized_by_username",
             "finalized_at",
             "cancellation_reason",
+            # Disposition (Clinical Documentation Enhancement)
+            "disposition",
+            "disposition_notes",
             # Triage fields (Phase 2 - Consultation Queue)
             "triage_requirement",
             "triage_status",
@@ -704,6 +707,8 @@ class EncounterListSerializer(serializers.ModelSerializer):
             # Status workflow (Sprint 1.1-1.2)
             "status",
             "finalized_at",
+            # Disposition (Clinical Documentation Enhancement)
+            "disposition",
             # Clinic Visit Integration (Sprint 2.5)
             "clinic_visit_id",
             "clinic_name",

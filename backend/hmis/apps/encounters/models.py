@@ -419,6 +419,31 @@ class Encounter(models.Model):
     )
 
     # =========================================================================
+    # Disposition Fields (Clinical Documentation Enhancement)
+    # =========================================================================
+    DISPOSITION_CHOICES = [
+        ("", "Not Set"),
+        ("ADVICE_ONLY", "Advice Only"),
+        ("TREATED_DISCHARGED", "Treated & Discharged"),
+        ("REFERRED", "Referred to Specialist"),
+        ("ADMITTED", "Admitted to Inpatient"),
+        ("FOLLOW_UP_SCHEDULED", "Follow-up Scheduled"),
+        ("LEFT_AMA", "Left Against Medical Advice"),
+    ]
+    disposition = models.CharField(
+        max_length=30,
+        choices=DISPOSITION_CHOICES,
+        blank=True,
+        default="",
+        help_text="Encounter outcome/disposition",
+    )
+    disposition_notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Required for ADVICE_ONLY and LEFT_AMA dispositions",
+    )
+
+    # =========================================================================
     # Triage Fields (Phase 1 - Consultation Queue)
     # =========================================================================
     triage_requirement = models.CharField(
@@ -955,11 +980,16 @@ class Encounter(models.Model):
         Sets status to CLOSED, records the finalizing user and timestamp.
         Creates an audit log entry for the status change.
 
+        Validates that the encounter has sufficient clinical documentation
+        (treatment plan, diagnosis, prescription) OR has an explicit disposition.
+        ADVICE_ONLY and LEFT_AMA dispositions require disposition_notes.
+
         Args:
             user: The user who is finalizing the encounter
 
         Raises:
-            ValidationError: If the encounter is already CLOSED or CANCELLED
+            ValidationError: If the encounter is already CLOSED, CANCELLED,
+                           or lacks required documentation/disposition.
         """
         from django.core.exceptions import ValidationError
         from django.utils import timezone
@@ -975,6 +1005,9 @@ class Encounter(models.Model):
             raise ValidationError(
                 "Cannot finalize a cancelled encounter. Cancelled encounters are terminal."
             )
+
+        # Validate documentation requirements
+        self._validate_close_requirements()
 
         old_status = self.status
         self.status = "CLOSED"
@@ -1030,6 +1063,64 @@ class Encounter(models.Model):
         self.status = "CANCELLED"
         self.cancellation_reason = reason
         self.save(update_fields=["status", "cancellation_reason", "updated_at"])
+
+    def _validate_close_requirements(self) -> None:
+        """
+        Validate that the encounter has sufficient documentation before closing.
+
+        An encounter can be closed if ANY of the following are true:
+        - Has at least one diagnosis
+        - Has a treatment plan
+        - Has at least one prescription
+        - Has disposition set to ADVICE_ONLY, REFERRED, ADMITTED, FOLLOW_UP_SCHEDULED, or LEFT_AMA
+
+        For ADVICE_ONLY and LEFT_AMA dispositions, disposition_notes are required.
+        For REFERRED disposition without other documentation, notes are required.
+
+        Raises:
+            ValidationError: If documentation requirements are not met.
+        """
+        from django.core.exceptions import ValidationError
+
+        # Check for clinical documentation
+        has_diagnosis = self.diagnoses.exists()
+        has_treatment_plan = hasattr(self, "treatment_plan") and self.treatment_plan is not None
+        has_prescription = self.prescriptions.exists() if hasattr(self, "prescriptions") else False
+
+        has_documentation = has_diagnosis or has_treatment_plan or has_prescription
+
+        # Check disposition-based closure
+        dispositions_requiring_notes = {"ADVICE_ONLY", "LEFT_AMA"}
+        dispositions_allowing_close = {"ADVICE_ONLY", "REFERRED", "ADMITTED", "FOLLOW_UP_SCHEDULED", "LEFT_AMA", "TREATED_DISCHARGED"}
+
+        if has_documentation:
+            # Has clinical documentation, can close without explicit disposition
+            return
+
+        # No clinical documentation - need explicit disposition
+        if not self.disposition:
+            raise ValidationError(
+                "Cannot close encounter without clinical documentation (diagnosis, treatment plan, or prescription). "
+                "Either add documentation or set a disposition (e.g., 'Advice Only', 'Referred')."
+            )
+
+        if self.disposition not in dispositions_allowing_close:
+            raise ValidationError(
+                f"Disposition '{self.disposition}' is not sufficient to close without clinical documentation."
+            )
+
+        # Check notes requirement for specific dispositions
+        if self.disposition in dispositions_requiring_notes and not self.disposition_notes:
+            disposition_display = dict(self.DISPOSITION_CHOICES).get(self.disposition, self.disposition)
+            raise ValidationError(
+                f"'{disposition_display}' disposition requires disposition notes documenting the advice given."
+            )
+
+        # REFERRED without other documentation needs notes
+        if self.disposition == "REFERRED" and not self.disposition_notes:
+            raise ValidationError(
+                "Referred encounters require disposition notes specifying the referral details."
+            )
 
     def get_spo2_interpretation(self) -> dict | None:
         """

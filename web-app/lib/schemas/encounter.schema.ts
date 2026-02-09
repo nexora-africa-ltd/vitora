@@ -59,6 +59,16 @@ export const VisitReasonSchema = z.enum([
   'OTHER',
 ]);
 
+export const EncounterDispositionSchema = z.enum([
+  '',
+  'ADVICE_ONLY',
+  'TREATED_DISCHARGED',
+  'REFERRED',
+  'ADMITTED',
+  'FOLLOW_UP_SCHEDULED',
+  'LEFT_AMA',
+]);
+
 export const TriageBypassReasonSchema = z.enum([
   'STABLE_FOLLOW_UP',
   'CONSULTANT_DECISION',
@@ -245,6 +255,10 @@ export const EncounterSchema = z.object({
   finalized_at: z.string().optional().nullable(),
   cancellation_reason: z.string().optional().nullable(),
 
+  // Disposition (Clinical Documentation Enhancement)
+  disposition: EncounterDispositionSchema.optional().nullable(),
+  disposition_notes: z.string().optional().nullable(),
+
   // Triage fields
   triage_status: TriageStatusSchema.optional(),
   triage_requirement: TriageRequirementSchema.optional().nullable(),
@@ -310,6 +324,8 @@ export const EncounterListItemSchema = z.object({
   has_critical_vitals: z.boolean().optional(),
   status: EncounterStatusSchema,
   finalized_at: z.string().optional().nullable(),
+  // Disposition (Clinical Documentation Enhancement)
+  disposition: EncounterDispositionSchema.optional().nullable(),
   clinic_visit_id: z.number().optional().nullable(),
   clinic_name: z.string().optional().nullable(),
   clinic_type: z.string().optional().nullable(),

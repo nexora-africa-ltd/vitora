@@ -1090,3 +1090,52 @@ def sample_checkin_yesterday(db, sample_county, sample_sub_county, test_user):
     )
 
     return checkin
+
+
+# ============================================================================
+# Encounter Disposition Test Fixtures
+# ============================================================================
+
+
+@pytest.fixture
+def sample_diagnosis(db, sample_encounter):
+    """Create a sample diagnosis for testing."""
+    from hmis.apps.encounters.models import Diagnosis
+
+    return Diagnosis.objects.create(
+        encounter=sample_encounter,
+        diagnosis_type="PRIMARY",
+        free_text_diagnosis="Acute upper respiratory infection",
+        notes="Common cold symptoms",
+        is_confirmed=True,
+    )
+
+
+@pytest.fixture
+def sample_treatment_plan(db, sample_encounter):
+    """Create a sample treatment plan for testing."""
+    from hmis.apps.encounters.models import TreatmentPlan
+
+    return TreatmentPlan.objects.create(
+        encounter=sample_encounter,
+        clinical_notes="Rest at home, drink plenty of fluids",
+        follow_up_instructions="Return if symptoms worsen",
+        status="ACTIVE",
+    )
+
+
+@pytest.fixture
+def sample_prescription(db, sample_patient, sample_encounter, test_user):
+    """Create a sample prescription for testing."""
+    from datetime import timedelta
+
+    from hmis.apps.pharmacy.models import Prescription
+
+    return Prescription.objects.create(
+        encounter=sample_encounter,
+        patient=sample_patient,
+        prescribed_by=test_user,
+        valid_until=date.today() + timedelta(days=30),
+        status="PENDING",
+        clinical_notes="For URTI treatment",
+    )

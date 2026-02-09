@@ -71,6 +71,10 @@ export interface Encounter {
   finalized_at?: string | null;
   cancellation_reason?: string | null;
 
+  // Disposition (Clinical Documentation Enhancement)
+  disposition?: EncounterDisposition | null;
+  disposition_notes?: string | null;
+
   // Triage fields
   triage_status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'BYPASSED' | 'NOT_APPLICABLE';
 
@@ -222,6 +226,36 @@ export const VALID_ENCOUNTER_TRANSITIONS: Record<EncounterStatus, EncounterStatu
   CLOSED: [],
   CANCELLED: [],
 };
+
+// =============================================================================
+// Encounter Disposition (Clinical Documentation Enhancement)
+// =============================================================================
+
+export type EncounterDisposition =
+  | ''
+  | 'ADVICE_ONLY'
+  | 'TREATED_DISCHARGED'
+  | 'REFERRED'
+  | 'ADMITTED'
+  | 'FOLLOW_UP_SCHEDULED'
+  | 'LEFT_AMA';
+
+export const ENCOUNTER_DISPOSITION_DISPLAY: Record<EncounterDisposition, string> = {
+  '': 'Not Set',
+  ADVICE_ONLY: 'Advice Only',
+  TREATED_DISCHARGED: 'Treated & Discharged',
+  REFERRED: 'Referred to Specialist',
+  ADMITTED: 'Admitted to Inpatient',
+  FOLLOW_UP_SCHEDULED: 'Follow-up Scheduled',
+  LEFT_AMA: 'Left Against Medical Advice',
+};
+
+// Dispositions that require notes
+export const DISPOSITIONS_REQUIRING_NOTES: EncounterDisposition[] = [
+  'ADVICE_ONLY',
+  'LEFT_AMA',
+  'REFERRED',
+];
 
 // Visit Reason (Sprint 2 - Phase 2D)
 export type VisitReason =
