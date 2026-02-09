@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { HelpPopover } from '@/components/shared/help-popover';
 import {
   User,
   Clock,
@@ -28,6 +29,7 @@ import {
   Stethoscope,
   Loader2,
   Play,
+  AlertCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ConsultationQueueItem, TriageBypassReason } from '@/lib/types/encounter';
@@ -120,30 +122,27 @@ export function StartConsultationDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-md">
+      <AlertDialogContent className="max-w-md sm:max-w-lg">
         <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2">
-            <Stethoscope className="h-5 w-5 text-green-600" />
-            Start Consultation
-          </AlertDialogTitle>
+          <div className="flex items-center gap-2">
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Stethoscope className="h-5 w-5 text-green-600 shrink-0" />
+              <span className="truncate">Start Consultation</span>
+            </AlertDialogTitle>
+            <HelpPopover content="This will update the patient's status to 'In Consultation' and record the start time. You'll be navigated to document the encounter." />
+          </div>
           <AlertDialogDescription asChild>
-            <div className="space-y-4">
-              {/* Confirmation message */}
-              <p className="text-sm text-muted-foreground">
-                You are about to begin a consultation with this patient.
-                This will update their status and record the start time.
-              </p>
-
-              {/* Patient Info Card */}
-              <div className="rounded-md border p-4 bg-muted/50 space-y-3">
-                {/* Name and Demographics */}
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="font-semibold text-foreground">
+            <div className="space-y-3 sm:space-y-4">
+              {/* Patient Info Card - Responsive */}
+              <div className="rounded-md border p-3 sm:p-4 bg-muted/50 space-y-3">
+                {/* Name and Demographics - Stack on mobile */}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <h4 className="font-semibold text-foreground truncate">
                       {queueItem.patient_name}
                     </h4>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                      <span className="font-mono">{queueItem.patient_mrn}</span>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mt-1">
+                      <span className="font-mono text-xs sm:text-sm">{queueItem.patient_mrn}</span>
                       <span className="flex items-center gap-1">
                         <User className="h-3 w-3" />
                         {queueItem.patient_age} {queueItem.patient_gender}
@@ -151,38 +150,40 @@ export function StartConsultationDialog({
                     </div>
                   </div>
 
-                  {/* Triage Badge */}
-                  {isBypassed ? (
-                    <Badge variant="secondary" className="bg-gray-200 text-gray-700">
-                      Bypassed: {getBypassReasonDisplay(queueItem.triage_bypass_reason)}
-                    </Badge>
-                  ) : isDirect ? (
-                    <Badge variant="secondary" className="bg-gray-200 text-gray-700">
-                      Direct
-                    </Badge>
-                  ) : queueItem.triage_category ? (
-                    <Badge className={getTriageBadgeStyles(queueItem.triage_category)}>
-                      {queueItem.triage_category}
-                    </Badge>
-                  ) : null}
+                  {/* Triage Badge - Fit width, don't stretch */}
+                  <div className="shrink-0 self-start">
+                    {isBypassed ? (
+                      <Badge variant="secondary" className="bg-gray-200 text-gray-700 w-fit text-xs sm:text-sm">
+                        Bypassed: {getBypassReasonDisplay(queueItem.triage_bypass_reason)}
+                      </Badge>
+                    ) : isDirect ? (
+                      <Badge variant="secondary" className="bg-gray-200 text-gray-700 w-fit">
+                        Direct
+                      </Badge>
+                    ) : queueItem.triage_category ? (
+                      <Badge className={`${getTriageBadgeStyles(queueItem.triage_category)} w-fit`}>
+                        {queueItem.triage_category}
+                      </Badge>
+                    ) : null}
+                  </div>
                 </div>
 
                 {/* Chief Complaint */}
                 <div className="text-sm">
                   <div className="flex items-center gap-1 text-muted-foreground mb-1">
-                    <FileText className="h-3 w-3" />
-                    Chief Complaint
+                    <FileText className="h-3 w-3 shrink-0" />
+                    <span className="text-xs sm:text-sm">Chief Complaint</span>
                   </div>
-                  <p className="text-foreground">{queueItem.chief_complaint}</p>
+                  <p className="text-foreground text-sm line-clamp-2 sm:line-clamp-none">{queueItem.chief_complaint}</p>
                 </div>
 
-                {/* Encounter Type & Wait Time */}
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
+                {/* Encounter Type & Wait Time - responsive */}
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between text-sm">
+                  <span className="text-muted-foreground text-xs sm:text-sm">
                     {queueItem.encounter_type_display}
                   </span>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Clock className="h-3 w-3" />
+                  <span className="flex items-center gap-1 text-muted-foreground text-xs sm:text-sm">
+                    <Clock className="h-3 w-3 shrink-0" />
                     Waiting: {formatWaitTime(queueItem.wait_time_minutes)}
                   </span>
                 </div>
@@ -190,21 +191,29 @@ export function StartConsultationDialog({
 
               {/* Error message */}
               {error && (
-                <p className="text-sm text-destructive">{error}</p>
+                <div className="flex items-center gap-2 p-2 rounded-md bg-destructive/10 text-destructive text-sm">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <p>{error}</p>
+                </div>
               )}
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleCancel} disabled={isLoading}>
+        {/* Actions - Stack on mobile */}
+        <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+          <AlertDialogCancel 
+            onClick={handleCancel} 
+            disabled={isLoading}
+            className="w-full sm:w-auto"
+          >
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={handleStartConsultation}
             disabled={isLoading}
             className={cn(
-              'bg-green-600 hover:bg-green-700',
+              'bg-green-600 hover:bg-green-700 w-full sm:w-auto',
               isLoading && 'cursor-not-allowed opacity-50'
             )}
           >

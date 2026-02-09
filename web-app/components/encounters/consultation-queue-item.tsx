@@ -184,30 +184,31 @@ export function ConsultationQueueItem({
     <Card
       data-testid="queue-item"
       className={cn(
-        'p-4 transition-all duration-200 hover:shadow-md',
+        'p-3 sm:p-4 transition-all duration-200 hover:shadow-md',
         isCalled && 'called border-blue-500 bg-blue-50 dark:bg-blue-950/20',
         isUrgent && !isCalled && 'border-orange-500'
       )}
     >
-      <div className="flex items-start justify-between gap-4">
+      {/* Mobile layout: stacked | Desktop layout: horizontal */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         {/* Left: Patient Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             {/* Patient Name */}
-            <h3 className="font-semibold text-lg truncate">
+            <h3 className="font-semibold text-base sm:text-lg truncate">
               {item.patient_name}
             </h3>
 
             {/* Urgent indicator */}
             {isUrgent && (
-              <div data-testid="urgent-indicator">
+              <div data-testid="urgent-indicator" className="shrink-0">
                 <AlertTriangle className="h-4 w-4 text-orange-500" />
               </div>
             )}
           </div>
 
           {/* MRN and Demographics */}
-          <div className="flex items-center gap-3 text-sm text-muted-foreground mb-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-muted-foreground mb-2">
             <span className="font-mono">{item.patient_mrn}</span>
             <span className="flex items-center gap-1">
               <User className="h-3 w-3" />
@@ -216,81 +217,86 @@ export function ConsultationQueueItem({
           </div>
 
           {/* Chief Complaint */}
-          <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-            <FileText className="h-3 w-3 inline mr-1" />
+          <p className="text-xs sm:text-sm text-muted-foreground mb-2 line-clamp-2">
+            <FileText className="h-3 w-3 inline mr-1 shrink-0" />
             {item.chief_complaint}
           </p>
 
-          {/* Encounter Type */}
-          <div className="text-xs text-muted-foreground">
+          {/* Encounter Type - visible on mobile */}
+          <div className="text-xs text-muted-foreground sm:hidden">
             {item.encounter_type_display}
           </div>
         </div>
 
-        {/* Middle: Badges & Wait Time */}
-        <div className="flex flex-col items-end gap-2">
+        {/* Middle: Badges & Wait Time - Row on mobile, column on desktop */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:flex-col sm:items-end sm:gap-2 order-first sm:order-none">
           {/* Triage Badge */}
           {isBypassed ? (
-            <Badge variant="secondary" className="bg-gray-200 text-gray-700">
-              ⏭️ Bypassed: {getBypassReasonDisplay(item.triage_bypass_reason)}
+            <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs shrink-0 w-fit">
+              <span className="hidden sm:inline"> Bypassed: </span>
+              <span className="sm:hidden">BP: </span>
+              {getBypassReasonDisplay(item.triage_bypass_reason)}
             </Badge>
           ) : isDirect ? (
-            <Badge variant="secondary" className="bg-gray-200 text-gray-700">
-              ➡️ Direct
+            <Badge variant="secondary" className="bg-gray-200 text-gray-700 text-xs shrink-0 w-fit">
+              <span className="hidden sm:inline"></span>Direct
             </Badge>
           ) : item.triage_category ? (
-            <Badge className={getTriageBadgeStyles(item.triage_category)}>
+            <Badge className={cn(getTriageBadgeStyles(item.triage_category), 'text-xs shrink-0 w-fit')}>
               {item.triage_category}
             </Badge>
           ) : null}
 
           {/* Called Status Badge */}
           {isCalled && (
-            <Badge variant="outline" className="border-blue-500 text-blue-600">
-              📣 Called
+            <Badge variant="outline" className="border-blue-500 text-blue-600 text-xs shrink-0 w-fit">
+              <span className="hidden sm:inline"></span>Called
             </Badge>
           )}
 
           {/* Claimed Status Badge (Data Integrity - Sprint 1.7) */}
           {isClaimedByMe && (
-            <Badge variant="info" className="gap-1">
+            <Badge variant="info" className="gap-1 text-xs shrink-0 w-fit">
               <UserCheck className="h-3 w-3" />
-              Claimed by you
+              <span className="hidden sm:inline">Claimed by you</span>
+              <span className="sm:hidden">Yours</span>
             </Badge>
           )}
           {isClaimedByOther && (
-            <Badge variant="outline" className="border-amber-500 text-amber-600 gap-1">
+            <Badge variant="outline" className="border-amber-500 text-amber-600 gap-1 text-xs shrink-0 w-fit">
               <Lock className="h-3 w-3" />
-              {item.assigned_clinician_name || item.assigned_clinician_username}
+              <span className="truncate max-w-[100px] sm:max-w-none">
+                {item.assigned_clinician_name || item.assigned_clinician_username}
+              </span>
             </Badge>
           )}
 
           {/* Wait Time */}
           <div className={cn(
-            'flex items-center gap-1 text-sm',
+            'flex items-center gap-1 text-xs sm:text-sm shrink-0',
             isUrgent ? 'text-orange-600 font-medium' : 'text-muted-foreground'
           )}>
             <Clock className="h-3 w-3" />
             {formatWaitTime(item.wait_time_minutes)}
           </div>
 
-          {/* Time since called */}
+          {/* Time since called - hidden on mobile to save space */}
           {isCalled && item.called_at && (
-            <div className="text-xs text-blue-600">
+            <div className="hidden sm:block text-xs text-blue-600">
               {getTimeSinceCalled(item.called_at)}
             </div>
           )}
 
-          {/* Time since claimed */}
+          {/* Time since claimed - hidden on mobile */}
           {isClaimed && item.claimed_at && (
-            <div className="text-xs text-muted-foreground">
+            <div className="hidden sm:block text-xs text-muted-foreground">
               Claimed {getTimeSinceClaimed(item.claimed_at)}
             </div>
           )}
         </div>
 
-        {/* Right: Actions */}
-        <div className="flex flex-col gap-2">
+        {/* Right: Actions - Full width on mobile */}
+        <div className="flex flex-row gap-2 sm:flex-col w-full sm:w-auto">
           <TooltipProvider delayDuration={200}>
             {/* WAITING state: Call Patient (also claims automatically) */}
             {isWaiting && !isClaimedByOther && (
@@ -300,18 +306,18 @@ export function ConsultationQueueItem({
                     size="sm"
                     onClick={() => onCall(item.id)}
                     disabled={isCallingPatient}
-                    className="min-w-[120px]"
+                    className="flex-1 sm:flex-none sm:min-w-[120px]"
                     title="Call the patient and claim for consultation"
                   >
                     {isCallingPatient ? (
                       <>
                         <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-                        Calling...
+                        <span className="hidden sm:inline">Calling...</span>
                       </>
                     ) : (
                       <>
-                        <Phone className="h-4 w-4 mr-1" />
-                        Call Patient
+                        <Phone className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Call Patient</span>
                       </>
                     )}
                   </Button>
@@ -330,10 +336,10 @@ export function ConsultationQueueItem({
                     size="sm"
                     variant="outline"
                     disabled
-                    className="min-w-[120px]"
+                    className="flex-1 sm:flex-none sm:min-w-[120px]"
                   >
-                    <Lock className="h-4 w-4 mr-1" />
-                    Claimed
+                    <Lock className="h-4 w-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Claimed</span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -352,11 +358,12 @@ export function ConsultationQueueItem({
                       <Button
                         size="sm"
                         onClick={() => onStartConsultation(item.id)}
-                        className="min-w-[120px] bg-green-600 hover:bg-green-700"
+                        className="flex-1 sm:flex-none sm:min-w-[120px] bg-green-600 hover:bg-green-700"
                         title="Start the consult and open encounter documentation."
                       >
-                        <Play className="h-4 w-4 mr-1" />
-                        Start Consultation
+                        <Play className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Start Consultation</span>
+                        <span className="sm:hidden ml-1">Start</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -373,10 +380,11 @@ export function ConsultationQueueItem({
                         size="sm"
                         variant="outline"
                         disabled
-                        className="min-w-[120px]"
+                        className="flex-1 sm:flex-none sm:min-w-[120px]"
                       >
-                        <Lock className="h-4 w-4 mr-1" />
-                        With {item.assigned_clinician_name?.split(' ')[0] || 'Clinician'}
+                        <Lock className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">With {item.assigned_clinician_name?.split(' ')[0] || 'Clinician'}</span>
+                        <span className="sm:hidden ml-1">Busy</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -394,17 +402,16 @@ export function ConsultationQueueItem({
                         variant="outline"
                         onClick={() => onRelease(item.id)}
                         disabled={isReleasingEncounter}
-                        className="min-w-[120px]"
+                        className="flex-1 sm:flex-none sm:min-w-[120px]"
                       >
                         {isReleasingEncounter ? (
                           <>
-                            <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-                            Releasing...
+                            <RefreshCw className="h-4 w-4 animate-spin" />
                           </>
                         ) : (
                           <>
-                            <UserX className="h-4 w-4 mr-1" />
-                            Release
+                            <UserX className="h-4 w-4 sm:mr-1" />
+                            <span className="hidden sm:inline">Release</span>
                           </>
                         )}
                       </Button>
@@ -415,7 +422,7 @@ export function ConsultationQueueItem({
                   </Tooltip>
                 )}
 
-                {/* Re-call button - only if claimed by me */}
+                {/* Re-call button - only if claimed by me, hidden on mobile */}
                 {isClaimedByMe && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -424,7 +431,7 @@ export function ConsultationQueueItem({
                         variant="ghost"
                         onClick={() => onCall(item.id)}
                         disabled={isCallingPatient}
-                        className="min-w-[120px]"
+                        className="hidden sm:flex sm:min-w-[120px]"
                         title="Send another call notification."
                       >
                         {isCallingPatient ? (

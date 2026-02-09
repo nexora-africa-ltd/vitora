@@ -32,16 +32,10 @@ import {
   Users,
   AlertCircle,
   Filter,
-  Clock,
 } from 'lucide-react';
 import { ConsultationQueueItem } from './consultation-queue-item';
 import StatusIndicator from '@/components/ui/status-indicator';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { HelpPopover } from '@/components/shared/help-popover';
 import type {
   ConsultationQueueItem as QueueItemType,
   ConsultationQueueFilters,
@@ -249,16 +243,16 @@ export function ConsultationQueue({
   if (isLoading && queueItems.length === 0) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Consultation Queue
-          </CardTitle>
+        <CardHeader className="pb-3 sm:pb-6">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 shrink-0" />
+            <CardTitle className="text-lg sm:text-xl">Consultation Queue</CardTitle>
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4" data-testid="queue-loading">
+        <CardContent className="px-3 sm:px-6">
+          <div className="space-y-3 sm:space-y-4" data-testid="queue-loading">
             {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-32 w-full" />
+              <Skeleton key={i} className="h-24 sm:h-32 w-full rounded-lg" />
             ))}
           </div>
         </CardContent>
@@ -269,23 +263,23 @@ export function ConsultationQueue({
   // Error state
   if (error) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Consultation Queue
-          </CardTitle>
+      <Card className="border-destructive/50">
+        <CardHeader className="pb-3 sm:pb-6">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 shrink-0" />
+            <CardTitle className="text-lg sm:text-xl">Consultation Queue</CardTitle>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6">
           <div
-            className="flex flex-col items-center justify-center py-8 text-center"
+            className="flex flex-col items-center justify-center py-6 sm:py-8 text-center"
             data-testid="error-state"
           >
-            <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-            <p className="text-destructive font-medium mb-2">Failed to load queue</p>
-            <p className="text-sm text-muted-foreground mb-4">{error}</p>
+            <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-destructive mb-3 sm:mb-4" />
+            <p className="text-destructive font-medium mb-2 text-sm sm:text-base">Failed to load queue</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mb-4 px-4">{error}</p>
             {onRefresh && (
-              <Button variant="outline" onClick={onRefresh}>
+              <Button variant="outline" onClick={onRefresh} size="sm" className="sm:size-default">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Retry
               </Button>
@@ -298,101 +292,102 @@ export function ConsultationQueue({
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Consultation Queue
-            <Badge variant="secondary" className="ml-2">
-              {stats.total} patients
-            </Badge>
-          </CardTitle>
+      <CardHeader className="pb-3 sm:pb-6 px-3 sm:px-6">
+        <div className="flex flex-col gap-3 sm:gap-4">
+          {/* Header Row */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <Users className="h-5 w-5 shrink-0" />
+              <CardTitle className="text-lg sm:text-xl truncate">Consultation Queue</CardTitle>
+              <HelpPopover content="Patients waiting for consultation appear here, sorted by triage priority. Call a patient, then start their consultation to document the encounter." />
+              <Badge variant="secondary" className="shrink-0 text-xs">
+                {stats.total}
+              </Badge>
+            </div>
 
-          <div className="flex items-center gap-2">
-            {/* Polling Status Indicator */}
-            {autoRefreshInterval > 0 && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <StatusIndicator state="active" size="sm" />
-                      <span className="hidden sm:inline">Auto-refresh</span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    <div className="text-xs">
-                      <div className="font-medium">Polling every {autoRefreshInterval / 1000}s</div>
-                      <div className="text-muted-foreground mt-1">
-                        Queue updates automatically
-                      </div>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
+            <div className="flex items-center gap-2">
+              {/* Polling Status Indicator */}
+              {autoRefreshInterval > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <StatusIndicator state="active" size="sm" />
+                  <span className="hidden sm:inline">Auto-refresh</span>
+                </div>
+              )}
 
-            {onRefresh && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onRefresh}
-                disabled={isLoading}
-              >
-                <RefreshCw
-                  className={cn('h-4 w-4 mr-2', isLoading && 'animate-spin')}
-                />
-                Refresh
-              </Button>
-            )}
+              {onRefresh && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onRefresh}
+                  disabled={isLoading}
+                  className="shrink-0"
+                >
+                  <RefreshCw
+                    className={cn('h-4 w-4', isLoading && 'animate-spin')}
+                  />
+                  <span className="hidden sm:inline ml-2">Refresh</span>
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Stats Summary - scrollable on mobile */}
+          <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0" data-testid="queue-stats">
+            <div className="flex gap-1.5 sm:gap-2 flex-nowrap sm:flex-wrap min-w-max sm:min-w-0">
+              {stats.by_category.RED > 0 && (
+                <Badge className="bg-red-500 text-white shrink-0 text-xs">
+                  <span className="hidden sm:inline">RED:</span>
+                  <span className="sm:hidden">R</span> {stats.by_category.RED}
+                </Badge>
+              )}
+              {stats.by_category.ORANGE > 0 && (
+                <Badge className="bg-orange-500 text-white shrink-0 text-xs">
+                  <span className="hidden sm:inline">ORANGE:</span>
+                  <span className="sm:hidden">O</span> {stats.by_category.ORANGE}
+                </Badge>
+              )}
+              {stats.by_category.YELLOW > 0 && (
+                <Badge className="bg-yellow-500 text-black shrink-0 text-xs">
+                  <span className="hidden sm:inline">YELLOW:</span>
+                  <span className="sm:hidden">Y</span> {stats.by_category.YELLOW}
+                </Badge>
+              )}
+              {stats.by_category.GREEN > 0 && (
+                <Badge className="bg-green-500 text-white shrink-0 text-xs">
+                  <span className="hidden sm:inline">GREEN:</span>
+                  <span className="sm:hidden">G</span> {stats.by_category.GREEN}
+                </Badge>
+              )}
+              {stats.by_category.BLUE > 0 && (
+                <Badge className="bg-blue-500 text-white shrink-0 text-xs">
+                  <span className="hidden sm:inline">BLUE:</span>
+                  <span className="sm:hidden">B</span> {stats.by_category.BLUE}
+                </Badge>
+              )}
+              {stats.by_category.bypassed > 0 && (
+                <Badge variant="secondary" className="shrink-0 text-xs">
+                  <span className="hidden sm:inline">Bypassed:</span>
+                  <span className="sm:hidden">BP</span> {stats.by_category.bypassed}
+                </Badge>
+              )}
+              {stats.by_category.direct > 0 && (
+                <Badge variant="secondary" className="shrink-0 text-xs">
+                  <span className="hidden sm:inline">Direct:</span>
+                  <span className="sm:hidden">D</span> {stats.by_category.direct}
+                </Badge>
+              )}
+              {stats.called > 0 && (
+                <Badge variant="outline" className="border-blue-500 text-blue-600 shrink-0 text-xs">
+                  <span className="hidden sm:inline">Called:</span>
+                  <span className="sm:hidden">C</span> {stats.called}
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Stats Summary */}
-        <div className="flex flex-wrap gap-2 mt-4" data-testid="queue-stats">
-          {stats.by_category.RED > 0 && (
-            <Badge className="bg-red-500 text-white">
-              RED: {stats.by_category.RED}
-            </Badge>
-          )}
-          {stats.by_category.ORANGE > 0 && (
-            <Badge className="bg-orange-500 text-white">
-              ORANGE: {stats.by_category.ORANGE}
-            </Badge>
-          )}
-          {stats.by_category.YELLOW > 0 && (
-            <Badge className="bg-yellow-500 text-black">
-              YELLOW: {stats.by_category.YELLOW}
-            </Badge>
-          )}
-          {stats.by_category.GREEN > 0 && (
-            <Badge className="bg-green-500 text-white">
-              GREEN: {stats.by_category.GREEN}
-            </Badge>
-          )}
-          {stats.by_category.BLUE > 0 && (
-            <Badge className="bg-blue-500 text-white">
-              BLUE: {stats.by_category.BLUE}
-            </Badge>
-          )}
-          {stats.by_category.bypassed > 0 && (
-            <Badge variant="secondary">
-              Bypassed: {stats.by_category.bypassed}
-            </Badge>
-          )}
-          {stats.by_category.direct > 0 && (
-            <Badge variant="secondary">
-              Direct: {stats.by_category.direct}
-            </Badge>
-          )}
-          {stats.called > 0 && (
-            <Badge variant="outline" className="border-blue-500 text-blue-600">
-              Called: {stats.called}
-            </Badge>
-          )}
-        </div>
-
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mt-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-3 mt-3 sm:mt-4">
           {/* Search */}
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -440,15 +435,15 @@ export function ConsultationQueue({
         </div>
       </CardHeader>
 
-      <CardContent>
+      <CardContent className="px-3 sm:px-6">
         {/* Empty State */}
         {displayedItems.length === 0 ? (
           <div
-            className="flex flex-col items-center justify-center py-12 text-center"
+            className="flex flex-col items-center justify-center py-8 sm:py-12 text-center"
             data-testid="empty-queue"
           >
-            <Users className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground font-medium mb-2">
+            <Users className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-3 sm:mb-4" />
+            <p className="text-muted-foreground font-medium mb-2 text-sm sm:text-base">
               {queueItems.length === 0
                 ? 'No patients waiting'
                 : 'No patients match your filters'}
@@ -456,6 +451,7 @@ export function ConsultationQueue({
             {queueItems.length > 0 && (
               <Button
                 variant="link"
+                size="sm"
                 onClick={() => {
                   setFilters({});
                   setSearchQuery('');
@@ -466,7 +462,7 @@ export function ConsultationQueue({
             )}
           </div>
         ) : (
-          <div className="space-y-3" data-testid="queue-list">
+          <div className="space-y-2 sm:space-y-3" data-testid="queue-list">
             {displayedItems.map((item) => (
               <ConsultationQueueItem
                 key={item.id}
