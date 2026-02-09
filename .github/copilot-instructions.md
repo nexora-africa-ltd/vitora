@@ -965,7 +965,40 @@ Prevent badges from stretching full-width on mobile:
 
 ### Table Responsiveness
 
-Make tables horizontally scrollable on mobile:
+**For list pages with clickable rows, use `ResponsiveTable`** which provides automatic mobile card layouts:
+
+```tsx
+import { ResponsiveTable } from '@/components/ui/responsive-table';
+
+<ResponsiveTable
+  data={items}
+  keyExtractor={(item) => item.id}
+  onRowClick={handleRowClick}
+  columns={[
+    { key: 'name', header: 'Name', cell: (item) => item.name },
+    { key: 'date', header: 'Date', cell: (item) => formatDate(item.date), hideOnMobile: true },
+    { key: 'status', header: 'Status', cell: (item) => <StatusBadge status={item.status} /> },
+  ]}
+  mobileCard={(item) => (
+    <Card className="p-3">
+      {/* Custom mobile layout */}
+      <div className="flex justify-between">
+        <span>{item.name}</span>
+        <StatusBadge status={item.status} />
+      </div>
+    </Card>
+  )}
+/>
+```
+
+**Benefits of `ResponsiveTable`:**
+- Auto card layout on mobile (< md breakpoint)
+- `hideOnMobile: true` to hide columns on mobile cards
+- Custom `mobileCard` prop for optimized mobile layouts
+- Built-in loading/empty states
+- Consistent pattern across list pages
+
+**For inline tables (e.g., invoice line items), use horizontal scroll:**
 
 ```tsx
 <Card>
@@ -1083,4 +1116,4 @@ Every commit must follow these rules:
 
 **Last Updated**: February 9, 2026
 **Maintainer**: Engineering Lead
-**Version**: 2.3 (Added pull-to-refresh pattern, enhanced help tooltip guidance)
+**Version**: 2.4 (Added ResponsiveTable usage, pull-to-refresh, enhanced help tooltips)
