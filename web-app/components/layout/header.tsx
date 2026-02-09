@@ -25,7 +25,7 @@ import { useAuth } from '@/lib/auth/context';
 import { useLogout } from '@/lib/auth/hooks';
 import { useNetworkStatus } from '@/lib/hooks/use-network-status';
 import { useSyncStatus, formatLastSync } from '@/lib/context/sync-context';
-import { usePageRefresh, formatLastFetch } from '@/lib/context/page-refresh-context';
+import { usePageRefresh, formatLastFetch, formatLastFetchShort } from '@/lib/context/page-refresh-context';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { NotificationPanel } from '@/components/notifications/notification-panel';
 import { cn } from '@/lib/utils/cn';
@@ -101,7 +101,12 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                     state={isSyncing ? 'fixing' : isOnline ? 'active' : 'down'}
                     size="sm"
                   />
-                  <span className="hidden sm:inline">
+                  {/* Short text on sm-md screens */}
+                  <span className="hidden sm:inline lg:hidden">
+                    {isSyncing ? 'Sync' : isOnline ? formatLastFetchShort(lastFetchTime) : 'Off'}
+                  </span>
+                  {/* Full text on lg+ screens */}
+                  <span className="hidden lg:inline">
                     {isSyncing ? 'Syncing...' : isOnline ? formatLastFetch(lastFetchTime) : 'Offline'}
                   </span>
                   {pendingChanges > 0 && (
