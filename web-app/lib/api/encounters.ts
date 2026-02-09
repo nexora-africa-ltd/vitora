@@ -7,13 +7,13 @@ import { parseResponse } from '@/lib/schemas/validation';
 import {
   EncounterSchema,
   DiagnosisSchema,
-  DiagnosisArraySchema,
   TreatmentPlanSchema,
   EncounterClaimResponseSchema,
   EncounterReleaseResponseSchema,
   MyClaimedEncountersResponseSchema,
   AllClaimedEncountersResponseSchema,
   PaginatedEncounterSchema,
+  PaginatedDiagnosisSchema,
   PaginatedPreTriageQueueSchema,
   TemplatePopulateResponseSchema,
   TemplateSyncResponseSchema,
@@ -250,10 +250,13 @@ export const encountersApi = {
    * Get diagnoses for an encounter.
    */
   async getDiagnoses(encounterId: number): Promise<Diagnosis[]> {
-    const response = await apiClient.get<Diagnosis[]>(
+    const response = await apiClient.get<PaginatedResponse<Diagnosis>>(
       `/api/encounters/${encounterId}/diagnoses/`
     );
-    return parseResponse(DiagnosisArraySchema, response.data, { context: 'encountersApi.getDiagnoses' });
+    const validated = parseResponse(PaginatedDiagnosisSchema, response.data, {
+      context: 'encountersApi.getDiagnoses',
+    });
+    return validated.results;
   },
 
   /**
