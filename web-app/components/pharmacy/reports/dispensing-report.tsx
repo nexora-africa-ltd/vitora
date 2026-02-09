@@ -20,7 +20,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -31,14 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { useDispensingReport } from '@/lib/hooks/use-pharmacy';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { DispensingReportRecord } from '@/lib/types/pharmacy';
@@ -181,16 +175,12 @@ export function DispensingReport() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Dispensing Report
-            </CardTitle>
-            <CardDescription>
-              Dispensing history from {startDate} to {endDate}
-            </CardDescription>
-          </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Activity className="h-5 w-5" />
+            Dispensing Report
+            <HelpPopover content="Dispensing history for the selected date range. Filter by drug or patient, and group by drug for summary totals." />
+          </CardTitle>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="h-4 w-4 mr-1" />
@@ -288,73 +278,107 @@ export function DispensingReport() {
         </div>
 
         {/* Data Table */}
-        <div className="rounded-md border">
           {groupByDrug ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Drug Name</TableHead>
-                  <TableHead className="text-right">Total Quantity</TableHead>
-                  <TableHead className="text-right">Total Value</TableHead>
-                  <TableHead className="text-right">Dispensing Count</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(groupedData || []).length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                      No dispensing records found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  (groupedData || []).map((item) => (
-                    <TableRow key={item.drug_name}>
-                      <TableCell className="font-medium">{item.drug_name}</TableCell>
-                      <TableCell className="text-right">{item.total_qty}</TableCell>
-                      <TableCell className="text-right">KES {item.total_cost.toFixed(2)}</TableCell>
-                      <TableCell className="text-right">{item.count}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <ResponsiveTable
+              data={groupedData || []}
+              keyExtractor={(item) => item.drug_name}
+              emptyMessage="No dispensing records found"
+              columns={[
+                {
+                  key: 'drug_name',
+                  header: 'Drug Name',
+                  cell: (item) => <span className="font-medium">{item.drug_name}</span>,
+                },
+                {
+                  key: 'total_qty',
+                  header: 'Total Qty',
+                  className: 'text-right',
+                },
+                {
+                  key: 'total_cost',
+                  header: 'Total Value',
+                  className: 'text-right',
+                  cell: (item) => `KES ${item.total_cost.toFixed(2)}`,
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'count',
+                  header: 'Count',
+                  className: 'text-right',
+                },
+              ]}
+              mobileCard={(item) => (
+                <div className="rounded-lg border p-4 space-y-2">
+                  <p className="font-medium">{item.drug_name}</p>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Qty: {item.total_qty}</span>
+                    <span>KES {item.total_cost.toFixed(2)}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{item.count} dispensing(s)</p>
+                </div>
+              )}
+            />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Drug Name</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Patient</TableHead>
-                  <TableHead>Dispensed By</TableHead>
-                  <TableHead>Batch</TableHead>
-                  <TableHead className="text-right">Cost</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRecords.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No dispensing records found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredRecords.map((record: DispensingReportRecord) => (
-                    <TableRow key={record.dispensing_id}>
-                      <TableCell className="font-medium">{record.drug_name}</TableCell>
-                      <TableCell className="text-right">{record.quantity_dispensed}</TableCell>
-                      <TableCell>{record.dispensed_date}</TableCell>
-                      <TableCell>{record.patient_name}</TableCell>
-                      <TableCell>{record.dispensed_by}</TableCell>
-                      <TableCell className="font-mono text-sm">{record.batch_number}</TableCell>
-                      <TableCell className="text-right">KES {record.total_cost}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <ResponsiveTable
+              data={filteredRecords}
+              keyExtractor={(record) => record.dispensing_id}
+              emptyMessage="No dispensing records found"
+              columns={[
+                {
+                  key: 'drug_name',
+                  header: 'Drug Name',
+                  cell: (record) => <span className="font-medium">{record.drug_name}</span>,
+                },
+                {
+                  key: 'quantity_dispensed',
+                  header: 'Qty',
+                  className: 'text-right',
+                },
+                {
+                  key: 'dispensed_date',
+                  header: 'Date',
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'patient_name',
+                  header: 'Patient',
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'dispensed_by',
+                  header: 'Dispensed By',
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'batch_number',
+                  header: 'Batch',
+                  cell: (record) => <span className="font-mono text-sm">{record.batch_number}</span>,
+                  hideOnMobile: true,
+                },
+                {
+                  key: 'total_cost',
+                  header: 'Cost',
+                  className: 'text-right',
+                  cell: (record) => `KES ${record.total_cost}`,
+                },
+              ]}
+              mobileCard={(record) => (
+                <div className="rounded-lg border p-4 space-y-2">
+                  <div className="flex justify-between items-start">
+                    <p className="font-medium">{record.drug_name}</p>
+                    <span className="text-sm">KES {record.total_cost}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>{record.patient_name}</span>
+                    <span>Qty: {record.quantity_dispensed}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {record.dispensed_date} • {record.dispensed_by}
+                  </p>
+                </div>
+              )}
+            />
           )}
-        </div>
       </CardContent>
     </Card>
   );

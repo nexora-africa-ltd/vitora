@@ -19,7 +19,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -28,14 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
   Dialog,
   DialogContent,
@@ -184,16 +178,12 @@ export function ExpiryReport() {
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Expiry Report
-              </CardTitle>
-              <CardDescription>
-                Batches expiring within {daysThreshold} days
-              </CardDescription>
-            </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Clock className="h-5 w-5" />
+              Expiry Report
+              <HelpPopover content="Track batches approaching expiry. Take action to dispose expired stock or initiate supplier returns." />
+            </CardTitle>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={handleExport}>
                 <Download className="h-4 w-4 mr-1" />
@@ -252,66 +242,113 @@ export function ExpiryReport() {
           </div>
 
           {/* Data Table */}
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Drug Name</TableHead>
-                  <TableHead>Batch Number</TableHead>
-                  <TableHead>Expiry Date</TableHead>
-                  <TableHead>Days to Expiry</TableHead>
-                  <TableHead className="text-right">Quantity</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expiringBatches.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No batches expiring within {daysThreshold} days
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  expiringBatches.map((batch) => (
-                    <TableRow
-                      key={batch.batch_id}
-                      className={cn(
-                        batch.days_to_expiry <= 30 && 'bg-destructive/5',
-                        batch.days_to_expiry > 30 && batch.days_to_expiry <= 60 && 'bg-orange-500/5',
-                        batch.days_to_expiry > 60 && 'bg-amber-500/5'
-                      )}
+          <ResponsiveTable
+            data={expiringBatches}
+            keyExtractor={(batch) => batch.batch_id}
+            emptyMessage={`No batches expiring within ${daysThreshold} days`}
+            columns={[
+              {
+                key: 'drug_name',
+                header: 'Drug Name',
+                cell: (batch) => <span className="font-medium">{batch.drug_name}</span>,
+              },
+              {
+                key: 'batch_number',
+                header: 'Batch Number',
+                cell: (batch) => <span className="font-mono text-sm">{batch.batch_number}</span>,
+                hideOnMobile: true,
+              },
+              {
+                key: 'expiry_date',
+                header: 'Expiry Date',
+                hideOnMobile: true,
+              },
+              {
+                key: 'days_to_expiry',
+                header: 'Days to Expiry',
+                cell: (batch) => getUrgencyBadge(batch.days_to_expiry),
+              },
+              {
+                key: 'quantity_available',
+                header: 'Quantity',
+                className: 'text-right',
+                hideOnMobile: true,
+              },
+              {
+                key: 'actions',
+                header: 'Actions',
+                cell: (batch) => (
+                  <div className="flex gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDispose(batch);
+                      }}
                     >
-                      <TableCell className="font-medium">{batch.drug_name}</TableCell>
-                      <TableCell className="font-mono text-sm">{batch.batch_number}</TableCell>
-                      <TableCell>{batch.expiry_date}</TableCell>
-                      <TableCell>{getUrgencyBadge(batch.days_to_expiry)}</TableCell>
-                      <TableCell className="text-right">{batch.quantity_available}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDispose(batch)}
-                          >
-                            <Trash2 className="h-3 w-3 mr-1" />
-                            Dispose
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleReturn(batch)}
-                          >
-                            <RotateCcw className="h-3 w-3 mr-1" />
-                            Return
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Dispose
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleReturn(batch);
+                      }}
+                    >
+                      <RotateCcw className="h-3 w-3 mr-1" />
+                      Return
+                    </Button>
+                  </div>
+                ),
+                hideOnMobile: true,
+              },
+            ]}
+            mobileCard={(batch) => (
+              <div
+                className={cn(
+                  'rounded-lg border p-4 space-y-3',
+                  batch.days_to_expiry <= 30 && 'border-destructive/50 bg-destructive/5',
+                  batch.days_to_expiry > 30 && batch.days_to_expiry <= 60 && 'border-orange-500/50 bg-orange-500/5',
+                  batch.days_to_expiry > 60 && 'border-amber-500/50 bg-amber-500/5'
                 )}
-              </TableBody>
-            </Table>
-          </div>
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-medium">{batch.drug_name}</p>
+                    <p className="text-sm text-muted-foreground font-mono">{batch.batch_number}</p>
+                  </div>
+                  {getUrgencyBadge(batch.days_to_expiry)}
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Expires: {batch.expiry_date}</span>
+                  <span>Qty: {batch.quantity_available}</span>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => handleDispose(batch)}
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Dispose
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => handleReturn(batch)}
+                  >
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    Return
+                  </Button>
+                </div>
+              </div>
+            )}
+          />
         </CardContent>
       </Card>
 
