@@ -2328,7 +2328,7 @@ class Command(BaseCommand):
                     encounter_date=date.today() - timedelta(days=randint(0, 30)),
                     chief_complaint="Routine checkup / imaging referral",
                     assigned_clinician=demo_doctor,
-                    status="COMPLETED",
+                    status="CLOSED",
                 )
                 encounters_created += 1
 
