@@ -1,26 +1,22 @@
 /**
  * Stock Table Component
  * Sprint 1.3-1.4 Track A: Pharmacy Module
+ * 
+ * Responsive table using ResponsiveTable component with mobile card layout.
  */
 
 'use client';
 
 import { useState } from 'react';
-import { format, formatDistanceToNow, isBefore, addDays } from 'date-fns';
-import { ChevronLeft, ChevronRight, AlertTriangle, XCircle, Clock, Settings, MoreVertical } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { format, isBefore, addDays } from 'date-fns';
+import { ChevronLeft, ChevronRight, AlertTriangle, XCircle, Clock, MoreVertical, Filter, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -34,6 +30,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { StockBatch, StockStatus, AdjustmentType } from '@/lib/types/pharmacy';
 import { BatchDetailDialog } from './batch-detail-dialog';
 import { StockAdjustmentDialog } from './stock-adjustment-dialog';
@@ -87,6 +84,7 @@ export function StockTable({
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [adjustmentType, setAdjustmentType] = useState<AdjustmentType | undefined>();
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [showFilters, setShowFilters] = useState(false);
 
   const handleStatusChange = (value: string) => {
     setSelectedStatus(value);
@@ -114,10 +112,11 @@ export function StockTable({
     }
   };
 
-  const handleExpiringSoonToggle = (checked: boolean) => {
-    setExpiringSoonEnabled(checked);
+  const handleExpiringSoonToggle = (checked: boolean | 'indeterminate') => {
+    const isChecked = checked === true;
+    setExpiringSoonEnabled(isChecked);
     if (onExpiringSoonFilter) {
-      onExpiringSoonFilter(checked);
+      onExpiringSoonFilter(isChecked);
     }
   };
 
@@ -149,30 +148,14 @@ export function StockTable({
   if (isLoading) {
     return (
       <div data-testid="stock-table-skeleton" className="space-y-4">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-48" />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+          <Skeleton className="h-10 w-full sm:w-64" />
+          <Skeleton className="h-10 w-32" />
         </div>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {['Batch #', 'Drug', 'Available', 'Expiry Date', 'Days to Expiry', 'Status', 'Supplier', 'Selling Price', 'Location', 'Actions'].map((header) => (
-                  <TableHead key={header}>{header}</TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <TableRow key={i}>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((j) => (
-                    <TableCell key={j}>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+          ))}
         </div>
       </div>
     );
@@ -187,22 +170,192 @@ export function StockTable({
     );
   }
 
-  if (batches.length === 0) {
+  // Mobile card renderer
+  const renderMobileCard = (batch: StockBatch) => {
+    const expiryDate = new Date(batch.expiry_date);
+    const isExpired = batch.is_expired;
+    const isExpiringSoon = !isExpired && isBefore(expiryDate, addDays(new Date(), 90));
+
     return (
-      <div className="space-y-4">
-        {/* Show filters even when no results */}
-        <div className="flex flex-wrap gap-4 items-center">
-          <div className="flex-1 min-w-[200px] max-w-sm">
+      <Card 
+        className={`p-4 space-y-3 ${batch.status === 'LOW' ? 'border-amber-500/50' : batch.status === 'EXPIRED' ? 'border-destructive/50' : ''}`}
+        onClick={() => handleBatchClick(batch)}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="font-medium truncate">{batch.drug_name}</p>
+            <p className="text-sm text-muted-foreground font-mono">{batch.batch_number}</p>
+          </div>
+          <Badge className={STATUS_COLORS[batch.status]}>
+            {batch.status === 'OUT_OF_STOCK' ? 'OOS' : batch.status}
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <span className="text-muted-foreground">Available:</span>
+            <span className="ml-1 font-medium">{batch.quantity_available}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Price:</span>
+            <span className="ml-1 font-medium">KES {Number(batch.selling_price).toFixed(0)}</span>
+          </div>
+          <div className="col-span-2">
+            <span className="text-muted-foreground">Expires:</span>
+            <span className="ml-1 font-medium">{format(expiryDate, 'MMM d, yyyy')}</span>
+            {isExpired && <XCircle className="h-3.5 w-3.5 text-destructive inline ml-1" />}
+            {isExpiringSoon && !isExpired && <Clock className="h-3.5 w-3.5 text-amber-500 inline ml-1" />}
+            <span className="text-muted-foreground ml-2">({batch.days_to_expiry} days)</span>
+          </div>
+        </div>
+
+        {batch.status !== 'EXPIRED' && batch.status !== 'RECALLED' && (
+          <div className="flex justify-end pt-2 border-t">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Actions
+                  <MoreVertical className="h-4 w-4 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdjustmentAction(batch); }}>
+                  Adjust Stock
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdjustmentAction(batch, 'EXPIRED'); }}>
+                  Mark as Expired
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdjustmentAction(batch, 'DAMAGED'); }}>
+                  Mark as Damaged
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+      </Card>
+    );
+  };
+
+  const columns = [
+    {
+      key: 'batch_number',
+      header: 'Batch #',
+      cell: (batch: StockBatch) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); handleBatchClick(batch); }}
+          className="text-primary hover:text-primary/80 hover:underline font-mono text-sm"
+        >
+          {batch.batch_number}
+        </button>
+      ),
+    },
+    {
+      key: 'drug_name',
+      header: 'Drug',
+      cell: (batch: StockBatch) => <span className="font-medium">{batch.drug_name}</span>,
+    },
+    {
+      key: 'quantity_available',
+      header: 'Available',
+    },
+    {
+      key: 'expiry_date',
+      header: 'Expiry Date',
+      cell: (batch: StockBatch) => {
+        const expiryDate = new Date(batch.expiry_date);
+        const isExpired = batch.is_expired;
+        const isExpiringSoon = !isExpired && isBefore(expiryDate, addDays(new Date(), 90));
+        return (
+          <div className="flex items-center gap-2">
+            <span>{format(expiryDate, 'MMM d, yyyy')}</span>
+            {isExpired && <XCircle className="h-4 w-4 text-destructive" data-testid="expired-indicator" />}
+            {isExpiringSoon && !isExpired && <Clock className="h-4 w-4 text-amber-500" data-testid="expiry-warning" />}
+          </div>
+        );
+      },
+      hideOnMobile: true,
+    },
+    {
+      key: 'days_to_expiry',
+      header: 'Days',
+      hideOnMobile: true,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (batch: StockBatch) => (
+        <Badge className={STATUS_COLORS[batch.status]}>
+          {batch.status === 'OUT_OF_STOCK' ? 'OOS' : batch.status}
+        </Badge>
+      ),
+    },
+    {
+      key: 'supplier',
+      header: 'Supplier',
+      cell: (batch: StockBatch) => batch.supplier || '-',
+      hideOnMobile: true,
+    },
+    {
+      key: 'selling_price',
+      header: 'Price',
+      cell: (batch: StockBatch) => `KES ${Number(batch.selling_price).toFixed(2)}`,
+      hideOnMobile: true,
+    },
+    {
+      key: 'location',
+      header: 'Location',
+      cell: (batch: StockBatch) => batch.location || '-',
+      hideOnMobile: true,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      cell: (batch: StockBatch) => (
+        batch.status !== 'EXPIRED' && batch.status !== 'RECALLED' ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" aria-label="More actions">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdjustmentAction(batch); }}>
+                Adjust Stock
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdjustmentAction(batch, 'EXPIRED'); }}>
+                Mark as Expired
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdjustmentAction(batch, 'DAMAGED'); }}>
+                Mark as Damaged
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleAdjustmentAction(batch); }}>
+                Quarantine
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null
+      ),
+      className: 'w-[80px]',
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex-1 max-w-sm">
             <Input
               placeholder="Search by batch number..."
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
+              data-testid="batch-search"
             />
           </div>
-          <div className="w-48">
+          <div className="flex gap-2">
             <Select value={selectedStatus} onValueChange={handleStatusChange}>
-              <SelectTrigger aria-label="Filter by status">
-                <SelectValue placeholder="Filter by status" />
+              <SelectTrigger className="w-full sm:w-40" aria-label="Filter by status" data-testid="status-filter">
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
@@ -213,226 +366,113 @@ export function StockTable({
                 <SelectItem value="QUARANTINE">Quarantine</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowFilters(!showFilters)}
+              className="shrink-0"
+            >
+              <Filter className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-muted-foreground">No stock batches found</p>
-        </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 items-center">
-        {/* Search */}
-        <div className="flex-1 min-w-[200px] max-w-sm">
-          <Input
-            placeholder="Search by batch number..."
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            data-testid="batch-search"
-          />
-        </div>
+        {showFilters && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 border rounded-lg bg-muted/30">
+            {drugs.length > 0 && (
+              <Select value={selectedDrug} onValueChange={handleDrugChange}>
+                <SelectTrigger aria-label="Filter by drug" data-testid="drug-filter">
+                  <SelectValue placeholder="Filter by drug" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Drugs</SelectItem>
+                  {drugs.map((drug) => (
+                    <SelectItem key={drug.id} value={drug.id.toString()}>
+                      {drug.display_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
-        {/* Status Filter */}
-        <div className="w-48">
-          <Select value={selectedStatus} onValueChange={handleStatusChange}>
-            <SelectTrigger aria-label="Filter by status" data-testid="status-filter">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="AVAILABLE">Available</SelectItem>
-              <SelectItem value="LOW">Low</SelectItem>
-              <SelectItem value="OUT_OF_STOCK">OOS</SelectItem>
-              <SelectItem value="EXPIRED">Expired</SelectItem>
-              <SelectItem value="QUARANTINE">Quarantine</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+            {uniqueLocations.length > 0 && (
+              <Select value={selectedLocation} onValueChange={handleLocationChange}>
+                <SelectTrigger aria-label="Filter by location" data-testid="location-filter">
+                  <SelectValue placeholder="Filter by location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Locations</SelectItem>
+                  {uniqueLocations.map((location) => (
+                    <SelectItem key={location} value={location!}>
+                      {location}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
-        {/* Drug Filter */}
-        {drugs.length > 0 && (
-          <div className="w-48">
-            <Select value={selectedDrug} onValueChange={handleDrugChange}>
-              <SelectTrigger aria-label="Filter by drug" data-testid="drug-filter">
-                <SelectValue placeholder="Filter by drug" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Drugs</SelectItem>
-                {drugs.map((drug) => (
-                  <SelectItem key={drug.id} value={drug.id.toString()}>
-                    {drug.display_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="expiring-soon"
+                checked={expiringSoonEnabled}
+                onCheckedChange={handleExpiringSoonToggle}
+                data-testid="expiring-filter"
+              />
+              <Label htmlFor="expiring-soon" className="text-sm cursor-pointer">
+                Expiring Soon
+              </Label>
+            </div>
 
-        {/* Location Filter */}
-        {uniqueLocations.length > 0 && (
-          <div className="w-48">
-            <Select value={selectedLocation} onValueChange={handleLocationChange}>
-              <SelectTrigger aria-label="Filter by location" data-testid="location-filter">
-                <SelectValue placeholder="Filter by location" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                {uniqueLocations.map((location) => (
-                  <SelectItem key={location} value={location!}>
-                    {location}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExpirySort}
+              className="w-full sm:w-auto"
+            >
+              Sort by Expiry {sortOrder === 'asc' ? '↑' : '↓'}
+            </Button>
           </div>
         )}
-
-        {/* Expiring Soon Filter */}
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="expiring-soon"
-            checked={expiringSoonEnabled}
-            onCheckedChange={handleExpiringSoonToggle}
-            data-testid="expiring-filter"
-          />
-          <label
-            htmlFor="expiring-soon"
-            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-          >
-            Expiring Soon
-          </label>
-        </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-md border" data-testid="stock-table">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Batch #</TableHead>
-              <TableHead>Drug</TableHead>
-              <TableHead>Available</TableHead>
-              <TableHead
-                className="cursor-pointer hover:bg-muted"
-                onClick={handleExpirySort}
-                role="columnheader"
-                aria-sort={sortOrder === 'asc' ? 'ascending' : 'descending'}
-              >
-                <div className="flex items-center gap-1">
-                  Expiry Date
-                  <span className="text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                </div>
-              </TableHead>
-              <TableHead>Days to Expiry</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Supplier</TableHead>
-              <TableHead>Selling Price</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedBatches.map((batch) => {
-              const expiryDate = new Date(batch.expiry_date);
-              const isExpired = batch.is_expired;
-              const isExpiringSoon = !isExpired && isBefore(expiryDate, addDays(new Date(), 90));
-
-              return (
-                <TableRow key={batch.id} className={batch.status === 'LOW' ? 'bg-amber-500/5' : batch.status === 'EXPIRED' ? 'bg-destructive/5' : ''}>
-                  <TableCell className="font-mono text-sm">
-                    <button
-                      onClick={() => handleBatchClick(batch)}
-                      className="text-primary hover:text-primary/80 hover:underline"
-                    >
-                      {batch.batch_number}
-                    </button>
-                  </TableCell>
-                  <TableCell className="font-medium">{batch.drug_name}</TableCell>
-                  <TableCell>{batch.quantity_available}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span>{format(expiryDate, 'MMM d, yyyy')}</span>
-                      {isExpired && (
-                        <span data-testid="expired-indicator" title="Expired">
-                          <XCircle className="h-4 w-4 text-destructive" />
-                        </span>
-                      )}
-                      {isExpiringSoon && !isExpired && (
-                        <span data-testid="expiry-warning" title="Expiring Soon">
-                          <Clock className="h-4 w-4 text-amber-500" />
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>{batch.days_to_expiry}</TableCell>
-                  <TableCell>
-                    <Badge className={STATUS_COLORS[batch.status]}>
-                      {batch.status === 'OUT_OF_STOCK' ? 'OOS' : batch.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{batch.supplier || '-'}</TableCell>
-                  <TableCell>KES {Number(batch.selling_price).toFixed(2)}</TableCell>
-                  <TableCell>{batch.location || '-'}</TableCell>
-                  <TableCell>
-                    {batch.status !== 'EXPIRED' && batch.status !== 'RECALLED' && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" aria-label="More actions">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleAdjustmentAction(batch)}>
-                            Adjust Stock
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAdjustmentAction(batch, 'EXPIRED')}>
-                            Mark as Expired
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAdjustmentAction(batch, 'DAMAGED')}>
-                            Mark as Damaged
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleAdjustmentAction(batch)}>
-                            Quarantine
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+      <div data-testid="stock-table">
+        <ResponsiveTable
+          data={sortedBatches}
+          columns={columns}
+          keyExtractor={(batch) => batch.id}
+          onRowClick={handleBatchClick}
+          mobileCard={renderMobileCard}
+          emptyMessage="No stock batches found"
+        />
       </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground text-center sm:text-left">
             Page {page} of {totalPages}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => onPageChange(page - 1)}
               disabled={page === 1}
+              className="flex-1 sm:flex-none"
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Previous
+              <ChevronLeft className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Previous</span>
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => onPageChange(page + 1)}
               disabled={page === totalPages}
+              className="flex-1 sm:flex-none"
             >
-              Next
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight className="h-4 w-4 sm:ml-1" />
             </Button>
           </div>
         </div>

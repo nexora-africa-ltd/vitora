@@ -228,39 +228,39 @@ export default function PharmacyPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="drugs" className="space-y-4">
-        <TabsList className="flex-wrap h-auto gap-1 p-1">
-          <TabsTrigger value="drugs" className="gap-1.5 text-xs sm:text-sm">
-            <Pill className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span className="hidden xs:inline">Drugs</span>
+        <TabsList className="w-full flex flex-wrap h-auto gap-1 p-1 sm:grid sm:grid-cols-5">
+          <TabsTrigger value="drugs" className="flex-1 gap-1.5 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
+            <Pill className="h-4 w-4" />
+            <span className="hidden sm:inline">Drugs</span>
           </TabsTrigger>
-          <TabsTrigger value="inventory" className="gap-1.5 text-xs sm:text-sm">
-            <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span className="hidden xs:inline">Inventory</span>
+          <TabsTrigger value="inventory" className="flex-1 gap-1.5 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
+            <Package className="h-4 w-4" />
+            <span className="hidden sm:inline">Inventory</span>
           </TabsTrigger>
-          <TabsTrigger value="prescriptions" className="gap-1.5 text-xs sm:text-sm relative">
-            <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span className="hidden xs:inline">Prescriptions</span>
+          <TabsTrigger value="prescriptions" className="flex-1 gap-1.5 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 relative">
+            <FileText className="h-4 w-4" />
+            <span className="hidden sm:inline">Prescriptions</span>
             {pendingRxCount > 0 && (
               <Badge
                 variant="destructive"
-                className="ml-0.5 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs"
+                className="ml-0.5 h-5 w-5 p-0 flex items-center justify-center text-xs"
                 data-testid="pending-count"
               >
                 {pendingRxCount}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="dispensing" className="gap-1.5 text-xs sm:text-sm">
-            <History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span className="hidden xs:inline">Dispensing</span>
+          <TabsTrigger value="dispensing" className="flex-1 gap-1.5 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2">
+            <History className="h-4 w-4" />
+            <span className="hidden sm:inline">Dispensing</span>
           </TabsTrigger>
-          <TabsTrigger value="alerts" className="gap-1.5 text-xs sm:text-sm relative">
-            <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span className="hidden xs:inline">Alerts</span>
+          <TabsTrigger value="alerts" className="flex-1 gap-1.5 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 relative">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="hidden sm:inline">Alerts</span>
             {unresolvedAlertsCount > 0 && (
               <Badge 
                 variant="destructive" 
-                className="ml-0.5 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs"
+                className="ml-0.5 h-5 w-5 p-0 flex items-center justify-center text-xs"
               >
                 {unresolvedAlertsCount}
               </Badge>
