@@ -403,24 +403,7 @@ export const DispensingReportRecordSchema = z.object({
 });
 
 export const DispensingReportSummarySchema = z.object({
-  total_dispensed: z.number(),
-  total_value: z.number(),
-  by_category: z.array(z.object({
-    category: DrugCategoryEnumSchema,
-    count: z.number(),
-    value: z.number(),
-  })),
-  by_date: z.array(z.object({
-    date: z.string(),
-    count: z.number(),
-    value: z.number(),
-  })),
-  top_drugs: z.array(z.object({
-    drug_name: z.string(),
-    quantity: z.number(),
-    value: z.number(),
-  })),
-  results: z.array(DispensingReportRecordSchema).optional(),
+  results: z.array(DispensingReportRecordSchema),
 });
 
 export type StockSummaryItemSchemaType = z.infer<typeof StockSummaryItemSchema>;

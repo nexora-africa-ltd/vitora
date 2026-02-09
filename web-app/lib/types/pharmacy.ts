@@ -554,10 +554,5 @@ export interface DispensingReportRecord {
  * Dispensing report summary
  */
 export interface DispensingReportSummary {
-  total_dispensed: number;
-  total_value: number;
-  by_category: { category: DrugCategory; count: number; value: number }[];
-  by_date: { date: string; count: number; value: number }[];
-  top_drugs: { drug_name: string; quantity: number; value: number }[];
-  results?: DispensingReportRecord[];
+  results: DispensingReportRecord[];
 }
