@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader } from '@/components/shared/page-header';
 import {
   DrugTable,
   StockTable,
@@ -151,15 +152,11 @@ export default function PharmacyPage() {
 
   if (isInitialLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Pharmacy</h1>
-            <p className="text-muted-foreground">
-              Manage drugs, inventory, prescriptions, and dispensing
-            </p>
-          </div>
-        </div>
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title="Pharmacy"
+          helpContent="Manage drugs, inventory, prescriptions, and dispensing workflows."
+        />
         <div className="flex items-center justify-center py-12" data-testid="loading-spinner">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -168,32 +165,31 @@ export default function PharmacyPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Pharmacy</h1>
-          <p className="text-muted-foreground">
-            Manage drugs, inventory, prescriptions, and dispensing
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowDirectDispenseDialog(true)}
-            data-testid="direct-dispense-button"
-          >
-            <Pill className="h-4 w-4 mr-2" />
-            Direct Dispense
-          </Button>
-          <Link href="/pharmacy/reports" data-testid="pharmacy-reports">
-            <Button variant="outline">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Reports
+      <PageHeader
+        title="Pharmacy"
+        helpContent="Manage drugs, inventory, prescriptions, and dispensing workflows."
+        actions={
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => setShowDirectDispenseDialog(true)}
+              data-testid="direct-dispense-button"
+              className="w-full sm:w-auto"
+            >
+              <Pill className="h-4 w-4 mr-2" />
+              Direct Dispense
             </Button>
-          </Link>
-        </div>
-      </div>
+            <Link href="/pharmacy/reports" data-testid="pharmacy-reports">
+              <Button variant="outline" className="w-full sm:w-auto">
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Reports
+              </Button>
+            </Link>
+          </div>
+        }
+      />
 
       {/* Dashboard Summary - Key Widgets */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -205,25 +201,25 @@ export default function PharmacyPage() {
         {/* Quick Stats */}
         <div className="lg:col-span-2">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Quick Overview</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base sm:text-lg">Quick Overview</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Total Drugs</p>
-                <p className="text-2xl font-bold">{drugsData?.count ?? 0}</p>
+            <CardContent className="grid grid-cols-2 gap-3 sm:gap-4">
+              <div className="space-y-0.5">
+                <p className="text-xs sm:text-sm text-muted-foreground">Total Drugs</p>
+                <p className="text-xl sm:text-2xl font-bold">{drugsData?.count ?? 0}</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Stock Batches</p>
-                <p className="text-2xl font-bold">{stockData?.count ?? 0}</p>
+              <div className="space-y-0.5">
+                <p className="text-xs sm:text-sm text-muted-foreground">Stock Batches</p>
+                <p className="text-xl sm:text-2xl font-bold">{stockData?.count ?? 0}</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Pending Prescriptions</p>
-                <p className="text-2xl font-bold">{pendingRxCount}</p>
+              <div className="space-y-0.5">
+                <p className="text-xs sm:text-sm text-muted-foreground">Pending Rx</p>
+                <p className="text-xl sm:text-2xl font-bold">{pendingRxCount}</p>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Active Alerts</p>
-                <p className="text-2xl font-bold text-destructive">{unresolvedAlertsCount}</p>
+              <div className="space-y-0.5">
+                <p className="text-xs sm:text-sm text-muted-foreground">Active Alerts</p>
+                <p className="text-xl sm:text-2xl font-bold text-destructive">{unresolvedAlertsCount}</p>
               </div>
             </CardContent>
           </Card>
@@ -232,37 +228,40 @@ export default function PharmacyPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="drugs" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="drugs" className="gap-2">
-            <Pill className="h-4 w-4" />
-            Drugs
+        <TabsList className="flex-wrap h-auto gap-1 p-1">
+          <TabsTrigger value="drugs" className="gap-1.5 text-xs sm:text-sm">
+            <Pill className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden xs:inline">Drugs</span>
           </TabsTrigger>
-          <TabsTrigger value="inventory" className="gap-2">
-            <Package className="h-4 w-4" />
-            Inventory
+          <TabsTrigger value="inventory" className="gap-1.5 text-xs sm:text-sm">
+            <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden xs:inline">Inventory</span>
           </TabsTrigger>
-          <TabsTrigger value="prescriptions" className="gap-2 relative">
-            <FileText className="h-4 w-4" />
-            Prescriptions
+          <TabsTrigger value="prescriptions" className="gap-1.5 text-xs sm:text-sm relative">
+            <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden xs:inline">Prescriptions</span>
             {pendingRxCount > 0 && (
               <Badge
                 variant="destructive"
-                className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
+                className="ml-0.5 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs"
                 data-testid="pending-count"
               >
                 {pendingRxCount}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="dispensing" className="gap-2">
-            <History className="h-4 w-4" />
-            Dispensing
+          <TabsTrigger value="dispensing" className="gap-1.5 text-xs sm:text-sm">
+            <History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden xs:inline">Dispensing</span>
           </TabsTrigger>
-          <TabsTrigger value="alerts" className="gap-2 relative">
-            <AlertTriangle className="h-4 w-4" />
-            Alerts
+          <TabsTrigger value="alerts" className="gap-1.5 text-xs sm:text-sm relative">
+            <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden xs:inline">Alerts</span>
             {unresolvedAlertsCount > 0 && (
-              <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+              <Badge 
+                variant="destructive" 
+                className="ml-0.5 h-4 w-4 sm:h-5 sm:w-5 p-0 flex items-center justify-center text-[10px] sm:text-xs"
+              >
                 {unresolvedAlertsCount}
               </Badge>
             )}
@@ -272,8 +271,8 @@ export default function PharmacyPage() {
         {/* Drugs Tab */}
         <TabsContent value="drugs" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => router.push('/pharmacy/drugs/new')} data-testid="add-drug-button">
-              <Plus className="h-4 w-4 mr-2" />
+            <Button onClick={() => router.push('/pharmacy/drugs/new')} data-testid="add-drug-button" size="sm">
+              <Plus className="h-4 w-4 mr-1.5" />
               Add Drug
             </Button>
           </div>
@@ -299,8 +298,8 @@ export default function PharmacyPage() {
         {/* Inventory Tab */}
         <TabsContent value="inventory" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => router.push('/pharmacy/stock/receive')}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button onClick={() => router.push('/pharmacy/stock/receive')} size="sm">
+              <Plus className="h-4 w-4 mr-1.5" />
               Receive Stock
             </Button>
           </div>
@@ -322,8 +321,8 @@ export default function PharmacyPage() {
         {/* Prescriptions Tab */}
         <TabsContent value="prescriptions" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => router.push('/pharmacy/prescriptions/new')}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button onClick={() => router.push('/pharmacy/prescriptions/new')} size="sm">
+              <Plus className="h-4 w-4 mr-1.5" />
               New Prescription
             </Button>
           </div>

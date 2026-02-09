@@ -8,15 +8,14 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Pill, AlertTriangle, Loader2, Search } from 'lucide-react';
+import { Pill, AlertTriangle, Loader2, Search, Check } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -25,13 +24,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Command,
   CommandEmpty,
@@ -45,6 +37,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useDrugs, useBatchesForDrug, useCreateDispensing } from '@/lib/hooks/use-pharmacy';
 import { usePatients } from '@/lib/hooks/use-patients';
@@ -79,11 +72,14 @@ export function DirectDispenseDialog({
   const { toast } = useToast();
   const [patientOpen, setPatientOpen] = useState(false);
   const [patientSearch, setPatientSearch] = useState('');
+  const [drugOpen, setDrugOpen] = useState(false);
+  const [drugSearch, setDrugSearch] = useState('');
   const [selectedDrugId, setSelectedDrugId] = useState<string>('');
   const [selectedPatient, setSelectedPatient] = useState<{ id: string; name: string; mrn: string } | null>(null);
 
-  // Debounce patient search to avoid too many API calls
+  // Debounce searches to avoid too many API calls
   const debouncedPatientSearch = useDebounce(patientSearch, 300);
+  const debouncedDrugSearch = useDebounce(drugSearch, 300);
 
   // Fetch patients based on search
   const { data: patientsData, isLoading: patientsLoading } = usePatients({
@@ -93,8 +89,18 @@ export function DirectDispenseDialog({
   const patients = patientsData?.results || [];
 
   // Fetch OTC drugs only (schedule = 'OTC')
-  const { data: drugsData } = useDrugs({ schedule: 'OTC', is_active: true });
-  const otcDrugs = drugsData?.results || [];
+  const { data: drugsData, isLoading: drugsLoading } = useDrugs({ 
+    schedule: 'OTC', 
+    is_active: true,
+    search: debouncedDrugSearch,
+  });
+  const otcDrugs = useMemo(() => drugsData?.results || [], [drugsData?.results]);
+
+  // Get selected drug info (need to search separately if not in current results)
+  const selectedDrug = useMemo(() => {
+    if (!selectedDrugId) return null;
+    return otcDrugs.find(d => d.id.toString() === selectedDrugId);
+  }, [selectedDrugId, otcDrugs]);
 
   // Fetch batches for selected drug
   const { data: batches } = useBatchesForDrug(selectedDrugId ? parseInt(selectedDrugId) : 0);
@@ -122,8 +128,6 @@ export function DirectDispenseDialog({
 
   const quantity = watch('quantity');
 
-  // Get selected drug info
-  const selectedDrug = otcDrugs.find(d => d.id.toString() === selectedDrugId);
   const availableBatches = batches?.filter(b => b.quantity_available > 0) || [];
   const selectedBatch = availableBatches[0]; // FEFO - first batch
 
@@ -175,6 +179,7 @@ export function DirectDispenseDialog({
       setSelectedDrugId('');
       setSelectedPatient(null);
       setPatientSearch('');
+      setDrugSearch('');
       onClose();
     }
   };
@@ -183,13 +188,11 @@ export function DirectDispenseDialog({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg" data-testid="direct-dispense-form">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <Pill className="h-5 w-5" />
-            Direct Dispense (OTC)
-          </DialogTitle>
-          <DialogDescription>
-            Dispense over-the-counter medications directly without a prescription.
-          </DialogDescription>
+            <DialogTitle>Direct Dispense (OTC)</DialogTitle>
+            <HelpPopover content="Dispense over-the-counter medications directly without a prescription. Only OTC-scheduled drugs are available." />
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -210,7 +213,7 @@ export function DirectDispenseDialog({
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-full p-0">
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                 <Command shouldFilter={false}>
                   <CommandInput
                     placeholder="Search patients by name or MRN..."
@@ -261,24 +264,69 @@ export function DirectDispenseDialog({
           {/* Drug Selection */}
           <div className="space-y-2">
             <Label htmlFor="drug">Drug (OTC Only) *</Label>
-            <Select
-              value={selectedDrugId}
-              onValueChange={(value) => {
-                setSelectedDrugId(value);
-                setValue('drug_id', value);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select OTC drug..." />
-              </SelectTrigger>
-              <SelectContent>
-                {otcDrugs.map((drug) => (
-                  <SelectItem key={drug.id} value={drug.id.toString()}>
-                    {drug.generic_name} ({drug.form} {drug.strength})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={drugOpen} onOpenChange={setDrugOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={drugOpen}
+                  className="w-full justify-between"
+                >
+                  {selectedDrug
+                    ? `${selectedDrug.generic_name} (${selectedDrug.form} ${selectedDrug.strength})`
+                    : "Select OTC drug..."}
+                  <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command shouldFilter={false}>
+                  <CommandInput
+                    placeholder="Search drugs by name..."
+                    value={drugSearch}
+                    onValueChange={setDrugSearch}
+                  />
+                  <CommandList className="max-h-[200px]">
+                    {drugsLoading ? (
+                      <div className="p-4 text-sm text-muted-foreground text-center">
+                        <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                        Searching...
+                      </div>
+                    ) : otcDrugs.length === 0 ? (
+                      <CommandEmpty>
+                        {drugSearch ? 'No OTC drugs found.' : 'Type to search drugs...'}
+                      </CommandEmpty>
+                    ) : (
+                      <CommandGroup>
+                        {otcDrugs.map((drug) => (
+                          <CommandItem
+                            key={drug.id}
+                            value={drug.id.toString()}
+                            onSelect={() => {
+                              setSelectedDrugId(drug.id.toString());
+                              setValue('drug_id', drug.id.toString());
+                              setDrugOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedDrugId === drug.id.toString() ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            <div className="flex flex-col">
+                              <span>{drug.generic_name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {drug.form} {drug.strength} • Stock: {drug.current_stock ?? 0}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    )}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             {errors.drug_id && (
               <p className="text-sm text-destructive">{errors.drug_id.message}</p>
             )}
@@ -292,17 +340,17 @@ export function DirectDispenseDialog({
 
           {/* Batch Info */}
           {selectedBatch && (
-            <div className="p-3 bg-muted/50 rounded-md text-sm space-y-1">
+            <div className="p-3 bg-secondary rounded-md text-sm space-y-1">
               <p>
-                <span className="text-muted-foreground">Batch:</span>{' '}
+                <span className="text-secondary-foreground/70">Batch:</span>{' '}
                 {selectedBatch.batch_number}
               </p>
               <p>
-                <span className="text-muted-foreground">Available:</span>{' '}
+                <span className="text-secondary-foreground/70">Available:</span>{' '}
                 {selectedBatch.quantity_available} units
               </p>
               <p>
-                <span className="text-muted-foreground">Expiry:</span>{' '}
+                <span className="text-secondary-foreground/70">Expiry:</span>{' '}
                 {selectedBatch.expiry_date}
               </p>
             </div>
@@ -325,12 +373,12 @@ export function DirectDispenseDialog({
 
           {/* Total Cost */}
           {selectedDrug && (
-            <div className="p-3 bg-primary/5 rounded-md">
-              <div className="flex justify-between text-sm">
+            <div className="p-3 bg-secondary rounded-md">
+              <div className="flex justify-between text-sm text-secondary-foreground">
                 <span>Unit Price:</span>
                 <span>KSH {unitPrice.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between font-semibold">
+              <div className="flex justify-between font-semibold text-secondary-foreground">
                 <span>Total:</span>
                 <span>KSH {totalCost.toFixed(2)}</span>
               </div>
