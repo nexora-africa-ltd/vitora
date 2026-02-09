@@ -386,6 +386,13 @@ LOGGING = {
             "level": os.getenv("DJANGO_LOG_LEVEL", "INFO"),
             "propagate": False,
         },
+        # SQL query logging can be extremely noisy in dev tooling (e.g. schema generation)
+        # while still being useful to toggle on when needed.
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": os.getenv("DJANGO_DB_LOG_LEVEL", "WARNING"),
+            "propagate": False,
+        },
         "hmis.apps.billing.services.dha_search": {
             "handlers": ["console"],
             "level": "INFO",

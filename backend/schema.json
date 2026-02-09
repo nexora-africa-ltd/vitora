@@ -28549,6 +28549,14 @@ components:
         * `TRANSFERRED` - Transferred to Another Facility
         * `DECEASED` - Deceased
         * `ABSCONDED` - Absconded
+    DiscountTypeEnum:
+      enum:
+      - percentage
+      - fixed
+      type: string
+      description: |-
+        * `percentage` - Percentage
+        * `fixed` - Fixed Amount
     Dispensing:
       type: object
       description: Serializer for Dispensing model.
@@ -30795,10 +30803,26 @@ components:
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
+        discount_type:
+          allOf:
+          - $ref: '#/components/schemas/DiscountTypeEnum'
+          description: |-
+            Type of discount applied (percentage or fixed amount)
+
+            * `percentage` - Percentage
+            * `fixed` - Fixed Amount
+        discount_value:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Discount value (percentage 0-100 or fixed amount in KES)
         discount_amount:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+          description: Computed discount amount in KES (derived from discount_type
+            + discount_value)
         discount_reason:
           type: string
           maxLength: 200
@@ -30818,9 +30842,8 @@ components:
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
           readOnly: true
         balance:
-          type: number
-          format: double
-          description: Calculate balance dynamically.
+          type: string
+          description: Calculate balance dynamically and return as string for consistency.
           readOnly: true
         balance_due:
           type: string
@@ -30840,6 +30863,11 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        insurance_coverage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          description: Insurance coverage percentage (0-100)
         notes:
           type: string
         cancellation_reason:
@@ -30918,6 +30946,7 @@ components:
       - created_by
       - created_by_username
       - days_until_expiry
+      - discount_amount
       - id
       - invoice_number
       - is_converted
@@ -30948,6 +30977,21 @@ components:
           type: string
           readOnly: true
           nullable: true
+        drug:
+          type: integer
+          nullable: true
+        drug_name:
+          type: string
+          readOnly: true
+          nullable: true
+        lab_order:
+          type: integer
+          nullable: true
+        lab_order_name:
+          type: string
+          nullable: true
+          description: Return lab order test name if available.
+          readOnly: true
         description:
           type: string
           maxLength: 300
@@ -30963,6 +31007,11 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        discount_percentage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          readOnly: true
         line_total:
           type: string
           format: decimal
@@ -30977,23 +31026,55 @@ components:
         sha_code:
           type: string
           maxLength: 20
+        is_converted:
+          type: boolean
+          readOnly: true
+          description: True if this item has been converted from a proforma
+        converted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When this item was converted
+        converted_from_item:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: The proforma item this was converted from
         created_at:
           type: string
           format: date-time
           readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
       required:
+      - converted_at
+      - converted_from_item
       - created_at
       - description
+      - discount_percentage
+      - drug_name
       - id
       - invoice
+      - is_converted
+      - lab_order_name
       - line_total
       - service_name
       - unit_price
+      - updated_at
     InvoiceItemRequest:
       type: object
       description: Serializer for InvoiceItem model.
       properties:
         service:
+          type: integer
+          nullable: true
+        drug:
+          type: integer
+          nullable: true
+        lab_order:
           type: integer
           nullable: true
         description:
@@ -31043,10 +31124,19 @@ components:
           $ref: '#/components/schemas/InvoiceStatusEnum'
         payment_type:
           $ref: '#/components/schemas/PaymentTypeEnum'
-        discount_amount:
+        discount_type:
+          allOf:
+          - $ref: '#/components/schemas/DiscountTypeEnum'
+          description: |-
+            Type of discount applied (percentage or fixed amount)
+
+            * `percentage` - Percentage
+            * `fixed` - Fixed Amount
+        discount_value:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Discount value (percentage 0-100 or fixed amount in KES)
         discount_reason:
           type: string
           maxLength: 200
@@ -31063,6 +31153,11 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        insurance_coverage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          description: Insurance coverage percentage (0-100)
         notes:
           type: string
         cancellation_reason:
@@ -35728,10 +35823,19 @@ components:
           $ref: '#/components/schemas/InvoiceStatusEnum'
         payment_type:
           $ref: '#/components/schemas/PaymentTypeEnum'
-        discount_amount:
+        discount_type:
+          allOf:
+          - $ref: '#/components/schemas/DiscountTypeEnum'
+          description: |-
+            Type of discount applied (percentage or fixed amount)
+
+            * `percentage` - Percentage
+            * `fixed` - Fixed Amount
+        discount_value:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          description: Discount value (percentage 0-100 or fixed amount in KES)
         discount_reason:
           type: string
           maxLength: 200
@@ -35748,6 +35852,11 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+        insurance_coverage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          description: Insurance coverage percentage (0-100)
         notes:
           type: string
         cancellation_reason:
@@ -36597,6 +36706,10 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          minLength: 1
+          maxLength: 3
         sha_code:
           type: string
           maxLength: 20
@@ -40386,6 +40499,9 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          maxLength: 3
         sha_code:
           type: string
           maxLength: 20
@@ -40508,6 +40624,10 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+        currency:
+          type: string
+          minLength: 1
+          maxLength: 3
         sha_code:
           type: string
           maxLength: 20
