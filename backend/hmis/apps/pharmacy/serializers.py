@@ -146,9 +146,21 @@ class StockBatchSerializer(serializers.ModelSerializer):
     """Serializer for StockBatch model."""
 
     drug_name = serializers.CharField(source="drug.generic_name", read_only=True)
+    # Aliases with _status suffix (legacy)
     days_until_expiry = serializers.IntegerField(source="days_to_expiry", read_only=True)
     is_expired_status = serializers.BooleanField(source="is_expired", read_only=True)
     is_low_stock_status = serializers.BooleanField(source="is_low_stock", read_only=True)
+    # Direct aliases for frontend compatibility
+    days_to_expiry = serializers.IntegerField(read_only=True)
+    is_expired = serializers.BooleanField(read_only=True)
+    is_low_stock = serializers.BooleanField(read_only=True)
+    # Decimal fields - return as numbers, not strings
+    cost_price = serializers.DecimalField(
+        max_digits=10, decimal_places=2, coerce_to_string=False
+    )
+    selling_price = serializers.DecimalField(
+        max_digits=12, decimal_places=2, coerce_to_string=False
+    )
 
     class Meta:
         model = StockBatch
@@ -164,8 +176,11 @@ class StockBatchSerializer(serializers.ModelSerializer):
             "quantity_expired",
             "expiry_date",
             "days_until_expiry",
+            "days_to_expiry",
             "is_expired_status",
+            "is_expired",
             "is_low_stock_status",
+            "is_low_stock",
             "status",
             "cost_price",
             "selling_price",
@@ -186,8 +201,11 @@ class StockBatchSerializer(serializers.ModelSerializer):
             "updated_at",
             "drug_name",
             "days_until_expiry",
+            "days_to_expiry",
             "is_expired_status",
+            "is_expired",
             "is_low_stock_status",
+            "is_low_stock",
         ]
 
     def create(self, validated_data):
@@ -269,6 +287,8 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
             "remaining_quantity",
             "is_cancelled",
             "cancellation_reason",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = [
             "id",
@@ -278,6 +298,8 @@ class PrescriptionItemSerializer(serializers.ModelSerializer):
             "remaining_qty",
             "remaining_quantity",
             "quantity_prescribed",
+            "created_at",
+            "updated_at",
         ]
 
 
@@ -313,17 +335,15 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     items = PrescriptionItemSerializer(many=True, read_only=True)
     patient_name = serializers.SerializerMethodField()
     patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
+    # Alias for frontend compatibility (prescribed_by -> prescriber)
+    prescriber = serializers.IntegerField(source="prescribed_by.id", read_only=True)
     prescriber_name = serializers.SerializerMethodField()
     prescribed_date = serializers.SerializerMethodField()
     is_valid_prescription = serializers.SerializerMethodField()
-    is_fully_dispensed_status = serializers.BooleanField(
-        source="is_fully_dispensed", read_only=True
-    )
     # Aliases for frontend compatibility
     is_valid = serializers.SerializerMethodField()
-    is_fully_dispensed = serializers.BooleanField(
-        source="is_fully_dispensed_status", read_only=True
-    )
+    is_fully_dispensed = serializers.SerializerMethodField()
+    is_fully_dispensed_status = serializers.SerializerMethodField()
     # QR verification URL
     verification_url = serializers.SerializerMethodField()
 
@@ -337,6 +357,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             "patient_name",
             "patient_mrn",
             "prescribed_by",
+            "prescriber",
             "prescriber_name",
             "prescribed_at",
             "prescribed_date",
@@ -356,6 +377,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             "id",
             "prescription_number",
             "prescribed_by",
+            "prescriber",
             "prescribed_date",
             "status",
             "created_at",
@@ -390,6 +412,14 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     def get_is_valid(self, obj) -> bool:
         """Alias for is_valid_prescription."""
         return obj.is_valid()
+
+    def get_is_fully_dispensed(self, obj) -> bool:
+        """Check if all items in prescription are fully dispensed."""
+        return obj.is_fully_dispensed
+
+    def get_is_fully_dispensed_status(self, obj) -> bool:
+        """Alias for is_fully_dispensed (for frontend compatibility)."""
+        return obj.is_fully_dispensed
 
     def get_verification_url(self, obj) -> str:
         """Generate verification URL for QR code."""

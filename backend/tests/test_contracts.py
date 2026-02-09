@@ -567,8 +567,9 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "id", "drug", "drug_name", "batch_number",
             "quantity_received", "quantity_available",
             "quantity_dispensed", "quantity_damaged", "quantity_expired",
-            "expiry_date", "days_until_expiry",
-            "is_expired_status", "is_low_stock_status",
+            "expiry_date", "days_until_expiry", "days_to_expiry",
+            "is_expired_status", "is_expired",
+            "is_low_stock_status", "is_low_stock",
             "status", "cost_price", "selling_price",
             "supplier", "purchase_order",
             "received_date", "received_by",
@@ -592,7 +593,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset({
             "id", "prescription_number", "encounter",
             "patient", "patient_name", "patient_mrn",
-            "prescribed_by", "prescriber_name",
+            "prescribed_by", "prescriber", "prescriber_name",
             "prescribed_at", "prescribed_date", "valid_until",
             "status", "clinical_notes",
             "is_valid", "is_valid_prescription",
@@ -610,6 +611,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "instructions", "is_substitutable",
             "quantity_dispensed", "remaining_qty", "remaining_quantity",
             "is_cancelled", "cancellation_reason",
+            "created_at", "updated_at",
         }),
     ),
     (
