@@ -15,27 +15,11 @@ from django.core.management.base import BaseCommand
 class Command(BaseCommand):
     help = "Seed comprehensive demo data for staging/demo environment"
 
-    VALID_SECTIONS = [
-        "departments",
-        "wards",
-        "users",
-        "profiles",
-        "billing",
-        "clinics",
-        "imaging",
-        "pharmacy-stock",
-    ]
-
     def add_arguments(self, parser):
         parser.add_argument(
             "--force",
             action="store_true",
             help="Force seeding even if demo users already exist",
-        )
-        parser.add_argument(
-            "--only",
-            type=str,
-            help=f"Only seed specific section(s). Comma-separated: {', '.join(VALID_SECTIONS)}",
         )
 
     def handle(self, *args, **options):
@@ -483,65 +467,41 @@ class Command(BaseCommand):
             "Karanja",
         ]
 
-        # Parse --only option
-        only_sections = set()
-        if options.get("only"):
-            only_sections = {s.strip().lower() for s in options["only"].split(",")}
-            invalid = only_sections - set(self.VALID_SECTIONS)
-            if invalid:
-                self.stderr.write(
-                    self.style.ERROR(f"Invalid section(s): {invalid}. Valid: {self.VALID_SECTIONS}")
-                )
-                return
-
-        def should_run(section: str) -> bool:
-            """Return True if section should run (no filter or section in filter)."""
-            return not only_sections or section in only_sections
-
-        # Check if demo users already exist (skip check if --only is for non-user sections)
-        user_related = {"departments", "wards", "users", "profiles"}
-        if not only_sections or only_sections & user_related:
-            existing_demo_user = User.objects.filter(username="demo_admin").first()
-            if existing_demo_user and not options["force"] and not only_sections:
-                self.stdout.write(
-                    self.style.WARNING("Demo users already exist. Use --force to recreate.")
-                )
-                return
+        # Check if demo users already exist
+        existing_demo_user = User.objects.filter(username="demo_admin").first()
+        if existing_demo_user and not options["force"]:
+            self.stdout.write(
+                self.style.WARNING("Demo users already exist. Use --force to recreate.")
+            )
+            return
 
         self.stdout.write("Starting comprehensive demo data seeding...")
-        if only_sections:
-            self.stdout.write(f"  Running only: {', '.join(only_sections)}")
 
         with transaction.atomic():
             # =============================================================
             # Step 1: Create Departments
             # =============================================================
-            if should_run("departments"):
-                self.stdout.write(self.style.MIGRATE_HEADING("\n1. Creating Departments..."))
-                departments_map = {}
-                for dept_data in DEPARTMENTS:
-                    dept, created = Department.objects.update_or_create(
-                        code=dept_data["code"],
-                        defaults={
-                            "name": dept_data["name"],
-                            "department_type": dept_data["department_type"],
-                            "is_active": True,
-                        },
-                    )
-                    departments_map[dept_data["code"]] = dept
-                    status = "Created" if created else "Updated"
-                    self.stdout.write(f"  {status}: {dept.name} ({dept.code})")
-            else:
-                # Still need departments_map for later steps
-                departments_map = {d.code: d for d in Department.objects.all()}
+            self.stdout.write(self.style.MIGRATE_HEADING("\n1. Creating Departments..."))
+            departments_map = {}
+            for dept_data in DEPARTMENTS:
+                dept, created = Department.objects.update_or_create(
+                    code=dept_data["code"],
+                    defaults={
+                        "name": dept_data["name"],
+                        "department_type": dept_data["department_type"],
+                        "is_active": True,
+                    },
+                )
+                departments_map[dept_data["code"]] = dept
+                status = "Created" if created else "Updated"
+                self.stdout.write(f"  {status}: {dept.name} ({dept.code})")
 
             # =============================================================
             # Step 2: Create Wards with Beds
             # =============================================================
-            if should_run("wards"):
-                self.stdout.write(self.style.MIGRATE_HEADING("\n2. Creating Wards and Beds..."))
-                try:
-                    from hmis.apps.inpatient.models import Bed, Ward
+            self.stdout.write(self.style.MIGRATE_HEADING("\n2. Creating Wards and Beds..."))
+            try:
+                from hmis.apps.inpatient.models import Bed, Ward
 
                 for ward_data in WARDS:
                     # Extract capacity for bed creation but keep it in defaults
@@ -571,18 +531,17 @@ class Command(BaseCommand):
                         self.stdout.write(f"  Created: {ward.name} with {capacity} beds")
                     else:
                         self.stdout.write(f"  Updated: {ward.name}")
-                except ImportError:
-                    self.stdout.write(
-                        self.style.WARNING("  Inpatient app not available, skipping wards")
-                    )
+            except ImportError:
+                self.stdout.write(
+                    self.style.WARNING("  Inpatient app not available, skipping wards")
+                )
 
             # =============================================================
             # Step 3: Create Demo Users with StaffProfiles
             # =============================================================
-            if should_run("users") or should_run("profiles"):
-                self.stdout.write(
-                    self.style.MIGRATE_HEADING("\n3. Creating Demo Users with Staff Profiles...")
-                )
+            self.stdout.write(
+                self.style.MIGRATE_HEADING("\n3. Creating Demo Users with Staff Profiles...")
+            )
 
             for user_data in DEMO_USERS:
                 # Extract staff profile data (use .get() to avoid modifying original dict)
