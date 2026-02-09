@@ -18,21 +18,27 @@ services:
     region: frankfurt
     plan: free
     rootDir: backend
+    # Build command supports SKIP_FULL_SEED=true to update without resetting demo data
+    # Set SKIP_FULL_SEED=true in Render dashboard to only run migrations
     buildCommand: |
       pip install poetry &&
       poetry config virtualenvs.create false &&
       poetry install --only main --no-interaction &&
       python manage.py collectstatic --noinput &&
       python manage.py migrate --noinput &&
-      python manage.py import_kenya_locations data/kenya_locations.csv &&
-      python manage.py import_icd10 data/icd10_kenya_common.csv &&
-      python manage.py import_drugs --file data/drug_catalog.csv &&
-      python manage.py load_clinical_templates &&
-      python manage.py load_lab_reference_ranges &&
-      python manage.py load_default_roles &&
-      echo "from hmis.apps.encounters.models import Encounter; Encounter.objects.filter(status__in=['DRAFT','COMPLETED']).update(status='CREATED')" | python manage.py shell &&
-      python manage.py seed_demo_data &&
-      python manage.py seed_imaging_catalog
+      if [ "${SKIP_FULL_SEED:-false}" = "true" ]; then
+        echo "SKIP_FULL_SEED=true: Skipping full data seed, only running migrations"
+      else
+        python manage.py import_kenya_locations data/kenya_locations.csv &&
+        python manage.py import_icd10 data/icd10_kenya_common.csv &&
+        python manage.py import_drugs --file data/drug_catalog.csv &&
+        python manage.py load_clinical_templates &&
+        python manage.py load_lab_reference_ranges &&
+        python manage.py load_default_roles &&
+        echo "from hmis.apps.encounters.models import Encounter; Encounter.objects.filter(status__in=['DRAFT','COMPLETED']).update(status='CREATED')" | python manage.py shell &&
+        python manage.py seed_demo_data &&
+        python manage.py seed_imaging_catalog
+      fi
     startCommand: gunicorn hmis.wsgi:application --bind 0.0.0.0:$PORT --workers 2
     healthCheckPath: /api/health/
     envVars:
@@ -48,6 +54,8 @@ services:
         value: https://vitora-staging.onrender.com,https://vitora-hmis-staging.onrender.com
       - key: ENCRYPTION_KEY
         value: zPvPKpZGcLmqPJ3L2oXZBCH_gJGWl5C6FZp8YMfFgFA=
+      - key: SKIP_FULL_SEED
+        value: "false"
       - key: DEMO_MODE
         value: "true"
       - key: DEMO_FACILITY_NAME
