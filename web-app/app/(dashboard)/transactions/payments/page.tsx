@@ -11,38 +11,46 @@ import { Button } from '@/components/ui/button';
 import { PaymentList } from '@/components/billing/PaymentList';
 import { ReceivePaymentModal } from '@/components/billing';
 import { usePayments } from '@/lib/hooks/billing';
+import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import type { Payment } from '@/lib/types/billing';
 
 export default function TransactionsPaymentsPage() {
   const router = useRouter();
-  const { data, isLoading } = usePayments();
+  const { data, isLoading, refetch, isFetching } = usePayments();
 
   const handleViewReceipt = (payment: Payment) => {
     router.push(`/transactions/receipts/${payment.id}`);
   };
 
+  const handleRefresh = async () => {
+    await refetch();
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Payments</h1>
-          <p className="text-muted-foreground">View recorded payments and receipts</p>
-        </div>
-        <ReceivePaymentModal
-          trigger={
-            <Button className="gap-2">
-              <Banknote className="h-4 w-4" />
-              Receive Payment
-            </Button>
+    <PullToRefresh onRefresh={handleRefresh} isRefreshing={isFetching}>
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title="Payments"
+          helpContent="View recorded payments and receipts. Filter by payment method or status to find specific transactions."
+          actions={
+            <ReceivePaymentModal
+              trigger={
+                <Button className="gap-2 w-full sm:w-auto">
+                  <Banknote className="h-4 w-4" />
+                  Receive Payment
+                </Button>
+              }
+            />
           }
         />
-      </div>
 
-      <PaymentList
-        payments={data?.results || []}
-        isLoading={isLoading}
-        onViewReceipt={handleViewReceipt}
-      />
-    </div>
+        <PaymentList
+          payments={data?.results || []}
+          isLoading={isLoading}
+          onViewReceipt={handleViewReceipt}
+        />
+      </div>
+    </PullToRefresh>
   );
 }
