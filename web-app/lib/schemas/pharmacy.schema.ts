@@ -490,19 +490,14 @@ export const ExpiryReportResponseSchema = z.object({
   results: z.array(ExpiryReportItemSchema),
 });
 
-// Stock movement (generic for reports)
-export const StockMovementSchema = z.object({
-  id: z.number(),
-  drug: z.number(),
-  drug_name: z.string().optional().nullable(),
-  batch_number: z.string().optional().nullable(),
-  movement_type: z.string(),
+// Stock movement report item (matches backend /api/pharmacy/reports/movement/)
+export const StockMovementReportItemSchema = z.object({
+  drug_name: z.string(),
+  movement_type: z.enum(['RECEIVED', 'DISPENSED', 'ADJUSTED']),
   quantity: z.number(),
-  reference: z.string().optional().nullable(),
-  notes: z.string().optional().nullable(),
-  created_by: z.number().optional().nullable(),
-  created_by_name: z.string().optional().nullable(),
-  created_at: z.string(),
+  date: z.string(),
+  reference: z.string(),
+  user: z.string().nullable(),
 });
 
 // Alert settings
@@ -519,5 +514,5 @@ export type AlertSettingsSchemaType = z.infer<typeof AlertSettingsSchema>;
 
 // Stock movement report
 export const StockMovementReportSchema = z.object({
-  results: z.array(StockMovementSchema),
+  results: z.array(StockMovementReportItemSchema),
 });
