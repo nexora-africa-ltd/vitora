@@ -37,14 +37,15 @@ export default function EncountersPage() {
   const totalPages = data ? Math.ceil(data.count / pageSize) : 0;
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="Encounters"
-        description="Manage patient consultations and clinical encounters"
+        helpContent="Manage patient consultations and clinical encounters. Use the queue for active consultations or browse all encounters."
         actions={
-          <Button onClick={() => router.push('/encounters/new')}>
+          <Button onClick={() => router.push('/encounters/new')} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
-            New Encounter
+            <span className="sm:hidden">New</span>
+            <span className="hidden sm:inline">New Encounter</span>
           </Button>
         }
       />
@@ -71,7 +72,7 @@ export default function EncountersPage() {
         {/* All Encounters Tab */}
         <TabsContent value="all" className="space-y-4">
           {/* Filters */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <Select
               value={status}
               onValueChange={(value) => {
@@ -79,8 +80,8 @@ export default function EncountersPage() {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="w-[180px]">
-                <Filter className="h-4 w-4 mr-2" />
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <Filter className="h-4 w-4 mr-2 shrink-0" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -100,8 +101,8 @@ export default function EncountersPage() {
                 setPage(1);
               }}
             >
-              <SelectTrigger className="w-[180px]">
-                <Calendar className="h-4 w-4 mr-2" />
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <Calendar className="h-4 w-4 mr-2 shrink-0" />
                 <SelectValue placeholder="Type" />
               </SelectTrigger>
               <SelectContent>

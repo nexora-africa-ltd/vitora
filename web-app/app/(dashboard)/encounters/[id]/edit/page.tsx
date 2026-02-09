@@ -1,16 +1,14 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft,
   Save,
   CheckCircle,
   Clock,
   AlertTriangle,
   Loader2,
-  User,
   FileText,
   Stethoscope,
   Pencil,
@@ -19,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { PageHeader } from '@/components/shared/page-header';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -677,13 +676,13 @@ export default function EditEncounterPage() {
 
   if (error || !encounter) {
     return (
-      <div className="container mx-auto py-12 text-center">
+      <div className="container mx-auto px-3 py-12 sm:px-4 text-center">
         <h2 className="text-xl font-semibold">Encounter not found</h2>
         <p className="text-muted-foreground mt-2">
           The encounter you&apos;re looking for doesn&apos;t exist.
         </p>
-        <Button onClick={() => router.push('/encounters')} className="mt-4">
-          Back to Encounters
+        <Button className="mt-4" asChild>
+          <Link href="/encounters">Back to Encounters</Link>
         </Button>
       </div>
     );
@@ -693,43 +692,28 @@ export default function EditEncounterPage() {
   const isEditable = encounter.status !== 'CLOSED' && encounter.status !== 'CANCELLED';
 
   return (
-    <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 max-w-5xl">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-        <div className="flex items-center gap-2 sm:gap-4">
-          <Button variant="ghost" size="icon" className="shrink-0" asChild>
-            <Link href={`/encounters/${encounterId}`}>
-              <ArrowLeft className="h-5 w-5" />
-              <span className="sr-only">Back to Encounter</span>
-            </Link>
-          </Button>
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold truncate">Edit Encounter</h1>
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
-              <User className="h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
-              <span className="truncate max-w-[150px] sm:max-w-none">{encounter.patient_name}</span>
-              <span className="hidden xs:inline text-muted-foreground/50">•</span>
-              <span className="hidden xs:inline font-mono text-xs">{encounter.patient_mrn}</span>
-              <Badge className={cn(status?.color, 'text-xs')}>{status?.label}</Badge>
-            </div>
+      <PageHeader
+        title="Edit Encounter"
+        helpContent="Edit clinical documentation. Changes are auto-saved as you work."
+        actions={
+          <div className="flex items-center gap-2">
+            <Badge className={cn(status?.color, 'shrink-0 w-fit')}>{status?.label}</Badge>
+            <AutoSaveStatusIndicator
+              status={autoSave.status}
+              lastSaved={autoSave.lastSaved}
+              error={autoSave.error}
+              isDirty={autoSave.isDirty}
+              pendingCount={autoSave.pendingCount}
+            />
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          {/* Auto-save status indicator */}
-          <AutoSaveStatusIndicator
-            status={autoSave.status}
-            lastSaved={autoSave.lastSaved}
-            error={autoSave.error}
-            isDirty={autoSave.isDirty}
-            pendingCount={autoSave.pendingCount}
-          />
-        </div>
-      </div>
+        }
+      />
 
       {/* Non-editable warning */}
       {!isEditable && (
-        <Alert className="mb-4 sm:mb-6">
+        <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Read-only</AlertTitle>
           <AlertDescription className="text-sm">
@@ -738,18 +722,16 @@ export default function EditEncounterPage() {
         </Alert>
       )}
 
-      {/* Main Form */}
-      <div className="space-y-4 sm:space-y-6">
-        {/* Encounter Details */}
-        <Card>
-          <CardHeader className="pb-3 px-3 sm:px-6">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-              <Stethoscope className="h-4 w-4 sm:h-5 sm:w-5" />
-              Encounter Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 px-3 sm:px-6">
-            <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
+      {/* Encounter Details */}
+      <Card>
+        <CardHeader className="pb-3 px-3 sm:px-6">
+          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+            <Stethoscope className="h-4 w-4 sm:h-5 sm:w-5" />
+            Encounter Details
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 px-3 sm:px-6">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-3">
               {/* Encounter Type */}
               <div className="space-y-1.5 sm:space-y-2">
                 <Label htmlFor="encounter_type" className="text-sm">Encounter Type</Label>
@@ -1007,7 +989,6 @@ export default function EditEncounterPage() {
             )}
           </CardContent>
         </Card>
-      </div>
 
       {/* Sticky Floating Action Bar - Bottom bar on mobile, floating on desktop */}
       <div className="fixed bottom-0 left-0 right-0 sm:bottom-4 sm:left-auto sm:right-4 z-50 flex items-center justify-center sm:justify-end gap-2 p-3 sm:p-0 bg-background/95 sm:bg-transparent border-t sm:border-0 backdrop-blur">
@@ -1051,47 +1032,40 @@ export default function EditEncounterPage() {
 
 function EditEncounterSkeleton() {
   return (
-    <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 max-w-5xl">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-10" />
-          <div>
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-32 mt-2" />
-          </div>
-        </div>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header skeleton */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Skeleton className="h-8 w-48" />
         <div className="flex gap-2">
-          <Skeleton className="h-10 w-24" />
-          <Skeleton className="h-10 w-24" />
+          <Skeleton className="h-6 w-20" />
+          <Skeleton className="h-6 w-24" />
         </div>
       </div>
 
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-40" />
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-            <Skeleton className="h-24 w-full mt-4" />
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+          <Skeleton className="h-6 w-40" />
+        </CardHeader>
+        <CardContent className="px-3 sm:px-6">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+          <Skeleton className="h-24 w-full mt-4" />
+        </CardContent>
+      </Card>
 
-        <Skeleton className="h-10 w-full" />
-        <Card>
-          <CardContent className="p-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <Skeleton key={i} className="h-20 w-full" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Skeleton className="h-10 w-full" />
+      <Card>
+        <CardContent className="p-4 sm:p-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Skeleton key={i} className="h-20 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

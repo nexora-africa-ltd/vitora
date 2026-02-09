@@ -35,14 +35,14 @@ import Link from 'next/link';
 
 function EncounterLayoutError({ message }: { message: string }) {
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto px-3 py-6 sm:px-4 sm:py-8">
       <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>{message}</AlertDescription>
       </Alert>
       <div className="mt-4">
-        <Button variant="outline" asChild>
+        <Button variant="outline" className="w-full sm:w-auto" asChild>
           <Link href="/encounters">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Encounters
@@ -60,18 +60,18 @@ function EncounterLayoutError({ message }: { message: string }) {
 function EncounterLayoutLoading() {
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="bg-card border-b px-4 py-3">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-10 rounded-full" />
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-3 w-48" />
+      <header className="bg-card border-b px-3 py-2 sm:px-4 sm:py-3">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <Skeleton className="h-8 w-8 sm:h-10 sm:w-10 rounded-full" />
+          <div className="space-y-1.5 sm:space-y-2">
+            <Skeleton className="h-4 w-24 sm:w-32" />
+            <Skeleton className="h-3 w-36 sm:w-48" />
           </div>
         </div>
       </header>
-      <main className="flex-1 p-6">
-        <Skeleton className="h-8 w-64 mb-4" />
-        <Skeleton className="h-64 w-full" />
+      <main className="flex-1 p-4 sm:p-6">
+        <Skeleton className="h-6 w-48 sm:h-8 sm:w-64 mb-4" />
+        <Skeleton className="h-48 sm:h-64 w-full" />
       </main>
     </div>
   );
