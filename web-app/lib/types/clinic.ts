@@ -5,6 +5,17 @@
  * Implements the Clinics Module as per implementation plan.
  */
 
+// Import schema-derived types for local use
+import type {
+  BloodGroup as BloodGroupType,
+  RhesusFactorType,
+  HivStatus as HivStatusType,
+  PartnerHivStatus as PartnerHivStatusType,
+  DiabetesType as DiabetesTypeType,
+  ArtRegimenLine as ArtRegimenLineType,
+  WhoClinicalStage as WhoClinicalStageType,
+} from '@/lib/schemas/clinic.schema';
+
 // =============================================================================
 // CLINIC TYPES
 // =============================================================================
@@ -109,43 +120,19 @@ export type EnrollmentStatus =
   | 'SUSPENDED';
 
 // =============================================================================
-// CHRONIC CARE TYPES
+// CHRONIC CARE TYPES (derived from Zod schemas)
+// These types handle backend returning "" for optional enum fields
 // =============================================================================
 
-/**
- * Blood group types
- */
-export type BloodGroup = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
-
-/**
- * Rhesus factor
- */
-export type RhesusFactor = 'POSITIVE' | 'NEGATIVE';
-
-/**
- * HIV status
- */
-export type HivStatus = 'POSITIVE' | 'NEGATIVE' | 'UNKNOWN';
-
-/**
- * Partner HIV status
- */
-export type PartnerHivStatus = 'POSITIVE' | 'NEGATIVE' | 'UNKNOWN' | 'NOT_TESTED';
-
-/**
- * Diabetes type
- */
-export type DiabetesType = 'TYPE_1' | 'TYPE_2' | 'GESTATIONAL' | 'OTHER';
-
-/**
- * ART regimen line (for CCC)
- */
-export type ArtRegimenLine = 'FIRST_LINE' | 'SECOND_LINE' | 'THIRD_LINE';
-
-/**
- * WHO clinical stage (HIV)
- */
-export type WhoClinicalStage = 1 | 2 | 3 | 4;
+export type {
+  BloodGroup,
+  RhesusFactorType as RhesusFactor,
+  HivStatus,
+  PartnerHivStatus,
+  DiabetesType,
+  ArtRegimenLine,
+  WhoClinicalStage,
+} from '@/lib/schemas/clinic.schema';
 
 /**
  * Staff role in clinic
@@ -493,8 +480,8 @@ export interface ClinicEnrollment {
   // ===========================================
   art_start_date?: string | null;
   current_art_regimen?: string | null;
-  art_regimen_line?: ArtRegimenLine | null;
-  who_clinical_stage?: WhoClinicalStage | number | string | null;
+  art_regimen_line?: ArtRegimenLineType | null;
+  who_clinical_stage?: WhoClinicalStageType | number | string | null;
   baseline_cd4_count?: number | null;
   latest_cd4_count?: number | null;
   latest_cd4_date?: string | null;
@@ -516,10 +503,10 @@ export interface ClinicEnrollment {
   lmp?: string | null;
   edd?: string | null;
   height_cm?: number | null;
-  blood_group?: BloodGroup | null;
-  rhesus_factor?: RhesusFactor | null;
-  hiv_status?: HivStatus | null;
-  partner_hiv_status?: PartnerHivStatus | null;
+  blood_group?: BloodGroupType | null;
+  rhesus_factor?: RhesusFactorType | null;
+  hiv_status?: HivStatusType | null;
+  partner_hiv_status?: PartnerHivStatusType | null;
   previous_cesarean?: boolean | null;
   high_risk_pregnancy?: boolean | null;
   high_risk_factors?: string | null;
@@ -533,7 +520,7 @@ export interface ClinicEnrollment {
   // ===========================================
   // DIABETIC CLINIC FIELDS
   // ===========================================
-  diabetes_type?: DiabetesType | null;
+  diabetes_type?: DiabetesTypeType | null;
   diabetes_diagnosis_date?: string | null;
   latest_hba1c?: number | null;
   latest_hba1c_date?: string | null;

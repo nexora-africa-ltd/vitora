@@ -386,3 +386,44 @@ export const TriageVitalsSchema = TriageVitalThresholdSchema;
 export const TriageQueueArrayResponseSchema = z.object({
   results: z.array(TriageQueueEntrySchema),
 });
+
+// =============================================================================
+// DERIVED TYPE EXPORTS
+// These types are derived from schemas and should be used instead of manual
+// interface definitions to ensure runtime validation matches static types.
+// =============================================================================
+
+// Enum types
+export type TriageCategory = z.infer<typeof TriageCategorySchema>;
+export type AssignedArea = z.infer<typeof AssignedAreaSchema>;
+export type AVPUStatus = z.infer<typeof AVPUStatusSchema>;
+export type PatientStage = z.infer<typeof PatientStageSchema>;
+export type MobilityStatus = z.infer<typeof MobilityStatusSchema>;
+export type ArrivalMode = z.infer<typeof ArrivalModeSchema>;
+export type ChiefComplaintCategory = z.infer<typeof ChiefComplaintCategorySchema>;
+export type QueueStatus = z.infer<typeof QueueStatusSchema>;
+export type VitalType = z.infer<typeof VitalTypeSchema>;
+export type AlertSeverity = z.infer<typeof AlertSeveritySchema>;
+export type WaitingQueueStatus = z.infer<typeof WaitingQueueStatusSchema>;
+
+// Entity types
+export type TriageVitalThreshold = z.infer<typeof TriageVitalThresholdSchema>;
+export type TriageAssessment = z.infer<typeof TriageAssessmentSchema>;
+export type TriageQueueEntry = z.infer<typeof TriageQueueEntrySchema>;
+export type WaitingQueueEntry = z.infer<typeof WaitingQueueEntrySchema>;
+export type RouteToClinicResponse = z.infer<typeof RouteToClinicResponseSchema>;
+export type CalculateCategoryResponse = z.infer<typeof CalculateCategoryResponseSchema>;
+
+// Report types
+export type WaitTimeStats = z.infer<typeof WaitTimeStatsSchema>;
+export type VolumeByCategory = z.infer<typeof VolumeByCategorySchema>;
+export type VolumeByArea = z.infer<typeof VolumeByAreaSchema>;
+export type LWBSStats = z.infer<typeof LWBSStatsSchema>;
+export type TriageReportSummary = z.infer<typeof TriageReportSummarySchema>;
+export type WaitTimeStatsResponse = z.infer<typeof WaitTimeStatsResponseSchema>;
+export type VolumeReportResponse = z.infer<typeof VolumeReportResponseSchema>;
+
+// Paginated types
+export type PaginatedTriageAssessment = z.infer<typeof PaginatedTriageAssessmentSchema>;
+export type PaginatedTriageQueue = z.infer<typeof PaginatedTriageQueueSchema>;
+export type PaginatedWaitingQueue = z.infer<typeof PaginatedWaitingQueueSchema>;

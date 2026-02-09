@@ -7,6 +7,21 @@
 import { z } from 'zod';
 
 // =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Create an enum schema that accepts empty string from backend and transforms to null.
+ * Backend may return "" for optional enum fields.
+ */
+function enumOrEmpty<const T extends readonly [string, ...string[]]>(values: T) {
+  return z.union([
+    z.enum(values),
+    z.literal('').transform(() => null),
+  ]);
+}
+
+// =============================================================================
 // ENUMS (matching TypeScript types)
 // =============================================================================
 
@@ -43,13 +58,13 @@ export const EnrollmentStatusSchema = z.enum([
 
 export const ClinicStaffRoleSchema = z.enum(['LEAD', 'DOCTOR', 'NURSE', 'COUNSELOR', 'NUTRITIONIST', 'CLERK', 'OTHER']);
 
-// Chronic care enums
-export const BloodGroupSchema = z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']).or(z.literal(''));
-export const RhesusFactorSchema = z.enum(['POSITIVE', 'NEGATIVE']).or(z.literal(''));
-export const HivStatusSchema = z.enum(['POSITIVE', 'NEGATIVE', 'UNKNOWN']).or(z.literal(''));
-export const PartnerHivStatusSchema = z.enum(['POSITIVE', 'NEGATIVE', 'UNKNOWN', 'NOT_TESTED']).or(z.literal(''));
-export const DiabetesTypeSchema = z.enum(['TYPE_1', 'TYPE_2', 'GESTATIONAL', 'OTHER']).or(z.literal(''));
-export const ArtRegimenLineSchema = z.enum(['FIRST_LINE', 'SECOND_LINE', 'THIRD_LINE']).or(z.literal(''));
+// Chronic care enums - use enumOrEmpty to handle backend returning ""
+export const BloodGroupSchema = enumOrEmpty(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']);
+export const RhesusFactorSchema = enumOrEmpty(['POSITIVE', 'NEGATIVE']);
+export const HivStatusSchema = enumOrEmpty(['POSITIVE', 'NEGATIVE', 'UNKNOWN']);
+export const PartnerHivStatusSchema = enumOrEmpty(['POSITIVE', 'NEGATIVE', 'UNKNOWN', 'NOT_TESTED']);
+export const DiabetesTypeSchema = enumOrEmpty(['TYPE_1', 'TYPE_2', 'GESTATIONAL', 'OTHER']);
+export const ArtRegimenLineSchema = enumOrEmpty(['FIRST_LINE', 'SECOND_LINE', 'THIRD_LINE']);
 export const WhoClinicalStageSchema = z.enum(['1', '2', '3', '4']);
 
 // =============================================================================
@@ -417,3 +432,44 @@ export const ClinicStaffArrayResponseSchema = z.object({
 export const ClinicScheduleArrayResponseSchema = z.object({
   results: z.array(ClinicScheduleSchema),
 });
+
+// =============================================================================
+// DERIVED TYPE EXPORTS
+// These types are derived from schemas and should be used instead of manual
+// interface definitions to ensure runtime validation matches static types.
+// =============================================================================
+
+// Enum types
+export type ClinicType = z.infer<typeof ClinicTypeSchema>;
+export type ClinicStatus = z.infer<typeof ClinicStatusSchema>;
+export type ClinicVisitStatus = z.infer<typeof ClinicVisitStatusSchema>;
+export type ClinicVisitPriority = z.infer<typeof ClinicVisitPrioritySchema>;
+export type ClinicVisitType = z.infer<typeof ClinicVisitTypeSchema>;
+export type ClinicVisitSource = z.infer<typeof ClinicVisitSourceSchema>;
+export type ClinicSessionStatus = z.infer<typeof ClinicSessionStatusSchema>;
+export type EnrollmentStatus = z.infer<typeof EnrollmentStatusSchema>;
+export type ClinicStaffRole = z.infer<typeof ClinicStaffRoleSchema>;
+
+// Chronic care enum types (empty string transforms to null)
+export type BloodGroup = z.infer<typeof BloodGroupSchema>;
+export type RhesusFactorType = z.infer<typeof RhesusFactorSchema>;
+export type HivStatus = z.infer<typeof HivStatusSchema>;
+export type PartnerHivStatus = z.infer<typeof PartnerHivStatusSchema>;
+export type DiabetesType = z.infer<typeof DiabetesTypeSchema>;
+export type ArtRegimenLine = z.infer<typeof ArtRegimenLineSchema>;
+export type WhoClinicalStage = z.infer<typeof WhoClinicalStageSchema>;
+
+// Entity types
+export type ClinicListItem = z.infer<typeof ClinicListItemSchema>;
+export type Clinic = z.infer<typeof ClinicSchema>;
+export type ClinicStaff = z.infer<typeof ClinicStaffSchema>;
+export type ClinicSchedule = z.infer<typeof ClinicScheduleSchema>;
+export type ClinicSession = z.infer<typeof ClinicSessionSchema>;
+export type ClinicVisit = z.infer<typeof ClinicVisitSchema>;
+export type ClinicEnrollment = z.infer<typeof ClinicEnrollmentSchema>;
+
+// Paginated types
+export type PaginatedClinicList = z.infer<typeof PaginatedClinicListSchema>;
+export type PaginatedClinicSession = z.infer<typeof PaginatedClinicSessionSchema>;
+export type PaginatedClinicVisit = z.infer<typeof PaginatedClinicVisitSchema>;
+export type PaginatedClinicEnrollment = z.infer<typeof PaginatedClinicEnrollmentSchema>;
