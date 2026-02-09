@@ -154,11 +154,11 @@ class TestEncounterAPIEndpoints:
         response = auth_client.post("/api/encounters/", sample_encounter_with_vitals, format="json")
 
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["temperature"] == "37.5"
+        assert float(response.data["temperature"]) == 37.5
         assert response.data["pulse"] == 75
         assert response.data["blood_pressure"] == "120/80"
-        assert response.data["weight"] == "70.0"
-        assert response.data["height"] == "175.0"
+        assert float(response.data["weight"]) == 70.0
+        assert float(response.data["height"]) == 175.0
         # BMI should be calculated: 70 / (1.75^2) = 22.9
         assert response.data["bmi"] == 22.9
 

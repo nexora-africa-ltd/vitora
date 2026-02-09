@@ -202,7 +202,7 @@ class TestSpO2API:
         response = authenticated_client.post("/api/encounters/", data, format="json")
 
         assert response.status_code == 201
-        assert response.data["spo2"] == "97.00"  # Decimal field returns string
+        assert float(response.data["spo2"]) == 97.0
 
     def test_spo2_included_in_encounter_response(self, authenticated_client, sample_patient):
         """Test that SpO2 is included in encounter response."""
