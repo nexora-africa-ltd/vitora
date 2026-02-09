@@ -23,6 +23,7 @@ import { EncounterLabOrders } from '@/components/encounters/encounter-lab-orders
 import { EncounterImagingOrders } from '@/components/encounters/encounter-imaging-orders';
 import { EncounterPrescriptions } from '@/components/encounters/encounter-prescriptions';
 import { SOAPNoteSummary } from '@/components/encounters/soap-note-summary';
+import { ClinicalSnapshotBanner } from '@/components/encounters/clinical-snapshot-banner';
 import Link from 'next/link';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 
@@ -181,6 +182,8 @@ export default function EncounterDetailPage() {
           )}
         </div>
       </div>
+
+      <ClinicalSnapshotBanner encounterId={encounterId} />
 
       {/* Chief Complaint */}
       <Card>

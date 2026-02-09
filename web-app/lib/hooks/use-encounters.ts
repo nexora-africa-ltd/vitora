@@ -28,6 +28,17 @@ export function useEncounter(id: number) {
 }
 
 /**
+ * Hook for fetching clinician-facing clinical snapshot for an encounter.
+ */
+export function useEncounterClinicalSnapshot(encounterId: number) {
+  return useQuery({
+    queryKey: ['encounters', encounterId, 'clinical-snapshot'],
+    queryFn: () => encountersApi.getClinicalSnapshot(encounterId),
+    enabled: !!encounterId,
+  });
+}
+
+/**
  * Hook for fetching encounter diagnoses.
  */
 export function useEncounterDiagnoses(encounterId: number) {

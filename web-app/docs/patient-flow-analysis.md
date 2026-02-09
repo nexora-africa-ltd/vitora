@@ -223,7 +223,7 @@ interface ClinicalSnapshot {
 
 ### Gaps
 - ⚠️ **Snapshot not persisted** - Generated on-demand at lookup, not stored with encounter
-- ❌ **No clinician-facing display** - Snapshot shown at check-in but not prominently in encounter view
+- ✅ **Clinician-facing display implemented** - Snapshot now displayed prominently in encounter view (banner + endpoint)
 
 ---
 
@@ -646,7 +646,7 @@ class Notification(models.Model):
 | 1. Patient Identification | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
 | 2. Visit Context | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
 | 3. Admin Check-In | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
-| 4. Clinical Snapshot | ✅ Complete | ✅ Types | ⚠️ Display gap | 🟡 **Mostly Ready** |
+| 4. Clinical Snapshot | ✅ Complete | ✅ Complete | ⚠️ Persistence gap | 🟡 **Mostly Ready** |
 | 5. Encounter State Machine | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
 | 6. Triage Flow | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
 | 7. Clinical Encounter | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
@@ -664,49 +664,36 @@ This section provides detailed, actionable implementation guidance to close all 
 
 ### 🔴 HIGH PRIORITY (Production Blockers)
 
-#### 1. Display Clinical Snapshot in Encounter View
+#### 1. Display Clinical Snapshot in Encounter View ✅ **Completed**
 
 **Problem:** The `ClinicalSnapshot` is generated at check-in and displayed to registration staff, but clinicians opening an encounter don't see it prominently. This creates a patient safety risk (missed allergies, drug interactions).
 
 **Current State:**
 - ✅ Backend generates snapshot via `get_clinical_snapshot()` in [checkin/services.py](../backend/hmis/apps/checkin/services.py)
 - ✅ Check-in page displays it beautifully ([patients/checkin/page.tsx](../web-app/app/(dashboard)/patients/checkin/page.tsx#L100-L240))
-- ❌ Encounter detail page ([encounters/[id]/page.tsx](../web-app/app/(dashboard)/encounters/[id]/page.tsx)) has NO snapshot display
+- ✅ Encounter API exposes `GET /api/encounters/{id}/clinical_snapshot/` (reuses check-in snapshot service + serializer)
+- ✅ Encounter detail page displays a collapsible banner at the top ([encounters/[id]/page.tsx](../web-app/app/(dashboard)/encounters/[id]/page.tsx))
 
-**Implementation:**
+**Implementation (Done):**
 
-1. **Add snapshot endpoint to encounter API:**
-   ```python
-   # backend/hmis/apps/encounters/views.py
-   @action(detail=True, methods=['get'])
-   def clinical_snapshot(self, request, pk=None):
-       encounter = self.get_object()
-       snapshot = get_clinical_snapshot(encounter.patient)
-       return Response(ClinicalSnapshotSerializer(snapshot).data)
-   ```
+1. **Encounter endpoint:**
+    - `GET /api/encounters/{id}/clinical_snapshot/` implemented as a ViewSet action.
+    - Reuses `get_clinical_snapshot()` and `ClinicalSnapshotSerializer` from the check-in module (no duplicated clinical summary logic).
 
-2. **Create snapshot header component:**
-   ```tsx
-   // web-app/components/encounters/clinical-snapshot-banner.tsx
-   // Collapsible banner at top of encounter view showing:
-   // - Allergies (RED background if SEVERE)
-   // - Active conditions
-   // - Current medications
-   // - Pending results
-   // - Auto-generated alerts
-   ```
+2. **Encounter banner component:**
+    - Collapsible banner showing allergies, conditions, medications, pending results, and auto-generated alerts.
+    - Highlights severe allergy alerts using destructive styling for clinician attention.
 
-3. **Add to encounter detail layout:**
-   ```tsx
-   // web-app/app/(dashboard)/encounters/[id]/layout.tsx
-   <ClinicalSnapshotBanner patientId={encounter.patient} />
-   ```
+3. **Data fetching:**
+    - Added `encountersApi.getClinicalSnapshot()` and `useEncounterClinicalSnapshot(encounterId)`.
 
 **Files to modify:**
-- `backend/hmis/apps/encounters/views.py` - Add snapshot endpoint
-- `web-app/components/encounters/clinical-snapshot-banner.tsx` - Create component
-- `web-app/app/(dashboard)/encounters/[id]/layout.tsx` - Add banner
-- `web-app/lib/hooks/use-encounters.ts` - Add `useEncounterSnapshot` hook
+- `backend/hmis/apps/encounters/views.py` - Added `clinical_snapshot` action
+- `backend/tests/test_encounter_clinical_snapshot_api.py` - Added endpoint tests
+- `web-app/components/encounters/clinical-snapshot-banner.tsx` - Added banner component
+- `web-app/app/(dashboard)/encounters/[id]/page.tsx` - Rendered banner near the top
+- `web-app/lib/api/encounters.ts` - Added `getClinicalSnapshot()` client method
+- `web-app/lib/hooks/use-encounters.ts` - Added `useEncounterClinicalSnapshot()` hook
 
 **Effort:** 4-6 hours | **Risk if skipped:** Medication errors, missed allergies
 
@@ -1205,7 +1192,7 @@ The navigation is well-structured. Focus on **additions** (patient context bar, 
 
 | # | Gap | Status | PR Link |
 |---|-----|--------|---------|
-| 1 | Clinical snapshot in encounter view | ⬜ TODO | |
+| 1 | Clinical snapshot in encounter view | ✅ Done | |
 | 2 | Auto-invoice from orders | ⬜ TODO | |
 | 3 | SMS/email reminders | ⬜ TODO | |
 | 4 | Persist snapshot with encounter | ⬜ TODO | |

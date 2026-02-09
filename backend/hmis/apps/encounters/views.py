@@ -13,6 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.checkin.serializers import ClinicalSnapshotSerializer
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
@@ -381,6 +382,31 @@ class EncounterViewSet(viewsets.ModelViewSet):
             )
 
         return response
+
+    # =========================================================================
+    # Clinical Snapshot (Clinician Safety)
+    # =========================================================================
+
+    @extend_schema(
+        responses={200: ClinicalSnapshotSerializer},
+    )
+    @action(detail=True, methods=["get"])
+    def clinical_snapshot(self, request, pk=None):
+        """
+        Return a clinical snapshot for the encounter's patient.
+
+        This reuses the check-in clinical snapshot generator to avoid duplicating
+        clinical summary business logic.
+
+        GET /api/encounters/{id}/clinical_snapshot/
+        """
+        encounter = self.get_object()
+
+        from hmis.apps.checkin.services import get_clinical_snapshot
+
+        snapshot = get_clinical_snapshot(encounter.patient)
+        serializer = ClinicalSnapshotSerializer(snapshot)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     # =========================================================================
     # Status Workflow Actions (Sprint 1.1-1.2)
