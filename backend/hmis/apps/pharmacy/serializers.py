@@ -415,11 +415,11 @@ class PrescriptionSerializer(serializers.ModelSerializer):
 
     def get_is_fully_dispensed(self, obj) -> bool:
         """Check if all items in prescription are fully dispensed."""
-        return obj.is_fully_dispensed
+        return obj.is_fully_dispensed()
 
     def get_is_fully_dispensed_status(self, obj) -> bool:
         """Alias for is_fully_dispensed (for frontend compatibility)."""
-        return obj.is_fully_dispensed
+        return obj.is_fully_dispensed()
 
     def get_verification_url(self, obj) -> str:
         """Generate verification URL for QR code."""
