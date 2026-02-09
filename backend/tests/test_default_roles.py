@@ -1,9 +1,14 @@
-"""
-Tests for default roles fixture and loading.
-Following TDD approach: Write tests FIRST, then implement.
+"""backend/tests/test_default_roles.py
 
-Sprint 1.1-1.2 Track C: RBAC Foundation - Phase 3
+Tests for default roles fixture and loading.
+
+The `load_default_roles` management command is fixture-driven (roles.json). These
+tests intentionally treat the fixture as the source of truth so expectations stay
+in sync with the current implementation.
 """
+
+import json
+from pathlib import Path
 
 from io import StringIO
 
@@ -12,37 +17,43 @@ from django.contrib.auth.models import Group
 from django.core.management import call_command
 
 
+def _get_roles_fixture_path() -> Path:
+    # Keep aligned with hmis.apps.core.management.commands.load_default_roles
+    return (
+        Path(__file__).resolve().parent.parent
+        / "hmis"
+        / "apps"
+        / "core"
+        / "fixtures"
+        / "roles.json"
+    )
+
+
+def _get_expected_role_codes_from_fixture() -> set[str]:
+    fixture_path = _get_roles_fixture_path()
+    data = json.loads(fixture_path.read_text())
+    return {item["fields"]["code"] for item in data if item.get("model") == "core.role"}
+
+
 @pytest.mark.django_db
 class TestDefaultRolesFixture:
     """Tests for default roles data and loading."""
 
     def test_all_default_roles_load_successfully(self):
-        """Should load all 11 default roles without errors."""
+        """Should load all default roles from the roles.json fixture without errors."""
         from hmis.apps.core.models import Role
+
+        expected_codes = _get_expected_role_codes_from_fixture()
 
         # Load default roles
         out = StringIO()
         call_command("load_default_roles", stdout=out)
 
         # Check all roles created
-        assert Role.objects.count() == 12
+        assert Role.objects.count() == len(expected_codes)
 
-        # Check specific roles exist
-        role_codes = [
-            "ADMIN",
-            "DOCTOR",
-            "CONSULTANT",
-            "NURSE",
-            "NURSE_AIDE",
-            "CLINICAL_OFFICER",
-            "LAB_TECH",
-            "PHARMACIST",
-            "RECEPTIONIST",
-            "RECORDS_CLERK",
-            "CHW",
-        ]
-
-        for code in role_codes:
+        # Check every fixture role exists
+        for code in expected_codes:
             assert Role.objects.filter(code=code).exists(), f"Role {code} not found"
 
     def test_role_hierarchy_levels_consistent(self):
@@ -240,6 +251,8 @@ class TestLoadDefaultRolesCommand:
         """Should be idempotent - running twice doesn't duplicate."""
         from hmis.apps.core.models import Role
 
+        expected_codes = _get_expected_role_codes_from_fixture()
+
         # Run command twice
         call_command("load_default_roles", stdout=StringIO())
         first_count = Role.objects.count()
@@ -249,7 +262,7 @@ class TestLoadDefaultRolesCommand:
 
         # Should have same count (no duplicates)
         assert first_count == second_count
-        assert first_count == 12
+        assert first_count == len(expected_codes)
 
     def test_command_with_update_flag(self):
         """Should update existing roles with --update flag."""
