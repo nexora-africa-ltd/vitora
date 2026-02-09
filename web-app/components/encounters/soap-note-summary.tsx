@@ -22,9 +22,10 @@ import {
   Beaker,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate } from '@/lib/utils/format';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
@@ -46,6 +47,7 @@ interface SOAPNoteSummaryProps {
 interface SectionStatus {
   complete: boolean;
   label: string;
+  shortLabel: string;
   content: string[];
 }
 
@@ -69,11 +71,13 @@ export function SOAPNoteSummary({
       chiefComplaint: {
         complete: !!formData.chief_complaint?.trim(),
         label: 'Chief Complaint',
+        shortLabel: 'CC',
         content: formData.chief_complaint ? [formData.chief_complaint] : [],
       },
       hpi: {
         complete: !!formData.history_of_present_illness?.trim(),
         label: 'History of Present Illness',
+        shortLabel: 'HPI',
         content: formData.history_of_present_illness ? [formData.history_of_present_illness] : [],
       },
       medicalHistory: {
@@ -86,6 +90,7 @@ export function SOAPNoteSummary({
           formData.social_history?.trim()
         ),
         label: 'Medical History',
+        shortLabel: 'Hx',
         content: [
           formData.allergies && `Allergies: ${formData.allergies}`,
           formData.chronic_conditions && `Chronic Conditions: ${formData.chronic_conditions}`,
@@ -104,22 +109,26 @@ export function SOAPNoteSummary({
           formData.spo2
         ),
         label: 'Vital Signs',
+        shortLabel: 'VS',
         content: [],
       },
       physicalExam: {
         complete: !!formData.physical_examination?.trim(),
         label: 'Physical Examination',
+        shortLabel: 'PE',
         content: formData.physical_examination ? [formData.physical_examination] : [],
       },
       assessment: {
         complete: !!formData.assessment?.trim() || diagnoses.length > 0,
         label: 'Assessment & Diagnosis',
+        shortLabel: 'Dx',
         content: [],
       },
       plan: {
         // Plan is complete if there are lab orders, prescriptions, or treatment plan exists
         complete: labOrders.length > 0 || prescriptions.length > 0,
         label: 'Plan',
+        shortLabel: 'Rx',
         content: [],
       },
     };
@@ -368,79 +377,78 @@ export function SOAPNoteSummary({
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              SOAP Note Summary
-            </CardTitle>
-            <CardDescription>
-              Review the complete clinical documentation before finalizing
-            </CardDescription>
-          </div>
+      <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <Badge
-              variant={completionStats.percentage === 100 ? 'default' : 'secondary'}
-              className={completionStats.percentage === 100 ? 'bg-green-600' : ''}
-            >
-              {completionStats.complete}/{completionStats.total} sections
-            </Badge>
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <FileText className="h-4 w-4 sm:h-5 sm:w-5" />
+              SOAP Note
+            </CardTitle>
+            <HelpPopover content="Review the complete clinical documentation before finalizing. Copy or print for records." />
           </div>
+          <Badge
+            variant={completionStats.percentage === 100 ? 'default' : 'secondary'}
+            className={`${completionStats.percentage === 100 ? 'bg-green-600' : ''} shrink-0 w-fit self-start sm:self-auto`}
+          >
+            {completionStats.complete}/{completionStats.total} sections
+          </Badge>
         </div>
 
-        {/* Completeness Indicator */}
-        <div className="mt-3 flex flex-wrap gap-2">
-          {Object.entries(sectionStatus).map(([key, status]) => (
-            <Badge
-              key={key}
-              variant="outline"
-              className={
-                status.complete
-                  ? 'border-green-500 text-green-700 dark:text-green-400'
-                  : 'border-amber-500 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950'
-              }
-            >
-              {status.complete ? (
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-              ) : (
-                <AlertCircle className="h-3 w-3 mr-1" />
-              )}
-              {status.label}
-            </Badge>
-          ))}
+        {/* Completeness Indicator - Scrollable on mobile */}
+        <div className="-mx-3 sm:mx-0 px-3 sm:px-0 mt-3 overflow-x-auto">
+          <div className="flex gap-2 pb-2 sm:flex-wrap sm:pb-0">
+            {Object.entries(sectionStatus).map(([key, status]) => (
+              <Badge
+                key={key}
+                variant="outline"
+                className={`shrink-0 text-xs ${
+                  status.complete
+                    ? 'border-green-500 text-green-700 dark:text-green-400'
+                    : 'border-amber-500 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950'
+                }`}
+              >
+                {status.complete ? (
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                ) : (
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                )}
+                <span className="hidden sm:inline">{status.label}</span>
+                <span className="sm:hidden">{status.shortLabel}</span>
+              </Badge>
+            ))}
+          </div>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-6" ref={printRef}>
+      <CardContent className="px-3 sm:px-6 space-y-4 sm:space-y-6" ref={printRef}>
         {/* Header Info */}
-        <div className="bg-muted/50 rounded-lg p-4 space-y-1 text-sm">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span className="flex items-center gap-1">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <strong>{patientName || 'Unknown Patient'}</strong>
+        <div className="bg-muted/50 rounded-lg p-3 sm:p-4 text-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4 sm:flex-wrap">
+            <span className="flex items-center gap-1.5 font-medium">
+              <User className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="truncate">{patientName || 'Unknown Patient'}</span>
               {patientMrn && <span className="text-muted-foreground">({patientMrn})</span>}
             </span>
-            <span className="flex items-center gap-1 text-muted-foreground">
-              <Calendar className="h-4 w-4" />
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Calendar className="h-4 w-4 shrink-0" />
               {encounterDate ? formatDate(encounterDate) : 'Today'}
             </span>
-            <Badge variant="outline">{formData.encounter_type}</Badge>
+            <Badge variant="outline" className="w-fit">{formData.encounter_type}</Badge>
           </div>
           {providerName && (
-            <p className="text-muted-foreground">Provider: {providerName}</p>
+            <p className="text-muted-foreground text-xs sm:text-sm mt-1.5">Provider: {providerName}</p>
           )}
         </div>
 
         <Separator />
 
         {/* SUBJECTIVE */}
-        <div className="space-y-3">
-          <h3 className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-2">
+        <div className="space-y-2 sm:space-y-3">
+          <h3 className="font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-2 text-sm sm:text-base">
             <ClipboardList className="h-4 w-4" />
             SUBJECTIVE
           </h3>
-          <div className="pl-6 space-y-2 text-sm">
+          <div className="pl-4 sm:pl-6 space-y-2 text-sm">
             {formData.chief_complaint ? (
               <div>
                 <span className="font-medium">Chief Complaint:</span>{' '}
@@ -506,12 +514,12 @@ export function SOAPNoteSummary({
         <Separator />
 
         {/* OBJECTIVE */}
-        <div className="space-y-3">
-          <h3 className="font-semibold text-green-600 dark:text-green-400 flex items-center gap-2">
+        <div className="space-y-2 sm:space-y-3">
+          <h3 className="font-semibold text-green-600 dark:text-green-400 flex items-center gap-2 text-sm sm:text-base">
             <Stethoscope className="h-4 w-4" />
             OBJECTIVE
           </h3>
-          <div className="pl-6 space-y-2 text-sm">
+          <div className="pl-4 sm:pl-6 space-y-2 text-sm">
             <div>
               <span className="font-medium">Vitals:</span>{' '}
               {sectionStatus.vitals?.complete ? (
@@ -539,12 +547,12 @@ export function SOAPNoteSummary({
         <Separator />
 
         {/* ASSESSMENT */}
-        <div className="space-y-3">
-          <h3 className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-2">
+        <div className="space-y-2 sm:space-y-3">
+          <h3 className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-2 text-sm sm:text-base">
             <Target className="h-4 w-4" />
             ASSESSMENT
           </h3>
-          <div className="pl-6 space-y-2 text-sm">
+          <div className="pl-4 sm:pl-6 space-y-2 text-sm">
             {formData.assessment && (
               <div>
                 <span className="font-medium">Clinical Assessment:</span>{' '}
@@ -572,12 +580,12 @@ export function SOAPNoteSummary({
         <Separator />
 
         {/* PLAN */}
-        <div className="space-y-3">
-          <h3 className="font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-2">
+        <div className="space-y-2 sm:space-y-3">
+          <h3 className="font-semibold text-purple-600 dark:text-purple-400 flex items-center gap-2 text-sm sm:text-base">
             <ClipboardList className="h-4 w-4" />
             PLAN
           </h3>
-          <div className="pl-6 space-y-3 text-sm">
+          <div className="pl-4 sm:pl-6 space-y-3 text-sm">
             {formData.plan && (
               <div>
                 <span className="font-medium">Treatment Plan:</span>{' '}
@@ -633,14 +641,14 @@ export function SOAPNoteSummary({
         </div>
       </CardContent>
 
-      <CardFooter className="border-t pt-4 flex flex-col sm:flex-row gap-3">
-        <Button variant="outline" onClick={handleCopy} className="flex-1">
+      <CardFooter className="border-t px-3 sm:px-6 py-3 sm:py-4 flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-3">
+        <Button variant="outline" size="sm" onClick={handleCopy} className="w-full sm:w-auto">
           <Copy className="h-4 w-4 mr-2" />
-          Copy Note
+          Copy
         </Button>
-        <Button variant="outline" onClick={handlePrint} className="flex-1">
+        <Button variant="outline" size="sm" onClick={handlePrint} className="w-full sm:w-auto">
           <Printer className="h-4 w-4 mr-2" />
-          Print Note
+          Print
         </Button>
       </CardFooter>
     </Card>
