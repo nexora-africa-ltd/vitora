@@ -671,6 +671,10 @@ class PrescriptionItem(models.Model):
     is_cancelled = models.BooleanField(default=False)
     cancellation_reason = models.TextField(blank=True)
 
+    # Tracking (null=True for existing data, default=timezone.now)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
     def __str__(self):
         return f"{self.drug.generic_name} - {self.quantity} {self.drug.unit}"
 
