@@ -1,20 +1,13 @@
 /**
  * Payment List Component
- * Displays a paginated list of payments
+ * Displays a paginated list of payments with responsive design
  */
 'use client';
 
 import React from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -22,10 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Receipt, Smartphone, CreditCard, Banknote, Building } from 'lucide-react';
 import type { Payment, PaymentMethod, PaymentStatus } from '@/lib/types/billing';
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils/format';
+import { formatCurrency, formatDateTime } from '@/lib/utils/format';
 
 // ============================================================================
 // Types
@@ -61,45 +54,6 @@ const methodIcons: Record<PaymentMethod, React.ReactNode> = {
 };
 
 // ============================================================================
-// Loading Skeleton
-// ============================================================================
-
-function PaymentListSkeleton() {
-  return (
-    <div role="status" aria-label="Loading payments">
-      <div className="space-y-3">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="flex items-center space-x-4">
-            <Skeleton className="h-10 w-28" />
-            <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-24" />
-            <Skeleton className="h-10 w-20" />
-            <Skeleton className="h-10 w-16" />
-          </div>
-        ))}
-      </div>
-      <span className="sr-only">Loading payments...</span>
-    </div>
-  );
-}
-
-// ============================================================================
-// Empty State
-// ============================================================================
-
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <Receipt className="h-12 w-12 text-muted-foreground mb-4" />
-      <h3 className="text-lg font-medium mb-2">No payments found</h3>
-      <p className="text-muted-foreground">
-        Payments will appear here once recorded
-      </p>
-    </div>
-  );
-}
-
-// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -128,15 +82,10 @@ export function PaymentList({
     });
   };
 
-  if (isLoading) {
-    return <PaymentListSkeleton />;
-  }
-
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-        {/* Payment Method filter */}
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 items-stretch sm:items-center">
         <Select value={methodFilter} onValueChange={handleMethodChange}>
           <SelectTrigger className="w-full sm:w-40" role="combobox" aria-label="Payment Method">
             <SelectValue placeholder="Filter by method" />
@@ -151,7 +100,6 @@ export function PaymentList({
           </SelectContent>
         </Select>
 
-        {/* Status filter */}
         <Select value={statusFilter} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-full sm:w-40" role="combobox" aria-label="Status">
             <SelectValue placeholder="Filter by status" />
@@ -166,63 +114,109 @@ export function PaymentList({
         </Select>
       </div>
 
-      {/* Empty state or table */}
-      {payments.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Receipt #</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Invoice</TableHead>
-                <TableHead>Method</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-24">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {payments.map((payment) => (
-                <TableRow key={payment.id}>
-                  <TableCell className="font-medium">
+      {/* Responsive Table */}
+      <ResponsiveTable
+        data={payments}
+        keyExtractor={(payment) => payment.id}
+        isLoading={isLoading}
+        emptyMessage="No payments found. Payments will appear here once recorded."
+        columns={[
+          {
+            key: 'payment_reference',
+            header: 'Receipt #',
+            cell: (payment) => (
+              <span className="font-medium font-mono text-sm">{payment.payment_reference}</span>
+            ),
+          },
+          {
+            key: 'created_at',
+            header: 'Date',
+            cell: (payment) => formatDateTime(payment.created_at),
+            hideOnMobile: true,
+          },
+          {
+            key: 'invoice_number',
+            header: 'Invoice',
+            cell: (payment) => payment.invoice_number || '—',
+            hideOnMobile: true,
+          },
+          {
+            key: 'method',
+            header: 'Method',
+            cell: (payment) => (
+              <div className="flex items-center gap-2">
+                {methodIcons[payment.method]}
+                <span className="capitalize hidden sm:inline">
+                  {payment.method.replace('_', ' ')}
+                </span>
+              </div>
+            ),
+          },
+          {
+            key: 'amount',
+            header: 'Amount',
+            cell: (payment) => (
+              <span className="font-medium">{formatCurrency(parseFloat(payment.amount))}</span>
+            ),
+          },
+          {
+            key: 'status',
+            header: 'Status',
+            cell: (payment) => (
+              <Badge className={`${statusColors[payment.status]} shrink-0 w-fit text-xs`}>
+                {payment.status}
+              </Badge>
+            ),
+          },
+          {
+            key: 'actions',
+            header: '',
+            cell: (payment) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewReceipt(payment);
+                }}
+              >
+                <Receipt className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Receipt</span>
+              </Button>
+            ),
+            className: 'w-24',
+          },
+        ]}
+        mobileCard={(payment) => (
+          <Card className="p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-mono text-sm font-medium truncate">
                     {payment.payment_reference}
-                  </TableCell>
-                  <TableCell>{formatDateTime(payment.created_at)}</TableCell>
-                  <TableCell>{payment.invoice_number}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {methodIcons[payment.method]}
-                      <span className="capitalize">
-                        {payment.method.replace('_', ' ')}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {formatCurrency(parseFloat(payment.amount))}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={statusColors[payment.status]}>
-                      {payment.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onViewReceipt(payment)}
-                    >
-                      <Receipt className="h-4 w-4 mr-1" />
-                      Receipt
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+                  </span>
+                  <Badge className={`${statusColors[payment.status]} shrink-0 text-xs`}>
+                    {payment.status}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground truncate">
+                  {payment.invoice_number || 'No invoice'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatDateTime(payment.created_at)}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="flex items-center gap-1 text-muted-foreground mb-1">
+                  {methodIcons[payment.method]}
+                </div>
+                <p className="font-semibold">{formatCurrency(parseFloat(payment.amount))}</p>
+              </div>
+            </div>
+          </Card>
+        )}
+        onRowClick={onViewReceipt}
+      />
     </div>
   );
 }
