@@ -261,12 +261,12 @@ export function ConsultationQueueContainer({
     return (
       <div role="status" aria-label="Loading consultation queue">
         <Card>
-          <CardContent className="p-6 space-y-4">
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-64" />
-            <div className="space-y-3 mt-6">
+          <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+            <Skeleton className="h-6 sm:h-8 w-40 sm:w-48" />
+            <Skeleton className="h-4 w-52 sm:w-64" />
+            <div className="space-y-2 sm:space-y-3 mt-4 sm:mt-6">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-24 w-full" />
+                <Skeleton key={i} className="h-20 sm:h-24 w-full rounded-lg" />
               ))}
             </div>
           </CardContent>
@@ -278,21 +278,22 @@ export function ConsultationQueueContainer({
   // Error state
   if (isError) {
     return (
-      <Card className="border-destructive">
-        <CardContent className="p-6 text-center">
-          <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
-          <h3 className="text-lg font-semibold text-destructive mb-2">
+      <Card className="border-destructive/50">
+        <CardContent className="p-4 sm:p-6 text-center">
+          <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-destructive mb-3 sm:mb-4" />
+          <h3 className="text-base sm:text-lg font-semibold text-destructive mb-2">
             Failed to load consultation queue
           </h3>
-          <p className="text-sm text-muted-foreground mb-4">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-4 px-2">
             {error instanceof Error ? error.message : 'An error occurred'}
           </p>
-          <button
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleRefresh}
-            className="text-sm text-primary underline hover:no-underline"
           >
             Try again
-          </button>
+          </Button>
         </CardContent>
       </Card>
     );
@@ -302,17 +303,18 @@ export function ConsultationQueueContainer({
   if (!queueData?.results.length) {
     return (
       <Card>
-        <CardContent className="p-12 text-center">
-          <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No patients in queue</h3>
-          <p className="text-sm text-muted-foreground mb-6">
+        <CardContent className="p-6 sm:p-12 text-center">
+          <Users className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
+          <h3 className="text-base sm:text-lg font-semibold mb-2">No patients in queue</h3>
+          <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 px-2">
             Patients will appear here once they complete triage or are registered
             for encounters that don&apos;t require triage.
           </p>
-          <Button asChild>
+          <Button asChild size="sm" className="sm:size-default">
             <Link href="/patients">
               <UserPlus className="h-4 w-4 mr-2" />
-              Select from Patient List
+              <span className="hidden sm:inline">Select from Patient List</span>
+              <span className="sm:hidden">Patient List</span>
             </Link>
           </Button>
         </CardContent>
