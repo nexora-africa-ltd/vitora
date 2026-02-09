@@ -5,14 +5,14 @@
 'use client';
 
 import React from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useParams } from 'next/navigation';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { PageHeader } from '@/components/shared/page-header';
 import { ReceiptView } from '@/components/billing/ReceiptView';
 import { usePaymentReceipt } from '@/lib/hooks/billing';
 
 export default function ReceiptPage() {
-  const router = useRouter();
   const params = useParams();
   const receiptId = Number(params.id);
 
@@ -28,28 +28,28 @@ export default function ReceiptPage() {
 
   if (!receipt) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-semibold">Receipt not found</h2>
-        <p className="text-muted-foreground mt-2">
-          The receipt you&apos;re looking for doesn&apos;t exist.
-        </p>
-        <Button className="mt-4" onClick={() => router.back()}>
-          Go Back
-        </Button>
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title="Receipt Not Found"
+          helpContent="The requested receipt could not be found."
+        />
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            The receipt you&apos;re looking for doesn&apos;t exist or has been removed.
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4 print:hidden">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Receipt {receipt.receipt_number}</h1>
-          <p className="text-muted-foreground">Payment receipt details</p>
-        </div>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="print:hidden">
+        <PageHeader
+          title={`Receipt ${receipt.receipt_number}`}
+          helpContent="View payment receipt details. Print or download a copy for the patient."
+        />
       </div>
 
       <ReceiptView receipt={receipt} isLoading={false} />

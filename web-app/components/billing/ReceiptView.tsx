@@ -149,14 +149,14 @@ export function ReceiptView({
     <div className="space-y-4">
       {/* Action Buttons - conditionally rendered */}
       {showActionButtons && (
-        <div className="flex justify-end gap-2 print:hidden">
-          <Button variant="outline" onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-2" />
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end print:hidden">
+          <Button variant="outline" onClick={handlePrint} className="gap-2">
+            <Printer className="h-4 w-4" />
             Print
           </Button>
           {onDownload && (
-            <Button variant="outline" onClick={onDownload}>
-              <Download className="h-4 w-4 mr-2" />
+            <Button variant="outline" onClick={onDownload} className="gap-2">
+              <Download className="h-4 w-4" />
               Download PDF
             </Button>
           )}
@@ -165,14 +165,14 @@ export function ReceiptView({
 
       {/* Receipt Content */}
       <Card ref={printRef} className="max-w-lg mx-auto print:shadow-none print:border-none">
-        <CardHeader className="text-center pb-2">
-          <h2 className="text-xl font-bold">{displayFacilityName}</h2>
-          <p className="text-sm text-muted-foreground">{displayFacilityAddress}</p>
-          <p className="text-sm text-muted-foreground">{displayFacilityPhone}</p>
-          <Separator className="my-4" />
-          <h3 className="text-lg font-semibold">PAYMENT RECEIPT</h3>
+        <CardHeader className="text-center pb-2 px-4 sm:px-6">
+          <h2 className="text-lg sm:text-xl font-bold">{displayFacilityName}</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">{displayFacilityAddress}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground">{displayFacilityPhone}</p>
+          <Separator className="my-3 sm:my-4" />
+          <h3 className="text-base sm:text-lg font-semibold">PAYMENT RECEIPT</h3>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-4 sm:px-6">
           {receipt.is_voided && (
             <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
               <div className="font-medium text-destructive">Voided</div>
@@ -240,51 +240,53 @@ export function ReceiptView({
           {receipt.line_items && receipt.line_items.length > 0 ? (
             <div className="space-y-2">
               <h4 className="text-sm font-medium">Services</h4>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-xs">Description</TableHead>
-                    <TableHead className="text-xs text-center w-16">Qty</TableHead>
-                    <TableHead className="text-xs text-right w-24">Price</TableHead>
-                    <TableHead className="text-xs text-right w-24">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {receipt.line_items.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="text-sm py-2">{item.description}</TableCell>
-                      <TableCell className="text-sm text-center py-2">{item.quantity}</TableCell>
-                      <TableCell className="text-sm text-right py-2">
-                        {parseFloat(item.unit_price).toLocaleString('en-KE', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+              <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                <Table className="min-w-[320px]">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Description</TableHead>
+                      <TableHead className="text-xs text-center w-12 sm:w-16">Qty</TableHead>
+                      <TableHead className="text-xs text-right w-20 sm:w-24">Price</TableHead>
+                      <TableHead className="text-xs text-right w-20 sm:w-24">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {receipt.line_items.map((item, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="text-xs sm:text-sm py-2">{item.description}</TableCell>
+                        <TableCell className="text-xs sm:text-sm text-center py-2">{item.quantity}</TableCell>
+                        <TableCell className="text-xs sm:text-sm text-right py-2">
+                          {parseFloat(item.unit_price).toLocaleString('en-KE', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </TableCell>
+                        <TableCell className="text-xs sm:text-sm text-right py-2 font-medium">
+                          {parseFloat(item.line_total).toLocaleString('en-KE', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-xs sm:text-sm font-semibold">
+                        Total
                       </TableCell>
-                      <TableCell className="text-sm text-right py-2 font-medium">
-                        {parseFloat(item.line_total).toLocaleString('en-KE', {
+                      <TableCell className="text-right font-bold text-sm" data-testid="receipt-amount">
+                        KES {amount.toLocaleString('en-KE', {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-                <TableFooter>
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-sm font-semibold">
-                      Total
-                    </TableCell>
-                    <TableCell className="text-right font-bold" data-testid="receipt-amount">
-                      KES {amount.toLocaleString('en-KE', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </TableCell>
-                  </TableRow>
-                </TableFooter>
-              </Table>
+                  </TableFooter>
+                </Table>
+              </div>
               <div
-                className="text-sm text-muted-foreground italic text-center pt-2"
+                className="text-xs sm:text-sm text-muted-foreground italic text-center pt-2"
                 data-testid="amount-in-words"
               >
                 {amountInWords}
@@ -294,11 +296,11 @@ export function ReceiptView({
             /* Fallback: Simple amount display when no line items */
             <div className="text-center space-y-2">
               <div className="text-sm text-muted-foreground">Amount Paid</div>
-              <div className="text-3xl font-bold" data-testid="receipt-amount">
+              <div className="text-2xl sm:text-3xl font-bold" data-testid="receipt-amount">
                 {amountDisplay}
               </div>
               <div
-                className="text-sm text-muted-foreground italic"
+                className="text-xs sm:text-sm text-muted-foreground italic"
                 data-testid="amount-in-words"
               >
                 {amountInWords}
