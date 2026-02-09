@@ -188,25 +188,22 @@ export function InvoiceDetail({
   const balance = total - paid;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight" data-testid="invoice-number">
-            {invoice.invoice_number}
-          </h2>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Invoice Summary Bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
+        <div className="flex flex-col gap-1 min-w-0" data-testid="invoice-number">
           {(invoice.patient_name || invoice.patient_mrn) && (
-            <p className="text-sm text-muted-foreground mt-1">
-              {invoice.patient_name ? invoice.patient_name : ''}
+            <p className="text-sm font-medium truncate">
+              {invoice.patient_name || ''}
               {invoice.patient_name && invoice.patient_mrn ? ' • ' : ''}
-              {invoice.patient_mrn ? invoice.patient_mrn : ''}
+              <span className="text-muted-foreground">{invoice.patient_mrn || ''}</span>
             </p>
           )}
-          <p className="text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Created {formatDate(invoice.invoice_date)}
           </p>
         </div>
-        <Badge className={statusColors[invoice.status]} data-testid="invoice-status">
+        <Badge className={`${statusColors[invoice.status]} shrink-0`} data-testid="invoice-status">
           {invoice.status}
         </Badge>
       </div>
@@ -407,26 +404,27 @@ export function InvoiceDetail({
 
       {/* Line Items */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Line Items</CardTitle>
+        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="text-base sm:text-lg">Line Items</CardTitle>
           {canEdit && onAddItem && (
-            <Button variant="outline" size="sm" onClick={() => onAddItem(invoice)}>
+            <Button variant="outline" size="sm" onClick={() => onAddItem(invoice)} className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-1" />
               Add Item
             </Button>
           )}
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Service</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
-                <TableHead className="text-right">Unit Price</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                {canEdit && onRemoveItem && <TableHead className="w-12" />}
-              </TableRow>
-            </TableHeader>
+        <CardContent className="px-0 sm:px-6">
+          <div className="overflow-x-auto -mx-0">
+            <Table className="min-w-[500px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Service</TableHead>
+                  <TableHead className="text-right w-16">Qty</TableHead>
+                  <TableHead className="text-right w-28">Unit Price</TableHead>
+                  <TableHead className="text-right w-28">Amount</TableHead>
+                  {canEdit && onRemoveItem && <TableHead className="w-12" />}
+                </TableRow>
+              </TableHeader>
             <TableBody>
               {(invoice.items || []).map((item) => (
                 <TableRow key={item.id}>
@@ -496,11 +494,12 @@ export function InvoiceDetail({
               </TableRow>
             </TableFooter>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex flex-wrap gap-2 justify-end">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
         {/* Print Invoice */}
         <Button
           variant="outline"

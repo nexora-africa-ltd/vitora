@@ -6,8 +6,9 @@
 
 import React, { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Undo2 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/shared/page-header';
 import { InvoiceDetail } from '@/components/billing/InvoiceDetail';
 import { PaymentForm } from '@/components/billing/PaymentForm';
 import { AddInvoiceItemDialog } from '@/components/billing/AddInvoiceItemDialog';
@@ -281,19 +282,17 @@ export default function InvoiceDetailPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          <Undo2 className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Invoice {invoice?.invoice_number || ''}
-          </h1>
-          <p className="text-muted-foreground">View and manage invoice details</p>
-        </div>
-      </div>
+    <div className="space-y-4 sm:space-y-6">
+      <PageHeader
+        title={`Invoice ${invoice?.invoice_number || ''}`}
+        helpContent="View and manage invoice details. Record payments, add or remove line items, apply discounts, and submit SHA claims from this page."
+        actions={
+          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+        }
+      />
 
       <InvoiceDetail
         invoice={invoice || null}
