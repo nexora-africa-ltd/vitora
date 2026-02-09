@@ -12,10 +12,9 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, BarChart3, Package, Clock, Activity, FileText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { BarChart3, Package, Clock, Activity } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PageHeader } from '@/components/shared/page-header';
 import { StockSummaryReport } from '@/components/pharmacy/reports/stock-summary-report';
 import { ExpiryReport } from '@/components/pharmacy/reports/expiry-report';
 import { DispensingReport } from '@/components/pharmacy/reports/dispensing-report';
@@ -25,23 +24,11 @@ export default function PharmacyReportsPage() {
   const [activeTab, setActiveTab] = useState('stock-summary');
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/pharmacy">
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Pharmacy Reports</h1>
-            <p className="text-muted-foreground">
-              View and export inventory and dispensing reports
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-4 sm:space-y-6">
+      <PageHeader
+        title="Pharmacy Reports"
+        helpContent="View and export inventory and dispensing reports. Track stock levels, expiring batches, and movement history."
+      />
 
       {/* Reports Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">

@@ -21,7 +21,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
@@ -31,14 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { useStockMovementReport } from '@/lib/hooks/use-pharmacy';
 import { useToast } from '@/lib/hooks/use-toast';
 import { cn } from '@/lib/utils/cn';
@@ -194,16 +188,12 @@ export function StockMovementReport() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              Stock Movement Report
-            </CardTitle>
-            <CardDescription>
-              Inventory movements from {startDate} to {endDate}
-            </CardDescription>
-          </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <BarChart3 className="h-5 w-5" />
+            Stock Movement
+            <HelpPopover content="Track all inventory movements including stock received, dispensed, and adjustments for the selected period." />
+          </CardTitle>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="h-4 w-4 mr-1" />
@@ -307,52 +297,81 @@ export function StockMovementReport() {
         </div>
 
         {/* Data Table */}
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Drug Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Quantity</TableHead>
-                <TableHead>Reference</TableHead>
-                <TableHead>User</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sortedMovements.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No stock movements found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                sortedMovements.map((movement: StockMovement, index: number) => (
-                  <TableRow key={`${movement.date}-${movement.drug_name}-${index}`}>
-                    <TableCell>{movement.date}</TableCell>
-                    <TableCell className="font-medium">{movement.drug_name}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getMovementIcon(movement.movement_type)}
-                        {getMovementBadge(movement.movement_type)}
-                      </div>
-                    </TableCell>
-                    <TableCell className={cn(
-                      'text-right font-medium',
-                      movement.quantity > 0 ? 'text-green-600' : 'text-red-600'
-                    )}>
-                      {movement.quantity > 0 ? '+' : ''}{movement.quantity}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                      {movement.reference}
-                    </TableCell>
-                    <TableCell>{movement.user}</TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <ResponsiveTable
+          data={sortedMovements}
+          keyExtractor={(movement) => `${movement.date}-${movement.drug_name}-${movement.reference}-${movement.quantity}`}
+          emptyMessage="No stock movements found"
+          columns={[
+            {
+              key: 'date',
+              header: 'Date',
+              hideOnMobile: true,
+            },
+            {
+              key: 'drug_name',
+              header: 'Drug Name',
+              cell: (movement) => <span className="font-medium">{movement.drug_name}</span>,
+            },
+            {
+              key: 'movement_type',
+              header: 'Type',
+              cell: (movement) => (
+                <div className="flex items-center gap-2">
+                  {getMovementIcon(movement.movement_type)}
+                  {getMovementBadge(movement.movement_type)}
+                </div>
+              ),
+            },
+            {
+              key: 'quantity',
+              header: 'Quantity',
+              className: 'text-right',
+              cell: (movement) => (
+                <span className={cn('font-medium', movement.quantity > 0 ? 'text-green-600' : 'text-red-600')}>
+                  {movement.quantity > 0 ? '+' : ''}{movement.quantity}
+                </span>
+              ),
+            },
+            {
+              key: 'reference',
+              header: 'Reference',
+              cell: (movement) => (
+                <span className="text-sm text-muted-foreground max-w-[200px] truncate block">
+                  {movement.reference}
+                </span>
+              ),
+              hideOnMobile: true,
+            },
+            {
+              key: 'user',
+              header: 'User',
+              hideOnMobile: true,
+            },
+          ]}
+          mobileCard={(movement) => (
+            <div className="rounded-lg border p-4 space-y-2">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-medium">{movement.drug_name}</p>
+                  <p className="text-xs text-muted-foreground">{movement.date}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  {getMovementIcon(movement.movement_type)}
+                  {getMovementBadge(movement.movement_type)}
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground truncate max-w-[60%]">
+                  {movement.reference}
+                </span>
+                <span className={cn('font-medium', movement.quantity > 0 ? 'text-green-600' : 'text-red-600')}>
+                  {movement.quantity > 0 ? '+' : ''}{movement.quantity}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">By: {movement.user}</p>
+            </div>
+          )}
+        />
       </CardContent>
     </Card>
   );
