@@ -6,7 +6,6 @@
 
 import React, { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/page-header';
 import { InvoiceDetail } from '@/components/billing/InvoiceDetail';
@@ -286,12 +285,6 @@ export default function InvoiceDetailPage() {
       <PageHeader
         title={`Invoice ${invoice?.invoice_number || ''}`}
         helpContent="View and manage invoice details. Record payments, add or remove line items, apply discounts, and submit SHA claims from this page."
-        actions={
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-        }
       />
 
       <InvoiceDetail

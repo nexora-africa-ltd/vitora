@@ -203,7 +203,7 @@ export function InvoiceDetail({
             Created {formatDate(invoice.invoice_date)}
           </p>
         </div>
-        <Badge className={`${statusColors[invoice.status]} shrink-0`} data-testid="invoice-status">
+        <Badge className={`${statusColors[invoice.status]} shrink-0 w-fit self-start sm:self-auto`} data-testid="invoice-status">
           {invoice.status}
         </Badge>
       </div>

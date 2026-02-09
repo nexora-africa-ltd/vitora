@@ -8,7 +8,6 @@ import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -19,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { formatCurrency } from '@/lib/utils/format';
 import type { Invoice, ApplyDiscountData, DiscountType } from '@/lib/types/billing';
 
@@ -71,10 +71,10 @@ export function ApplyDiscountDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Apply Discount</DialogTitle>
-          <DialogDescription>
-            Apply a discount to this invoice
-          </DialogDescription>
+          <div className="flex items-center gap-2">
+            <DialogTitle>Apply Discount</DialogTitle>
+            <HelpPopover content="Apply a percentage or fixed amount discount to this invoice. The discount will be reflected in the invoice total." />
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">

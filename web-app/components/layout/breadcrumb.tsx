@@ -51,13 +51,13 @@ export function Breadcrumb() {
 
   return (
     <nav aria-label="Breadcrumb" className="min-w-0 max-w-full">
-      {/* Mobile: show only the current page */}
-      <div className="sm:hidden text-sm font-medium text-foreground truncate">
+      {/* Mobile & Medium: show only the current page */}
+      <div className="lg:hidden text-sm font-medium text-foreground truncate">
         {currentLabel}
       </div>
 
-      {/* Desktop: show full breadcrumb */}
-      <div className="hidden sm:flex items-center text-sm min-w-0 max-w-full overflow-x-auto whitespace-nowrap">
+      {/* Large screens: show full breadcrumb */}
+      <div className="hidden lg:flex items-center text-sm min-w-0 max-w-full overflow-x-auto whitespace-nowrap">
         <Link
           href="/"
           className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
