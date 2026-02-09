@@ -2,9 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import {
-  ArrowLeft,
   Save,
   SendHorizontal,
   Clock,
@@ -19,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { PageHeader } from '@/components/shared/page-header';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -344,7 +343,7 @@ export default function NewEncounterPage() {
   }, [draft.isDirty]);
 
   return (
-    <div className="container mx-auto py-6 max-w-5xl">
+    <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 max-w-5xl space-y-4 sm:space-y-6">
       {/* Triage Redirect Modal */}
       <Dialog open={showTriageModal} onOpenChange={setShowTriageModal}>
         <DialogContent>
@@ -381,41 +380,33 @@ export default function NewEncounterPage() {
       </Dialog>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/encounters">
-              <ArrowLeft className="h-5 w-5" />
-              <span className="sr-only">Back to Encounters</span>
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">New Encounter</h1>
-            <p className="text-muted-foreground">Create a new patient encounter</p>
-          </div>
-        </div>
-
-        {draft.isDirty && (
-          <Badge variant="secondary" className="gap-1">
-            <Clock className="h-3 w-3" />
-            {draft.lastSaved ? 'Draft saved' : 'Unsaved changes'}
-          </Badge>
-        )}
-      </div>
+      <PageHeader
+        title="New Encounter"
+        helpContent="Create a new patient encounter. Vital signs are recorded through Triage after creation."
+        actions={
+          draft.isDirty ? (
+            <Badge variant="secondary" className="gap-1 shrink-0">
+              <Clock className="h-3 w-3" />
+              <span className="hidden sm:inline">{draft.lastSaved ? 'Draft saved' : 'Unsaved changes'}</span>
+              <span className="sm:hidden">{draft.lastSaved ? 'Saved' : 'Unsaved'}</span>
+            </Badge>
+          ) : null
+        }
+      />
 
       {/* Draft Recovery Banner */}
       {draft.hasDraft && (
-        <Alert className="mb-4 border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
+        <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
           <RotateCcw className="h-4 w-4 text-blue-600" />
           <AlertTitle className="text-blue-800 dark:text-blue-200">Unsaved Draft Found</AlertTitle>
           <AlertDescription className="text-blue-700 dark:text-blue-300">
             You have an unsaved draft from a previous session. Would you like to recover it?
-            <div className="flex gap-2 mt-3">
-              <Button size="sm" onClick={draft.recoverDraft}>
+            <div className="flex flex-col gap-2 mt-3 sm:flex-row">
+              <Button size="sm" onClick={draft.recoverDraft} className="w-full sm:w-auto">
                 <RotateCcw className="h-3.5 w-3.5 mr-1" />
                 Recover Draft
               </Button>
-              <Button size="sm" variant="outline" onClick={draft.dismissDraft}>
+              <Button size="sm" variant="outline" onClick={draft.dismissDraft} className="w-full sm:w-auto">
                 <X className="h-3.5 w-3.5 mr-1" />
                 Discard
               </Button>
@@ -425,26 +416,26 @@ export default function NewEncounterPage() {
       )}
 
       {/* Vitals Info Banner */}
-      <Alert className="mb-6">
+      <Alert>
         <Activity className="h-4 w-4" />
-        <AlertTitle>Vital Signs Recording</AlertTitle>
-        <AlertDescription>
+        <AlertTitle className="text-sm sm:text-base">Vital Signs Recording</AlertTitle>
+        <AlertDescription className="text-xs sm:text-sm">
           Vital signs are recorded through the <strong>Triage module</strong> to ensure proper patient prioritization.
           After creating this encounter, you&apos;ll be prompted to record vitals.
         </AlertDescription>
       </Alert>
 
       {/* Main Form */}
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Patient Selection */}
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <User className="h-5 w-5" />
+          <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <User className="h-4 w-4 sm:h-5 sm:w-5" />
               Patient
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-3 sm:px-6">
             <PatientSelector
               value={formData.patient}
               selectedPatient={selectedPatient}
@@ -456,13 +447,13 @@ export default function NewEncounterPage() {
 
         {/* Encounter Details */}
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Stethoscope className="h-5 w-5" />
+          <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <Stethoscope className="h-4 w-4 sm:h-5 sm:w-5" />
               Encounter Details
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="px-3 sm:px-6 space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
               {/* Encounter Type */}
               <div className="space-y-2">
@@ -621,30 +612,34 @@ export default function NewEncounterPage() {
       </div>
 
       {/* Bottom Action Bar */}
-      <div className="sticky bottom-0 mt-6 -mx-4 px-4 py-4 bg-background/95 backdrop-blur border-t">
-        <div className="flex gap-3 justify-end">
+      <div className="sticky bottom-0 -mx-3 sm:-mx-4 px-3 sm:px-4 py-3 sm:py-4 bg-background/95 backdrop-blur border-t">
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-3 sm:justify-end">
           <Button
             variant="outline"
             onClick={handleSaveDraft}
             disabled={createEncounter.isPending}
+            className="w-full sm:w-auto"
           >
             {createEncounter.isPending ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <Save className="h-4 w-4 mr-2" />
             )}
-            Save Draft
+            <span className="sm:hidden">Draft</span>
+            <span className="hidden sm:inline">Save Draft</span>
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={createEncounter.isPending}
+            className="w-full sm:w-auto"
           >
             {createEncounter.isPending ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <SendHorizontal className="h-4 w-4 mr-2" />
             )}
-            Create Encounter
+            <span className="sm:hidden">Create</span>
+            <span className="hidden sm:inline">Create Encounter</span>
           </Button>
         </div>
       </div>
