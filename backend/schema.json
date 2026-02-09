@@ -9088,6 +9088,34 @@ paths:
               schema:
                 $ref: '#/components/schemas/Encounter'
           description: ''
+  /api/encounters/{id}/clinical_snapshot/:
+    get:
+      operationId: api_encounters_clinical_snapshot_retrieve
+      description: |-
+        Return a clinical snapshot for the encounter's patient.
+
+        This reuses the check-in clinical snapshot generator to avoid duplicating
+        clinical summary business logic.
+
+        GET /api/encounters/{id}/clinical_snapshot/
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Encounter.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalSnapshot'
+          description: ''
   /api/encounters/{id}/edit_chief_complaint/:
     post:
       operationId: api_encounters_edit_chief_complaint_create
@@ -28702,6 +28730,23 @@ components:
       - quantity_dispensed
       - total_price
       - unit_price
+    DispositionEnum:
+      enum:
+      - ADVICE_ONLY
+      - TREATED_DISCHARGED
+      - REFERRED
+      - ADMITTED
+      - FOLLOW_UP_SCHEDULED
+      - LEFT_AMA
+      type: string
+      description: |-
+        * `` - Not Set
+        * `ADVICE_ONLY` - Advice Only
+        * `TREATED_DISCHARGED` - Treated & Discharged
+        * `REFERRED` - Referred to Specialist
+        * `ADMITTED` - Admitted to Inpatient
+        * `FOLLOW_UP_SCHEDULED` - Follow-up Scheduled
+        * `LEFT_AMA` - Left Against Medical Advice
     Drug:
       type: object
       description: Serializer for Drug model.
@@ -29288,6 +29333,22 @@ components:
           type: string
           readOnly: true
           description: Reason for cancellation (if status is CANCELLED)
+        disposition:
+          allOf:
+          - $ref: '#/components/schemas/DispositionEnum'
+          description: |-
+            Encounter outcome/disposition
+
+            * `` - Not Set
+            * `ADVICE_ONLY` - Advice Only
+            * `TREATED_DISCHARGED` - Treated & Discharged
+            * `REFERRED` - Referred to Specialist
+            * `ADMITTED` - Admitted to Inpatient
+            * `FOLLOW_UP_SCHEDULED` - Follow-up Scheduled
+            * `LEFT_AMA` - Left Against Medical Advice
+        disposition_notes:
+          type: string
+          description: Required for ADVICE_ONLY and LEFT_AMA dispositions
         triage_requirement:
           allOf:
           - $ref: '#/components/schemas/TriageRequirementEnum'
@@ -29622,6 +29683,20 @@ components:
           readOnly: true
           nullable: true
           description: Timestamp when the encounter was finalized/completed
+        disposition:
+          allOf:
+          - $ref: '#/components/schemas/DispositionEnum'
+          readOnly: true
+          description: |-
+            Encounter outcome/disposition
+
+            * `` - Not Set
+            * `ADVICE_ONLY` - Advice Only
+            * `TREATED_DISCHARGED` - Treated & Discharged
+            * `REFERRED` - Referred to Specialist
+            * `ADMITTED` - Admitted to Inpatient
+            * `FOLLOW_UP_SCHEDULED` - Follow-up Scheduled
+            * `LEFT_AMA` - Left Against Medical Advice
         clinic_visit_id:
           type: integer
           nullable: true
@@ -29662,6 +29737,7 @@ components:
       - clinic_type
       - clinic_visit_id
       - created_at
+      - disposition
       - encounter_date
       - encounter_type
       - finalized_at
@@ -29804,6 +29880,22 @@ components:
         clinical_template_data:
           nullable: true
           description: Structured data collected using the clinical template (JSON)
+        disposition:
+          allOf:
+          - $ref: '#/components/schemas/DispositionEnum'
+          description: |-
+            Encounter outcome/disposition
+
+            * `` - Not Set
+            * `ADVICE_ONLY` - Advice Only
+            * `TREATED_DISCHARGED` - Treated & Discharged
+            * `REFERRED` - Referred to Specialist
+            * `ADMITTED` - Admitted to Inpatient
+            * `FOLLOW_UP_SCHEDULED` - Follow-up Scheduled
+            * `LEFT_AMA` - Left Against Medical Advice
+        disposition_notes:
+          type: string
+          description: Required for ADVICE_ONLY and LEFT_AMA dispositions
         triage_bypass_reason:
           allOf:
           - $ref: '#/components/schemas/TriageBypassReasonEnum'
@@ -35738,6 +35830,22 @@ components:
         clinical_template_data:
           nullable: true
           description: Structured data collected using the clinical template (JSON)
+        disposition:
+          allOf:
+          - $ref: '#/components/schemas/DispositionEnum'
+          description: |-
+            Encounter outcome/disposition
+
+            * `` - Not Set
+            * `ADVICE_ONLY` - Advice Only
+            * `TREATED_DISCHARGED` - Treated & Discharged
+            * `REFERRED` - Referred to Specialist
+            * `ADMITTED` - Admitted to Inpatient
+            * `FOLLOW_UP_SCHEDULED` - Follow-up Scheduled
+            * `LEFT_AMA` - Left Against Medical Advice
+        disposition_notes:
+          type: string
+          description: Required for ADVICE_ONLY and LEFT_AMA dispositions
         triage_bypass_reason:
           allOf:
           - $ref: '#/components/schemas/TriageBypassReasonEnum'

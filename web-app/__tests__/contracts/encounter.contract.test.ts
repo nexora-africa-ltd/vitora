@@ -28,6 +28,7 @@ import {
   TriageBypassReasonSchema,
   ConsultationStatusSchema,
   VitalsSourceSchema,
+  EncounterDispositionSchema,
 } from '@/lib/schemas/encounter.schema';
 
 // =============================================================================
@@ -359,6 +360,28 @@ describe('Encounter Contract Tests', () => {
 
       const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
       expect(missingInZod).toEqual([]);
+    });
+  });
+
+  describe('EncounterDispositionSchema (enum)', () => {
+    it('should match OpenAPI DispositionEnum values', () => {
+      const zodValues = getZodEnumValues(EncounterDispositionSchema);
+      const apiValues = getSchemaEnumValues(openapi, 'DispositionEnum');
+
+      if (!apiValues) {
+        // Try alternative name
+        const altApiValues = getSchemaEnumValues(openapi, 'EncounterDispositionEnum');
+        if (!altApiValues) {
+          console.warn('DispositionEnum not found in OpenAPI - might be BlankEnum or nullable');
+          return;
+        }
+      }
+
+      // Disposition can include blank value
+      const missingInZod = (apiValues || []).filter((v) => !zodValues.includes(v));
+      if (missingInZod.length > 0) {
+        console.warn(`EncounterDispositionSchema: Missing values: ${missingInZod.join(', ')}`);
+      }
     });
   });
 

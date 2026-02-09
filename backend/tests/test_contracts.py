@@ -188,7 +188,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "clinic_visit_id", "clinic_name", "clinic_type",
             "linked_encounter", "visit_reason",
             "created_by", "created_by_name",
-            "created_at", "updated_at",
+            "created_at", "updated_at", "disposition", "disposition_notes",
         }),
     ),
     (
@@ -198,7 +198,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "encounter_type", "encounter_date", "chief_complaint",
             "has_critical_vitals", "status", "finalized_at",
             "clinic_visit_id", "clinic_name", "clinic_type",
-            "visit_reason", "created_at",
+            "visit_reason", "created_at", "disposition",
         }),
     ),
     (
