@@ -481,66 +481,21 @@ export interface TriageQueueListParams {
 }
 
 // =============================================================================
-// TRIAGE REPORTS
+// TRIAGE REPORTS (derived from Zod schemas)
 // =============================================================================
 
-export interface WaitTimeStats {
-  category: TriageCategory;
-  count: number;
-  target_minutes: number;
-  avg_wait_minutes: number;
-  target_met_percentage: number;
-}
+export type {
+  WaitTimeStats,
+  VolumeByCategory,
+  VolumeByArea,
+  LWBSStats,
+  TriageReportSummary,
+  WaitTimeStatsResponse,
+  VolumeReportResponse,
+  PaginatedTriageAssessment,
+  PaginatedTriageQueue,
+  PaginatedWaitingQueue,
+} from '@/lib/schemas/triage.schema';
 
-export interface VolumeByCategory {
-  category: TriageCategory;
-  count: number;
-  percentage: number;
-}
-
-export interface VolumeByArea {
-  area: AssignedArea;
-  area_label: string;
-  count: number;
-}
-
-export interface LWBSStats {
-  total_lwbs: number;
-  lwbs_rate: number;
-  avg_wait_before_lwbs_minutes: number;
-  by_category: Array<{
-    category: TriageCategory;
-    count: number;
-    rate: number;
-  }>;
-}
-
-export interface TriageReportSummary {
-  date_range: { start: string; end: string };
-  total_assessments: number;
-  avg_wait_time_minutes: number;
-  median_wait_time_minutes: number;
-  target_met_percentage: number;
-  wait_times_by_category: WaitTimeStats[];
-  volume_by_category: VolumeByCategory[];
-  volume_by_area: VolumeByArea[];
-  lwbs_stats: LWBSStats;
-}
-
-// =============================================================================
-// PAGINATED RESPONSES
-// =============================================================================
-
-export interface PaginatedTriageAssessments {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: TriageAssessment[];
-}
-
-export interface PaginatedTriageQueue {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: TriageQueueEntry[];
-}
+// Legacy alias for backwards compatibility
+export type PaginatedTriageAssessments = import('@/lib/schemas/triage.schema').PaginatedTriageAssessment;
