@@ -472,6 +472,13 @@ export const PaginatedICD10CodeSchema = z.object({
   results: z.array(ICD10CodeSchema),
 });
 
+export const PaginatedDiagnosisSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(DiagnosisSchema),
+});
+
 export const PaginatedPreTriageQueueSchema = z.object({
   count: z.number(),
   next: z.string().nullable(),

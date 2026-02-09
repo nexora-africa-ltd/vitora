@@ -66,7 +66,7 @@ export function ClinicalSnapshotBanner({ encounterId }: { encounterId: number })
 
   const cardTone = isSevereAllergy
     ? 'border-destructive/30 bg-destructive/5'
-    : 'border-primary/20';
+    : 'border-border';
 
   return (
     <Card className={cn('border-2', cardTone)}>
