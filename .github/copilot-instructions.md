@@ -835,6 +835,238 @@ export const patientsApi = {
 
 ---
 
+## 🎨 UI/UX Patterns & Responsive Design
+
+Follow these established patterns when creating or modifying frontend components.
+
+### Responsive Breakpoints
+
+Use Tailwind's standard breakpoints consistently:
+
+| Breakpoint | Size | Usage |
+|------------|------|-------|
+| `sm` | 640px | Small tablets, large phones |
+| `md` | 768px | Tablets |
+| `lg` | 1024px | Small laptops, tablets landscape |
+| `xl` | 1280px | Desktops |
+| `2xl` | 1536px | Large desktops |
+
+### Page Header Pattern
+
+Always use the `PageHeader` component for page titles instead of custom `<h1>` tags:
+
+```tsx
+import { PageHeader } from '@/components/shared/page-header';
+
+// Basic usage
+<PageHeader title="Invoices" />
+
+// With help tooltip (preferred for detail pages)
+<PageHeader
+  title={`Invoice ${invoice?.invoice_number || ''}`}
+  helpContent="View and manage invoice details. Record payments, add items, and submit SHA claims."
+/>
+
+// With actions
+<PageHeader
+  title="Patients"
+  helpContent="Search and manage patient records."
+  actions={<Button>Add Patient</Button>}
+/>
+```
+
+**Guidelines:**
+- ❌ Don't use separate `<h1>` and `<p>` for page headers
+- ❌ Don't include back buttons in pages (users can use browser back/keyboard)
+- ✅ Use `helpContent` prop instead of description text for contextual help
+- ✅ Place action buttons in the `actions` prop
+
+### Help Tooltips vs Descriptions (Declutter UI)
+
+**Use help tooltips for ALL descriptions** to keep the UI clean and uncluttered. Static descriptions take up space and add visual noise. Help tooltips provide the same information on-demand:
+
+```tsx
+// ❌ AVOID: Static description
+<DialogHeader>
+  <DialogTitle>Apply Discount</DialogTitle>
+  <DialogDescription>Apply a discount to this invoice</DialogDescription>
+</DialogHeader>
+
+// ✅ PREFERRED: Help tooltip
+import { HelpPopover } from '@/components/shared/help-popover';
+
+<DialogHeader>
+  <div className="flex items-center gap-2">
+    <DialogTitle>Apply Discount</DialogTitle>
+    <HelpPopover content="Apply a percentage or fixed amount discount. The discount will be reflected in the invoice total." />
+  </div>
+</DialogHeader>
+```
+
+**Where to use help tooltips:**
+- Page headers (use `helpContent` prop on `PageHeader`)
+- Dialog/modal titles
+- Card headers for complex sections
+- Form field labels for non-obvious fields
+- Table column headers with special meanings
+
+### Status Indicator Responsive Text
+
+For status indicators that show time-based text, use different formats at different breakpoints:
+
+```tsx
+import { formatLastFetch, formatLastFetchShort } from '@/lib/context/page-refresh-context';
+
+// Icon only on mobile, short text on md, full text on lg+
+<>
+  <StatusIndicator state={isOnline ? 'active' : 'down'} size="sm" />
+  {/* Short text on sm-md screens */}
+  <span className="hidden sm:inline lg:hidden">
+    {isOnline ? formatLastFetchShort(lastFetchTime) : 'Off'}
+  </span>
+  {/* Full text on lg+ screens */}
+  <span className="hidden lg:inline">
+    {isOnline ? formatLastFetch(lastFetchTime) : 'Offline'}
+  </span>
+</>
+```
+
+| Format | Example Output |
+|--------|----------------|
+| `formatLastFetch()` | "Just now", "5s ago", "1 min ago", "2 hrs ago" |
+| `formatLastFetchShort()` | "now", "5s", "1m", "2h" |
+
+### Breadcrumb Responsive Pattern
+
+Show full breadcrumb trail only on large screens:
+
+```tsx
+{/* Mobile & Medium: current page only */}
+<div className="lg:hidden text-sm font-medium truncate">
+  {currentLabel}
+</div>
+
+{/* Large screens: full breadcrumb trail */}
+<div className="hidden lg:flex items-center text-sm">
+  {/* ... full trail ... */}
+</div>
+```
+
+### Badge Sizing on Mobile
+
+Prevent badges from stretching full-width on mobile:
+
+```tsx
+// ✅ CORRECT: Fits content on mobile
+<Badge className={`${statusColors[status]} shrink-0 w-fit self-start sm:self-auto`}>
+  {status}
+</Badge>
+```
+
+### Table Responsiveness
+
+Make tables horizontally scrollable on mobile:
+
+```tsx
+<Card>
+  <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <CardTitle className="text-base sm:text-lg">Line Items</CardTitle>
+    {canEdit && (
+      <Button size="sm" className="w-full sm:w-auto">Add Item</Button>
+    )}
+  </CardHeader>
+  <CardContent className="px-0 sm:px-6">
+    <div className="overflow-x-auto">
+      <Table className="min-w-[500px]">
+        {/* ... table content ... */}
+      </Table>
+    </div>
+  </CardContent>
+</Card>
+```
+
+### Action Button Layouts
+
+Stack action buttons vertically on mobile, horizontally on larger screens:
+
+```tsx
+{/* Action Buttons */}
+<div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+  <Button variant="outline">Print</Button>
+  <Button variant="outline">Email</Button>
+  <Button>Submit</Button>
+</div>
+```
+
+### Spacing Patterns
+
+Use responsive spacing for page sections:
+
+```tsx
+<div className="space-y-4 sm:space-y-6">
+  {/* Page content */}
+</div>
+```
+
+### Summary Bar Pattern
+
+For detail pages, use a compact summary bar instead of large header sections:
+
+```tsx
+{/* Invoice Summary Bar */}
+<div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
+  <div className="flex flex-col gap-1 min-w-0">
+    <p className="text-sm font-medium truncate">
+      {patient_name}
+      <span className="text-muted-foreground"> • {mrn}</span>
+    </p>
+    <p className="text-xs sm:text-sm text-muted-foreground">
+      Created {formatDate(date)}
+    </p>
+  </div>
+  <Badge className="shrink-0 w-fit self-start sm:self-auto">
+    {status}
+  </Badge>
+</div>
+```
+
+### Navigation Guidelines
+
+- ❌ Don't add back buttons to pages
+- ✅ Rely on browser navigation (back button, Alt+Left, backspace)
+- ✅ Use breadcrumbs for hierarchical navigation context
+- ✅ Use links for explicit navigation between related items
+
+### Pull-to-Refresh for Mobile & Tablet
+
+Implement pull-to-refresh on list pages and data-heavy views for mobile and tablet users. Use the `PullToRefresh` component:
+
+```tsx
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
+
+export function PatientListPage() {
+  const { refresh, isRefreshing } = usePageRefresh();
+
+  return (
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
+      <div className="space-y-4">
+        {/* Page content */}
+      </div>
+    </PullToRefresh>
+  );
+}
+```
+
+**Guidelines:**
+- Wrap the main scrollable content area
+- Use `usePageRefresh()` hook for refresh logic (invalidates React Query cache)
+- The component shows a visual indicator when pulled past threshold
+- Shows "Release to refresh" prompt with glow effect
+- Desktop users have a refresh button in the header instead
+
+---
+
 ## ✅ Commit Discipline (Required)
 
 Every commit must follow these rules:
@@ -849,6 +1081,6 @@ Every commit must follow these rules:
 
 ---
 
-**Last Updated**: February 8, 2026
+**Last Updated**: February 9, 2026
 **Maintainer**: Engineering Lead
-**Version**: 2.1 (Added contract testing, serializer naming conventions)
+**Version**: 2.3 (Added pull-to-refresh pattern, enhanced help tooltip guidance)
