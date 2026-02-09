@@ -3,6 +3,7 @@ Pharmacy signals for Vitora HMIS.
 
 This module contains Django signals for pharmacy-billing integration:
 - Auto-create invoice item when prescription item is created
+- Link dispensing to invoice item or create new for direct dispensing
 """
 
 import logging
@@ -13,7 +14,7 @@ from django.dispatch import receiver
 
 from hmis.apps.billing.models import Invoice, InvoiceItem
 
-from .models import PrescriptionItem
+from .models import Dispensing, PrescriptionItem
 
 logger = logging.getLogger(__name__)
 
@@ -103,3 +104,101 @@ def create_invoice_item_for_prescription(sender, instance, created, **kwargs):
         )
     except Exception as e:
         logger.error(f"Failed to create invoice item for prescription item {instance.id}: {e}")
+
+
+@receiver(post_save, sender=Dispensing)
+def handle_dispensing_billing(sender, instance, created, **kwargs):
+    """
+    Handle billing when a dispensing record is created.
+
+    Business Rules:
+    1. If dispensing is from prescription: Link to existing invoice item (no duplicate)
+    2. If dispensing is direct (OTC): Create new invoice item
+    3. Only process new dispensing records (not updates)
+    """
+    if not created:
+        return
+
+    drug = instance.drug
+
+    # Case 1: Dispensing from prescription - link to existing invoice item
+    if instance.prescription_item:
+        prescription = instance.prescription_item.prescription
+
+        # Find the invoice item created by PrescriptionItem signal
+        if prescription.encounter:
+            invoice = Invoice.objects.filter(encounter=prescription.encounter).first()
+            if invoice:
+                # Find the invoice item for this drug (created by prescription signal)
+                invoice_item = invoice.items.filter(
+                    drug=drug,
+                    dispensing__isnull=True,  # Not yet linked to any dispensing
+                ).first()
+
+                if invoice_item:
+                    # Link the dispensing to the existing invoice item
+                    invoice_item.dispensing = instance
+                    invoice_item.save(update_fields=["dispensing", "updated_at"])
+                    logger.info(
+                        f"Linked dispensing {instance.id} to existing invoice item "
+                        f"{invoice_item.id} for {drug.generic_name}"
+                    )
+                else:
+                    logger.debug(
+                        f"No unlinked invoice item found for drug {drug.generic_name} - "
+                        "prescription may not have created one"
+                    )
+        return
+
+    # Case 2: Direct dispensing (OTC) - create new invoice item
+    # Find patient's draft invoice from today
+    from datetime import date
+
+    invoice = Invoice.objects.filter(
+        patient=instance.patient,
+        invoice_date=date.today(),
+        status=Invoice.Status.DRAFT,
+    ).first()
+
+    if not invoice:
+        logger.warning(
+            f"No draft invoice found for patient {instance.patient.mrn} - "
+            f"direct dispensing {instance.id} will not be billed automatically"
+        )
+        return
+
+    # Create invoice item for direct dispensing
+    try:
+        quantity = Decimal(str(instance.quantity_dispensed))
+        line_total = (instance.unit_price * quantity).quantize(Decimal("0.01"))
+
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            item_type=InvoiceItem.ItemType.PHARMACY,
+            drug=drug,
+            dispensing=instance,
+            description=f"{drug.generic_name} {drug.strength} ({drug.get_form_display()})",
+            quantity=instance.quantity_dispensed,
+            unit_price=instance.unit_price,
+            line_total=line_total,
+        )
+
+        # Recalculate invoice totals
+        invoice.calculate_totals()
+        invoice.save(
+            update_fields=[
+                "subtotal",
+                "tax_amount",
+                "discount_amount",
+                "total_amount",
+                "balance_due",
+                "updated_at",
+            ]
+        )
+
+        logger.info(
+            f"Created invoice item for direct dispensing {instance.id} - "
+            f"{drug.generic_name} x{instance.quantity_dispensed}"
+        )
+    except Exception as e:
+        logger.error(f"Failed to create invoice item for dispensing {instance.id}: {e}")

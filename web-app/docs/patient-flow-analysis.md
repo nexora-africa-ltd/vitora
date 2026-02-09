@@ -699,58 +699,44 @@ This section provides detailed, actionable implementation guidance to close all 
 
 ---
 
-#### 2. Auto-Create Invoice Items from Orders
+#### 2. Auto-Create Invoice Items from Orders ✅ **Completed**
 
 **Problem:** Lab orders, pharmacy dispensing, and imaging orders don't automatically generate billing line items. Staff must manually add items, risking revenue leakage.
 
 **Current State:**
 - ✅ `InvoiceItem` model links to `LabOrder`, `Dispensing`, `ImagingOrder`
-- ❌ No Django signals to auto-create items when orders are placed
+- ✅ Django signals auto-create items when orders are placed
 
-**Implementation:**
+**Implementation (Done):**
 
-1. **Create billing signals:**
-   ```python
-   # backend/hmis/apps/billing/signals.py
-   from django.db.models.signals import post_save
-   from django.dispatch import receiver
-   from hmis.apps.laboratory.models import LabOrder
-   from hmis.apps.pharmacy.models import Dispensing
-   from hmis.apps.imaging.models import ImagingOrder
-   from hmis.apps.billing.services import auto_create_invoice_item
+1. **Added IMAGING type to InvoiceItem.ItemType:**
+   - `InvoiceItem.ItemType.IMAGING = "imaging"` added
+   - `imaging_order` FK added to link InvoiceItem → ImagingOrder
 
-   @receiver(post_save, sender=LabOrder)
-   def create_lab_invoice_item(sender, instance, created, **kwargs):
-       if created and instance.status == 'ORDERED':
-           auto_create_invoice_item(
-               patient=instance.patient,
-               encounter=instance.encounter,
-               item_type='LAB',
-               reference_model='LabOrder',
-               reference_id=instance.id,
-               service_code=instance.test.billing_code,
-               amount=instance.test.price
-           )
-   ```
+2. **Pharmacy dispensing signal** ([pharmacy/signals.py](../backend/hmis/apps/pharmacy/signals.py)):
+   - `@receiver(post_save, sender=Dispensing)` handles billing
+   - For prescription-based dispensing: Links dispensing to existing invoice item (created by PrescriptionItem signal)
+   - For direct/OTC dispensing: Creates new invoice item with drug details and pricing
 
-2. **Register signals in app config:**
-   ```python
-   # backend/hmis/apps/billing/apps.py
-   def ready(self):
-       import hmis.apps.billing.signals  # noqa
-   ```
+3. **Imaging order signal** ([imaging/signals.py](../backend/hmis/apps/imaging/signals.py)):
+   - `@receiver(post_save, sender=ImagingOrderItem)` auto-creates billing
+   - Creates InvoiceItem with procedure name, cost, and SHA intervention code
+   - Only adds to DRAFT invoices (finalized invoices not modified)
 
-3. **Add service code mapping:**
-   - Ensure `LabTest`, `Drug`, `ImagingProcedure` have `billing_code` and `price` fields
-   - Create fallback for services without mapping
+4. **Lab orders:** Already handled via `LabOrder.add_test()` method (no signal needed)
 
-**Files to modify:**
-- `backend/hmis/apps/billing/signals.py` - Create new file
-- `backend/hmis/apps/billing/apps.py` - Register signals
-- `backend/hmis/apps/billing/services/__init__.py` - Add `auto_create_invoice_item()`
-- `backend/hmis/apps/laboratory/models.py` - Ensure billing fields exist
+**Files modified:**
+- `backend/hmis/apps/billing/models.py` - Added IMAGING type + imaging_order FK
+- `backend/hmis/apps/pharmacy/signals.py` - Added Dispensing billing signal
+- `backend/hmis/apps/imaging/signals.py` - Created imaging billing signal
+- `backend/hmis/apps/imaging/apps.py` - Registered signals
+- `backend/tests/billing/test_auto_invoice_signals.py` - 11 TDD tests
 
-**Effort:** 6-8 hours | **Risk if skipped:** Revenue leakage, billing reconciliation issues
+**Migrations:**
+- `billing.0020_add_imaging_order_to_invoiceitem`
+- `billing.0021_change_imaging_order_on_delete`
+
+**Effort:** Completed | **Tests:** 11 passing
 
 ---
 
