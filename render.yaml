@@ -30,6 +30,7 @@ services:
       python manage.py load_clinical_templates &&
       python manage.py load_lab_reference_ranges &&
       python manage.py load_default_roles &&
+      echo "from hmis.apps.encounters.models import Encounter; Encounter.objects.filter(status__in=['DRAFT','COMPLETED']).update(status='CREATED')" | python manage.py shell &&
       python manage.py seed_demo_data &&
       python manage.py seed_imaging_catalog
     startCommand: gunicorn hmis.wsgi:application --bind 0.0.0.0:$PORT --workers 2

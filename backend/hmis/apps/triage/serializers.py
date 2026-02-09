@@ -108,7 +108,7 @@ class WaitingQueueCreateSerializer(serializers.ModelSerializer):
                 encounter_type="OPD",  # Default to OPD
                 encounter_date=timezone.now().date(),
                 chief_complaint=validated_data.get("reason_for_visit", "Check-in"),
-                status="DRAFT",
+                status="CREATED",
             )
 
         # Create waiting queue entry
