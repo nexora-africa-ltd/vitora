@@ -678,6 +678,7 @@ class InvoiceItem(models.Model):
         SERVICE = "service", "Service"
         PHARMACY = "pharmacy", "Pharmacy Item"
         LAB = "lab", "Lab Test"
+        IMAGING = "imaging", "Imaging/Radiology"
         CONSUMABLE = "consumable", "Consumable"
         OTHER = "other", "Other"
 
@@ -694,7 +695,7 @@ class InvoiceItem(models.Model):
         related_name="invoice_items",
     )
 
-    # For pharmacy items (future integration)
+    # For pharmacy items
     drug = models.ForeignKey(
         "pharmacy.Drug",
         on_delete=models.PROTECT,
@@ -710,10 +711,21 @@ class InvoiceItem(models.Model):
         related_name="invoice_items",
     )
 
-    # For lab items (future integration)
+    # For lab items
     lab_order = models.ForeignKey(
         "laboratory.LabOrder",
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="invoice_items",
+    )
+
+    # For imaging items
+    # Note: CASCADE is used so draft orders can be deleted with their invoice items.
+    # For finalized orders, deletion is typically blocked at the business logic level.
+    imaging_order = models.ForeignKey(
+        "imaging.ImagingOrder",
+        on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name="invoice_items",

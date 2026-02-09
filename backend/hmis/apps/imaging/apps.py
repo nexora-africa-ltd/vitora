@@ -14,4 +14,4 @@ class ImagingConfig(AppConfig):
 
     def ready(self):
         """Import signals when the app is ready."""
-        pass  # Will add signals import when needed
+        import hmis.apps.imaging.signals  # noqa: F401
