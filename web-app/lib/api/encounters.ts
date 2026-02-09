@@ -20,6 +20,7 @@ import {
   TemplateSnapshotSchema,
   TemplateSnapshotArraySchema,
 } from '@/lib/schemas/encounter.schema';
+import { ClinicalSnapshotSchema } from '@/lib/schemas/checkin.schema';
 import {
   Encounter,
   EncounterListParams,
@@ -35,6 +36,7 @@ import {
   EncounterTransitionResponse,
   RelatedEncounter,
 } from '@/lib/types/encounter';
+import type { ClinicalSnapshot } from '@/lib/types/checkin';
 import { PaginatedResponse } from '@/lib/types';
 
 export const encountersApi = {
@@ -149,6 +151,24 @@ export const encountersApi = {
       `/api/encounters/${id}/related/`
     );
     return response.data;
+  },
+
+  // =========================================================================
+  // Clinical Snapshot (Clinician Safety)
+  // =========================================================================
+
+  /**
+   * Get the clinical snapshot for the encounter's patient.
+   *
+   * This reuses the same response shape as check-in clinical snapshots.
+   */
+  async getClinicalSnapshot(id: number): Promise<ClinicalSnapshot> {
+    const response = await apiClient.get<ClinicalSnapshot>(
+      `/api/encounters/${id}/clinical_snapshot/`
+    );
+    return parseResponse(ClinicalSnapshotSchema, response.data, {
+      context: 'encountersApi.getClinicalSnapshot',
+    }) as ClinicalSnapshot;
   },
 
   // ===========================================================================
