@@ -53,7 +53,7 @@ def integration_patient(db):
     return Patient.objects.create(
         first_name="Integration",
         last_name="TestPatient",
-        date_of_birth="1990-01-15",
+        date_of_birth=date(1990, 1, 15),
         gender="F",
         county=county,
         sub_county=sub_county,

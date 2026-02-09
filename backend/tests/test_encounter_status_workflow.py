@@ -571,21 +571,35 @@ class TestEncounterStatusSerializer:
         """EncounterSerializer should include status field."""
         from hmis.apps.encounters.serializers import EncounterSerializer
 
-        serializer = EncounterSerializer(sample_encounter)
+        # Reload to ensure related Patient fields have correct Python types
+        # (DateField values may remain as input strings on the in-memory instance).
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.select_related("patient").get(pk=sample_encounter.pk)
+
+        serializer = EncounterSerializer(encounter)
         assert "status" in serializer.data
 
     def test_serializer_includes_finalized_by(self, sample_encounter):
         """EncounterSerializer should include finalized_by field."""
         from hmis.apps.encounters.serializers import EncounterSerializer
 
-        serializer = EncounterSerializer(sample_encounter)
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.select_related("patient").get(pk=sample_encounter.pk)
+
+        serializer = EncounterSerializer(encounter)
         assert "finalized_by" in serializer.data
 
     def test_serializer_includes_finalized_at(self, sample_encounter):
         """EncounterSerializer should include finalized_at field."""
         from hmis.apps.encounters.serializers import EncounterSerializer
 
-        serializer = EncounterSerializer(sample_encounter)
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.select_related("patient").get(pk=sample_encounter.pk)
+
+        serializer = EncounterSerializer(encounter)
         assert "finalized_at" in serializer.data
 
     def test_status_is_read_only_on_create(self, sample_patient):
