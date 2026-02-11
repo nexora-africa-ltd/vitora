@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { laboratoryApi } from '@/lib/api/laboratory';
 import { useToast } from '@/lib/hooks';
+import { PageHeader } from '@/components/shared/page-header';
 
 type ComponentRow = {
   name: string;
@@ -100,15 +101,16 @@ export default function LabResultEditPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">Edit Result</h1>
-          <p className="text-muted-foreground">Result #{resultId}</p>
-        </div>
-      </div>
+      <PageHeader
+        title={`Edit Result ${resultId || ''}`}
+        helpContent="Edit component values and comments for a lab result."
+        actions={
+          <Button onClick={handleSave} disabled={isLoading} className="gap-2 w-full sm:w-auto">
+            <Save className="h-4 w-4" />
+            Save
+          </Button>
+        }
+      />
 
       {isLoading ? (
         <div className="text-sm text-muted-foreground">Loading…</div>
@@ -116,10 +118,6 @@ export default function LabResultEditPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">Components</CardTitle>
-            <Button onClick={handleSave}>
-              <Save className="h-4 w-4 mr-2" />
-              Save
-            </Button>
           </CardHeader>
           <CardContent className="space-y-4">
             {abnormalFlag && (

@@ -23,7 +23,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertTriangle, Save, CheckCircle } from 'lucide-react';
@@ -31,6 +31,7 @@ import { LabOrderItem, LabResultCreateData, ResultFlag } from '@/lib/types/labor
 import { useAddLabResult, useVerifyLabResult } from '@/lib/hooks/use-laboratory';
 import { useToast } from '@/lib/hooks';
 import { cn } from '@/lib/utils/cn';
+import { HelpPopover } from '@/components/shared/help-popover';
 
 const resultSchema = z.object({
   numeric_value: z.number().optional(),
@@ -231,10 +232,13 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
       {/* Test List Sidebar */}
       <Card className="lg:col-span-1">
         <CardHeader>
-          <CardTitle className="text-base">Tests</CardTitle>
-          <CardDescription>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base">Tests</CardTitle>
+            <HelpPopover content="Select a test from the list to enter or verify results." />
+          </div>
+          <p className="text-sm text-muted-foreground">
             {pendingItems.length} pending, {completedItems.length} complete
-          </CardDescription>
+          </p>
         </CardHeader>
         <CardContent className="space-y-2">
           {items.map((item) => (
@@ -273,14 +277,15 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
       {/* Result Entry Form */}
       <Card className="lg:col-span-2">
         <CardHeader>
-          <CardTitle>
-            {activeItem ? activeItem.test_name : 'Select a Test'}
-          </CardTitle>
-          {activeItem && (
-            <CardDescription>
-              Enter the result for {activeItem.test_code}
-            </CardDescription>
-          )}
+          <div className="flex items-center gap-2">
+            <CardTitle>{activeItem ? activeItem.test_name : 'Select a Test'}</CardTitle>
+            {activeItem ? (
+              <HelpPopover content={`Enter the result for ${activeItem.test_code}.`} />
+            ) : null}
+          </div>
+          {activeItem ? (
+            <p className="text-sm text-muted-foreground">{activeItem.test_code}</p>
+          ) : null}
         </CardHeader>
         <CardContent>
           {activeItem && !activeItem.has_result ? (

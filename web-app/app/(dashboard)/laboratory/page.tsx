@@ -7,17 +7,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, ClipboardList, Beaker, FileText } from 'lucide-react';
 import { LabOrderTable } from '@/components/laboratory/lab-order-table';
 import { LabQueueView } from '@/components/laboratory/lab-queue-view';
+import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useLabOrders } from '@/lib/hooks/use-laboratory';
 import { LabOrderStatus, LabPriority } from '@/lib/types/laboratory';
 
 export default function LaboratoryPage() {
   const router = useRouter();
+  const { refresh, isRefreshing } = usePageRefresh();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<LabOrderStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<LabPriority | ''>('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data, isLoading, error, refetch } = useLabOrders({
+  const { data, isLoading, error } = useLabOrders({
     page,
     page_size: 20,
     status: statusFilter || undefined,
@@ -29,62 +33,60 @@ export default function LaboratoryPage() {
   const totalPages = Math.ceil((data?.count || 0) / 20);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Laboratory</h1>
-          <p className="text-muted-foreground">
-            Manage lab orders, view results, and track queue
-          </p>
-        </div>
-        <Button onClick={() => router.push('/laboratory/orders/new')}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Lab Order
-        </Button>
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
+      <div className="space-y-6">
+        <PageHeader
+          title="Laboratory"
+          helpContent="Manage lab orders, record results, and track the lab queue. Pull down to refresh on mobile, or use the refresh button in the header."
+          actions={
+            <Button onClick={() => router.push('/laboratory/orders/new')} className="gap-2 w-full sm:w-auto">
+              <Plus className="h-4 w-4" />
+              New Lab Order
+            </Button>
+          }
+        />
+
+        {/* Tabs */}
+        <Tabs defaultValue="orders" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="orders" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Orders
+            </TabsTrigger>
+            <TabsTrigger value="queue" className="gap-2">
+              <Beaker className="h-4 w-4" />
+              Lab Queue
+            </TabsTrigger>
+            <TabsTrigger value="results" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Pending Verification
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="orders">
+            <LabOrderTable
+              orders={orders}
+              isLoading={isLoading}
+              error={error as Error | null}
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              onStatusFilter={setStatusFilter}
+              onPriorityFilter={setPriorityFilter}
+              onSearch={setSearchQuery}
+            />
+          </TabsContent>
+
+          <TabsContent value="queue">
+            <LabQueueView />
+          </TabsContent>
+
+          <TabsContent value="results">
+            <PendingVerificationView />
+          </TabsContent>
+        </Tabs>
       </div>
-
-      {/* Tabs */}
-      <Tabs defaultValue="orders" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="orders" className="gap-2">
-            <ClipboardList className="h-4 w-4" />
-            Orders
-          </TabsTrigger>
-          <TabsTrigger value="queue" className="gap-2">
-            <Beaker className="h-4 w-4" />
-            Lab Queue
-          </TabsTrigger>
-          <TabsTrigger value="results" className="gap-2">
-            <FileText className="h-4 w-4" />
-            Pending Verification
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="orders">
-          <LabOrderTable
-            orders={orders}
-            isLoading={isLoading}
-            error={error as Error | null}
-            page={page}
-            totalPages={totalPages}
-            onPageChange={setPage}
-            onStatusFilter={setStatusFilter}
-            onPriorityFilter={setPriorityFilter}
-            onSearch={setSearchQuery}
-            onRefresh={() => refetch()}
-          />
-        </TabsContent>
-
-        <TabsContent value="queue">
-          <LabQueueView />
-        </TabsContent>
-
-        <TabsContent value="results">
-          <PendingVerificationView />
-        </TabsContent>
-      </Tabs>
-    </div>
+    </PullToRefresh>
   );
 }
 

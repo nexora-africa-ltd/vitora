@@ -10,7 +10,6 @@ import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -28,6 +27,7 @@ import { useTestCatalog, useTestSearch } from '@/lib/hooks/use-laboratory';
 import { useDebounce } from '@/lib/hooks';
 import { formatCurrency } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
+import { HelpPopover } from '@/components/shared/help-popover';
 
 interface TestSelectorProps {
   onSelect: (test: TestCatalogListItem) => void;
@@ -115,13 +115,13 @@ export function TestSelector({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[80vh]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FlaskConical className="h-5 w-5" />
-            Select Lab Test
-          </DialogTitle>
-          <DialogDescription>
-            Search or browse available laboratory tests
-          </DialogDescription>
+          <div className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2">
+              <FlaskConical className="h-5 w-5" />
+              Select Lab Test
+            </DialogTitle>
+            <HelpPopover content="Search or browse available laboratory tests. Switch to LOINC to add standardized codes." />
+          </div>
         </DialogHeader>
 
         {/* Test Source Toggle */}
