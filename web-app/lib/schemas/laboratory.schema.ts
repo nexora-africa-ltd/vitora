@@ -130,9 +130,32 @@ export const LabResultSchema = z.object({
 export type LabResultSchemaType = z.infer<typeof LabResultSchema>;
 
 // =============================================================================
-// LAB TEST CATALOG SCHEMA
+// LAB TEST CATALOG SCHEMAS
 // =============================================================================
 
+/**
+ * List schema - matches backend TestCatalogSerializer (optimized for list views).
+ * Used by: listTests, searchTests endpoints
+ */
+export const LabTestCatalogListSchema = z.object({
+  id: z.number(),
+  code: z.string(),
+  name: z.string(),
+  short_name: z.string(),
+  category: TestCategorySchema,
+  specimen_type: SpecimenTypeSchema,
+  cost: z.coerce.number(), // Backend returns DecimalField as string
+  sha_claimable: z.boolean(),
+  available_in_house: z.boolean(),
+  is_active: z.boolean(),
+});
+
+export type LabTestCatalogListSchemaType = z.infer<typeof LabTestCatalogListSchema>;
+
+/**
+ * Detail schema - matches backend TestCatalogDetailSerializer (full fields).
+ * Used by: getTest endpoint
+ */
 export const LabTestCatalogSchema = z.object({
   id: z.number(),
   code: z.string(),
@@ -146,7 +169,7 @@ export const LabTestCatalogSchema = z.object({
   normal_range_male: z.string().nullable().optional(),
   normal_range_female: z.string().nullable().optional(),
   normal_range_child: z.string().nullable().optional(),
-  cost: z.number(),
+  cost: z.coerce.number(), // Backend returns DecimalField as string
   sha_claimable: z.boolean(),
   available_in_house: z.boolean(),
   external_lab_partner: z.string().nullable().optional(),
@@ -289,7 +312,7 @@ export const PaginatedLabTestCatalogSchema = z.object({
   count: z.number(),
   next: z.string().nullable(),
   previous: z.string().nullable(),
-  results: z.array(LabTestCatalogSchema),
+  results: z.array(LabTestCatalogListSchema), // Uses list schema for paginated results
 });
 
 export const PaginatedLabOrderSchema = z.object({

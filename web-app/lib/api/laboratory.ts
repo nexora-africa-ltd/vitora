@@ -6,6 +6,7 @@
 import { apiClient } from './client';
 import {
   TestCatalog,
+  TestCatalogListItem,
   LabOrder,
   LabOrderItem,
   LabResult,
@@ -22,6 +23,7 @@ import { z } from 'zod';
 import {
   LabResultSchema,
   LabTestCatalogSchema,
+  LabTestCatalogListSchema,
   LabOrderSchema,
   LabOrderItemSchema,
   LabQueueSchema,
@@ -39,8 +41,8 @@ export const laboratoryApi = {
   /**
    * Get paginated list of lab tests.
    */
-  async listTests(params?: TestCatalogListParams): Promise<PaginatedResponse<TestCatalog>> {
-    const response = await apiClient.get<PaginatedResponse<TestCatalog>>('/api/lab/tests/', {
+  async listTests(params?: TestCatalogListParams): Promise<PaginatedResponse<TestCatalogListItem>> {
+    const response = await apiClient.get<PaginatedResponse<TestCatalogListItem>>('/api/lab/tests/', {
       params,
     });
     return parseResponse(PaginatedLabTestCatalogSchema, response.data, { context: 'laboratoryApi.listTests' });
@@ -56,12 +58,14 @@ export const laboratoryApi = {
 
   /**
    * Search tests by name or code.
+   * Uses the list endpoint with search query param.
    */
-  async searchTests(query: string): Promise<TestCatalog[]> {
-    const response = await apiClient.get<TestCatalog[]>('/api/lab/tests/search/', {
-      params: { q: query },
+  async searchTests(query: string): Promise<TestCatalogListItem[]> {
+    const response = await apiClient.get<PaginatedResponse<TestCatalogListItem>>('/api/lab/tests/', {
+      params: { search: query, is_active: true },
     });
-    return parseResponse(z.array(LabTestCatalogSchema), response.data, { context: 'laboratoryApi.searchTests' });
+    const validated = parseResponse(PaginatedLabTestCatalogSchema, response.data, { context: 'laboratoryApi.searchTests' });
+    return validated.results;
   },
 
   // ============ Lab Orders ============

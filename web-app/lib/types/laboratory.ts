@@ -3,7 +3,27 @@
  * Sprint 1.5-1.6 Track B: Lab Workflow
  */
 
-// Test catalog types
+/**
+ * Test catalog list item - returned by list/search endpoints.
+ * Matches backend TestCatalogSerializer.
+ */
+export interface TestCatalogListItem {
+  id: number;
+  code: string;
+  name: string;
+  short_name: string;
+  category: TestCategory;
+  specimen_type: SpecimenType;
+  cost: number;
+  sha_claimable: boolean;
+  available_in_house: boolean;
+  is_active: boolean;
+}
+
+/**
+ * Full test catalog - returned by detail endpoint.
+ * Matches backend TestCatalogDetailSerializer.
+ */
 export interface TestCatalog {
   id: number;
   code: string;

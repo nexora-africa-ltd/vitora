@@ -168,8 +168,8 @@ migrate:
 createsuperuser:
 	poetry run python manage.py createsuperuser
 
-runserver:
-	poetry run python manage.py runserver 0.0.0.0:9088
+api:
+	poetry run python manage.py runserver 0.0.0.0:9088 &
 
 shell:
 	poetry run python manage.py shell
