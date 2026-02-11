@@ -27,20 +27,20 @@ from .models import (
     Ward,
     WardRound,
 )
-from .services.compatibility import ward_compatibility_service
 from .serializers import (
     AdmissionRecommendationSerializer,
     AdmissionSerializer,
     BedSerializer,
     DischargeSerializer,
+    InpatientWardSerializer,
     KardexHandoverNoteSerializer,
     KardexShiftNoteSerializer,
     NursingKardexSerializer,
     ShiftHandoverSerializer,
     TransferSerializer,
     WardRoundSerializer,
-    InpatientWardSerializer,
 )
+from .services.compatibility import ward_compatibility_service
 
 User = get_user_model()
 
@@ -152,7 +152,7 @@ class WardViewSet(viewsets.ReadOnlyModelViewSet):
         wards = Ward.objects.filter(is_active=True).prefetch_related("beds")
 
         results = []
-        for patient_id, requires_isolation in zip(patient_ids, requires_isolation_list):
+        for patient_id, requires_isolation in zip(patient_ids, requires_isolation_list, strict=False):
             patient = patients_by_id.get(patient_id)
             if patient is None:
                 results.append(
@@ -202,6 +202,138 @@ class WardViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
         return Response({"results": results})
+
+    @action(detail=True, methods=["get"])
+    def updates(self, request, pk=None):
+        """
+        Polling fallback endpoint for ward updates when WebSocket is unavailable.
+
+        Query parameters:
+        - since: ISO timestamp to filter events after (optional)
+
+        Returns:
+        - events: List of recent ward events (constraints updates, violations, etc.)
+        - current_state: Current ward constraint settings
+        """
+        from django.utils.dateparse import parse_datetime
+
+        ward = self.get_object()
+
+        since_param = request.query_params.get("since")
+        since_dt = parse_datetime(since_param) if since_param else None
+
+        # Get recent admissions with violations for this ward
+        violations_qs = Admission.objects.filter(
+            ward=ward,
+            constraint_violations__isnull=False,
+        ).exclude(constraint_violations=[]).order_by("-created_at")
+
+        if since_dt:
+            violations_qs = violations_qs.filter(created_at__gt=since_dt)
+
+        # Apply limit after filtering
+        violations_qs = violations_qs[:10]
+
+        events = []
+        for admission in violations_qs:
+            events.append({
+                "type": "compatibility_violation",
+                "admission_id": admission.id,
+                "patient_name": f"{admission.patient.first_name} {admission.patient.last_name}",
+                "violations": admission.constraint_violations,
+                "timestamp": admission.created_at.isoformat(),
+            })
+
+        return Response({
+            "events": events,
+            "current_state": {
+                "ward_id": ward.id,
+                "ward_name": ward.name,
+                "gender_restriction": ward.gender_restriction,
+                "min_age_years": ward.min_age_years,
+                "max_age_years": ward.max_age_years,
+                "isolation_capable": ward.isolation_capable,
+                "oxygen_equipped": ward.oxygen_equipped,
+                "ventilator_capable": ward.ventilator_capable,
+                "available_beds": ward.available_beds,
+            },
+        })
+
+
+class SupervisorAlertViewSet(viewsets.ViewSet):
+    """
+    ViewSet for supervisor critical violation alerts.
+
+    Polling fallback for WebSocket supervisor alerts.
+    Requires receive_critical_alerts permission.
+
+    Endpoints:
+    - GET /api/inpatient/supervisor/alerts/ - List recent critical violations
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        """
+        List recent critical violation alerts for supervisors.
+
+        Requires receive_critical_alerts permission.
+
+        Query parameters:
+        - since: ISO timestamp to filter alerts after (optional)
+        - limit: Maximum number of alerts to return (default: 20)
+        """
+        from django.utils.dateparse import parse_datetime
+
+        # Check permission
+        if not request.user.has_perm("inpatient.receive_critical_alerts"):
+            return Response(
+                {"detail": "Permission denied. Requires receive_critical_alerts permission."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        since_param = request.query_params.get("since")
+        since_dt = parse_datetime(since_param) if since_param else None
+        limit = int(request.query_params.get("limit", 20))
+
+        # Get admissions with CRITICAL violations
+        admissions_qs = Admission.objects.filter(
+            constraint_violations__isnull=False,
+            constraint_override=True,
+        ).exclude(constraint_violations=[]).select_related(
+            "patient", "ward", "bed", "admitting_officer"
+        ).order_by("-created_at")
+
+        if since_dt:
+            admissions_qs = admissions_qs.filter(created_at__gt=since_dt)
+
+        # Filter only those with CRITICAL violations
+        alerts = []
+        for admission in admissions_qs[:limit * 2]:  # Get extra to filter
+            critical_violations = [
+                v for v in admission.constraint_violations
+                if v.get("severity") == "CRITICAL"
+            ]
+            if critical_violations:
+                alerts.append({
+                    "admission_id": admission.id,
+                    "admission_number": admission.admission_number,
+                    "patient_name": f"{admission.patient.first_name} {admission.patient.last_name}",
+                    "patient_mrn": admission.patient.mrn,
+                    "ward_name": admission.ward.name,
+                    "bed_number": admission.bed.bed_number,
+                    "violations": critical_violations,
+                    "override_reason": admission.constraint_override_reason,
+                    "admitted_by": (
+                        admission.admitting_officer.get_full_name()
+                        if admission.admitting_officer else "Unknown"
+                    ),
+                    "timestamp": admission.created_at.isoformat(),
+                })
+                if len(alerts) >= limit:
+                    break
+
+        return Response({"alerts": alerts})
 
 
 class BedViewSet(viewsets.ModelViewSet):

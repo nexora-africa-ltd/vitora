@@ -12,6 +12,7 @@ from .views import (
     DischargeViewSet,
     NursingKardexViewSet,
     ShiftHandoverViewSet,
+    SupervisorAlertViewSet,
     TransferViewSet,
     WardRoundViewSet,
     WardViewSet,
@@ -37,4 +38,10 @@ router.register(r"shift-handovers", ShiftHandoverViewSet, basename="shift-handov
 
 urlpatterns = [
     path("", include(router.urls)),
+    # Supervisor alerts - explicit path since it's not a typical resource
+    path(
+        "supervisor/alerts/",
+        SupervisorAlertViewSet.as_view({"get": "list"}),
+        name="supervisor-alerts",
+    ),
 ]
