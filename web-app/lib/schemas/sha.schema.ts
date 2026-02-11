@@ -255,18 +255,33 @@ export const ICHICodeSchema = z.object({
 
 export type ICHICodeSchemaType = z.infer<typeof ICHICodeSchema>;
 
+/**
+ * LOINC code schema matching backend RemoteLOINCCode dataclass.
+ * Backend returns loinc_num instead of code, and status instead of is_active.
+ */
 export const LOINCCodeSchema = z.object({
-  id: z.number(),
-  code: z.string(),
+  // Primary identifier - backend uses loinc_num
+  loinc_num: z.string(),
+  // What is measured
   component: z.string(),
-  long_common_name: z.string(),
-  property: z.string().optional(),
-  time_aspect: z.string().optional(),
-  system: z.string().optional(),
-  scale_type: z.string().optional(),
-  method_type: z.string().optional(),
-  class_name: z.string().optional(),
-  is_active: z.boolean(),
+  // Full descriptive name
+  long_common_name: z.string().nullable().optional(),
+  // Abbreviated name
+  short_name: z.string().nullable().optional(),
+  // Kind of property
+  property: z.string().nullable().optional(),
+  // Timing (Pt, 24H, etc.)
+  time_aspect: z.string().nullable().optional(),
+  // Body system/specimen
+  system: z.string().nullable().optional(),
+  // Scale (Qn, Ord, etc.)
+  scale_type: z.string().nullable().optional(),
+  // Method used
+  method_type: z.string().nullable().optional(),
+  // Status (ACTIVE, deprecated, etc.)
+  status: z.string().default('ACTIVE'),
+  // Original API response (optional)
+  raw_data: z.record(z.any()).optional(),
 });
 
 export type LOINCCodeSchemaType = z.infer<typeof LOINCCodeSchema>;
@@ -609,11 +624,15 @@ export const PaginatedICHICodesSchema = z.object({
   results: z.array(ICHICodeSchema),
 });
 
+/**
+ * Response schema for terminology search endpoints.
+ * Backend returns { results: [], count: N } without pagination links.
+ */
 export const PaginatedLOINCCodesSchema = z.object({
   count: z.number(),
-  next: z.string().nullable(),
-  previous: z.string().nullable(),
   results: z.array(LOINCCodeSchema),
+  // Source indicator (optional - indicates where data came from)
+  source: z.string().optional(),
 });
 
 export const PaginatedDrugProductsSchema = z.object({

@@ -553,6 +553,13 @@ ICD11_LOCAL_API_URL = os.getenv("ICD11_LOCAL_API_URL", "http://localhost:5080")
 ICD11_API_TIMEOUT = int(os.getenv("ICD11_API_TIMEOUT", "10"))
 ICD11_USE_LOCAL = os.getenv("ICD11_USE_LOCAL", "true").lower() == "true"
 
+# HAPI FHIR Server for Terminology (LOINC fallback)
+# Deployed via: docker/hapi-fhir/compose.yml
+# FHIR R4 terminology lookup: CodeSystem/$lookup, ValueSet/$expand
+HAPI_FHIR_BASE_URL = os.getenv("HAPI_FHIR_BASE_URL", "http://localhost:8090/fhir")
+HAPI_FHIR_TIMEOUT = int(os.getenv("HAPI_FHIR_TIMEOUT", "10"))
+HAPI_FHIR_ENABLED = os.getenv("HAPI_FHIR_ENABLED", "true").lower() == "true"
+
 # SHA Webhook/Callback Configuration
 # These are the URLs DHA calls to notify us about claim status changes
 # When registering with DHA, provide your actual domain:

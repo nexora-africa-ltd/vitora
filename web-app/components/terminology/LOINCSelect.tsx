@@ -109,7 +109,7 @@ export function LOINCSelect({
   }, [searchQuery, minSearchLength, debounceMs]);
 
   const handleSelect = (code: LOINCCode) => {
-    onSelect({ code: code.code, name: code.long_common_name });
+    onSelect({ code: code.loinc_num, name: code.long_common_name || code.component });
     setOpen(false);
     setSearchQuery('');
   };
@@ -169,22 +169,22 @@ export function LOINCSelect({
                 <ScrollArea className="h-[300px]">
                   {results.map((code) => (
                     <CommandItem
-                      key={code.id}
-                      value={`${code.code}-${code.long_common_name}`}
+                      key={code.loinc_num}
+                      value={`${code.loinc_num}-${code.long_common_name || code.component}`}
                       onSelect={() => handleSelect(code)}
                       className="flex items-start gap-2 py-2"
                     >
                       <Check
                         className={cn(
                           'h-4 w-4 mt-0.5',
-                          value?.code === code.code ? 'opacity-100' : 'opacity-0'
+                          value?.code === code.loinc_num ? 'opacity-100' : 'opacity-0'
                         )}
                       />
                       <div className="flex-1 min-w-0">
                         <span className="font-mono text-xs text-muted-foreground">
-                          {code.code}
+                          {code.loinc_num}
                         </span>
-                        <p className="text-sm font-medium">{code.long_common_name}</p>
+                        <p className="text-sm font-medium">{code.long_common_name || code.component}</p>
                         <p className="text-xs text-muted-foreground">
                           {code.component}
                         </p>
