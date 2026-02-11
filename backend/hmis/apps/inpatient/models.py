@@ -74,6 +74,19 @@ class Ward(TimeStampedModel):
         ("ISOLATION", "Isolation Ward"),
     ]
 
+    # Compatibility constraints
+    GENDER_RESTRICTION_CHOICES = [
+        ("ANY", "Any Gender"),
+        ("MALE_ONLY", "Male Only"),
+        ("FEMALE_ONLY", "Female Only"),
+    ]
+
+    # Default age ranges by ward type (applied only on create, and only for unset values)
+    WARD_TYPE_AGE_DEFAULTS = {
+        "PEDIATRIC": {"min_age_years": 0, "max_age_years": 14},
+        "MATERNITY": {"min_age_years": 12, "max_age_years": 55},
+    }
+
     name = models.CharField(
         max_length=100,
         unique=True,
@@ -115,6 +128,42 @@ class Ward(TimeStampedModel):
         help_text="Bed charge per day (must be positive)",
     )
 
+    # NEW: Gender constraints
+    gender_restriction = models.CharField(
+        max_length=20,
+        choices=GENDER_RESTRICTION_CHOICES,
+        default="ANY",
+        help_text="Gender restriction for patient admission",
+    )
+
+    # NEW: Age constraints (null = no restriction)
+    min_age_years = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Minimum patient age in years (null = no minimum)",
+    )
+    max_age_years = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Maximum patient age in years (null = no maximum)",
+    )
+
+    # NEW: Isolation capability
+    isolation_capable = models.BooleanField(
+        default=False,
+        help_text="Whether ward can handle isolation patients",
+    )
+
+    # NEW: Special equipment/capability flags
+    oxygen_equipped = models.BooleanField(
+        default=False,
+        help_text="Whether beds have oxygen supply",
+    )
+    ventilator_capable = models.BooleanField(
+        default=False,
+        help_text="Whether ward supports ventilated patients",
+    )
+
     class Meta(TimeStampedModel.Meta):
         """Meta options for Ward model."""
 
@@ -125,6 +174,22 @@ class Ward(TimeStampedModel):
     def __str__(self):
         """Return string representation."""
         return f"{self.name} ({self.code})"
+
+    def save(self, *args, **kwargs):
+        """Auto-populate compatibility defaults on ward creation."""
+        is_new = self.pk is None
+
+        if is_new and self.ward_type in self.WARD_TYPE_AGE_DEFAULTS:
+            defaults = self.WARD_TYPE_AGE_DEFAULTS[self.ward_type]
+            if self.min_age_years is None:
+                self.min_age_years = defaults.get("min_age_years")
+            if self.max_age_years is None:
+                self.max_age_years = defaults.get("max_age_years")
+
+            if self.ward_type == "MATERNITY" and self.gender_restriction == "ANY":
+                self.gender_restriction = "FEMALE_ONLY"
+
+        super().save(*args, **kwargs)
 
     @property
     def available_beds(self) -> int:
@@ -601,6 +666,22 @@ class Admission(TimeStampedModel):
         help_text="Insurance information (for SHA/Corporate)",
     )
 
+    # NEW: Constraint override tracking
+    constraint_override = models.BooleanField(
+        default=False,
+        help_text="Whether compatibility constraints were overridden",
+    )
+    constraint_override_reason = models.TextField(
+        blank=True,
+        default="",
+        help_text="Reason for overriding compatibility constraints",
+    )
+    constraint_violations = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of violated constraints at admission time",
+    )
+
     # Timestamps
     discharge_date = models.DateTimeField(
         null=True,
@@ -627,6 +708,9 @@ class Admission(TimeStampedModel):
                 condition=models.Q(admission_status="ACTIVE"),
                 name="unique_active_admission_per_bed",
             ),
+        ]
+        permissions = [
+            ("receive_critical_alerts", "Can receive critical ward-compatibility alerts"),
         ]
 
     def __str__(self):
