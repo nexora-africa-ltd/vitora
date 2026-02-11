@@ -246,9 +246,7 @@ class LabResultSerializer(serializers.ModelSerializer):
     test_name = serializers.CharField(source="order_item.test.name", read_only=True)
     test_code = serializers.CharField(source="order_item.test.code", read_only=True)
     formatted_value = serializers.CharField(source="get_formatted_value", read_only=True)
-    numeric_value = serializers.DecimalField(
-        max_digits=15, decimal_places=4, required=False, allow_null=True, coerce_to_string=True
-    )
+    numeric_value = serializers.SerializerMethodField()
 
     class Meta:
         model = LabResult
@@ -269,8 +267,18 @@ class LabResultSerializer(serializers.ModelSerializer):
             "entered_by",
             "entered_at",
             "is_external_result",
+            "is_critical_result",
+            "is_amended",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = ["entered_by", "entered_at", "result_flag"]
+
+    def get_numeric_value(self, obj) -> float | None:
+        """Return numeric_value as float for frontend compatibility."""
+        if obj.numeric_value is not None:
+            return float(obj.numeric_value)
+        return None
 
 
 class LabResultCreateSerializer(serializers.ModelSerializer):

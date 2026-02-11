@@ -678,6 +678,8 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
             "result_flag", "formatted_value", "interpretation",
             "verification_status", "verified_by", "verified_at",
             "entered_by", "entered_at", "is_external_result",
+            "is_critical_result", "is_amended",
+            "created_at", "updated_at",
         }),
     ),
     # ── triage ──────────────────────────────────────────────────────
