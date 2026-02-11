@@ -1120,6 +1120,67 @@ make test-shr   # Runs SHA SHR compliance tests only
 
 See [docs/fhir-validation-plan.md](docs/fhir-validation-plan.md) for the complete FHIR validation roadmap.
 
+### 11.4 Real-Time & Sync Architecture
+
+Vitora uses a **hybrid approach**: PowerSync for offline-first data sync + WebSockets for instant notifications.
+
+#### PowerSync vs WebSockets Decision Matrix
+
+| Capability | PowerSync | WebSockets |
+|------------|-----------|------------|
+| **Data sync/persistence** | ✅ Primary purpose | ❌ Not designed for this |
+| **Offline support** | ✅ Built-in | ❌ Requires online |
+| **Conflict resolution** | ✅ Built-in | ❌ You build it |
+| **Instant server→client push** | ⚠️ Sync latency (seconds) | ✅ Milliseconds |
+| **Ephemeral events** | ❌ Not designed for this | ✅ Primary purpose |
+| **Presence/live cursors** | ❌ No | ✅ Yes |
+
+#### When to Use Each
+
+| Use Case | PowerSync | WebSocket | Notes |
+|----------|-----------|-----------|-------|
+| Load patient record | ✅ | ❌ | Local SQLite query (instant) |
+| Save encounter offline | ✅ | ❌ | Built-in, automatic |
+| 🚨 Critical lab result alert | ❌ | ✅ | Instant push required |
+| Lab result ready notification | ⚠️ | ✅ | WS triggers sync |
+| Triage queue display | ✅ | ✅ | WS for position changes |
+| Multi-user conflict warning | ❌ | ✅ | "Dr. Smith is viewing" |
+| Dashboard stats refresh | ✅ | ❌ | Cached locally |
+
+#### Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Vitora Real-time Architecture                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    Frontend (Electron/Web/Mobile)         │   │
+│  │                                                           │   │
+│  │  ┌─────────────────┐       ┌─────────────────┐           │   │
+│  │  │  PowerSync      │       │  WebSocket      │           │   │
+│  │  │  - Local SQLite │       │  - Notifications│           │   │
+│  │  │  - Data queries │       │  - Critical     │           │   │
+│  │  │  - Offline ops  │       │    alerts       │           │   │
+│  │  │  - Background   │       │  - Queue updates│           │   │
+│  │  │    sync         │       │  - Presence     │           │   │
+│  │  └────────┬────────┘       └────────┬────────┘           │   │
+│  └───────────┼─────────────────────────┼────────────────────┘   │
+│              │                         │                        │
+│  ┌───────────▼─────────┐   ┌───────────▼────────┐               │
+│  │  PowerSync Service  │   │  Django Channels   │               │
+│  │  (Sync Gateway)     │   │  (Future)          │               │
+│  └───────────┬─────────┘   └───────────┬────────┘               │
+│              │                         │                        │
+│              └────────────┬────────────┘                        │
+│                           │                                     │
+│                  ┌────────▼────────┐                            │
+│                  │   PostgreSQL    │                            │
+│                  └─────────────────┘                            │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## 12. Testing Strategy & Quality Gates
