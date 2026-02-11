@@ -129,22 +129,25 @@ class Ward(TimeStampedModel):
     @property
     def available_beds(self) -> int:
         """
-        Count of beds with status AVAILABLE.
+        Count of available beds (capacity minus occupied, maintenance, reserved).
 
         Returns:
-            Number of beds in AVAILABLE status
+            Number of available beds
         """
-        return self.beds.filter(status="AVAILABLE").count()
+        occupied = self.beds.filter(status="OCCUPIED").count()
+        maintenance = self.beds.filter(status="MAINTENANCE").count()
+        reserved = self.beds.filter(status="RESERVED").count()
+        return max(0, self.capacity - occupied - maintenance - reserved)
 
     @property
     def total_beds(self) -> int:
         """
-        Total count of beds in this ward.
+        Total bed capacity of this ward.
 
         Returns:
-            Total number of beds
+            Ward capacity (total number of beds)
         """
-        return self.beds.count()
+        return self.capacity
 
     @property
     def occupied_beds(self) -> int:
@@ -159,17 +162,16 @@ class Ward(TimeStampedModel):
     @property
     def occupancy_rate(self) -> float:
         """
-        Current occupancy percentage.
+        Current occupancy percentage based on capacity.
 
         Returns:
             Occupancy rate as percentage (0-100)
         """
-        total_beds = self.beds.count()
-        if total_beds == 0:
+        if self.capacity == 0:
             return 0.0
 
         occupied_beds = self.beds.filter(status="OCCUPIED").count()
-        return round((occupied_beds / total_beds) * 100, 2)
+        return round((occupied_beds / self.capacity) * 100, 2)
 
 
 class Bed(TimeStampedModel):
