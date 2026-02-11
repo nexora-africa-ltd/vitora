@@ -176,7 +176,7 @@ class TestWardProperties:
     """Tests for Ward computed properties."""
 
     def test_available_beds_with_no_beds(self):
-        """Should return 0 available beds when ward has no beds."""
+        """Should return full capacity when no beds are occupied."""
         ward = Ward.objects.create(
             name="Empty Ward",
             code="EW-01",
@@ -184,7 +184,8 @@ class TestWardProperties:
             capacity=20,
             daily_rate=Decimal("500.00"),
         )
-        assert ward.available_beds == 0
+        # With no occupied/maintenance/reserved beds, all capacity is available
+        assert ward.available_beds == 20
 
     def test_available_beds_calculation(self):
         """Should correctly count available beds."""
@@ -208,11 +209,12 @@ class TestWardProperties:
         Bed.objects.create(ward=ward, bed_number="B-09", status="AVAILABLE")
         Bed.objects.create(ward=ward, bed_number="B-10", status="OCCUPIED")
 
-        # Should have 4 AVAILABLE beds
+        # available_beds = capacity - occupied - maintenance - reserved
+        # = 10 - 4 - 1 - 1 = 4
         assert ward.available_beds == 4
 
     def test_total_beds_with_no_beds(self):
-        """Should return 0 total beds when ward has no beds."""
+        """Should return ward capacity as total beds."""
         ward = Ward.objects.create(
             name="Empty Ward Total",
             code="EWT-01",
@@ -220,10 +222,11 @@ class TestWardProperties:
             capacity=20,
             daily_rate=Decimal("500.00"),
         )
-        assert ward.total_beds == 0
+        # total_beds is the ward capacity, not count of Bed records
+        assert ward.total_beds == 20
 
     def test_total_beds_calculation(self):
-        """Should correctly count total beds in ward."""
+        """Should return ward capacity as total beds regardless of actual bed records."""
         ward = Ward.objects.create(
             name="Total Beds Test Ward",
             code="TBTW-01",
@@ -239,8 +242,8 @@ class TestWardProperties:
         Bed.objects.create(ward=ward, bed_number="TB-04", status="RESERVED")
         Bed.objects.create(ward=ward, bed_number="TB-05", status="AVAILABLE")
 
-        # Total should be 5 regardless of status
-        assert ward.total_beds == 5
+        # total_beds is the ward capacity (10), not count of Bed records (5)
+        assert ward.total_beds == 10
 
     def test_occupied_beds_with_no_beds(self):
         """Should return 0 occupied beds when ward has no beds."""
@@ -466,10 +469,12 @@ class TestWardAPISerializer:
         assert "occupancy_rate" in data
 
         # Verify calculations are correct
-        assert data["total_beds"] == 6
+        # total_beds = capacity (10)
+        assert data["total_beds"] == 10
         assert data["occupied_beds"] == 3
-        assert data["available_beds"] == 2
-        assert data["occupancy_rate"] == 50.0  # 3/6 = 50%
+        # available_beds = capacity - occupied - maintenance - reserved = 10 - 3 - 1 - 0 = 6
+        assert data["available_beds"] == 6
+        assert data["occupancy_rate"] == 30.0  # 3/10 = 30%
 
     def test_ward_list_api_includes_bed_counts(self, authenticated_client):
         """Should include bed counts in ward list API response."""
@@ -499,8 +504,10 @@ class TestWardAPISerializer:
         test_ward = next((w for w in results if w["code"] == "LATW-01"), None)
 
         assert test_ward is not None
-        assert test_ward["total_beds"] == 3
+        # total_beds = capacity (5)
+        assert test_ward["total_beds"] == 5
         assert test_ward["occupied_beds"] == 2
-        assert test_ward["available_beds"] == 1
-        # occupancy_rate = 2/3 = 66.67%
-        assert test_ward["occupancy_rate"] == pytest.approx(66.67, rel=0.01)
+        # available_beds = capacity - occupied - maintenance - reserved = 5 - 2 - 0 - 0 = 3
+        assert test_ward["available_beds"] == 3
+        # occupancy_rate = 2/5 = 40%
+        assert test_ward["occupancy_rate"] == pytest.approx(40.0, rel=0.01)

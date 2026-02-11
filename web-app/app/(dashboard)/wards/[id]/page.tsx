@@ -120,14 +120,18 @@ export default function WardDetailPage() {
   };
 
   const stats = useMemo(() => {
-    const available = bedsList.filter((b: any) => b.status === 'AVAILABLE').length;
-    const occupied = bedsList.filter((b: any) => b.status === 'OCCUPIED').length;
+    // Use ward's computed properties (based on capacity) for totals
+    const total = ward?.total_beds ?? 0;
+    const available = ward?.available_beds ?? 0;
+    const occupied = ward?.occupied_beds ?? 0;
+    const occupancyRate = ward?.occupancy_rate ?? 0;
+
+    // Count maintenance/reserved from actual bed records for display
     const maintenance = bedsList.filter((b: any) => b.status === 'MAINTENANCE').length;
     const reserved = bedsList.filter((b: any) => b.status === 'RESERVED').length;
-    const total = bedsList.length;
-    const occupancyRate = total > 0 ? Math.round((occupied / total) * 100) : 0;
+
     return { available, occupied, maintenance, reserved, total, occupancyRate };
-  }, [bedsList]);
+  }, [ward, bedsList]);
 
   if (isLoading) {
     return <WardDetailSkeleton />;
