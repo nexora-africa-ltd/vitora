@@ -1108,6 +1108,24 @@ export function PatientListPage() {
 - Shows "Release to refresh" prompt with glow effect
 - Desktop users have a refresh button in the header instead
 
+**Important refresh wiring notes:**
+- `refresh` invalidates React Query cache; pages should fetch via React Query for the header refresh and Pull-to-Refresh to actually reload data.
+- Avoid wiring Pull-to-Refresh to ad-hoc `refetch()` functions unless the page is already integrated with `usePageRefresh()`.
+- After write actions (create/update/verify/upload), prefer `queryClient.invalidateQueries()` over manual reloads so the header refresh and Pull-to-Refresh stay consistent.
+- Prefer semantic theme tokens (`text-destructive`, `bg-destructive/10`, `text-muted-foreground`) over hard-coded colors.
+
+### Responsive Short Labels (Mobile)
+
+When tab/button labels are too long on small screens, render a shorter label on mobile and the full label on `sm+`:
+
+```tsx
+<TabsTrigger value="results" className="gap-2">
+  <Icon className="h-4 w-4" />
+  <span className="sm:hidden">Pending</span>
+  <span className="hidden sm:inline">Pending Verification</span>
+</TabsTrigger>
+```
+
 ---
 
 ## ✅ Commit Discipline (Required)
@@ -1124,6 +1142,6 @@ Every commit must follow these rules:
 
 ---
 
-**Last Updated**: February 9, 2026
+**Last Updated**: February 11, 2026
 **Maintainer**: Engineering Lead
-**Version**: 2.4 (Added ResponsiveTable usage, pull-to-refresh, enhanced help tooltips)
+**Version**: 2.5 (Added refresh wiring notes + responsive short-label pattern)

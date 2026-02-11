@@ -8,6 +8,7 @@ import { useLabOrder } from '@/lib/hooks/use-laboratory';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
 
 interface ResultsEntryPageProps {
   params: Promise<{
@@ -19,6 +20,7 @@ export default function ResultsEntryPage({ params }: ResultsEntryPageProps) {
   const { orderNumber } = use(params);
   const router = useRouter();
   const { data: order, isLoading, error, refetch, isFetching } = useLabOrder(orderNumber);
+  const { refresh, isRefreshing } = usePageRefresh();
 
   if (isLoading) {
     return (
@@ -56,10 +58,8 @@ export default function ResultsEntryPage({ params }: ResultsEntryPageProps) {
 
   return (
     <PullToRefresh
-      onRefresh={async () => {
-        await refetch();
-      }}
-      isRefreshing={isFetching}
+      onRefresh={refresh}
+      isRefreshing={isRefreshing || isFetching}
       className="min-h-full"
     >
       <div className="space-y-6">

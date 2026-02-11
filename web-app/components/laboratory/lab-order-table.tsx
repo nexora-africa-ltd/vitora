@@ -51,9 +51,9 @@ const STATUS_CONFIG: Record<LabOrderStatus, { label: string; variant: 'default' 
 };
 
 const PRIORITY_CONFIG: Record<LabPriority, { label: string; className: string }> = {
-  ROUTINE: { label: 'Routine', className: 'text-gray-600' },
-  URGENT: { label: 'Urgent', className: 'text-orange-600 font-medium' },
-  STAT: { label: 'STAT', className: 'text-red-600 font-bold' },
+  ROUTINE: { label: 'Routine', className: 'text-muted-foreground' },
+  URGENT: { label: 'Urgent', className: 'text-warning font-medium' },
+  STAT: { label: 'STAT', className: 'text-destructive font-bold' },
 };
 
 export function LabOrderTable({

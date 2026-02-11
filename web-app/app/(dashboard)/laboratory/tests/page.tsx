@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,53 +14,19 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 
+const EMPTY_TESTS: TestCatalogListItem[] = [];
+
 export default function LaboratoryTestsPage() {
-  const { reportFetch } = usePageRefresh();
   const [search, setSearch] = useState('');
-  const [tests, setTests] = useState<TestCatalogListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { refresh, isRefreshing } = usePageRefresh();
 
-  const load = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await laboratoryApi.listTests({ is_active: true, page: 1, page_size: 50 });
-      setTests(response.results || []);
-      reportFetch();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load lab tests');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const testsQuery = useQuery({
+    queryKey: ['laboratoryTests', { is_active: true, page: 1, page_size: 50 }],
+    queryFn: async () => laboratoryApi.listTests({ is_active: true, page: 1, page_size: 50 }),
+  });
 
-  useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const response = await laboratoryApi.listTests({ is_active: true, page: 1, page_size: 50 });
-        if (!cancelled) {
-          setTests(response.results || []);
-          reportFetch();
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'Failed to load lab tests');
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [reportFetch]);
+  const tests: TestCatalogListItem[] = testsQuery.data?.results ?? EMPTY_TESTS;
+  const errorMessage = testsQuery.error instanceof Error ? testsQuery.error.message : null;
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -73,7 +40,7 @@ export default function LaboratoryTestsPage() {
   }, [search, tests]);
 
   return (
-    <PullToRefresh onRefresh={load} isRefreshing={isLoading} className="min-h-full">
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
       <div className="space-y-6">
         <PageHeader
           title="Laboratory Tests"
@@ -98,14 +65,14 @@ export default function LaboratoryTestsPage() {
               />
             </div>
 
-            {isLoading ? (
+            {testsQuery.isLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
               </div>
-            ) : error ? (
-              <div className="text-sm text-red-600">{error}</div>
+            ) : errorMessage ? (
+              <div className="text-sm text-destructive">{errorMessage}</div>
             ) : (
               <ResponsiveTable
                 data={filtered}

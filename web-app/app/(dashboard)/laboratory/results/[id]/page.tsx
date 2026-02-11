@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,7 @@ import { useToast } from '@/lib/hooks';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
 
 type Attachment = { id: number; file: string; file_name: string; uploaded_at?: string };
 
@@ -31,54 +33,48 @@ export default function LabResultDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { refresh, isRefreshing } = usePageRefresh();
 
   const resultId = useMemo(() => {
     const parsed = Number(params.id);
     return Number.isFinite(parsed) ? parsed : 0;
   }, [params.id]);
 
-  const [result, setResult] = useState<any>(null);
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
 
-  const load = async () => {
-    if (!resultId) return;
-    setIsLoading(true);
-    try {
+  const resultQuery = useQuery({
+    queryKey: ['labResultDetail', resultId],
+    enabled: Boolean(resultId),
+    queryFn: async (): Promise<{ result: any; attachments: Attachment[] }> => {
       const data = await laboratoryApi.getResult(resultId);
-      setResult(data as any);
 
-      // Prefer attachments included in the result payload (E2E uses this),
-      // and then try to refresh from the attachments endpoint.
       const inlineAttachments: Attachment[] = Array.isArray((data as any)?.attachments)
         ? ((data as any).attachments as Attachment[])
         : [];
-      setAttachments(inlineAttachments);
 
+      let resolvedAttachments = inlineAttachments;
       try {
         const atts = await laboratoryApi.listResultAttachments(resultId);
-        if (atts.length > 0) setAttachments(atts);
+        if (atts.length > 0) resolvedAttachments = atts;
       } catch {
         // Keep inline attachments if present
       }
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  useEffect(() => {
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resultId]);
+      return { result: data as any, attachments: resolvedAttachments };
+    },
+  });
+
+  const result = resultQuery.data?.result ?? null;
+  const attachments = resultQuery.data?.attachments ?? [];
 
   const handleVerify = async () => {
     if (!resultId) return;
     await laboratoryApi.verifyResult(resultId, true);
     toast({ title: 'Verified', description: 'Result verified successfully.' });
     toast({ title: 'Notification sent', description: 'Clinician notification sent.' });
-    await load();
+    await queryClient.invalidateQueries({ queryKey: ['labResultDetail', resultId] });
   };
 
   const handleUpload = async () => {
@@ -87,7 +83,7 @@ export default function LabResultDetailPage() {
     toast({ title: 'Uploaded', description: 'Attachment uploaded successfully.' });
     setUploadOpen(false);
     setFile(null);
-    await load();
+    await queryClient.invalidateQueries({ queryKey: ['labResultDetail', resultId] });
   };
 
   const statusText = (result?.verification_status || result?.status || 'UNVERIFIED') as string;
@@ -113,8 +109,8 @@ export default function LabResultDetailPage() {
 
   return (
     <PullToRefresh
-      onRefresh={load}
-      isRefreshing={isLoading}
+      onRefresh={refresh}
+      isRefreshing={isRefreshing || resultQuery.isFetching}
       className="min-h-full"
     >
       <div className="space-y-6">
@@ -123,10 +119,16 @@ export default function LabResultDetailPage() {
           helpContent="View lab result details, reference ranges, and attachments. Pull down to refresh on mobile, or use the refresh button in the header."
         />
 
-        {isLoading ? (
+        {resultQuery.isLoading ? (
           <div className="text-sm text-muted-foreground">Loading…</div>
+        ) : resultQuery.error ? (
+          <div className="text-sm text-destructive">
+            {resultQuery.error instanceof Error
+              ? resultQuery.error.message
+              : 'Unable to load result.'}
+          </div>
         ) : !result ? (
-          <div className="text-sm text-red-600">Unable to load result.</div>
+          <div className="text-sm text-destructive">Unable to load result.</div>
         ) : (
           <>
           <Card>
@@ -168,14 +170,14 @@ export default function LabResultDetailPage() {
           </Card>
 
           {(isCritical || criticalValues.length > 0) && (
-            <Card className="border-red-200 bg-red-50">
+            <Card className="border-destructive/30 bg-destructive/10">
               <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2 text-red-700">
+                <CardTitle className="text-base flex items-center gap-2 text-destructive">
                   <AlertTriangle className="h-4 w-4" />
                   Critical
                 </CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-red-700">
+              <CardContent className="text-sm text-destructive">
                 {criticalValues.length > 0 ? (
                   <ul className="list-disc pl-5 space-y-1">
                     {criticalValues.map((v) => (
