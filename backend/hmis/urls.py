@@ -42,7 +42,28 @@ from hmis.apps.patients.views import EmergencyContactViewSet, PatientViewSet
 
 def health_check(request):
     """Simple health check endpoint for monitoring."""
-    return JsonResponse({"status": "healthy", "service": "vitora-hmis", "version": "0.1.0"})
+    from django.conf import settings
+
+    # Check if WebSocket/Channels is configured
+    websocket_enabled = False
+    try:
+        # Check if ASGI application and channel layers are configured
+        asgi_app = getattr(settings, "ASGI_APPLICATION", None)
+        channel_layers = getattr(settings, "CHANNEL_LAYERS", {})
+        # Check if channels is in installed apps
+        channels_installed = "channels" in settings.INSTALLED_APPS
+
+        # WebSocket is enabled if all components are configured
+        websocket_enabled = bool(asgi_app and channel_layers and channels_installed)
+    except Exception:
+        websocket_enabled = False
+
+    return JsonResponse({
+        "status": "healthy",
+        "service": "vitora-hmis",
+        "version": "0.1.0",
+        "websocket_enabled": websocket_enabled,
+    })
 
 
 # Create a router for API endpoints

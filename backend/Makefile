@@ -183,8 +183,13 @@ api-wsgi:
 	poetry run python manage.py runserver 0.0.0.0:9088 &
 
 kill-api:
-	@echo "Killing process on port 9088..."
-	@lsof -ti:9088 | xargs kill -9 2>/dev/null || echo "No process running on port 9088"
+	@echo "Killing daphne/python server on port 9088..."
+	@lsof -ti:9088 -sTCP:LISTEN | while read pid; do \
+		cmd=$$(ps -p $$pid -o comm= 2>/dev/null); \
+		if echo "$$cmd" | grep -qE "daphne|python"; then \
+			kill $$pid 2>/dev/null && echo "Killed $$cmd (PID $$pid)"; \
+		fi; \
+	done || echo "No daphne/python server running on port 9088"
 
 shell:
 	poetry run python manage.py shell
