@@ -9,6 +9,32 @@
  * - Primary: Deep Burgundy #3D000F - professional, authoritative
  * - Secondary: Teal #1A4D5C - healthcare trust, calm
  * - Accent: Warm Gold #D4A574 - warmth, Kenya sun
+ *
+ * ============================================================================
+ * RESPONSIVE BREAKPOINT STRATEGY
+ * ============================================================================
+ * Tailwind breakpoints used consistently throughout the app:
+ *
+ * sm (640px)  - Large phones, small tablets in portrait
+ *               Show: abbreviated status text, basic icons
+ *               Hide: mobile menu items, replace with icons
+ *
+ * md (768px)  - Tablets, iPads in portrait
+ *               Show: search bar (compact), more header elements
+ *               Content: 2-column grids start
+ *
+ * lg (1024px) - Small laptops, tablets in landscape, iPad Pro
+ *               NOTE: Sidebar still hidden (hamburger menu)
+ *               Show: full breadcrumb trail, more grid columns
+ *               Content: wider gaps, larger card layouts
+ *
+ * xl (1280px) - Desktop monitors, large laptops
+ *               Show: persistent sidebar, full status text
+ *               Content margin shifts for sidebar (ml-64 or ml-20)
+ *
+ * 2xl (1536px)- Large desktop monitors
+ *               Show: maximum content width, spacious layouts
+ * ============================================================================
  */
 
 @layer base {

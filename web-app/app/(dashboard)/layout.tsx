@@ -43,7 +43,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div
             className={cn(
               'transition-all duration-300',
-              sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'
+              sidebarCollapsed ? 'xl:ml-20' : 'xl:ml-64'
             )}
           >
             {/* Header */}
@@ -53,7 +53,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             />
 
             {/* Page content */}
-            <main className="min-h-[calc(100vh-4rem)] p-4 md:p-6 lg:p-8">
+            <main className="min-h-[calc(100vh-4rem)] p-4 md:p-6 xl:p-8">
               {children}
             </main>
           </div>
@@ -61,7 +61,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Mobile sidebar overlay */}
           {mobileSidebarOpen && (
             <div
-              className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+              className="fixed inset-0 z-40 bg-black/50 xl:hidden"
               onClick={() => setMobileSidebarOpen(false)}
             />
           )}
