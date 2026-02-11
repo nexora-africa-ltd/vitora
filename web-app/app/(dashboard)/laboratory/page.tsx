@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, ClipboardList, Beaker, FileText } from 'lucide-react';
+import { Plus, ClipboardList, Beaker, FileText, ClipboardClock } from 'lucide-react';
 import { LabOrderTable } from '@/components/laboratory/lab-order-table';
 import { LabQueueView } from '@/components/laboratory/lab-queue-view';
 import { PageHeader } from '@/components/shared/page-header';
@@ -51,15 +51,17 @@ export default function LaboratoryPage() {
           <TabsList>
             <TabsTrigger value="orders" className="gap-2">
               <ClipboardList className="h-4 w-4" />
-              Orders
+              <span className="sm:hidden">Orders</span>
+              <span className="hidden sm:inline">Lab Orders</span>
             </TabsTrigger>
             <TabsTrigger value="queue" className="gap-2">
               <Beaker className="h-4 w-4" />
               Lab Queue
             </TabsTrigger>
             <TabsTrigger value="results" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Pending Verification
+              <ClipboardClock className="h-4 w-4" />
+              <span className="sm:hidden">Pending</span>
+              <span className="hidden sm:inline">Pending Verification</span>
             </TabsTrigger>
           </TabsList>
 
