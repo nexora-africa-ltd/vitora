@@ -376,4 +376,5 @@ class TestBedWardRelationship:
         Bed.objects.create(ward=sample_ward, bed_number="B-703", status="OCCUPIED")
 
         # This tests the Ward.available_beds property indirectly
-        assert sample_ward.available_beds == 2
+        # Capacity-based availability: capacity - occupied - maintenance - reserved
+        assert sample_ward.available_beds == 9

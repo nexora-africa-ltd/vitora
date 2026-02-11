@@ -1,6 +1,6 @@
 # Ward Patient Compatibility Constraints - Implementation Plan
 
-> **Status**: Planning  
+> **Status**: In Progress (Phase 1 Complete)  
 > **Created**: February 12, 2026  
 > **Target Sprint**: TBD  
 > **PowerSync**: Phase 5 (Future Sprint - documented)
@@ -1279,17 +1279,17 @@ test('supervisor receives real-time alert for CRITICAL violations', async () => 
 
 ## 9. Implementation Phases
 
-### Phase 1: Backend Foundation (4 days)
-- [ ] Add Ward model fields (migration)
-- [ ] Implement Ward model `save()` with auto-populate age defaults by ward type
-- [ ] Create WardCompatibilityService
-- [ ] Add single-patient compatibility check API endpoint
-- [ ] Add **bulk compatibility check** API endpoint (for emergency surge)
-- [ ] Update Admission model with override fields
-- [ ] Modify admission creation to check/record violations
-- [ ] Add audit logging for overrides
-- [ ] Write backend tests
-- [ ] Add `receive_critical_alerts` permission
+### Phase 1: Backend Foundation (4 days) ✅ COMPLETE
+- [x] Add Ward model fields (migration)
+- [x] Implement Ward model `save()` with auto-populate age defaults by ward type
+- [x] Create WardCompatibilityService
+- [x] Add single-patient compatibility check API endpoint
+- [x] Add **bulk compatibility check** API endpoint (for emergency surge)
+- [x] Update Admission model with override fields
+- [x] Modify admission creation to check/record violations
+- [x] Add audit logging for overrides
+- [x] Write backend tests
+- [x] Add `receive_critical_alerts` permission
 
 ### Phase 2: WebSocket & Polling + Supervisor Escalation (3 days)
 - [ ] Create WardCompatibilityConsumer

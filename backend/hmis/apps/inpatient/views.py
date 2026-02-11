@@ -6,11 +6,13 @@ from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
+from hmis.apps.patients.models import Patient
 
 from .models import (
     Admission,
@@ -25,6 +27,7 @@ from .models import (
     Ward,
     WardRound,
 )
+from .services.compatibility import ward_compatibility_service
 from .serializers import (
     AdmissionRecommendationSerializer,
     AdmissionSerializer,
@@ -91,6 +94,114 @@ class WardViewSet(viewsets.ReadOnlyModelViewSet):
 
         serializer = BedSerializer(beds, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="check_compatibility")
+    def check_compatibility(self, request, pk=None):
+        """Check patient compatibility with this ward."""
+        ward = self.get_object()
+        patient_id = request.data.get("patient_id")
+        requires_isolation = bool(request.data.get("requires_isolation", False))
+
+        if not patient_id:
+            return Response({"error": "patient_id required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            patient = Patient.objects.get(id=patient_id)
+        except Patient.DoesNotExist:
+            return Response({"error": "Patient not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        result = ward_compatibility_service.check_compatibility(
+            patient=patient,
+            ward=ward,
+            requires_isolation=requires_isolation,
+        )
+
+        return Response(
+            {
+                "compatible": result.compatible,
+                "has_critical_violations": result.has_critical_violations,
+                "violations": [v.to_dict() for v in result.violations],
+            }
+        )
+
+    @action(detail=False, methods=["post"], url_path="bulk_check_compatibility")
+    def bulk_check_compatibility(self, request):
+        """Bulk check compatibility for multiple patients across all wards."""
+        patient_ids = request.data.get("patient_ids", [])
+        requires_isolation_list = request.data.get("requires_isolation", [])
+
+        if not patient_ids:
+            return Response(
+                {"error": "patient_ids required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not isinstance(patient_ids, list):
+            return Response(
+                {"error": "patient_ids must be a list"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not isinstance(requires_isolation_list, list):
+            requires_isolation_list = []
+
+        while len(requires_isolation_list) < len(patient_ids):
+            requires_isolation_list.append(False)
+
+        patients_by_id = Patient.objects.in_bulk(patient_ids)
+        wards = Ward.objects.filter(is_active=True).prefetch_related("beds")
+
+        results = []
+        for patient_id, requires_isolation in zip(patient_ids, requires_isolation_list):
+            patient = patients_by_id.get(patient_id)
+            if patient is None:
+                results.append(
+                    {
+                        "patient_id": patient_id,
+                        "error": "Patient not found",
+                        "compatible_wards": [],
+                        "incompatible_wards": [],
+                    }
+                )
+                continue
+
+            compatible_wards = []
+            incompatible_wards = []
+
+            for ward in wards:
+                result = ward_compatibility_service.check_compatibility(
+                    patient=patient,
+                    ward=ward,
+                    requires_isolation=bool(requires_isolation),
+                )
+
+                ward_info = {
+                    "ward_id": ward.id,
+                    "ward_name": ward.name,
+                    "ward_type": ward.ward_type,
+                    "available_beds": ward.available_beds,
+                }
+
+                if result.compatible:
+                    compatible_wards.append(ward_info)
+                else:
+                    ward_info["violations"] = [v.code for v in result.violations]
+                    ward_info["has_critical"] = result.has_critical_violations
+                    incompatible_wards.append(ward_info)
+
+            results.append(
+                {
+                    "patient_id": patient.id,
+                    "patient_name": f"{patient.first_name} {patient.last_name}",
+                    "patient_mrn": patient.mrn,
+                    "compatible_wards": sorted(
+                        compatible_wards, key=lambda x: -int(x["available_beds"])
+                    ),
+                    "incompatible_wards": incompatible_wards,
+                }
+            )
+
+        return Response({"results": results})
 
 
 class BedViewSet(viewsets.ModelViewSet):
@@ -289,8 +400,49 @@ class AdmissionViewSet(viewsets.ModelViewSet):
     ordering = ["-admission_date"]
 
     def perform_create(self, serializer):
-        """Create admission and log action."""
-        instance = serializer.save()
+        """Create admission, enforce ward compatibility override rules, and log action."""
+        patient = serializer.validated_data.get("patient")
+        bed = serializer.validated_data.get("bed")
+        ward = serializer.validated_data.get("ward")
+
+        if bed is None or patient is None or ward is None:
+            raise ValidationError("patient, ward, and bed are required")
+
+        if bed.ward_id != ward.id:
+            raise ValidationError({"bed": "Selected bed does not belong to the selected ward"})
+
+        # Check compatibility (admission flow currently assumes requires_isolation is provided by the client)
+        requires_isolation = bool(self.request.data.get("requires_isolation", False))
+        result = ward_compatibility_service.check_compatibility(
+            patient=patient,
+            ward=bed.ward,
+            requires_isolation=requires_isolation,
+        )
+
+        override_requested = bool(self.request.data.get("constraint_override", False))
+        override_reason = str(self.request.data.get("constraint_override_reason", "") or "")
+
+        if not result.compatible and not override_requested:
+            raise ValidationError(
+                {
+                    "compatibility": (
+                        "Patient is not compatible with this ward. "
+                        "Set constraint_override=true to proceed."
+                    ),
+                    "violations": [v.message for v in result.violations],
+                }
+            )
+
+        override_used = (not result.compatible) and override_requested
+
+        instance = serializer.save(
+            constraint_override=override_used,
+            constraint_override_reason=(override_reason if override_used else ""),
+            constraint_violations=[
+                {"code": v.code, "severity": v.severity, "message": v.message}
+                for v in result.violations
+            ],
+        )
 
         # Log admission creation
         AuditLog.log(
@@ -306,6 +458,23 @@ class AdmissionViewSet(viewsets.ModelViewSet):
             },
             ip_address=get_client_ip(self.request),
         )
+
+        if override_used:
+            AuditLog.log(
+                action="admission_constraint_override",
+                user=self.request.user,
+                resource_type="Admission",
+                resource_id=instance.id,
+                details={
+                    "patient": instance.patient.id,
+                    "patient_mrn": instance.patient.mrn,
+                    "ward": instance.ward.name,
+                    "bed": instance.bed.bed_number,
+                    "violations": instance.constraint_violations,
+                    "override_reason": instance.constraint_override_reason,
+                },
+                ip_address=get_client_ip(self.request),
+            )
 
 
 class DischargeViewSet(viewsets.ModelViewSet):
