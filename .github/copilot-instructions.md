@@ -346,7 +346,96 @@ class SyncConflict(models.Model):
 
 ---
 
-## 🔌 API Endpoints Reference
+## � Real-Time & Sync Architecture
+
+Vitora uses a **hybrid approach**: PowerSync for offline-first data sync + WebSockets for instant notifications.
+
+### PowerSync vs WebSockets Decision Matrix
+
+| Capability | PowerSync | WebSockets |
+|------------|-----------|------------|
+| **Data sync/persistence** | ✅ Primary purpose | ❌ Not designed for this |
+| **Offline support** | ✅ Built-in | ❌ Requires online |
+| **Conflict resolution** | ✅ Built-in | ❌ You build it |
+| **Instant server→client push** | ⚠️ Sync latency (seconds) | ✅ Milliseconds |
+| **Ephemeral events** | ❌ Not designed for this | ✅ Primary purpose |
+| **Presence/live cursors** | ❌ No | ✅ Yes |
+
+### When to Use Each
+
+| Use Case | PowerSync | WebSocket | Notes |
+|----------|-----------|-----------|-------|
+| Load patient record | ✅ | ❌ | Local SQLite query (instant) |
+| Save encounter offline | ✅ | ❌ | Built-in, automatic |
+| 🚨 Critical lab result alert | ❌ | ✅ | Instant push required |
+| Lab result ready notification | ⚠️ | ✅ | WS triggers sync |
+| Triage queue display | ✅ | ✅ | WS for position changes |
+| Multi-user conflict warning | ❌ | ✅ | "Dr. Smith is viewing" |
+| Dashboard stats refresh | ✅ | ❌ | Cached locally |
+
+### Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Vitora Real-time Architecture                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                    Frontend (Electron/Web/Mobile)         │   │
+│  │                                                           │   │
+│  │  ┌─────────────────┐       ┌─────────────────┐           │   │
+│  │  │  PowerSync      │       │  WebSocket      │           │   │
+│  │  │  - Local SQLite │       │  - Notifications│           │   │
+│  │  │  - Data queries │       │  - Critical     │           │   │
+│  │  │  - Offline ops  │       │    alerts       │           │   │
+│  │  │  - Background   │       │  - Queue updates│           │   │
+│  │  │    sync         │       │  - Presence     │           │   │
+│  │  └────────┬────────┘       └────────┬────────┘           │   │
+│  └───────────┼─────────────────────────┼────────────────────┘   │
+│              │                         │                        │
+│  ┌───────────▼─────────┐   ┌───────────▼────────┐               │
+│  │  PowerSync Service  │   │  Django Channels   │               │
+│  │  (Sync Gateway)     │   │  (WebSocket Server)│               │
+│  └───────────┬─────────┘   └───────────┬────────┘               │
+│              │                         │                        │
+│              └────────────┬────────────┘                        │
+│                           │                                     │
+│                  ┌────────▼────────┐                            │
+│                  │   PostgreSQL    │                            │
+│                  └─────────────────┘                            │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Implementation Pattern
+
+```typescript
+// Combined hook for a page with durable data + real-time events
+export function useEncounterData(encounterId: string) {
+  // Durable data from PowerSync (offline-capable)
+  const encounter = usePowerSyncQuery(
+    `SELECT * FROM encounters WHERE id = ?`,
+    [encounterId]
+  );
+  
+  // Real-time events via WebSocket
+  const { lastMessage } = useWebSocket(`/ws/encounters/${encounterId}/`);
+  
+  useEffect(() => {
+    if (lastMessage?.type === 'lab_result_verified') {
+      // Trigger PowerSync to pull latest
+      db.triggerSync();
+      toast.info('Lab results verified - refreshing...');
+    }
+  }, [lastMessage]);
+  
+  return { encounter };
+}
+```
+
+---
+
+## �🔌 API Endpoints Reference
 
 ### Authentication (JWT)
 ```

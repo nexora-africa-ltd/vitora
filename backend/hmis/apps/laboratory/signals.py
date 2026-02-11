@@ -153,3 +153,71 @@ def update_order_status_on_result(sender, instance, created, **kwargs):
 
     except Exception as e:
         logger.error(f"Failed to update order status after result entry: {e}")
+
+
+@receiver(post_save, sender=LabResult)
+def notify_on_result_verification(sender, instance, created, **kwargs):
+    """
+    Send WebSocket notifications when a lab result is verified or has critical values.
+
+    This signal:
+    1. Broadcasts verified result to encounter/order channels
+    2. Notifies the ordering clinician via their personal channel
+    3. Sends critical alerts for abnormal values
+    4. Triggers in-app notification creation
+
+    The WebSocket notification provides instant feedback to clinicians,
+    while PowerSync will handle data synchronization.
+    """
+    if created:
+        return  # Only handle updates, not creation
+
+    # Import WebSocket broadcast utilities
+    from hmis.apps.laboratory.websockets import (
+        broadcast_critical_alert,
+        broadcast_order_completed,
+        broadcast_result_verified,
+    )
+
+    try:
+        # Check if this is a verification status change
+        if instance.verification_status == "VERIFIED":
+            # Broadcast verified result
+            broadcast_result_verified(instance)
+            logger.info(
+                f"Broadcasted verification notification for result {instance.id}"
+            )
+
+            # If critical, also send critical alert
+            if instance.is_critical_result:
+                broadcast_critical_alert(instance)
+                logger.info(f"Broadcasted critical alert for result {instance.id}")
+
+            # Check if all results for this order are now verified
+            lab_order = instance.order_item.lab_order
+            total_items = lab_order.items.count()
+            verified_count = lab_order.items.filter(
+                result__verification_status="VERIFIED"
+            ).count()
+
+            if verified_count == total_items:
+                # All results verified - update order status and notify
+                lab_order.update_status("COMPLETED", instance.verified_by)
+                broadcast_order_completed(lab_order)
+                logger.info(
+                    f"Order {lab_order.order_number} completed - all results verified"
+                )
+
+                # Create in-app notification for the ordering clinician
+                from hmis.apps.laboratory.services.notifications import (
+                    LabNotificationService,
+                )
+
+                try:
+                    LabNotificationService().send_result_notification(lab_order)
+                except Exception as notif_error:
+                    logger.error(f"Failed to send in-app notification: {notif_error}")
+
+    except Exception as e:
+        logger.error(f"Failed to send verification notification for result {instance.id}: {e}")
+
