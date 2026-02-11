@@ -53,12 +53,10 @@ export function LabResultsBadgeLive({
     setResult(initialResult);
   }, [initialResult]);
 
-  // Handle WebSocket messages
-  const handleMessage = useCallback((message: unknown) => {
-    const labMessage = message as LabWebSocketMessage;
-    
-    if (labMessage.event === 'result_verified') {
-      const eventData = labMessage.data as LabResultVerifiedEvent;
+  // Handle WebSocket messages (properly typed via UseLabWebSocketOptions)
+  const handleMessage = useCallback((message: LabWebSocketMessage) => {
+    if (message.event === 'result_verified') {
+      const eventData = message.data as LabResultVerifiedEvent;
 
       // Update result state with verified event data
       // We merge the event data with existing result or create a minimal result object
@@ -95,7 +93,7 @@ export function LabResultsBadgeLive({
         };
         return updatedResult;
       });
-    } else if (labMessage.event === 'result_entered') {
+    } else if (message.event === 'result_entered') {
       // A new result was entered - mark as having a result but unverified
       setResult((prev) => {
         if (prev) return prev; // Don't override existing result

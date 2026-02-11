@@ -188,9 +188,9 @@ export interface PatientRemovedEvent {
 }
 
 /**
- * WebSocket hook options
+ * WebSocket hook options (generic for different message types)
  */
-export interface UseWebSocketOptions {
+export interface UseWebSocketOptions<TMessage = WebSocketMessage> {
   /** Whether to automatically reconnect on disconnect (default: true) */
   autoReconnect?: boolean;
   /** Reconnect delay in ms (default: 3000) */
@@ -200,11 +200,16 @@ export interface UseWebSocketOptions {
   /** Whether to sync events to patient journey store (default: true) */
   syncToJourneyStore?: boolean;
   /** Custom event handlers */
-  onMessage?: (message: WebSocketMessage) => void;
+  onMessage?: (message: TMessage) => void;
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (error: Event) => void;
 }
+
+/**
+ * Lab-specific WebSocket options with proper lab event typing
+ */
+export type UseLabWebSocketOptions = UseWebSocketOptions<LabWebSocketMessage>;
 
 /**
  * WebSocket hook return type
@@ -562,7 +567,7 @@ const labQueryKeys = {
  */
 export function useLabEncounterSocket(
   encounterId: number | null,
-  options: UseWebSocketOptions = {}
+  options: UseLabWebSocketOptions = {}
 ): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
@@ -572,7 +577,10 @@ export function useLabEncounterSocket(
     (message: WebSocketMessage) => {
       if (!encounterId) return;
 
-      console.log(`[WebSocket] Lab encounter ${encounterId} event:`, message.event, message.data);
+      // Cast to lab message type for proper event typing
+      const labMessage = message as unknown as LabWebSocketMessage;
+
+      console.log(`[WebSocket] Lab encounter ${encounterId} event:`, labMessage.event, labMessage.data);
 
       // Invalidate encounter-specific lab orders (matches useEncounterLabOrders key)
       queryClient.invalidateQueries({ queryKey: labQueryKeys.encounterOrders(encounterId) });
@@ -580,7 +588,7 @@ export function useLabEncounterSocket(
       queryClient.invalidateQueries({ queryKey: labQueryKeys.allOrders() });
 
       // Call custom handler if provided
-      options.onMessage?.(message);
+      options.onMessage?.(labMessage);
     },
     [encounterId, queryClient, options]
   );
@@ -604,7 +612,7 @@ export function useLabEncounterSocket(
  */
 export function useLabOrderSocket(
   orderId: number | null,
-  options: UseWebSocketOptions & { orderNumber?: string; encounterId?: number } = {}
+  options: UseLabWebSocketOptions & { orderNumber?: string; encounterId?: number } = {}
 ): UseWebSocketReturn {
   const queryClient = useQueryClient();
   const { orderNumber, encounterId, ...wsOptions } = options;
@@ -615,7 +623,10 @@ export function useLabOrderSocket(
     (message: WebSocketMessage) => {
       if (!orderId) return;
 
-      console.log(`[WebSocket] Lab order ${orderId} event:`, message.event, message.data);
+      // Cast to lab message type for proper event typing
+      const labMessage = message as unknown as LabWebSocketMessage;
+
+      console.log(`[WebSocket] Lab order ${orderId} event:`, labMessage.event, labMessage.data);
 
       // Invalidate this specific order by order number
       if (orderNumber) {
@@ -629,7 +640,7 @@ export function useLabOrderSocket(
       queryClient.invalidateQueries({ queryKey: labQueryKeys.allOrders() });
 
       // Call custom handler if provided
-      wsOptions.onMessage?.(message);
+      wsOptions.onMessage?.(labMessage);
     },
     [orderId, orderNumber, encounterId, queryClient, wsOptions]
   );
@@ -649,7 +660,7 @@ export function useLabOrderSocket(
  * @param options - WebSocket options
  */
 export function useLabClinicianSocket(
-  options: UseWebSocketOptions = {}
+  options: UseLabWebSocketOptions = {}
 ): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
@@ -657,9 +668,10 @@ export function useLabClinicianSocket(
 
   const handleMessage = useCallback(
     (message: WebSocketMessage) => {
-      console.log('[WebSocket] Lab clinician event:', message.event, message.data);
-
+      // Cast to lab message type for proper event typing
       const labMessage = message as unknown as LabWebSocketMessage;
+
+      console.log('[WebSocket] Lab clinician event:', labMessage.event, labMessage.data);
 
       // Handle critical alerts specially
       if (labMessage.event === 'critical_alert') {
@@ -680,7 +692,7 @@ export function useLabClinicianSocket(
       queryClient.invalidateQueries({ queryKey: labQueryKeys.criticalAlerts() });
 
       // Call custom handler if provided
-      options.onMessage?.(message);
+      options.onMessage?.(labMessage);
     },
     [queryClient, options]
   );
@@ -700,7 +712,7 @@ export function useLabClinicianSocket(
  * @param options - WebSocket options
  */
 export function useLabQueueSocket(
-  options: UseWebSocketOptions = {}
+  options: UseLabWebSocketOptions = {}
 ): UseWebSocketReturn {
   const queryClient = useQueryClient();
 
@@ -708,14 +720,17 @@ export function useLabQueueSocket(
 
   const handleMessage = useCallback(
     (message: WebSocketMessage) => {
-      console.log('[WebSocket] Lab queue event:', message.event, message.data);
+      // Cast to lab message type for proper event typing
+      const labMessage = message as unknown as LabWebSocketMessage;
+
+      console.log('[WebSocket] Lab queue event:', labMessage.event, labMessage.data);
 
       // Invalidate lab queue queries
       queryClient.invalidateQueries({ queryKey: labQueryKeys.queue() });
       queryClient.invalidateQueries({ queryKey: labQueryKeys.allOrders() });
 
       // Call custom handler if provided
-      options.onMessage?.(message);
+      options.onMessage?.(labMessage);
     },
     [queryClient, options]
   );

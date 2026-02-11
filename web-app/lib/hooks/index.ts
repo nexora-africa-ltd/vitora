@@ -236,5 +236,6 @@ export {
   type LabOrderCompletedEvent,
   type LabQueueUpdatedEvent,
   type UseWebSocketOptions,
+  type UseLabWebSocketOptions,
   type UseWebSocketReturn,
 } from './use-websocket';
