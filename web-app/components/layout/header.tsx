@@ -62,12 +62,12 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
     <header className="sticky top-0 z-30 w-full h-16 bg-background/95 backdrop-blur border-b">
       <div className="flex h-full items-center justify-between px-4 md:px-6">
         {/* Left side */}
-        <div className="flex items-center gap-4 min-w-0">
-          {/* Mobile menu button */}
+        <div className="flex items-center gap-2 lg:gap-4 min-w-0">
+          {/* Mobile menu button - hidden at xl when sidebar always visible */}
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="xl:hidden"
             onClick={onMenuClick}
             aria-label="Toggle menu"
           >
@@ -80,7 +80,7 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
         </div>
 
         {/* Right side */}
-        <div className="flex items-center gap-2 md:gap-4">
+        <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-3 xl:gap-4">
           {/* Online/Offline indicator */}
           <TooltipProvider delayDuration={300}>
             <Tooltip>
@@ -101,12 +101,12 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                     state={isSyncing ? 'fixing' : isOnline ? 'active' : 'down'}
                     size="sm"
                   />
-                  {/* Short text on sm-md screens */}
-                  <span className="hidden sm:inline lg:hidden">
+                  {/* Short text on sm-lg screens */}
+                  <span className="hidden sm:inline xl:hidden">
                     {isSyncing ? 'Sync' : isOnline ? formatLastFetchShort(lastFetchTime) : 'Off'}
                   </span>
-                  {/* Full text on lg+ screens */}
-                  <span className="hidden lg:inline">
+                  {/* Full text on xl+ screens */}
+                  <span className="hidden xl:inline">
                     {isSyncing ? 'Syncing...' : isOnline ? formatLastFetch(lastFetchTime) : 'Offline'}
                   </span>
                   {pendingChanges > 0 && (
@@ -209,8 +209,8 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
             </Tooltip>
           </TooltipProvider>
 
-          {/* Search (desktop) */}
-          <div className="hidden md:flex relative w-64">
+          {/* Search (tablet+) - smaller at lg, full width at xl */}
+          <div className="hidden md:flex relative w-48 lg:w-56 xl:w-64">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"

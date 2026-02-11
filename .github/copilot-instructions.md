@@ -845,11 +845,21 @@ Use Tailwind's standard breakpoints consistently:
 
 | Breakpoint | Size | Usage |
 |------------|------|-------|
-| `sm` | 640px | Small tablets, large phones |
-| `md` | 768px | Tablets |
-| `lg` | 1024px | Small laptops, tablets landscape |
-| `xl` | 1280px | Desktops |
-| `2xl` | 1536px | Large desktops |
+| `sm` | 640px | Large phones - show abbreviated text, basic icons |
+| `md` | 768px | Tablets - show search bar (compact), 2-column grids |
+| `lg` | 1024px | Small laptops, tablets landscape - **sidebar still hidden** |
+| `xl` | 1280px | Desktops - **persistent sidebar**, full status text |
+| `2xl` | 1536px | Large desktops - maximum content width |
+
+> ⚠️ **IMPORTANT**: The sidebar becomes persistent at `xl` (1280px), NOT `lg` (1024px).
+> At 1024px, the sidebar is still in hamburger menu mode to prevent crowding.
+
+**Breakpoint Usage Summary:**
+- **Sidebar visible**: `xl:translate-x-0`, `xl:ml-64`
+- **Mobile menu button**: `xl:hidden`
+- **Full status text**: `xl:inline`, short text uses `sm:inline xl:hidden`
+- **Search bar widths**: `w-48` → `lg:w-56` → `xl:w-64`
+- **Gap sizing**: `gap-1.5` → `sm:gap-2` → `lg:gap-3` → `xl:gap-4`
 
 ### Page Header Pattern
 
@@ -917,15 +927,15 @@ For status indicators that show time-based text, use different formats at differ
 ```tsx
 import { formatLastFetch, formatLastFetchShort } from '@/lib/context/page-refresh-context';
 
-// Icon only on mobile, short text on md, full text on lg+
+// Icon only on mobile, short text on sm-lg, full text on xl+
 <>
   <StatusIndicator state={isOnline ? 'active' : 'down'} size="sm" />
-  {/* Short text on sm-md screens */}
-  <span className="hidden sm:inline lg:hidden">
+  {/* Short text on sm-lg screens */}
+  <span className="hidden sm:inline xl:hidden">
     {isOnline ? formatLastFetchShort(lastFetchTime) : 'Off'}
   </span>
-  {/* Full text on lg+ screens */}
-  <span className="hidden lg:inline">
+  {/* Full text on xl+ screens */}
+  <span className="hidden xl:inline">
     {isOnline ? formatLastFetch(lastFetchTime) : 'Offline'}
   </span>
 </>
@@ -938,16 +948,16 @@ import { formatLastFetch, formatLastFetchShort } from '@/lib/context/page-refres
 
 ### Breadcrumb Responsive Pattern
 
-Show full breadcrumb trail only on large screens:
+Show full breadcrumb trail only on xl+ screens (when sidebar is visible):
 
 ```tsx
-{/* Mobile & Medium: current page only */}
-<div className="lg:hidden text-sm font-medium truncate">
+{/* Mobile to lg: current page only */}
+<div className="xl:hidden text-sm font-medium truncate">
   {currentLabel}
 </div>
 
-{/* Large screens: full breadcrumb trail */}
-<div className="hidden lg:flex items-center text-sm">
+{/* xl+: full breadcrumb trail */}
+<div className="hidden xl:flex items-center text-sm">
   {/* ... full trail ... */}
 </div>
 ```

@@ -373,7 +373,7 @@ export function Sidebar({
         className={cn(
           'fixed left-0 top-0 z-50 h-dvh border-r bg-card/95 backdrop-blur transition-all duration-300 overscroll-contain',
           collapsed ? 'w-20' : 'w-64',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          mobileOpen ? 'translate-x-0' : '-translate-x-full xl:translate-x-0'
         )}
       >
         <div className="flex h-full flex-col">
@@ -384,7 +384,7 @@ export function Sidebar({
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden shrink-0"
+              className="xl:hidden shrink-0"
               onClick={onMobileClose}
               aria-label="Close sidebar"
             >
