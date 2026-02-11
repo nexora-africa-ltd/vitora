@@ -63,7 +63,7 @@ import {
   useAssignQueueEntry,
   useLabTechnicians,
 } from '@/lib/hooks/use-laboratory';
-import { useToast } from '@/lib/hooks';
+import { useToast, useLabQueueSocket } from '@/lib/hooks';
 import { formatRelativeTime } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import { EmptyState } from '@/components/shared/empty-state';
@@ -131,6 +131,20 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
   // Hooks
   const { data: queue, isLoading, error, refetch } = useLabQueue(statusFilter || undefined);
   const { data: technicians = [], isLoading: isTechniciansLoading } = useLabTechnicians();
+
+  // Real-time WebSocket updates for lab queue
+  const { isConnected: isWsConnected } = useLabQueueSocket({
+    onMessage: (message) => {
+      // Show toast for result verification events
+      if (message.event === 'result_verified' || message.event === 'queue_updated') {
+        toast({
+          title: 'Queue Updated',
+          description: 'Lab queue has been updated.',
+        });
+      }
+    },
+  });
+
   const collectSample = useCollectSample();
   const startProcessing = useStartProcessing();
   const submitForReview = useSubmitForReview();

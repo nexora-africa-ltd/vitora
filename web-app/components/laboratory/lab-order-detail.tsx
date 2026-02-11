@@ -40,7 +40,7 @@ import {
   useCancelLabOrder,
   useSubmitLabOrder,
 } from '@/lib/hooks/use-laboratory';
-import { useToast } from '@/lib/hooks';
+import { useToast, useLabOrderSocket } from '@/lib/hooks';
 import { formatDate, formatDateTime, formatCurrency } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import { LabResultsBadge } from './lab-results-badge';
@@ -82,6 +82,27 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
   const submitOrder = useSubmitLabOrder();
   const collectSpecimen = useCollectSpecimen();
   const cancelOrder = useCancelLabOrder();
+
+  // Real-time WebSocket updates for this specific order
+  const { isConnected: isWsConnected } = useLabOrderSocket(
+    order?.id ?? null,
+    {
+      onMessage: (message) => {
+        // Show toast for result verification
+        if (message.event === 'result_verified') {
+          toast({
+            title: 'Result Verified',
+            description: 'A lab result has been verified for this order.',
+          });
+        } else if (message.event === 'order_completed') {
+          toast({
+            title: 'Order Completed',
+            description: 'All results for this order have been verified.',
+          });
+        }
+      },
+    }
+  );
 
   if (isLoading) {
     return <LabOrderDetailSkeleton />;

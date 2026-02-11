@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { LabClinicianSocketProvider } from '@/components/laboratory/lab-clinician-socket-provider';
 
 export const metadata: Metadata = {
   title: 'Laboratory | Vitora HMIS',
@@ -10,5 +11,9 @@ export default function LaboratoryLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <LabClinicianSocketProvider>
+      {children}
+    </LabClinicianSocketProvider>
+  );
 }

@@ -217,11 +217,24 @@ export {
 export {
   useWebSocket,
   useClinicQueueSocket,
+  // Lab WebSocket hooks
+  useLabEncounterSocket,
+  useLabOrderSocket,
+  useLabClinicianSocket,
+  useLabQueueSocket,
+  // Connection status helpers
   getConnectionStatusText,
   getConnectionStatusColor,
+  // Types
   type WebSocketConnectionState,
   type ClinicQueueEventType,
+  type LabEventType,
   type WebSocketMessage,
+  type LabWebSocketMessage,
+  type LabResultVerifiedEvent,
+  type LabCriticalAlertEvent,
+  type LabOrderCompletedEvent,
+  type LabQueueUpdatedEvent,
   type UseWebSocketOptions,
   type UseWebSocketReturn,
 } from './use-websocket';
