@@ -28,8 +28,8 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertTriangle, Save, CheckCircle } from 'lucide-react';
 import { LabOrderItem, LabResultCreateData, ResultFlag } from '@/lib/types/laboratory';
-import { useAddLabResult, useVerifyLabResult } from '@/lib/hooks/use-laboratory';
-import { useToast } from '@/lib/hooks';
+import { useAddLabResult, useVerifyLabResult, useLabOrder } from '@/lib/hooks/use-laboratory';
+import { useToast, useLabOrderSocket, type LabResultVerifiedEvent } from '@/lib/hooks';
 import { cn } from '@/lib/utils/cn';
 import { HelpPopover } from '@/components/shared/help-popover';
 
@@ -113,6 +113,33 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
   const { toast } = useToast();
   const [activeItemId, setActiveItemId] = useState<number | null>(
     items.find(item => !item.has_result)?.id || items[0]?.id || null
+  );
+
+  // Get order details for the WebSocket connection
+  const { data: orderData } = useLabOrder(orderNumber);
+
+  // Real-time WebSocket for multi-user awareness
+  // This will notify if another user is also entering results for this order
+  const { isConnected: isWsConnected } = useLabOrderSocket(
+    orderData?.id ?? null,
+    {
+      onMessage: (message) => {
+        if (message.event === 'result_entered') {
+          // Another user entered a result - show notification
+          toast({
+            title: 'Result Updated',
+            description: 'Another user has entered a result for this order.',
+          });
+          // The React Query cache will be automatically invalidated by the hook
+        } else if (message.event === 'result_verified') {
+          const data = message.data as LabResultVerifiedEvent;
+          toast({
+            title: 'Result Verified',
+            description: `${data.test_name} has been verified by ${data.verified_by}.`,
+          });
+        }
+      },
+    }
   );
 
   const addResult = useAddLabResult();

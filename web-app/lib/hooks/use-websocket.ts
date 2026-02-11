@@ -46,6 +46,79 @@ export type ClinicQueueEventType =
   | 'patient_removed'
   | 'stats_updated';
 
+// =============================================================================
+// Lab WebSocket Event Types (from backend laboratory/consumers.py)
+// =============================================================================
+
+/**
+ * Laboratory WebSocket event types
+ */
+export type LabEventType =
+  | 'result_entered'
+  | 'result_verified'
+  | 'critical_alert'
+  | 'order_completed'
+  | 'queue_updated';
+
+/**
+ * Lab result verified event data
+ */
+export interface LabResultVerifiedEvent {
+  result_id: number;
+  order_id: number;
+  order_number: string;
+  test_name: string;
+  test_code: string;
+  patient_id: number;
+  patient_name: string;
+  patient_mrn: string;
+  encounter_id: number | null;
+  is_critical: boolean;
+  result_flag: string;
+  verified_by: string;
+  verified_at: string;
+}
+
+/**
+ * Lab critical alert event data (extends verified event)
+ */
+export interface LabCriticalAlertEvent extends LabResultVerifiedEvent {
+  critical_value: string;
+  reference_range: string;
+}
+
+/**
+ * Lab order completed event data
+ */
+export interface LabOrderCompletedEvent {
+  order_id: number;
+  order_number: string;
+  patient_id: number;
+  patient_name: string;
+  total_tests: number;
+  verified_count: number;
+  completed_at: string;
+}
+
+/**
+ * Lab queue updated event data
+ */
+export interface LabQueueUpdatedEvent {
+  queue_id: number;
+  order_id: number;
+  status: string;
+  updated_by: string;
+  updated_at: string;
+}
+
+/**
+ * Lab WebSocket message structure
+ */
+export interface LabWebSocketMessage<T = unknown> {
+  event: LabEventType;
+  data: T;
+}
+
 /**
  * WebSocket message structure from backend
  */
@@ -451,6 +524,184 @@ export function useClinicQueueSocket(
 
   return useWebSocket(url, {
     ...restOptions,
+    onMessage: handleMessage,
+  });
+}
+
+// =============================================================================
+// Laboratory WebSocket Hooks
+// =============================================================================
+
+/** Query keys for lab-related React Query invalidation */
+const labKeys = {
+  orders: (filter?: Record<string, unknown>) => ['lab-orders', filter] as const,
+  order: (id: number | string) => ['lab-orders', id] as const,
+  results: (filter?: Record<string, unknown>) => ['lab-results', filter] as const,
+  queue: (status?: string) => ['lab-queue', status] as const,
+  criticalAlerts: () => ['critical-alerts'] as const,
+};
+
+/**
+ * WebSocket hook for lab events on a specific encounter.
+ * 
+ * Ideal for encounter detail pages where clinicians need updates on lab orders/results.
+ * Automatically invalidates React Query cache when lab events occur.
+ *
+ * @param encounterId - The encounter ID to subscribe to (null to disable)
+ * @param options - WebSocket options
+ */
+export function useLabEncounterSocket(
+  encounterId: number | null,
+  options: UseWebSocketOptions = {}
+): UseWebSocketReturn {
+  const queryClient = useQueryClient();
+
+  const url = encounterId ? getWebSocketUrl(`/ws/lab/encounters/${encounterId}/`) : null;
+
+  const handleMessage = useCallback(
+    (message: WebSocketMessage) => {
+      if (!encounterId) return;
+
+      console.log(`[WebSocket] Lab encounter ${encounterId} event:`, message.event, message.data);
+
+      // Invalidate lab queries on events
+      queryClient.invalidateQueries({ queryKey: labKeys.orders({ encounter_id: encounterId }) });
+      queryClient.invalidateQueries({ queryKey: labKeys.results({ encounter_id: encounterId }) });
+
+      // Call custom handler if provided
+      options.onMessage?.(message);
+    },
+    [encounterId, queryClient, options]
+  );
+
+  return useWebSocket(url, {
+    ...options,
+    onMessage: handleMessage,
+  });
+}
+
+/**
+ * WebSocket hook for lab events on a specific order.
+ * 
+ * Ideal for lab order detail pages to get real-time updates when results
+ * are entered, verified, or when the order status changes.
+ *
+ * @param orderId - The order ID to subscribe to (null to disable)
+ * @param options - WebSocket options
+ */
+export function useLabOrderSocket(
+  orderId: number | null,
+  options: UseWebSocketOptions = {}
+): UseWebSocketReturn {
+  const queryClient = useQueryClient();
+
+  const url = orderId ? getWebSocketUrl(`/ws/lab/orders/${orderId}/`) : null;
+
+  const handleMessage = useCallback(
+    (message: WebSocketMessage) => {
+      if (!orderId) return;
+
+      console.log(`[WebSocket] Lab order ${orderId} event:`, message.event, message.data);
+
+      // Invalidate this specific order
+      queryClient.invalidateQueries({ queryKey: labKeys.order(orderId) });
+      // Also invalidate the general orders list
+      queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
+
+      // Call custom handler if provided
+      options.onMessage?.(message);
+    },
+    [orderId, queryClient, options]
+  );
+
+  return useWebSocket(url, {
+    ...options,
+    onMessage: handleMessage,
+  });
+}
+
+/**
+ * WebSocket hook for clinician-wide lab notifications.
+ * 
+ * Used in the laboratory layout to receive critical lab result alerts
+ * and general lab notifications. Shows toast notifications for critical results.
+ *
+ * @param options - WebSocket options
+ */
+export function useLabClinicianSocket(
+  options: UseWebSocketOptions = {}
+): UseWebSocketReturn {
+  const queryClient = useQueryClient();
+
+  const url = getWebSocketUrl('/ws/lab/clinician/');
+
+  const handleMessage = useCallback(
+    (message: WebSocketMessage) => {
+      console.log('[WebSocket] Lab clinician event:', message.event, message.data);
+
+      const labMessage = message as unknown as LabWebSocketMessage;
+
+      // Handle critical alerts specially
+      if (labMessage.event === 'critical_alert') {
+        const data = labMessage.data as LabCriticalAlertEvent;
+        // Import toast dynamically to avoid circular deps
+        import('@/lib/hooks/use-toast').then(({ toast }) => {
+          toast({
+            variant: 'destructive',
+            title: `🚨 Critical Lab Result: ${data.test_name}`,
+            description: `Patient: ${data.patient_name} (${data.patient_mrn}) - Value: ${data.critical_value}`,
+            duration: 10000,
+          });
+        });
+      }
+
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
+      queryClient.invalidateQueries({ queryKey: labKeys.criticalAlerts() });
+
+      // Call custom handler if provided
+      options.onMessage?.(message);
+    },
+    [queryClient, options]
+  );
+
+  return useWebSocket(url, {
+    ...options,
+    onMessage: handleMessage,
+  });
+}
+
+/**
+ * WebSocket hook for lab queue updates (for lab technicians).
+ * 
+ * Provides real-time updates for the lab queue view, including
+ * sample collection, processing status, and result verification.
+ *
+ * @param options - WebSocket options
+ */
+export function useLabQueueSocket(
+  options: UseWebSocketOptions = {}
+): UseWebSocketReturn {
+  const queryClient = useQueryClient();
+
+  const url = getWebSocketUrl('/ws/lab/queue/');
+
+  const handleMessage = useCallback(
+    (message: WebSocketMessage) => {
+      console.log('[WebSocket] Lab queue event:', message.event, message.data);
+
+      // Invalidate lab queue queries
+      queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
+
+      // Call custom handler if provided
+      options.onMessage?.(message);
+    },
+    [queryClient, options]
+  );
+
+  return useWebSocket(url, {
+    ...options,
     onMessage: handleMessage,
   });
 }
