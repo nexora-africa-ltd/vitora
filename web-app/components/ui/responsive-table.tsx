@@ -19,6 +19,7 @@ interface ResponsiveTableProps<T> {
   keyExtractor: (item: T) => string | number;
   isLoading?: boolean;
   emptyMessage?: string;
+  rowClassName?: (item: T) => string;
 }
 
 export function ResponsiveTable<T>({
@@ -29,6 +30,7 @@ export function ResponsiveTable<T>({
   keyExtractor,
   isLoading = false,
   emptyMessage = 'No data available',
+  rowClassName,
 }: ResponsiveTableProps<T>) {
   const getValue = (item: T, key: string) => {
     const keys = key.split('.');
@@ -85,7 +87,8 @@ export function ResponsiveTable<T>({
                 key={keyExtractor(item)}
                 className={cn(
                   'border-b transition-colors hover:bg-muted/50',
-                  onRowClick && 'cursor-pointer'
+                  onRowClick && 'cursor-pointer',
+                  rowClassName?.(item)
                 )}
                 onClick={() => onRowClick?.(item)}
               >
@@ -113,7 +116,7 @@ export function ResponsiveTable<T>({
               <div
                 key={keyExtractor(item)}
                 onClick={() => onRowClick?.(item)}
-                className={onRowClick ? 'cursor-pointer' : undefined}
+                className={cn(onRowClick && 'cursor-pointer', rowClassName?.(item))}
               >
                 {mobileCard(item, index)}
               </div>
@@ -126,7 +129,8 @@ export function ResponsiveTable<T>({
               key={keyExtractor(item)}
               className={cn(
                 'rounded-lg border p-4 space-y-2',
-                onRowClick && 'cursor-pointer hover:bg-muted/50 transition-colors'
+                onRowClick && 'cursor-pointer hover:bg-muted/50 transition-colors',
+                rowClassName?.(item)
               )}
               onClick={() => onRowClick?.(item)}
             >

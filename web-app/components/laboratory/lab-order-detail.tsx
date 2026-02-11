@@ -5,15 +5,15 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  ArrowLeft,
   FileText,
   AlertTriangle,
   CheckCircle2,
@@ -46,6 +45,8 @@ import { formatDate, formatDateTime, formatCurrency } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import { LabResultsBadge } from './lab-results-badge';
 import { laboratoryApi } from '@/lib/api/laboratory';
+import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 
 interface LabOrderDetailProps {
   orderNumber: string;
@@ -94,9 +95,8 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
         <p className="text-muted-foreground mb-4">
           {error?.message || 'Unable to load lab order details.'}
         </p>
-        <Button variant="outline" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Go Back
+        <Button variant="outline" onClick={() => router.push('/laboratory')}>
+          Go to Laboratory
         </Button>
       </div>
     );
@@ -197,128 +197,113 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-3">
-              {order.order_number}
-              {hasCriticalResults && (
-                <AlertTriangle className="h-6 w-6 text-red-500" />
-              )}
-            </h1>
-            <p className="text-muted-foreground">
-              Created {formatDateTime(order.created_at)}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {order.order_type === 'EXTERNAL' && (
-            <>
-              <Button variant="outline" onClick={handleDownloadRequisition}>
-                <Download className="h-4 w-4 mr-2" />
-                Requisition PDF
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  // Used for E2E; browser print may be blocked in some environments.
-                  // Still provides a user-friendly action.
-                  window.print();
-                }}
-              >
-                Print
-              </Button>
-            </>
-          )}
-
-          {canSubmit && (
-            <Button onClick={handleSubmit} disabled={submitOrder.isPending}>
-              {submitOrder.isPending ? 'Submitting...' : 'Submit Order'}
-            </Button>
-          )}
-
-          {canCollectSpecimen && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button>
-                  <Beaker className="h-4 w-4 mr-2" />
-                  Collect Specimen
+      <PageHeader
+        title={order.order_number}
+        helpContent={`Created ${formatDateTime(order.created_at)}. Pull down to refresh on mobile, or use the refresh button in the header.`}
+        actions={
+          <>
+            {order.order_type === 'EXTERNAL' ? (
+              <>
+                <Button variant="outline" onClick={handleDownloadRequisition}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Requisition PDF
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Record Specimen Collection</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Enter the sample ID/barcode if available.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="py-4">
-                  <input
-                    type="text"
-                    placeholder="Sample ID (optional)"
-                    value={sampleId}
-                    onChange={(e) => setSampleId(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-md"
-                  />
-                </div>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleCollectSpecimen}>
-                    Confirm Collection
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    window.print();
+                  }}
+                >
+                  Print
+                </Button>
+              </>
+            ) : null}
 
-          {canEnterResults && (
-            <Link href={`/laboratory/orders/${orderNumber}/results`}>
-              <Button>
-                <FlaskConical className="h-4 w-4 mr-2" />
-                {pendingResults > 0 ? `Enter Results (${pendingResults} pending)` : 'View/Edit Results'}
+            {canSubmit ? (
+              <Button onClick={handleSubmit} disabled={submitOrder.isPending}>
+                {submitOrder.isPending ? 'Submitting...' : 'Submit Order'}
               </Button>
-            </Link>
-          )}
+            ) : null}
 
-          {canCancel && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">Cancel Order</Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Cancel Lab Order</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Please provide a reason for cancellation.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="py-4">
-                  <Textarea
-                    placeholder="Cancellation reason..."
-                    value={cancelReason}
-                    onChange={(e) => setCancelReason(e.target.value)}
-                    className="min-h-[80px]"
-                  />
-                </div>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Keep Order</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleCancel}
-                    className="bg-destructive text-destructive-foreground"
-                  >
-                    Cancel Order
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        </div>
-      </div>
+            {canCollectSpecimen ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button>
+                    <Beaker className="h-4 w-4 mr-2" />
+                    Collect Specimen
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <div className="flex items-center gap-2">
+                      <AlertDialogTitle>Record Specimen Collection</AlertDialogTitle>
+                      <HelpPopover content="Enter the sample ID/barcode if available." />
+                    </div>
+                  </AlertDialogHeader>
+                  <div className="py-4">
+                    <Input
+                      type="text"
+                      placeholder="Sample ID (optional)"
+                      value={sampleId}
+                      onChange={(e) => setSampleId(e.target.value)}
+                    />
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleCollectSpecimen}>
+                      Confirm Collection
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : null}
+
+            {canEnterResults ? (
+              <Link href={`/laboratory/orders/${orderNumber}/results`}>
+                <Button>
+                  <FlaskConical className="h-4 w-4 mr-2" />
+                  {pendingResults > 0
+                    ? `Enter Results (${pendingResults} pending)`
+                    : 'View/Edit Results'}
+                </Button>
+              </Link>
+            ) : null}
+
+            {canCancel ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive">Cancel Order</Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <div className="flex items-center gap-2">
+                      <AlertDialogTitle>Cancel Lab Order</AlertDialogTitle>
+                      <HelpPopover content="Provide a reason for cancellation. Cancelled orders cannot be processed." />
+                    </div>
+                  </AlertDialogHeader>
+                  <div className="py-4">
+                    <Textarea
+                      placeholder="Cancellation reason..."
+                      value={cancelReason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      className="min-h-[80px]"
+                    />
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep Order</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleCancel}
+                      className="bg-destructive text-destructive-foreground"
+                    >
+                      Cancel Order
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : null}
+          </>
+        }
+      />
 
       {/* Status & Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -426,8 +411,10 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
       {/* Test Items */}
       <Card>
         <CardHeader>
-          <CardTitle>Tests ({order.items.length})</CardTitle>
-          <CardDescription>Laboratory tests in this order</CardDescription>
+          <div className="flex items-center gap-2">
+            <CardTitle>Tests ({order.items.length})</CardTitle>
+            <HelpPopover content="Laboratory tests included in this order, with their result and verification status." />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

@@ -2,17 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -29,12 +20,13 @@ import {
   Clock,
   FileText,
   Eye,
-  RefreshCw,
 } from 'lucide-react';
 import { LabOrder, LabOrderStatus, LabPriority } from '@/lib/types/laboratory';
-import { formatDate, formatDateTime } from '@/lib/utils/format';
+import { formatDate } from '@/lib/utils/format';
 import { EmptyState } from '@/components/shared/empty-state';
 import { cn } from '@/lib/utils/cn';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
+import { Card } from '@/components/ui/card';
 
 interface LabOrderTableProps {
   orders: LabOrder[];
@@ -46,7 +38,6 @@ interface LabOrderTableProps {
   onStatusFilter?: (status: LabOrderStatus | '') => void;
   onPriorityFilter?: (priority: LabPriority | '') => void;
   onSearch?: (query: string) => void;
-  onRefresh?: () => void;
 }
 
 const STATUS_CONFIG: Record<LabOrderStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -75,23 +66,13 @@ export function LabOrderTable({
   onStatusFilter,
   onPriorityFilter,
   onSearch,
-  onRefresh,
 }: LabOrderTableProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     onSearch?.(searchQuery);
-  };
-
-  const handleRefresh = async () => {
-    if (onRefresh) {
-      setIsRefreshing(true);
-      await onRefresh();
-      setIsRefreshing(false);
-    }
   };
 
   const hasCriticalResults = (order: LabOrder) => {
@@ -127,26 +108,26 @@ export function LabOrderTable({
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <form onSubmit={handleSearch} className="flex gap-2">
-          <div className="relative">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative w-full sm:w-auto">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by patient or order #..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 w-[300px]"
+              className="pl-8 w-full sm:w-48 lg:w-56 xl:w-64"
             />
           </div>
-          <Button type="submit" variant="secondary" size="sm">
+          <Button type="submit" variant="secondary" size="sm" className="w-full sm:w-auto">
             Search
           </Button>
         </form>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           {onStatusFilter && (
             <Select onValueChange={(value) => onStatusFilter(value as LabOrderStatus | '')}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-full sm:w-[150px]">
                 <SelectValue placeholder="All Status" />
               </SelectTrigger>
               <SelectContent>
@@ -162,7 +143,7 @@ export function LabOrderTable({
 
           {onPriorityFilter && (
             <Select onValueChange={(value) => onPriorityFilter(value as LabPriority | '')}>
-              <SelectTrigger className="w-[130px]">
+              <SelectTrigger className="w-full sm:w-[130px]">
                 <SelectValue placeholder="All Priority" />
               </SelectTrigger>
               <SelectContent>
@@ -175,117 +156,133 @@ export function LabOrderTable({
               </SelectContent>
             </Select>
           )}
-
-          {onRefresh && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-            </Button>
-          )}
         </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Order #</TableHead>
-              <TableHead>Patient</TableHead>
-              <TableHead>Tests</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              [...Array(5)].map((_, i) => (
-                <TableRow key={i}>
-                  {[...Array(7)].map((_, j) => (
-                    <TableCell key={j}>
-                      <Skeleton className="h-4 w-20" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              orders.map((order) => {
-                const status = STATUS_CONFIG[order.status];
-                const priority = PRIORITY_CONFIG[order.priority];
-                const isCritical = hasCriticalResults(order);
+      <ResponsiveTable
+        data={orders}
+        isLoading={isLoading}
+        emptyMessage="No lab orders found"
+        keyExtractor={(order) => order.id}
+        onRowClick={(order) => router.push(`/laboratory/orders/${order.order_number}`)}
+        rowClassName={(order) =>
+          cn(hasCriticalResults(order) && 'bg-destructive/10 hover:bg-destructive/20')
+        }
+        columns={[
+          {
+            key: 'order_number',
+            header: 'Order #',
+            cell: (order) => (
+              <span className="font-mono text-sm">{order.order_number}</span>
+            ),
+          },
+          {
+            key: 'patient',
+            header: 'Patient',
+            cell: (order) => (
+              <div>
+                <div className="font-medium">{order.patient_name}</div>
+                <div className="text-sm text-muted-foreground">{order.patient_mrn}</div>
+              </div>
+            ),
+          },
+          {
+            key: 'tests',
+            header: 'Tests',
+            cell: (order) => (
+              <div className="flex items-center gap-1">
+                <span className="text-sm">{order.items?.length || 0} test(s)</span>
+                {order.items?.some((i) => i.has_result) && (
+                  <FileText className="h-4 w-4 text-green-600" />
+                )}
+              </div>
+            ),
+            hideOnMobile: true,
+          },
+          {
+            key: 'priority',
+            header: 'Priority',
+            cell: (order) => {
+              const priority = PRIORITY_CONFIG[order.priority];
+              return <span className={priority.className}>{priority.label}</span>;
+            },
+          },
+          {
+            key: 'status',
+            header: 'Status',
+            cell: (order) => {
+              const status = STATUS_CONFIG[order.status];
+              const isCritical = hasCriticalResults(order);
+              return (
+                <div className="flex items-center gap-2">
+                  <Badge className="shrink-0 w-fit" variant={status.variant}>
+                    {status.label}
+                  </Badge>
+                  {isCritical && <AlertTriangle className="h-4 w-4 text-red-500" />}
+                </div>
+              );
+            },
+          },
+          {
+            key: 'created_at',
+            header: 'Date',
+            cell: (order) => (
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                {formatDate(order.created_at)}
+              </div>
+            ),
+            hideOnMobile: true,
+          },
+          {
+            key: 'actions',
+            header: 'Actions',
+            className: 'text-right',
+            cell: (order) => (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/laboratory/orders/${order.order_number}`);
+                }}
+                aria-label="View order"
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+            ),
+          },
+        ]}
+        mobileCard={(order) => {
+          const status = STATUS_CONFIG[order.status];
+          const priority = PRIORITY_CONFIG[order.priority];
+          const isCritical = hasCriticalResults(order);
 
-                return (
-                  <TableRow
-                    key={order.id}
-                    className={cn(
-                      'cursor-pointer hover:bg-muted/50',
-                      isCritical && 'bg-destructive/10 hover:bg-destructive/20'
-                    )}
-                    onClick={() => router.push(`/laboratory/orders/${order.order_number}`)}
-                  >
-                    <TableCell className="font-mono text-sm">
-                      {order.order_number}
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{order.patient_name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {order.patient_mrn}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm">
-                          {order.items?.length || 0} test(s)
-                        </span>
-                        {order.items?.some(i => i.has_result) && (
-                          <FileText className="h-4 w-4 text-green-600" />
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className={priority.className}>{priority.label}</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={status.variant}>{status.label}</Badge>
-                        {isCritical && (
-                          <AlertTriangle className="h-4 w-4 text-red-500" />
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        {formatDate(order.created_at)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/laboratory/orders/${order.order_number}`);
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+          return (
+            <Card className={cn('p-3 space-y-2', isCritical && 'border-destructive/30')}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium truncate">
+                    {order.patient_name}
+                    <span className="text-muted-foreground"> • {order.patient_mrn}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground font-mono">{order.order_number}</p>
+                </div>
+                <Badge className="shrink-0 w-fit" variant={status.variant}>
+                  {status.label}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className={priority.className}>{priority.label}</span>
+                <span className="text-muted-foreground">
+                  {order.items?.length || 0} test(s)
+                </span>
+              </div>
+            </Card>
+          );
+        }}
+      />
 
       {/* Pagination */}
       {totalPages > 1 && (

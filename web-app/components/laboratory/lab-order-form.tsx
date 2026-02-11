@@ -12,13 +12,12 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -31,6 +30,7 @@ import { formatCurrency } from '@/lib/utils/format';
 import { useAuth } from '@/lib/auth';
 import { useOptionalPatientContext } from '@/lib/context/patient-context';
 import { useOptionalEncounterContext } from '@/lib/context/encounter-context';
+import { HelpPopover } from '@/components/shared/help-popover';
 
 const orderSchema = z.object({
   patient: z.number().positive('Patient is required'),
@@ -369,8 +369,10 @@ export function LabOrderForm({
         {/* Order Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Order Settings</CardTitle>
-            <CardDescription>Configure order type and priority</CardDescription>
+            <div className="flex items-center gap-2">
+              <CardTitle>Order Settings</CardTitle>
+              <HelpPopover content="Configure order type and priority." />
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -437,13 +439,13 @@ export function LabOrderForm({
                 name="external_lab"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>External Lab Partner</FormLabel>
+                    <div className="flex items-center gap-2">
+                      <FormLabel>External Lab Partner</FormLabel>
+                      <HelpPopover content="Specify the external laboratory for sample referral." />
+                    </div>
                     <FormControl>
                       <Input placeholder="Enter external lab name" {...field} />
                     </FormControl>
-                    <FormDescription>
-                      Specify the external laboratory for sample referral
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -473,8 +475,11 @@ export function LabOrderForm({
         {/* Tests Selection */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Tests</span>
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <CardTitle>Tests</CardTitle>
+                <HelpPopover content="Select laboratory tests to include in this order." />
+              </div>
               <Button
                 type="button"
                 variant="outline"
@@ -484,10 +489,7 @@ export function LabOrderForm({
                 <Plus className="h-4 w-4 mr-1" />
                 Add Test
               </Button>
-            </CardTitle>
-            <CardDescription>
-              Select laboratory tests to include in this order
-            </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             {fields.length === 0 ? (
@@ -575,7 +577,7 @@ export function LabOrderForm({
               </ul>
             </div>
           )}
-          <div className="flex justify-end gap-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
             {onCancel && (
               <Button type="button" variant="outline" onClick={onCancel}>
                 Cancel

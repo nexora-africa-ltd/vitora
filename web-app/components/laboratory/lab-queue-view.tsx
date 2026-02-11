@@ -2,18 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -32,7 +24,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -50,7 +41,6 @@ import {
   MoreHorizontal,
   Beaker,
   AlertTriangle,
-  RefreshCw,
   Syringe,
   Send,
   XCircle,
@@ -77,6 +67,8 @@ import { useToast } from '@/lib/hooks';
 import { formatRelativeTime } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import { EmptyState } from '@/components/shared/empty-state';
+import { HelpPopover } from '@/components/shared/help-popover';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
   SampleCollectionDialog,
   TechnicianAssignmentDialog,
@@ -124,7 +116,6 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
 
   // State
   const [statusFilter, setStatusFilter] = useState<QueueStatus | ''>(defaultStatus);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [quickSearch, setQuickSearch] = useState('');
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [actionsDialogOpen, setActionsDialogOpen] = useState(false);
@@ -148,13 +139,6 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
   const updateNotes = useUpdateNotes();
   const barcodeLookup = useBarcodeLookup();
   const assignTechnician = useAssignQueueEntry();
-
-  // Handlers
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await refetch();
-    setIsRefreshing(false);
-  };
 
   const openCollectDialog = (entry: LabQueue) => {
     setSelectedQueueEntry(entry);
@@ -429,8 +413,11 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
           <CardHeader>
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
-                <CardTitle>Lab Queue</CardTitle>
-                <CardDescription>{filteredQueue.length} items in queue</CardDescription>
+                <div className="flex items-center gap-2">
+                  <CardTitle>Lab Queue</CardTitle>
+                  <HelpPopover content="Review and manage samples through collection, processing, review, and release." />
+                </div>
+                <p className="text-sm text-muted-foreground">{filteredQueue.length} item(s) in queue</p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Quick Search */}
@@ -440,7 +427,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                     placeholder="Quick search..."
                     value={quickSearch}
                     onChange={(e) => setQuickSearch(e.target.value)}
-                    className="pl-8 w-[180px]"
+                    className="pl-8 w-full sm:w-48 lg:w-56 xl:w-64"
                   />
                 </div>
 
@@ -454,7 +441,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                   value={statusFilter}
                   onValueChange={(value) => setStatusFilter(value as QueueStatus | '')}
                 >
-                  <SelectTrigger className="w-[150px]">
+                  <SelectTrigger className="w-full sm:w-[150px]">
                     <SelectValue placeholder="Filter status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -465,11 +452,6 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                     ))}
                   </SelectContent>
                 </Select>
-
-                {/* Refresh Button */}
-                <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isRefreshing}>
-                  <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
-                </Button>
               </div>
             </div>
           </CardHeader>
@@ -486,88 +468,112 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                 <p>No items in queue</p>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Queue #</TableHead>
-                    <TableHead>Patient</TableHead>
-                    <TableHead>Sample</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Assigned</TableHead>
-                    <TableHead>TAT</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredQueue.map((item) => {
-                    const status = STATUS_CONFIG[item.queue_status] || STATUS_CONFIG.PENDING;
-                    const priority = PRIORITY_CONFIG[item.priority];
-                    const StatusIcon = status.icon;
-                    const isDropdownOpen = openDropdownId === item.queue_number;
-
-                    const handleRowClick = () => {
-                      setSelectedQueueEntry(item);
-                      setActionsDialogOpen(true);
-                    };
-
-                    return (
-                      <TableRow
-                        key={item.id}
-                        className={cn(
-                          'cursor-pointer hover:bg-muted/50 transition-colors',
-                          item.priority === 'STAT' && 'bg-destructive/10 hover:bg-destructive/20',
-                          item.priority === 'URGENT' && 'bg-warning/10 hover:bg-warning/20',
-                          item.is_overdue && 'bg-warning/20 hover:bg-warning/30'
-                        )}
-                        onClick={handleRowClick}
-                      >
-                        <TableCell className="font-mono text-sm">{item.queue_number}</TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{item.patient_name}</p>
-                            <p className="text-xs text-muted-foreground">{item.patient_mrn}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="text-sm">{item.sample_type}</p>
-                            {item.sample_id && (
-                              <p className="text-xs text-muted-foreground font-mono">
-                                {item.sample_id}
-                              </p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className={priority.className}>{priority.label}</span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={status.variant} className="gap-1">
-                            <StatusIcon className="h-3 w-3" />
-                            {status.label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          {item.assigned_technician_name || (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-muted-foreground h-auto p-1"
-                              onClick={() => openAssignDialog(item)}
-                            >
-                              <UserPlus className="h-3 w-3 mr-1" />
-                              Assign
-                            </Button>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <TATDisplay item={item} />
-                        </TableCell>
-                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+              <ResponsiveTable
+                data={filteredQueue}
+                keyExtractor={(item) => item.id}
+                onRowClick={(item) => {
+                  setSelectedQueueEntry(item);
+                  setActionsDialogOpen(true);
+                }}
+                rowClassName={(item) =>
+                  cn(
+                    item.priority === 'STAT' && 'bg-destructive/10 hover:bg-destructive/20',
+                    item.priority === 'URGENT' && 'bg-warning/10 hover:bg-warning/20',
+                    item.is_overdue && 'bg-warning/20 hover:bg-warning/30'
+                  )
+                }
+                columns={[
+                  {
+                    key: 'queue_number',
+                    header: 'Queue #',
+                    cell: (item) => <span className="font-mono text-sm">{item.queue_number}</span>,
+                  },
+                  {
+                    key: 'patient',
+                    header: 'Patient',
+                    cell: (item) => (
+                      <div>
+                        <p className="font-medium">{item.patient_name}</p>
+                        <p className="text-xs text-muted-foreground">{item.patient_mrn}</p>
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'sample',
+                    header: 'Sample',
+                    hideOnMobile: true,
+                    cell: (item) => (
+                      <div>
+                        <p className="text-sm">{item.sample_type}</p>
+                        {item.sample_id ? (
+                          <p className="text-xs text-muted-foreground font-mono">{item.sample_id}</p>
+                        ) : null}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'priority',
+                    header: 'Priority',
+                    cell: (item) => {
+                      const priority = PRIORITY_CONFIG[item.priority];
+                      return <span className={priority.className}>{priority.label}</span>;
+                    },
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    cell: (item) => {
+                      const status = STATUS_CONFIG[item.queue_status] || STATUS_CONFIG.PENDING;
+                      const StatusIcon = status.icon;
+                      return (
+                        <Badge variant={status.variant} className="gap-1 shrink-0 w-fit">
+                          <StatusIcon className="h-3 w-3" />
+                          {status.label}
+                        </Badge>
+                      );
+                    },
+                  },
+                  {
+                    key: 'assigned',
+                    header: 'Assigned',
+                    hideOnMobile: true,
+                    cell: (item) =>
+                      item.assigned_technician_name ? (
+                        <span className="text-sm">{item.assigned_technician_name}</span>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-muted-foreground h-auto p-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openAssignDialog(item);
+                          }}
+                        >
+                          <UserPlus className="h-3 w-3 mr-1" />
+                          Assign
+                        </Button>
+                      ),
+                  },
+                  {
+                    key: 'tat',
+                    header: 'TAT',
+                    hideOnMobile: true,
+                    cell: (item) => <TATDisplay item={item} />,
+                  },
+                  {
+                    key: 'actions',
+                    header: 'Actions',
+                    className: 'text-right',
+                    cell: (item) => {
+                      const isDropdownOpen = openDropdownId === item.queue_number;
+                      return (
+                        <div onClick={(e) => e.stopPropagation()} className="flex justify-end">
                           <DropdownMenu
                             open={isDropdownOpen}
-                            onOpenChange={(open) => setOpenDropdownId(open ? item.queue_number : null)}
+                            onOpenChange={(open) =>
+                              setOpenDropdownId(open ? item.queue_number : null)
+                            }
                           >
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" aria-label="Actions">
@@ -583,7 +589,6 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
 
                               <DropdownMenuSeparator />
 
-                              {/* PENDING -> COLLECTED: Collect Sample */}
                               {item.queue_status === 'PENDING' && (
                                 <DropdownMenuItem onClick={() => openCollectDialog(item)}>
                                   <Syringe className="h-4 w-4 mr-2" />
@@ -591,7 +596,6 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                                 </DropdownMenuItem>
                               )}
 
-                              {/* COLLECTED -> PROCESSING: Start Processing */}
                               {item.queue_status === 'COLLECTED' && (
                                 <DropdownMenuItem
                                   onClick={() => handleStartProcessing(item.queue_number)}
@@ -601,7 +605,6 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                                 </DropdownMenuItem>
                               )}
 
-                              {/* PROCESSING: Enter Results or Submit for Review */}
                               {item.queue_status === 'PROCESSING' && (
                                 <>
                                   <DropdownMenuItem
@@ -621,7 +624,6 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                                 </>
                               )}
 
-                              {/* REVIEW -> RELEASED: Release Results */}
                               {item.queue_status === 'REVIEW' && (
                                 <DropdownMenuItem
                                   onClick={() => handleReleaseResults(item.queue_number)}
@@ -631,7 +633,6 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                                 </DropdownMenuItem>
                               )}
 
-                              {/* Notes - available for most statuses */}
                               {['COLLECTED', 'PROCESSING', 'REVIEW'].includes(item.queue_status) && (
                                 <>
                                   <DropdownMenuSeparator />
@@ -642,7 +643,6 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                                 </>
                               )}
 
-                              {/* Assign Technician */}
                               {['PENDING', 'COLLECTED', 'PROCESSING'].includes(item.queue_status) && (
                                 <DropdownMenuItem onClick={() => openAssignDialog(item)}>
                                   <UserPlus className="h-4 w-4 mr-2" />
@@ -650,7 +650,6 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                                 </DropdownMenuItem>
                               )}
 
-                              {/* Reject Sample - not for RELEASED or already REJECTED */}
                               {!['RELEASED', 'REJECTED'].includes(item.queue_status) && (
                                 <>
                                   <DropdownMenuSeparator />
@@ -665,12 +664,36 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                        </div>
+                      );
+                    },
+                  },
+                ]}
+                mobileCard={(item) => {
+                  const status = STATUS_CONFIG[item.queue_status] || STATUS_CONFIG.PENDING;
+                  const priority = PRIORITY_CONFIG[item.priority];
+                  return (
+                    <Card className="p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">
+                            {item.patient_name}
+                            <span className="text-muted-foreground"> • {item.patient_mrn}</span>
+                          </p>
+                          <p className="text-xs text-muted-foreground font-mono">{item.queue_number}</p>
+                        </div>
+                        <Badge className="shrink-0 w-fit" variant={status.variant}>
+                          {status.label}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className={priority.className}>{priority.label}</span>
+                        <span className="text-muted-foreground">{item.sample_type}</span>
+                      </div>
+                    </Card>
+                  );
+                }}
+              />
             )}
           </CardContent>
         </Card>
@@ -679,16 +702,19 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
         <Dialog open={actionsDialogOpen} onOpenChange={setActionsDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Beaker className="h-5 w-5" />
-                {selectedQueueEntry?.queue_number}
-              </DialogTitle>
-              <DialogDescription>
-                {selectedQueueEntry?.patient_name} • {selectedQueueEntry?.patient_mrn}
-              </DialogDescription>
+              <div className="flex items-center gap-2">
+                <DialogTitle className="flex items-center gap-2">
+                  <Beaker className="h-5 w-5" />
+                  {selectedQueueEntry?.queue_number}
+                </DialogTitle>
+                <HelpPopover content="Quick actions for this queue entry." />
+              </div>
             </DialogHeader>
             {selectedQueueEntry && (
               <div className="space-y-3 py-4">
+                <p className="text-sm text-muted-foreground">
+                  {selectedQueueEntry.patient_name} • {selectedQueueEntry.patient_mrn}
+                </p>
                 {/* Status badge */}
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Status:</span>

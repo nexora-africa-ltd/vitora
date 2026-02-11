@@ -4,7 +4,6 @@ import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -22,6 +21,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Syringe, UserPlus, XCircle, FileText, Search } from 'lucide-react';
 import { LabQueue, LabTechnician } from '@/lib/types/laboratory';
+import { HelpPopover } from '@/components/shared/help-popover';
 
 // ============================================================================
 // Sample Collection Dialog
@@ -56,16 +56,21 @@ export function SampleCollectionDialog({
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Syringe className="h-5 w-5" />
-              Collect Sample
-            </DialogTitle>
-            <DialogDescription>
-              Record sample collection for {queueEntry?.patient_name}
-              <br />
-              <span className="font-mono text-xs">{queueEntry?.queue_number}</span>
-            </DialogDescription>
+            <div className="flex items-center gap-2">
+              <DialogTitle className="flex items-center gap-2">
+                <Syringe className="h-5 w-5" />
+                Collect Sample
+              </DialogTitle>
+              <HelpPopover content="Record sample collection and (optionally) capture the barcode/tube ID for tracking." />
+            </div>
           </DialogHeader>
+
+          <div className="pt-2 text-sm text-muted-foreground">
+            {queueEntry?.patient_name}
+            {queueEntry?.queue_number ? (
+              <span className="font-mono text-xs"> • {queueEntry.queue_number}</span>
+            ) : null}
+          </div>
 
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
@@ -79,10 +84,13 @@ export function SampleCollectionDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="sample-id">
-                Sample Barcode / Tube ID
-                <span className="text-muted-foreground ml-1">(optional)</span>
-              </Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="sample-id">
+                  Sample Barcode / Tube ID
+                  <span className="text-muted-foreground ml-1">(optional)</span>
+                </Label>
+                <HelpPopover content="Enter the barcode or tube ID for tracking purposes." />
+              </div>
               <Input
                 id="sample-id"
                 placeholder="Scan or enter barcode..."
@@ -90,9 +98,6 @@ export function SampleCollectionDialog({
                 onChange={(e) => setSampleId(e.target.value)}
                 autoFocus
               />
-              <p className="text-xs text-muted-foreground">
-                Enter the barcode or tube ID for tracking purposes
-              </p>
             </div>
 
             <div className="space-y-2">
@@ -162,16 +167,18 @@ export function TechnicianAssignmentDialog({
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5" />
-              Assign Technician
-            </DialogTitle>
-            <DialogDescription>
-              Assign a lab technician to process this sample
-              <br />
-              <span className="font-mono text-xs">{queueEntry?.queue_number}</span>
-            </DialogDescription>
+            <div className="flex items-center gap-2">
+              <DialogTitle className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5" />
+                Assign Technician
+              </DialogTitle>
+              <HelpPopover content="Assign a lab technician to process this sample. Use Unassigned to clear the current assignment." />
+            </div>
           </DialogHeader>
+
+          <div className="pt-2 text-sm text-muted-foreground font-mono">
+            {queueEntry?.queue_number}
+          </div>
 
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
@@ -289,11 +296,12 @@ export function RejectSampleDialog({
               <XCircle className="h-5 w-5" />
               Reject Sample
             </DialogTitle>
-            <DialogDescription>
-              This will mark the sample as rejected. A new sample may need to be collected.
-              <br />
-              <span className="font-mono text-xs">{queueEntry?.queue_number}</span>
-            </DialogDescription>
+            <div className="flex items-center gap-2">
+              <HelpPopover content="Mark this sample as rejected. A new sample may need to be collected depending on the reason." />
+              {queueEntry?.queue_number ? (
+                <span className="font-mono text-xs text-muted-foreground">{queueEntry.queue_number}</span>
+              ) : null}
+            </div>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
@@ -398,14 +406,18 @@ export function TechnicianNotesDialog({
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Technician Notes
-            </DialogTitle>
-            <DialogDescription>
-              Add processing notes for {queueEntry?.queue_number}
-            </DialogDescription>
+            <div className="flex items-center gap-2">
+              <DialogTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Technician Notes
+              </DialogTitle>
+              <HelpPopover content="Add processing notes (e.g., sample condition, reruns, special handling)." />
+            </div>
           </DialogHeader>
+
+          {queueEntry?.queue_number ? (
+            <div className="pt-2 text-sm text-muted-foreground font-mono">{queueEntry.queue_number}</div>
+          ) : null}
 
           <div className="grid gap-4 py-4">
             {existingNotes && (
@@ -436,6 +448,7 @@ export function TechnicianNotesDialog({
                 <input
                   type="checkbox"
                   id="append-mode"
+                  aria-label="Append to existing notes"
                   checked={appendMode}
                   onChange={(e) => setAppendMode(e.target.checked)}
                   className="rounded border-gray-300"
@@ -526,13 +539,13 @@ export function BarcodeSearchDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Barcode Lookup
-          </DialogTitle>
-          <DialogDescription>
-            Scan or enter a sample barcode or queue number to find a queue entry
-          </DialogDescription>
+          <div className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Barcode Lookup
+            </DialogTitle>
+            <HelpPopover content="Scan or enter a sample barcode (or queue number) to find a queue entry." />
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSearch} className="space-y-4">

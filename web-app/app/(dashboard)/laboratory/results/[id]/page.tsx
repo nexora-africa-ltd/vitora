@@ -13,15 +13,17 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { ArrowLeft, AlertTriangle, Paperclip, ShieldCheck, Upload } from 'lucide-react';
+import { AlertTriangle, Paperclip, ShieldCheck, Upload } from 'lucide-react';
 import { laboratoryApi } from '@/lib/api/laboratory';
 import { useToast } from '@/lib/hooks';
+import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 
 type Attachment = { id: number; file: string; file_name: string; uploaded_at?: string };
 
@@ -110,23 +112,23 @@ export default function LabResultDetailPage() {
   })();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">Lab Result</h1>
-          <p className="text-muted-foreground">Result #{resultId}</p>
-        </div>
-      </div>
+    <PullToRefresh
+      onRefresh={load}
+      isRefreshing={isLoading}
+      className="min-h-full"
+    >
+      <div className="space-y-6">
+        <PageHeader
+          title={`Lab Result ${resultId || ''}`}
+          helpContent="View lab result details, reference ranges, and attachments. Pull down to refresh on mobile, or use the refresh button in the header."
+        />
 
-      {isLoading ? (
-        <div className="text-sm text-muted-foreground">Loading…</div>
-      ) : !result ? (
-        <div className="text-sm text-red-600">Unable to load result.</div>
-      ) : (
-        <>
+        {isLoading ? (
+          <div className="text-sm text-muted-foreground">Loading…</div>
+        ) : !result ? (
+          <div className="text-sm text-red-600">Unable to load result.</div>
+        ) : (
+          <>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-3">
               <CardTitle className="text-base">Status</CardTitle>
@@ -146,10 +148,10 @@ export default function LabResultDetailPage() {
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Verify result</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Confirm verification of this result.
-                    </AlertDialogDescription>
+                    <div className="flex items-center gap-2">
+                      <AlertDialogTitle>Verify result</AlertDialogTitle>
+                      <HelpPopover content="Confirm verification of this result. Verification indicates the result has been reviewed and finalized." />
+                    </div>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -239,8 +241,8 @@ export default function LabResultDetailPage() {
               )}
             </CardContent>
           </Card>
-        </>
-      )}
+          </>
+        )}
 
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
         <DialogContent>
@@ -267,6 +269,7 @@ export default function LabResultDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </PullToRefresh>
   );
 }

@@ -2,13 +2,14 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { AlertTriangle } from 'lucide-react';
 import { LabOrderForm } from '@/components/laboratory/lab-order-form';
 import { useEncounter } from '@/lib/hooks/use-encounters';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePatientContext } from '@/lib/context/patient-context';
 import { useEncounterContext } from '@/lib/context/encounter-context';
+import { PageHeader } from '@/components/shared/page-header';
 
 export default function NewLabOrderPage() {
   const router = useRouter();
@@ -54,19 +55,22 @@ export default function NewLabOrderPage() {
     router.push(`/laboratory/orders/${orderNumber}`);
   };
 
+  const patientDisplayName = effectivePatient
+    ? `${effectivePatient.first_name} ${effectivePatient.last_name}`
+    : (encounter?.patient_name || 'patient');
+
+  const header = (
+    <PageHeader
+      title="New Lab Order"
+      helpContent="Create a laboratory order within a patient encounter."
+    />
+  );
+
   // If no patient/encounter context, show a message to select
   if (!resolvedPatientId || !resolvedEncounterId) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">New Lab Order</h1>
-            <p className="text-muted-foreground">Create a laboratory order</p>
-          </div>
-        </div>
+        {header}
 
         <Card>
           <CardContent className="pt-6">
@@ -97,6 +101,7 @@ export default function NewLabOrderPage() {
   if (loadingEncounter) {
     return (
       <div className="space-y-6">
+        {header}
         <Skeleton className="h-10 w-48" />
         <Skeleton className="h-96" />
       </div>
@@ -107,15 +112,7 @@ export default function NewLabOrderPage() {
   if (!canPlaceOrders && resolvedEncounterId) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">New Lab Order</h1>
-            <p className="text-muted-foreground">Create a laboratory order</p>
-          </div>
-        </div>
+        {header}
 
         <Card>
           <CardContent className="pt-6">
@@ -125,8 +122,8 @@ export default function NewLabOrderPage() {
               <p className="text-muted-foreground mb-4">
                 Lab orders can only be created for active encounters. This encounter has been completed or cancelled.
               </p>
-              <Button onClick={() => router.back()}>
-                Go Back
+              <Button onClick={() => router.push('/encounters')}>
+                Go to Encounters
               </Button>
             </div>
           </CardContent>
@@ -137,18 +134,10 @@ export default function NewLabOrderPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">New Lab Order</h1>
-          <p className="text-muted-foreground">
-            Create a laboratory order for {effectivePatient?.first_name || encounter?.patient_name || 'patient'}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="New Lab Order"
+        helpContent={`Create a laboratory order for ${patientDisplayName}.`}
+      />
 
       {/* Form */}
       <LabOrderForm
@@ -162,7 +151,6 @@ export default function NewLabOrderPage() {
         encounterDate={(contextEncounter?.encounter_date || encounter?.encounter_date) ?? undefined}
         chiefComplaint={(contextEncounter?.chief_complaint || encounter?.chief_complaint) ?? undefined}
         onSuccess={handleSuccess}
-        onCancel={() => router.back()}
       />
     </div>
   );
