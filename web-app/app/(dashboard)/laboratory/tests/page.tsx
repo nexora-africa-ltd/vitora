@@ -14,11 +14,11 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { laboratoryApi } from '@/lib/api/laboratory';
-import type { TestCatalog } from '@/lib/types/laboratory';
+import type { TestCatalogListItem } from '@/lib/types/laboratory';
 
 export default function LaboratoryTestsPage() {
   const [search, setSearch] = useState('');
-  const [tests, setTests] = useState<TestCatalog[]>([]);
+  const [tests, setTests] = useState<TestCatalogListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,10 +54,10 @@ export default function LaboratoryTestsPage() {
     const query = search.trim().toLowerCase();
     if (!query) return tests;
     return tests.filter((t) => {
-      const loinc = (t.loinc_code || '').toLowerCase();
       const name = (t.name || '').toLowerCase();
       const code = (t.code || '').toLowerCase();
-      return loinc.includes(query) || name.includes(query) || code.includes(query);
+      const shortName = (t.short_name || '').toLowerCase();
+      return name.includes(query) || code.includes(query) || shortName.includes(query);
     });
   }, [search, tests]);
 
@@ -99,7 +99,7 @@ export default function LaboratoryTestsPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Code</TableHead>
                   <TableHead>Category</TableHead>
-                  <TableHead>LOINC</TableHead>
+                  <TableHead>Specimen</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -108,7 +108,7 @@ export default function LaboratoryTestsPage() {
                     <TableCell className="font-medium">{t.name}</TableCell>
                     <TableCell>{t.code}</TableCell>
                     <TableCell>{t.category}</TableCell>
-                    <TableCell>{t.loinc_code || '-'}</TableCell>
+                    <TableCell>{t.specimen_type}</TableCell>
                   </TableRow>
                 ))}
                 {filtered.length === 0 && (

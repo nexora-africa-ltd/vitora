@@ -23,14 +23,14 @@ import {
 } from '@/components/ui/select';
 import { Search, FlaskConical, Check, X } from 'lucide-react';
 import { LOINCSelect } from '@/components/terminology';
-import { TestCatalog, TestCategory, OrderType } from '@/lib/types/laboratory';
+import { TestCatalogListItem, TestCategory, OrderType } from '@/lib/types/laboratory';
 import { useTestCatalog, useTestSearch } from '@/lib/hooks/use-laboratory';
 import { useDebounce } from '@/lib/hooks';
 import { formatCurrency } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 
 interface TestSelectorProps {
-  onSelect: (test: TestCatalog) => void;
+  onSelect: (test: TestCatalogListItem) => void;
   onSelectLOINC?: (loinc: { code: string; title: string; component?: string }) => void;
   onClose: () => void;
   orderType?: OrderType;
@@ -266,7 +266,7 @@ export function TestSelector({
 }
 
 interface TestCardProps {
-  test: TestCatalog;
+  test: TestCatalogListItem;
   onClick: () => void;
 }
 
@@ -298,11 +298,6 @@ function TestCard({ test, onClick }: TestCardProps) {
             <span className="text-muted-foreground">
               {test.specimen_type}
             </span>
-            {test.turnaround_hours && (
-              <span className="text-muted-foreground">
-                ~{test.turnaround_hours}h TAT
-              </span>
-            )}
           </div>
           {test.short_name && test.short_name !== test.name && (
             <p className="text-xs text-muted-foreground mt-1">

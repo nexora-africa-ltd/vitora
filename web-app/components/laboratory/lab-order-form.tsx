@@ -24,7 +24,7 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Plus, Trash2, FlaskConical, Search, User, AlertTriangle } from 'lucide-react';
 import { TestSelector } from './test-selector';
-import { LabOrderCreateData, OrderType, LabPriority, TestCatalog } from '@/lib/types/laboratory';
+import { LabOrderCreateData, OrderType, LabPriority, TestCatalogListItem } from '@/lib/types/laboratory';
 import { useCreateLabOrder } from '@/lib/hooks/use-laboratory';
 import { useToast } from '@/lib/hooks';
 import { formatCurrency } from '@/lib/utils/format';
@@ -161,7 +161,7 @@ export function LabOrderForm({
     return sum + (isNaN(cost) ? 0 : cost);
   }, 0);
 
-  const handleAddTest = useCallback((test: TestCatalog) => {
+  const handleAddTest = useCallback((test: TestCatalogListItem) => {
     // Check if test is already added (use fields for accurate current state)
     const currentItems = form.getValues('items');
     const exists = currentItems.some(item => item.test === test.id);

@@ -78,6 +78,7 @@ export {
   // Laboratory schemas - include alias for QueueStatusSchema
   LabQueueStatusSchema,
   LabTestSchema,
+  LabTestCatalogListSchema,
   LabTestCatalogSchema,
   LabOrderSchema,
   LabOrderItemSchema,
