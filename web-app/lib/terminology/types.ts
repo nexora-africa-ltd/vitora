@@ -75,18 +75,33 @@ export interface ICHISelectValue {
 // LOINC (Lab Test Codes)
 // ============================================================================
 
+/**
+ * LOINC code from terminology API.
+ * Matches backend RemoteLOINCCode dataclass.
+ */
 export interface LOINCCode {
-  id: number;
-  code: string;
+  /** LOINC code number (e.g., '2345-7') */
+  loinc_num: string;
+  /** What is measured */
   component: string;
-  long_common_name: string;
-  property?: string;
-  time_aspect?: string;
-  system?: string;
-  scale_type?: string;
-  method_type?: string;
-  class_name?: string;
-  is_active: boolean;
+  /** Full descriptive name */
+  long_common_name?: string | null;
+  /** Abbreviated name */
+  short_name?: string | null;
+  /** Kind of property */
+  property?: string | null;
+  /** Timing (Pt, 24H, etc.) */
+  time_aspect?: string | null;
+  /** Body system/specimen */
+  system?: string | null;
+  /** Scale (Qn, Ord, etc.) */
+  scale_type?: string | null;
+  /** Method used */
+  method_type?: string | null;
+  /** Status (ACTIVE, deprecated, etc.) */
+  status?: string;
+  /** Original API response */
+  raw_data?: Record<string, unknown>;
 }
 
 /** Simplified LOINC selection value for forms */
@@ -171,10 +186,19 @@ export interface PaginatedResponse<T> {
   results: T[];
 }
 
+/**
+ * Terminology search response (no pagination, just results and count).
+ */
+export interface TerminologySearchResponse<T> {
+  count: number;
+  results: T[];
+  source?: string;
+}
+
 export type PaginatedICD11Codes = PaginatedResponse<ICD11Code>;
 export type PaginatedSHAInterventions = PaginatedResponse<SHAIntervention>;
 export type PaginatedICHICodes = PaginatedResponse<ICHICode>;
-export type PaginatedLOINCCodes = PaginatedResponse<LOINCCode>;
+export type PaginatedLOINCCodes = TerminologySearchResponse<LOINCCode>;
 export type PaginatedDrugProducts = PaginatedResponse<DrugProduct>;
 export type PaginatedActiveComponents = PaginatedResponse<ActiveComponent>;
 

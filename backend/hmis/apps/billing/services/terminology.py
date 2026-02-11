@@ -426,6 +426,11 @@ class TerminologyService:
         self.loinc_endpoint = endpoints.get("loinc", "/terminology/v1/loinc")
         self.ichi_endpoint = endpoints.get("ichi", "/terminology/v1/ichi")
 
+        # HAPI FHIR server settings (LOINC fallback)
+        self.fhir_base_url = getattr(settings, "HAPI_FHIR_BASE_URL", "http://localhost:8090/fhir")
+        self.fhir_timeout = getattr(settings, "HAPI_FHIR_TIMEOUT", 10)
+        self.fhir_enabled = getattr(settings, "HAPI_FHIR_ENABLED", True)
+
         # Initialize auth service
         self.auth_service = SHAAuthService()
 
@@ -825,7 +830,7 @@ class TerminologyService:
             )
 
     # =========================================================================
-    # LOINC (with local fallback)
+    # LOINC (with FHIR and local fallback)
     # =========================================================================
 
     def search_loinc(
@@ -836,7 +841,7 @@ class TerminologyService:
         """
         Search LOINC lab observation codes.
 
-        Strategy: Remote API first, local database fallback.
+        Strategy: SHA/DHA API → FHIR Server → Local database fallback.
 
         Args:
             query: Search term
@@ -847,14 +852,31 @@ class TerminologyService:
         """
         logger.info(f"Searching LOINC codes: query='{query}'")
 
-        # Try remote API first
+        # Try remote SHA/DHA API first
         try:
             return self._search_loinc_remote(query, limit)
-        except TerminologyError:
-            if self.use_local_fallback:
-                logger.warning("Remote LOINC search failed, using local fallback")
-                return self._search_loinc_local(query, limit)
-            raise
+        except TerminologyError as e:
+            logger.warning(f"Remote LOINC search failed: {e}")
+
+        # Try FHIR server as secondary fallback
+        if self.fhir_enabled:
+            try:
+                logger.info("Trying FHIR server for LOINC lookup")
+                results = self._search_loinc_fhir(query, limit)
+                if results:
+                    return results
+            except Exception as e:
+                logger.warning(f"FHIR LOINC search failed: {e}")
+
+        # Final fallback: local database
+        if self.use_local_fallback:
+            logger.info("Using local database fallback for LOINC")
+            return self._search_loinc_local(query, limit)
+
+        raise TerminologyError(
+            "All LOINC sources unavailable",
+            terminology_type="LOINC",
+        )
 
     def _search_loinc_remote(
         self,
@@ -890,6 +912,144 @@ class TerminologyService:
 
         return [RemoteLOINCCode.from_api_response(r) for r in results]
 
+    def _search_loinc_fhir(
+        self,
+        query: str,
+        limit: int,
+    ) -> list[RemoteLOINCCode]:
+        """
+        Search LOINC via FHIR terminology server (HAPI FHIR).
+
+        Uses FHIR ValueSet $expand operation or CodeSystem $lookup.
+        Reference: https://www.hl7.org/fhir/terminology-service.html
+
+        Args:
+            query: Search term (component name or LOINC code)
+            limit: Maximum results
+
+        Returns:
+            List of RemoteLOINCCode objects
+        """
+        # Try ValueSet $expand for text search
+        # LOINC ValueSet: http://loinc.org/vs/top-2000-lab-observations-si
+        expand_url = f"{self.fhir_base_url}/ValueSet/$expand"
+        params = {
+            "url": "http://loinc.org/vs",
+            "filter": query,
+            "count": limit,
+        }
+
+        try:
+            response = requests.get(
+                expand_url,
+                params=params,
+                headers={"Accept": "application/fhir+json"},
+                timeout=self.fhir_timeout,
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                return self._parse_fhir_loinc_valueset(data)
+
+            # Fallback: try CodeSystem $lookup if exact code
+            if self._is_loinc_code_format(query):
+                return self._lookup_loinc_code_fhir(query)
+
+        except requests.RequestException as e:
+            logger.warning(f"FHIR LOINC $expand failed: {e}")
+            raise
+
+        return []
+
+    def _parse_fhir_loinc_valueset(self, data: dict) -> list[RemoteLOINCCode]:
+        """Parse FHIR ValueSet expansion to RemoteLOINCCode list."""
+        results = []
+        expansion = data.get("expansion", {})
+        contains = expansion.get("contains", [])
+
+        for item in contains:
+            if item.get("system") != "http://loinc.org":
+                continue
+
+            code = item.get("code", "")
+            display = item.get("display", "")
+
+            # Parse component from display (format: "Component:Property:...")
+            parts = display.split(":") if ":" in display else [display]
+            component = parts[0] if parts else display
+
+            results.append(
+                RemoteLOINCCode(
+                    loinc_num=code,
+                    component=component,
+                    property=parts[1] if len(parts) > 1 else "",
+                    time_aspect=parts[2] if len(parts) > 2 else "",
+                    system=parts[3] if len(parts) > 3 else "",
+                    scale_type=parts[4] if len(parts) > 4 else "",
+                    method_type=parts[5] if len(parts) > 5 else "",
+                    long_common_name=display,
+                    short_name=component[:100] if component else "",
+                    status="ACTIVE",
+                )
+            )
+
+        return results
+
+    def _is_loinc_code_format(self, query: str) -> bool:
+        """Check if query looks like a LOINC code (e.g., '2345-7')."""
+        import re
+        return bool(re.match(r"^\d+-\d+$", query.strip()))
+
+    def _lookup_loinc_code_fhir(self, code: str) -> list[RemoteLOINCCode]:
+        """Lookup a specific LOINC code via FHIR CodeSystem/$lookup."""
+        lookup_url = f"{self.fhir_base_url}/CodeSystem/$lookup"
+        params = {
+            "system": "http://loinc.org",
+            "code": code,
+        }
+
+        try:
+            response = requests.get(
+                lookup_url,
+                params=params,
+                headers={"Accept": "application/fhir+json"},
+                timeout=self.fhir_timeout,
+            )
+
+            if response.status_code != 200:
+                return []
+
+            data = response.json()
+            parameters = data.get("parameter", [])
+
+            # Extract values from FHIR Parameters resource
+            display = ""
+            for param in parameters:
+                if param.get("name") == "display":
+                    display = param.get("valueString", "")
+                    break
+
+            if display:
+                return [
+                    RemoteLOINCCode(
+                        loinc_num=code,
+                        component=display,
+                        property="",
+                        time_aspect="",
+                        system="",
+                        scale_type="",
+                        method_type="",
+                        long_common_name=display,
+                        short_name=display[:100],
+                        status="ACTIVE",
+                    )
+                ]
+
+        except requests.RequestException as e:
+            logger.warning(f"FHIR LOINC $lookup failed: {e}")
+
+        return []
+
     def _search_loinc_local(
         self,
         query: str,
@@ -897,17 +1057,17 @@ class TerminologyService:
     ) -> list[RemoteLOINCCode]:
         """Search LOINC in local database fallback."""
         try:
-            from hmis.apps.lab.models import LOINCCode
+            from hmis.apps.laboratory.models import LOINCCode
 
             local_codes = LOINCCode.objects.filter(
-                Q(loinc_num__icontains=query)
+                Q(code__icontains=query)
                 | Q(component__icontains=query)
                 | Q(long_common_name__icontains=query)
             )[:limit]
 
             return [
                 RemoteLOINCCode(
-                    loinc_num=c.loinc_num,
+                    loinc_num=c.code,
                     component=c.component,
                     property=c.property,
                     time_aspect=c.time_aspect,
@@ -916,7 +1076,7 @@ class TerminologyService:
                     method_type=c.method_type,
                     long_common_name=c.long_common_name,
                     short_name=c.short_name,
-                    status=c.status,
+                    status="ACTIVE",
                 )
                 for c in local_codes
             ]
@@ -928,6 +1088,8 @@ class TerminologyService:
         """
         Get a specific LOINC code.
 
+        Strategy: SHA/DHA API → FHIR Server → Local database.
+
         Args:
             loinc_num: LOINC number (e.g., '2345-7')
 
@@ -935,11 +1097,11 @@ class TerminologyService:
             RemoteLOINCCode for the specified number
 
         Raises:
-            CodeNotFoundError: If code not found
+            CodeNotFoundError: If code not found in all sources
         """
         logger.info(f"Fetching LOINC code: {loinc_num}")
 
-        # Try remote first
+        # Try remote SHA/DHA API first
         try:
             headers = self.auth_service.get_terminology_headers()
 
@@ -960,25 +1122,36 @@ class TerminologyService:
             return RemoteLOINCCode.from_api_response(code_data)
 
         except CodeNotFoundError:
-            if self.use_local_fallback:
+            pass  # Continue to fallbacks
+        except (SHAAuthError, requests.RequestException) as e:
+            logger.warning(f"Remote LOINC fetch failed: {e}")
+
+        # Try FHIR server as secondary fallback
+        if self.fhir_enabled:
+            try:
+                results = self._lookup_loinc_code_fhir(loinc_num)
+                if results:
+                    return results[0]
+            except Exception as e:
+                logger.warning(f"FHIR LOINC lookup failed: {e}")
+
+        # Final fallback: local database
+        if self.use_local_fallback:
+            try:
                 return self._get_loinc_local(loinc_num)
-            raise
-        except (SHAAuthError, requests.RequestException):
-            if self.use_local_fallback:
-                return self._get_loinc_local(loinc_num)
-            raise TerminologyError(
-                f"Failed to fetch LOINC code: {loinc_num}",
-                terminology_type="LOINC",
-            )
+            except CodeNotFoundError:
+                pass
+
+        raise CodeNotFoundError(loinc_num, "LOINC")
 
     def _get_loinc_local(self, loinc_num: str) -> RemoteLOINCCode:
         """Get LOINC from local database."""
         try:
-            from hmis.apps.lab.models import LOINCCode
+            from hmis.apps.laboratory.models import LOINCCode
 
-            c = LOINCCode.objects.get(loinc_num=loinc_num)
+            c = LOINCCode.objects.get(code=loinc_num)
             return RemoteLOINCCode(
-                loinc_num=c.loinc_num,
+                loinc_num=c.code,
                 component=c.component,
                 property=c.property,
                 time_aspect=c.time_aspect,
@@ -987,7 +1160,7 @@ class TerminologyService:
                 method_type=c.method_type,
                 long_common_name=c.long_common_name,
                 short_name=c.short_name,
-                status=c.status,
+                status="ACTIVE",
             )
         except Exception:
             raise CodeNotFoundError(loinc_num, "LOINC")

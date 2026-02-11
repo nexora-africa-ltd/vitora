@@ -458,7 +458,7 @@ export function LOINCSelect({
 }: LOINCSelectProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [results, setResults] = useState<Array<{ id: number; code: string; long_common_name: string; component: string }>>([]);
+  const [results, setResults] = useState<Array<{ loinc_num: string; long_common_name?: string | null; component: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout>();
 
@@ -547,10 +547,10 @@ export function LOINCSelect({
                 <ScrollArea className="h-[300px]">
                   {results.map((code) => (
                     <CommandItem
-                      key={code.id}
-                      value={`${code.code}-${code.long_common_name}`}
+                      key={code.loinc_num}
+                      value={`${code.loinc_num}-${code.long_common_name || code.component}`}
                       onSelect={() => {
-                        onSelect({ code: code.code, name: code.long_common_name });
+                        onSelect({ code: code.loinc_num, name: code.long_common_name || code.component });
                         setOpen(false);
                         setSearchQuery('');
                       }}
@@ -559,14 +559,14 @@ export function LOINCSelect({
                       <Check
                         className={cn(
                           'h-4 w-4 mt-0.5',
-                          value?.code === code.code ? 'opacity-100' : 'opacity-0'
+                          value?.code === code.loinc_num ? 'opacity-100' : 'opacity-0'
                         )}
                       />
                       <div className="flex-1 min-w-0">
                         <span className="font-mono text-xs text-muted-foreground">
-                          {code.code}
+                          {code.loinc_num}
                         </span>
-                        <p className="text-sm font-medium">{code.long_common_name}</p>
+                        <p className="text-sm font-medium">{code.long_common_name || code.component}</p>
                         <p className="text-xs text-muted-foreground">
                           {code.component}
                         </p>
