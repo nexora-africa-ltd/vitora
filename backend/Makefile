@@ -7,7 +7,8 @@ help:
 	@echo "Development:"
 	@echo "  install       - Install dependencies with Poetry"
 	@echo "  runserver     - Run the Django development server"
-	@echo "  api           - Start API server on port 9088 (background)"
+	@echo "  api           - Start ASGI server on port 9088 with WebSocket support (background)"
+	@echo "  api-wsgi      - Start WSGI server on port 9088 without WebSocket (background)"
 	@echo "  kill-api      - Kill process running on port 9088"
 	@echo "  shell         - Open Django shell"
 	@echo ""
@@ -174,6 +175,11 @@ createsuperuser:
 	poetry run python manage.py createsuperuser
 
 api:
+	@echo "Starting ASGI server with WebSocket support on port 9088..."
+	poetry run daphne -b 0.0.0.0 -p 9088 hmis.asgi:application &
+
+api-wsgi:
+	@echo "Starting WSGI server (no WebSocket support) on port 9088..."
 	poetry run python manage.py runserver 0.0.0.0:9088 &
 
 kill-api:

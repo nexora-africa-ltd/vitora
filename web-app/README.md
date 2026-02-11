@@ -156,11 +156,12 @@ npm run dev                 # http://localhost:3009
 \`\`\`
 
 ### Backend Connection
-Ensure the Django backend is running:
+Ensure the Django backend is running with WebSocket support:
 \`\`\`bash
 cd ../backend
 poetry shell
-python manage.py runserver  # http://127.0.0.1:9088
+make api   # ASGI server with WebSocket support (recommended)
+# Or: python manage.py runserver  # WSGI only (no WebSocket)
 \`\`\`
 
 ### Build for Production

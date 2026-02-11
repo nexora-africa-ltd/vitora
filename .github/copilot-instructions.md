@@ -156,8 +156,12 @@ cd backend
 poetry install
 poetry shell  # Activate virtual environment
 
-# Run development server
+# Run development server (WSGI - no WebSocket)
 python manage.py runserver  # Default: http://127.0.0.1:9088
+
+# Run with WebSocket support (ASGI - recommended)
+make api                      # Starts daphne on port 9088
+make kill-api                 # Stop the server
 
 # Database operations
 python manage.py migrate                          # Apply migrations
@@ -209,8 +213,8 @@ npm run build:linux         # Linux
 ### Quick Development Workflow
 
 ```bash
-# Terminal 1: Backend
-cd backend && poetry shell && python manage.py runserver
+# Terminal 1: Backend (with WebSocket support)
+cd backend && make api        # Uses daphne (ASGI) for WebSocket support
 
 # Terminal 2: Run tests on save (optional)
 cd backend && poetry run pytest-watch

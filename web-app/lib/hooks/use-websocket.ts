@@ -532,12 +532,22 @@ export function useClinicQueueSocket(
 // Laboratory WebSocket Hooks
 // =============================================================================
 
-/** Query keys for lab-related React Query invalidation */
-const labKeys = {
-  orders: (filter?: Record<string, unknown>) => ['lab-orders', filter] as const,
-  order: (id: number | string) => ['lab-orders', id] as const,
-  results: (filter?: Record<string, unknown>) => ['lab-results', filter] as const,
+/** 
+ * Query keys for lab-related React Query invalidation.
+ * Must match the keys used in use-laboratory.ts!
+ */
+const labQueryKeys = {
+  // Generic lab-orders list (used by useLabOrders)
+  allOrders: () => ['lab-orders'] as const,
+  // Order by orderNumber (used by useLabOrder)
+  order: (orderNumber: string) => ['lab-orders', orderNumber] as const,
+  // Orders for an encounter (used by useEncounterLabOrders)
+  encounterOrders: (encounterId: number) => ['encounters', encounterId, 'lab-orders'] as const,
+  // Orders for a patient (used by usePatientLabOrders)
+  patientOrders: (patientId: number) => ['patients', patientId, 'lab-orders'] as const,
+  // Lab queue (used by useLabQueue)
   queue: (status?: string) => ['lab-queue', status] as const,
+  // Critical alerts
   criticalAlerts: () => ['critical-alerts'] as const,
 };
 
@@ -564,9 +574,10 @@ export function useLabEncounterSocket(
 
       console.log(`[WebSocket] Lab encounter ${encounterId} event:`, message.event, message.data);
 
-      // Invalidate lab queries on events
-      queryClient.invalidateQueries({ queryKey: labKeys.orders({ encounter_id: encounterId }) });
-      queryClient.invalidateQueries({ queryKey: labKeys.results({ encounter_id: encounterId }) });
+      // Invalidate encounter-specific lab orders (matches useEncounterLabOrders key)
+      queryClient.invalidateQueries({ queryKey: labQueryKeys.encounterOrders(encounterId) });
+      // Also invalidate general lab-orders list
+      queryClient.invalidateQueries({ queryKey: labQueryKeys.allOrders() });
 
       // Call custom handler if provided
       options.onMessage?.(message);
@@ -587,13 +598,16 @@ export function useLabEncounterSocket(
  * are entered, verified, or when the order status changes.
  *
  * @param orderId - The order ID to subscribe to (null to disable)
+ * @param orderNumber - The order number for cache invalidation (optional)
+ * @param encounterId - The encounter ID for cache invalidation (optional)
  * @param options - WebSocket options
  */
 export function useLabOrderSocket(
   orderId: number | null,
-  options: UseWebSocketOptions = {}
+  options: UseWebSocketOptions & { orderNumber?: string; encounterId?: number } = {}
 ): UseWebSocketReturn {
   const queryClient = useQueryClient();
+  const { orderNumber, encounterId, ...wsOptions } = options;
 
   const url = orderId ? getWebSocketUrl(`/ws/lab/orders/${orderId}/`) : null;
 
@@ -603,19 +617,25 @@ export function useLabOrderSocket(
 
       console.log(`[WebSocket] Lab order ${orderId} event:`, message.event, message.data);
 
-      // Invalidate this specific order
-      queryClient.invalidateQueries({ queryKey: labKeys.order(orderId) });
+      // Invalidate this specific order by order number
+      if (orderNumber) {
+        queryClient.invalidateQueries({ queryKey: labQueryKeys.order(orderNumber) });
+      }
+      // Invalidate encounter lab orders if we have the encounterId
+      if (encounterId) {
+        queryClient.invalidateQueries({ queryKey: labQueryKeys.encounterOrders(encounterId) });
+      }
       // Also invalidate the general orders list
-      queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
+      queryClient.invalidateQueries({ queryKey: labQueryKeys.allOrders() });
 
       // Call custom handler if provided
-      options.onMessage?.(message);
+      wsOptions.onMessage?.(message);
     },
-    [orderId, queryClient, options]
+    [orderId, orderNumber, encounterId, queryClient, wsOptions]
   );
 
   return useWebSocket(url, {
-    ...options,
+    ...wsOptions,
     onMessage: handleMessage,
   });
 }
@@ -656,8 +676,8 @@ export function useLabClinicianSocket(
       }
 
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
-      queryClient.invalidateQueries({ queryKey: labKeys.criticalAlerts() });
+      queryClient.invalidateQueries({ queryKey: labQueryKeys.allOrders() });
+      queryClient.invalidateQueries({ queryKey: labQueryKeys.criticalAlerts() });
 
       // Call custom handler if provided
       options.onMessage?.(message);
@@ -691,8 +711,8 @@ export function useLabQueueSocket(
       console.log('[WebSocket] Lab queue event:', message.event, message.data);
 
       // Invalidate lab queue queries
-      queryClient.invalidateQueries({ queryKey: ['lab-queue'] });
-      queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
+      queryClient.invalidateQueries({ queryKey: labQueryKeys.queue() });
+      queryClient.invalidateQueries({ queryKey: labQueryKeys.allOrders() });
 
       // Call custom handler if provided
       options.onMessage?.(message);

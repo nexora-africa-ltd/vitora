@@ -223,7 +223,7 @@ The app uses the Django backend with SQLite for full offline capability:
 ### App Crashes on Start
 - Check the logs in the terminal
 - Delete \`node_modules\` and run \`npm install\` again
-- Ensure the backend starts correctly: \`cd ../backend && python manage.py runserver\`
+- Ensure the backend starts correctly: `cd ../backend && make api` (WebSocket support) or `python manage.py runserver`
 
 ---
 

@@ -120,9 +120,12 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
 
   // Real-time WebSocket for multi-user awareness
   // This will notify if another user is also entering results for this order
+  // Pass orderNumber and encounterId for proper cache invalidation
   const { isConnected: isWsConnected } = useLabOrderSocket(
     orderData?.id ?? null,
     {
+      orderNumber,
+      encounterId: orderData?.encounter ?? undefined,
       onMessage: (message) => {
         if (message.event === 'result_entered') {
           // Another user entered a result - show notification
