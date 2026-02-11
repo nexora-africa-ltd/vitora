@@ -14,6 +14,7 @@ import { useEncounterDiagnoses, useEncounterTreatmentPlan } from '@/lib/hooks/us
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
 import { useEncounterImagingOrders } from '@/lib/hooks/use-imaging';
 import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
+import { useLabEncounterSocket } from '@/lib/hooks';
 import { formatDate } from '@/lib/utils/format';
 import { ENCOUNTER_STATUS, ENCOUNTER_TYPES } from '@/lib/utils/constants';
 import { VitalsDisplay } from '@/components/encounters/vitals-display';
@@ -50,6 +51,10 @@ export default function EncounterDetailPage() {
   const { data: labOrders } = useEncounterLabOrders(encounterId);
   const { data: imagingOrders } = useEncounterImagingOrders(encounterId);
   const { data: prescriptions } = useEncounterPrescriptions(encounterId);
+
+  // Real-time WebSocket subscription for lab result updates
+  // Automatically invalidates lab orders cache when results are verified
+  useLabEncounterSocket(encounterId);
 
   // Convert encounter to formData format for SOAP Note Summary
   const formData = useMemo((): EncounterFormData | null => {

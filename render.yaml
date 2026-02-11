@@ -40,7 +40,7 @@ services:
         python manage.py seed_imaging_catalog &&
         python manage.py seed_pharmacy_stock
       fi
-    startCommand: gunicorn hmis.wsgi:application --bind 0.0.0.0:$PORT --workers 2
+    startCommand: daphne -b 0.0.0.0 -p $PORT hmis.asgi:application
     healthCheckPath: /api/health/
     envVars:
       - key: DJANGO_SETTINGS_MODULE
@@ -122,7 +122,7 @@ services:
       poetry install --only main --no-interaction &&
       python manage.py collectstatic --noinput &&
       python manage.py migrate --noinput
-    startCommand: gunicorn hmis.wsgi:application --bind 0.0.0.0:$PORT --workers 2
+    startCommand: daphne -b 0.0.0.0 -p $PORT hmis.asgi:application
     healthCheckPath: /api/health/
     envVars:
       - key: DJANGO_SETTINGS_MODULE

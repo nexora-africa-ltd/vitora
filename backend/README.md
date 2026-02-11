@@ -105,7 +105,12 @@ python manage.py load_clinical_templates
 
 ### 6. Run Development Server
 \`\`\`bash
+# Standard WSGI server (no WebSocket support)
 python manage.py runserver  # Default: http://127.0.0.1:9088
+
+# ASGI server with WebSocket support (recommended)
+make api        # Starts daphne on port 9088 (background)
+make kill-api   # Stop the server
 \`\`\`
 
 ---
@@ -115,7 +120,14 @@ python manage.py runserver  # Default: http://127.0.0.1:9088
 ### Running the Server
 \`\`\`bash
 poetry shell
+
+# Standard WSGI (no WebSocket)
 python manage.py runserver 0.0.0.0:9088
+
+# ASGI with WebSocket support (recommended for lab/clinic real-time updates)
+daphne -b 0.0.0.0 -p 9088 hmis.asgi:application
+# Or use make:
+make api        # Runs daphne in background
 \`\`\`
 
 ### Database Commands

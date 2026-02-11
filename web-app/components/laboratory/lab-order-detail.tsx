@@ -84,9 +84,12 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
   const cancelOrder = useCancelLabOrder();
 
   // Real-time WebSocket updates for this specific order
+  // Pass orderNumber and encounterId for proper cache invalidation
   const { isConnected: isWsConnected } = useLabOrderSocket(
     order?.id ?? null,
     {
+      orderNumber,
+      encounterId: order?.encounter ?? undefined,
       onMessage: (message) => {
         // Show toast for result verification
         if (message.event === 'result_verified') {

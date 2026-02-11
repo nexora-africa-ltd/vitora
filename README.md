@@ -262,7 +262,8 @@ python manage.py import_kenya_locations
 python manage.py import_icd10
 
 # Run development server (default port 9088)
-python manage.py runserver
+python manage.py runserver      # WSGI (no WebSocket)
+make api                         # ASGI with WebSocket support (recommended)
 
 # Run tests
 make test          # Full test suite with coverage
