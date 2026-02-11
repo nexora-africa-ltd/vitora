@@ -16,5 +16,5 @@ class InpatientConfig(AppConfig):
 
     def ready(self):
         """Import signal handlers when app is ready."""
-        # Import signals when they are added
-        pass
+        # Import signals to register handlers
+        from hmis.apps.inpatient import signals  # noqa: F401

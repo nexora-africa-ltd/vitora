@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import date
-from typing import Optional
 
 from hmis.apps.inpatient.models import Ward
 from hmis.apps.patients.models import Patient
@@ -70,7 +69,7 @@ class WardCompatibilityService:
 
         return CompatibilityResult(compatible=len(violations) == 0, violations=violations)
 
-    def _check_gender(self, patient: Patient, ward: Ward) -> Optional[CompatibilityViolation]:
+    def _check_gender(self, patient: Patient, ward: Ward) -> CompatibilityViolation | None:
         if ward.gender_restriction == "ANY":
             return None
 
@@ -98,7 +97,7 @@ class WardCompatibilityService:
 
         return None
 
-    def _check_age(self, patient: Patient, ward: Ward) -> Optional[CompatibilityViolation]:
+    def _check_age(self, patient: Patient, ward: Ward) -> CompatibilityViolation | None:
         patient_age = self._calculate_age(patient.date_of_birth)
 
         if ward.min_age_years is not None and patient_age < ward.min_age_years:
@@ -123,7 +122,7 @@ class WardCompatibilityService:
 
         return None
 
-    def _check_ward_type(self, patient: Patient, ward: Ward) -> Optional[CompatibilityViolation]:
+    def _check_ward_type(self, patient: Patient, ward: Ward) -> CompatibilityViolation | None:
         patient_age = self._calculate_age(patient.date_of_birth)
 
         if ward.ward_type == "MATERNITY" and patient.gender != "F":

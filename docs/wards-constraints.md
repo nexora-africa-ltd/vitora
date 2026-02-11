@@ -1,6 +1,6 @@
 # Ward Patient Compatibility Constraints - Implementation Plan
 
-> **Status**: In Progress (Phase 1 Complete)  
+> **Status**: In Progress (Phase 2 Complete)  
 > **Created**: February 12, 2026  
 > **Target Sprint**: TBD  
 > **PowerSync**: Phase 5 (Future Sprint - documented)
@@ -1291,14 +1291,14 @@ test('supervisor receives real-time alert for CRITICAL violations', async () => 
 - [x] Write backend tests
 - [x] Add `receive_critical_alerts` permission
 
-### Phase 2: WebSocket & Polling + Supervisor Escalation (3 days)
-- [ ] Create WardCompatibilityConsumer
-- [ ] Create SupervisorAlertConsumer (for CRITICAL violations)
-- [ ] Add signal handlers for real-time notifications
-- [ ] Implement **CRITICAL violation → supervisor escalation** (WebSocket + email)
-- [ ] Create Celery task `notify_supervisors_critical_violation`
-- [ ] Create polling fallback endpoint
-- [ ] Create frontend hook with WS/polling hybrid
+### Phase 2: WebSocket & Polling + Supervisor Escalation (3 days) ✅ COMPLETE
+- [x] Create WardCompatibilityConsumer
+- [x] Create SupervisorAlertConsumer (for CRITICAL violations)
+- [x] Add signal handlers for real-time notifications
+- [x] Implement **CRITICAL violation → supervisor escalation** (WebSocket + email)
+- [x] Create Celery task `notify_supervisors_critical_violation`
+- [x] Create polling fallback endpoint
+- [ ] Create frontend hook with WS/polling hybrid (moved to Phase 3)
 
 ### Phase 3: Frontend Integration (3-4 days)
 - [ ] Update ward form with constraint fields (auto-populated defaults shown)
