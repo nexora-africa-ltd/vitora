@@ -10,3 +10,4 @@ export { LabResultsEntry } from './lab-results-entry';
 export { LabQueueView } from './lab-queue-view';
 export { TestSelector } from './test-selector';
 export { LabResultsBadge } from './lab-results-badge';
+export { LabResultsBadgeLive } from './lab-results-badge-live';
