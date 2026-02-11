@@ -7,6 +7,8 @@ help:
 	@echo "Development:"
 	@echo "  install       - Install dependencies with Poetry"
 	@echo "  runserver     - Run the Django development server"
+	@echo "  api           - Start API server on port 9088 (background)"
+	@echo "  kill-api      - Kill process running on port 9088"
 	@echo "  shell         - Open Django shell"
 	@echo ""
 	@echo "Testing:"
@@ -61,6 +63,9 @@ help:
 	@echo "  fhir-server-down    - Stop HAPI FHIR server"
 	@echo "  fhir-server-status  - Check FHIR server status"
 	@echo "  fhir-server-logs    - View FHIR server logs"
+	@echo ""
+	@echo "Git Workflow:"
+	@echo "  merge-to-main       - Merge current branch to main and push"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  clean         - Remove generated files and caches"
@@ -170,6 +175,10 @@ createsuperuser:
 
 api:
 	poetry run python manage.py runserver 0.0.0.0:9088 &
+
+kill-api:
+	@echo "Killing process on port 9088..."
+	@lsof -ti:9088 | xargs kill -9 2>/dev/null || echo "No process running on port 9088"
 
 shell:
 	poetry run python manage.py shell
@@ -306,3 +315,28 @@ test-fhir-full:
 	$(MAKE) test-fhir-integration
 	$(MAKE) fhir-server-down
 	@echo "=== FHIR Test Cycle Complete ==="
+
+# ============================================================================
+# Git Workflow Commands
+# ============================================================================
+
+# Merge current branch to main and push
+# Usage: make merge-to-main
+# - Saves current branch name
+# - Switches to main, pulls latest
+# - Merges current branch (fast-forward or merge commit)
+# - Pushes to origin
+# - Returns to original branch
+merge-to-main:
+	@CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
+	if [ "$$CURRENT_BRANCH" = "main" ]; then \
+		echo "Error: Already on main branch. Switch to a feature branch first."; \
+		exit 1; \
+	fi; \
+	echo "Merging $$CURRENT_BRANCH → main..."; \
+	git checkout main && \
+	git pull origin main && \
+	git merge $$CURRENT_BRANCH --no-edit && \
+	git push origin main && \
+	git checkout $$CURRENT_BRANCH && \
+	echo "✅ Successfully merged $$CURRENT_BRANCH to main and pushed"
