@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, Clock, MoveRight, User } from 'lucide-react';
+import { Clock, MoveRight, User } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -105,12 +105,12 @@ export default function TransferPage() {
   if (!admission) {
     return (
       <div className="container mx-auto py-12 text-center">
-        <h2 className="text-xl font-semibold">Admission not found</h2>
+        <p className="text-xl font-semibold">Admission not found</p>
         <p className="text-muted-foreground mt-2">
           Cannot transfer a patient without an active admission.
         </p>
         <Button onClick={() => router.push('/admissions')} className="mt-4">
-          Back to Admissions
+          View Admissions
         </Button>
       </div>
     );
@@ -119,7 +119,7 @@ export default function TransferPage() {
   if (admission.admission_status !== 'ACTIVE') {
     return (
       <div className="container mx-auto py-12 text-center">
-        <h2 className="text-xl font-semibold">Cannot Transfer</h2>
+        <p className="text-xl font-semibold">Cannot Transfer</p>
         <p className="text-muted-foreground mt-2">
           Only active admissions can be transferred.
         </p>
@@ -135,20 +135,10 @@ export default function TransferPage() {
   );
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <Link href={`/admissions/${admissionId}`} className="text-sm text-muted-foreground hover:text-primary">
-          Back to Admission
-        </Link>
-      </div>
-
+    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="Transfer Patient"
-        description={`Transfer ${admission.patient_name} to a different ward/bed`}
+        helpContent={`Transfer ${admission.patient_name} to a different ward/bed.`}
       />
 
       {/* Current Location */}
@@ -181,10 +171,10 @@ export default function TransferPage() {
       {/* Transfer Form */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Transfer To</CardTitle>
-          <CardDescription>
-            Select the destination ward and bed for the patient
-          </CardDescription>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-lg">Transfer To</CardTitle>
+            <HelpPopover content="Select the destination ward and bed for the patient." />
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Target Ward and Bed */}
@@ -311,10 +301,7 @@ export default function TransferPage() {
       )}
 
       {/* Submit Buttons */}
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={() => router.back()}>
-          Cancel
-        </Button>
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button
           onClick={handleSubmit}
           disabled={createTransfer.isPending || !targetWardId || !targetBedId || !clinicalJustification}

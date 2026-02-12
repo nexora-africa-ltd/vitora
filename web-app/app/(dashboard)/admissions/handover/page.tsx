@@ -69,19 +69,19 @@ export default function HandoverListPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <PageHeader
-          title="Shift Handovers"
-          description="View and acknowledge shift handover reports"
-        />
-        <Button asChild>
-          <Link href="/admissions/handover/new">
-            <Plus className="h-4 w-4 mr-2" />
-            New Handover
-          </Link>
-        </Button>
-      </div>
+    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+      <PageHeader
+        title="Shift Handovers"
+        helpContent="View and acknowledge shift handover reports between nursing shifts."
+        actions={
+          <Button asChild>
+            <Link href="/admissions/handover/new">
+              <Plus className="h-4 w-4 mr-2" />
+              New Handover
+            </Link>
+          </Button>
+        }
+      />
 
       {/* Pending Handovers Alert */}
       {pendingCount > 0 && (

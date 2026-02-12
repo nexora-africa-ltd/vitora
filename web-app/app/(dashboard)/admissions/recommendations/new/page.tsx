@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,19 +38,10 @@ export default function NewAdmissionRecommendationPage() {
   const canSubmit = !!encounterId && !!reason && !!provisionalDiagnosis && !!provisionalDiagnosisText;
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <Link href="/encounters" className="text-sm text-muted-foreground hover:text-primary">
-          Back to Encounters
-        </Link>
-      </div>
-
+    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="Recommend for Admission"
-        description="Create an OPD → IPD admission recommendation"
+        helpContent="Create an OPD → IPD admission recommendation for a patient who requires inpatient care."
       />
 
       <Card>

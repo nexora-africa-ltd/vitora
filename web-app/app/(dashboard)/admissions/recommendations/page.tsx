@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Check, Clock, AlertTriangle, User, Bed, X } from 'lucide-react';
+import { Check, Clock, AlertTriangle, User, Bed, X } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -153,20 +153,9 @@ export default function AdmissionRecommendationsPage() {
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/admissions">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-        </Button>
-        <Link href="/admissions" className="text-sm text-muted-foreground hover:text-primary">
-          Back to Admissions
-        </Link>
-      </div>
-
       <PageHeader
         title="Admission Recommendations"
-        description="Review and approve pending admission recommendations"
+        helpContent="Review and approve pending admission recommendations from OPD encounters."
       />
 
       {/* Stats */}

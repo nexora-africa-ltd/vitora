@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, Save, Users, AlertTriangle, Clock, Pill } from 'lucide-react';
+import { Save, Users, AlertTriangle, Clock, Pill } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -85,20 +85,10 @@ export default function NewHandoverPage() {
   const isFormValid = wardId && outgoingShift && incomingShift && summary;
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <Link href="/admissions/handover" className="text-sm text-muted-foreground hover:text-primary">
-          Back to Handovers
-        </Link>
-      </div>
-
+    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="New Shift Handover"
-        description="Create a handover report for the incoming shift"
+        helpContent="Create a handover report for the incoming shift. Include patient status, critical information, and pending tasks."
       />
 
       {/* Ward and Shift Selection */}

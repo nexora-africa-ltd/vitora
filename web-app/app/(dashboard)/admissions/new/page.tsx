@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Search, X, AlertCircle, User, UserPlus, AlertTriangle } from 'lucide-react';
+import { Save, Search, X, AlertCircle, User, UserPlus, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -209,17 +209,11 @@ export default function NewAdmissionPage() {
     : icd10Text;
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <Link href="/admissions" className="text-sm text-muted-foreground hover:text-primary">
-          Back to Admissions
-        </Link>
-      </div>
-
-      <PageHeader title="New Admission" description="Create an inpatient admission record" />
+    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+      <PageHeader
+        title="New Admission"
+        helpContent="Create an inpatient admission record. Select a patient, ward, and bed to admit."
+      />
 
       {/* Encounter context banner */}
       {encounterId && encounter && (
@@ -242,48 +236,55 @@ export default function NewAdmissionPage() {
           <div className="space-y-2">
             <Label>Patient</Label>
             {patientId && patientData ? (
-              <div className="flex items-center gap-3 p-3 rounded-md border bg-muted/50">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
-                  <User className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">
-                    {patientData.first_name} {patientData.last_name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    MRN: {patientData.mrn} • ID: {patientId}
-                  </p>
+              <div className="flex flex-col gap-3 p-3 rounded-md border bg-muted/50 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="flex items-center justify-center w-10 h-10 shrink-0 rounded-full bg-primary/10">
+                    <User className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium truncate">
+                      {patientData.first_name} {patientData.last_name}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+                      <span className="truncate">MRN: {patientData.mrn}</span>
+                      <span className="hidden xs:inline">•</span>
+                      <span>ID: {patientId}</span>
+                    </div>
+                  </div>
                 </div>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
+                  className="w-full sm:w-auto shrink-0"
                   onClick={() => router.push(`/patients?select=true&returnTo=/admissions/new`)}
                   data-testid="change-patient-button"
                 >
-                  Change Patient
+                  <span className="sm:hidden">Change</span>
+                  <span className="hidden sm:inline">Change Patient</span>
                 </Button>
               </div>
             ) : patientId ? (
               <div className="flex items-center gap-3 p-3 rounded-md border">
-                <Skeleton className="w-10 h-10 rounded-full" />
-                <div className="flex-1">
+                <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+                <div className="flex-1 min-w-0">
                   <Skeleton className="h-5 w-32 mb-1" />
                   <Skeleton className="h-4 w-24" />
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-3 p-3 rounded-md border border-dashed">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted">
-                  <UserPlus className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div className="flex-1">
+              <div className="flex flex-col gap-3 p-3 rounded-md border border-dashed sm:flex-row sm:items-center">
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="flex items-center justify-center w-10 h-10 shrink-0 rounded-full bg-muted">
+                    <UserPlus className="h-5 w-5 text-muted-foreground" />
+                  </div>
                   <p className="text-muted-foreground">No patient selected</p>
                 </div>
                 <Button
                   type="button"
                   variant="default"
                   size="sm"
+                  className="w-full sm:w-auto shrink-0"
                   onClick={() => router.push(`/patients?select=true&returnTo=/admissions/new`)}
                   data-testid="select-patient-button"
                 >

@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, Stethoscope, ThermometerSun } from 'lucide-react';
+import { Stethoscope, ThermometerSun } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -121,12 +121,12 @@ export default function NewWardRoundPage() {
   if (!admission) {
     return (
       <div className="container mx-auto py-12 text-center">
-        <h2 className="text-xl font-semibold">Admission not found</h2>
-        <p className="text-accent-foreground mt-2">
+        <p className="text-xl font-semibold">Admission not found</p>
+        <p className="text-muted-foreground mt-2">
           Cannot record a ward round without an active admission.
         </p>
         <Button onClick={() => router.push('/admissions')} className="mt-4">
-          Back to Admissions
+          View Admissions
         </Button>
       </div>
     );
@@ -135,8 +135,8 @@ export default function NewWardRoundPage() {
   if (admission.admission_status !== 'ACTIVE') {
     return (
       <div className="container mx-auto py-12 text-center">
-        <h2 className="text-xl font-semibold">Cannot Record Ward Round</h2>
-        <p className="text-accent-foreground mt-2">
+        <p className="text-xl font-semibold">Cannot Record Ward Round</p>
+        <p className="text-muted-foreground mt-2">
           Ward rounds can only be recorded for active admissions.
         </p>
         <Button onClick={() => router.push(`/admissions/${admissionId}`)} className="mt-4">
@@ -147,20 +147,10 @@ export default function NewWardRoundPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <Link href={`/admissions/${admissionId}/ward-round`} className="text-sm text-accent-foreground hover:text-primary">
-          Back to Ward Rounds
-        </Link>
-      </div>
-
+    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="New Ward Round"
-        description={`Document ward round for ${admission.patient_name}`}
+        helpContent={`Document ward round for ${admission.patient_name}. Record vitals, clinical notes in SOAP format, and update patient condition status.`}
       />
 
       {/* Patient Info */}
