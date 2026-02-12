@@ -6,11 +6,13 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, Building2, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Building2, Save, Loader2, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { HelpPopover } from '@/components/shared/help-popover';
 import {
   Select,
   SelectContent,
@@ -40,6 +42,12 @@ const WARD_TYPES: { value: InpatientWardType; label: string }[] = [
   { value: 'ISOLATION', label: 'Isolation' },
 ];
 
+const GENDER_RESTRICTIONS = [
+  { value: 'ANY', label: 'Any Gender' },
+  { value: 'MALE_ONLY', label: 'Male Only' },
+  { value: 'FEMALE_ONLY', label: 'Female Only' },
+] as const;
+
 const wardSchema = z.object({
   name: z.string().min(1, 'Ward name is required'),
   code: z.string().min(1, 'Ward code is required'),
@@ -49,6 +57,13 @@ const wardSchema = z.object({
   daily_rate: z.string().min(1, 'Daily rate is required'),
   description: z.string().optional(),
   is_active: z.boolean(),
+  // Ward constraints
+  gender_restriction: z.enum(['ANY', 'MALE_ONLY', 'FEMALE_ONLY']).nullable().optional(),
+  min_age_years: z.coerce.number().min(0).max(150).nullable().optional(),
+  max_age_years: z.coerce.number().min(0).max(150).nullable().optional(),
+  isolation_capable: z.boolean().optional(),
+  oxygen_equipped: z.boolean().optional(),
+  ventilator_capable: z.boolean().optional(),
 });
 
 type WardFormData = z.infer<typeof wardSchema>;
@@ -73,6 +88,13 @@ export default function WardEditPage() {
       daily_rate: '0',
       description: '',
       is_active: true,
+      // Constraint defaults
+      gender_restriction: 'ANY',
+      min_age_years: null,
+      max_age_years: null,
+      isolation_capable: false,
+      oxygen_equipped: false,
+      ventilator_capable: false,
     },
   });
 
@@ -88,6 +110,13 @@ export default function WardEditPage() {
         daily_rate: ward.daily_rate,
         description: ward.description || '',
         is_active: ward.is_active,
+        // Constraint fields
+        gender_restriction: ward.gender_restriction || 'ANY',
+        min_age_years: ward.min_age_years ?? null,
+        max_age_years: ward.max_age_years ?? null,
+        isolation_capable: ward.isolation_capable ?? false,
+        oxygen_equipped: ward.oxygen_equipped ?? false,
+        ventilator_capable: ward.ventilator_capable ?? false,
       });
     }
   }, [ward, form]);
@@ -270,7 +299,119 @@ export default function WardEditPage() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end gap-4">
+        {/* Patient Compatibility Rules */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-muted-foreground" />
+              <CardTitle>Patient Compatibility Rules</CardTitle>
+              <HelpPopover content="Define which patients can be admitted to this ward. Violations will show warnings during admission, but can be overridden with justification." />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Gender and Age Restrictions */}
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="gender_restriction">Gender Restriction</Label>
+                <Select
+                  value={form.watch('gender_restriction') || 'ANY'}
+                  onValueChange={(value) => form.setValue('gender_restriction', value as 'ANY' | 'MALE_ONLY' | 'FEMALE_ONLY')}
+                >
+                  <SelectTrigger id="gender_restriction">
+                    <SelectValue placeholder="Select restriction" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GENDER_RESTRICTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="min_age_years">Minimum Age (years)</Label>
+                <Input
+                  id="min_age_years"
+                  type="number"
+                  min={0}
+                  max={150}
+                  placeholder="e.g., 0"
+                  {...form.register('min_age_years', { setValueAs: (v) => v === '' ? null : Number(v) })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="max_age_years">Maximum Age (years)</Label>
+                <Input
+                  id="max_age_years"
+                  type="number"
+                  min={0}
+                  max={150}
+                  placeholder="e.g., 18 for pediatrics"
+                  {...form.register('max_age_years', { setValueAs: (v) => v === '' ? null : Number(v) })}
+                />
+              </div>
+            </div>
+
+            {/* Equipment Capabilities */}
+            <div className="space-y-3">
+              <Label className="text-base">Equipment & Capabilities</Label>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="flex items-center space-x-2 rounded-lg border p-3">
+                  <Checkbox
+                    id="isolation_capable"
+                    checked={form.watch('isolation_capable') ?? false}
+                    onCheckedChange={(checked) => form.setValue('isolation_capable', checked === true)}
+                  />
+                  <div className="space-y-0.5">
+                    <Label htmlFor="isolation_capable" className="text-sm font-medium cursor-pointer">
+                      Isolation Capable
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Can isolate infectious patients
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 rounded-lg border p-3">
+                  <Checkbox
+                    id="oxygen_equipped"
+                    checked={form.watch('oxygen_equipped') ?? false}
+                    onCheckedChange={(checked) => form.setValue('oxygen_equipped', checked === true)}
+                  />
+                  <div className="space-y-0.5">
+                    <Label htmlFor="oxygen_equipped" className="text-sm font-medium cursor-pointer">
+                      Oxygen Equipped
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Bedside oxygen supply
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2 rounded-lg border p-3">
+                  <Checkbox
+                    id="ventilator_capable"
+                    checked={form.watch('ventilator_capable') ?? false}
+                    onCheckedChange={(checked) => form.setValue('ventilator_capable', checked === true)}
+                  />
+                  <div className="space-y-0.5">
+                    <Label htmlFor="ventilator_capable" className="text-sm font-medium cursor-pointer">
+                      Ventilator Capable
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Mechanical ventilation support
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end sm:gap-4">
           <Button
             type="button"
             variant="outline"

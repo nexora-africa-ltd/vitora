@@ -129,6 +129,24 @@ export function useUpdateBed() {
   });
 }
 
+/**
+ * Check if a patient is compatible with a specific ward.
+ * Returns a mutation that can be called imperatively.
+ */
+export function useCheckWardCompatibility() {
+  return useMutation({
+    mutationFn: ({
+      wardId,
+      patientId,
+      requiresIsolation,
+    }: {
+      wardId: number;
+      patientId: number;
+      requiresIsolation?: boolean;
+    }) => inpatientApi.checkWardCompatibility(wardId, patientId, requiresIsolation),
+  });
+}
+
 // ============================================================================
 // Admission Recommendation Hooks
 // ============================================================================

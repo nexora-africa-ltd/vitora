@@ -10,9 +10,11 @@ import {
   Plus,
   User,
   Settings,
-  AlertCircle
+  AlertCircle,
+  Shield
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -237,6 +239,64 @@ export default function WardDetailPage() {
           <p className="text-sm text-muted-foreground mt-2">
             {stats.occupied} of {stats.total} beds occupied
           </p>
+        </CardContent>
+      </Card>
+
+      {/* Patient Compatibility Rules */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-base">Patient Compatibility Rules</CardTitle>
+            <HelpPopover content="These rules determine which patients can be admitted to this ward. Violations show warnings during admission but can be overridden with justification." />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Gender Restriction */}
+            <div className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50">
+              <span className="text-muted-foreground">Gender</span>
+              <Badge variant="outline">
+                {ward.gender_restriction === 'MALE_ONLY' 
+                  ? 'Male Only' 
+                  : ward.gender_restriction === 'FEMALE_ONLY' 
+                    ? 'Female Only' 
+                    : 'Any Gender'}
+              </Badge>
+            </div>
+
+            {/* Age Range */}
+            <div className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50">
+              <span className="text-muted-foreground">Age Range</span>
+              <span className="font-medium">
+                {ward.min_age_years ?? 0} – {ward.max_age_years ?? '∞'} years
+              </span>
+            </div>
+
+            {/* Isolation Capable */}
+            <div className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50">
+              <span className="text-muted-foreground">Isolation</span>
+              <Badge variant={ward.isolation_capable ? 'default' : 'secondary'}>
+                {ward.isolation_capable ? 'Yes' : 'No'}
+              </Badge>
+            </div>
+
+            {/* Oxygen Equipped */}
+            <div className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50">
+              <span className="text-muted-foreground">Oxygen</span>
+              <Badge variant={ward.oxygen_equipped ? 'default' : 'secondary'}>
+                {ward.oxygen_equipped ? 'Yes' : 'No'}
+              </Badge>
+            </div>
+
+            {/* Ventilator Capable */}
+            <div className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50">
+              <span className="text-muted-foreground">Ventilator</span>
+              <Badge variant={ward.ventilator_capable ? 'default' : 'secondary'}>
+                {ward.ventilator_capable ? 'Yes' : 'No'}
+              </Badge>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
