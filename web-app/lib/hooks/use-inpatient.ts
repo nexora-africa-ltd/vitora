@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { inpatientApi } from '@/lib/api/inpatient';
 import type {
   Admission,
+  AdmissionCreateInput,
   AdmissionListParams,
   AdmissionRecommendation,
   AdmissionRecommendationListParams,
@@ -228,7 +229,7 @@ export function useAdmission(admissionId: number | undefined) {
 export function useCreateAdmission() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: Partial<Admission>) => inpatientApi.createAdmission(data),
+    mutationFn: (data: AdmissionCreateInput) => inpatientApi.createAdmission(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
     },

@@ -115,6 +115,33 @@ export interface Admission {
   updated_at?: string;
 }
 
+/**
+ * Input type for creating an admission.
+ * Includes auto_assign_bed flag for automatic bed assignment.
+ */
+export interface AdmissionCreateInput {
+  patient: number;
+  ward: number;
+  /** Bed ID (required unless auto_assign_bed is true) */
+  bed?: number;
+  /** When true, system will auto-assign the first available bed in the ward */
+  auto_assign_bed?: boolean;
+  payer_type: AdmissionPayerType;
+  admission_date: string;
+  admitting_diagnosis?: string;
+  admitting_diagnosis_text?: string;
+  admitting_officer?: number;
+  attending_doctor?: number;
+  source_encounter?: number;
+  opd_encounter?: number;
+  recommendation?: number;
+  /** Set to true if overriding compatibility warnings */
+  constraint_override?: boolean;
+  constraint_override_reason?: string;
+  constraint_violations?: string[];
+  requires_isolation?: boolean;
+}
+
 // ============================================================================
 // Discharge Types
 // ============================================================================

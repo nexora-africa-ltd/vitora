@@ -29,6 +29,7 @@ import {
 } from '@/lib/schemas/inpatient.schema';
 import type {
   Admission,
+  AdmissionCreateInput,
   AdmissionListParams,
   AdmissionListResponse,
   AdmissionRecommendation,
@@ -167,7 +168,7 @@ export const inpatientApi = {
     return parseResponse(AdmissionSchema, response.data, { context: 'inpatientApi.getAdmission' });
   },
 
-  async createAdmission(data: Partial<Admission>): Promise<Admission> {
+  async createAdmission(data: AdmissionCreateInput): Promise<Admission> {
     const response = await apiClient.post<Admission>('/api/inpatient/admissions/', data);
     return parseResponse(AdmissionSchema, response.data, { context: 'inpatientApi.createAdmission' });
   },

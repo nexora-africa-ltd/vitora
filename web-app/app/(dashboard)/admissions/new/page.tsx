@@ -70,6 +70,7 @@ export default function NewAdmissionPage() {
   // Form state
   const [wardId, setWardId] = useState<string>('');
   const [bedId, setBedId] = useState<string>('');
+  const [autoAssignBed, setAutoAssignBed] = useState(false);
   const [payerType, setPayerType] = useState<'CASH' | 'SHA' | 'CORPORATE'>('CASH');
 
   // Diagnosis state
@@ -204,7 +205,8 @@ export default function NewAdmissionPage() {
     ? !!icd11Value
     : (!!icd10Code || !!icd10Text);
 
-  const canSubmit = !!patientId && !!wardId && !!bedId && hasDiagnosis && !!user;
+  // With autoAssignBed, bed selection is not required (handled by backend)
+  const canSubmit = !!patientId && !!wardId && (!!bedId || autoAssignBed) && hasDiagnosis && !!user;
 
   const admittingDiagnosis = useICD11
     ? icd11Value?.code || ''
@@ -326,16 +328,43 @@ export default function NewAdmissionPage() {
             )}
           </div>
 
-          {/* Bed Selection Grid */}
+          {/* Bed Assignment Section */}
           {wardId && (
-            <BedSelectionGrid
-              beds={(Array.isArray(beds) ? beds : beds?.results ?? [])}
-              selectedBedId={bedId}
-              compatibilityResult={compatibilityResult}
-              onSelectBed={(id) => setBedId(String(id))}
-              isLoading={!beds}
-              disabled={checkCompatibility.isPending}
-            />
+            <div className="space-y-4">
+              {/* Auto-assign toggle */}
+              <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
+                <div className="space-y-0.5">
+                  <Label htmlFor="auto-assign-bed" className="text-sm font-medium cursor-pointer">
+                    Auto-assign bed
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    System will assign the first available bed in the selected ward
+                  </p>
+                </div>
+                <Switch
+                  id="auto-assign-bed"
+                  checked={autoAssignBed}
+                  onCheckedChange={(checked) => {
+                    setAutoAssignBed(checked);
+                    if (checked) {
+                      setBedId(''); // Clear manual selection when enabling auto-assign
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Manual Bed Selection Grid (only shown if not auto-assigning) */}
+              {!autoAssignBed && (
+                <BedSelectionGrid
+                  beds={(Array.isArray(beds) ? beds : beds?.results ?? [])}
+                  selectedBedId={bedId}
+                  compatibilityResult={compatibilityResult}
+                  onSelectBed={(id) => setBedId(String(id))}
+                  isLoading={!beds}
+                  disabled={checkCompatibility.isPending}
+                />
+              )}
+            </div>
           )}
 
           {/* Diagnosis Section with ICD-10/ICD-11 Toggle */}
@@ -504,7 +533,11 @@ export default function NewAdmissionPage() {
                 await createAdmission.mutateAsync({
                   patient: patientId,
                   ward: Number(wardId),
-                  bed: Number(bedId),
+                  // Include bed only if manually selected, otherwise use auto_assign_bed
+                  ...(autoAssignBed
+                    ? { auto_assign_bed: true }
+                    : { bed: Number(bedId) }
+                  ),
                   payer_type: payerType,
                   admission_date: admissionDate,
                   admitting_diagnosis: admittingDiagnosis,
