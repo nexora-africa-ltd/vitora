@@ -247,7 +247,6 @@ export type LabOrderSchemaType = z.infer<typeof LabOrderSchema>;
 
 export const LabQueueSchema = z.object({
   id: z.number(),
-  lab_order: z.number(),
   order_number: z.string(),
   patient_name: z.string().nullable().optional(),
   patient_mrn: z.string().nullable().optional(),
