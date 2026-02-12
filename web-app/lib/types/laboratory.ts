@@ -187,7 +187,6 @@ export type VerificationStatus = 'UNVERIFIED' | 'VERIFIED' | 'REJECTED';
 // Lab queue types
 export interface LabQueue {
   id: number;
-  lab_order: number;
   order_number: string;
   patient_name?: string | null;
   patient_mrn?: string | null;
