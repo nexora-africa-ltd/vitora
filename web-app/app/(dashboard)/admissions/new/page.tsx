@@ -198,7 +198,7 @@ export default function NewAdmissionPage() {
     ? !!icd11Value
     : (!!icd10Code || !!icd10Text);
 
-  const canSubmit = !!patientId && !!wardId && !!bedId && hasDiagnosis;
+  const canSubmit = !!patientId && !!wardId && !!bedId && hasDiagnosis && !!user;
 
   const admittingDiagnosis = useICD11
     ? icd11Value?.code || ''
@@ -498,7 +498,7 @@ export default function NewAdmissionPage() {
             <Button
               disabled={!canSubmit || createAdmission.isPending}
               onClick={async () => {
-                if (!patientId) return;
+                if (!patientId || !user) return;
                 const admissionDate = new Date().toISOString();
 
                 await createAdmission.mutateAsync({

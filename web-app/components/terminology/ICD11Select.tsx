@@ -123,35 +123,42 @@ export function ICD11Select({
           aria-expanded={open}
           disabled={disabled}
           className={cn(
-            'w-full justify-between h-auto min-h-10 py-2',
+            'w-full justify-between h-auto min-h-10 py-2 text-foreground',
             !value && 'text-muted-foreground',
             className
           )}
         >
           {value ? (
-            <div className="flex items-center gap-2 text-left flex-1 min-w-0">
-              <span className="font-mono text-xs">{value.code}</span>
-              <span className="text-sm truncate">{value.title}</span>
+            <div className="flex flex-col items-start gap-0.5 text-left flex-1 min-w-0 sm:flex-row sm:items-center sm:gap-2">
+              <span className="font-mono text-xs text-primary shrink-0">{value.code}</span>
+              <span className="text-sm text-foreground truncate">{value.title}</span>
             </div>
           ) : (
             <span className="truncate">{placeholder}</span>
           )}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] min-w-[280px] max-w-[min(450px,calc(100vw-1rem))] p-0"
+        align="start"
+        side="bottom"
+        sideOffset={4}
+        collisionPadding={8}
+        avoidCollisions={true}
+      >
         <Command shouldFilter={false}>
-          <div className="flex items-center border-b px-3">
-            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+          <div className="flex items-center border-b border-border px-3 bg-background">
+            <Search className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               placeholder="Search ICD-11 codes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+              className="flex h-11 w-full rounded-md bg-transparent py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
             />
-            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
           </div>
-          <CommandList>
+          <CommandList className="max-h-[50vh] sm:max-h-[300px]">
             {searchQuery.length < minSearchLength ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
                 Type at least {minSearchLength} characters to search...
@@ -163,30 +170,30 @@ export function ICD11Select({
                 ))}
               </div>
             ) : results.length === 0 ? (
-              <CommandEmpty>No ICD-11 codes found.</CommandEmpty>
+              <CommandEmpty className="text-muted-foreground">No ICD-11 codes found.</CommandEmpty>
             ) : (
               <CommandGroup>
-                <ScrollArea className="h-[300px]">
+                <ScrollArea className="h-[45vh] sm:h-[280px]">
                   {results.map((code, idx) => (
                     <CommandItem
                       key={code.code || code.id || idx}
                       value={`${code.code}-${code.title}`}
                       onSelect={() => handleSelect(code)}
-                      className="flex items-start gap-2 py-2"
+                      className="flex items-start gap-2 py-2.5 px-3 cursor-pointer"
                     >
                       <Check
                         className={cn(
-                          'h-4 w-4 mt-0.5',
+                          'h-4 w-4 mt-0.5 shrink-0 text-primary',
                           value?.code === code.code ? 'opacity-100' : 'opacity-0'
                         )}
                       />
                       <div className="flex-1 min-w-0">
-                        <span className="font-mono text-xs text-muted-foreground">
+                        <span className="font-mono text-xs text-primary">
                           {code.code}
                         </span>
-                        <p className="text-sm font-medium">{code.title}</p>
+                        <p className="text-sm font-medium text-foreground leading-snug">{code.title}</p>
                         {code.description && (
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
                             {code.description}
                           </p>
                         )}
