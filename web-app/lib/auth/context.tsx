@@ -217,13 +217,19 @@ export function useAuth(): AuthContextValue {
 }
 
 /**
- * Hook to get current user (non-null assertion)
- * Use only in protected routes where user is guaranteed
+ * Hook to get current user (SSR-safe)
+ * Returns null during SSR or while loading, user object when authenticated
+ * Use only in protected routes where user is guaranteed after loading
  */
-export function useUser(): User {
-  const { user } = useAuth();
-  if (!user) {
-    throw new Error('useUser must be used in authenticated context');
+export function useUser(): User | null {
+  const { user, isLoading } = useAuth();
+  // During SSR, return null to prevent hydration errors
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  // While loading, return null
+  if (isLoading) {
+    return null;
   }
   return user;
 }

@@ -35,7 +35,7 @@ export default function NewAdmissionRecommendationPage() {
   >('MEDICAL');
 
   const createRecommendation = useCreateAdmissionRecommendation();
-  const canSubmit = !!encounterId && !!reason && !!provisionalDiagnosis && !!provisionalDiagnosisText;
+  const canSubmit = !!encounterId && !!reason && !!provisionalDiagnosis && !!provisionalDiagnosisText && !!user;
 
   return (
     <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
@@ -119,7 +119,7 @@ export default function NewAdmissionRecommendationPage() {
             <Button
               disabled={!canSubmit || createRecommendation.isPending}
               onClick={async () => {
-                if (!encounterId) return;
+                if (!encounterId || !user) return;
                 await createRecommendation.mutateAsync({
                   encounter: encounterId,
                   recommended_by: user.id,
