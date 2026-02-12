@@ -42,6 +42,7 @@ import type {
   BedListParams,
   BulkCompatibilityResult,
   CompatibilityCheckResult,
+  ConstraintOverrideMetrics,
   Discharge,
   DischargeCreateData,
   DischargeListParams,
@@ -70,6 +71,8 @@ import type {
   WardRoundListResponse,
   WardUpdatesResponse,
   AdmissionOrdersResponse,
+  AcknowledgeAlertRequest,
+  AcknowledgeAlertResponse,
 } from '@/lib/types/inpatient';
 
 type Paginated<T> = { count: number; next: string | null; previous: string | null; results: T[] };
@@ -436,6 +439,36 @@ export const inpatientApi = {
   async getAdmissionPrescriptions(admissionId: number): Promise<Prescription[]> {
     const response = await apiClient.get<Prescription[]>(
       `/api/inpatient/admissions/${admissionId}/prescriptions/`
+    );
+    return response.data;
+  },
+
+  // ============================================================================
+  // Supervisor Alert Acknowledgment
+  // ============================================================================
+
+  /**
+   * Acknowledge a critical constraint violation alert.
+   * Requires receive_critical_alerts permission.
+   */
+  async acknowledgeAlert(data: AcknowledgeAlertRequest): Promise<AcknowledgeAlertResponse> {
+    const response = await apiClient.post<AcknowledgeAlertResponse>(
+      '/api/inpatient/supervisor/alerts/acknowledge/',
+      data
+    );
+    return response.data;
+  },
+
+  /**
+   * Get constraint override metrics.
+   * Requires receive_critical_alerts permission.
+   */
+  async getConstraintOverrideMetrics(days?: number): Promise<ConstraintOverrideMetrics> {
+    const params: Record<string, number> = {};
+    if (days) params.days = days;
+    const response = await apiClient.get<ConstraintOverrideMetrics>(
+      '/api/inpatient/supervisor/alerts/metrics/',
+      { params }
     );
     return response.data;
   },

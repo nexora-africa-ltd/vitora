@@ -1313,12 +1313,16 @@ test('supervisor receives real-time alert for CRITICAL violations', async () => 
 - [x] Add **bulk assignment UI** for emergency scenarios (`app/(dashboard)/admissions/bulk-assign/page.tsx`)
 - [x] Write frontend tests (`e2e/inpatient/inpatient.spec.ts`)
 
-### Phase 4: Reporting & Refinement (2 days)
-- [ ] Add override metrics to dashboard
-- [ ] Create constraint violation report
-- [ ] Add supervisor alert acknowledgment UI
-- [ ] Documentation
-- [ ] Performance testing with large patient volumes
+### Phase 4: Reporting & Refinement (2 days) ✅ COMPLETE
+- [x] Add override metrics to dashboard (`components/inpatient/constraint-override-metrics.tsx`)
+- [x] Create constraint violation report (metrics endpoint: `/api/inpatient/supervisor/alerts/metrics/`)
+- [x] Add supervisor alert acknowledgment UI (`components/inpatient/supervisor-alerts-panel.tsx`)
+- [x] Create supervisor alerts page (`app/(dashboard)/admissions/supervisor-alerts/page.tsx`)
+- [x] Add acknowledge endpoint (`/api/inpatient/supervisor/alerts/acknowledge/`)
+- [x] Add `SupervisorAlertAcknowledgment` model with migration
+- [x] Write backend tests (`tests/test_supervisor_alerts.py` - 21 tests)
+- [x] Documentation
+- [ ] Performance testing with large patient volumes (deferred)
 
 ### Phase 5: PowerSync Offline Support (Future Sprint)
 - [ ] Set up PowerSync backend service

@@ -582,10 +582,15 @@ export const SupervisorAlertSchema = z.object({
   patient_mrn: z.string(),
   ward_id: z.number(),
   ward_name: z.string(),
+  bed_number: z.string(),
   admitted_by: z.string(),
   critical_violations: z.array(z.string()),
   override_reason: z.string().nullable(),
   timestamp: z.string(),
+  // Acknowledgment fields (added in Phase 4)
+  is_acknowledged: z.boolean().optional(),
+  acknowledged_by: z.string().nullable().optional(),
+  acknowledged_at: z.string().nullable().optional(),
 });
 
 export type SupervisorAlertSchemaType = z.infer<typeof SupervisorAlertSchema>;
