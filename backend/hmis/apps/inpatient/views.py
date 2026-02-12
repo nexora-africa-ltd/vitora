@@ -48,11 +48,11 @@ from .services.compatibility import ward_compatibility_service
 User = get_user_model()
 
 
-class WardViewSet(viewsets.ReadOnlyModelViewSet):
+class WardViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for Ward model (read-only).
+    ViewSet for Ward model.
 
-    Provides listing and detail views for wards with:
+    Provides CRUD operations for wards with:
     - Real-time occupancy statistics
     - Bed availability tracking
     - Filtering by ward type
@@ -61,6 +61,7 @@ class WardViewSet(viewsets.ReadOnlyModelViewSet):
     Endpoints:
     - GET /api/inpatient/wards/ - List all wards
     - GET /api/inpatient/wards/{id}/ - Ward detail
+    - PATCH /api/inpatient/wards/{id}/ - Update ward
     - GET /api/inpatient/wards/{id}/beds/ - List beds in ward
     """
 
@@ -72,6 +73,8 @@ class WardViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ["name", "code"]
     ordering_fields = ["name", "code", "ward_type", "capacity"]
     ordering = ["name"]
+    # Allow GET, PATCH, POST (for custom actions), but prevent DELETE
+    http_method_names = ["get", "patch", "post", "head", "options"]
 
     @action(detail=True, methods=["get"])
     def beds(self, request, pk=None):

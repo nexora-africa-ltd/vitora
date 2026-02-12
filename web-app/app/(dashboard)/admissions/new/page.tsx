@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Search, X, AlertCircle, User, UserPlus } from 'lucide-react';
+import { ArrowLeft, Save, Search, X, AlertCircle, User, UserPlus, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -33,12 +33,15 @@ import {
   useBeds,
   useCreateAdmission,
   useInpatientWards,
+  useCheckWardCompatibility,
 } from '@/lib/hooks/use-inpatient';
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { useICD10Search } from '@/lib/hooks/use-encounter-form';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { ICD11Select } from '@/components/terminology';
+import { CompatibilityOverrideDialog } from '@/components/inpatient';
 import { cn } from '@/lib/utils/cn';
+import type { CompatibilityViolation } from '@/lib/types/inpatient';
 
 export default function NewAdmissionPage() {
   const router = useRouter();
@@ -90,6 +93,58 @@ export default function NewAdmissionPage() {
 
   // ICD-10 search
   const { data: icd10SearchResults, isLoading: isSearching } = useICD10Search(icd10SearchQuery);
+
+  // Compatibility state
+  const [compatibilityViolations, setCompatibilityViolations] = useState<CompatibilityViolation[]>([]);
+  const [showCompatibilityDialog, setShowCompatibilityDialog] = useState(false);
+  const [overrideReason, setOverrideReason] = useState<string | null>(null);
+  const checkCompatibility = useCheckWardCompatibility();
+
+  // Selected ward name for dialog
+  const selectedWardName = useMemo(() => {
+    const wardsList = (wards as any)?.results ?? wards ?? [];
+    const ward = wardsList.find((w: any) => String(w.id) === wardId);
+    return ward?.name || '';
+  }, [wards, wardId]);
+
+  // Handle ward selection with compatibility check
+  const handleWardChange = useCallback(async (newWardId: string) => {
+    setWardId(newWardId);
+    setBedId('');
+    setCompatibilityViolations([]);
+    setOverrideReason(null);
+
+    // Check compatibility if patient is selected
+    if (patientId && newWardId) {
+      try {
+        const result = await checkCompatibility.mutateAsync({
+          wardId: Number(newWardId),
+          patientId,
+        });
+
+        if (!result.compatible && result.violations?.length > 0) {
+          setCompatibilityViolations(result.violations);
+          setShowCompatibilityDialog(true);
+        }
+      } catch {
+        // If compatibility check fails, allow admission to proceed
+        console.warn('Compatibility check failed, allowing admission');
+      }
+    }
+  }, [patientId, checkCompatibility]);
+
+  // Handle compatibility override
+  const handleCompatibilityOverride = useCallback((reason: string) => {
+    setOverrideReason(reason);
+    setShowCompatibilityDialog(false);
+  }, []);
+
+  // Handle selecting different ward from dialog
+  const handleSelectDifferentWard = useCallback(() => {
+    setWardId('');
+    setBedId('');
+    setCompatibilityViolations([]);
+  }, []);
 
   // Prefill diagnosis from encounter's primary diagnosis
   useEffect(() => {
@@ -242,10 +297,7 @@ export default function NewAdmissionPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>Ward</Label>
-              <Select value={wardId} onValueChange={(v) => {
-                setWardId(v);
-                setBedId('');
-              }}>
+              <Select value={wardId} onValueChange={handleWardChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select ward" />
                 </SelectTrigger>
@@ -257,6 +309,15 @@ export default function NewAdmissionPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {/* Compatibility warning indicator */}
+              {compatibilityViolations.length > 0 && overrideReason && (
+                <div className="flex items-center gap-2 text-sm text-warning">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span>
+                    {compatibilityViolations.length} compatibility warning{compatibilityViolations.length > 1 ? 's' : ''} (overridden)
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -432,7 +493,7 @@ export default function NewAdmissionPage() {
           </div>
 
           {/* Submit Button */}
-          <div className="flex items-center gap-2 pt-4 border-t">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 pt-4 border-t">
             <Button
               disabled={!canSubmit || createAdmission.isPending}
               onClick={async () => {
@@ -449,10 +510,17 @@ export default function NewAdmissionPage() {
                   admitting_diagnosis_text: admittingDiagnosisText,
                   admitting_officer: user.id,
                   source_encounter: encounterId || undefined,
+                  // Include override info if compatibility was overridden
+                  ...(overrideReason && {
+                    constraint_override: true,
+                    constraint_override_reason: overrideReason,
+                    constraint_violations: compatibilityViolations.map((v) => v.message),
+                  }),
                 });
 
                 router.push('/admissions');
               }}
+              className="w-full sm:w-auto"
             >
               <Save className="h-4 w-4 mr-2" />
               {createAdmission.isPending ? 'Creating...' : 'Create Admission'}
@@ -494,6 +562,18 @@ export default function NewAdmissionPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Compatibility Override Dialog */}
+      <CompatibilityOverrideDialog
+        open={showCompatibilityDialog}
+        onOpenChange={setShowCompatibilityDialog}
+        violations={compatibilityViolations}
+        wardName={selectedWardName}
+        patientName={patientData ? `${patientData.first_name} ${patientData.last_name}` : undefined}
+        onOverride={handleCompatibilityOverride}
+        onSelectDifferent={handleSelectDifferentWard}
+        isSubmitting={checkCompatibility.isPending}
+      />
     </div>
   );
 }
