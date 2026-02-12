@@ -288,6 +288,14 @@ class LabOrder(models.Model):
     encounter = models.ForeignKey(
         "encounters.Encounter", on_delete=models.PROTECT, related_name="lab_orders"
     )
+    admission = models.ForeignKey(
+        "inpatient.Admission",
+        on_delete=models.PROTECT,
+        related_name="lab_orders",
+        null=True,
+        blank=True,
+        help_text="IPD admission if lab ordered during inpatient stay",
+    )
     ordered_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="lab_orders")
 
     # Order details

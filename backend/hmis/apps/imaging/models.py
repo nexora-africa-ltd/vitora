@@ -191,6 +191,14 @@ class ImagingOrder(models.Model):
         on_delete=models.PROTECT,
         related_name="imaging_orders",
     )
+    admission = models.ForeignKey(
+        "inpatient.Admission",
+        on_delete=models.PROTECT,
+        related_name="imaging_orders",
+        null=True,
+        blank=True,
+        help_text="IPD admission if imaging ordered during inpatient stay",
+    )
     ordered_by = models.ForeignKey(
         User,
         on_delete=models.PROTECT,

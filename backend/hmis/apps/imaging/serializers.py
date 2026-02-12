@@ -97,6 +97,7 @@ class ImagingOrderSerializer(serializers.ModelSerializer):
             "patient",
             "patient_name",
             "encounter",
+            "admission",
             "ordered_by",
             "ordered_by_name",
             "priority",
@@ -142,6 +143,7 @@ class ImagingOrderCreateSerializer(serializers.ModelSerializer):
         fields = [
             "patient",
             "encounter",
+            "admission",
             "priority",
             "clinical_indication",
             "relevant_clinical_history",

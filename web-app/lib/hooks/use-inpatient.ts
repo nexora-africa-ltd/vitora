@@ -485,3 +485,39 @@ export function useAutoPopulateShiftHandover() {
     },
   });
 }
+
+// ============================================================================
+// Admission Orders Hooks
+// ============================================================================
+
+export function useAdmissionOrders(admissionId: number | undefined) {
+  return useQuery({
+    queryKey: [...inpatientQueryKeys.admission(admissionId!), 'orders'] as const,
+    queryFn: () => inpatientApi.getAdmissionOrders(admissionId!),
+    enabled: typeof admissionId === 'number',
+  });
+}
+
+export function useAdmissionLabOrders(admissionId: number | undefined) {
+  return useQuery({
+    queryKey: [...inpatientQueryKeys.admission(admissionId!), 'lab-orders'] as const,
+    queryFn: () => inpatientApi.getAdmissionLabOrders(admissionId!),
+    enabled: typeof admissionId === 'number',
+  });
+}
+
+export function useAdmissionImagingOrders(admissionId: number | undefined) {
+  return useQuery({
+    queryKey: [...inpatientQueryKeys.admission(admissionId!), 'imaging-orders'] as const,
+    queryFn: () => inpatientApi.getAdmissionImagingOrders(admissionId!),
+    enabled: typeof admissionId === 'number',
+  });
+}
+
+export function useAdmissionPrescriptions(admissionId: number | undefined) {
+  return useQuery({
+    queryKey: [...inpatientQueryKeys.admission(admissionId!), 'prescriptions'] as const,
+    queryFn: () => inpatientApi.getAdmissionPrescriptions(admissionId!),
+    enabled: typeof admissionId === 'number',
+  });
+}

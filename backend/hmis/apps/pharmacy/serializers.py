@@ -353,6 +353,7 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             "id",
             "prescription_number",
             "encounter",
+            "admission",
             "patient",
             "patient_name",
             "patient_mrn",
@@ -463,6 +464,7 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "encounter",
+            "admission",
             "patient",
             "valid_until",
             "clinical_notes",

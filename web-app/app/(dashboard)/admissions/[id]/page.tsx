@@ -27,6 +27,7 @@ import {
   useAdmissionWardRounds,
   useKardexByAdmission
 } from '@/lib/hooks/use-inpatient';
+import { AdmissionOrdersTab } from '@/components/inpatient';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 
 export default function AdmissionDetailPage() {
@@ -386,17 +387,11 @@ export default function AdmissionDetailPage() {
 
         {/* Orders Tab */}
         <TabsContent value="orders" className="space-y-4">
-          <Card>
-            <CardContent className="py-8 text-center">
-              <FileText className="h-12 w-12 mx-auto text-accent-foreground mb-4" />
-              <p className="text-accent-foreground">
-                Medical orders feature coming soon.
-              </p>
-              <p className="text-sm text-accent-foreground mt-1">
-                View medication, lab, and imaging orders in this section.
-              </p>
-            </CardContent>
-          </Card>
+          <AdmissionOrdersTab
+            admissionId={admission.id}
+            patientId={admission.patient}
+            isActive={admission.admission_status === 'ACTIVE'}
+          />
         </TabsContent>
       </Tabs>
     </div>

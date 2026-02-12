@@ -27,6 +27,9 @@ import {
   PaginatedShiftHandoverSchema,
   BedArraySchema,
 } from '@/lib/schemas/inpatient.schema';
+import type { LabOrder } from '@/lib/types/laboratory';
+import type { ImagingOrder } from '@/lib/types/imaging';
+import type { Prescription } from '@/lib/types/pharmacy';
 import type {
   Admission,
   AdmissionCreateInput,
@@ -66,6 +69,7 @@ import type {
   WardRoundListParams,
   WardRoundListResponse,
   WardUpdatesResponse,
+  AdmissionOrdersResponse,
 } from '@/lib/types/inpatient';
 
 type Paginated<T> = { count: number; next: string | null; previous: string | null; results: T[] };
@@ -389,6 +393,49 @@ export const inpatientApi = {
     const response = await apiClient.get<SupervisorAlertsResponse>(
       '/api/inpatient/supervisor/alerts/',
       { params }
+    );
+    return response.data;
+  },
+
+  // ============================================================================
+  // Admission Orders
+  // ============================================================================
+  /**
+   * Get all medical orders for an admission (combined view).
+   */
+  async getAdmissionOrders(admissionId: number): Promise<AdmissionOrdersResponse> {
+    const response = await apiClient.get<AdmissionOrdersResponse>(
+      `/api/inpatient/admissions/${admissionId}/orders/`
+    );
+    return response.data;
+  },
+
+  /**
+   * Get lab orders for an admission.
+   */
+  async getAdmissionLabOrders(admissionId: number): Promise<LabOrder[]> {
+    const response = await apiClient.get<LabOrder[]>(
+      `/api/inpatient/admissions/${admissionId}/lab-orders/`
+    );
+    return response.data;
+  },
+
+  /**
+   * Get imaging orders for an admission.
+   */
+  async getAdmissionImagingOrders(admissionId: number): Promise<ImagingOrder[]> {
+    const response = await apiClient.get<ImagingOrder[]>(
+      `/api/inpatient/admissions/${admissionId}/imaging-orders/`
+    );
+    return response.data;
+  },
+
+  /**
+   * Get prescriptions for an admission.
+   */
+  async getAdmissionPrescriptions(admissionId: number): Promise<Prescription[]> {
+    const response = await apiClient.get<Prescription[]>(
+      `/api/inpatient/admissions/${admissionId}/prescriptions/`
     );
     return response.data;
   },

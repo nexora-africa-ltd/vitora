@@ -163,6 +163,7 @@ class LabOrderSerializer(serializers.ModelSerializer):
             "patient",
             "patient_name",
             "encounter",
+            "admission",
             "ordered_by",
             "ordered_by_name",
             "order_type",
@@ -207,6 +208,7 @@ class LabOrderCreateSerializer(serializers.ModelSerializer):
         fields = [
             "patient",
             "encounter",
+            "admission",
             "order_type",
             "external_lab",
             "priority",
