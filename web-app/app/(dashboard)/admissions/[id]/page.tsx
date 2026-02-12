@@ -105,58 +105,58 @@ export default function AdmissionDetailPage() {
       )}
 
       {/* Quick Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
-                <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-blue-100 dark:bg-blue-900 shrink-0">
+                <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <div>
-                <p className="text-sm text-accent-foreground">Ward</p>
-                <p className="font-semibold">{admission.ward_name}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-accent-foreground">Ward</p>
+                <p className="font-semibold text-sm sm:text-base truncate">{admission.ward_name}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
-                <Bed className="h-5 w-5 text-green-600 dark:text-green-400" />
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-green-100 dark:bg-green-900 shrink-0">
+                <Bed className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
               </div>
-              <div>
-                <p className="text-sm text-accent-foreground">Bed</p>
-                <p className="font-semibold">{admission.bed_number}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900">
-                <Calendar className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div>
-                <p className="text-sm text-accent-foreground">Admitted</p>
-                <p className="font-semibold">{formatDate(admission.admission_date)}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-accent-foreground">Bed</p>
+                <p className="font-semibold text-sm sm:text-base truncate">{admission.bed_number}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900">
-                <Clock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-purple-100 dark:bg-purple-900 shrink-0">
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" />
               </div>
-              <div>
-                <p className="text-sm text-accent-foreground">Days Admitted</p>
-                <p className="font-semibold">{daysAdmitted} day{daysAdmitted !== 1 ? 's' : ''}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-accent-foreground">Admitted</p>
+                <p className="font-semibold text-sm sm:text-base truncate">{formatDate(admission.admission_date)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 rounded-lg bg-orange-100 dark:bg-orange-900 shrink-0">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-accent-foreground">Days</p>
+                <p className="font-semibold text-sm sm:text-base">{daysAdmitted} day{daysAdmitted !== 1 ? 's' : ''}</p>
               </div>
             </div>
           </CardContent>
@@ -165,10 +165,19 @@ export default function AdmissionDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="ward-rounds">Ward Rounds</TabsTrigger>
-          <TabsTrigger value="kardex">Nursing Kardex</TabsTrigger>
+        <TabsList className="w-full justify-start overflow-x-auto">
+          <TabsTrigger value="overview" className="gap-1.5">
+            <span className="sm:hidden">Info</span>
+            <span className="hidden sm:inline">Overview</span>
+          </TabsTrigger>
+          <TabsTrigger value="ward-rounds" className="gap-1.5">
+            <span className="sm:hidden">Rounds</span>
+            <span className="hidden sm:inline">Ward Rounds</span>
+          </TabsTrigger>
+          <TabsTrigger value="kardex" className="gap-1.5">
+            <span className="sm:hidden">Kardex</span>
+            <span className="hidden sm:inline">Nursing Kardex</span>
+          </TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
         </TabsList>
 
@@ -176,7 +185,7 @@ export default function AdmissionDetailPage() {
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             {/* Admission Details */}
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader>
                 <CardTitle className="text-lg">Admission Details</CardTitle>
               </CardHeader>
@@ -211,12 +220,12 @@ export default function AdmissionDetailPage() {
             </Card>
 
             {/* Clinical Notes */}
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader>
                 <CardTitle className="text-lg">Clinical Notes</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-accent-foreground whitespace-pre-wrap">
+                <p className="text-sm text-accent-foreground whitespace-pre-wrap break-words">
                   {admission.clinical_notes || 'No clinical notes recorded.'}
                 </p>
               </CardContent>
@@ -225,23 +234,23 @@ export default function AdmissionDetailPage() {
 
           {/* Diet & Special Instructions */}
           <div className="grid gap-4 md:grid-cols-2">
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader>
                 <CardTitle className="text-lg">Diet</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm">
+                <p className="text-sm break-words">
                   {admission.diet || 'Regular diet (no restrictions specified)'}
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader>
                 <CardTitle className="text-lg">Special Instructions</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-accent-foreground">
+                <p className="text-sm text-accent-foreground break-words">
                   {admission.special_instructions || 'No special instructions.'}
                 </p>
               </CardContent>
@@ -251,13 +260,14 @@ export default function AdmissionDetailPage() {
 
         {/* Ward Rounds Tab */}
         <TabsContent value="ward-rounds" className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
             <h3 className="text-lg font-semibold">Ward Round History</h3>
             {admission.admission_status === 'ACTIVE' && (
-              <Button asChild>
+              <Button asChild className="w-full sm:w-auto">
                 <Link href={`/admissions/${admission.id}/ward-round`}>
                   <Plus className="h-4 w-4 mr-2" />
-                  New Ward Round
+                  <span className="sm:hidden">New Round</span>
+                  <span className="hidden sm:inline">New Ward Round</span>
                 </Link>
               </Button>
             )}
@@ -307,13 +317,14 @@ export default function AdmissionDetailPage() {
 
         {/* Nursing Kardex Tab */}
         <TabsContent value="kardex" className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
             <h3 className="text-lg font-semibold">Nursing Kardex</h3>
             {kardex && (
-              <Button variant="outline" asChild>
+              <Button variant="outline" asChild className="w-full sm:w-auto">
                 <Link href={`/admissions/${admission.id}/kardex`}>
                   <ClipboardList className="h-4 w-4 mr-2" />
-                  View Full Kardex
+                  <span className="sm:hidden">View Kardex</span>
+                  <span className="hidden sm:inline">View Full Kardex</span>
                 </Link>
               </Button>
             )}
@@ -405,11 +416,11 @@ function InfoRow({
   link?: string;
 }) {
   const content = (
-    <div className="flex items-start gap-3">
-      <Icon className="h-4 w-4 mt-0.5 text-accent-foreground" />
-      <div className="flex-1 min-w-0">
+    <div className="flex items-start gap-3 min-w-0">
+      <Icon className="h-4 w-4 mt-0.5 text-accent-foreground shrink-0" />
+      <div className="flex-1 min-w-0 overflow-hidden">
         <p className="text-sm text-accent-foreground">{label}</p>
-        <p className={`text-sm font-medium truncate ${link ? 'text-primary hover:underline' : ''}`}>
+        <p className={`text-sm font-medium break-words ${link ? 'text-primary hover:underline' : ''}`}>
           {value || '—'}
         </p>
       </div>
