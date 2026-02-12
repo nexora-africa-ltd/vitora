@@ -31,7 +31,7 @@ def create_test_dicom_file(
     series_description: str = "PA Projection",
     series_number: int = 1,
     instance_number: int = 1,
-    accession_number: str = "ACC-20260207-0001",
+    accession_number: str = "A260207-0001",
     referring_physician: str = "Dr. Kamau",
     institution_name: str = "Demo Health Facility",
     body_part_examined: str = "CHEST",
