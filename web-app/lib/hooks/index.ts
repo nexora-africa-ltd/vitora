@@ -66,14 +66,16 @@ export {
   useSupervisorAlertsSocket,
   useWardCompatibilityUpdates,
   useSupervisorAlerts,
+  getWebSocketUrl,
   type WardCompatibilityEventType,
+  type SupervisorAlertEventType,
   type WardWebSocketMessage,
   type SupervisorWebSocketMessage,
   type UseWardCompatibilityUpdatesOptions,
   type UseSupervisorAlertsOptions,
   type UseWardCompatibilityUpdatesReturn,
   type UseSupervisorAlertsReturn,
-} from './use-ward-compatibility-updates';
+} from './inpatient-websocket';
 
 // Patient history/timeline hooks
 export {

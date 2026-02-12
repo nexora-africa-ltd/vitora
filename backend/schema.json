@@ -12505,22 +12505,42 @@ paths:
           description: ''
   /api/inpatient/supervisor/alerts/:
     get:
-      operationId: api_inpatient_supervisor_alerts_retrieve
-      description: |-
-        List recent critical violation alerts for supervisors.
-
-        Requires receive_critical_alerts permission.
-
-        Query parameters:
-        - since: ISO timestamp to filter alerts after (optional)
-        - limit: Maximum number of alerts to return (default: 20)
+      operationId: api_inpatient_supervisor_alerts_list
+      description: List recent admissions with CRITICAL constraint violations that
+        were overridden. Requires receive_critical_alerts permission. Used as polling
+        fallback for WebSocket alerts.
+      summary: List supervisor critical violation alerts
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: 'Maximum number of alerts to return (default: 20)'
+      - in: query
+        name: since
+        schema:
+          type: string
+        description: ISO timestamp to filter alerts after (optional)
       tags:
-      - api
+      - Inpatient - Supervisor Alerts
       security:
       - jwtAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SupervisorAlertsResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                description: Permission denied - requires receive_critical_alerts
+                  permission
+          description: ''
   /api/inpatient/transfers/:
     get:
       operationId: api_inpatient_transfers_list
@@ -13230,15 +13250,9 @@ paths:
   /api/inpatient/wards/{id}/updates/:
     get:
       operationId: api_inpatient_wards_updates_retrieve
-      description: |-
-        Polling fallback endpoint for ward updates when WebSocket is unavailable.
-
-        Query parameters:
-        - since: ISO timestamp to filter events after (optional)
-
-        Returns:
-        - events: List of recent ward events (constraints updates, violations, etc.)
-        - current_state: Current ward constraint settings
+      description: Polling fallback endpoint for ward updates when WebSocket is unavailable.
+        Returns recent ward events and current constraint state.
+      summary: Get ward updates (polling fallback)
       parameters:
       - in: path
         name: id
@@ -13246,8 +13260,13 @@ paths:
           type: integer
         description: A unique integer value identifying this Ward.
         required: true
+      - in: query
+        name: since
+        schema:
+          type: string
+        description: ISO timestamp to filter events after (optional)
       tags:
-      - api
+      - Inpatient - Wards
       security:
       - jwtAuth: []
       responses:
@@ -13255,7 +13274,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InpatientWard'
+                $ref: '#/components/schemas/WardUpdatesResponse'
           description: ''
   /api/inpatient/wards/bulk_check_compatibility/:
     post:
@@ -27635,6 +27654,36 @@ components:
         * `IMPROVING` - Improving
         * `DETERIORATING` - Deteriorating
         * `CRITICAL` - Critical
+    ConstraintViolation:
+      type: object
+      description: Serializer for constraint violation details.
+      properties:
+        code:
+          type: string
+          description: Violation code (e.g., 'GENDER_MISMATCH')
+        message:
+          type: string
+          description: Human-readable violation message
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/ConstraintViolationSeverityEnum'
+          description: |-
+            Violation severity level
+
+            * `WARNING` - WARNING
+            * `CRITICAL` - CRITICAL
+      required:
+      - code
+      - message
+      - severity
+    ConstraintViolationSeverityEnum:
+      enum:
+      - WARNING
+      - CRITICAL
+      type: string
+      description: |-
+        * `WARNING` - WARNING
+        * `CRITICAL` - CRITICAL
     ConsultationStatusEnum:
       enum:
       - WAITING
@@ -37296,7 +37345,7 @@ components:
         alert_type:
           $ref: '#/components/schemas/AlertTypeEnum'
         severity:
-          $ref: '#/components/schemas/SeverityEnum'
+          $ref: '#/components/schemas/StockAlertSeverityEnum'
         message:
           type: string
           minLength: 1
@@ -41048,18 +41097,6 @@ components:
       - code
       - name
       - unit_price
-    SeverityEnum:
-      enum:
-      - LOW
-      - MEDIUM
-      - HIGH
-      - CRITICAL
-      type: string
-      description: |-
-        * `LOW` - Low
-        * `MEDIUM` - Medium
-        * `HIGH` - High
-        * `CRITICAL` - Critical
     ShaClaimItemStatusEnum:
       enum:
       - pending
@@ -41882,7 +41919,7 @@ components:
         alert_type:
           $ref: '#/components/schemas/AlertTypeEnum'
         severity:
-          $ref: '#/components/schemas/SeverityEnum'
+          $ref: '#/components/schemas/StockAlertSeverityEnum'
         message:
           type: string
         acknowledged:
@@ -41935,7 +41972,7 @@ components:
         alert_type:
           $ref: '#/components/schemas/AlertTypeEnum'
         severity:
-          $ref: '#/components/schemas/SeverityEnum'
+          $ref: '#/components/schemas/StockAlertSeverityEnum'
         message:
           type: string
           minLength: 1
@@ -41964,6 +42001,18 @@ components:
       - drug
       - message
       - severity
+    StockAlertSeverityEnum:
+      enum:
+      - LOW
+      - MEDIUM
+      - HIGH
+      - CRITICAL
+      type: string
+      description: |-
+        * `LOW` - Low
+        * `MEDIUM` - Medium
+        * `HIGH` - High
+        * `CRITICAL` - Critical
     StockBatch:
       type: object
       description: Serializer for StockBatch model.
@@ -42178,6 +42227,74 @@ components:
         * `api` - API Integration
         * `portal` - SHA Portal
         * `manual` - Manual Submission
+    SupervisorAlert:
+      type: object
+      description: Serializer for supervisor critical violation alerts.
+      properties:
+        admission_id:
+          type: integer
+          description: Admission ID
+        admission_number:
+          type: string
+          description: Admission number
+        patient_id:
+          type: integer
+          description: Patient ID
+        patient_name:
+          type: string
+          description: Patient full name
+        patient_mrn:
+          type: string
+          description: Patient MRN
+        ward_id:
+          type: integer
+          description: Ward ID
+        ward_name:
+          type: string
+          description: Ward name
+        bed_number:
+          type: string
+          description: Bed number
+        admitted_by:
+          type: string
+          description: Name of admitting officer
+        critical_violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConstraintViolation'
+          description: List of CRITICAL constraint violations
+        override_reason:
+          type: string
+          nullable: true
+          description: Reason provided for override
+        timestamp:
+          type: string
+          format: date-time
+          description: Admission timestamp
+      required:
+      - admission_id
+      - admission_number
+      - admitted_by
+      - bed_number
+      - critical_violations
+      - override_reason
+      - patient_id
+      - patient_mrn
+      - patient_name
+      - timestamp
+      - ward_id
+      - ward_name
+    SupervisorAlertsResponse:
+      type: object
+      description: Response serializer for supervisor alerts list endpoint.
+      properties:
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/SupervisorAlert'
+          description: List of critical alerts
+      required:
+      - alerts
     TemplateSection:
       type: object
       description: Serializer for TemplateSection model.
@@ -43961,6 +44078,16 @@ components:
       - id
       - updated_at
       - vital_type
+    TypeEnum:
+      enum:
+      - ward_constraints_updated
+      - compatibility_violation
+      - bed_availability_changed
+      type: string
+      description: |-
+        * `ward_constraints_updated` - ward_constraints_updated
+        * `compatibility_violation` - compatibility_violation
+        * `bed_availability_changed` - bed_availability_changed
     VerificationStatusEnum:
       enum:
       - UNVERIFIED
@@ -44212,6 +44339,50 @@ components:
       - name
       - sub_county
       - sub_county_name
+    WardCurrentState:
+      type: object
+      description: Serializer for current ward constraint state.
+      properties:
+        ward_id:
+          type: integer
+          description: Ward ID
+        ward_name:
+          type: string
+          description: Ward name
+        gender_restriction:
+          type: string
+          nullable: true
+          description: Gender restriction (ANY, MALE_ONLY, FEMALE_ONLY)
+        min_age_years:
+          type: integer
+          nullable: true
+          description: Minimum patient age in years
+        max_age_years:
+          type: integer
+          nullable: true
+          description: Maximum patient age in years
+        isolation_capable:
+          type: boolean
+          description: Ward has isolation capability
+        oxygen_equipped:
+          type: boolean
+          description: Ward has oxygen equipment
+        ventilator_capable:
+          type: boolean
+          description: Ward has ventilator capability
+        available_beds:
+          type: integer
+          description: Number of available beds
+      required:
+      - available_beds
+      - gender_restriction
+      - isolation_capable
+      - max_age_years
+      - min_age_years
+      - oxygen_equipped
+      - ventilator_capable
+      - ward_id
+      - ward_name
     WardRound:
       type: object
       description: Serializer for WardRound model.
@@ -44349,6 +44520,55 @@ components:
         * `MATERNITY` - Maternity Ward
         * `ICU` - Intensive Care Unit
         * `ISOLATION` - Isolation Ward
+    WardUpdateEvent:
+      type: object
+      description: Serializer for ward update events.
+      properties:
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          description: |-
+            Type of ward update event
+
+            * `ward_constraints_updated` - ward_constraints_updated
+            * `compatibility_violation` - compatibility_violation
+            * `bed_availability_changed` - bed_availability_changed
+        admission_id:
+          type: integer
+          nullable: true
+          description: Related admission ID (if applicable)
+        patient_name:
+          type: string
+          nullable: true
+          description: Patient name (if applicable)
+        violations:
+          type: array
+          items:
+            type: string
+          description: List of violation messages (if applicable)
+        timestamp:
+          type: string
+          format: date-time
+          description: Event timestamp
+      required:
+      - timestamp
+      - type
+    WardUpdatesResponse:
+      type: object
+      description: Response serializer for ward updates polling endpoint.
+      properties:
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/WardUpdateEvent'
+          description: List of ward update events
+        current_state:
+          allOf:
+          - $ref: '#/components/schemas/WardCurrentState'
+          description: Current ward constraint state
+      required:
+      - current_state
+      - events
     WebhookResponse:
       type: object
       properties:

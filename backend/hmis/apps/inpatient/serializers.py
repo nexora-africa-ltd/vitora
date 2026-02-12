@@ -509,3 +509,103 @@ class ShiftHandoverSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "acknowledged_at", "created_at", "updated_at"]
+
+
+# =============================================================================
+# Supervisor Alert Serializers (for polling fallback)
+# =============================================================================
+
+
+class ConstraintViolationSerializer(serializers.Serializer):
+    """Serializer for constraint violation details."""
+
+    code = serializers.CharField(help_text="Violation code (e.g., 'GENDER_MISMATCH')")
+    message = serializers.CharField(help_text="Human-readable violation message")
+    severity = serializers.ChoiceField(
+        choices=["WARNING", "CRITICAL"],
+        help_text="Violation severity level",
+    )
+
+
+class SupervisorAlertSerializer(serializers.Serializer):
+    """Serializer for supervisor critical violation alerts."""
+
+    admission_id = serializers.IntegerField(help_text="Admission ID")
+    admission_number = serializers.CharField(help_text="Admission number")
+    patient_id = serializers.IntegerField(help_text="Patient ID")
+    patient_name = serializers.CharField(help_text="Patient full name")
+    patient_mrn = serializers.CharField(help_text="Patient MRN")
+    ward_id = serializers.IntegerField(help_text="Ward ID")
+    ward_name = serializers.CharField(help_text="Ward name")
+    bed_number = serializers.CharField(help_text="Bed number")
+    admitted_by = serializers.CharField(help_text="Name of admitting officer")
+    critical_violations = ConstraintViolationSerializer(
+        many=True, help_text="List of CRITICAL constraint violations"
+    )
+    override_reason = serializers.CharField(
+        allow_null=True, help_text="Reason provided for override"
+    )
+    timestamp = serializers.DateTimeField(help_text="Admission timestamp")
+
+
+class SupervisorAlertsResponseSerializer(serializers.Serializer):
+    """Response serializer for supervisor alerts list endpoint."""
+
+    alerts = SupervisorAlertSerializer(many=True, help_text="List of critical alerts")
+
+
+# =============================================================================
+# Ward Updates Serializers (for polling fallback)
+# =============================================================================
+
+
+class WardUpdateEventSerializer(serializers.Serializer):
+    """Serializer for ward update events."""
+
+    type = serializers.ChoiceField(
+        choices=[
+            "ward_constraints_updated",
+            "compatibility_violation",
+            "bed_availability_changed",
+        ],
+        help_text="Type of ward update event",
+    )
+    admission_id = serializers.IntegerField(
+        required=False, allow_null=True, help_text="Related admission ID (if applicable)"
+    )
+    patient_name = serializers.CharField(
+        required=False, allow_null=True, help_text="Patient name (if applicable)"
+    )
+    violations = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        help_text="List of violation messages (if applicable)",
+    )
+    timestamp = serializers.DateTimeField(help_text="Event timestamp")
+
+
+class WardCurrentStateSerializer(serializers.Serializer):
+    """Serializer for current ward constraint state."""
+
+    ward_id = serializers.IntegerField(help_text="Ward ID")
+    ward_name = serializers.CharField(help_text="Ward name")
+    gender_restriction = serializers.CharField(
+        allow_null=True, help_text="Gender restriction (ANY, MALE_ONLY, FEMALE_ONLY)"
+    )
+    min_age_years = serializers.IntegerField(
+        allow_null=True, help_text="Minimum patient age in years"
+    )
+    max_age_years = serializers.IntegerField(
+        allow_null=True, help_text="Maximum patient age in years"
+    )
+    isolation_capable = serializers.BooleanField(help_text="Ward has isolation capability")
+    oxygen_equipped = serializers.BooleanField(help_text="Ward has oxygen equipment")
+    ventilator_capable = serializers.BooleanField(help_text="Ward has ventilator capability")
+    available_beds = serializers.IntegerField(help_text="Number of available beds")
+
+
+class WardUpdatesResponseSerializer(serializers.Serializer):
+    """Response serializer for ward updates polling endpoint."""
+
+    events = WardUpdateEventSerializer(many=True, help_text="List of ward update events")
+    current_state = WardCurrentStateSerializer(help_text="Current ward constraint state")
