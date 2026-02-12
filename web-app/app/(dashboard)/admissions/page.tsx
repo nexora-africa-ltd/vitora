@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, BedDouble, Building2, Calendar, Hash, User, ClipboardList } from 'lucide-react';
+import { Plus, Search, BedDouble, Building2, Calendar, Hash, User, ClipboardList, Users } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
@@ -59,12 +59,22 @@ export default function AdmissionsPage() {
           title="Admissions"
           helpContent="Manage inpatient admissions and bed assignments."
           actions={
-            <Button asChild>
-              <Link href="/admissions/new">
-                <Plus className="h-4 w-4 mr-2" />
-                New Admission
-              </Link>
-            </Button>
+            <>
+              <Button variant="outline" asChild>
+                <Link href="/admissions/bulk-assign">
+                  <Users className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Bulk Assign</span>
+                  <span className="sm:hidden">Bulk</span>
+                </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/admissions/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">New Admission</span>
+                  <span className="sm:hidden">New</span>
+                </Link>
+              </Button>
+            </>
           }
         />
 

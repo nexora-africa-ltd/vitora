@@ -39,9 +39,9 @@ import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters'
 import { useICD10Search } from '@/lib/hooks/use-encounter-form';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { ICD11Select } from '@/components/terminology';
-import { CompatibilityOverrideDialog } from '@/components/inpatient';
+import { CompatibilityOverrideDialog, BedSelectionGrid } from '@/components/inpatient';
 import { cn } from '@/lib/utils/cn';
-import type { CompatibilityViolation } from '@/lib/types/inpatient';
+import type { CompatibilityViolation, CompatibilityCheckResult } from '@/lib/types/inpatient';
 
 export default function NewAdmissionPage() {
   const router = useRouter();
@@ -96,6 +96,7 @@ export default function NewAdmissionPage() {
 
   // Compatibility state
   const [compatibilityViolations, setCompatibilityViolations] = useState<CompatibilityViolation[]>([]);
+  const [compatibilityResult, setCompatibilityResult] = useState<CompatibilityCheckResult | null>(null);
   const [showCompatibilityDialog, setShowCompatibilityDialog] = useState(false);
   const [overrideReason, setOverrideReason] = useState<string | null>(null);
   const checkCompatibility = useCheckWardCompatibility();
@@ -112,6 +113,7 @@ export default function NewAdmissionPage() {
     setWardId(newWardId);
     setBedId('');
     setCompatibilityViolations([]);
+    setCompatibilityResult(null);
     setOverrideReason(null);
 
     // Check compatibility if patient is selected
@@ -122,6 +124,8 @@ export default function NewAdmissionPage() {
           patientId,
         });
 
+        setCompatibilityResult(result);
+
         if (!result.compatible && result.violations?.length > 0) {
           setCompatibilityViolations(result.violations);
           setShowCompatibilityDialog(true);
@@ -129,6 +133,7 @@ export default function NewAdmissionPage() {
       } catch {
         // If compatibility check fails, allow admission to proceed
         console.warn('Compatibility check failed, allowing admission');
+        setCompatibilityResult(null);
       }
     }
   }, [patientId, checkCompatibility]);
@@ -144,6 +149,7 @@ export default function NewAdmissionPage() {
     setWardId('');
     setBedId('');
     setCompatibilityViolations([]);
+    setCompatibilityResult(null);
   }, []);
 
   // Prefill diagnosis from encounter's primary diagnosis
@@ -294,49 +300,43 @@ export default function NewAdmissionPage() {
             )}
           </div>
 
-          {/* Ward and Bed Selection */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Ward</Label>
-              <Select value={wardId} onValueChange={handleWardChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select ward" />
-                </SelectTrigger>
-                <SelectContent>
-                  {((wards as any)?.results ?? wards ?? []).map((w: any) => (
-                    <SelectItem key={w.id} value={String(w.id)}>
-                      {w.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {/* Compatibility warning indicator */}
-              {compatibilityViolations.length > 0 && overrideReason && (
-                <div className="flex items-center gap-2 text-sm text-warning">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
-                  <span>
-                    {compatibilityViolations.length} compatibility warning{compatibilityViolations.length > 1 ? 's' : ''} (overridden)
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Bed</Label>
-              <Select value={bedId} onValueChange={setBedId} disabled={!wardId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={wardId ? 'Select bed' : 'Select a ward first'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Array.isArray(beds) ? beds : beds?.results ?? []).map((b: any) => (
-                    <SelectItem key={b.id} value={String(b.id)}>
-                      {b.bed_number} ({b.status_display ?? b.status})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Ward Selection */}
+          <div className="space-y-2">
+            <Label>Ward</Label>
+            <Select value={wardId} onValueChange={handleWardChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select ward" />
+              </SelectTrigger>
+              <SelectContent>
+                {((wards as any)?.results ?? wards ?? []).map((w: any) => (
+                  <SelectItem key={w.id} value={String(w.id)}>
+                    {w.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {/* Compatibility warning indicator */}
+            {compatibilityViolations.length > 0 && overrideReason && (
+              <div className="flex items-center gap-2 text-sm text-warning">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>
+                  {compatibilityViolations.length} compatibility warning{compatibilityViolations.length > 1 ? 's' : ''} (overridden)
+                </span>
+              </div>
+            )}
           </div>
+
+          {/* Bed Selection Grid */}
+          {wardId && (
+            <BedSelectionGrid
+              beds={(Array.isArray(beds) ? beds : beds?.results ?? [])}
+              selectedBedId={bedId}
+              compatibilityResult={compatibilityResult}
+              onSelectBed={(id) => setBedId(String(id))}
+              isLoading={!beds}
+              disabled={checkCompatibility.isPending}
+            />
+          )}
 
           {/* Diagnosis Section with ICD-10/ICD-11 Toggle */}
           <div className="space-y-4">

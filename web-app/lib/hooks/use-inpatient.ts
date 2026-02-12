@@ -147,6 +147,22 @@ export function useCheckWardCompatibility() {
   });
 }
 
+/**
+ * Bulk check compatibility for multiple patients across all wards.
+ * Useful for emergency mass-casualty scenarios.
+ */
+export function useBulkCompatibilityCheck() {
+  return useMutation({
+    mutationFn: ({
+      patientIds,
+      requiresIsolation,
+    }: {
+      patientIds: number[];
+      requiresIsolation?: boolean[];
+    }) => inpatientApi.bulkCheckCompatibility(patientIds, requiresIsolation),
+  });
+}
+
 // ============================================================================
 // Admission Recommendation Hooks
 // ============================================================================
