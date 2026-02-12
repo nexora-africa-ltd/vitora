@@ -167,9 +167,9 @@ export function ICD11Select({
             ) : (
               <CommandGroup>
                 <ScrollArea className="h-[300px]">
-                  {results.map((code) => (
+                  {results.map((code, idx) => (
                     <CommandItem
-                      key={code.id}
+                      key={code.code || code.id || idx}
                       value={`${code.code}-${code.title}`}
                       onSelect={() => handleSelect(code)}
                       className="flex items-start gap-2 py-2"
