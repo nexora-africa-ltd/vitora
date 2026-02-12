@@ -32,6 +32,7 @@ from .serializers import (
     AdmissionRecommendationSerializer,
     AdmissionSerializer,
     BedSerializer,
+    ConstraintOverrideMetricsSerializer,
     DischargeSerializer,
     InpatientWardSerializer,
     KardexHandoverNoteSerializer,
@@ -525,7 +526,7 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
                 required=False,
             ),
         ],
-        responses={200: "ConstraintOverrideMetricsSerializer"},
+        responses={200: ConstraintOverrideMetricsSerializer},
         tags=["Inpatient - Supervisor Alerts"],
     )
     def metrics(self, request):

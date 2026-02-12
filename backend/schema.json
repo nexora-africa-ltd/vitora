@@ -12705,9 +12705,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: {}
-                description: Unspecified response body
+                $ref: '#/components/schemas/ConstraintOverrideMetrics'
           description: ''
   /api/inpatient/transfers/:
     get:
@@ -27918,6 +27916,55 @@ components:
         * `IMPROVING` - Improving
         * `DETERIORATING` - Deteriorating
         * `CRITICAL` - Critical
+    ConstraintOverrideMetrics:
+      type: object
+      description: Response serializer for constraint override metrics.
+      properties:
+        total_admissions:
+          type: integer
+          description: Total admissions in period
+        override_count:
+          type: integer
+          description: Admissions with constraint overrides
+        override_rate:
+          type: number
+          format: double
+          description: Percentage of admissions with overrides
+        critical_override_count:
+          type: integer
+          description: Admissions with CRITICAL violations overridden
+        acknowledged_count:
+          type: integer
+          description: CRITICAL overrides acknowledged by supervisors
+        pending_acknowledgment_count:
+          type: integer
+          description: CRITICAL overrides pending acknowledgment
+        violation_breakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/ViolationTypeBreakdown'
+          description: Violations by type
+        ward_breakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/WardOverrideStats'
+          description: Overrides by ward
+        common_reasons:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: Most common override reasons with counts
+      required:
+      - acknowledged_count
+      - common_reasons
+      - critical_override_count
+      - override_count
+      - override_rate
+      - pending_acknowledgment_count
+      - total_admissions
+      - violation_breakdown
+      - ward_breakdown
     ConstraintViolation:
       type: object
       description: Serializer for constraint violation details.
@@ -44546,6 +44593,19 @@ components:
           type: string
       required:
       - valid
+    ViolationTypeBreakdown:
+      type: object
+      description: Breakdown of violations by type.
+      properties:
+        code:
+          type: string
+          description: Violation code (e.g., 'GENDER_MISMATCH')
+        count:
+          type: integer
+          description: Count of this violation type
+      required:
+      - code
+      - count
     VisitReasonEnum:
       enum:
       - NEW_COMPLAINT
@@ -44790,6 +44850,23 @@ components:
       - min_age_years
       - oxygen_equipped
       - ventilator_capable
+      - ward_id
+      - ward_name
+    WardOverrideStats:
+      type: object
+      description: Override statistics for a single ward.
+      properties:
+        ward_id:
+          type: integer
+          description: Ward ID
+        ward_name:
+          type: string
+          description: Ward name
+        override_count:
+          type: integer
+          description: Number of overrides
+      required:
+      - override_count
       - ward_id
       - ward_name
     WardRound:
