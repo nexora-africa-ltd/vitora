@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { ArrowLeft, ClipboardList, Plus, Save, AlertTriangle } from 'lucide-react';
+import { ClipboardList, Plus, Save, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -206,9 +206,9 @@ export default function KardexPage() {
   if (!admission) {
     return (
       <div className="container mx-auto py-12 text-center">
-        <h2 className="text-xl font-semibold">Admission not found</h2>
+        <p className="text-xl font-semibold">Admission not found</p>
         <Button onClick={() => router.push('/admissions')} className="mt-4">
-          Back to Admissions
+          View Admissions
         </Button>
       </div>
     );
@@ -218,42 +218,32 @@ export default function KardexPage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <h2 className="text-xl font-semibold">No Kardex Found</h2>
+        <p className="text-xl font-semibold">No Kardex Found</p>
         <p className="text-muted-foreground mt-2">
           A nursing kardex should be automatically created on admission.
         </p>
         <Button onClick={() => router.push(`/admissions/${admissionId}`)} className="mt-4">
-          Back to Admission
+          View Admission
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <Link href={`/admissions/${admissionId}`} className="text-sm text-muted-foreground hover:text-primary">
-          Back to Admission
-        </Link>
-      </div>
-
-      <div className="flex items-start justify-between">
-        <PageHeader
-          title="Nursing Kardex"
-          description={`${kardex.patient_name} - ${kardex.ward_name} - Bed ${kardex.bed_number}`}
-        />
-        <div className="flex gap-2">
-          <Dialog open={shiftNoteOpen} onOpenChange={setShiftNoteOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Shift Note
-              </Button>
-            </DialogTrigger>
+    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+      <PageHeader
+        title="Nursing Kardex"
+        helpContent={`${kardex.patient_name} - ${kardex.ward_name} - Bed ${kardex.bed_number}. Manage nursing care information, shift notes, and handover documentation.`}
+        actions={
+          <div className="flex gap-2">
+            <Dialog open={shiftNoteOpen} onOpenChange={setShiftNoteOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Shift Note</span>
+                  <span className="sm:hidden">Note</span>
+                </Button>
+              </DialogTrigger>
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Add Shift Note</DialogTitle>
@@ -308,7 +298,8 @@ export default function KardexPage() {
             <Button onClick={initEditForm}>Edit Kardex</Button>
           )}
         </div>
-      </div>
+        }
+      />
 
       {/* Quick Summary - Always Visible */}
       <div className="grid gap-4 md:grid-cols-4">

@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Stethoscope, Activity, Calendar, User } from 'lucide-react';
+import { Plus, Stethoscope, Activity, Calendar, User } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -56,43 +56,33 @@ export default function WardRoundHistoryPage() {
   if (!admission) {
     return (
       <div className="container mx-auto py-12 text-center">
-        <h2 className="text-xl font-semibold">Admission not found</h2>
-        <p className="text-accent-foreground mt-2">
+        <p className="text-xl font-semibold">Admission not found</p>
+        <p className="text-muted-foreground mt-2">
           Cannot view ward rounds without an active admission.
         </p>
         <Button onClick={() => router.push('/admissions')} className="mt-4">
-          Back to Admissions
+          View Admissions
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <Link href={`/admissions/${admissionId}`} className="text-sm text-accent-foreground hover:text-primary">
-          Back to Admission
-        </Link>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <PageHeader
-          title="Ward Rounds"
-          description={`Ward round history for ${admission.patient_name}`}
-        />
-        {admission.admission_status === 'ACTIVE' && (
-          <Button asChild>
-            <Link href={`/admissions/${admissionId}/ward-round/new`}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Ward Round
-            </Link>
-          </Button>
-        )}
-      </div>
+    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+      <PageHeader
+        title="Ward Rounds"
+        helpContent={`Ward round history for ${admission.patient_name}. Document clinical assessments and treatment plans.`}
+        actions={
+          admission.admission_status === 'ACTIVE' ? (
+            <Button asChild>
+              <Link href={`/admissions/${admissionId}/ward-round/new`}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Ward Round
+              </Link>
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* Patient Info */}
       <Card>

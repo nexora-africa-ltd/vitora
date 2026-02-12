@@ -2,10 +2,10 @@
 
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
-import { ArrowLeft, Save, Plus, Trash2, Clock, CheckCircle2 } from 'lucide-react';
+import { Save, Plus, Trash2, Clock, CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -157,12 +157,12 @@ export default function DischargePage() {
   if (!admission) {
     return (
       <div className="container mx-auto py-12 text-center">
-        <h2 className="text-xl font-semibold">Admission not found</h2>
+        <p className="text-xl font-semibold">Admission not found</p>
         <p className="text-muted-foreground mt-2">
           Cannot discharge a patient without an active admission.
         </p>
         <Button onClick={() => router.push('/admissions')} className="mt-4">
-          Back to Admissions
+          View Admissions
         </Button>
       </div>
     );
@@ -171,7 +171,7 @@ export default function DischargePage() {
   if (admission.admission_status !== 'ACTIVE') {
     return (
       <div className="container mx-auto py-12 text-center">
-        <h2 className="text-xl font-semibold">Patient Already Discharged</h2>
+        <p className="text-xl font-semibold">Patient Already Discharged</p>
         <p className="text-muted-foreground mt-2">
           This admission has already been discharged or is inactive.
         </p>
@@ -183,20 +183,10 @@ export default function DischargePage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <Link href={`/admissions/${admissionId}`} className="text-sm text-muted-foreground hover:text-primary">
-          Back to Admission
-        </Link>
-      </div>
-
+    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
       <PageHeader
         title="Discharge Patient"
-        description={`Discharging ${admission.patient_name} from ${admission.ward_name}`}
+        helpContent={`Discharging ${admission.patient_name} from ${admission.ward_name}. Complete the discharge summary, medications, and clearances.`}
       />
 
       {/* Patient Summary with LOS */}

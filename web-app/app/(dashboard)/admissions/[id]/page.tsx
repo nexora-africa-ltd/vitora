@@ -3,7 +3,6 @@
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft,
   Bed,
   Building2,
   Calendar,
@@ -46,74 +45,64 @@ export default function AdmissionDetailPage() {
   if (error || !admission) {
     return (
       <div className="container mx-auto py-12 text-center">
-        <h2 className="text-xl font-semibold">Admission not found</h2>
-        <p className="text-accent-foreground mt-2">
+        <p className="text-xl font-semibold">Admission not found</p>
+        <p className="text-muted-foreground mt-2">
           The admission record you&apos;re looking for doesn&apos;t exist or has been removed.
         </p>
         <Button onClick={() => router.push('/admissions')} className="mt-4">
-          Back to Admissions
+          View Admissions
         </Button>
       </div>
     );
   }
-
-  const statusColors: Record<string, string> = {
-    ACTIVE: 'bg-green-500',
-    DISCHARGED: 'bg-blue-500',
-    TRANSFERRED: 'bg-yellow-500',
-    DECEASED: 'bg-gray-500',
-  };
 
   const daysAdmitted = Math.ceil(
     (new Date().getTime() - new Date(admission.admission_date).getTime()) / (1000 * 60 * 60 * 24)
   );
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="flex items-start gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold">{admission.admission_number}</h1>
-              <Badge className={statusColors[admission.admission_status]}>
-                {admission.admission_status_display || admission.admission_status}
-              </Badge>
-            </div>
-            <p className="text-accent-foreground">
-              Patient: <span className="font-medium">{admission.patient_name}</span>
-            </p>
-          </div>
+    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+      {/* Summary Bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
+        <div className="flex flex-col gap-1 min-w-0">
+          <p className="text-lg sm:text-xl font-bold truncate">
+            {admission.admission_number}
+          </p>
+          <p className="text-sm text-muted-foreground truncate">
+            Patient: <span className="font-medium">{admission.patient_name}</span>
+          </p>
         </div>
-
-        <div className="flex flex-wrap gap-2">
-          {admission.admission_status === 'ACTIVE' && (
-            <>
-              <Button variant="outline" asChild>
-                <Link href={`/admissions/${admission.id}/ward-round`}>
-                  <Stethoscope className="h-4 w-4 mr-2" />
-                  Ward Round
-                </Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href={`/admissions/${admission.id}/transfer`}>
-                  <MoveRight className="h-4 w-4 mr-2" />
-                  Transfer
-                </Link>
-              </Button>
-              <Button variant="default" asChild>
-                <Link href={`/admissions/${admission.id}/discharge`}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Discharge
-                </Link>
-              </Button>
-            </>
-          )}
-        </div>
+        <Badge
+          variant={getStatusVariant(admission.admission_status)}
+          className="shrink-0 w-fit self-start sm:self-auto"
+        >
+          {admission.admission_status_display || admission.admission_status}
+        </Badge>
       </div>
+
+      {/* Actions */}
+      {admission.admission_status === 'ACTIVE' && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+          <Button variant="outline" asChild>
+            <Link href={`/admissions/${admission.id}/ward-round`}>
+              <Stethoscope className="h-4 w-4 mr-2" />
+              Ward Round
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href={`/admissions/${admission.id}/transfer`}>
+              <MoveRight className="h-4 w-4 mr-2" />
+              Transfer
+            </Link>
+          </Button>
+          <Button variant="default" asChild>
+            <Link href={`/admissions/${admission.id}/discharge`}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Discharge
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {/* Quick Stats */}
       <div className="grid gap-4 md:grid-cols-4">
@@ -470,4 +459,23 @@ function KardexSkeleton() {
       <Skeleton className="h-48" />
     </div>
   );
+}
+
+/**
+ * Get badge variant based on admission status
+ */
+function getStatusVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' {
+  switch (status) {
+    case 'ACTIVE':
+      return 'success';
+    case 'DISCHARGED':
+      return 'secondary';
+    case 'TRANSFERRED_OUT':
+      return 'warning';
+    case 'DECEASED':
+    case 'ABSCONDED':
+      return 'destructive';
+    default:
+      return 'secondary';
+  }
 }
