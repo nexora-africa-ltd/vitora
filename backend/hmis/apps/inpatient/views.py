@@ -4,6 +4,7 @@ Views for the inpatient app.
 
 from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -37,8 +38,10 @@ from .serializers import (
     KardexShiftNoteSerializer,
     NursingKardexSerializer,
     ShiftHandoverSerializer,
+    SupervisorAlertsResponseSerializer,
     TransferSerializer,
     WardRoundSerializer,
+    WardUpdatesResponseSerializer,
 )
 from .services.compatibility import ward_compatibility_service
 
@@ -203,6 +206,24 @@ class WardViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response({"results": results})
 
+    @extend_schema(
+        summary="Get ward updates (polling fallback)",
+        description=(
+            "Polling fallback endpoint for ward updates when WebSocket is unavailable. "
+            "Returns recent ward events and current constraint state."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="since",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="ISO timestamp to filter events after (optional)",
+                required=False,
+            ),
+        ],
+        responses={200: WardUpdatesResponseSerializer},
+        tags=["Inpatient - Wards"],
+    )
     @action(detail=True, methods=["get"])
     def updates(self, request, pk=None):
         """
@@ -240,7 +261,10 @@ class WardViewSet(viewsets.ReadOnlyModelViewSet):
                 "type": "compatibility_violation",
                 "admission_id": admission.id,
                 "patient_name": f"{admission.patient.first_name} {admission.patient.last_name}",
-                "violations": admission.constraint_violations,
+                "violations": [
+                    v.get("message", v.get("code", "Unknown violation"))
+                    for v in admission.constraint_violations
+                ],
                 "timestamp": admission.created_at.isoformat(),
             })
 
@@ -273,6 +297,34 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        summary="List supervisor critical violation alerts",
+        description=(
+            "List recent admissions with CRITICAL constraint violations that were overridden. "
+            "Requires receive_critical_alerts permission. Used as polling fallback for WebSocket alerts."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="since",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="ISO timestamp to filter alerts after (optional)",
+                required=False,
+            ),
+            OpenApiParameter(
+                name="limit",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                description="Maximum number of alerts to return (default: 20)",
+                required=False,
+            ),
+        ],
+        responses={
+            200: SupervisorAlertsResponseSerializer,
+            403: {"description": "Permission denied - requires receive_critical_alerts permission"},
+        },
+        tags=["Inpatient - Supervisor Alerts"],
+    )
     def list(self, request):
         """
         List recent critical violation alerts for supervisors.
@@ -318,11 +370,13 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
                 alerts.append({
                     "admission_id": admission.id,
                     "admission_number": admission.admission_number,
+                    "patient_id": admission.patient.id,
                     "patient_name": f"{admission.patient.first_name} {admission.patient.last_name}",
                     "patient_mrn": admission.patient.mrn,
+                    "ward_id": admission.ward.id,
                     "ward_name": admission.ward.name,
                     "bed_number": admission.bed.bed_number,
-                    "violations": critical_violations,
+                    "critical_violations": critical_violations,
                     "override_reason": admission.constraint_override_reason,
                     "admitted_by": (
                         admission.admitting_officer.get_full_name()

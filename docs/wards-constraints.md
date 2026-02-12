@@ -876,69 +876,70 @@ class WardViewSet(viewsets.ModelViewSet):
 
 ### 5.2 Frontend Polling Hook
 
+The ward compatibility updates use a hybrid WebSocket + polling approach, implemented as a modular hook system:
+
+```
+web-app/lib/hooks/inpatient-websocket/
+├── index.ts                           # Re-exports all hooks and types
+├── types.ts                           # Shared type definitions
+├── use-ward-websocket.ts              # Low-level WS hook for ward events
+├── use-supervisor-websocket.ts        # Low-level WS hook for supervisor alerts
+├── use-ward-compatibility-updates.ts  # Hybrid hook (WS + polling)
+└── use-supervisor-alerts.ts           # Hybrid hook for critical alerts
+```
+
+**Usage:**
+
 ```typescript
-// web-app/lib/hooks/use-ward-compatibility-updates.ts
+// Import from the modular package
+import {
+  useWardCompatibilityUpdates,
+  useSupervisorAlerts,
+} from '@/lib/hooks/inpatient-websocket';
 
-import { useQuery } from '@tanstack/react-query';
-import { useWebSocket } from '@/lib/hooks/use-websocket';
-import { useCallback, useEffect, useRef, useState } from 'react';
+// Or from the hooks barrel export
+import { useWardCompatibilityUpdates } from '@/lib/hooks';
 
-interface CompatibilityEvent {
-  type: 'ward_constraints_updated' | 'compatibility_violation' | 'bed_availability_changed';
-  timestamp: string;
-  // ... other fields
-}
-
-export function useWardCompatibilityUpdates(options?: { pollingInterval?: number }) {
-  const pollingInterval = options?.pollingInterval ?? 30000; // 30 seconds default
-  const [events, setEvents] = useState<CompatibilityEvent[]>([]);
-  const lastFetchRef = useRef<string>(new Date().toISOString());
-
-  // Try WebSocket first
-  const { lastMessage, isConnected } = useWebSocket('/ws/wards/compatibility/');
-
-  // Handle WebSocket messages
-  useEffect(() => {
-    if (lastMessage) {
-      setEvents((prev) => [lastMessage as CompatibilityEvent, ...prev].slice(0, 50));
-    }
-  }, [lastMessage]);
-
-  // Fallback to polling when WebSocket not connected
-  const { data: pollingData } = useQuery({
-    queryKey: ['ward-compatibility-updates', lastFetchRef.current],
-    queryFn: async () => {
-      const response = await fetch(
-        `/api/inpatient/wards/compatibility_updates/?since=${lastFetchRef.current}`
-      );
-      const data = await response.json();
-      lastFetchRef.current = new Date().toISOString();
-      return data;
-    },
-    refetchInterval: isConnected ? false : pollingInterval, // Only poll if WS disconnected
-    enabled: !isConnected,
+function WardDashboard({ wardId }: { wardId: number }) {
+  const {
+    events,           // Recent ward events
+    currentState,     // Current constraint state
+    isConnected,      // WebSocket connected?
+    isPolling,        // Using polling fallback?
+    refresh,          // Manual refresh
+    lastUpdated,      // Last update timestamp
+  } = useWardCompatibilityUpdates(wardId, {
+    pollingInterval: 30000,  // 30s polling fallback
+    onEvent: (event) => console.log('Ward event:', event),
   });
 
-  // Merge polling data into events
-  useEffect(() => {
-    if (pollingData?.violations) {
-      setEvents((prev) => {
-        const newEvents = pollingData.violations.map((v: any) => ({
-          type: 'compatibility_violation' as const,
-          ...v,
-        }));
-        return [...newEvents, ...prev].slice(0, 50);
-      });
-    }
-  }, [pollingData]);
-
-  return {
-    events,
-    isWebSocketConnected: isConnected,
-    clearEvents: () => setEvents([]),
-  };
+  // Events are validated with Zod schemas (WardUpdatesResponseSchema)
+  // See: lib/schemas/inpatient.schema.ts
 }
 ```
+
+**Supervisor alerts (for CRITICAL violations):**
+
+```typescript
+function SupervisorAlertPanel() {
+  const {
+    alerts,
+    isConnected,
+    isLoading,
+    refresh,
+  } = useSupervisorAlerts({
+    pollingInterval: 15000,  // 15s for critical alerts
+    onAlert: (alert) => showNotification(alert),
+  });
+}
+```
+
+**Key features:**
+- Primary: WebSocket connection for real-time updates
+- Fallback: Automatic polling when WebSocket unavailable
+- Zod validation: All polling responses validated with schemas
+- Deduplication: Events tracked by timestamp, alerts by admission_id
+- Memory-bounded: Max 50 events/alerts retained, seen IDs trimmed at 500
 
 ---
 
@@ -1298,7 +1299,8 @@ test('supervisor receives real-time alert for CRITICAL violations', async () => 
 - [x] Implement **CRITICAL violation → supervisor escalation** (WebSocket + email)
 - [x] Create Celery task `notify_supervisors_critical_violation`
 - [x] Create polling fallback endpoint
-- [x] Create frontend hook with WS/polling hybrid
+- [x] Create frontend hooks with WS/polling hybrid (`lib/hooks/inpatient-websocket/`)
+- [x] Add Zod schemas for ward updates and supervisor alerts (`lib/schemas/inpatient.schema.ts`)
 
 ### Phase 3: Frontend Integration (3-4 days)
 - [ ] Update ward form with constraint fields (auto-populated defaults shown)

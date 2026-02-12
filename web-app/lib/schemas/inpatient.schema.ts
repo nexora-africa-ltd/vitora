@@ -513,3 +513,88 @@ export const BedArrayResponseSchema = z.object({
 export const NursingNoteArrayResponseSchema = z.object({
   results: KardexShiftNoteArraySchema,
 });
+
+// =============================================================================
+// WARD WEBSOCKET / POLLING SCHEMAS
+// =============================================================================
+
+/**
+ * Ward update event types from WebSocket/polling
+ */
+export const WardUpdateEventTypeSchema = z.enum([
+  'ward_constraints_updated',
+  'compatibility_violation',
+  'bed_availability_changed',
+]);
+
+/**
+ * Ward update event (from WebSocket or polling)
+ */
+export const WardUpdateEventSchema = z.object({
+  type: WardUpdateEventTypeSchema,
+  admission_id: z.number().optional(),
+  patient_name: z.string().optional(),
+  violations: z.array(z.string()).optional(),
+  timestamp: z.string(),
+});
+
+export type WardUpdateEventSchemaType = z.infer<typeof WardUpdateEventSchema>;
+
+/**
+ * Current ward constraint state (from polling)
+ */
+export const WardCurrentStateSchema = z.object({
+  ward_id: z.number(),
+  ward_name: z.string(),
+  gender_restriction: z.string().nullable(),
+  min_age_years: z.number().nullable(),
+  max_age_years: z.number().nullable(),
+  isolation_capable: z.boolean(),
+  oxygen_equipped: z.boolean(),
+  ventilator_capable: z.boolean(),
+  available_beds: z.number(),
+});
+
+export type WardCurrentStateSchemaType = z.infer<typeof WardCurrentStateSchema>;
+
+/**
+ * Ward updates polling response
+ */
+export const WardUpdatesResponseSchema = z.object({
+  events: z.array(WardUpdateEventSchema),
+  current_state: WardCurrentStateSchema,
+});
+
+export type WardUpdatesResponseSchemaType = z.infer<typeof WardUpdatesResponseSchema>;
+
+// =============================================================================
+// SUPERVISOR ALERTS SCHEMAS
+// =============================================================================
+
+/**
+ * Supervisor alert for critical constraint violations
+ */
+export const SupervisorAlertSchema = z.object({
+  admission_id: z.number(),
+  admission_number: z.string(),
+  patient_id: z.number(),
+  patient_name: z.string(),
+  patient_mrn: z.string(),
+  ward_id: z.number(),
+  ward_name: z.string(),
+  admitted_by: z.string(),
+  critical_violations: z.array(z.string()),
+  override_reason: z.string().nullable(),
+  timestamp: z.string(),
+});
+
+export type SupervisorAlertSchemaType = z.infer<typeof SupervisorAlertSchema>;
+
+/**
+ * Supervisor alerts polling response
+ */
+export const SupervisorAlertsResponseSchema = z.object({
+  alerts: z.array(SupervisorAlertSchema),
+});
+
+export type SupervisorAlertsResponseSchemaType = z.infer<typeof SupervisorAlertsResponseSchema>;
