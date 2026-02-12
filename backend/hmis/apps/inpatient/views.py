@@ -692,6 +692,95 @@ class AdmissionViewSet(viewsets.ModelViewSet):
                 ip_address=get_client_ip(self.request),
             )
 
+    @extend_schema(
+        tags=["Inpatient - Admissions"],
+        summary="Get lab orders for admission",
+        description="Get all lab orders for a specific admission.",
+    )
+    @action(detail=True, methods=["get"], url_path="lab-orders")
+    def lab_orders(self, request, pk=None):
+        """Get lab orders for this admission."""
+        from hmis.apps.laboratory.models import LabOrder
+        from hmis.apps.laboratory.serializers import LabOrderSerializer
+
+        admission = self.get_object()
+        orders = LabOrder.objects.filter(admission=admission).select_related(
+            "patient", "encounter", "ordered_by"
+        ).prefetch_related("items__test", "items__result")
+        serializer = LabOrderSerializer(orders, many=True)
+        return Response(serializer.data)
+
+    @extend_schema(
+        tags=["Inpatient - Admissions"],
+        summary="Get imaging orders for admission",
+        description="Get all imaging orders for a specific admission.",
+    )
+    @action(detail=True, methods=["get"], url_path="imaging-orders")
+    def imaging_orders(self, request, pk=None):
+        """Get imaging orders for this admission."""
+        from hmis.apps.imaging.models import ImagingOrder
+        from hmis.apps.imaging.serializers import ImagingOrderSerializer
+
+        admission = self.get_object()
+        orders = ImagingOrder.objects.filter(admission=admission).select_related(
+            "patient", "encounter", "ordered_by"
+        ).prefetch_related("items__procedure")
+        serializer = ImagingOrderSerializer(orders, many=True)
+        return Response(serializer.data)
+
+    @extend_schema(
+        tags=["Inpatient - Admissions"],
+        summary="Get prescriptions for admission",
+        description="Get all prescriptions for a specific admission.",
+    )
+    @action(detail=True, methods=["get"], url_path="prescriptions")
+    def prescriptions(self, request, pk=None):
+        """Get prescriptions for this admission."""
+        from hmis.apps.pharmacy.models import Prescription
+        from hmis.apps.pharmacy.serializers import PrescriptionSerializer
+
+        admission = self.get_object()
+        prescriptions = Prescription.objects.filter(admission=admission).select_related(
+            "patient", "encounter", "prescribed_by"
+        ).prefetch_related("items__drug")
+        serializer = PrescriptionSerializer(prescriptions, many=True)
+        return Response(serializer.data)
+
+    @extend_schema(
+        tags=["Inpatient - Admissions"],
+        summary="Get all orders for admission",
+        description="Get a combined view of all medical orders (lab, imaging, prescriptions) for a specific admission.",
+    )
+    @action(detail=True, methods=["get"], url_path="orders")
+    def orders(self, request, pk=None):
+        """Get all orders for this admission (combined view)."""
+        from hmis.apps.imaging.models import ImagingOrder
+        from hmis.apps.imaging.serializers import ImagingOrderSerializer
+        from hmis.apps.laboratory.models import LabOrder
+        from hmis.apps.laboratory.serializers import LabOrderSerializer
+        from hmis.apps.pharmacy.models import Prescription
+        from hmis.apps.pharmacy.serializers import PrescriptionSerializer
+
+        admission = self.get_object()
+
+        lab_orders = LabOrder.objects.filter(admission=admission).select_related(
+            "patient", "encounter", "ordered_by"
+        ).prefetch_related("items__test", "items__result")
+
+        imaging_orders = ImagingOrder.objects.filter(admission=admission).select_related(
+            "patient", "encounter", "ordered_by"
+        ).prefetch_related("items__procedure")
+
+        prescriptions = Prescription.objects.filter(admission=admission).select_related(
+            "patient", "encounter", "prescribed_by"
+        ).prefetch_related("items__drug")
+
+        return Response({
+            "lab_orders": LabOrderSerializer(lab_orders, many=True).data,
+            "imaging_orders": ImagingOrderSerializer(imaging_orders, many=True).data,
+            "prescriptions": PrescriptionSerializer(prescriptions, many=True).data,
+        })
+
 
 class DischargeViewSet(viewsets.ModelViewSet):
     """

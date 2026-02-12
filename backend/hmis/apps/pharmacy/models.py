@@ -552,6 +552,14 @@ class Prescription(models.Model):
         blank=True,
         help_text="Optional - can be null for walk-in pharmacy prescriptions",
     )
+    admission = models.ForeignKey(
+        "inpatient.Admission",
+        on_delete=models.PROTECT,
+        related_name="prescriptions",
+        null=True,
+        blank=True,
+        help_text="IPD admission if prescribed during inpatient stay",
+    )
     patient = models.ForeignKey(
         "patients.Patient", on_delete=models.PROTECT, related_name="prescriptions"
     )

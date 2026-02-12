@@ -656,3 +656,17 @@ export interface SupervisorAlert {
 export interface SupervisorAlertsResponse {
   alerts: SupervisorAlert[];
 }
+
+// ============================================================================
+// Admission Orders Types
+// ============================================================================
+
+import type { LabOrder } from '@/lib/types/laboratory';
+import type { ImagingOrder } from '@/lib/types/imaging';
+import type { Prescription } from '@/lib/types/pharmacy';
+
+export interface AdmissionOrdersResponse {
+  lab_orders: LabOrder[];
+  imaging_orders: ImagingOrder[];
+  prescriptions: Prescription[];
+}
