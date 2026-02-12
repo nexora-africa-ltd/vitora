@@ -13081,9 +13081,9 @@ paths:
     get:
       operationId: api_inpatient_wards_list
       description: |-
-        ViewSet for Ward model (read-only).
+        ViewSet for Ward model.
 
-        Provides listing and detail views for wards with:
+        Provides CRUD operations for wards with:
         - Real-time occupancy statistics
         - Bed availability tracking
         - Filtering by ward type
@@ -13092,6 +13092,7 @@ paths:
         Endpoints:
         - GET /api/inpatient/wards/ - List all wards
         - GET /api/inpatient/wards/{id}/ - Ward detail
+        - PATCH /api/inpatient/wards/{id}/ - Update ward
         - GET /api/inpatient/wards/{id}/beds/ - List beds in ward
       parameters:
       - in: query
@@ -13153,13 +13154,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedInpatientWardList'
           description: ''
-  /api/inpatient/wards/{id}/:
-    get:
-      operationId: api_inpatient_wards_retrieve
+    post:
+      operationId: api_inpatient_wards_create
       description: |-
-        ViewSet for Ward model (read-only).
+        ViewSet for Ward model.
 
-        Provides listing and detail views for wards with:
+        Provides CRUD operations for wards with:
         - Real-time occupancy statistics
         - Bed availability tracking
         - Filtering by ward type
@@ -13168,6 +13168,47 @@ paths:
         Endpoints:
         - GET /api/inpatient/wards/ - List all wards
         - GET /api/inpatient/wards/{id}/ - Ward detail
+        - PATCH /api/inpatient/wards/{id}/ - Update ward
+        - GET /api/inpatient/wards/{id}/beds/ - List beds in ward
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InpatientWardRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InpatientWardRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InpatientWardRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientWard'
+          description: ''
+  /api/inpatient/wards/{id}/:
+    get:
+      operationId: api_inpatient_wards_retrieve
+      description: |-
+        ViewSet for Ward model.
+
+        Provides CRUD operations for wards with:
+        - Real-time occupancy statistics
+        - Bed availability tracking
+        - Filtering by ward type
+        - Search by name or code
+
+        Endpoints:
+        - GET /api/inpatient/wards/ - List all wards
+        - GET /api/inpatient/wards/{id}/ - Ward detail
+        - PATCH /api/inpatient/wards/{id}/ - Update ward
         - GET /api/inpatient/wards/{id}/beds/ - List beds in ward
       parameters:
       - in: path
@@ -13178,6 +13219,51 @@ paths:
         required: true
       tags:
       - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientWard'
+          description: ''
+    patch:
+      operationId: api_inpatient_wards_partial_update
+      description: |-
+        ViewSet for Ward model.
+
+        Provides CRUD operations for wards with:
+        - Real-time occupancy statistics
+        - Bed availability tracking
+        - Filtering by ward type
+        - Search by name or code
+
+        Endpoints:
+        - GET /api/inpatient/wards/ - List all wards
+        - GET /api/inpatient/wards/{id}/ - Ward detail
+        - PATCH /api/inpatient/wards/{id}/ - Update ward
+        - GET /api/inpatient/wards/{id}/beds/ - List beds in ward
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Ward.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedInpatientWardRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedInpatientWardRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedInpatientWardRequest'
       security:
       - jwtAuth: []
       responses:
@@ -23496,7 +23582,12 @@ components:
         * `SAMPLE` - Sample/Demo
     Admission:
       type: object
-      description: Serializer for Admission model.
+      description: |-
+        Serializer for Admission model.
+
+        Supports automatic bed assignment via `auto_assign_bed=true` in request body.
+        When auto_assign_bed is true, the `bed` field becomes optional as the system
+        will automatically select the first available bed in the ward.
       properties:
         id:
           type: integer
@@ -23557,7 +23648,8 @@ components:
           readOnly: true
         bed:
           type: integer
-          description: Specific bed assigned
+          nullable: true
+          description: Bed ID. Optional when auto_assign_bed=true is provided.
         bed_number:
           type: string
           readOnly: true
@@ -23626,7 +23718,6 @@ components:
       - admitting_officer
       - admitting_officer_username
       - attending_doctor_username
-      - bed
       - bed_number
       - constraint_override
       - constraint_violations
@@ -23812,7 +23903,12 @@ components:
         * `EXPIRED` - Expired
     AdmissionRequest:
       type: object
-      description: Serializer for Admission model.
+      description: |-
+        Serializer for Admission model.
+
+        Supports automatic bed assignment via `auto_assign_bed=true` in request body.
+        When auto_assign_bed is true, the `bed` field becomes optional as the system
+        will automatically select the first available bed in the ward.
       properties:
         patient:
           type: integer
@@ -23851,7 +23947,8 @@ components:
           description: Ward where patient is admitted
         bed:
           type: integer
-          description: Specific bed assigned
+          nullable: true
+          description: Bed ID. Optional when auto_assign_bed=true is provided.
         payer_type:
           allOf:
           - $ref: '#/components/schemas/PayerTypeEnum'
@@ -23871,7 +23968,6 @@ components:
       - admitting_diagnosis
       - admitting_diagnosis_text
       - admitting_officer
-      - bed
       - patient
       - payer_type
       - ward
@@ -34939,7 +35035,12 @@ components:
           description: Reason if recommendation was declined
     PatchedAdmissionRequest:
       type: object
-      description: Serializer for Admission model.
+      description: |-
+        Serializer for Admission model.
+
+        Supports automatic bed assignment via `auto_assign_bed=true` in request body.
+        When auto_assign_bed is true, the `bed` field becomes optional as the system
+        will automatically select the first available bed in the ward.
       properties:
         patient:
           type: integer
@@ -34978,7 +35079,8 @@ components:
           description: Ward where patient is admitted
         bed:
           type: integer
-          description: Specific bed assigned
+          nullable: true
+          description: Bed ID. Optional when auto_assign_bed=true is provided.
         payer_type:
           allOf:
           - $ref: '#/components/schemas/PayerTypeEnum'
@@ -36234,6 +36336,85 @@ components:
           type: string
           format: date-time
           nullable: true
+    PatchedInpatientWardRequest:
+      type: object
+      description: Serializer for Ward model (inpatient-specific with occupancy stats).
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Unique ward name (e.g., 'Medical Ward 1')
+          maxLength: 100
+        code:
+          type: string
+          minLength: 1
+          description: Unique ward code (e.g., 'MED-01')
+          maxLength: 20
+        ward_type:
+          allOf:
+          - $ref: '#/components/schemas/WardTypeEnum'
+          description: |-
+            Type of ward
+
+            * `MEDICAL` - Medical Ward
+            * `SURGICAL` - Surgical Ward
+            * `PEDIATRIC` - Pediatric Ward
+            * `MATERNITY` - Maternity Ward
+            * `ICU` - Intensive Care Unit
+            * `ISOLATION` - Isolation Ward
+        floor:
+          type: string
+          description: Floor location
+          maxLength: 50
+        capacity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 1
+          format: int64
+          description: Total bed count (must be positive)
+        description:
+          type: string
+          description: Ward description
+        is_active:
+          type: boolean
+          description: Whether ward is currently active
+        daily_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Bed charge per day (must be positive)
+        gender_restriction:
+          allOf:
+          - $ref: '#/components/schemas/GenderRestrictionEnum'
+          description: |-
+            Gender restriction for patient admission
+
+            * `ANY` - Any Gender
+            * `MALE_ONLY` - Male Only
+            * `FEMALE_ONLY` - Female Only
+        min_age_years:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Minimum patient age in years (null = no minimum)
+        max_age_years:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Maximum patient age in years (null = no maximum)
+        isolation_capable:
+          type: boolean
+          description: Whether ward can handle isolation patients
+        oxygen_equipped:
+          type: boolean
+          description: Whether beds have oxygen supply
+        ventilator_capable:
+          type: boolean
+          description: Whether ward supports ventilated patients
     PatchedInvoiceRequest:
       type: object
       description: Serializer for Invoice model.

@@ -209,3 +209,101 @@ class TestAdmissionAPI:
         assert response.status_code == status.HTTP_200_OK
         for admission in response.data["results"]:
             assert admission["admission_status"] == "ACTIVE"
+
+    def test_admission_auto_assign_bed_success(
+        self,
+        authenticated_client,
+        test_user,
+        sample_patient,
+        sample_encounter,
+        sample_inpatient_ward,
+        sample_bed,
+    ):
+        """Should auto-assign first available bed when auto_assign_bed=true."""
+        # Ensure bed is available
+        sample_bed.status = "AVAILABLE"
+        sample_bed.save()
+
+        data = {
+            "patient": sample_patient.id,
+            "opd_encounter": sample_encounter.id,
+            "admission_date": timezone.now().isoformat(),
+            "admitting_diagnosis": "J18.9",
+            "admitting_diagnosis_text": "Pneumonia",
+            "admitting_officer": test_user.id,
+            "attending_doctor": test_user.id,
+            "ward": sample_inpatient_ward.id,
+            # Note: No bed specified
+            "payer_type": "CASH",
+            "auto_assign_bed": True,  # Enable automatic bed assignment
+        }
+
+        response = authenticated_client.post("/api/inpatient/admissions/", data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["bed"] == sample_bed.id
+        assert response.data["bed_number"] == sample_bed.bed_number
+
+        # Verify bed status updated
+        sample_bed.refresh_from_db()
+        assert sample_bed.status == "OCCUPIED"
+
+    def test_admission_without_bed_and_no_auto_assign_fails(
+        self,
+        authenticated_client,
+        test_user,
+        sample_patient,
+        sample_encounter,
+        sample_inpatient_ward,
+    ):
+        """Should fail when no bed provided and auto_assign_bed is not set."""
+        data = {
+            "patient": sample_patient.id,
+            "opd_encounter": sample_encounter.id,
+            "admission_date": timezone.now().isoformat(),
+            "admitting_diagnosis": "J18.9",
+            "admitting_diagnosis_text": "Pneumonia",
+            "admitting_officer": test_user.id,
+            "attending_doctor": test_user.id,
+            "ward": sample_inpatient_ward.id,
+            # Note: No bed specified, no auto_assign_bed
+            "payer_type": "CASH",
+        }
+
+        response = authenticated_client.post("/api/inpatient/admissions/", data, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "bed" in response.data
+
+    def test_admission_auto_assign_fails_when_no_beds_available(
+        self,
+        authenticated_client,
+        test_user,
+        sample_patient,
+        sample_encounter,
+        sample_inpatient_ward,
+        sample_bed,
+    ):
+        """Should fail with clear error when no beds are available for auto-assignment."""
+        # Mark all beds as occupied
+        sample_bed.status = "OCCUPIED"
+        sample_bed.save()
+
+        data = {
+            "patient": sample_patient.id,
+            "opd_encounter": sample_encounter.id,
+            "admission_date": timezone.now().isoformat(),
+            "admitting_diagnosis": "J18.9",
+            "admitting_diagnosis_text": "Pneumonia",
+            "admitting_officer": test_user.id,
+            "attending_doctor": test_user.id,
+            "ward": sample_inpatient_ward.id,
+            "payer_type": "CASH",
+            "auto_assign_bed": True,
+        }
+
+        response = authenticated_client.post("/api/inpatient/admissions/", data, format="json")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "bed" in response.data
+        assert "No available beds" in str(response.data["bed"])

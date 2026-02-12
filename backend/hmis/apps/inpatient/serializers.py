@@ -138,7 +138,12 @@ class AdmissionRecommendationSerializer(serializers.ModelSerializer):
 
 
 class AdmissionSerializer(serializers.ModelSerializer):
-    """Serializer for Admission model."""
+    """Serializer for Admission model.
+
+    Supports automatic bed assignment via `auto_assign_bed=true` in request body.
+    When auto_assign_bed is true, the `bed` field becomes optional as the system
+    will automatically select the first available bed in the ward.
+    """
 
     patient_name = serializers.SerializerMethodField()
     admitting_officer_username = serializers.CharField(
@@ -154,6 +159,14 @@ class AdmissionSerializer(serializers.ModelSerializer):
     )
     payer_type_display = serializers.CharField(source="get_payer_type_display", read_only=True)
     length_of_stay = serializers.ReadOnlyField()
+
+    # Make bed optional to support auto_assign_bed workflow
+    bed = serializers.PrimaryKeyRelatedField(
+        queryset=Bed.objects.all(),
+        required=False,
+        allow_null=True,
+        help_text="Bed ID. Optional when auto_assign_bed=true is provided.",
+    )
 
     class Meta:
         model = Admission
