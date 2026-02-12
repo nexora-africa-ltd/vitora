@@ -369,7 +369,7 @@ export default function NewAdmissionPage() {
 
           {/* Diagnosis Section with ICD-10/ICD-11 Toggle */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <Label className="text-base font-medium">Admitting Diagnosis</Label>
               <div className="flex items-center gap-2">
                 <span className={cn("text-sm", !useICD11 && "font-medium")}>ICD-10</span>
@@ -386,25 +386,28 @@ export default function NewAdmissionPage() {
 
             {/* Show selected diagnosis */}
             {hasDiagnosis ? (
-              <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50">
-                <Badge variant="outline" className="font-mono">
-                  {admittingDiagnosis}
-                </Badge>
-                <Badge variant="secondary" className="text-xs">
-                  {useICD11 ? 'ICD-11' : 'ICD-10'}
-                </Badge>
-                <span className="flex-1 text-sm truncate">
+              <div className="flex flex-col gap-2 p-3 rounded-md border bg-muted/50 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="outline" className="font-mono shrink-0">
+                    {admittingDiagnosis}
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs shrink-0">
+                    {useICD11 ? 'ICD-11' : 'ICD-10'}
+                  </Badge>
+                  {diagnosisPrefilled && (
+                    <Badge variant="outline" className="text-xs bg-blue-50 shrink-0">
+                      From Encounter
+                    </Badge>
+                  )}
+                </div>
+                <span className="flex-1 text-sm truncate min-w-0">
                   {admittingDiagnosisText}
                 </span>
-                {diagnosisPrefilled && (
-                  <Badge variant="outline" className="text-xs bg-blue-50">
-                    From Encounter
-                  </Badge>
-                )}
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
+                  className="self-end sm:self-auto shrink-0"
                   onClick={handleClearDiagnosis}
                 >
                   <X className="h-4 w-4" />
@@ -575,13 +578,15 @@ export default function NewAdmissionPage() {
               You need to select a patient before creating an admission. Would you like to select a patient now?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex gap-2 sm:gap-0">
+          <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
               onClick={() => setShowPatientDialog(false)}
               data-testid="continue-without-patient"
+              className="w-full sm:w-auto"
             >
-              Continue Without Patient
+              <span className="sm:hidden">Continue</span>
+              <span className="hidden sm:inline">Continue Without Patient</span>
             </Button>
             <Button
               onClick={() => {
@@ -589,6 +594,7 @@ export default function NewAdmissionPage() {
                 router.push('/patients?select=true&returnTo=/admissions/new');
               }}
               data-testid="select-patient-dialog-button"
+              className="w-full sm:w-auto"
             >
               <User className="h-4 w-4 mr-2" />
               Select Patient

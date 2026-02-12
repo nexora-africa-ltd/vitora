@@ -302,7 +302,7 @@ export default function KardexPage() {
       />
 
       {/* Quick Summary - Always Visible */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
         {/* Allergies */}
         <Card className="border-destructive/50">
           <CardHeader className="pb-2">
@@ -345,7 +345,10 @@ export default function KardexPage() {
         {/* Pressure Sore Risk */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Pressure Sore Risk</CardTitle>
+            <CardTitle className="text-sm">
+              <span className="sm:hidden">Pressure Risk</span>
+              <span className="hidden sm:inline">Pressure Sore Risk</span>
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Badge variant={kardex.pressure_sore_risk === 'HIGH' ? 'destructive' : kardex.pressure_sore_risk === 'MODERATE' ? 'warning' : 'success'}>
@@ -377,16 +380,16 @@ export default function KardexPage() {
             <div className="space-y-3">
               {kardex.shift_notes?.slice(0, 3).map((note) => (
                 <div key={note.id} className="border-l-2 border-primary/50 pl-3 py-1">
-                  <div className="flex items-center gap-2 text-sm">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                     <span className="font-medium">{note.nurse_username}</span>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs shrink-0">
                       {note.shift_display || note.shift}
                     </Badge>
                     <span className="text-muted-foreground text-xs">
                       {formatDateTime(note.timestamp || note.created_at)}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">{note.content || note.notes}</p>
+                  <p className="text-sm text-muted-foreground mt-1 break-words">{note.content || note.notes}</p>
                 </div>
               ))}
             </div>
@@ -395,10 +398,19 @@ export default function KardexPage() {
       )}
 
       <Tabs defaultValue="care" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="care">Care Information</TabsTrigger>
-          <TabsTrigger value="risks">Risk Assessment</TabsTrigger>
-          <TabsTrigger value="notes">Shift Notes</TabsTrigger>
+        <TabsList className="w-full justify-start overflow-x-auto">
+          <TabsTrigger value="care" className="gap-1.5">
+            <span className="sm:hidden">Care</span>
+            <span className="hidden sm:inline">Care Information</span>
+          </TabsTrigger>
+          <TabsTrigger value="risks" className="gap-1.5">
+            <span className="sm:hidden">Risks</span>
+            <span className="hidden sm:inline">Risk Assessment</span>
+          </TabsTrigger>
+          <TabsTrigger value="notes" className="gap-1.5">
+            <span className="sm:hidden">Notes</span>
+            <span className="hidden sm:inline">Shift Notes</span>
+          </TabsTrigger>
           <TabsTrigger value="handover">Handover</TabsTrigger>
         </TabsList>
 
@@ -636,13 +648,14 @@ export default function KardexPage() {
 
         {/* Shift Notes Tab */}
         <TabsContent value="notes" className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
             <h3 className="text-lg font-semibold">Shift Notes</h3>
             <Dialog open={shiftNoteOpen} onOpenChange={setShiftNoteOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button className="w-full sm:w-auto">
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Shift Note
+                  <span className="sm:hidden">Add Note</span>
+                  <span className="hidden sm:inline">Add Shift Note</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -699,8 +712,8 @@ export default function KardexPage() {
               {kardex.shift_notes?.map((note) => (
                 <Card key={note.id}>
                   <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline">{note.shift} Shift</Badge>
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <Badge variant="outline" className="w-fit">{note.shift} Shift</Badge>
                       <span className="text-sm text-muted-foreground">
                         {formatDateTime(note.timestamp)}
                       </span>
@@ -710,7 +723,7 @@ export default function KardexPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm whitespace-pre-wrap">{note.content}</p>
+                    <p className="text-sm whitespace-pre-wrap break-words">{note.content}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -720,13 +733,14 @@ export default function KardexPage() {
 
         {/* Handover Tab */}
         <TabsContent value="handover" className="space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
             <h3 className="text-lg font-semibold">Handover Notes</h3>
             <Dialog open={handoverNoteOpen} onOpenChange={setHandoverNoteOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button className="w-full sm:w-auto">
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Handover Note
+                  <span className="sm:hidden">Add Handover</span>
+                  <span className="hidden sm:inline">Add Handover Note</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -783,7 +797,7 @@ export default function KardexPage() {
               {kardex.handover_notes?.map((note) => (
                 <Card key={note.id}>
                   <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">{note.shift_ending}</Badge>
                         <span>→</span>
@@ -793,16 +807,16 @@ export default function KardexPage() {
                         {formatDateTime(note.created_at)}
                       </span>
                     </div>
-                    <CardDescription>
+                    <CardDescription className="truncate">
                       From {note.outgoing_nurse_username} to {note.incoming_nurse_username}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm whitespace-pre-wrap">{note.pending_tasks}</p>
+                    <p className="text-sm whitespace-pre-wrap break-words">{note.pending_tasks}</p>
                     {note.escalations && (
                       <div className="mt-2 pt-2 border-t">
                         <p className="text-sm font-medium text-destructive">Escalations:</p>
-                        <p className="text-sm whitespace-pre-wrap">{note.escalations}</p>
+                        <p className="text-sm whitespace-pre-wrap break-words">{note.escalations}</p>
                       </div>
                     )}
                     {note.acknowledged_at && (
