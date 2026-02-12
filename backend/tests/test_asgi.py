@@ -30,7 +30,7 @@ class TestAsgiConfiguration:
         assert "websocket" in application.application_mapping
 
     def test_websocket_urlpatterns_combined(self):
-        """WebSocket URL patterns should combine clinic and lab patterns."""
+        """WebSocket URL patterns should combine clinic, lab, and inpatient patterns."""
         # Verify clinic patterns are included
         clinic_patterns = [p for p in websocket_urlpatterns if "clinics" in p.pattern.regex.pattern]
         assert len(clinic_patterns) >= 1, "Clinic WebSocket patterns should be included"
@@ -39,10 +39,14 @@ class TestAsgiConfiguration:
         lab_patterns = [p for p in websocket_urlpatterns if "lab" in p.pattern.regex.pattern]
         assert len(lab_patterns) >= 1, "Lab WebSocket patterns should be included"
 
+        # Verify inpatient patterns are included
+        inpatient_patterns = [p for p in websocket_urlpatterns if "inpatient" in p.pattern.regex.pattern]
+        assert len(inpatient_patterns) >= 1, "Inpatient WebSocket patterns should be included"
+
     def test_websocket_urlpatterns_count(self):
-        """Should have 4 total WebSocket URL patterns (1 clinic + 3 lab)."""
-        # 1 clinic queue pattern + 3 lab patterns (encounter, order, clinician)
-        assert len(websocket_urlpatterns) == 4
+        """Should have 6 total WebSocket URL patterns (1 clinic + 3 lab + 2 inpatient)."""
+        # 1 clinic queue + 3 lab (encounter, order, clinician) + 2 inpatient (wards, supervisor)
+        assert len(websocket_urlpatterns) == 6
 
     def test_clinic_queue_pattern_exists(self):
         """Clinic queue WebSocket pattern should exist."""
@@ -139,6 +143,6 @@ class TestAsgiWebsocketRouting:
         assert not any("invalid" in p for p in pattern_paths)
         assert not any("unknown" in p for p in pattern_paths)
         
-        # All our patterns should only match clinic or lab routes
+        # All our patterns should only match clinic, lab, or inpatient routes
         for pattern in pattern_paths:
-            assert "clinics" in pattern or "lab" in pattern
+            assert "clinics" in pattern or "lab" in pattern or "inpatient" in pattern

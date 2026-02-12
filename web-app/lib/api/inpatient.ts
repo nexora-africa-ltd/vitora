@@ -36,6 +36,8 @@ import type {
   AdmissionRecommendationListResponse,
   Bed,
   BedListParams,
+  BulkCompatibilityResult,
+  CompatibilityCheckResult,
   Discharge,
   DischargeCreateData,
   DischargeListParams,
@@ -53,6 +55,7 @@ import type {
   ShiftHandoverCreateData,
   ShiftHandoverListParams,
   ShiftHandoverListResponse,
+  SupervisorAlertsResponse,
   Transfer,
   TransferCreateData,
   TransferListParams,
@@ -61,6 +64,7 @@ import type {
   WardRoundCreateData,
   WardRoundListParams,
   WardRoundListResponse,
+  WardUpdatesResponse,
 } from '@/lib/types/inpatient';
 
 type Paginated<T> = { count: number; next: string | null; previous: string | null; results: T[] };
@@ -321,5 +325,70 @@ export const inpatientApi = {
       `/api/inpatient/shift-handovers/${handoverId}/auto-populate/`
     );
     return parseResponse(ShiftHandoverSchema, response.data, { context: 'inpatientApi.autoPopulateShiftHandover' });
+  },
+
+  // ============================================================================
+  // Ward Compatibility
+  // ============================================================================
+
+  /**
+   * Check if a patient is compatible with a specific ward.
+   */
+  async checkWardCompatibility(
+    wardId: number,
+    patientId: number,
+    requiresIsolation?: boolean
+  ): Promise<CompatibilityCheckResult> {
+    const response = await apiClient.post<CompatibilityCheckResult>(
+      `/api/inpatient/wards/${wardId}/check_compatibility/`,
+      { patient_id: patientId, requires_isolation: requiresIsolation ?? false }
+    );
+    return response.data;
+  },
+
+  /**
+   * Bulk check patient compatibility across all active wards.
+   * Useful for emergency admissions needing quick bed assignment.
+   */
+  async bulkCheckCompatibility(
+    patientIds: number[],
+    requiresIsolation?: boolean[]
+  ): Promise<BulkCompatibilityResult> {
+    const response = await apiClient.post<BulkCompatibilityResult>(
+      '/api/inpatient/wards/bulk_check_compatibility/',
+      {
+        patient_ids: patientIds,
+        requires_isolation: requiresIsolation ?? [],
+      }
+    );
+    return response.data;
+  },
+
+  /**
+   * Polling fallback for ward updates when WebSocket is unavailable.
+   */
+  async getWardUpdates(wardId: number, since?: string): Promise<WardUpdatesResponse> {
+    const params: Record<string, string> = {};
+    if (since) params.since = since;
+    const response = await apiClient.get<WardUpdatesResponse>(
+      `/api/inpatient/wards/${wardId}/updates/`,
+      { params }
+    );
+    return response.data;
+  },
+
+  /**
+   * Get supervisor critical violation alerts (polling fallback).
+   * Requires receive_critical_alerts permission.
+   */
+  async getSupervisorAlerts(since?: string, limit?: number): Promise<SupervisorAlertsResponse> {
+    const params: Record<string, string | number> = {};
+    if (since) params.since = since;
+    if (limit) params.limit = limit;
+    const response = await apiClient.get<SupervisorAlertsResponse>(
+      '/api/inpatient/supervisor/alerts/',
+      { params }
+    );
+    return response.data;
   },
 };

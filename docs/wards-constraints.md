@@ -1298,7 +1298,7 @@ test('supervisor receives real-time alert for CRITICAL violations', async () => 
 - [x] Implement **CRITICAL violation → supervisor escalation** (WebSocket + email)
 - [x] Create Celery task `notify_supervisors_critical_violation`
 - [x] Create polling fallback endpoint
-- [ ] Create frontend hook with WS/polling hybrid (moved to Phase 3)
+- [x] Create frontend hook with WS/polling hybrid
 
 ### Phase 3: Frontend Integration (3-4 days)
 - [ ] Update ward form with constraint fields (auto-populated defaults shown)

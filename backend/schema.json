@@ -12503,6 +12503,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/ShiftHandover'
           description: ''
+  /api/inpatient/supervisor/alerts/:
+    get:
+      operationId: api_inpatient_supervisor_alerts_retrieve
+      description: |-
+        List recent critical violation alerts for supervisors.
+
+        Requires receive_critical_alerts permission.
+
+        Query parameters:
+        - since: ISO timestamp to filter alerts after (optional)
+        - limit: Maximum number of alerts to return (default: 20)
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/inpatient/transfers/:
     get:
       operationId: api_inpatient_transfers_list
@@ -13166,6 +13184,97 @@ paths:
         required: true
       tags:
       - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientWard'
+          description: ''
+  /api/inpatient/wards/{id}/check_compatibility/:
+    post:
+      operationId: api_inpatient_wards_check_compatibility_create
+      description: Check patient compatibility with this ward.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Ward.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InpatientWardRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InpatientWardRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InpatientWardRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientWard'
+          description: ''
+  /api/inpatient/wards/{id}/updates/:
+    get:
+      operationId: api_inpatient_wards_updates_retrieve
+      description: |-
+        Polling fallback endpoint for ward updates when WebSocket is unavailable.
+
+        Query parameters:
+        - since: ISO timestamp to filter events after (optional)
+
+        Returns:
+        - events: List of recent ward events (constraints updates, violations, etc.)
+        - current_state: Current ward constraint settings
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Ward.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InpatientWard'
+          description: ''
+  /api/inpatient/wards/bulk_check_compatibility/:
+    post:
+      operationId: api_inpatient_wards_bulk_check_compatibility_create
+      description: Bulk check compatibility for multiple patients across all wards.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InpatientWardRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InpatientWardRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InpatientWardRequest'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -23462,6 +23571,16 @@ components:
           readOnly: true
         insurance_details:
           description: Insurance information (for SHA/Corporate)
+        constraint_override:
+          type: boolean
+          readOnly: true
+          description: Whether compatibility constraints were overridden
+        constraint_override_reason:
+          type: string
+          description: Reason for overriding compatibility constraints
+        constraint_violations:
+          readOnly: true
+          description: List of violated constraints at admission time
         length_of_stay:
           type: integer
           description: |-
@@ -23490,6 +23609,8 @@ components:
       - attending_doctor_username
       - bed
       - bed_number
+      - constraint_override
+      - constraint_violations
       - created_at
       - id
       - ipd_encounter
@@ -23723,6 +23844,9 @@ components:
             * `CORPORATE` - Corporate
         insurance_details:
           description: Insurance information (for SHA/Corporate)
+        constraint_override_reason:
+          type: string
+          description: Reason for overriding compatibility constraints
       required:
       - admission_date
       - admitting_diagnosis
@@ -30255,6 +30379,16 @@ components:
         * `M` - Male
         * `F` - Female
         * `O` - Other
+    GenderRestrictionEnum:
+      enum:
+      - ANY
+      - MALE_ONLY
+      - FEMALE_ONLY
+      type: string
+      description: |-
+        * `ANY` - Any Gender
+        * `MALE_ONLY` - Male Only
+        * `FEMALE_ONLY` - Female Only
     HivStatusEnum:
       enum:
       - POSITIVE
@@ -30804,21 +30938,53 @@ components:
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
           description: Bed charge per day (must be positive)
+        gender_restriction:
+          allOf:
+          - $ref: '#/components/schemas/GenderRestrictionEnum'
+          description: |-
+            Gender restriction for patient admission
+
+            * `ANY` - Any Gender
+            * `MALE_ONLY` - Male Only
+            * `FEMALE_ONLY` - Female Only
+        min_age_years:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Minimum patient age in years (null = no minimum)
+        max_age_years:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Maximum patient age in years (null = no maximum)
+        isolation_capable:
+          type: boolean
+          description: Whether ward can handle isolation patients
+        oxygen_equipped:
+          type: boolean
+          description: Whether beds have oxygen supply
+        ventilator_capable:
+          type: boolean
+          description: Whether ward supports ventilated patients
         available_beds:
           type: integer
           description: |-
-            Count of beds with status AVAILABLE.
+            Count of available beds (capacity minus occupied, maintenance, reserved).
 
             Returns:
-                Number of beds in AVAILABLE status
+                Number of available beds
           readOnly: true
         total_beds:
           type: integer
           description: |-
-            Total count of beds in this ward.
+            Total bed capacity of this ward.
 
             Returns:
-                Total number of beds
+                Ward capacity (total number of beds)
           readOnly: true
         occupied_beds:
           type: integer
@@ -30832,7 +30998,7 @@ components:
           type: number
           format: double
           description: |-
-            Current occupancy percentage.
+            Current occupancy percentage based on capacity.
 
             Returns:
                 Occupancy rate as percentage (0-100)
@@ -30859,6 +31025,91 @@ components:
       - updated_at
       - ward_type
       - ward_type_display
+    InpatientWardRequest:
+      type: object
+      description: Serializer for Ward model (inpatient-specific with occupancy stats).
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Unique ward name (e.g., 'Medical Ward 1')
+          maxLength: 100
+        code:
+          type: string
+          minLength: 1
+          description: Unique ward code (e.g., 'MED-01')
+          maxLength: 20
+        ward_type:
+          allOf:
+          - $ref: '#/components/schemas/WardTypeEnum'
+          description: |-
+            Type of ward
+
+            * `MEDICAL` - Medical Ward
+            * `SURGICAL` - Surgical Ward
+            * `PEDIATRIC` - Pediatric Ward
+            * `MATERNITY` - Maternity Ward
+            * `ICU` - Intensive Care Unit
+            * `ISOLATION` - Isolation Ward
+        floor:
+          type: string
+          description: Floor location
+          maxLength: 50
+        capacity:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 1
+          format: int64
+          description: Total bed count (must be positive)
+        description:
+          type: string
+          description: Ward description
+        is_active:
+          type: boolean
+          description: Whether ward is currently active
+        daily_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          description: Bed charge per day (must be positive)
+        gender_restriction:
+          allOf:
+          - $ref: '#/components/schemas/GenderRestrictionEnum'
+          description: |-
+            Gender restriction for patient admission
+
+            * `ANY` - Any Gender
+            * `MALE_ONLY` - Male Only
+            * `FEMALE_ONLY` - Female Only
+        min_age_years:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Minimum patient age in years (null = no minimum)
+        max_age_years:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          nullable: true
+          description: Maximum patient age in years (null = no maximum)
+        isolation_capable:
+          type: boolean
+          description: Whether ward can handle isolation patients
+        oxygen_equipped:
+          type: boolean
+          description: Whether beds have oxygen supply
+        ventilator_capable:
+          type: boolean
+          description: Whether ward supports ventilated patients
+      required:
+      - capacity
+      - code
+      - daily_rate
+      - name
+      - ward_type
     Invoice:
       type: object
       description: Serializer for Invoice model.
@@ -32014,10 +32265,11 @@ components:
           type: string
           readOnly: true
         numeric_value:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,11}(?:\.\d{0,4})?$
+          type: number
+          format: double
           nullable: true
+          description: Return numeric_value as float for frontend compatibility.
+          readOnly: true
         text_value:
           type: string
         option_value:
@@ -32052,15 +32304,32 @@ components:
           readOnly: true
         is_external_result:
           type: boolean
+        is_critical_result:
+          type: boolean
+          description: Requires immediate attention
+        is_amended:
+          type: boolean
+          description: Result has been amended
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
       required:
+      - created_at
       - entered_at
       - entered_by
       - formatted_value
       - id
+      - numeric_value
       - order_item
       - result_flag
       - test_code
       - test_name
+      - updated_at
     LabResultCreate:
       type: object
       description: Create/update result.
@@ -32255,11 +32524,6 @@ components:
       properties:
         order_item:
           type: integer
-        numeric_value:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,11}(?:\.\d{0,4})?$
-          nullable: true
         text_value:
           type: string
         option_value:
@@ -32280,6 +32544,12 @@ components:
           nullable: true
         is_external_result:
           type: boolean
+        is_critical_result:
+          type: boolean
+          description: Requires immediate attention
+        is_amended:
+          type: boolean
+          description: Result has been amended
       required:
       - order_item
     LabTestCategoryEnum:
@@ -34671,6 +34941,9 @@ components:
             * `CORPORATE` - Corporate
         insurance_details:
           description: Insurance information (for SHA/Corporate)
+        constraint_override_reason:
+          type: string
+          description: Reason for overriding compatibility constraints
     PatchedAppointmentRequest:
       type: object
       description: Serializer for Appointment model.
@@ -37068,13 +37341,19 @@ components:
         status:
           $ref: '#/components/schemas/StockBatchStatusEnum'
         cost_price:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         selling_price:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         supplier:
           type: string
           maxLength: 200
@@ -38293,6 +38572,9 @@ components:
         prescribed_by:
           type: integer
           readOnly: true
+        prescriber:
+          type: integer
+          readOnly: true
         prescriber_name:
           type: string
           description: Get prescriber full name.
@@ -38325,9 +38607,11 @@ components:
           readOnly: true
         is_fully_dispensed:
           type: boolean
+          description: Check if all items in prescription are fully dispensed.
           readOnly: true
         is_fully_dispensed_status:
           type: boolean
+          description: Alias for is_fully_dispensed (for frontend compatibility).
           readOnly: true
         items:
           type: array
@@ -38360,6 +38644,7 @@ components:
       - prescribed_at
       - prescribed_by
       - prescribed_date
+      - prescriber
       - prescriber_name
       - prescription_number
       - status
@@ -38461,7 +38746,16 @@ components:
           type: boolean
         cancellation_reason:
           type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
       required:
+      - created_at
       - dosage
       - drug
       - drug_code
@@ -38475,6 +38769,7 @@ components:
       - quantity_prescribed
       - remaining_qty
       - remaining_quantity
+      - updated_at
     PrescriptionItemRequest:
       type: object
       description: Serializer for PrescriptionItem model.
@@ -41707,22 +42002,37 @@ components:
         days_until_expiry:
           type: integer
           readOnly: true
+        days_to_expiry:
+          type: integer
+          readOnly: true
         is_expired_status:
+          type: boolean
+          readOnly: true
+        is_expired:
           type: boolean
           readOnly: true
         is_low_stock_status:
           type: boolean
           readOnly: true
+        is_low_stock:
+          type: boolean
+          readOnly: true
         status:
           $ref: '#/components/schemas/StockBatchStatusEnum'
         cost_price:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         selling_price:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         supplier:
           type: string
           maxLength: 200
@@ -41747,12 +42057,15 @@ components:
       - batch_number
       - cost_price
       - created_at
+      - days_to_expiry
       - days_until_expiry
       - drug
       - drug_name
       - expiry_date
       - id
+      - is_expired
       - is_expired_status
+      - is_low_stock
       - is_low_stock_status
       - quantity_available
       - quantity_damaged
@@ -41783,13 +42096,19 @@ components:
         status:
           $ref: '#/components/schemas/StockBatchStatusEnum'
         cost_price:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          type: number
+          format: double
+          maximum: 100000000
+          minimum: -100000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         selling_price:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
+          type: number
+          format: double
+          maximum: 10000000000
+          minimum: -10000000000
+          exclusiveMaximum: true
+          exclusiveMinimum: true
         supplier:
           type: string
           maxLength: 200
