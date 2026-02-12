@@ -1309,9 +1309,9 @@ test('supervisor receives real-time alert for CRITICAL violations', async () => 
 - [x] Add constraints display to ward detail page
 - [x] Update WardViewSet to allow PATCH for constraint updates
 - [x] Add `useCheckWardCompatibility` hook
-- [ ] Update bed selection to show compatibility status
-- [ ] Add **bulk assignment UI** for emergency scenarios
-- [ ] Write frontend tests
+- [x] Update bed selection to show compatibility status (`components/inpatient/bed-selection-grid.tsx`)
+- [x] Add **bulk assignment UI** for emergency scenarios (`app/(dashboard)/admissions/bulk-assign/page.tsx`)
+- [x] Write frontend tests (`e2e/inpatient/inpatient.spec.ts`)
 
 ### Phase 4: Reporting & Refinement (2 days)
 - [ ] Add override metrics to dashboard

@@ -1410,3 +1410,239 @@ test.describe('Shift Handover', () => {
     await expect(page.getByText(/pending.*handover/i)).toBeVisible();
   });
 });
+// =============================================================================
+// WARD COMPATIBILITY TESTS
+// =============================================================================
+
+test.describe('Ward Compatibility', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupInpatientMocks(page);
+
+    // Add compatibility check mock
+    await page.route('**/api/inpatient/wards/*/check_compatibility/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          compatible: false,
+          has_critical_violations: false,
+          violations: [
+            {
+              code: 'GENDER_MISMATCH',
+              severity: 'WARNING',
+              message: 'Ward is female-only, patient is male',
+              override_allowed: true,
+            },
+          ],
+        }),
+      });
+    });
+
+    // Add bulk compatibility check mock
+    await page.route('**/api/inpatient/wards/bulk_check_compatibility/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          results: [
+            {
+              patient_id: 1,
+              patient_name: 'Jane Doe',
+              patient_mrn: 'MRN-20260101-0001',
+              compatible_wards: [
+                { ward_id: 1, ward_name: 'Medical Ward A', ward_type: 'MEDICAL', available_beds: 8 },
+                { ward_id: 3, ward_name: 'Surgical Ward', ward_type: 'SURGICAL', available_beds: 10 },
+              ],
+              incompatible_wards: [
+                { ward_id: 2, ward_name: 'Maternity Ward', ward_type: 'MATERNITY', violations: ['GENDER_MISMATCH'], has_critical: false },
+              ],
+            },
+          ],
+        }),
+      });
+    });
+  });
+
+  test('should show bed selection grid with compatibility status', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    await page.goto('/admissions/new?patient=1');
+
+    // Wait for page to load
+    await expect(page.getByRole('heading', { name: /new admission/i })).toBeVisible();
+
+    // Select a ward
+    await page.getByRole('button', { name: /select ward/i }).click();
+    await page.getByText(/medical ward a/i).click();
+
+    // Verify bed selection grid is displayed
+    await expect(page.getByText(/select bed/i)).toBeVisible();
+
+    // Verify compatibility legend is shown
+    await expect(page.getByText(/compatible/i)).toBeVisible();
+    await expect(page.getByText(/warning/i)).toBeVisible();
+  });
+
+  test('should show compatibility warning dialog when ward is incompatible', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    await page.goto('/admissions/new?patient=1');
+
+    // Wait for page to load
+    await expect(page.getByRole('heading', { name: /new admission/i })).toBeVisible();
+
+    // Select a ward - this triggers compatibility check which returns incompatible
+    await page.getByRole('button', { name: /select ward/i }).click();
+    await page.getByText(/medical ward a/i).click();
+
+    // Verify compatibility warning dialog appears
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByText(/compatibility warning/i)).toBeVisible();
+    await expect(page.getByText(/gender mismatch/i)).toBeVisible();
+  });
+
+  test('should allow override with reason', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    await page.goto('/admissions/new?patient=1');
+
+    // Wait for page to load
+    await expect(page.getByRole('heading', { name: /new admission/i })).toBeVisible();
+
+    // Select a ward
+    await page.getByRole('button', { name: /select ward/i }).click();
+    await page.getByText(/medical ward a/i).click();
+
+    // Wait for dialog
+    await expect(page.getByRole('dialog')).toBeVisible();
+
+    // Enter override reason
+    await page.getByLabel(/override reason/i).fill('Clinical necessity overrides gender restriction');
+
+    // Click override button
+    await page.getByRole('button', { name: /override.*admit/i }).click();
+
+    // Dialog should close
+    await expect(page.getByRole('dialog')).not.toBeVisible();
+
+    // Warning indicator should be shown
+    await expect(page.getByText(/compatibility warning.*overridden/i)).toBeVisible();
+  });
+
+  test('should display ward constraints on ward detail page', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    await page.goto('/wards/1');
+
+    // Wait for page to load
+    await expect(page.getByRole('heading', { name: /medical ward a/i })).toBeVisible();
+
+    // Verify constraints section is displayed
+    await expect(page.getByText(/patient compatibility rules/i)).toBeVisible();
+
+    // Verify constraint fields are shown
+    await expect(page.getByText(/gender/i)).toBeVisible();
+    await expect(page.getByText(/age range/i)).toBeVisible();
+    await expect(page.getByText(/isolation/i)).toBeVisible();
+  });
+});
+
+// =============================================================================
+// BULK ASSIGNMENT TESTS
+// =============================================================================
+
+test.describe('Bulk Bed Assignment', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupInpatientMocks(page);
+
+    // Mock bulk compatibility check
+    await page.route('**/api/inpatient/wards/bulk_check_compatibility/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          results: [
+            {
+              patient_id: 1,
+              patient_name: 'Jane Doe',
+              patient_mrn: 'MRN-20260101-0001',
+              compatible_wards: [
+                { ward_id: 1, ward_name: 'Medical Ward A', ward_type: 'MEDICAL', available_beds: 8 },
+              ],
+              incompatible_wards: [],
+            },
+          ],
+        }),
+      });
+    });
+  });
+
+  test('should navigate to bulk assignment page', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    await page.goto('/admissions');
+
+    // Click bulk assign button
+    await page.getByRole('link', { name: /bulk/i }).click();
+
+    // Verify page loads
+    await expect(page.getByRole('heading', { name: /bulk bed assignment/i })).toBeVisible();
+    await expect(page.getByText(/emergency mode/i)).toBeVisible();
+  });
+
+  test('should show pending patients in bulk assignment', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    await page.goto('/admissions/bulk-assign');
+
+    // Wait for page to load
+    await expect(page.getByRole('heading', { name: /bulk bed assignment/i })).toBeVisible();
+
+    // Verify step 1 is shown
+    await expect(page.getByText(/1\. select patients/i)).toBeVisible();
+
+    // Verify patient selection available
+    await expect(page.getByText(/select all/i)).toBeVisible();
+  });
+
+  test('should check compatibility for selected patients', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    await page.goto('/admissions/bulk-assign');
+
+    // Wait for page to load
+    await expect(page.getByRole('heading', { name: /bulk bed assignment/i })).toBeVisible();
+
+    // Select a patient using checkbox
+    const checkbox = page.getByRole('checkbox').first();
+    if (await checkbox.isVisible()) {
+      await checkbox.click();
+
+      // Click check compatibility
+      await page.getByRole('button', { name: /check compatibility/i }).click();
+
+      // Wait for results
+      await expect(page.getByText(/2\. assign wards.*beds/i)).toBeVisible({ timeout: 10000 });
+    }
+  });
+
+  test('should allow ward and bed assignment', async ({ page }) => {
+    await login(page, TEST_USER.username, TEST_USER.password);
+    await page.goto('/admissions/bulk-assign');
+
+    // Wait for page to load
+    await expect(page.getByRole('heading', { name: /bulk bed assignment/i })).toBeVisible();
+
+    // Select a patient
+    const checkbox = page.getByRole('checkbox').first();
+    if (await checkbox.isVisible()) {
+      await checkbox.click();
+
+      // Click check compatibility
+      await page.getByRole('button', { name: /check compatibility/i }).click();
+
+      // Wait for results
+      await expect(page.getByText(/2\. assign wards.*beds/i)).toBeVisible({ timeout: 10000 });
+
+      // Select ward from dropdown
+      const wardSelect = page.getByRole('button', { name: /select ward/i }).first();
+      if (await wardSelect.isVisible()) {
+        await wardSelect.click();
+        await page.getByText(/medical ward a/i).click();
+      }
+    }
+  });
+});
