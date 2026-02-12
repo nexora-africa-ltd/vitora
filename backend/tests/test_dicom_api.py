@@ -112,7 +112,7 @@ def dicom_upload_file():
         patient_name="Smith^Jane",
         patient_id="MRN-20260101-0001",
         study_description="Chest X-Ray PA",
-        accession_number="ACC-20260207-0001",
+        accession_number="A260207-0001",
         body_part_examined="CHEST",
     )
     with open(dcm_path, "rb") as f:
@@ -169,7 +169,7 @@ def sample_dicom_study(db, sample_patient, sample_imaging_order, test_user):
         study_date=date(2026, 2, 7),
         study_time=time(10, 30, 0),
         study_description="Chest X-Ray PA",
-        accession_number="ACC-20260207-0001",
+        accession_number="A260207-0001",
         modality="XR",
         institution_name="Demo Health Facility",
         number_of_series=1,

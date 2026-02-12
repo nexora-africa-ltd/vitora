@@ -49,7 +49,7 @@ def temp_dicom_file():
         study_description="Chest X-Ray PA",
         series_description="PA Projection",
         body_part_examined="CHEST",
-        accession_number="ACC-20260207-0001",
+        accession_number="A260207-0001",
         referring_physician="Dr. Kamau",
         institution_name="Demo Health Facility",
     )
@@ -176,7 +176,7 @@ class TestDICOMParsingService:
         metadata = DICOMParsingService.parse_file(temp_dicom_file)
 
         assert metadata["study_description"] == "Chest X-Ray PA"
-        assert metadata["accession_number"] == "ACC-20260207-0001"
+        assert metadata["accession_number"] == "A260207-0001"
         assert metadata["referring_physician_name"] == "Dr. Kamau"
         assert metadata["institution_name"] == "Demo Health Facility"
         assert metadata["study_date"] == date(2026, 2, 7)

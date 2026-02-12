@@ -2508,7 +2508,7 @@ class Command(BaseCommand):
                 if status in ["IN_PROGRESS", "COMPLETED", "REPORTED"]:
                     order.status = "IN_PROGRESS"
                     # Generate PACS accession number
-                    order.accession_number = f"ACC-{today.strftime('%Y%m%d')}-{randint(1000, 9999)}"
+                    order.accession_number = f"A{today.strftime('%y%m%d')}-{randint(1000, 9999)}"
                     order.save(update_fields=["status", "accession_number"])
 
                 if status in ["COMPLETED", "REPORTED"]:
