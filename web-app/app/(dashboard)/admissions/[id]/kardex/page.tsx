@@ -24,7 +24,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -237,25 +236,24 @@ export default function KardexPage() {
         actions={
           <div className="flex gap-2">
             <Dialog open={shiftNoteOpen} onOpenChange={setShiftNoteOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Plus className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Shift Note</span>
-                  <span className="sm:hidden">Note</span>
-                </Button>
-              </DialogTrigger>
-            <DialogContent>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Plus className="h-4 w-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">Shift Note</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Add Shift Note</DialogTitle>
-                <DialogDescription>
-                  Record observations and care provided during your shift.
-                </DialogDescription>
+                <div className="flex items-center gap-2">
+                  <DialogTitle>Add Shift Note</DialogTitle>
+                  <HelpPopover content="Record your clinical observations, patient responses to treatment, and care activities performed during your shift." />
+                </div>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-4 py-2">
                 <div className="space-y-2">
-                  <Label htmlFor="shift-select">Shift</Label>
+                  <Label htmlFor="shift-select" className="text-sm font-medium">Shift</Label>
                   <Select value={shiftNoteType} onValueChange={(v) => setShiftNoteType(v as ShiftType)}>
-                    <SelectTrigger id="shift-select">
+                    <SelectTrigger id="shift-select" className="w-full">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -268,20 +266,26 @@ export default function KardexPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="notes-input">Notes</Label>
+                  <Label htmlFor="notes-input" className="text-sm font-medium">Notes</Label>
                   <Textarea
                     id="notes-input"
                     value={shiftNoteContent}
                     onChange={(e) => setShiftNoteContent(e.target.value)}
-                    placeholder="Record your observations..."
-                    rows={4}
+                    placeholder="Patient condition, vitals, medications given, interventions performed..."
+                    className="min-h-[120px] resize-none"
                   />
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShiftNoteOpen(false)}>Cancel</Button>
-                <Button onClick={handleAddShiftNote} disabled={!shiftNoteContent || addShiftNote.isPending}>
-                  {addShiftNote.isPending ? 'Adding...' : 'Save'}
+              <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
+                <Button variant="outline" onClick={() => setShiftNoteOpen(false)} className="w-full sm:w-auto">
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleAddShiftNote} 
+                  disabled={!shiftNoteContent.trim() || addShiftNote.isPending}
+                  className="w-full sm:w-auto"
+                >
+                  {addShiftNote.isPending ? 'Saving...' : 'Save Note'}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -398,20 +402,20 @@ export default function KardexPage() {
       )}
 
       <Tabs defaultValue="care" className="space-y-4">
-        <TabsList className="w-full justify-start overflow-x-auto">
-          <TabsTrigger value="care" className="gap-1.5">
+        <TabsList className="w-full grid grid-cols-4 h-auto">
+          <TabsTrigger value="care" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Care</span>
-            <span className="hidden sm:inline">Care Information</span>
+            <span className="hidden sm:inline">Care Info</span>
           </TabsTrigger>
-          <TabsTrigger value="risks" className="gap-1.5">
+          <TabsTrigger value="risks" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Risks</span>
-            <span className="hidden sm:inline">Risk Assessment</span>
+            <span className="hidden sm:inline">Risks</span>
           </TabsTrigger>
-          <TabsTrigger value="notes" className="gap-1.5">
+          <TabsTrigger value="notes" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Notes</span>
             <span className="hidden sm:inline">Shift Notes</span>
           </TabsTrigger>
-          <TabsTrigger value="handover">Handover</TabsTrigger>
+          <TabsTrigger value="handover" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">Handover</TabsTrigger>
         </TabsList>
 
         {/* Care Information Tab */}
@@ -652,24 +656,23 @@ export default function KardexPage() {
             <h3 className="text-lg font-semibold">Shift Notes</h3>
             <Dialog open={shiftNoteOpen} onOpenChange={setShiftNoteOpen}>
               <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto">
-                  <Plus className="h-4 w-4 mr-2" />
-                  <span className="sm:hidden">Add Note</span>
+                <Button className="w-full sm:w-auto" size="sm">
+                  <Plus className="h-4 w-4 sm:mr-1.5" />
                   <span className="hidden sm:inline">Add Shift Note</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Add Shift Note</DialogTitle>
-                  <DialogDescription>
-                    Record observations and care provided during your shift.
-                  </DialogDescription>
+                  <div className="flex items-center gap-2">
+                    <DialogTitle>Add Shift Note</DialogTitle>
+                    <HelpPopover content="Record your clinical observations, patient responses to treatment, and care activities performed during your shift." />
+                  </div>
                 </DialogHeader>
-                <div className="space-y-4">
+                <div className="space-y-4 py-2">
                   <div className="space-y-2">
-                    <Label>Shift</Label>
+                    <Label className="text-sm font-medium">Shift</Label>
                     <Select value={shiftNoteType} onValueChange={(v) => setShiftNoteType(v as ShiftType)}>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -682,19 +685,25 @@ export default function KardexPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Note</Label>
+                    <Label className="text-sm font-medium">Note</Label>
                     <Textarea
                       value={shiftNoteContent}
                       onChange={(e) => setShiftNoteContent(e.target.value)}
-                      placeholder="Record your observations..."
-                      rows={4}
+                      placeholder="Patient condition, vitals, medications given, interventions performed..."
+                      className="min-h-[120px] resize-none"
                     />
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShiftNoteOpen(false)}>Cancel</Button>
-                  <Button onClick={handleAddShiftNote} disabled={!shiftNoteContent || addShiftNote.isPending}>
-                    {addShiftNote.isPending ? 'Adding...' : 'Add Note'}
+                <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
+                  <Button variant="outline" onClick={() => setShiftNoteOpen(false)} className="w-full sm:w-auto">
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleAddShiftNote} 
+                    disabled={!shiftNoteContent.trim() || addShiftNote.isPending}
+                    className="w-full sm:w-auto"
+                  >
+                    {addShiftNote.isPending ? 'Saving...' : 'Save Note'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -737,24 +746,23 @@ export default function KardexPage() {
             <h3 className="text-lg font-semibold">Handover Notes</h3>
             <Dialog open={handoverNoteOpen} onOpenChange={setHandoverNoteOpen}>
               <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto">
-                  <Plus className="h-4 w-4 mr-2" />
-                  <span className="sm:hidden">Add Handover</span>
-                  <span className="hidden sm:inline">Add Handover Note</span>
+                <Button className="w-full sm:w-auto" size="sm">
+                  <Plus className="h-4 w-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Add Handover</span>
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Add Handover Note</DialogTitle>
-                  <DialogDescription>
-                    Document important information for the incoming shift.
-                  </DialogDescription>
+                  <div className="flex items-center gap-2">
+                    <DialogTitle>Add Handover Note</DialogTitle>
+                    <HelpPopover content="Document critical patient information, pending tasks, and special observations for the incoming nursing team." />
+                  </div>
                 </DialogHeader>
-                <div className="space-y-4">
+                <div className="space-y-4 py-2">
                   <div className="space-y-2">
-                    <Label>Your Shift (Ending)</Label>
+                    <Label className="text-sm font-medium">Your Shift (Ending)</Label>
                     <Select value={handoverNoteShift} onValueChange={(v) => setHandoverNoteShift(v as ShiftType)}>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -765,21 +773,30 @@ export default function KardexPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Handing over to: {handoverNoteShift === 'DAY' ? 'Night Shift' : 'Day Shift'}
+                    </p>
                   </div>
                   <div className="space-y-2">
-                    <Label>Handover Note</Label>
+                    <Label className="text-sm font-medium">Handover Note</Label>
                     <Textarea
                       value={handoverNoteContent}
                       onChange={(e) => setHandoverNoteContent(e.target.value)}
-                      placeholder="Important information for the incoming shift..."
-                      rows={4}
+                      placeholder="Pending treatments, patient concerns, vital changes, family updates..."
+                      className="min-h-[120px] resize-none"
                     />
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setHandoverNoteOpen(false)}>Cancel</Button>
-                  <Button onClick={handleAddHandoverNote} disabled={!handoverNoteContent || addHandoverNote.isPending}>
-                    {addHandoverNote.isPending ? 'Adding...' : 'Add Handover'}
+                <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
+                  <Button variant="outline" onClick={() => setHandoverNoteOpen(false)} className="w-full sm:w-auto">
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleAddHandoverNote} 
+                    disabled={!handoverNoteContent.trim() || addHandoverNote.isPending}
+                    className="w-full sm:w-auto"
+                  >
+                    {addHandoverNote.isPending ? 'Saving...' : 'Save Handover'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
