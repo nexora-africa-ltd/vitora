@@ -16,16 +16,15 @@ interface PageHeaderProps {
  * Responsive: stacks on mobile, horizontal on sm+ screens.
  */
 export function PageHeader({ title, description, helpContent, actions }: PageHeaderProps) {
+  const effectiveHelpContent = helpContent ?? description;
+
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">{title}</h1>
-          {helpContent && <HelpPopover content={helpContent} />}
+          {effectiveHelpContent && <HelpPopover content={effectiveHelpContent} />}
         </div>
-        {description && (
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">{description}</p>
-        )}
       </div>
       {actions && (
         <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center shrink-0">

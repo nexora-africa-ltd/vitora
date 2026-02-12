@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, Building2, Save, Loader2, Shield } from 'lucide-react';
+import { Save, Loader2, Shield } from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,7 +24,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -140,13 +140,9 @@ export default function WardEditPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 w-10" />
-          <Skeleton className="h-4 w-24" />
-        </div>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-[400px]" />
+        <Skeleton className="h-[520px]" />
       </div>
     );
   }
@@ -166,29 +162,24 @@ export default function WardEditPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <Link href={`/wards/${wardId}`} className="text-sm text-muted-foreground hover:text-primary">
-          Back to {ward.name}
-        </Link>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <Building2 className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">Edit Ward: {ward.name}</h1>
-      </div>
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+      <PageHeader
+        title={`Edit Ward ${ward.name}`}
+        helpContent="Update ward details and admission compatibility rules. Changes apply immediately to new admissions."
+        actions={
+          <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
+            <Link href={`/wards/${wardId}`}>View Ward</Link>
+          </Button>
+        }
+      />
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Ward Details</CardTitle>
-            <CardDescription>
-              Update the basic information for this ward.
-            </CardDescription>
+            <div className="flex items-center gap-2">
+              <CardTitle>Ward Details</CardTitle>
+              <HelpPopover content="Update the basic information for this ward." />
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
@@ -285,10 +276,10 @@ export default function WardEditPage() {
 
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <Label htmlFor="is_active">Ward Active</Label>
-                <p className="text-sm text-muted-foreground">
-                  Inactive wards won&apos;t accept new admissions.
-                </p>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="is_active">Ward Active</Label>
+                  <HelpPopover content="Inactive wards won't accept new admissions." />
+                </div>
               </div>
               <Switch
                 id="is_active"
@@ -357,7 +348,10 @@ export default function WardEditPage() {
 
             {/* Equipment Capabilities */}
             <div className="space-y-3">
-              <Label className="text-base">Equipment & Capabilities</Label>
+              <div className="flex items-center gap-2">
+                <Label className="text-base">Equipment & Capabilities</Label>
+                <HelpPopover content="Set the equipment and capabilities available in this ward." />
+              </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="flex items-center space-x-2 rounded-lg border p-3">
                   <Checkbox
@@ -366,12 +360,12 @@ export default function WardEditPage() {
                     onCheckedChange={(checked) => form.setValue('isolation_capable', checked === true)}
                   />
                   <div className="space-y-0.5">
-                    <Label htmlFor="isolation_capable" className="text-sm font-medium cursor-pointer">
-                      Isolation Capable
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Can isolate infectious patients
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="isolation_capable" className="text-sm font-medium cursor-pointer">
+                        Isolation Capable
+                      </Label>
+                      <HelpPopover content="Can isolate infectious patients." />
+                    </div>
                   </div>
                 </div>
 
@@ -382,12 +376,12 @@ export default function WardEditPage() {
                     onCheckedChange={(checked) => form.setValue('oxygen_equipped', checked === true)}
                   />
                   <div className="space-y-0.5">
-                    <Label htmlFor="oxygen_equipped" className="text-sm font-medium cursor-pointer">
-                      Oxygen Equipped
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Bedside oxygen supply
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="oxygen_equipped" className="text-sm font-medium cursor-pointer">
+                        Oxygen Equipped
+                      </Label>
+                      <HelpPopover content="Bedside oxygen supply." />
+                    </div>
                   </div>
                 </div>
 
@@ -398,12 +392,12 @@ export default function WardEditPage() {
                     onCheckedChange={(checked) => form.setValue('ventilator_capable', checked === true)}
                   />
                   <div className="space-y-0.5">
-                    <Label htmlFor="ventilator_capable" className="text-sm font-medium cursor-pointer">
-                      Ventilator Capable
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Mechanical ventilation support
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="ventilator_capable" className="text-sm font-medium cursor-pointer">
+                        Ventilator Capable
+                      </Label>
+                      <HelpPopover content="Mechanical ventilation support." />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -415,7 +409,7 @@ export default function WardEditPage() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.back()}
+            onClick={() => router.push(`/wards/${wardId}`)}
           >
             Cancel
           </Button>

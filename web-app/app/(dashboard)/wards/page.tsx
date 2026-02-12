@@ -12,8 +12,9 @@ import {
   Filter
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -25,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import {
   useInpatientWards,
   useAdmissions,
@@ -32,6 +34,7 @@ import {
 } from '@/lib/hooks/use-inpatient';
 
 export default function WardsPage() {
+  const { refresh, isRefreshing } = usePageRefresh();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedWard, setSelectedWard] = useState<string>('all');
 
@@ -73,27 +76,29 @@ export default function WardsPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <PageHeader
-        title="Ward Dashboard"
-        description="Manage wards, beds, and patient locations"
-        actions={
-          <Button asChild>
-            <Link href="/admissions/new">
-              <Plus className="h-4 w-4 mr-2" />
-              New Admission
-            </Link>
-          </Button>
-        }
-      />
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+        <PageHeader
+          title="Wards"
+          helpContent="Manage wards, bed occupancy, and inpatient locations. Pull down to refresh on mobile, or use the refresh button in the header."
+          actions={
+            <Button asChild className="gap-2 w-full sm:w-auto">
+              <Link href="/admissions/new">
+                <Plus className="h-4 w-4" />
+                <span className="sm:hidden">Admit</span>
+                <span className="hidden sm:inline">New Admission</span>
+              </Link>
+            </Button>
+          }
+        />
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
-                <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="p-2 rounded-lg bg-muted">
+                <Building2 className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Wards</p>
@@ -106,8 +111,8 @@ export default function WardsPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
-                <Bed className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <div className="p-2 rounded-lg bg-muted">
+                <Bed className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Beds</p>
@@ -120,8 +125,8 @@ export default function WardsPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900">
-                <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <div className="p-2 rounded-lg bg-muted">
+                <Users className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Active Patients</p>
@@ -134,8 +139,8 @@ export default function WardsPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900">
-                <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              <div className="p-2 rounded-lg bg-muted">
+                <AlertCircle className="h-5 w-5" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Occupancy Rate</p>
@@ -150,12 +155,12 @@ export default function WardsPage() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-lg">Hospital Bed Occupancy</CardTitle>
-          <CardDescription>
-            {occupiedBeds} of {totalBeds} beds occupied
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <Progress value={occupancyRate} className="h-3" />
+          <p className="text-sm text-muted-foreground mt-2">
+            {occupiedBeds} of {totalBeds} beds occupied
+          </p>
         </CardContent>
       </Card>
 
@@ -171,7 +176,7 @@ export default function WardsPage() {
           />
         </div>
         <Select value={selectedWard} onValueChange={setSelectedWard}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full sm:w-[200px]">
             <Filter className="h-4 w-4 mr-2" />
             <SelectValue placeholder="Filter by ward" />
           </SelectTrigger>
@@ -201,23 +206,20 @@ export default function WardsPage() {
           ))
         )}
       </div>
-    </div>
+      </div>
+    </PullToRefresh>
   );
 }
 
 function WardCard({ ward }: { ward: any }) {
-  const { data: beds, isLoading } = useWardBeds(ward.id);
+  const { data: beds } = useWardBeds(ward.id);
 
   const totalBeds = ward.total_beds || 0;
   const occupiedBeds = ward.occupied_beds || 0;
   const availableBeds = totalBeds - occupiedBeds;
   const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
 
-  const occupancyColor = occupancyRate >= 90
-    ? 'text-red-600'
-    : occupancyRate >= 70
-    ? 'text-yellow-600'
-    : 'text-green-600';
+  const occupancyColor = occupancyRate >= 90 ? 'text-destructive' : 'text-muted-foreground';
 
   const bedStatusCounts = useMemo(() => {
     const bedsList = (Array.isArray(beds) ? beds : beds?.results ?? []);
@@ -230,17 +232,17 @@ function WardCard({ ward }: { ward: any }) {
   }, [beds]);
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">{ward.name}</CardTitle>
           <Badge
             variant={ward.ward_type === 'ICU' ? 'destructive' : 'outline'}
+            className="shrink-0 w-fit self-start sm:self-auto"
           >
             {ward.ward_type_display || ward.ward_type}
           </Badge>
         </div>
-        <CardDescription>{ward.description || 'No description'}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Occupancy */}
@@ -256,20 +258,20 @@ function WardCard({ ward }: { ward: any }) {
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="flex items-center justify-between p-2 rounded bg-muted/50">
             <span>Available</span>
-            <Badge variant="secondary" className="bg-green-100 text-green-800">
+            <Badge variant="secondary" className="shrink-0 w-fit self-start sm:self-auto">
               {bedStatusCounts.available || availableBeds}
             </Badge>
           </div>
           <div className="flex items-center justify-between p-2 rounded bg-muted/50">
             <span>Occupied</span>
-            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+            <Badge variant="secondary" className="shrink-0 w-fit self-start sm:self-auto">
               {bedStatusCounts.occupied || occupiedBeds}
             </Badge>
           </div>
           {bedStatusCounts.maintenance > 0 && (
             <div className="flex items-center justify-between p-2 rounded bg-muted/50">
               <span>Maintenance</span>
-              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+              <Badge variant="secondary" className="shrink-0 w-fit self-start sm:self-auto">
                 {bedStatusCounts.maintenance}
               </Badge>
             </div>
@@ -277,7 +279,7 @@ function WardCard({ ward }: { ward: any }) {
           {bedStatusCounts.reserved > 0 && (
             <div className="flex items-center justify-between p-2 rounded bg-muted/50">
               <span>Reserved</span>
-              <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+              <Badge variant="secondary" className="shrink-0 w-fit self-start sm:self-auto">
                 {bedStatusCounts.reserved}
               </Badge>
             </div>
@@ -285,13 +287,13 @@ function WardCard({ ward }: { ward: any }) {
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2 pt-2">
-          <Button variant="outline" size="sm" className="flex-1" asChild>
+        <div className="flex flex-col gap-2 pt-2 sm:flex-row">
+          <Button variant="outline" size="sm" className="w-full sm:flex-1" asChild>
             <Link href={`/wards/${ward.id}`}>
               View Details
             </Link>
           </Button>
-          <Button size="sm" className="flex-1" asChild disabled={availableBeds === 0}>
+          <Button size="sm" className="w-full sm:flex-1" asChild disabled={availableBeds === 0}>
             <Link href={`/admissions/new?ward=${ward.id}`}>
               Admit Patient
             </Link>
@@ -304,7 +306,7 @@ function WardCard({ ward }: { ward: any }) {
 
 function WardsSkeleton() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between">
         <div className="space-y-2">
           <Skeleton className="h-8 w-48" />

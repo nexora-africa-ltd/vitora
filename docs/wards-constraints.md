@@ -1,6 +1,6 @@
 # Ward Patient Compatibility Constraints - Implementation Plan
 
-> **Status**: In Progress (Phase 2 Complete)  
+> **Status**: In Progress (Phase 3 Partial)  
 > **Created**: February 12, 2026  
 > **Target Sprint**: TBD  
 > **PowerSync**: Phase 5 (Future Sprint - documented)
@@ -1303,10 +1303,12 @@ test('supervisor receives real-time alert for CRITICAL violations', async () => 
 - [x] Add Zod schemas for ward updates and supervisor alerts (`lib/schemas/inpatient.schema.ts`)
 
 ### Phase 3: Frontend Integration (3-4 days)
-- [ ] Update ward form with constraint fields (auto-populated defaults shown)
-- [ ] Add compatibility check to admission flow
-- [ ] Create override warning dialog
-- [ ] Add constraints display to ward detail page
+- [x] Update ward form with constraint fields (auto-populated defaults shown)
+- [x] Add compatibility check to admission flow
+- [x] Create override warning dialog (`components/inpatient/compatibility-override-dialog.tsx`)
+- [x] Add constraints display to ward detail page
+- [x] Update WardViewSet to allow PATCH for constraint updates
+- [x] Add `useCheckWardCompatibility` hook
 - [ ] Update bed selection to show compatibility status
 - [ ] Add **bulk assignment UI** for emergency scenarios
 - [ ] Write frontend tests
