@@ -164,6 +164,7 @@ export interface ImagingOrder {
   patient: number;
   patient_name?: string | null;
   encounter: number;
+  admission?: number | null;
   ordered_by: number;
   ordered_by_name?: string | null;
   priority: ImagingPriority;

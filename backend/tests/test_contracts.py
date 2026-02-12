@@ -591,7 +591,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
     (
         PrescriptionSerializer,
         frozenset({
-            "id", "prescription_number", "encounter",
+            "id", "prescription_number", "encounter", "admission",
             "patient", "patient_name", "patient_mrn",
             "prescribed_by", "prescriber", "prescriber_name",
             "prescribed_at", "prescribed_date", "valid_until",
@@ -662,7 +662,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         LabOrderSerializer,
         frozenset({
             "id", "order_number", "patient", "patient_name",
-            "encounter", "ordered_by", "ordered_by_name",
+            "encounter", "admission", "ordered_by", "ordered_by_name",
             "order_type", "external_lab", "priority",
             "clinical_notes", "status",
             "specimen_collected", "total_cost",
@@ -879,7 +879,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         ImagingOrderSerializer,
         frozenset({
             "id", "order_number", "patient", "patient_name",
-            "encounter", "ordered_by", "ordered_by_name",
+            "encounter", "admission", "ordered_by", "ordered_by_name",
             "priority", "clinical_indication",
             "relevant_clinical_history", "status",
             "scheduled_datetime", "scheduled_room",
