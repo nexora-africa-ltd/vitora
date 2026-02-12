@@ -1483,6 +1483,51 @@ class ShiftHandover(TimeStampedModel):
         self.save()
 
 
+class SupervisorAlertAcknowledgment(TimeStampedModel):
+    """
+    Acknowledgment record for supervisor critical violation alerts.
+
+    Tracks when supervisors acknowledge critical constraint violations
+    that were overridden during admission.
+
+    Attributes:
+        admission: Admission with critical violation(s)
+        acknowledged_by: Supervisor who acknowledged the alert
+        acknowledged_at: When the alert was acknowledged
+        notes: Optional notes from the supervisor
+    """
+
+    admission = models.OneToOneField(
+        Admission,
+        on_delete=models.CASCADE,
+        related_name="alert_acknowledgment",
+        help_text="Admission with critical violation(s)",
+    )
+    acknowledged_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="inpatient_acknowledged_alerts",
+        help_text="Supervisor who acknowledged the alert",
+    )
+    acknowledged_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the alert was acknowledged",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Optional notes from the supervisor",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-acknowledged_at"]
+        verbose_name = "Supervisor Alert Acknowledgment"
+        verbose_name_plural = "Supervisor Alert Acknowledgments"
+
+    def __str__(self):
+        return f"Alert acknowledged for {self.admission.admission_number} by {self.acknowledged_by.username}"
+
+
 # ============================================================================
 # Signals
 # ============================================================================

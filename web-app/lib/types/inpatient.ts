@@ -647,14 +647,66 @@ export interface SupervisorAlert {
   patient_mrn: string;
   ward_id: number;
   ward_name: string;
+  bed_number: string;
   admitted_by: string;
   critical_violations: string[];
   override_reason: string | null;
   timestamp: string;
+  // Acknowledgment fields
+  is_acknowledged?: boolean;
+  acknowledged_by?: string | null;
+  acknowledged_at?: string | null;
 }
 
 export interface SupervisorAlertsResponse {
   alerts: SupervisorAlert[];
+}
+
+// ============================================================================
+// Alert Acknowledgment Types
+// ============================================================================
+
+export interface AcknowledgeAlertRequest {
+  admission_id: number;
+  notes?: string;
+}
+
+export interface AcknowledgeAlertResponse {
+  message: string;
+  acknowledgment_id: number;
+  acknowledged_at: string;
+}
+
+// ============================================================================
+// Constraint Override Metrics Types
+// ============================================================================
+
+export interface ViolationTypeBreakdown {
+  code: string;
+  count: number;
+}
+
+export interface WardOverrideStats {
+  ward_id: number;
+  ward_name: string;
+  override_count: number;
+}
+
+export interface CommonOverrideReason {
+  reason: string;
+  count: number;
+}
+
+export interface ConstraintOverrideMetrics {
+  total_admissions: number;
+  override_count: number;
+  override_rate: number;
+  critical_override_count: number;
+  acknowledged_count: number;
+  pending_acknowledgment_count: number;
+  violation_breakdown: ViolationTypeBreakdown[];
+  ward_breakdown: WardOverrideStats[];
+  common_reasons: CommonOverrideReason[];
 }
 
 // ============================================================================

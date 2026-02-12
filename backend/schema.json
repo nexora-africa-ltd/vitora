@@ -11272,6 +11272,99 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/inpatient/admissions/{id}/imaging-orders/:
+    get:
+      operationId: api_inpatient_admissions_imaging_orders_retrieve
+      description: Get all imaging orders for a specific admission.
+      summary: Get imaging orders for admission
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Admission.
+        required: true
+      tags:
+      - Inpatient - Admissions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Admission'
+          description: ''
+  /api/inpatient/admissions/{id}/lab-orders/:
+    get:
+      operationId: api_inpatient_admissions_lab_orders_retrieve
+      description: Get all lab orders for a specific admission.
+      summary: Get lab orders for admission
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Admission.
+        required: true
+      tags:
+      - Inpatient - Admissions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Admission'
+          description: ''
+  /api/inpatient/admissions/{id}/orders/:
+    get:
+      operationId: api_inpatient_admissions_orders_retrieve
+      description: Get a combined view of all medical orders (lab, imaging, prescriptions)
+        for a specific admission.
+      summary: Get all orders for admission
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Admission.
+        required: true
+      tags:
+      - Inpatient - Admissions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Admission'
+          description: ''
+  /api/inpatient/admissions/{id}/prescriptions/:
+    get:
+      operationId: api_inpatient_admissions_prescriptions_retrieve
+      description: Get all prescriptions for a specific admission.
+      summary: Get prescriptions for admission
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Admission.
+        required: true
+      tags:
+      - Inpatient - Admissions
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Admission'
+          description: ''
   /api/inpatient/beds/:
     get:
       operationId: api_inpatient_beds_list
@@ -12540,6 +12633,81 @@ paths:
               schema:
                 description: Permission denied - requires receive_critical_alerts
                   permission
+          description: ''
+  /api/inpatient/supervisor/alerts/acknowledge/:
+    post:
+      operationId: api_inpatient_supervisor_alerts_acknowledge_create
+      description: Acknowledge a critical constraint violation that was overridden
+        during admission. Requires receive_critical_alerts permission.
+      summary: Acknowledge a supervisor critical violation alert
+      tags:
+      - Inpatient - Supervisor Alerts
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                admission_id:
+                  type: integer
+                  description: Admission ID to acknowledge
+                notes:
+                  type: string
+                  description: Optional notes from supervisor
+              required:
+              - admission_id
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                description: Alert acknowledged successfully
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                description: Invalid request or already acknowledged
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                description: Permission denied
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                description: Admission not found or has no critical violations
+          description: ''
+  /api/inpatient/supervisor/alerts/metrics/:
+    get:
+      operationId: api_inpatient_supervisor_alerts_metrics_retrieve
+      description: Get statistics on constraint overrides including counts, rates,
+        breakdown by violation type and ward, and common override reasons. Requires
+        receive_critical_alerts permission.
+      summary: Get constraint override metrics
+      parameters:
+      - in: query
+        name: days
+        schema:
+          type: integer
+        description: 'Number of days to include in metrics (default: 30)'
+      tags:
+      - Inpatient - Supervisor Alerts
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+                description: Unspecified response body
           description: ''
   /api/inpatient/transfers/:
     get:
@@ -30638,6 +30806,10 @@ components:
           readOnly: true
         encounter:
           type: integer
+        admission:
+          type: integer
+          nullable: true
+          description: IPD admission if imaging ordered during inpatient stay
         ordered_by:
           type: integer
           readOnly: true
@@ -30707,6 +30879,10 @@ components:
           type: integer
         encounter:
           type: integer
+        admission:
+          type: integer
+          nullable: true
+          description: IPD admission if imaging ordered during inpatient stay
         priority:
           $ref: '#/components/schemas/OrderPriorityEnum'
         clinical_indication:
@@ -30727,6 +30903,10 @@ components:
           type: integer
         encounter:
           type: integer
+        admission:
+          type: integer
+          nullable: true
+          description: IPD admission if imaging ordered during inpatient stay
         priority:
           $ref: '#/components/schemas/OrderPriorityEnum'
         clinical_indication:
@@ -30845,6 +31025,10 @@ components:
           type: integer
         encounter:
           type: integer
+        admission:
+          type: integer
+          nullable: true
+          description: IPD admission if imaging ordered during inpatient stay
         priority:
           $ref: '#/components/schemas/OrderPriorityEnum'
         clinical_indication:
@@ -31897,6 +32081,10 @@ components:
           readOnly: true
         encounter:
           type: integer
+        admission:
+          type: integer
+          nullable: true
+          description: IPD admission if lab ordered during inpatient stay
         ordered_by:
           type: integer
         ordered_by_name:
@@ -31963,6 +32151,10 @@ components:
           type: integer
         encounter:
           type: integer
+        admission:
+          type: integer
+          nullable: true
+          description: IPD admission if lab ordered during inpatient stay
         order_type:
           $ref: '#/components/schemas/OrderTypeEnum'
         external_lab:
@@ -31985,6 +32177,10 @@ components:
           type: integer
         encounter:
           type: integer
+        admission:
+          type: integer
+          nullable: true
+          description: IPD admission if lab ordered during inpatient stay
         order_type:
           $ref: '#/components/schemas/OrderTypeEnum'
         external_lab:
@@ -32103,6 +32299,10 @@ components:
           type: integer
         encounter:
           type: integer
+        admission:
+          type: integer
+          nullable: true
+          description: IPD admission if lab ordered during inpatient stay
         ordered_by:
           type: integer
         order_type:
@@ -36300,6 +36500,10 @@ components:
           type: integer
         encounter:
           type: integer
+        admission:
+          type: integer
+          nullable: true
+          description: IPD admission if imaging ordered during inpatient stay
         priority:
           $ref: '#/components/schemas/OrderPriorityEnum'
         clinical_indication:
@@ -36485,6 +36689,10 @@ components:
           type: integer
         encounter:
           type: integer
+        admission:
+          type: integer
+          nullable: true
+          description: IPD admission if lab ordered during inpatient stay
         ordered_by:
           type: integer
         order_type:
@@ -36990,6 +37198,10 @@ components:
           type: integer
           nullable: true
           description: Optional - can be null for walk-in pharmacy prescriptions
+        admission:
+          type: integer
+          nullable: true
+          description: IPD admission if prescribed during inpatient stay
         patient:
           type: integer
         valid_until:
@@ -38790,6 +39002,10 @@ components:
           type: integer
           nullable: true
           description: Optional - can be null for walk-in pharmacy prescriptions
+        admission:
+          type: integer
+          nullable: true
+          description: IPD admission if prescribed during inpatient stay
         patient:
           type: integer
         patient_name:
@@ -38891,6 +39107,10 @@ components:
         encounter:
           type: integer
           nullable: true
+        admission:
+          type: integer
+          nullable: true
+          description: IPD admission if prescribed during inpatient stay
         patient:
           type: integer
         valid_until:
@@ -38908,6 +39128,10 @@ components:
         encounter:
           type: integer
           nullable: true
+        admission:
+          type: integer
+          nullable: true
+          description: IPD admission if prescribed during inpatient stay
         patient:
           type: integer
         valid_until:
@@ -39124,6 +39348,10 @@ components:
           type: integer
           nullable: true
           description: Optional - can be null for walk-in pharmacy prescriptions
+        admission:
+          type: integer
+          nullable: true
+          description: IPD admission if prescribed during inpatient stay
         patient:
           type: integer
         valid_until:

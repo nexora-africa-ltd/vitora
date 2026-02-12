@@ -297,6 +297,8 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
 
     Endpoints:
     - GET /api/inpatient/supervisor/alerts/ - List recent critical violations
+    - POST /api/inpatient/supervisor/alerts/acknowledge/ - Acknowledge a critical alert
+    - GET /api/inpatient/supervisor/alerts/metrics/ - Get constraint override metrics
     """
 
     permission_classes = [IsAuthenticated]
@@ -357,7 +359,7 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
             constraint_violations__isnull=False,
             constraint_override=True,
         ).exclude(constraint_violations=[]).select_related(
-            "patient", "ward", "bed", "admitting_officer"
+            "patient", "ward", "bed", "admitting_officer", "alert_acknowledgment__acknowledged_by"
         ).order_by("-created_at")
 
         if since_dt:
@@ -371,6 +373,8 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
                 if v.get("severity") == "CRITICAL"
             ]
             if critical_violations:
+                # Check if acknowledged
+                is_acknowledged = hasattr(admission, "alert_acknowledgment")
                 alerts.append({
                     "admission_id": admission.id,
                     "admission_number": admission.admission_number,
@@ -387,11 +391,249 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
                         if admission.admitting_officer else "Unknown"
                     ),
                     "timestamp": admission.created_at.isoformat(),
+                    "is_acknowledged": is_acknowledged,
+                    "acknowledged_by": (
+                        admission.alert_acknowledgment.acknowledged_by.get_full_name()
+                        if is_acknowledged else None
+                    ),
+                    "acknowledged_at": (
+                        admission.alert_acknowledgment.acknowledged_at.isoformat()
+                        if is_acknowledged else None
+                    ),
                 })
                 if len(alerts) >= limit:
                     break
 
         return Response({"alerts": alerts})
+
+    @extend_schema(
+        summary="Acknowledge a supervisor critical violation alert",
+        description=(
+            "Acknowledge a critical constraint violation that was overridden during admission. "
+            "Requires receive_critical_alerts permission."
+        ),
+        request={
+            "application/json": {
+                "type": "object",
+                "properties": {
+                    "admission_id": {"type": "integer", "description": "Admission ID to acknowledge"},
+                    "notes": {"type": "string", "description": "Optional notes from supervisor"},
+                },
+                "required": ["admission_id"],
+            }
+        },
+        responses={
+            200: {"description": "Alert acknowledged successfully"},
+            400: {"description": "Invalid request or already acknowledged"},
+            403: {"description": "Permission denied"},
+            404: {"description": "Admission not found or has no critical violations"},
+        },
+        tags=["Inpatient - Supervisor Alerts"],
+    )
+    def acknowledge(self, request):
+        """
+        Acknowledge a supervisor critical violation alert.
+
+        Request body:
+        - admission_id: Admission ID to acknowledge
+        - notes: Optional notes from supervisor
+        """
+        from .models import SupervisorAlertAcknowledgment
+
+        # Check permission
+        if not request.user.has_perm("inpatient.receive_critical_alerts"):
+            return Response(
+                {"detail": "Permission denied. Requires receive_critical_alerts permission."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        admission_id = request.data.get("admission_id")
+        notes = request.data.get("notes", "")
+
+        if not admission_id:
+            return Response(
+                {"detail": "admission_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            admission = Admission.objects.get(id=admission_id)
+        except Admission.DoesNotExist:
+            return Response(
+                {"detail": "Admission not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Check if admission has critical violations
+        critical_violations = [
+            v for v in admission.constraint_violations
+            if v.get("severity") == "CRITICAL"
+        ]
+        if not critical_violations:
+            return Response(
+                {"detail": "Admission has no critical violations to acknowledge."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check if already acknowledged
+        if hasattr(admission, "alert_acknowledgment"):
+            return Response(
+                {"detail": "Alert already acknowledged."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create acknowledgment
+        ack = SupervisorAlertAcknowledgment.objects.create(
+            admission=admission,
+            acknowledged_by=request.user,
+            notes=notes,
+        )
+
+        # Log acknowledgment
+        AuditLog.log(
+            action="supervisor_alert_acknowledge",
+            user=request.user,
+            resource_type="Admission",
+            resource_id=admission.id,
+            details={
+                "admission_number": admission.admission_number,
+                "violations": admission.constraint_violations,
+                "notes": notes,
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        return Response({
+            "message": "Alert acknowledged successfully.",
+            "acknowledgment_id": ack.id,
+            "acknowledged_at": ack.acknowledged_at.isoformat(),
+        })
+
+    @extend_schema(
+        summary="Get constraint override metrics",
+        description=(
+            "Get statistics on constraint overrides including counts, rates, "
+            "breakdown by violation type and ward, and common override reasons. "
+            "Requires receive_critical_alerts permission."
+        ),
+        parameters=[
+            OpenApiParameter(
+                name="days",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                description="Number of days to include in metrics (default: 30)",
+                required=False,
+            ),
+        ],
+        responses={200: "ConstraintOverrideMetricsSerializer"},
+        tags=["Inpatient - Supervisor Alerts"],
+    )
+    def metrics(self, request):
+        """
+        Get constraint override metrics.
+
+        Query parameters:
+        - days: Number of days to include in metrics (default: 30)
+        """
+        from collections import Counter
+        from datetime import timedelta
+
+        from django.db.models import Count
+        from django.utils import timezone
+
+        from .models import SupervisorAlertAcknowledgment
+
+        # Check permission
+        if not request.user.has_perm("inpatient.receive_critical_alerts"):
+            return Response(
+                {"detail": "Permission denied. Requires receive_critical_alerts permission."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        days = int(request.query_params.get("days", 30))
+        since_date = timezone.now() - timedelta(days=days)
+
+        # Total admissions in period
+        total_admissions = Admission.objects.filter(created_at__gte=since_date).count()
+
+        # Admissions with constraint overrides
+        override_qs = Admission.objects.filter(
+            created_at__gte=since_date,
+            constraint_override=True,
+        ).select_related("ward")
+
+        override_count = override_qs.count()
+        override_rate = (override_count / total_admissions * 100) if total_admissions > 0 else 0.0
+
+        # Critical violations
+        critical_admissions = []
+        for admission in override_qs.exclude(constraint_violations=[]):
+            has_critical = any(
+                v.get("severity") == "CRITICAL"
+                for v in admission.constraint_violations
+            )
+            if has_critical:
+                critical_admissions.append(admission.id)
+
+        critical_override_count = len(critical_admissions)
+
+        # Acknowledgments
+        acknowledged_count = SupervisorAlertAcknowledgment.objects.filter(
+            admission_id__in=critical_admissions
+        ).count()
+        pending_acknowledgment_count = critical_override_count - acknowledged_count
+
+        # Violation type breakdown
+        violation_counter: Counter[str] = Counter()
+        for admission in override_qs.exclude(constraint_violations=[]):
+            for v in admission.constraint_violations:
+                code = v.get("code", "UNKNOWN")
+                violation_counter[code] += 1
+
+        violation_breakdown = [
+            {"code": code, "count": count}
+            for code, count in violation_counter.most_common()
+        ]
+
+        # Ward breakdown
+        ward_stats = (
+            override_qs
+            .values("ward__id", "ward__name")
+            .annotate(override_count=Count("id"))
+            .order_by("-override_count")
+        )
+        ward_breakdown = [
+            {
+                "ward_id": ws["ward__id"],
+                "ward_name": ws["ward__name"],
+                "override_count": ws["override_count"],
+            }
+            for ws in ward_stats
+        ]
+
+        # Common override reasons
+        reason_counter: Counter[str] = Counter()
+        for admission in override_qs.exclude(constraint_override_reason=""):
+            reason = admission.constraint_override_reason.strip()
+            if reason:
+                reason_counter[reason] += 1
+
+        common_reasons = [
+            {"reason": reason, "count": count}
+            for reason, count in reason_counter.most_common(10)
+        ]
+
+        return Response({
+            "total_admissions": total_admissions,
+            "override_count": override_count,
+            "override_rate": round(override_rate, 2),
+            "critical_override_count": critical_override_count,
+            "acknowledged_count": acknowledged_count,
+            "pending_acknowledgment_count": pending_acknowledgment_count,
+            "violation_breakdown": violation_breakdown,
+            "ward_breakdown": ward_breakdown,
+            "common_reasons": common_reasons,
+        })
 
 
 class BedViewSet(viewsets.ModelViewSet):
@@ -616,7 +858,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
                     ip_address=get_client_ip(self.request),
                 )
             except NoBedAvailableError as e:
-                raise ValidationError({"bed": str(e)})
+                raise ValidationError({"bed": str(e)}) from e
         elif bed.ward_id != ward.id:
             raise ValidationError({"bed": "Selected bed does not belong to the selected ward"})
 

@@ -38,10 +38,20 @@ router.register(r"shift-handovers", ShiftHandoverViewSet, basename="shift-handov
 
 urlpatterns = [
     path("", include(router.urls)),
-    # Supervisor alerts - explicit path since it's not a typical resource
+    # Supervisor alerts - explicit paths since it's not a typical resource
     path(
         "supervisor/alerts/",
         SupervisorAlertViewSet.as_view({"get": "list"}),
         name="supervisor-alerts",
+    ),
+    path(
+        "supervisor/alerts/acknowledge/",
+        SupervisorAlertViewSet.as_view({"post": "acknowledge"}),
+        name="supervisor-alerts-acknowledge",
+    ),
+    path(
+        "supervisor/alerts/metrics/",
+        SupervisorAlertViewSet.as_view({"get": "metrics"}),
+        name="supervisor-alerts-metrics",
     ),
 ]

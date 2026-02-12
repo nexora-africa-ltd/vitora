@@ -15,6 +15,7 @@ from .models import (
     KardexShiftNote,
     NursingKardex,
     ShiftHandover,
+    SupervisorAlertAcknowledgment,
     Transfer,
     Ward,
     WardRound,
@@ -622,3 +623,95 @@ class WardUpdatesResponseSerializer(serializers.Serializer):
 
     events = WardUpdateEventSerializer(many=True, help_text="List of ward update events")
     current_state = WardCurrentStateSerializer(help_text="Current ward constraint state")
+
+
+# =============================================================================
+# Alert Acknowledgment Serializers
+# =============================================================================
+
+
+class SupervisorAlertAcknowledgmentSerializer(serializers.ModelSerializer):
+    """Serializer for SupervisorAlertAcknowledgment model."""
+
+    acknowledged_by_username = serializers.CharField(
+        source="acknowledged_by.username", read_only=True
+    )
+    admission_number = serializers.CharField(source="admission.admission_number", read_only=True)
+
+    class Meta:
+        model = SupervisorAlertAcknowledgment
+        fields = [
+            "id",
+            "admission",
+            "admission_number",
+            "acknowledged_by",
+            "acknowledged_by_username",
+            "acknowledged_at",
+            "notes",
+            "created_at",
+        ]
+        read_only_fields = ["id", "acknowledged_at", "created_at"]
+
+
+class AcknowledgeAlertRequestSerializer(serializers.Serializer):
+    """Request serializer for acknowledging a supervisor alert."""
+
+    admission_id = serializers.IntegerField(help_text="Admission ID to acknowledge")
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Optional notes from the supervisor",
+    )
+
+
+# =============================================================================
+# Constraint Override Metrics Serializers
+# =============================================================================
+
+
+class ViolationTypeBreakdownSerializer(serializers.Serializer):
+    """Breakdown of violations by type."""
+
+    code = serializers.CharField(help_text="Violation code (e.g., 'GENDER_MISMATCH')")
+    count = serializers.IntegerField(help_text="Count of this violation type")
+
+
+class WardOverrideStatsSerializer(serializers.Serializer):
+    """Override statistics for a single ward."""
+
+    ward_id = serializers.IntegerField(help_text="Ward ID")
+    ward_name = serializers.CharField(help_text="Ward name")
+    override_count = serializers.IntegerField(help_text="Number of overrides")
+
+
+class ConstraintOverrideMetricsSerializer(serializers.Serializer):
+    """Response serializer for constraint override metrics."""
+
+    # Overview stats
+    total_admissions = serializers.IntegerField(help_text="Total admissions in period")
+    override_count = serializers.IntegerField(help_text="Admissions with constraint overrides")
+    override_rate = serializers.FloatField(help_text="Percentage of admissions with overrides")
+    critical_override_count = serializers.IntegerField(
+        help_text="Admissions with CRITICAL violations overridden"
+    )
+    acknowledged_count = serializers.IntegerField(
+        help_text="CRITICAL overrides acknowledged by supervisors"
+    )
+    pending_acknowledgment_count = serializers.IntegerField(
+        help_text="CRITICAL overrides pending acknowledgment"
+    )
+
+    # Breakdowns
+    violation_breakdown = ViolationTypeBreakdownSerializer(
+        many=True, help_text="Violations by type"
+    )
+    ward_breakdown = WardOverrideStatsSerializer(
+        many=True, help_text="Overrides by ward"
+    )
+
+    # Common override reasons
+    common_reasons = serializers.ListField(
+        child=serializers.DictField(),
+        help_text="Most common override reasons with counts",
+    )
