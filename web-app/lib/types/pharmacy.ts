@@ -266,25 +266,34 @@ export interface Dispensing {
   drug: number;
   drug_name?: string | null;
   drug_code?: string | null;
-  stock_batch: number;
+  stock_batch?: number | null;
+  batch?: number | null;
   batch_number?: string | null;
-  quantity: number;
+  quantity?: number | null;
+  quantity_dispensed?: number | null;
+  quantity_returned?: number | null;
+  discount?: number | string | null;
+  instructions_given?: string | null;
+  patient_counseled?: boolean | null;
   patient?: number | null;
   patient_name?: string | null;
   patient_mrn?: string | null;
   dispensed_by: number;
   dispensed_by_name?: string | null;
   dispensed_at: string;
-  status: DispensingStatus;
-  unit_price: number;
-  total_price: number;
+  verified_by?: number | null;
+  verified_by_name?: string | null;
+  verified_at?: string | null;
+  status?: DispensingStatus | null;
+  unit_price: number | string;
+  total_price: number | string;
   payment_status?: string | null;
   notes?: string | null;
-  is_direct_sale: boolean;
+  is_direct_sale?: boolean | null;
   returned_quantity?: number | null;
   return_reason?: string | null;
   created_at: string;
-  updated_at: string;
+  updated_at?: string | null;
 }
 
 /**
