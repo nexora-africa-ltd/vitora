@@ -166,20 +166,20 @@ export default function AdmissionDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="w-full justify-start overflow-x-auto">
-          <TabsTrigger value="overview" className="gap-1.5">
+        <TabsList className="w-full grid grid-cols-4 h-auto">
+          <TabsTrigger value="overview" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Info</span>
             <span className="hidden sm:inline">Overview</span>
           </TabsTrigger>
-          <TabsTrigger value="ward-rounds" className="gap-1.5">
+          <TabsTrigger value="ward-rounds" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Rounds</span>
             <span className="hidden sm:inline">Ward Rounds</span>
           </TabsTrigger>
-          <TabsTrigger value="kardex" className="gap-1.5">
+          <TabsTrigger value="kardex" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Kardex</span>
             <span className="hidden sm:inline">Nursing Kardex</span>
           </TabsTrigger>
-          <TabsTrigger value="orders">Orders</TabsTrigger>
+          <TabsTrigger value="orders" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">Orders</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
