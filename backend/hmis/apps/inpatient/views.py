@@ -43,6 +43,7 @@ from .serializers import (
     WardRoundSerializer,
     WardUpdatesResponseSerializer,
 )
+from .services.bed_assignment import NoBedAvailableError, bed_assignment_service
 from .services.compatibility import ward_compatibility_service
 
 User = get_user_model()
@@ -589,15 +590,34 @@ class AdmissionViewSet(viewsets.ModelViewSet):
     ordering = ["-admission_date"]
 
     def perform_create(self, serializer):
-        """Create admission, enforce ward compatibility override rules, and log action."""
+        """Create admission, enforce ward compatibility override rules, and log action.
+
+        Supports automatic bed assignment when `auto_assign_bed=true` is provided
+        in the request body without specifying a bed.
+        """
         patient = serializer.validated_data.get("patient")
         bed = serializer.validated_data.get("bed")
         ward = serializer.validated_data.get("ward")
+        auto_assign_bed = bool(self.request.data.get("auto_assign_bed", False))
 
-        if bed is None or patient is None or ward is None:
-            raise ValidationError("patient, ward, and bed are required")
+        if patient is None or ward is None:
+            raise ValidationError("patient and ward are required")
 
-        if bed.ward_id != ward.id:
+        # Handle automatic bed assignment
+        if bed is None:
+            if not auto_assign_bed:
+                raise ValidationError(
+                    {"bed": "Bed is required, or set auto_assign_bed=true for automatic assignment"}
+                )
+            try:
+                bed = bed_assignment_service.auto_assign_bed(
+                    ward=ward,
+                    user=self.request.user,
+                    ip_address=get_client_ip(self.request),
+                )
+            except NoBedAvailableError as e:
+                raise ValidationError({"bed": str(e)})
+        elif bed.ward_id != ward.id:
             raise ValidationError({"bed": "Selected bed does not belong to the selected ward"})
 
         # Check compatibility (admission flow currently assumes requires_isolation is provided by the client)
@@ -624,14 +644,21 @@ class AdmissionViewSet(viewsets.ModelViewSet):
 
         override_used = (not result.compatible) and override_requested
 
-        instance = serializer.save(
-            constraint_override=override_used,
-            constraint_override_reason=(override_reason if override_used else ""),
-            constraint_violations=[
+        # Build save kwargs - include bed if it was auto-assigned
+        save_kwargs = {
+            "constraint_override": override_used,
+            "constraint_override_reason": (override_reason if override_used else ""),
+            "constraint_violations": [
                 {"code": v.code, "severity": v.severity, "message": v.message}
                 for v in result.violations
             ],
-        )
+        }
+
+        # If bed was auto-assigned, explicitly pass it to save
+        if auto_assign_bed:
+            save_kwargs["bed"] = bed
+
+        instance = serializer.save(**save_kwargs)
 
         # Log admission creation
         AuditLog.log(

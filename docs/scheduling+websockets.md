@@ -370,6 +370,191 @@ broadcast_queue_stats(clinic_id, stats)
 - Bed occupancy changes
 - Transfer notifications
 
+---
+
+## Automatic Bed Assignment Implementation Plan
+
+> **Purpose**: Define the phased approach for automatic bed assignment from MVP to smart allocation.
+
+### Current Infrastructure (Already Complete)
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| Ward capacity tracking | ✅ | `Ward.available_beds`, `Ward.capacity` |
+| Bed status management | ✅ | `Bed.status` (AVAILABLE/OCCUPIED/MAINTENANCE/RESERVED) |
+| Ward compatibility service | ✅ | `inpatient/services/ward_compatibility.py` |
+| Assignment rules DSL | ✅ | `scheduling/services/assignment.py` (supports `BED_ASSIGNMENT` type) |
+| Bed-ward relationship | ✅ | `Bed.ward` FK with unique constraint |
+| Row-level locking support | ✅ | Django `select_for_update()` |
+
+---
+
+### Phase A: MVP — First Available Bed (Est: 1-1.5 days)
+
+> **Status**: 🟦 In Progress  
+> **Target**: February 2026
+
+#### Algorithm
+```
+1. Filter ward.beds where status = 'AVAILABLE'
+2. Lock rows with select_for_update(skip_locked=True)
+3. Order by bed_number (deterministic)
+4. Return first() or raise NoBedAvailable
+5. Mark bed as OCCUPIED
+```
+
+#### Deliverables
+- [ ] `inpatient/services/bed_assignment.py` — core service
+- [ ] `auto_assign_bed()` function with atomic locking
+- [ ] `get_available_beds()` query helper
+- [ ] API flag: `auto_assign_bed: bool` on admission create
+- [ ] Tests: unit + concurrent access (race conditions)
+- [ ] Audit logging for auto-assignments
+
+#### API Changes
+```python
+# POST /api/inpatient/admissions/
+{
+    "patient": 123,
+    "ward": 5,
+    "bed": null,              # Optional when auto_assign_bed=true
+    "auto_assign_bed": true,  # NEW: triggers automatic assignment
+    ...
+}
+```
+
+#### Service Interface
+```python
+# hmis/apps/inpatient/services/bed_assignment.py
+@transaction.atomic
+def auto_assign_bed(ward: Ward, user: User) -> Bed:
+    """
+    Assign the first available bed in the ward.
+    Uses row-level locking to prevent race conditions.
+    
+    Raises:
+        NoBedAvailableError: If no beds are available.
+    """
+```
+
+---
+
+### Phase B: Rules-Based Assignment (Est: 2-3 days)
+
+> **Status**: 📋 Planned  
+> **Target**: After MVP validation
+
+#### Algorithm
+```
+1. Load active BED_ASSIGNMENT rules for facility
+2. Evaluate candidates (available beds) against constraints:
+   - Gender restriction match
+   - Age range compatibility
+   - Isolation capability (if required)
+   - Equipment needs (oxygen, ventilator)
+3. Score candidates based on:
+   - Proximity to nursing station (for high-acuity)
+   - Current ward load balancing
+   - Patient preference (window/aisle)
+4. Select highest-scoring bed
+5. Log decision with full explanation
+```
+
+#### Rule DSL Example
+```yaml
+rule_id: assign_bed_general_ward
+version: 1.0
+applies_to: BED_ASSIGNMENT
+
+when:
+  ward_type: GENERAL
+  admission_type: ELECTIVE
+
+constraints:
+  - bed.status == "AVAILABLE"
+  - bed.ward.gender_restriction in [null, patient.gender]
+  - patient.age >= bed.ward.min_age_years or bed.ward.min_age_years is null
+  - patient.age <= bed.ward.max_age_years or bed.ward.max_age_years is null
+
+scoring:
+  - prefer: bed.proximity_to_nurses_station  # Lower is better
+    weight: -2
+  - prefer: ward.current_occupancy           # Lower is better for load balancing
+    weight: -1
+  - prefer: bed.has_window                   # Patient preference
+    weight: 1
+
+fallback:
+  action: leave_unassigned
+  notify: ward_nurse_in_charge
+```
+
+#### Deliverables
+- [ ] Integrate with existing `AssignmentRule` model
+- [ ] Create `BedAssignmentRuleEvaluator` class
+- [ ] Seed default rules for common ward types
+- [ ] Decision logging to `AssignmentDecision` table
+- [ ] Admin UI for rule management
+- [ ] Override workflow for manual bed selection
+
+---
+
+### Phase C: Smart Allocation (Est: 4-5 days)
+
+> **Status**: 📋 Planned  
+> **Target**: Phase 2+
+
+#### Advanced Features
+
+| Feature | Description |
+|---------|-------------|
+| **Predictive Discharge** | Reserve beds based on expected discharge times |
+| **Cohort Grouping** | Keep patients with similar conditions together |
+| **Infection Control** | Automatic isolation placement for infectious patients |
+| **Staff Workload** | Balance assignments across nursing staff |
+| **Length-of-Stay Prediction** | Optimize bed turnover |
+| **Emergency Buffer** | Reserve percentage of beds for emergencies |
+
+#### Algorithm Enhancements
+```
+1. Check predicted discharges in next 4 hours
+2. If emergency admission, consider reserved buffer
+3. Evaluate infection risk score
+4. Apply cohort grouping rules (e.g., post-surgical together)
+5. Factor in nursing staff workload per zone
+6. Score and select optimal bed
+7. Trigger notifications to housekeeping if bed needs preparation
+```
+
+#### Integration Points
+- Laboratory: Infection markers for isolation decisions
+- Nursing Kardex: Staff workload data
+- Housekeeping: Bed turnover notifications
+- SHA Claims: Bed-day tracking for billing
+
+#### Deliverables
+- [ ] Discharge prediction model integration
+- [ ] Infection risk assessment rules
+- [ ] Cohort grouping configuration
+- [ ] Emergency buffer management
+- [ ] Housekeeping notification service
+- [ ] Analytics dashboard for bed utilization
+
+---
+
+### WebSocket Events (Phase 5+)
+
+**Endpoint**: `ws://host/ws/wards/{ward_id}/beds/`
+
+| Event | Trigger | Payload |
+|-------|---------|---------|
+| `bed_assigned` | Auto/manual assignment | bed_id, patient_id, admission_id |
+| `bed_vacated` | Discharge/transfer | bed_id, previous_patient_id |
+| `bed_status_changed` | Maintenance/cleaning | bed_id, old_status, new_status |
+| `occupancy_updated` | Any bed change | ward_id, available, occupied, total |
+
+---
+
 ### Finance & Billing
 - Payment status updates
 - Invoice state changes (view-only)
