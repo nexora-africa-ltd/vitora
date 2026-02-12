@@ -70,6 +70,8 @@ export const ShiftTypeSchema = z.enum(['DAY', 'NIGHT']);
 
 export const ShiftEndingTypeSchema = z.enum(['DAY', 'EVENING', 'NIGHT']);
 
+export const GenderRestrictionSchema = z.enum(['ANY', 'MALE_ONLY', 'FEMALE_ONLY']);
+
 // =============================================================================
 // WARD SCHEMAS
 // =============================================================================
@@ -89,6 +91,12 @@ export const WardSchema = z.object({
   occupied_beds: z.number().optional(),
   available_beds: z.number().optional(),
   occupancy_rate: z.number().optional(),
+  gender_restriction: GenderRestrictionSchema.nullable().optional(),
+  isolation_capable: z.boolean().optional(),
+  max_age_years: z.number().nullable().optional(),
+  min_age_years: z.number().nullable().optional(),
+  oxygen_equipped: z.boolean().optional(),
+  ventilator_capable: z.boolean().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });
@@ -178,6 +186,9 @@ export const AdmissionSchema = z.object({
   payer_type: AdmissionPayerTypeSchema,
   payer_type_display: z.string().optional(),
   insurance_details: z.record(z.unknown()).optional(),
+  constraint_override: z.boolean().optional(),
+  constraint_override_reason: z.string().nullable().optional(),
+  constraint_violations: z.array(z.string()).optional(),
   clinical_notes: z.string().optional(),
   diet: z.string().optional(),
   special_instructions: z.string().optional(),

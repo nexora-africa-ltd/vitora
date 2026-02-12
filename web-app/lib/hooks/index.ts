@@ -60,6 +60,21 @@ export {
   useUpdateBed,
 } from './use-inpatient';
 
+// Ward compatibility real-time updates
+export {
+  useWardCompatibilitySocket,
+  useSupervisorAlertsSocket,
+  useWardCompatibilityUpdates,
+  useSupervisorAlerts,
+  type WardCompatibilityEventType,
+  type WardWebSocketMessage,
+  type SupervisorWebSocketMessage,
+  type UseWardCompatibilityUpdatesOptions,
+  type UseSupervisorAlertsOptions,
+  type UseWardCompatibilityUpdatesReturn,
+  type UseSupervisorAlertsReturn,
+} from './use-ward-compatibility-updates';
+
 // Patient history/timeline hooks
 export {
   usePatientHistory,

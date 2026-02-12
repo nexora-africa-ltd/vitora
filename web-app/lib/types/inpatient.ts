@@ -20,7 +20,18 @@ export interface InpatientWard {
   is_active: boolean;
   daily_rate: string;
   available_beds?: number;
+  total_beds?: number;
+  occupied_beds?: number;
   occupancy_rate?: number;
+  // Ward constraints
+  gender_restriction?: 'ANY' | 'MALE_ONLY' | 'FEMALE_ONLY' | null;
+  min_age_years?: number | null;
+  max_age_years?: number | null;
+  isolation_capable?: boolean;
+  oxygen_equipped?: boolean;
+  ventilator_capable?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export type BedStatus = 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE' | 'RESERVED';
@@ -91,6 +102,10 @@ export interface Admission {
   payer_type: AdmissionPayerType;
   payer_type_display?: string;
   insurance_details?: Record<string, unknown>;
+  // Constraint override fields
+  constraint_override?: boolean;
+  constraint_override_reason?: string | null;
+  constraint_violations?: string[];
   // Additional fields for detail view
   clinical_notes?: string;
   diet?: string;
@@ -514,3 +529,103 @@ export type TransferListResponse = PaginatedResponse<Transfer>;
 export type WardRoundListResponse = PaginatedResponse<WardRound>;
 export type KardexListResponse = PaginatedResponse<NursingKardex>;
 export type ShiftHandoverListResponse = PaginatedResponse<ShiftHandover>;
+
+// ============================================================================
+// Ward Compatibility Types
+// ============================================================================
+
+export type ConstraintViolationSeverity = 'WARNING' | 'CRITICAL';
+
+export interface CompatibilityViolation {
+  code: string;
+  message: string;
+  severity: ConstraintViolationSeverity;
+  override_allowed: boolean;
+}
+
+export interface CompatibilityCheckResult {
+  compatible: boolean;
+  has_critical_violations: boolean;
+  violations: CompatibilityViolation[];
+}
+
+export interface CompatibleWardInfo {
+  ward_id: number;
+  ward_name: string;
+  ward_type: InpatientWardType;
+  available_beds: number;
+}
+
+export interface IncompatibleWardInfo extends CompatibleWardInfo {
+  violations: string[];
+  has_critical: boolean;
+}
+
+export interface PatientCompatibilityResult {
+  patient_id: number;
+  patient_name?: string;
+  patient_mrn?: string;
+  error?: string;
+  compatible_wards: CompatibleWardInfo[];
+  incompatible_wards: IncompatibleWardInfo[];
+}
+
+export interface BulkCompatibilityResult {
+  results: PatientCompatibilityResult[];
+}
+
+// ============================================================================
+// Ward Updates (Polling Fallback) Types
+// ============================================================================
+
+export type WardUpdateEventType =
+  | 'ward_constraints_updated'
+  | 'compatibility_violation'
+  | 'bed_availability_changed';
+
+export interface WardUpdateEvent {
+  type: WardUpdateEventType;
+  admission_id?: number;
+  patient_name?: string;
+  violations?: string[];
+  timestamp: string;
+}
+
+export interface WardCurrentState {
+  ward_id: number;
+  ward_name: string;
+  gender_restriction: string | null;
+  min_age_years: number | null;
+  max_age_years: number | null;
+  isolation_capable: boolean;
+  oxygen_equipped: boolean;
+  ventilator_capable: boolean;
+  available_beds: number;
+}
+
+export interface WardUpdatesResponse {
+  events: WardUpdateEvent[];
+  current_state: WardCurrentState;
+}
+
+// ============================================================================
+// Supervisor Alerts Types
+// ============================================================================
+
+export interface SupervisorAlert {
+  admission_id: number;
+  admission_number: string;
+  patient_id: number;
+  patient_name: string;
+  patient_mrn: string;
+  ward_id: number;
+  ward_name: string;
+  admitted_by: string;
+  critical_violations: string[];
+  override_reason: string | null;
+  timestamp: string;
+}
+
+export interface SupervisorAlertsResponse {
+  alerts: SupervisorAlert[];
+}
