@@ -267,6 +267,7 @@ export const PrescriptionSchema = z.object({
   patient_name: z.string().optional().nullable(),
   patient_mrn: z.string().optional().nullable(),
   encounter: z.number().optional().nullable(),
+  admission: z.number().optional().nullable(),
   prescriber: z.number(),
   prescriber_name: z.string().optional().nullable(),
   prescribed_by: z.number().optional().nullable(),

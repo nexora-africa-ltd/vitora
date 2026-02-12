@@ -87,6 +87,7 @@ export interface LabOrder {
   patient_name?: string | null;
   patient_mrn?: string | null;
   encounter: number;
+  admission?: number | null;
   ordered_by: number;
   ordered_by_name?: string | null;
   order_type: OrderType;

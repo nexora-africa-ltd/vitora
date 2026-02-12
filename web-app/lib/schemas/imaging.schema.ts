@@ -119,6 +119,7 @@ export const ImagingOrderSchema = z.object({
   patient: z.number(),
   patient_name: z.string().nullable().optional(),
   encounter: z.number(),
+  admission: z.number().nullable().optional(),
   ordered_by: z.number(),
   ordered_by_name: z.string().nullable().optional(),
   priority: ImagingPrioritySchema,

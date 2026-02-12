@@ -217,6 +217,7 @@ export const LabOrderSchema = z.object({
   patient_name: z.string().nullable().optional(),
   patient_mrn: z.string().nullable().optional(),
   encounter: z.number(),
+  admission: z.number().nullable().optional(),
   ordered_by: z.number(),
   ordered_by_name: z.string().nullable().optional(),
   order_type: OrderTypeSchema,

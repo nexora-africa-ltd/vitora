@@ -216,6 +216,7 @@ export interface Prescription {
   patient_name?: string | null;
   patient_mrn?: string | null;
   encounter?: number | null;
+  admission?: number | null;
   prescriber: number;
   prescriber_name?: string | null;
   status: PrescriptionStatus;
