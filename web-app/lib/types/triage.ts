@@ -397,6 +397,7 @@ export interface TriageAssessmentCreateData {
   temperature?: number | null;
   respiratory_rate?: number | null;
   weight?: number | null;
+  height?: number | null;
   // Assessment
   mental_status: AVPUStatus;
   mobility: MobilityStatus;

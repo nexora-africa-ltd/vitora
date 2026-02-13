@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ClipboardList, Plus, Save, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -29,6 +29,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { StaffSearchCombobox } from '@/components/clinics/staff-search-combobox';
 import {
   useAdmission,
   useKardexByAdmission,
@@ -55,9 +56,13 @@ const SHIFT_TYPES: { value: ShiftType; label: string }[] = [
 export default function KardexPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useUser();
   const { toast } = useToast();
   const admissionId = Number(params.id);
+
+  // Auto-open shift note dialog from URL param
+  const action = searchParams.get('action');
 
   const { data: admission, isLoading: admissionLoading } = useAdmission(admissionId);
   const { data: kardex, isLoading: kardexLoading, refetch } = useKardexByAdmission(admissionId);
@@ -84,11 +89,23 @@ export default function KardexPage() {
   const [shiftNoteContent, setShiftNoteContent] = useState('');
   const [shiftNoteType, setShiftNoteType] = useState<ShiftType>('DAY');
 
+  // Handover note state - matches backend API
   const [handoverNoteOpen, setHandoverNoteOpen] = useState(false);
-  const [handoverNoteContent, setHandoverNoteContent] = useState('');
-  const [handoverNoteShift, setHandoverNoteShift] = useState<ShiftType>('DAY');
+  const [handoverShiftEnding, setHandoverShiftEnding] = useState<ShiftType>('DAY');
+  const [handoverIncomingNurse, setHandoverIncomingNurse] = useState<number | undefined>(undefined);
+  const [handoverPendingTasks, setHandoverPendingTasks] = useState('');
+  const [handoverEscalations, setHandoverEscalations] = useState('');
 
   const isLoading = admissionLoading || kardexLoading;
+
+  // Auto-open shift note dialog when navigating with action=shift-note
+  useEffect(() => {
+    if (action === 'shift-note' && kardex && !isLoading) {
+      setShiftNoteOpen(true);
+      // Clear the URL param after opening
+      router.replace(`/admissions/${admissionId}/kardex`, { scroll: false });
+    }
+  }, [action, kardex, isLoading, router, admissionId]);
 
   // Initialize edit form when kardex loads
   const initEditForm = () => {
@@ -171,14 +188,15 @@ export default function KardexPage() {
   };
 
   const handleAddHandoverNote = async () => {
-    if (!kardex || !handoverNoteContent) return;
+    if (!kardex || !handoverPendingTasks.trim() || !handoverIncomingNurse) return;
     try {
       await addHandoverNote.mutateAsync({
         kardexId: kardex.id,
         data: {
-          from_shift: handoverNoteShift,
-          to_shift: handoverNoteShift === 'DAY' ? 'NIGHT' : 'DAY',
-          content: handoverNoteContent,
+          incoming_nurse: handoverIncomingNurse,
+          shift_ending: handoverShiftEnding,
+          pending_tasks: handoverPendingTasks.trim(),
+          escalations: handoverEscalations.trim() || undefined,
         },
       });
       toast({
@@ -186,7 +204,9 @@ export default function KardexPage() {
         description: 'Handover note added successfully',
       });
       setHandoverNoteOpen(false);
-      setHandoverNoteContent('');
+      setHandoverIncomingNurse(undefined);
+      setHandoverPendingTasks('');
+      setHandoverEscalations('');
       refetch();
     } catch (error) {
       toast({
@@ -755,13 +775,13 @@ export default function KardexPage() {
                 <DialogHeader>
                   <div className="flex items-center gap-2">
                     <DialogTitle>Add Handover Note</DialogTitle>
-                    <HelpPopover content="Document critical patient information, pending tasks, and special observations for the incoming nursing team." />
+                    <HelpPopover content="Document critical patient information, pending tasks, and escalations for the incoming nursing team." />
                   </div>
                 </DialogHeader>
                 <div className="space-y-4 py-2">
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Your Shift (Ending)</Label>
-                    <Select value={handoverNoteShift} onValueChange={(v) => setHandoverNoteShift(v as ShiftType)}>
+                    <Label className="text-sm font-medium">Shift Ending <span className="text-destructive">*</span></Label>
+                    <Select value={handoverShiftEnding} onValueChange={(v) => setHandoverShiftEnding(v as ShiftType)}>
                       <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
@@ -773,17 +793,32 @@ export default function KardexPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Handing over to: {handoverNoteShift === 'DAY' ? 'Night Shift' : 'Day Shift'}
-                    </p>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Handover Note</Label>
+                    <Label className="text-sm font-medium">Incoming Nurse <span className="text-destructive">*</span></Label>
+                    <StaffSearchCombobox
+                      value={handoverIncomingNurse}
+                      onSelect={(userId) => setHandoverIncomingNurse(userId)}
+                      placeholder="Select incoming nurse..."
+                      excludeUserIds={user?.id ? [user.id] : []}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Pending Tasks <span className="text-destructive">*</span></Label>
                     <Textarea
-                      value={handoverNoteContent}
-                      onChange={(e) => setHandoverNoteContent(e.target.value)}
-                      placeholder="Pending treatments, patient concerns, vital changes, family updates..."
-                      className="min-h-[120px] resize-none"
+                      value={handoverPendingTasks}
+                      onChange={(e) => setHandoverPendingTasks(e.target.value)}
+                      placeholder="Pending treatments, medications due, vital sign monitoring, family updates..."
+                      className="min-h-[100px] resize-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Escalations (optional)</Label>
+                    <Textarea
+                      value={handoverEscalations}
+                      onChange={(e) => setHandoverEscalations(e.target.value)}
+                      placeholder="Issues requiring urgent attention, abnormal findings, safety concerns..."
+                      className="min-h-[80px] resize-none"
                     />
                   </div>
                 </div>
@@ -793,7 +828,7 @@ export default function KardexPage() {
                   </Button>
                   <Button 
                     onClick={handleAddHandoverNote} 
-                    disabled={!handoverNoteContent.trim() || addHandoverNote.isPending}
+                    disabled={!handoverPendingTasks.trim() || !handoverIncomingNurse || addHandoverNote.isPending}
                     className="w-full sm:w-auto"
                   >
                     {addHandoverNote.isPending ? 'Saving...' : 'Save Handover'}

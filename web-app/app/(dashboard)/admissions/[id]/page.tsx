@@ -320,14 +320,23 @@ export default function AdmissionDetailPage() {
         <TabsContent value="kardex" className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
             <h3 className="text-lg font-semibold">Nursing Kardex</h3>
-            {kardex && (
-              <Button variant="outline" asChild className="w-full sm:w-auto">
-                <Link href={`/admissions/${admission.id}/kardex`}>
-                  <ClipboardList className="h-4 w-4 mr-2" />
-                  <span className="sm:hidden">View Kardex</span>
-                  <span className="hidden sm:inline">View Full Kardex</span>
-                </Link>
-              </Button>
+            {kardex && admission.admission_status === 'ACTIVE' && (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
+                  <Link href={`/admissions/${admission.id}/kardex?action=shift-note`}>
+                    <Plus className="h-4 w-4 sm:mr-1.5" />
+                    <span className="hidden sm:inline">Add Shift Note</span>
+                    <span className="sm:hidden">Shift Note</span>
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild className="w-full sm:w-auto">
+                  <Link href={`/admissions/${admission.id}/kardex`}>
+                    <ClipboardList className="h-4 w-4 mr-2" />
+                    <span className="sm:hidden">View Kardex</span>
+                    <span className="hidden sm:inline">View Full Kardex</span>
+                  </Link>
+                </Button>
+              </div>
             )}
           </div>
 

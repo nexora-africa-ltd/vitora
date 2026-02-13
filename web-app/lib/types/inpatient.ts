@@ -424,10 +424,10 @@ export interface KardexShiftNoteCreateData {
 }
 
 export interface KardexHandoverNoteCreateData {
-  from_shift: ShiftType;
-  to_shift: ShiftType;
-  content: string;
-  nurse?: number;
+  incoming_nurse: number;
+  shift_ending: ShiftType;
+  pending_tasks: string;
+  escalations?: string;
 }
 
 // ============================================================================
