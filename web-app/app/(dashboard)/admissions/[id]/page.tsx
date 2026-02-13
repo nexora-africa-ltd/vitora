@@ -205,7 +205,7 @@ export default function AdmissionDetailPage() {
                 <InfoRow
                   icon={User}
                   label="Admitted By"
-                  value={admission.admitted_by_username || '—'}
+                  value={admission.admitting_officer_username || '—'}
                 />
                 <InfoRow
                   icon={Calendar}
