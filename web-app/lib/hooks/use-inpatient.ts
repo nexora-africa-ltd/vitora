@@ -117,6 +117,8 @@ export function useBeds(params?: BedListParams) {
   return useQuery({
     queryKey: inpatientQueryKeys.beds(params),
     queryFn: () => inpatientApi.listBeds(params),
+    // Only fetch when ward is specified to avoid fetching all beds
+    enabled: params?.ward !== undefined,
   });
 }
 

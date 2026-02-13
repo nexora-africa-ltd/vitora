@@ -178,7 +178,10 @@ export function BedSelectionGrid({
     return (
       <div className="py-6 text-center text-muted-foreground">
         <BedIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
-        <p className="text-sm">No beds found in this ward</p>
+        <p className="text-sm">No beds configured for this ward</p>
+        <p className="text-xs text-muted-foreground/60 mt-1">
+          Contact admin to add beds to this ward
+        </p>
       </div>
     );
   }
