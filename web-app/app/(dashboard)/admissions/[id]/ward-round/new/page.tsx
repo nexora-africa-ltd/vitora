@@ -284,11 +284,8 @@ export default function NewWardRoundPage() {
               </SelectTrigger>
               <SelectContent>
                 {CONDITION_STATUSES.map((status) => (
-                  <SelectItem key={status.value} value={status.value}>
-                    <div className="flex flex-col">
-                      <span>{status.label}</span>
-                      <span className="text-xs text-accent-foreground">{status.description}</span>
-                    </div>
+                  <SelectItem key={status.value} value={status.value} title={status.description}>
+                    {status.label}
                   </SelectItem>
                 ))}
               </SelectContent>

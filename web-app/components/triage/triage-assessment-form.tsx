@@ -124,6 +124,10 @@ const triageFormSchema = z
       z.literal(null),
       z.number().min(0, 'Weight must be positive').max(500, 'Weight must be less than 500 kg'),
     ]).optional(),
+    height: z.union([
+      z.literal(null),
+      z.number().min(0, 'Height must be positive').max(300, 'Height must be less than 300 cm'),
+    ]).optional(),
     mental_status: z.enum(['A', 'V', 'P', 'U'], {
       required_error: 'Mental status (AVPU) is required',
     }),
@@ -714,6 +718,7 @@ export function TriageAssessmentForm({
       temperature: null,
       respiratory_rate: null,
       weight: null,
+      height: null,
 
       mental_status: initialData?.mental_status || 'A',
       mobility: initialData?.mobility || 'AMBULATORY',
@@ -938,6 +943,7 @@ export function TriageAssessmentForm({
         temperature: data.temperature,
         respiratory_rate: data.respiratory_rate,
         weight: data.weight,
+        height: data.height,
         mental_status: data.mental_status,
         mobility: data.mobility,
         allergies_noted: data.allergies_noted,
@@ -1295,6 +1301,33 @@ export function TriageAssessmentForm({
                 </InputGroup>
                 {errors.weight && (
                   <p className="text-sm text-destructive">{errors.weight.message}</p>
+                )}
+              </div>
+
+              {/* Height (optional) */}
+              <div className="space-y-2">
+                <Label htmlFor="height">Height</Label>
+                <InputGroup>
+                  <InputGroupInput
+                    id="height"
+                    type="number"
+                    step="0.1"
+                    inputMode="decimal"
+                    placeholder="e.g. 170"
+                    aria-invalid={!!errors.height}
+                    disabled={disabled}
+                    {...register('height', {
+                      setValueAs: (v) => {
+                        if (v === '' || v === null || v === undefined) return null;
+                        const num = parseFloat(v);
+                        return Number.isNaN(num) ? null : num;
+                      },
+                    })}
+                  />
+                  <InputGroupAddon align="inline-end">cm</InputGroupAddon>
+                </InputGroup>
+                {errors.height && (
+                  <p className="text-sm text-destructive">{errors.height.message}</p>
                 )}
               </div>
             </div>
