@@ -89,7 +89,8 @@ export default function NewAdmissionPage() {
   // Fetch wards and beds
   const { data: wards } = useInpatientWards();
   const selectedWardId = useMemo(() => (wardId ? Number(wardId) : undefined), [wardId]);
-  const { data: beds } = useBeds({ ward: selectedWardId, status: 'AVAILABLE' });
+  // Fetch all beds for the ward (not just available) so users see full occupancy
+  const { data: beds } = useBeds({ ward: selectedWardId });
   const createAdmission = useCreateAdmission();
 
   // ICD-10 search
