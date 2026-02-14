@@ -3,7 +3,7 @@
 > **Created**: 2026-02-14  
 > **Updated**: 2026-02-14  
 > **Owner**: Engineering  
-> **Status**: Phase A Complete  
+> **Status**: Phase B Complete  
 > **Scope**: Laboratory module (backend + web-app), reporting/analytics, external exchange foundations
 
 ---
@@ -72,7 +72,17 @@ This proposal distinguishes four reporting layers:
 
 ### 3.6 Missing: operational analytics / lab reports
 
-- Planned analytics service (`LabReportService`) is documented in `docs/sprint-1.5-1.6-track-b-lab-workflow-deliverables.md` but is not implemented in code (no `reports.py`).
+- ✅ **Implemented**: `LabReportService` now exists in `backend/hmis/apps/laboratory/reports.py` with:
+  - `turnaround_time_report(start_date, end_date)` — TAT by test, by priority, queue TAT
+  - `workload_report(start_date, end_date)` — tests entered/verified by day and by technician
+  - `critical_values_report(start_date, end_date)` — critical result counts by test
+  - `sample_rejection_report(start_date, end_date)` — rejection rate and reason breakdown
+- ✅ API endpoints exposed:
+  - `GET /api/lab/reports/turnaround-time/?start=YYYY-MM-DD&end=YYYY-MM-DD`
+  - `GET /api/lab/reports/workload/?start=YYYY-MM-DD&end=YYYY-MM-DD`
+  - `GET /api/lab/reports/critical-values/?start=YYYY-MM-DD&end=YYYY-MM-DD`
+  - `GET /api/lab/reports/rejections/?start=YYYY-MM-DD&end=YYYY-MM-DD`
+- ✅ Test coverage in `backend/tests/test_lab_reports.py` (5 tests passing)
 
 ### 3.7 External exchange foundations (present but not wired end-to-end)
 
@@ -140,7 +150,7 @@ Add a small, testable reporting service that supports:
 |------|---------|--------|-----|
 | Real-time clinician notifications | Implemented | Keep | None |
 | Order/queue/result workflow | Implemented | Keep | Minor refinements only |
-| Lab analytics (TAT/workload/critical/rejection) | Not implemented | Implement `LabReportService` | Missing module + endpoints + tests |
+| Lab analytics (TAT/workload/critical/rejection) | ✅ **Implemented** | All 4 reports + endpoints | **Closed** (see Phase B enhancements below) |
 | Attachments | ✅ **Implemented** | Use `LabResultAttachment` consistently | **Closed** |
 | Requisition PDF | ✅ **Consolidated** | One canonical implementation | **Closed** |
 | HL7/MLLP exchange | Services exist | Configured pipeline | Not wired end-to-end |
@@ -177,36 +187,89 @@ This plan is intentionally incremental to reduce risk.
 - Requisition endpoint returns a PDF for external orders
 
 
-### Phase B — Implement Lab Reports/Analytics (Operational reporting)
+### Phase B — Implement Lab Reports/Analytics (Operational reporting) ✅ **COMPLETED**
 
 **Goal**: Provide lab management reporting without changing clinical workflows.
 
-**Deliverables**:
-- Implement `backend/hmis/apps/laboratory/reports.py`:
+**Deliverables** (all implemented):
+- ✅ `backend/hmis/apps/laboratory/reports.py`:
   - `LabReportService.turnaround_time_report(start_date, end_date)`
   - `LabReportService.workload_report(start_date, end_date)`
   - `LabReportService.critical_values_report(start_date, end_date)`
   - `LabReportService.sample_rejection_report(start_date, end_date)`
-- Implement minimal API endpoints:
+- ✅ API endpoints (all 4 exposed):
   - `GET /api/lab/reports/turnaround-time/?start=YYYY-MM-DD&end=YYYY-MM-DD`
   - `GET /api/lab/reports/workload/?start=YYYY-MM-DD&end=YYYY-MM-DD`
   - `GET /api/lab/reports/critical-values/?start=YYYY-MM-DD&end=YYYY-MM-DD`
   - `GET /api/lab/reports/rejections/?start=YYYY-MM-DD&end=YYYY-MM-DD`
 
-**Implementation notes**:
-- Prefer deterministic queries over Python loops.
-- Use `entered_at`, `verified_at`, queue timestamps (`collected_at`, `processing_started_at`, `released_at`) to compute TAT.
-- Define and document which timestamps are used per metric.
+**Implementation details** (documented in `reports.py` docstrings):
+- **TAT definitions**:
+  - Result TAT: `verified_at - entered_at` (for verified results)
+  - Queue TAT: `released_at - collected_at` (for released samples)
+  - Processing TAT: `released_at - processing_started_at` (for released samples)
+- Uses Django ORM aggregates (deterministic queries, not Python loops)
+- Date ranges are timezone-aware and inclusive of start/end dates
 
-**Acceptance criteria**:
-- Each endpoint returns a stable JSON shape suitable for dashboards.
-- Reports are correct for edge cases (no results, partial results, mixed priorities).
+**TAT Report shape**:
+```json
+{
+  "start": "2026-02-01",
+  "end": "2026-02-14",
+  "overall": { "results_verified": 42, "avg_result_tat_hours": 2.5 },
+  "by_test": [{ "test_code": "HB", "test_name": "Hemoglobin", "result_count": 10, "avg_tat_hours": 1.8 }],
+  "by_priority": [{ "priority": "STAT", "result_count": 5, "avg_tat_hours": 0.5 }],
+  "queue_tat": { "released_count": 40, "avg_collect_to_release_hours": 3.0, "avg_processing_to_release_hours": 1.5 }
+}
+```
 
-**Tests** (align with sprint spec):
-- TAT by test and by priority
-- Workload by day and by technician
-- Critical values count
-- Rejection rate and reasons
+**Workload Report shape**:
+```json
+{
+  "start": "2026-02-01",
+  "end": "2026-02-14",
+  "totals": { "tests_entered": 120, "tests_verified": 115 },
+  "by_day": [{ "date": "2026-02-01", "tests_entered": 15, "tests_verified": 12 }],
+  "by_technician": [{ "technician_id": 1, "technician_name": "Jane Doe", "entered_count": 30, "verified_count": 25 }]
+}
+```
+
+**Critical Values Report shape**:
+```json
+{
+  "start": "2026-02-01",
+  "end": "2026-02-14",
+  "total_critical": 8,
+  "by_test": [{ "test_code": "HB", "test_name": "Hemoglobin", "critical_count": 3 }]
+}
+```
+
+**Rejection Report shape**:
+```json
+{
+  "start": "2026-02-01",
+  "end": "2026-02-14",
+  "total_orders": 150,
+  "rejected_orders": 5,
+  "rejection_rate": 3.33,
+  "reasons": [{ "reason": "Hemolyzed sample", "count": 3 }]
+}
+```
+
+**Tests** (all passing in `backend/tests/test_lab_reports.py`):
+- ✅ TAT by test and by priority
+- ✅ Workload by day and by technician
+- ✅ Critical values count
+- ✅ Rejection rate and reasons
+- ✅ Missing date params returns 400
+
+**Future enhancements** (not in current scope but identified for Phase B+):
+- **Outlier/percentile TAT**: Add 95th percentile TAT (spec mentioned but not implemented)
+- **TAT by category**: Currently only by test code; could add `by_category` grouping
+- **Time-to-notify metrics**: Track time from critical result entry to clinician notification
+- **Queue status over time**: Track queue status counts (PENDING/PROCESSING/etc.) by day
+- **Weekly aggregation option**: Add `?granularity=week` for workload report
+- **Extended edge case tests**: Empty date ranges, single result scenarios
 
 
 ### Phase C — External exchange wiring (HL7/MLLP) behind flags
@@ -255,8 +318,9 @@ This plan is intentionally incremental to reduce risk.
 ## 9) Next Actions (Recommended Sequence)
 
 1. ~~Phase A: normalize attachments + unify requisition generator.~~ ✅ **COMPLETED**
-2. **Phase B: implement lab analytics services + endpoints + tests.** ← Next
-3. Phase C: wire HL7/MLLP in a feature-flagged, testable manner.
+2. ~~**Phase B: implement lab analytics services + endpoints + tests.**~~ ✅ **COMPLETED**
+3. **Phase C: wire HL7/MLLP in a feature-flagged, testable manner.** ← Next
+4. (Optional) Phase B+ enhancements: percentile TAT, category grouping, time-to-notify metrics
 
 ---
 
@@ -266,4 +330,6 @@ This plan is intentionally incremental to reduce risk.
 - `docs/sprint-1.3-1.4-track-b-lab-deliverables.md`
 - `docs/sprint-1.5-1.6-track-b-lab-workflow-deliverables.md`
 - `backend/hmis/apps/laboratory/` (models, views, signals, websockets, services)
+- `backend/hmis/apps/laboratory/reports.py` (Phase B implementation)
+- `backend/tests/test_lab_reports.py` (Phase B tests)
 - `backend/hmis/apps/clinics/` (pattern for monthly reporting aggregation)
