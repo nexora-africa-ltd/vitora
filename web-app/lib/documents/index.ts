@@ -62,6 +62,12 @@ export {
   reportStatusClasses,
   reportStatusLabels,
 } from './schemas/radiology-report.schema';
+export {
+  labReportSchema,
+  labReportDefaults,
+  labReportStatusClasses,
+  labReportStatusLabels,
+} from './schemas/lab-report.schema';
 
 // =============================================================================
 // RENDERER
@@ -142,3 +148,8 @@ export {
   getRadiologyReportQRContent,
   type PrintRadiologyReportData,
 } from './print-report';
+
+export {
+  printLabReport,
+  type PrintLabReportData,
+} from './print-lab-report';

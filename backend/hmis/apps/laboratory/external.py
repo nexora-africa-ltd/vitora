@@ -8,15 +8,9 @@ partners including requisition generation and result import.
 import csv
 import io
 from datetime import datetime
-from io import BytesIO
 from typing import BinaryIO
 
 from django.core.files.uploadedfile import UploadedFile
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.platypus import Table, TableStyle
-
 from .models import LabOrder, LabResult
 
 
@@ -42,158 +36,11 @@ class ExternalLabRequisition:
         Returns:
             bytes: PDF document as bytes
         """
-        buffer = BytesIO()
-        pdf = canvas.Canvas(buffer, pagesize=A4)
-        width, height = A4
+        # Consolidated implementation lives in services.requisition.
+        from .services.requisition import ExternalLabRequisition as ServiceExternalLabRequisition
 
-        # Header
-        pdf.setFont("Helvetica-Bold", 16)
-        pdf.drawString(50, height - 50, "LABORATORY REQUISITION FORM")
-
-        pdf.setFont("Helvetica", 10)
-        pdf.drawString(50, height - 70, "Vitora HMIS - Kenya Ministry of Health")
-
-        # Order Information
-        y_position = height - 100
-        pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(50, y_position, "Order Information")
-
-        y_position -= 20
-        pdf.setFont("Helvetica", 10)
-        pdf.drawString(50, y_position, f"Order Number: {order.order_number}")
-        y_position -= 15
-        pdf.drawString(50, y_position, f"Order Date: {order.ordered_at.strftime('%Y-%m-%d %H:%M')}")
-        y_position -= 15
-        pdf.drawString(50, y_position, f"Priority: {order.get_priority_display()}")
-        y_position -= 15
-        pdf.drawString(50, y_position, f"Order Type: {order.get_order_type_display()}")
-
-        if order.external_lab:
-            y_position -= 15
-            pdf.drawString(50, y_position, f"External Lab: {order.external_lab}")
-
-        # Patient Demographics
-        y_position -= 30
-        pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(50, y_position, "Patient Information")
-
-        y_position -= 20
-        pdf.setFont("Helvetica", 10)
-        patient = order.patient
-        pdf.drawString(50, y_position, f"Name: {patient.first_name} {patient.last_name}")
-        y_position -= 15
-        pdf.drawString(50, y_position, f"MRN: {patient.mrn}")
-        y_position -= 15
-        pdf.drawString(50, y_position, f"Date of Birth: {patient.date_of_birth}")
-        y_position -= 15
-        pdf.drawString(50, y_position, f"Gender: {patient.get_gender_display()}")
-        y_position -= 15
-        pdf.drawString(50, y_position, f"Age: {patient.age} years")
-
-        # Ordering Clinician
-        y_position -= 30
-        pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(50, y_position, "Ordering Clinician")
-
-        y_position -= 20
-        pdf.setFont("Helvetica", 10)
-        clinician_name = order.ordered_by.get_full_name() or order.ordered_by.username
-        pdf.drawString(50, y_position, f"Name: {clinician_name}")
-
-        # Tests Requested
-        y_position -= 30
-        pdf.setFont("Helvetica-Bold", 12)
-        pdf.drawString(50, y_position, "Tests Requested")
-
-        y_position -= 20
-        pdf.setFont("Helvetica", 9)
-
-        # Create table for tests
-        table_data = [["#", "Test Code", "Test Name", "Specimen Type"]]
-        for idx, item in enumerate(order.items.all(), 1):
-            test = item.test
-            table_data.append([str(idx), test.code, test.name, test.get_specimen_type_display()])
-
-        # Draw table
-        table = Table(table_data, colWidths=[20, 60, 200, 100])
-        table.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, 0), 9),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
-                    ("FONTSIZE", (0, 1), (-1, -1), 8),
-                ]
-            )
-        )
-
-        table.wrapOn(pdf, width, height)
-        table_height = table._height
-        table.drawOn(pdf, 50, y_position - table_height - 10)
-        y_position -= table_height + 20
-
-        # Clinical Notes
-        if order.clinical_notes:
-            y_position -= 20
-            pdf.setFont("Helvetica-Bold", 12)
-            pdf.drawString(50, y_position, "Clinical Notes / Indication")
-
-            y_position -= 20
-            pdf.setFont("Helvetica", 9)
-
-            # Wrap text if too long
-            text_object = pdf.beginText(50, y_position)
-            text_object.setFont("Helvetica", 9)
-
-            # Split notes into lines
-            max_width = 500
-            words = order.clinical_notes.split()
-            lines = []
-            current_line = []
-
-            for word in words:
-                test_line = " ".join(current_line + [word])
-                if pdf.stringWidth(test_line, "Helvetica", 9) <= max_width:
-                    current_line.append(word)
-                else:
-                    if current_line:
-                        lines.append(" ".join(current_line))
-                    current_line = [word]
-
-            if current_line:
-                lines.append(" ".join(current_line))
-
-            for line in lines[:5]:  # Limit to 5 lines
-                text_object.textLine(line)
-
-            pdf.drawText(text_object)
-            y_position -= len(lines[:5]) * 12 + 10
-
-        # Barcode (simple text representation)
-        y_position -= 30
-        pdf.setFont("Helvetica-Bold", 10)
-        pdf.drawString(50, y_position, f"Order ID: {order.order_number}")
-
-        # Draw simple barcode representation
-        pdf.setFont("Courier", 8)
-        barcode_text = f"*{order.order_number}*"
-        pdf.drawString(50, y_position - 15, barcode_text)
-
-        # Footer
-        pdf.setFont("Helvetica", 8)
-        pdf.drawString(50, 40, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        pdf.drawString(50, 30, "Vitora HMIS - Laboratory Requisition Form")
-
-        pdf.showPage()
-        pdf.save()
-
-        buffer.seek(0)
-        return buffer.getvalue()
+        pdf_buffer = ServiceExternalLabRequisition(order).generate_pdf()
+        return pdf_buffer.getvalue()
 
     @staticmethod
     def generate_hl7_message(order: LabOrder) -> str:
