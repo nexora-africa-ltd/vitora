@@ -7,5 +7,8 @@
 			"name": "loinc",
 			"uri": "azurestorageblob:/loinc?storageAccountId=/subscriptions/0a24f0a4-6db2-46ad-a73e-82e80a3ae853/resourceGroups/hmis/providers/Microsoft.Storage/storageAccounts/hmis"
 		}
-	]
+	],
+	"settings": {
+		"sarif-viewer.connectToGithubCodeScanning": "off"
+	}
 }
