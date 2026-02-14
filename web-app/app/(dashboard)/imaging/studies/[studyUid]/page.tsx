@@ -22,14 +22,12 @@ import { ImagingModality, MODALITY_LABELS } from '@/lib/types/imaging';
 import { formatBytes, formatTime, formatDate } from '@/lib/utils/format';
 import { cn } from '@/lib/utils';
 import {
-  ArrowLeft,
   Download,
   Share2,
   Trash2,
   ExternalLink,
   Image as ImageIcon,
   Layers,
-  Calendar,
   User,
   Building2,
   FileText,
@@ -96,7 +94,10 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
   if (error || !study) {
     return (
       <div className="space-y-4">
-        <PageHeader title="Study Not Found" />
+        <PageHeader 
+          title="Study Not Found" 
+          helpContent="The requested DICOM study could not be loaded."
+        />
         <Card>
           <CardContent className="py-12 text-center">
             <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-destructive" />
@@ -109,8 +110,7 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
               onClick={() => router.push('/imaging/studies')}
               className="mt-6"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Studies
+              View All Studies
             </Button>
           </CardContent>
         </Card>
@@ -120,36 +120,46 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-semibold flex items-center gap-2">
-              {study.patient_name}
-              <ModalityBadge modality={study.modality as ImagingModality} />
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {study.study_description || 'DICOM Study'} • {formatDate(study.study_date)}
-            </p>
+      {/* Page Header */}
+      <PageHeader
+        title={study.study_description || 'DICOM Study'}
+        helpContent="View and interact with DICOM imaging study. Use the viewer tab to examine images with measurement and annotation tools."
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled>
+              <Download className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Download</span>
+            </Button>
+            <Button variant="outline" size="sm" disabled>
+              <Share2 className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Share</span>
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleDelete}>
+              <Trash2 className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Delete</span>
+            </Button>
           </div>
+        }
+      />
+
+      {/* Study Summary Bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
+        <div className="flex flex-col gap-1 min-w-0">
+          <div className="text-sm font-medium truncate flex items-center gap-2">
+            {study.patient_name}
+            <ModalityBadge modality={study.modality as ImagingModality} />
+          </div>
+          <p className="text-xs sm:text-sm text-muted-foreground">
+            {formatDate(study.study_date)}
+            {study.number_of_series > 0 && ` • ${study.number_of_series} series`}
+            {study.number_of_instances > 0 && ` • ${study.number_of_instances} images`}
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled>
-            <Download className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Download</span>
-          </Button>
-          <Button variant="outline" size="sm" disabled>
-            <Share2 className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Share</span>
-          </Button>
-          <Button variant="destructive" size="sm" onClick={handleDelete}>
-            <Trash2 className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Delete</span>
-          </Button>
-        </div>
+        {study.accession_number && (
+          <Badge variant="outline" className="shrink-0 w-fit self-start sm:self-auto">
+            {study.accession_number}
+          </Badge>
+        )}
       </div>
 
       {/* Tabs */}
@@ -172,7 +182,8 @@ export default function DICOMStudyDetailPage({ params }: StudyDetailPageProps) {
             showSeriesPanel={true}
             showToolbar={true}
             enableFullscreen={true}
-            height="calc(100vh - 220px)"
+            height="calc(100vh - 280px)"
+            className="min-h-[300px] sm:min-h-[400px]"
           />
         </TabsContent>
 

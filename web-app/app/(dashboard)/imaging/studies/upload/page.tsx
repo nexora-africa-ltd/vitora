@@ -28,6 +28,9 @@ import {
   CheckCircle2,
   Search,
   User,
+  Circle,
+  ArrowRight,
+  Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -227,6 +230,69 @@ export default function DICOMUploadPage() {
         </Alert>
       )}
 
+      {/* Step Indicator - Upload Workflow */}
+      <Card className="border-dashed">
+        <CardContent className="py-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-center sm:gap-2">
+            {/* Step 1: Select Files */}
+            <div className={cn(
+              'flex items-center gap-2 p-2 rounded-lg transition-colors',
+              files.length > 0 ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-primary/10 text-primary'
+            )}>
+              {files.length > 0 ? (
+                <CheckCircle2 className="h-5 w-5 shrink-0" />
+              ) : (
+                <span className="h-5 w-5 rounded-full border-2 border-current flex items-center justify-center text-xs font-bold shrink-0">1</span>
+              )}
+              <span className="text-sm font-medium">Select DICOM files</span>
+            </div>
+
+            <ArrowRight className="h-4 w-4 text-muted-foreground hidden sm:block shrink-0" />
+
+            {/* Step 2: Link Patient */}
+            <div className={cn(
+              'flex items-center gap-2 p-2 rounded-lg transition-colors',
+              patientId 
+                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' 
+                : files.length > 0 
+                  ? 'bg-primary/10 text-primary animate-pulse' 
+                  : 'bg-muted text-muted-foreground'
+            )}>
+              {patientId ? (
+                <CheckCircle2 className="h-5 w-5 shrink-0" />
+              ) : (
+                <span className="h-5 w-5 rounded-full border-2 border-current flex items-center justify-center text-xs font-bold shrink-0">2</span>
+              )}
+              <span className="text-sm font-medium">Link to patient</span>
+              {!patientId && files.length > 0 && (
+                <Badge variant="outline" className="ml-1 text-xs bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700">
+                  Required
+                </Badge>
+              )}
+            </div>
+
+            <ArrowRight className="h-4 w-4 text-muted-foreground hidden sm:block shrink-0" />
+
+            {/* Step 3: Upload */}
+            <div className={cn(
+              'flex items-center gap-2 p-2 rounded-lg transition-colors',
+              uploadMutation.isSuccess 
+                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                : files.length > 0 && patientId
+                  ? 'bg-primary/10 text-primary'
+                  : 'bg-muted text-muted-foreground'
+            )}>
+              {uploadMutation.isSuccess ? (
+                <CheckCircle2 className="h-5 w-5 shrink-0" />
+              ) : (
+                <span className="h-5 w-5 rounded-full border-2 border-current flex items-center justify-center text-xs font-bold shrink-0">3</span>
+              )}
+              <span className="text-sm font-medium">Upload to PACS</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Left: File Drop Zone */}
         <div className="lg:col-span-2 space-y-4">
@@ -243,6 +309,7 @@ export default function DICOMUploadPage() {
                 className={cn(
                   'border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors',
                   'hover:border-primary hover:bg-primary/5',
+                  files.length === 0 && 'border-primary bg-primary/5',
                   uploadMutation.isPending && 'pointer-events-none opacity-50'
                 )}
                 onDragOver={handleDragOver}
@@ -268,6 +335,11 @@ export default function DICOMUploadPage() {
                 <p className="text-sm text-muted-foreground mt-1">
                   or click to browse
                 </p>
+                {files.length === 0 && (
+                  <p className="text-xs text-primary mt-3 font-medium">
+                    ↑ Start here - select your DICOM files
+                  </p>
+                )}
               </div>
 
               {/* File List */}
@@ -353,12 +425,23 @@ export default function DICOMUploadPage() {
         {/* Right: Patient Selection & Upload */}
         <div className="space-y-4">
           {/* Patient Selection */}
-          <Card>
+          <Card className={cn(
+            'transition-all',
+            files.length > 0 && !patientId && 'ring-2 ring-primary ring-offset-2'
+          )}>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <CardTitle>Link to Patient</CardTitle>
                 <HelpPopover content="Associate uploaded studies with a patient record. This is required for the study to appear in the patient's imaging history." />
               </div>
+              {files.length > 0 && !patientId && (
+                <Alert className="mt-2 border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20">
+                  <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <AlertDescription className="text-amber-700 dark:text-amber-400 text-sm">
+                    Search and select a patient to link these files. This is required before upload.
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               {patientId ? (
@@ -448,9 +531,14 @@ export default function DICOMUploadPage() {
                   </>
                 )}
               </Button>
-              {!patientId && files.length > 0 && (
+              {files.length === 0 && (
                 <p className="text-xs text-muted-foreground text-center mt-2">
-                  Select a patient to enable upload
+                  Select DICOM files first, then link to a patient
+                </p>
+              )}
+              {!patientId && files.length > 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 text-center mt-2 font-medium">
+                  ← Link files to a patient to enable upload
                 </p>
               )}
             </CardContent>

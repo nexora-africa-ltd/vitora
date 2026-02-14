@@ -145,12 +145,12 @@ export function ViewerToolbar({
     <TooltipProvider delayDuration={300}>
       <div
         className={cn(
-          'flex items-center gap-1 p-1 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg',
+          'flex items-center gap-0.5 sm:gap-1 p-1 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg',
           isHorizontal ? 'flex-row' : 'flex-col',
           className
         )}
       >
-        {/* Navigation Tools */}
+        {/* Navigation Tools - always visible */}
         <div className={cn('flex gap-0.5', !isHorizontal && 'flex-col')}>
           <ToolButton
             tool="pan"
@@ -178,10 +178,10 @@ export function ViewerToolbar({
           />
         </div>
 
-        <Separator orientation={isHorizontal ? 'vertical' : 'horizontal'} className={isHorizontal ? 'h-6' : 'w-6'} />
+        <Separator orientation={isHorizontal ? 'vertical' : 'horizontal'} className={cn(isHorizontal ? 'h-6' : 'w-6', 'hidden sm:block')} />
 
-        {/* Measurement Tools */}
-        <div className={cn('flex gap-0.5', !isHorizontal && 'flex-col')}>
+        {/* Measurement Tools - hidden on mobile */}
+        <div className={cn('hidden sm:flex gap-0.5', !isHorizontal && 'flex-col')}>
           <ToolButton
             tool="ruler"
             activeTool={activeTool}
@@ -216,34 +216,36 @@ export function ViewerToolbar({
           />
         </div>
 
-        <Separator orientation={isHorizontal ? 'vertical' : 'horizontal'} className={isHorizontal ? 'h-6' : 'w-6'} />
+        <Separator orientation={isHorizontal ? 'vertical' : 'horizontal'} className={cn(isHorizontal ? 'h-6' : 'w-6', 'hidden sm:block')} />
 
-        {/* Manipulation Actions */}
+        {/* Manipulation Actions - only reset on mobile, all on sm+ */}
         <div className={cn('flex gap-0.5', !isHorizontal && 'flex-col')}>
-          <ActionButton
-            onClick={onInvert}
-            icon={<Contrast className="h-4 w-4" />}
-            label="Invert Image"
-            disabled={!isReady}
-          />
-          <ActionButton
-            onClick={onFlipH}
-            icon={<FlipHorizontal className="h-4 w-4" />}
-            label="Flip Horizontal"
-            disabled={!isReady}
-          />
-          <ActionButton
-            onClick={onFlipV}
-            icon={<FlipVertical className="h-4 w-4" />}
-            label="Flip Vertical"
-            disabled={!isReady}
-          />
-          <ActionButton
-            onClick={onRotate}
-            icon={<RotateCw className="h-4 w-4" />}
-            label="Rotate 90°"
-            disabled={!isReady}
-          />
+          <span className="hidden sm:contents">
+            <ActionButton
+              onClick={onInvert}
+              icon={<Contrast className="h-4 w-4" />}
+              label="Invert Image"
+              disabled={!isReady}
+            />
+            <ActionButton
+              onClick={onFlipH}
+              icon={<FlipHorizontal className="h-4 w-4" />}
+              label="Flip Horizontal"
+              disabled={!isReady}
+            />
+            <ActionButton
+              onClick={onFlipV}
+              icon={<FlipVertical className="h-4 w-4" />}
+              label="Flip Vertical"
+              disabled={!isReady}
+            />
+            <ActionButton
+              onClick={onRotate}
+              icon={<RotateCw className="h-4 w-4" />}
+              label="Rotate 90°"
+              disabled={!isReady}
+            />
+          </span>
           <ActionButton
             onClick={onReset}
             icon={<RotateCcw className="h-4 w-4" />}
@@ -254,16 +256,16 @@ export function ViewerToolbar({
 
         <Separator orientation={isHorizontal ? 'vertical' : 'horizontal'} className={isHorizontal ? 'h-6' : 'w-6'} />
 
-        {/* Image Navigation */}
-        <div className={cn('flex items-center gap-1', !isHorizontal && 'flex-col')}>
+        {/* Image Navigation - always visible */}
+        <div className={cn('flex items-center gap-0.5 sm:gap-1', !isHorizontal && 'flex-col')}>
           <ActionButton
             onClick={onPrevious}
             icon={<ChevronLeft className="h-4 w-4" />}
             label="Previous Image"
             disabled={!isReady || currentIndex <= 0}
           />
-          <span className="text-xs text-muted-foreground min-w-[60px] text-center">
-            {isReady ? `${currentIndex + 1} / ${totalImages}` : '- / -'}
+          <span className="text-xs text-muted-foreground min-w-[40px] sm:min-w-[60px] text-center">
+            {isReady ? `${currentIndex + 1}/${totalImages}` : '-/-'}
           </span>
           <ActionButton
             onClick={onNext}

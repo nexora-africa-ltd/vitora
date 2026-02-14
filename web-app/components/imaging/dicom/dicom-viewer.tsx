@@ -124,7 +124,21 @@ export function DICOMViewer({
   const [isLoadingInstances, setIsLoadingInstances] = useState(false);
   const [instanceError, setInstanceError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
+  // Auto-collapse panel on mobile (< 768px)
+  const [isPanelCollapsed, setIsPanelCollapsed] = useState(
+    typeof window !== 'undefined' ? window.innerWidth < 768 : true
+  );
+
+  // Listen for window resize to auto-collapse/expand panel
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768 && !isPanelCollapsed) {
+        setIsPanelCollapsed(true);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isPanelCollapsed]);
 
   // Get current series
   const currentSeries = study.series[selectedSeriesIndex];
@@ -210,7 +224,7 @@ export function DICOMViewer({
       <div className="h-full flex flex-col">
         {/* Toolbar */}
         {showToolbar && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30">
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100%-6rem)] sm:max-w-none overflow-x-auto">
             <ViewerToolbar
               activeTool={activeTool}
               onToolChange={handleToolChange}
@@ -322,7 +336,7 @@ export function DICOMViewer({
             )}
 
             {/* Study info overlay */}
-            <div className="absolute top-2 right-12 z-10 text-right text-white text-xs">
+            <div className="absolute top-2 right-12 z-10 text-right text-white text-xs hidden sm:block">
               <div className="bg-black/60 px-2 py-1 rounded">
                 <div className="font-medium">{study.patient_name}</div>
                 <div className="text-muted-foreground">{study.study_date}</div>
