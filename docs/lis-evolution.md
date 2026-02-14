@@ -3,7 +3,7 @@
 > **Created**: 2026-02-14  
 > **Updated**: 2026-02-15  
 > **Owner**: Engineering  
-> **Status**: In Progress (Phase L0, L1 & L2 Complete)  
+> **Status**: In Progress (Phase L0, L1, L2 & L3 Complete)  
 > **Scope**: Laboratory module architecture evolution
 
 ---
@@ -116,7 +116,7 @@ DiagnosticReport (final output)
 | Results on specimens | ✅ `LabResult.specimen` FK | None | ~~HIGH~~ **DONE** |
 | Barcode as primary key | ✅ `Specimen.barcode` (unique, indexed) | None | ~~Low~~ **DONE** |
 | Two-stage validation | ✅ `ResultValidation` model | None | ~~Medium~~ **DONE** |
-| `AnalyzerRun` tracking | None | Add when analyzers connected | Low |
+| `AnalyzerRun` tracking | ✅ `Instrument` + `AnalyzerRun` models | None | ~~Low~~ **DONE** |
 | `DiagnosticReport` output | `LabResultAttachment` partial | Add report model | Medium |
 | Rejection tracking | ✅ `Specimen.rejection_reason` + queue | Works | None |
 | FHIR resource mapping | None explicit | Future (Phase T4) | Low |
@@ -310,8 +310,9 @@ class ResultValidation(models.Model):
 
 ---
 
-### Phase L3 — Analyzer Integration Support
+### Phase L3 — Analyzer Integration Support ✅ COMPLETE
 
+**Implemented**: 2026-02-15  
 **Goal**: Track raw instrument data and machine runs.
 
 **Deliverables**:
@@ -373,8 +374,20 @@ class AnalyzerRun(models.Model):
 - Error recovery: Re-parse raw messages if needed
 - Analytics: Machine performance, QC
 
-**Effort**: 8-12 hours  
-**Risk**: Low (additive, only needed when analyzers are connected)
+**Effort**: 8-12 hours → **Actual**: ~4 hours  
+**Risk**: Low (additive, only needed when analyzers are connected) → **Outcome**: Successful
+
+**Implementation Notes**:
+- `Instrument` model created with support for HL7 MLLP, ASTM, FHIR, and Manual entry interface types
+- `AnalyzerRun` model tracks raw instrument data with status flow: RECEIVED → PARSED → APPLIED (or ERROR)
+- Helper methods: `mark_error()`, `mark_parsed()`, `mark_applied()` for status transitions
+- API endpoints: `/api/laboratory/instruments/` and `/api/laboratory/analyzer-runs/`
+- Custom actions: `/mark_error/` and `/mark_applied/` for analyzer run workflow
+- Filters: by status, instrument, specimen barcode, date range
+- Search: instruments by code or name
+- Related name `specimen.analyzer_runs` for easy audit trail queries
+- 35 new tests covering models, API endpoints, and integration workflows
+- Migration `0015_add_instrument_and_analyzer_run_models.py` applied
 
 ---
 

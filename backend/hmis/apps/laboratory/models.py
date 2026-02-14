@@ -1584,3 +1584,169 @@ class LabResultAttachment(models.Model):
 
     def __str__(self):
         return f"{self.attachment_type}: {self.filename} for Order {self.lab_order.order_number}"
+
+
+# ============================================================================
+# Phase L3 — Analyzer Integration Support
+# ============================================================================
+
+
+class Instrument(models.Model):
+    """
+    Laboratory analyzer/instrument registry.
+
+    Tracks laboratory equipment that can produce test results, supporting
+    various integration protocols (HL7 MLLP, ASTM, FHIR, or manual entry).
+
+    This enables:
+    - Audit trail: "Which machine produced this result?"
+    - Error recovery: Re-parse raw messages if needed
+    - Analytics: Machine performance, QC tracking
+    """
+
+    class InterfaceType(models.TextChoices):
+        HL7_MLLP = "HL7_MLLP", "HL7 v2 over MLLP"
+        ASTM = "ASTM", "ASTM/LIS2-A2"
+        FHIR = "FHIR", "FHIR R4"
+        MANUAL = "MANUAL", "Manual Entry"
+
+    # Identity
+    code = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text="Unique instrument identifier code",
+    )
+    name = models.CharField(max_length=200, help_text="Full instrument name")
+    manufacturer = models.CharField(max_length=100, blank=True, help_text="Equipment manufacturer")
+    model = models.CharField(max_length=100, blank=True, help_text="Model number/name")
+    serial_number = models.CharField(max_length=100, blank=True, help_text="Serial number")
+    department = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Lab department (e.g., Hematology, Chemistry)",
+    )
+
+    # Status
+    is_active = models.BooleanField(default=True, help_text="Whether instrument is operational")
+
+    # Integration configuration
+    interface_type = models.CharField(
+        max_length=20,
+        choices=InterfaceType.choices,
+        default=InterfaceType.MANUAL,
+        help_text="Communication protocol type",
+    )
+    integration_config = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Integration settings: host, port, encoding, etc.",
+    )
+
+    # Audit
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Instrument"
+        verbose_name_plural = "Instruments"
+        ordering = ["department", "name"]
+        indexes = [
+            models.Index(fields=["code"]),
+            models.Index(fields=["is_active"]),
+        ]
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+
+class AnalyzerRun(models.Model):
+    """
+    Raw data from analyzer for a specimen.
+
+    Stores the original instrument message and parsed payload for audit,
+    error recovery, and analytics purposes.
+
+    Status flow: RECEIVED -> PARSED -> APPLIED (or ERROR at any point)
+    """
+
+    class Status(models.TextChoices):
+        RECEIVED = "RECEIVED", "Message Received"
+        PARSED = "PARSED", "Parsed Successfully"
+        APPLIED = "APPLIED", "Results Applied"
+        ERROR = "ERROR", "Parse Error"
+
+    # Relationships
+    specimen = models.ForeignKey(
+        Specimen,
+        on_delete=models.CASCADE,
+        related_name="analyzer_runs",
+        help_text="Specimen this run is for",
+    )
+    instrument = models.ForeignKey(
+        Instrument,
+        on_delete=models.PROTECT,
+        related_name="analyzer_runs",
+        help_text="Instrument that produced this run",
+    )
+    operator = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="analyzer_runs_operated",
+        help_text="Lab technician operating the instrument (null for automated runs)",
+    )
+
+    # Timing
+    run_datetime = models.DateTimeField(help_text="When the analyzer run occurred")
+
+    # Raw data
+    raw_message = models.TextField(help_text="Raw HL7/ASTM/FHIR message from instrument")
+    raw_payload = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Parsed message data in structured format",
+    )
+
+    # Status
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.RECEIVED,
+        help_text="Processing status of this run",
+    )
+    error_message = models.TextField(blank=True, help_text="Error details if parsing failed")
+
+    # Audit
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Analyzer Run"
+        verbose_name_plural = "Analyzer Runs"
+        ordering = ["-run_datetime"]
+        indexes = [
+            models.Index(fields=["status"]),
+            models.Index(fields=["run_datetime"]),
+            models.Index(fields=["instrument", "status"]),
+        ]
+
+    def __str__(self):
+        return f"{self.instrument.code} - {self.specimen.barcode} ({self.status})"
+
+    def mark_error(self, error_message: str) -> None:
+        """Mark this run as failed with an error message."""
+        self.status = self.Status.ERROR
+        self.error_message = error_message
+        self.save(update_fields=["status", "error_message"])
+
+    def mark_parsed(self, payload: dict) -> None:
+        """Mark this run as successfully parsed with extracted data."""
+        self.status = self.Status.PARSED
+        self.raw_payload = payload
+        self.save(update_fields=["status", "raw_payload"])
+
+    def mark_applied(self) -> None:
+        """Mark this run as applied (results created from this run)."""
+        self.status = self.Status.APPLIED
+        self.save(update_fields=["status"])
