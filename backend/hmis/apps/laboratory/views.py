@@ -543,6 +543,9 @@ class LabQueueViewSet(viewsets.ModelViewSet):
             "assigned_technician",
             "collected_by",
             "reviewed_by",
+            "specimen",
+            "specimen__collected_by",
+            "specimen__received_by",
         ).prefetch_related("lab_order__items__test")
 
     def get_serializer_class(self):
@@ -573,8 +576,8 @@ class LabQueueViewSet(viewsets.ModelViewSet):
         serializer = LabQueueCollectSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        sample_id = serializer.validated_data.get("sample_id", "")
-        queue_entry.collect_sample(request.user, sample_id)
+        barcode = serializer.validated_data.get("barcode", "")
+        queue_entry.collect_sample(request.user, sample_id=barcode, barcode=barcode)
 
         return Response(LabQueueSerializer(queue_entry).data)
 
@@ -715,7 +718,7 @@ class LabQueueViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def lookup(self, request):
-        """Find queue entry by barcode (sample_id or queue_number)."""
+        """Find queue entry by barcode (specimen barcode, sample_id, or queue_number)."""
         from .models import LabQueue
         from .serializers import LabQueueSerializer
 
@@ -729,6 +732,9 @@ class LabQueueViewSet(viewsets.ModelViewSet):
 
         # Try to find by queue_number first, then by sample_id
         queue_entry = LabQueue.objects.filter(queue_number=barcode).first()
+
+        if not queue_entry:
+            queue_entry = LabQueue.objects.filter(specimen__barcode=barcode).first()
 
         if not queue_entry:
             queue_entry = LabQueue.objects.filter(sample_id=barcode).first()

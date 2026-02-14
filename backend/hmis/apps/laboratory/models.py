@@ -221,6 +221,9 @@ class TestCatalog(models.Model):
         return TestCatalog.objects.none()
 
 
+SPECIMEN_TYPES = TestCatalog.SPECIMEN_TYPES
+
+
 class LOINCCode(models.Model):
     """LOINC code reference for lab test interoperability."""
 
@@ -432,12 +435,7 @@ class LabOrder(models.Model):
         try:
             queue = self.queue_entry
             if queue.queue_status == "PENDING":
-                queue.queue_status = "COLLECTED"
-                queue.collected_at = timezone.now()
-                queue.collected_by = user
-                queue.save(
-                    update_fields=["queue_status", "collected_at", "collected_by", "updated_at"]
-                )
+                queue.collect_sample(user)
         except LabQueue.DoesNotExist:
             pass
 
@@ -652,6 +650,70 @@ class LabOrderItem(models.Model):
         return hasattr(self, "result")
 
 
+class Specimen(models.Model):
+    """Physical laboratory sample."""
+
+    STATUS_CHOICES = [
+        ("PENDING", "Pending Collection"),
+        ("COLLECTED", "Collected"),
+        ("RECEIVED", "Received at Lab"),
+        ("PROCESSING", "Processing"),
+        ("REJECTED", "Rejected"),
+        ("STORED", "Stored"),
+        ("DISPOSED", "Disposed"),
+    ]
+
+    # Identity
+    barcode = models.CharField(max_length=50, unique=True, db_index=True)
+    specimen_type = models.CharField(max_length=30, choices=SPECIMEN_TYPES)
+    container_type = models.CharField(max_length=50, blank=True)
+
+    # Linkage
+    lab_order = models.ForeignKey(
+        LabOrder, on_delete=models.CASCADE, related_name="specimens"
+    )
+    order_items = models.ManyToManyField(LabOrderItem, related_name="specimens")
+
+    # Collection
+    collected_by = models.ForeignKey(
+        User, null=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    collected_at = models.DateTimeField(null=True, blank=True)
+    collection_site = models.CharField(max_length=100, blank=True)
+
+    # Lab receipt
+    received_by = models.ForeignKey(
+        User, null=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    received_at = models.DateTimeField(null=True, blank=True)
+
+    # Status
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="PENDING",
+    )
+    rejection_reason = models.TextField(blank=True)
+
+    # Storage
+    storage_location = models.CharField(max_length=100, blank=True)
+    storage_temperature = models.CharField(max_length=20, blank=True)
+
+    # Audit
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["barcode"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["collected_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.barcode} - {self.lab_order.order_number}"
+
+
 class LabResult(models.Model):
     """Laboratory test result."""
 
@@ -716,6 +778,13 @@ class LabResult(models.Model):
 
     # Relationships
     order_item = models.OneToOneField(LabOrderItem, on_delete=models.CASCADE, related_name="result")
+    specimen = models.ForeignKey(
+        Specimen,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="results",
+    )
 
     # Result data
     numeric_value = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
@@ -946,6 +1015,13 @@ class LabQueue(models.Model):
 
     # Linkage
     lab_order = models.OneToOneField(LabOrder, on_delete=models.CASCADE, related_name="queue_entry")
+    specimen = models.OneToOneField(
+        Specimen,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="queue_entry",
+    )
 
     # Queue management
     queue_number = models.CharField(max_length=20, unique=True, editable=False)
@@ -1032,7 +1108,38 @@ class LabQueue(models.Model):
         self.assigned_technician = technician
         self.save(update_fields=["assigned_technician"])
 
-    def collect_sample(self, collector, sample_id=""):
+    def _ensure_specimen(self) -> Specimen:
+        if self.specimen_id:
+            return self.specimen
+
+        first_item = self.lab_order.items.first()
+        specimen_type = self.sample_type or (
+            first_item.test.specimen_type if first_item else "BLOOD"
+        )
+        barcode = self.sample_id or self.queue_number
+
+        status_map = {
+            self.QueueStatus.PENDING: "PENDING",
+            self.QueueStatus.COLLECTED: "COLLECTED",
+            self.QueueStatus.PROCESSING: "PROCESSING",
+            self.QueueStatus.REVIEW: "PROCESSING",
+            self.QueueStatus.RELEASED: "PROCESSING",
+        }
+
+        specimen = Specimen.objects.create(
+            barcode=barcode,
+            specimen_type=specimen_type,
+            lab_order=self.lab_order,
+            collected_by=self.collected_by,
+            collected_at=self.collected_at,
+            status=status_map.get(self.queue_status, "PENDING"),
+        )
+        specimen.order_items.add(*self.lab_order.items.all())
+        self.specimen = specimen
+        self.save(update_fields=["specimen"])
+        return specimen
+
+    def collect_sample(self, collector, sample_id="", barcode: str | None = None):
         """
         Record sample collection.
 
@@ -1040,11 +1147,20 @@ class LabQueue(models.Model):
             collector: User who collected the sample
             sample_id: Barcode or tube ID
         """
-        self.sample_id = sample_id
+        resolved_barcode = barcode if barcode is not None else sample_id
+        self.sample_id = resolved_barcode
         self.collected_by = collector
         self.collected_at = timezone.now()
         self.queue_status = self.QueueStatus.COLLECTED
         self.save(update_fields=["sample_id", "collected_by", "collected_at", "queue_status"])
+
+        specimen = self._ensure_specimen()
+        if resolved_barcode and specimen.barcode != resolved_barcode:
+            specimen.barcode = resolved_barcode
+        specimen.collected_by = collector
+        specimen.collected_at = self.collected_at
+        specimen.status = "COLLECTED"
+        specimen.save(update_fields=["barcode", "collected_by", "collected_at", "status"])
 
     def start_processing(self):
         """Mark queue entry as processing."""
@@ -1052,11 +1168,21 @@ class LabQueue(models.Model):
         self.processing_started_at = timezone.now()
         self.save(update_fields=["queue_status", "processing_started_at"])
 
+        specimen = self._ensure_specimen()
+        if specimen.status != "PROCESSING":
+            specimen.status = "PROCESSING"
+            specimen.save(update_fields=["status"])
+
     def submit_for_review(self):
         """Submit results for review."""
         self.queue_status = self.QueueStatus.REVIEW
         self.processing_completed_at = timezone.now()
         self.save(update_fields=["queue_status", "processing_completed_at"])
+
+        specimen = self._ensure_specimen()
+        if specimen.status != "PROCESSING":
+            specimen.status = "PROCESSING"
+            specimen.save(update_fields=["status"])
 
     def release_results(self, reviewer):
         """
@@ -1080,6 +1206,11 @@ class LabQueue(models.Model):
         """
         self.rejection_reason = reason
         self.save(update_fields=["rejection_reason"])
+
+        specimen = self._ensure_specimen()
+        specimen.status = "REJECTED"
+        specimen.rejection_reason = reason
+        specimen.save(update_fields=["status", "rejection_reason"])
 
     def get_turnaround_time(self):
         """

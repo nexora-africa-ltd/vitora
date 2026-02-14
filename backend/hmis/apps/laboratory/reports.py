@@ -46,7 +46,7 @@ class LabReportService:
 
         TAT definitions:
         - Result TAT: `verified_at - entered_at` for verified results.
-        - Queue TAT: `released_at - collected_at` for released samples.
+        - Queue TAT: `released_at - specimen.collected_at` for released samples.
         - Processing TAT: `released_at - processing_started_at` for released samples.
         """
 
@@ -82,15 +82,15 @@ class LabReportService:
         )
 
         collect_tat_expr = ExpressionWrapper(
-            F("released_at") - F("collected_at"), output_field=DurationField()
+            F("released_at") - F("specimen__collected_at"), output_field=DurationField()
         )
         processing_tat_expr = ExpressionWrapper(
             F("released_at") - F("processing_started_at"), output_field=DurationField()
         )
 
-        queue_collect_stats = queue_released.filter(collected_at__isnull=False).aggregate(
-            released_count=Count("id"), avg_tat=Avg(collect_tat_expr)
-        )
+        queue_collect_stats = queue_released.filter(
+            specimen__collected_at__isnull=False
+        ).aggregate(released_count=Count("id"), avg_tat=Avg(collect_tat_expr))
         queue_processing_stats = queue_released.filter(
             processing_started_at__isnull=False
         ).aggregate(avg_tat=Avg(processing_tat_expr))

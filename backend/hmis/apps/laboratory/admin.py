@@ -4,7 +4,7 @@ Django admin configuration for laboratory models.
 
 from django.contrib import admin
 
-from .models import LabOrder, LabOrderItem, LabResult, LOINCCode, TestCatalog
+from .models import LabOrder, LabOrderItem, LabResult, LOINCCode, Specimen, TestCatalog
 
 
 @admin.register(TestCatalog)
@@ -53,3 +53,12 @@ class LabResultAdmin(admin.ModelAdmin):
     list_filter = ("result_flag", "verification_status", "is_external_result")
     search_fields = ("order_item__test__name", "order_item__lab_order__order_number")
     readonly_fields = ("entered_at", "created_at", "updated_at")
+
+
+@admin.register(Specimen)
+class SpecimenAdmin(admin.ModelAdmin):
+    """Admin interface for Specimens."""
+
+    list_display = ("barcode", "specimen_type", "status", "lab_order", "collected_at")
+    list_filter = ("specimen_type", "status")
+    search_fields = ("barcode", "lab_order__order_number")

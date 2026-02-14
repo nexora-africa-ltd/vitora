@@ -31,6 +31,8 @@ class TestLabOrderWorkflow:
         assert updated_order.status == "SPECIMEN_COLLECTED"
         assert hasattr(updated_order, "queue_entry")
         assert updated_order.queue_entry.sample_id == "TUBE-12345"
+        assert updated_order.queue_entry.specimen is not None
+        assert updated_order.queue_entry.specimen.barcode == "TUBE-12345"
 
     def test_valid_transition_collected_to_in_progress(self, sample_lab_order, test_user):
         """Should allow transition from SPECIMEN_COLLECTED to IN_PROGRESS for in-house orders."""
@@ -178,6 +180,8 @@ class TestLabOrderWorkflow:
         assert queue.collected_by == test_user
         assert queue.collected_at is not None
         assert queue.sample_id == "TUBE-999"
+        assert queue.specimen is not None
+        assert queue.specimen.barcode == "TUBE-999"
 
     def test_processing_assigns_technician(self, sample_lab_order, test_user):
         """Should auto-assign technician during processing transition."""

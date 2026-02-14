@@ -1,8 +1,9 @@
 # Laboratory Information System Evolution for Vitora HMIS
 
 > **Created**: 2026-02-14  
+> **Updated**: 2026-02-15  
 > **Owner**: Engineering  
-> **Status**: Planning  
+> **Status**: In Progress (Phase L0 & L1 Complete)  
 > **Scope**: Laboratory module architecture evolution
 
 ---
@@ -25,8 +26,9 @@ Vitora HMIS has a functional laboratory module (`hmis.apps.laboratory`) that sup
 | `LOINCCode` | LOINC reference | Part of terminology | ✅ Exists |
 | `LabOrder` | Order container | `lab_order` | ✅ Solid |
 | `LabOrderItem` | Individual test requests | `lab_order_item` | ✅ Solid |
-| `LabResult` | Test result (on item) | `observation` | ⚠️ Needs specimen link |
-| `LabQueue` | Processing queue | `specimen` (partial) | ⚠️ Conflates specimen + queue |
+| `LabResult` | Test result (on item + specimen) | `observation` | ✅ Specimen-linked (Phase L1) |
+| `LabQueue` | Processing queue | Workflow state | ✅ Now links to Specimen |
+| `Specimen` | Physical sample tracking | `specimen` | ✅ **NEW** (Phase L0) |
 | `LabResultTemplate` | Result templates | N/A | ✅ Vitora-specific |
 | `LabResultAttachment` | PDF/scan uploads | Part of `diagnostic_report` | ✅ Exists |
 
@@ -48,12 +50,12 @@ LabOrderItem(s) ──────────► LabQueue (1:1 with order)
 LabResult ◄───────────────────────┘ (queue tracks sample/collection)
 ```
 
-**Issues**:
-1. `LabQueue` combines specimen tracking + processing workflow
-2. Results attach to `LabOrderItem`, not specimens
-3. No explicit `Specimen` entity
-4. No analyzer run tracking
-5. Single-stage verification
+**Issues** (as of 2026-02-14, before Phase L0):
+1. ~~`LabQueue` combines specimen tracking + processing workflow~~ ✅ Fixed: Specimen model extracted
+2. ~~Results attach to `LabOrderItem`, not specimens~~ ✅ Fixed: Results now link to Specimen
+3. ~~No explicit `Specimen` entity~~ ✅ Fixed: Specimen model added
+4. No analyzer run tracking (Phase L3)
+5. Single-stage verification (Phase L2)
 
 ### 2.3 Current Workflow Strengths
 
@@ -110,21 +112,22 @@ DiagnosticReport (final output)
 
 | lis.md Concept | Current Vitora | Gap | Priority |
 |----------------|----------------|-----|----------|
-| `Specimen` model | `LabQueue` has sample fields | Conflated; no true Specimen | **HIGH** |
-| Results on specimens | Results on `LabOrderItem` | Structural mismatch | **HIGH** |
-| Barcode as primary key | `sample_id` exists but secondary | Minor rename/promote | Low |
+| `Specimen` model | ✅ `Specimen` model implemented | None | ~~HIGH~~ **DONE** |
+| Results on specimens | ✅ `LabResult.specimen` FK | None | ~~HIGH~~ **DONE** |
+| Barcode as primary key | ✅ `Specimen.barcode` (unique, indexed) | None | ~~Low~~ **DONE** |
 | Two-stage validation | Single `verified_by` | Add technical validation | Medium |
 | `AnalyzerRun` tracking | None | Add when analyzers connected | Low |
 | `DiagnosticReport` output | `LabResultAttachment` partial | Add report model | Medium |
-| Rejection tracking | `rejection_reason` on queue | Works | None |
+| Rejection tracking | ✅ `Specimen.rejection_reason` + queue | Works | None |
 | FHIR resource mapping | None explicit | Future (Phase T4) | Low |
 
 ---
 
 ## 5) Incremental Evolution Plan
 
-### Phase L0 — Extract Specimen Model (High Priority)
+### Phase L0 — Extract Specimen Model ✅ COMPLETE
 
+**Implemented**: 2026-02-15  
 **Goal**: Create explicit `Specimen` entity; migrate specimen fields from `LabQueue`.
 
 **Why this matters**:
@@ -208,13 +211,23 @@ class LabQueue(models.Model):
     specimen = models.OneToOneField(Specimen, null=True, on_delete=models.SET_NULL)
 ```
 
-**Effort**: 8-16 hours  
-**Risk**: Medium (data migration required)
+**Effort**: 8-16 hours → **Actual**: ~6 hours  
+**Risk**: Medium (data migration required) → **Outcome**: Successful
+
+**Implementation Notes**:
+- Migration `0012_add_specimen_model.py` creates Specimen model and backfills existing data
+- Signal `create_specimen_for_queue` auto-creates Specimen when LabQueue is created
+- `LabQueue._ensure_specimen()` handles lazy creation for existing queues
+- Specimen status syncs with queue workflow (collect → COLLECTED, process → PROCESSING, etc.)
+- API responses now derive `sample_id`/`sample_type` from Specimen while keeping legacy field names
+- Queue lookup supports specimen barcode search
+- 289 lab tests passing
 
 ---
 
-### Phase L1 — Link Results to Specimens
+### Phase L1 — Link Results to Specimens ✅ COMPLETE
 
+**Implemented**: 2026-02-15  
 **Goal**: Results attach to specimens, not just order items.
 
 **Deliverables**:
@@ -233,8 +246,14 @@ class LabQueue(models.Model):
 2. Update result creation workflow to require specimen
 3. Validation: `result.specimen` must be linked to `result.order_item.lab_order`
 
-**Effort**: 4-8 hours  
-**Risk**: Low (additive)
+**Effort**: 4-8 hours → **Actual**: Included in Phase L0  
+**Risk**: Low (additive) → **Outcome**: Successful
+
+**Implementation Notes**:
+- `LabResult.specimen` FK added (nullable, PROTECT on delete)
+- Results auto-attach to specimen from queue entry on creation
+- TAT reporting now uses `specimen.collected_at` for accurate collection→release timing
+- Serializer auto-links specimen when creating results
 
 ---
 
@@ -520,12 +539,14 @@ Each phase should be reversible:
 
 ## 11) Next Actions
 
-| Action | Owner | Effort | Blocks |
-|--------|-------|--------|--------|
-| Implement `ExternalCodeMapping` (Phase T0) | Backend | 2-4 hrs | Phase C |
-| Design `Specimen` model migration | Backend | 2 hrs | Phase L0 |
-| Implement Phase L0 (Specimen) | Backend | 8-16 hrs | Phase L1 |
-| Implement Phase L1 (Results → Specimens) | Backend | 4-8 hrs | Phase C accuracy |
+| Action | Owner | Effort | Blocks | Status |
+|--------|-------|--------|--------|--------|
+| ~~Design `Specimen` model migration~~ | Backend | 2 hrs | Phase L0 | ✅ Done |
+| ~~Implement Phase L0 (Specimen)~~ | Backend | 8-16 hrs | Phase L1 | ✅ Done |
+| ~~Implement Phase L1 (Results → Specimens)~~ | Backend | 4-8 hrs | Phase C accuracy | ✅ Done |
+| Implement `ExternalCodeMapping` (Phase T0) | Backend | 2-4 hrs | Phase C | Pending |
+| Implement Phase L2 (Two-Stage Validation) | Backend | 4-8 hrs | — | Pending |
+| Implement Phase L3 (AnalyzerRun) | Backend | 8-12 hrs | Analyzer connection | Future |
 
 ---
 

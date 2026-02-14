@@ -10,7 +10,7 @@ import logging
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from .models import LabOrder, LabOrderItem, LabQueue, LabResult
+from .models import LabOrder, LabOrderItem, LabQueue, LabResult, Specimen
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +82,13 @@ def create_lab_queue_on_item_add(sender, instance, created, **kwargs):
     except Exception as e:
         logger.error(f"Failed to create LabQueue entry for order {lab_order.order_number}: {e}")
 
+    queue_entry = LabQueue.objects.filter(lab_order=lab_order).first()
+    if queue_entry:
+        if not queue_entry.specimen:
+            queue_entry._ensure_specimen()
+        if queue_entry.specimen:
+            queue_entry.specimen.order_items.add(instance)
+
 
 @receiver(post_save, sender=LabOrder)
 def sync_lab_queue_priority(sender, instance, created, **kwargs):
@@ -99,6 +106,45 @@ def sync_lab_queue_priority(sender, instance, created, **kwargs):
             logger.info(f"Synced priority for queue entry {queue_entry.queue_number}")
     except Exception as e:
         logger.error(f"Failed to sync priority for order {instance.order_number}: {e}")
+
+
+@receiver(post_save, sender=LabQueue)
+def create_specimen_for_queue(sender, instance, created, **kwargs):
+    """
+    Auto-create a Specimen when a LabQueue entry is created.
+    """
+    if not created or instance.specimen_id:
+        return
+
+    try:
+        first_item = instance.lab_order.items.first()
+        specimen_type = instance.sample_type or (
+            first_item.test.specimen_type if first_item else "BLOOD"
+        )
+        barcode = instance.sample_id or instance.queue_number
+
+        status_map = {
+            "PENDING": "PENDING",
+            "COLLECTED": "COLLECTED",
+            "PROCESSING": "PROCESSING",
+            "REVIEW": "PROCESSING",
+            "RELEASED": "PROCESSING",
+        }
+
+        specimen = Specimen.objects.create(
+            barcode=barcode,
+            specimen_type=specimen_type,
+            lab_order=instance.lab_order,
+            collected_by=instance.collected_by,
+            collected_at=instance.collected_at,
+            status=status_map.get(instance.queue_status, "PENDING"),
+        )
+        specimen.order_items.add(*instance.lab_order.items.all())
+        instance.specimen = specimen
+        instance.save(update_fields=["specimen"])
+        logger.info("Created Specimen %s for queue %s", specimen.barcode, instance.queue_number)
+    except Exception as e:
+        logger.error("Failed to create Specimen for queue %s: %s", instance.queue_number, e)
 
 
 @receiver(post_save, sender=LabResult)

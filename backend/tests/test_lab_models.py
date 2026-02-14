@@ -13,7 +13,14 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
 from hmis.apps.encounters.models import Encounter
-from hmis.apps.laboratory.models import LabOrder, LabOrderItem, LabResult, LOINCCode, TestCatalog
+from hmis.apps.laboratory.models import (
+    LabOrder,
+    LabOrderItem,
+    LabResult,
+    LOINCCode,
+    Specimen,
+    TestCatalog,
+)
 from hmis.apps.patients.models import Patient
 
 User = get_user_model()
@@ -1280,6 +1287,98 @@ class TestLabResultAdvanced:
         assert result.verification_status == "REJECTED"
         assert result.verified_by == user
         assert "Rejected" in result.interpretation
+
+
+@pytest.mark.django_db
+class TestSpecimenModel:
+    """Tests for Specimen model basics."""
+
+    def test_create_specimen_defaults(self):
+        """Should create specimen with default status and audit fields."""
+        patient = Patient.objects.create(
+            first_name="Specimen",
+            last_name="Patient",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+        )
+        user = User.objects.create_user(username="specimen_user", password="testpass")
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Specimen test",
+        )
+        order = LabOrder.objects.create(
+            patient=patient,
+            encounter=encounter,
+            ordered_by=user,
+        )
+
+        specimen = Specimen.objects.create(
+            barcode="SPEC-0001",
+            specimen_type="BLOOD",
+            lab_order=order,
+        )
+
+        assert specimen.status == "PENDING"
+        assert specimen.created_at is not None
+        assert specimen.updated_at is not None
+
+    def test_specimen_links_order_items(self):
+        """Should link specimen to order items."""
+        patient = Patient.objects.create(
+            first_name="Specimen",
+            last_name="Link",
+            date_of_birth=date(1990, 1, 1),
+            gender="F",
+        )
+        user = User.objects.create_user(username="specimen_link", password="testpass")
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Specimen link test",
+        )
+        order = LabOrder.objects.create(
+            patient=patient,
+            encounter=encounter,
+            ordered_by=user,
+        )
+        test1 = TestCatalog.objects.create(
+            code="SPEC-TEST1",
+            name="Specimen Test 1",
+            short_name="ST1",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+        )
+        test2 = TestCatalog.objects.create(
+            code="SPEC-TEST2",
+            name="Specimen Test 2",
+            short_name="ST2",
+            category="CHEMISTRY",
+            specimen_type="BLOOD",
+            result_type="NUMERIC",
+        )
+        item1 = LabOrderItem.objects.create(
+            lab_order=order,
+            test=test1,
+            unit_cost=Decimal("50.00"),
+        )
+        item2 = LabOrderItem.objects.create(
+            lab_order=order,
+            test=test2,
+            unit_cost=Decimal("75.00"),
+        )
+
+        specimen = Specimen.objects.create(
+            barcode="SPEC-0002",
+            specimen_type="BLOOD",
+            lab_order=order,
+        )
+        specimen.order_items.add(item1, item2)
+
+        assert specimen.order_items.count() == 2
+        assert item1 in specimen.order_items.all()
+        assert item2 in specimen.order_items.all()
 
 
 @pytest.mark.django_db
