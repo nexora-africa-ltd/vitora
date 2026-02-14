@@ -9,7 +9,7 @@ from datetime import datetime
 
 from django.conf import settings
 from django.db import models
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponse
 from django_filters import rest_framework as filters
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
@@ -1067,6 +1067,169 @@ class DICOMRetrieveView(APIView):
         )
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
+
+
+class DICOMFrameRenderView(APIView):
+    """
+    Render a DICOM instance as a PNG image for web display.
+
+    GET /api/imaging/dicom/{sop_instance_uid}/frame/
+
+    Query parameters:
+    - size: Maximum dimension in pixels (default: 512, max: 2048)
+    - frame: Frame index for multi-frame DICOM (default: 0)
+    - window_center: Window center for display (optional)
+    - window_width: Window width for display (optional)
+
+    Returns PNG image with appropriate content-type headers.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "size",
+                type=int,
+                required=False,
+                description="Maximum dimension in pixels (default: 512)",
+            ),
+            OpenApiParameter(
+                "frame",
+                type=int,
+                required=False,
+                description="Frame index for multi-frame DICOM (default: 0)",
+            ),
+            OpenApiParameter(
+                "window_center",
+                type=float,
+                required=False,
+                description="Window center override",
+            ),
+            OpenApiParameter(
+                "window_width",
+                type=float,
+                required=False,
+                description="Window width override",
+            ),
+        ],
+        responses={
+            200: {
+                "type": "string",
+                "format": "binary",
+                "description": "PNG image",
+            }
+        },
+    )
+    def get(self, request, sop_instance_uid):
+        """Render a DICOM instance as PNG."""
+        import io
+
+        import numpy as np
+        import pydicom
+        from PIL import Image
+
+        try:
+            instance = DICOMInstance.objects.select_related(
+                "series__study"
+            ).get(sop_instance_uid=sop_instance_uid)
+        except DICOMInstance.DoesNotExist:
+            return Response(
+                {"error": "DICOM instance not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        pacs = PACSStorageService(base_path=str(settings.MEDIA_ROOT))
+        file_path = pacs.get_absolute_path(instance.file_path)
+
+        if not os.path.exists(file_path):
+            logger.error(
+                "DICOM file missing from PACS: %s", instance.file_path
+            )
+            return Response(
+                {"error": "DICOM file not found on disk."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Parse query parameters
+        max_size = min(int(request.query_params.get("size", 512)), 2048)
+        frame_index = int(request.query_params.get("frame", 0))
+        window_center = request.query_params.get("window_center")
+        window_width = request.query_params.get("window_width")
+
+        try:
+            ds = pydicom.dcmread(file_path)
+            if not hasattr(ds, "PixelData"):
+                return Response(
+                    {"error": "DICOM instance has no pixel data."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            pixel_array = ds.pixel_array.astype(float)
+
+            # Handle multi-frame
+            if pixel_array.ndim == 3 and hasattr(ds, "NumberOfFrames"):
+                num_frames = int(ds.NumberOfFrames)
+                if frame_index >= num_frames:
+                    frame_index = 0  # Fallback to first frame
+                pixel_array = pixel_array[frame_index]
+            elif pixel_array.ndim == 3:
+                # Could be RGB or first slice
+                if pixel_array.shape[2] not in (3, 4):
+                    pixel_array = pixel_array[0]
+
+            # Apply windowing
+            if window_center is not None and window_width is not None:
+                wc = float(window_center)
+                ww = float(window_width)
+                low = wc - ww / 2
+                high = wc + ww / 2
+                pixel_array = np.clip(pixel_array, low, high)
+            elif hasattr(ds, "WindowCenter") and hasattr(ds, "WindowWidth"):
+                wc = ds.WindowCenter
+                ww = ds.WindowWidth
+                if isinstance(wc, pydicom.multival.MultiValue):
+                    wc = wc[0]
+                if isinstance(ww, pydicom.multival.MultiValue):
+                    ww = ww[0]
+                low = float(wc) - float(ww) / 2
+                high = float(wc) + float(ww) / 2
+                pixel_array = np.clip(pixel_array, low, high)
+
+            # Normalize to 0-255
+            p_min = pixel_array.min()
+            p_max = pixel_array.max()
+            if p_max > p_min:
+                pixel_array = (
+                    (pixel_array - p_min) / (p_max - p_min) * 255
+                ).astype(np.uint8)
+            else:
+                pixel_array = np.zeros_like(pixel_array, dtype=np.uint8)
+
+            # Create PIL image
+            img = Image.fromarray(pixel_array)
+            if img.mode not in ("L", "RGB"):
+                img = img.convert("L")
+
+            # Resize maintaining aspect ratio
+            img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+
+            # Save to bytes
+            buffer = io.BytesIO()
+            img.save(buffer, format="PNG")
+            buffer.seek(0)
+
+            return HttpResponse(
+                buffer.getvalue(),
+                content_type="image/png",
+            )
+
+        except Exception as e:
+            logger.exception("Failed to render DICOM frame: %s", e)
+            return Response(
+                {"error": "Failed to render image."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 # ============================================================================

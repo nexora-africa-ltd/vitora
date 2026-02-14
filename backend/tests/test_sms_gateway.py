@@ -1,4 +1,4 @@
-import pytest
+import pytest # type: ignore
 from unittest.mock import Mock, patch, MagicMock
 from django.conf import settings
 from hmis.apps.core.sms_gateway import SMSGateway

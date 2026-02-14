@@ -20,3 +20,11 @@ export { ImagingWorklist } from './imaging-worklist';
 
 // Scheduling
 export { SchedulingCalendar } from './scheduling-calendar';
+
+// DICOM Viewer components (Phase C Sprint C.3)
+// NOTE: DICOMViewer must be imported directly or via next/dynamic with ssr: false
+// to avoid SSR issues with Cornerstone.js WASM modules.
+// Do NOT export useCornerstone from this barrel file.
+export { ViewerToolbar, SeriesPanel } from './dicom';
+// Use: import dynamic from 'next/dynamic';
+// const DICOMViewer = dynamic(() => import('@/components/imaging/dicom').then(m => m.DICOMViewer), { ssr: false });

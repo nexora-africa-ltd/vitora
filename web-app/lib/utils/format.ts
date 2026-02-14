@@ -136,3 +136,54 @@ export function formatCurrency(amount: number): string {
 export function formatMRN(mrn: string): string {
   return mrn;
 }
+
+/**
+ * Format bytes to human-readable string.
+ *
+ * @param bytes - Number of bytes
+ * @param decimals - Number of decimal places (default: 1)
+ * @returns Formatted string (e.g., "1.5 MB")
+ *
+ * @example
+ * formatBytes(1024) // '1 KB'
+ * formatBytes(1536000) // '1.5 MB'
+ */
+export function formatBytes(bytes: number | null | undefined, decimals = 1): string {
+  if (bytes === null || bytes === undefined || bytes === 0) return '0 B';
+
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${sizes[i]}`;
+}
+
+/**
+ * Format time string (HH:MM:SS or HH:MM) to readable format.
+ *
+ * @param time - Time string in HH:MM:SS or HH:MM format
+ * @returns Formatted time string (e.g., "2:30 PM")
+ *
+ * @example
+ * formatTime('14:30:00') // '2:30 PM'
+ * formatTime('09:00') // '9:00 AM'
+ */
+export function formatTime(time: string | null | undefined): string {
+  if (!time) return '-';
+
+  try {
+    // Parse time string
+    const parts = time.split(':');
+    if (parts.length < 2 || !parts[0] || !parts[1]) return time;
+
+    let hours = parseInt(parts[0], 10);
+    const minutes = parts[1];
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+
+    hours = hours % 12 || 12;
+
+    return `${hours}:${minutes} ${ampm}`;
+  } catch {
+    return time;
+  }
+}

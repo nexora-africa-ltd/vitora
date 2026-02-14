@@ -319,3 +319,126 @@ export const ImagingResourcesListResponseSchema = z.object({
 });
 
 export type ImagingResourcesListResponseSchemaType = z.infer<typeof ImagingResourcesListResponseSchema>;
+
+// =============================================================================
+// DICOM SCHEMAS (Phase C - Sprint C.3)
+// =============================================================================
+
+/**
+ * Schema for a single DICOM instance.
+ */
+export const DICOMInstanceSchema = z.object({
+  id: z.number(),
+  sop_instance_uid: z.string(),
+  sop_class_uid: z.string().nullable().optional(),
+  instance_number: z.number().nullable().optional(),
+  file_path: z.string(),
+  file_size: z.number(),
+  transfer_syntax_uid: z.string().nullable().optional(),
+  rows: z.number().nullable().optional(),
+  columns: z.number().nullable().optional(),
+  bits_allocated: z.number().nullable().optional(),
+  photometric_interpretation: z.string().nullable().optional(),
+  thumbnail_path: z.string().nullable().optional(),
+  created_at: z.string(),
+});
+
+export type DICOMInstanceSchemaType = z.infer<typeof DICOMInstanceSchema>;
+
+/**
+ * Schema for a DICOM series (list view, without instances).
+ */
+export const DICOMSeriesListSchema = z.object({
+  id: z.number(),
+  series_instance_uid: z.string(),
+  series_number: z.number().nullable().optional(),
+  series_description: z.string().nullable().optional(),
+  modality: z.string(),
+  body_part_examined: z.string().nullable().optional(),
+  number_of_instances: z.number(),
+  total_file_size: z.number().nullable().optional(),
+  thumbnail_path: z.string().nullable().optional(),
+  created_at: z.string(),
+});
+
+export type DICOMSeriesListSchemaType = z.infer<typeof DICOMSeriesListSchema>;
+
+/**
+ * Schema for a DICOM series with nested instances.
+ */
+export const DICOMSeriesSchema = DICOMSeriesListSchema.extend({
+  instances: z.array(DICOMInstanceSchema),
+});
+
+export type DICOMSeriesSchemaType = z.infer<typeof DICOMSeriesSchema>;
+
+/**
+ * Schema for a DICOM study (list view).
+ */
+export const DICOMStudySchema = z.object({
+  id: z.number(),
+  study_instance_uid: z.string(),
+  patient: z.number(),
+  patient_name: z.string(),
+  imaging_order: z.number().nullable().optional(),
+  study_date: z.string(),
+  study_time: z.string().nullable().optional(),
+  study_description: z.string().nullable().optional(),
+  accession_number: z.string().nullable().optional(),
+  referring_physician_name: z.string().nullable().optional(),
+  modality: z.string(),
+  institution_name: z.string().nullable().optional(),
+  number_of_series: z.number(),
+  number_of_instances: z.number(),
+  total_file_size: z.number().nullable().optional(),
+  thumbnail_path: z.string().nullable().optional(),
+  uploaded_by: z.number().nullable().optional(),
+  uploaded_by_name: z.string().nullable().optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type DICOMStudySchemaType = z.infer<typeof DICOMStudySchema>;
+
+/**
+ * Schema for DICOM study detail (with nested series).
+ */
+export const DICOMStudyDetailSchema = DICOMStudySchema.extend({
+  series: z.array(DICOMSeriesListSchema),
+});
+
+export type DICOMStudyDetailSchemaType = z.infer<typeof DICOMStudyDetailSchema>;
+
+/**
+ * Schema for paginated DICOM studies response.
+ */
+export const PaginatedDICOMStudySchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(DICOMStudySchema),
+});
+
+export type PaginatedDICOMStudySchemaType = z.infer<typeof PaginatedDICOMStudySchema>;
+
+/**
+ * Schema for DICOM upload response.
+ */
+export const DICOMUploadResponseSchema = z.object({
+  study_instance_uid: z.string().nullable(),
+  instances_created: z.number(),
+  files_submitted: z.number(),
+  errors: z.array(z.object({
+    file: z.string(),
+    errors: z.array(z.string()),
+  })).optional(),
+});
+
+export type DICOMUploadResponseSchemaType = z.infer<typeof DICOMUploadResponseSchema>;
+
+/**
+ * Array schemas for DICOM entities.
+ */
+export const DICOMStudyArraySchema = z.array(DICOMStudySchema);
+export const DICOMSeriesArraySchema = z.array(DICOMSeriesListSchema);
+export const DICOMInstanceArraySchema = z.array(DICOMInstanceSchema);

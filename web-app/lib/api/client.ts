@@ -3,6 +3,14 @@ import { tokenStorage } from '@/lib/auth/storage';
 import { isTokenExpired } from '@/lib/auth/token-utils';
 import { API_BASE_URL } from '@/lib/utils/constants';
 
+/**
+ * Get the API base URL.
+ * Used for constructing full URLs for resources like DICOM WADO.
+ */
+export function getApiBaseUrl(): string {
+  return API_BASE_URL;
+}
+
 // Create axios instance
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,

@@ -2,8 +2,8 @@
 
 > **Project**: Vitora HMIS  
 > **Module**: Diagnostics (Imaging/Radiology)  
-> **Version**: 1.4  
-> **Last Updated**: February 7, 2026  
+> **Version**: 1.5  
+> **Last Updated**: February 14, 2026  
 > **Estimated Duration**: 9-12 weeks  
 > **Original Roadmap**: Phase 3, Sprint 3.4-3.6 (Apr-Sep 2027)
 
@@ -50,7 +50,9 @@ The imaging module will provide comprehensive radiology and diagnostic imaging w
 | DICOM backend (models) | ✅ Complete | Phase C Sprint C.1 — DICOMStudy/Series/Instance models |
 | DICOM services | ✅ Complete | Phase C Sprint C.1 — parsing (pydicom) + PACS storage |
 | DICOM API & WADO | ✅ Complete | Phase C Sprint C.2 — upload, list, retrieve, delete |
-| DICOM viewer (frontend) | 📋 Planned | Phase C Sprint C.3 — Cornerstone.js |
+| DICOM viewer (frontend) | ✅ Complete | Phase C Sprint C.3 — Cornerstone.js + frame rendering |
+| Frame rendering endpoint | ✅ Complete | GET /api/imaging/dicom/{sop_uid}/frame/ — PNG output |
+| DICOM E2E tests | ✅ Complete | Playwright tests for viewer pages |
 | Roadmap placement | Sprint 3.4-3.6 | Phase 3 (Apr-Sep 2027) |
 | Similar pattern reference | ✅ Laboratory module | Fully implemented, use as template |
 | Test infrastructure | ✅ Ready | pytest, Jest, Playwright configured |
@@ -772,19 +774,41 @@ class RadiologyReport(models.Model):
 | C.2.4 | Link DICOM studies to orders | High | 4 tests | ✅ Done |
 | C.2.5 | Implement study deletion cleanup | Medium | 5 tests | ✅ Done |
 
-**Sprint C.3: DICOM Viewer** (Week 3-4)
+**Sprint C.3: DICOM Viewer** (Week 3-4) ✅
 
 #### Tasks
 
-| # | Task | Priority |
-|---|------|----------|
-| C.3.1 | Add Cornerstone.js dependencies | High |
-| C.3.2 | Build DICOMViewer component | High |
-| C.3.3 | Implement image loading/rendering | High |
-| C.3.4 | Add basic tools (zoom, pan, window/level) | High |
-| C.3.5 | Add measurement tools (ruler, angle) | Medium |
-| C.3.6 | Build study browser sidebar | Medium |
-| C.3.7 | Write E2E tests for viewer | High |
+| # | Task | Priority | Status |
+|---|------|----------|--------|
+| C.3.1 | Add Cornerstone.js dependencies | High | ✅ Done |
+| C.3.2 | Build DICOMViewer component | High | ✅ Done |
+| C.3.3 | Implement image loading/rendering | High | ✅ Done |
+| C.3.4 | Add basic tools (zoom, pan, window/level) | High | ✅ Done |
+| C.3.5 | Add measurement tools (ruler, angle) | Medium | ✅ Done |
+| C.3.6 | Build study browser sidebar | Medium | ✅ Done |
+| C.3.7 | Write E2E tests for viewer | High | ✅ Done |
+| C.3.8 | Backend frame rendering endpoint (PNG) | Medium | ✅ Done |
+
+#### Implementation Details (Sprint C.3)
+
+**Frontend Components:**
+- `components/imaging/dicom/DICOMViewer.tsx` — Main viewer with Cornerstone.js
+- `components/imaging/dicom/DICOMViewerToolbar.tsx` — Toolbar with zoom, pan, W/L, measurements
+- `components/imaging/dicom/DICOMSeriesPanel.tsx` — Series thumbnail sidebar
+- `components/imaging/dicom/useCornerstoneCore.ts` — React hook for Cornerstone initialization
+- `app/(dashboard)/imaging/studies/page.tsx` — Studies list with filters
+- `app/(dashboard)/imaging/studies/[studyUid]/page.tsx` — Study detail with viewer
+
+**Backend Endpoint:**
+- `GET /api/imaging/dicom/{sop_uid}/frame/` — Render DICOM as PNG
+  - Query params: `size`, `frame`, `window_center`, `window_width`
+  - 7 unit tests passing
+
+**Dependencies (installed):**
+- `@cornerstonejs/core` — Core rendering
+- `@cornerstonejs/tools` — Annotation and measurement tools
+- `@cornerstonejs/dicom-image-loader` — DICOM loading
+- `dicom-parser` — JavaScript DICOM parsing
 
 #### Dependencies
 
@@ -848,12 +872,14 @@ class RadiologyReport(models.Model):
   - [x] Study deletion with PACS cleanup — DELETE `/api/imaging/studies/{uid}/`
   - [x] Audit logging for upload, retrieve, and delete
 
-- [ ] **Viewer** (Sprint C.3 — not started)
-  - [ ] Load and render DICOM images
-  - [ ] Zoom, pan, window/level tools
-  - [ ] Measurement tools (ruler, angle)
-  - [ ] Series/instance navigation
-  - [ ] Responsive design
+- [x] **Viewer** (Sprint C.3 — complete)
+  - [x] Load and render DICOM images
+  - [x] Zoom, pan, window/level tools
+  - [x] Measurement tools (ruler, angle)
+  - [x] Series/instance navigation
+  - [x] Responsive design
+  - [x] Backend PNG rendering fallback
+  - [x] E2E tests for viewer pages
 
 - [x] **Storage** (Sprint C.1-C.2)
   - [x] Files organized: `media/dicom/{study_uid}/{series_uid}/{sop_uid}.dcm`

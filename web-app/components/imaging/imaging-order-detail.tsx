@@ -53,7 +53,10 @@ import {
   Loader2,
   Send,
   DollarSign,
+  Eye,
+  Image as ImageIcon,
 } from 'lucide-react';
+import Link from 'next/link';
 import { formatDateTime } from '@/lib/utils/format';
 import { toast } from '@/lib/hooks';
 import {
@@ -578,6 +581,37 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
                 </AlertDialog>
               )}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* View Images - shown for COMPLETED or REPORTED orders with study */}
+      {(order.status === 'COMPLETED' || order.status === 'REPORTED') && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <ImageIcon className="h-5 w-5" />
+              Images Available
+            </CardTitle>
+            <CardDescription>
+              {order.study_instance_uid
+                ? 'DICOM images are ready for viewing'
+                : 'Imaging completed - awaiting image upload'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-3 sm:px-6">
+            {order.study_instance_uid ? (
+              <Link href={`/imaging/studies/${order.study_instance_uid}`}>
+                <Button className="w-full sm:w-auto">
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Images
+                </Button>
+              </Link>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Images will be available here once they are uploaded by the radiographer.
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
