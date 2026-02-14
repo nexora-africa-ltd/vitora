@@ -47,6 +47,7 @@ pydicom = "^3.0.1"
 pynetdicom = "^3.0.4"
 numpy = "^2.4.2"
 drf-spectacular = "^0.29.0"
+africastalking = "^2.0.2"
 
 [tool.poetry.group.dev.dependencies]
 # Testing
