@@ -3,7 +3,7 @@
 > **Created**: 2026-02-14  
 > **Updated**: 2026-02-15  
 > **Owner**: Engineering  
-> **Status**: In Progress (Phase L0, L1, L2 & L3 Complete)  
+> **Status**: In Progress (Phase L0, L1, L2, L3 & L4 Complete)  
 > **Scope**: Laboratory module architecture evolution
 
 ---
@@ -117,7 +117,7 @@ DiagnosticReport (final output)
 | Barcode as primary key | ✅ `Specimen.barcode` (unique, indexed) | None | ~~Low~~ **DONE** |
 | Two-stage validation | ✅ `ResultValidation` model | None | ~~Medium~~ **DONE** |
 | `AnalyzerRun` tracking | ✅ `Instrument` + `AnalyzerRun` models | None | ~~Low~~ **DONE** |
-| `DiagnosticReport` output | `LabResultAttachment` partial | Add report model | Medium |
+| `DiagnosticReport` output | ✅ `DiagnosticReport` model + PDF generation | None | ~~Medium~~ **DONE** |
 | Rejection tracking | ✅ `Specimen.rejection_reason` + queue | Works | None |
 | FHIR resource mapping | None explicit | Future (Phase T4) | Low |
 
@@ -391,8 +391,9 @@ class AnalyzerRun(models.Model):
 
 ---
 
-### Phase L4 — Diagnostic Report Output
+### Phase L4 — Diagnostic Report Output ✅ COMPLETE
 
+**Implemented**: 2026-02-15  
 **Goal**: Generate formal patient-facing lab reports.
 
 **Deliverables**:
@@ -435,8 +436,23 @@ class DiagnosticReport(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 ```
 
-**Effort**: 8-12 hours  
-**Risk**: Low
+**Effort**: 8-12 hours → **Actual**: ~4 hours  
+**Risk**: Low → **Outcome**: Successful
+
+**Implementation Notes**:
+- `DiagnosticReport` model created with auto-generated report number (format: `RPT-YYYYMMDD-XXXX`)
+- Status workflow: DRAFT → PRELIMINARY → FINAL → AMENDED (or CANCELLED)
+- Methods: `finalize()`, `amend()`, `cancel()` with validation
+- Property: `is_finalized` returns True for FINAL or AMENDED status
+- Amendment tracking: `amended_by`, `amended_at`, preserves audit trail
+- Cancellation tracking: `cancellation_reason` field
+- PDF generation via `generate_pdf` action using ReportLab
+- API endpoints: `/api/lab/diagnostic-reports/` with CRUD operations
+- Custom actions: `/finalize/`, `/amend/`, `/cancel/`, `/generate_pdf/`
+- Nested endpoint: `/api/lab/orders/{order_number}/reports/` for listing/creating reports per order
+- Filters: by status, lab_order, issued_by, date ranges
+- 32 new tests covering model, methods, and API endpoints
+- Migration `0016_add_diagnostic_report_model.py` applied
 
 ---
 

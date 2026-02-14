@@ -17,6 +17,7 @@ from rest_framework.views import APIView
 
 from .models import (
     AnalyzerRun,
+    DiagnosticReport,
     Instrument,
     LabOrder,
     LabOrderItem,
@@ -30,6 +31,11 @@ from .serializers import (
     AnalyzerRunCreateSerializer,
     AnalyzerRunMarkErrorSerializer,
     AnalyzerRunSerializer,
+    DiagnosticReportAmendSerializer,
+    DiagnosticReportCancelSerializer,
+    DiagnosticReportCreateSerializer,
+    DiagnosticReportSerializer,
+    DiagnosticReportUpdateSerializer,
     InstrumentCreateSerializer,
     InstrumentSerializer,
     LabOrderCreateSerializer,
@@ -342,6 +348,35 @@ class LabOrderViewSet(viewsets.ModelViewSet):
         order.calculate_total_cost()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=["get", "post"], url_path="reports")
+    def reports(self, request, order_number=None):
+        """
+        List or create diagnostic reports for a lab order.
+
+        GET: List all reports for this order
+        POST: Create a new report for this order
+        """
+        order = self.get_object()
+
+        if request.method == "GET":
+            reports = order.reports.all()
+            serializer = DiagnosticReportSerializer(
+                reports, many=True, context={"request": request}
+            )
+            return Response(serializer.data)
+
+        # POST: Create new report
+        # Copy request data and add lab_order from URL
+        data = request.data.copy()
+        data["lab_order"] = order.id
+        serializer = DiagnosticReportCreateSerializer(
+            data=data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        report = serializer.save()
+        output = DiagnosticReportSerializer(report, context={"request": request})
+        return Response(output.data, status=status.HTTP_201_CREATED)
 
 
 class LabResultViewSet(viewsets.ModelViewSet):
@@ -1046,4 +1081,267 @@ class AnalyzerRunViewSet(viewsets.ModelViewSet):
 
         run.mark_applied()
         return Response(AnalyzerRunSerializer(run).data)
+
+
+# ============================================================================
+# Phase L4 — Diagnostic Report ViewSet
+# ============================================================================
+
+
+class DiagnosticReportFilter(filters.FilterSet):
+    """Filter for diagnostic reports."""
+
+    lab_order_number = filters.CharFilter(field_name="lab_order__order_number")
+    patient = filters.NumberFilter(field_name="lab_order__patient_id")
+
+    class Meta:
+        model = DiagnosticReport
+        fields = {
+            "status": ["exact"],
+            "lab_order": ["exact"],
+            "issued_by": ["exact"],
+            "issued_at": ["gte", "lte"],
+            "created_at": ["gte", "lte"],
+        }
+
+
+class DiagnosticReportViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for diagnostic reports (Phase L4).
+
+    Provides CRUD operations for formal patient-facing lab reports,
+    with workflow actions for finalization, amendment, and cancellation.
+    """
+
+    queryset = DiagnosticReport.objects.select_related(
+        "lab_order",
+        "lab_order__patient",
+        "issued_by",
+        "amended_by",
+    ).all()
+    permission_classes = [IsAuthenticated]
+    filterset_class = DiagnosticReportFilter
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return DiagnosticReportCreateSerializer
+        if self.action in ["update", "partial_update"]:
+            return DiagnosticReportUpdateSerializer
+        if self.action == "amend":
+            return DiagnosticReportAmendSerializer
+        if self.action == "cancel":
+            return DiagnosticReportCancelSerializer
+        return DiagnosticReportSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Create a new diagnostic report and return full representation."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        report = serializer.save()
+
+        # Return the full report representation
+        output_serializer = DiagnosticReportSerializer(report, context={"request": request})
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def finalize(self, request, pk=None):
+        """
+        Finalize a draft diagnostic report.
+
+        Sets status to FINAL and records issued_at timestamp.
+        """
+        report = self.get_object()
+        try:
+            report.finalize()
+            return Response(DiagnosticReportSerializer(report, context={"request": request}).data)
+        except Exception as e:
+            logger.exception("Error finalizing diagnostic report %s", pk)
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"])
+    def amend(self, request, pk=None):
+        """
+        Amend a finalized diagnostic report.
+
+        Updates conclusion and sets status to AMENDED.
+        """
+        report = self.get_object()
+        serializer = DiagnosticReportAmendSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            report.amend(
+                new_conclusion=serializer.validated_data["conclusion"],
+                amended_by=request.user,
+            )
+            return Response(DiagnosticReportSerializer(report, context={"request": request}).data)
+        except Exception as e:
+            logger.exception("Error amending diagnostic report %s", pk)
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """
+        Cancel a diagnostic report.
+
+        Sets status to CANCELLED and records cancellation reason.
+        """
+        report = self.get_object()
+        serializer = DiagnosticReportCancelSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            report.cancel(reason=serializer.validated_data["reason"])
+            return Response(DiagnosticReportSerializer(report, context={"request": request}).data)
+        except Exception as e:
+            logger.exception("Error cancelling diagnostic report %s", pk)
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    @action(detail=True, methods=["post"], url_path="generate_pdf")
+    def generate_pdf(self, request, pk=None):
+        """
+        Generate PDF for a diagnostic report.
+
+        Creates a PDF file from the lab results and stores it.
+        """
+        from io import BytesIO
+
+        from django.core.files.base import ContentFile
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.units import mm
+        from reportlab.platypus import (
+            Paragraph,
+            SimpleDocTemplate,
+            Spacer,
+            Table,
+            TableStyle,
+        )
+
+        report = self.get_object()
+        lab_order = report.lab_order
+
+        # Create PDF
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            leftMargin=20 * mm,
+            rightMargin=20 * mm,
+            topMargin=20 * mm,
+            bottomMargin=20 * mm,
+        )
+
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            "Title",
+            parent=styles["Heading1"],
+            fontSize=16,
+            alignment=1,  # Center
+        )
+
+        elements = []
+
+        # Header
+        elements.append(Paragraph("DIAGNOSTIC REPORT", title_style))
+        elements.append(Spacer(1, 10 * mm))
+
+        # Report info
+        info_data = [
+            ["Report Number:", report.report_number],
+            ["Order Number:", lab_order.order_number],
+            ["Patient:", str(lab_order.patient)],
+            ["Ordered By:", str(lab_order.ordered_by)],
+            ["Order Date:", lab_order.ordered_at.strftime("%Y-%m-%d %H:%M")],
+            ["Report Status:", report.get_status_display()],
+        ]
+        if report.issued_at:
+            info_data.append(["Issued Date:", report.issued_at.strftime("%Y-%m-%d %H:%M")])
+
+        info_table = Table(info_data, colWidths=[50 * mm, 100 * mm])
+        info_table.setStyle(
+            TableStyle(
+                [
+                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 10),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
+        elements.append(info_table)
+        elements.append(Spacer(1, 10 * mm))
+
+        # Results table
+        results_data = [["Test", "Result", "Reference Range", "Flag"]]
+        for item in lab_order.items.select_related("test", "result").all():
+            if hasattr(item, "result") and item.result:
+                result = item.result
+                result_value = (
+                    result.text_value or str(result.numeric_value or "") or result.option_value
+                )
+                results_data.append(
+                    [
+                        item.test.name,
+                        f"{result_value} {result.result_unit or ''}".strip(),
+                        result.reference_range_text or "-",
+                        result.result_flag or "NORMAL",
+                    ]
+                )
+            else:
+                results_data.append([item.test.name, "Pending", "-", "-"])
+
+        results_table = Table(results_data, colWidths=[60 * mm, 40 * mm, 40 * mm, 30 * mm])
+        results_table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                    ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+                    ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                    ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+                ]
+            )
+        )
+        elements.append(results_table)
+        elements.append(Spacer(1, 10 * mm))
+
+        # Conclusion
+        if report.conclusion:
+            elements.append(Paragraph("<b>Conclusion:</b>", styles["Normal"]))
+            elements.append(Paragraph(report.conclusion, styles["Normal"]))
+            elements.append(Spacer(1, 5 * mm))
+
+        # Clinical info
+        if report.clinical_info:
+            elements.append(Paragraph("<b>Clinical Information:</b>", styles["Normal"]))
+            elements.append(Paragraph(report.clinical_info, styles["Normal"]))
+
+        # Build PDF
+        doc.build(elements)
+
+        # Save to model
+        pdf_content = buffer.getvalue()
+        filename = f"report_{report.report_number}.pdf"
+        report.pdf_file.save(filename, ContentFile(pdf_content), save=True)
+
+        return Response(
+            {
+                "detail": "PDF generated successfully.",
+                "pdf_url": request.build_absolute_uri(report.pdf_file.url),
+            }
+        )
 
