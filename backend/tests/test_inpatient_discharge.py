@@ -472,13 +472,15 @@ class TestDischargeQueries:
 
     def test_filter_discharges_by_type(self, sample_patient, sample_ward, test_user):
         """Should filter discharges by type."""
+        # Get available beds from the ward (auto-generated)
+        available_beds = list(sample_ward.beds.order_by("bed_number")[:3])
+        
         # Create multiple admissions and discharges
-        for i, discharge_type in enumerate(["NORMAL", "AGAINST_ADVICE", "TRANSFERRED"]):
-            bed = Bed.objects.create(
-                ward=sample_ward,
-                bed_number=f"B-{i+10:03d}",
-                status="OCCUPIED",
-            )
+        for i, (discharge_type, bed) in enumerate(
+            zip(["NORMAL", "AGAINST_ADVICE", "TRANSFERRED"], available_beds, strict=False)
+        ):
+            bed.status = "OCCUPIED"
+            bed.save()
             enc = Encounter.objects.create(
                 patient=sample_patient,
                 encounter_type="IPD",

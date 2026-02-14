@@ -291,9 +291,8 @@ class TestAdmissionOverrideFlow:
         male_only_ward,
         test_user,
     ):
-        from hmis.apps.inpatient.models import Bed
-
-        bed = Bed.objects.create(ward=male_only_ward, bed_number="B-001", status="AVAILABLE")
+        # Use the first auto-generated bed
+        bed = male_only_ward.beds.filter(status="AVAILABLE").first()
 
         payload = {
             "patient": female_patient.id,
@@ -318,9 +317,8 @@ class TestAdmissionOverrideFlow:
         assert "compatibility" in response.data
 
     def test_override_admission_records_violations(self, authenticated_client, female_patient, male_only_ward, test_user):
-        from hmis.apps.inpatient.models import Bed
-
-        bed = Bed.objects.create(ward=male_only_ward, bed_number="B-002", status="AVAILABLE")
+        # Use the first auto-generated bed
+        bed = male_only_ward.beds.filter(status="AVAILABLE").first()
 
         payload = {
             "patient": female_patient.id,

@@ -533,19 +533,19 @@ class TestAdmissionQueries:
 
     def test_patient_admission_history(self, sample_patient, sample_ward, test_user):
         """Should retrieve patient admission history."""
+        # Use auto-generated beds from the ward
+        beds = list(sample_ward.beds.filter(status="AVAILABLE").order_by("bed_number")[:3])
+        
         # Create multiple admissions
-        for i in range(3):
+        for i, bed in enumerate(beds):
             enc = Encounter.objects.create(
                 patient=sample_patient,
                 encounter_type="IPD",
                 encounter_date=timezone.now().date(),
                 chief_complaint=f"Admission {i+1}",
             )
-            bed = Bed.objects.create(
-                ward=sample_ward,
-                bed_number=f"B-{i+1:03d}",
-                status="AVAILABLE",
-            )
+            bed.status = "OCCUPIED"
+            bed.save()
             Admission.objects.create(
                 patient=sample_patient,
                 ipd_encounter=enc,
@@ -579,6 +579,9 @@ class TestAdmissionQueries:
             )
             patients.append(p)
 
+        # Use auto-generated beds from the ward
+        available_beds = list(sample_ward.beds.filter(status="AVAILABLE").order_by("bed_number")[:3])
+        
         # Create admissions with different statuses for different patients
         statuses = ["ACTIVE", "DISCHARGED", "ACTIVE"]
         for i, (patient, status) in enumerate(zip(patients, statuses, strict=False)):
@@ -588,11 +591,9 @@ class TestAdmissionQueries:
                 encounter_date=timezone.now().date(),
                 chief_complaint=f"Admission {i+1}",
             )
-            bed = Bed.objects.create(
-                ward=sample_ward,
-                bed_number=f"B-{i+10:03d}",
-                status="AVAILABLE",
-            )
+            bed = available_beds[i]
+            bed.status = "OCCUPIED"
+            bed.save()
             Admission.objects.create(
                 patient=patient,
                 ipd_encounter=enc,

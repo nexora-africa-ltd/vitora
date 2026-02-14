@@ -69,7 +69,7 @@ def admission_with_critical_violation(
     Admission with CRITICAL violation (isolation patient in non-isolation ward).
     Note: We manually set constraint_violations to simulate a critical override.
     """
-    from hmis.apps.inpatient.models import Admission, Bed
+    from hmis.apps.inpatient.models import Admission
 
     # Create a non-isolation ward to admit the patient
     from hmis.apps.inpatient.models import Ward
@@ -83,7 +83,10 @@ def admission_with_critical_violation(
         isolation_capable=False,
     )
 
-    bed = Bed.objects.create(ward=non_iso_ward, bed_number="B-001", status="AVAILABLE")
+    # Use the first auto-generated bed and mark it as OCCUPIED
+    bed = non_iso_ward.beds.first()
+    bed.status = "OCCUPIED"
+    bed.save()
 
     # Create encounter for the admission
     from hmis.apps.encounters.models import Encounter

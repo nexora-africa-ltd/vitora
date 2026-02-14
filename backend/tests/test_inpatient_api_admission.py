@@ -220,7 +220,12 @@ class TestAdmissionAPI:
         sample_bed,
     ):
         """Should auto-assign first available bed when auto_assign_bed=true."""
-        # Ensure bed is available
+        # Mark all auto-generated beds as OCCUPIED except one
+        from hmis.apps.inpatient.models import Bed
+        
+        # Set all beds as OCCUPIED first
+        Bed.objects.filter(ward=sample_inpatient_ward).update(status="OCCUPIED")
+        # Then make our sample_bed AVAILABLE
         sample_bed.status = "AVAILABLE"
         sample_bed.save()
 
@@ -285,9 +290,9 @@ class TestAdmissionAPI:
         sample_bed,
     ):
         """Should fail with clear error when no beds are available for auto-assignment."""
-        # Mark all beds as occupied
-        sample_bed.status = "OCCUPIED"
-        sample_bed.save()
+        # Mark ALL beds as occupied (including auto-generated ones)
+        from hmis.apps.inpatient.models import Bed
+        Bed.objects.filter(ward=sample_inpatient_ward).update(status="OCCUPIED")
 
         data = {
             "patient": sample_patient.id,

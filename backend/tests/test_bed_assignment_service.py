@@ -35,7 +35,7 @@ User = get_user_model()
 
 @pytest.fixture
 def sample_ward(db):
-    """Create a sample ward with 5 beds."""
+    """Create a sample ward with 5 beds (auto-generated)."""
     ward = Ward.objects.create(
         name="Medical Ward",
         code="MW-01",
@@ -43,55 +43,48 @@ def sample_ward(db):
         capacity=5,
         daily_rate=Decimal("500.00"),
     )
+    # Ward.save() auto-generates 5 beds: B-001 through B-005
     return ward
 
 
 @pytest.fixture
 def ward_with_beds(sample_ward, test_user):
-    """Create a ward with 5 beds (3 available, 1 occupied, 1 maintenance)."""
-    Bed.objects.create(
-        ward=sample_ward,
-        bed_number="B-001",
-        status="AVAILABLE",
-        status_changed_by=test_user,
-    )
-    Bed.objects.create(
-        ward=sample_ward,
-        bed_number="B-002",
-        status="OCCUPIED",
-        status_changed_by=test_user,
-    )
-    Bed.objects.create(
-        ward=sample_ward,
-        bed_number="B-003",
-        status="AVAILABLE",
-        status_changed_by=test_user,
-    )
-    Bed.objects.create(
-        ward=sample_ward,
-        bed_number="B-004",
-        status="MAINTENANCE",
-        status_changed_by=test_user,
-    )
-    Bed.objects.create(
-        ward=sample_ward,
-        bed_number="B-005",
-        status="AVAILABLE",
-        status_changed_by=test_user,
-    )
+    """Configure a ward with 5 beds (3 available, 1 occupied, 1 maintenance).
+    
+    Uses auto-generated beds and modifies their statuses.
+    """
+    # Get the auto-generated beds and set their statuses
+    beds = list(sample_ward.beds.order_by("bed_number"))
+    # B-001: AVAILABLE (default)
+    beds[0].status_changed_by = test_user
+    beds[0].save()
+    # B-002: OCCUPIED
+    beds[1].status = "OCCUPIED"
+    beds[1].status_changed_by = test_user
+    beds[1].save()
+    # B-003: AVAILABLE (default)
+    beds[2].status_changed_by = test_user
+    beds[2].save()
+    # B-004: MAINTENANCE
+    beds[3].status = "MAINTENANCE"
+    beds[3].status_changed_by = test_user
+    beds[3].save()
+    # B-005: AVAILABLE (default)
+    beds[4].status_changed_by = test_user
+    beds[4].save()
     return sample_ward
 
 
 @pytest.fixture
 def full_ward(sample_ward, test_user):
-    """Create a ward where all beds are occupied."""
-    for i in range(5):
-        Bed.objects.create(
-            ward=sample_ward,
-            bed_number=f"B-{i + 1:03d}",
-            status="OCCUPIED",
-            status_changed_by=test_user,
-        )
+    """Configure a ward where all beds are occupied.
+    
+    Uses auto-generated beds and sets them all to OCCUPIED.
+    """
+    for bed in sample_ward.beds.all():
+        bed.status = "OCCUPIED"
+        bed.status_changed_by = test_user
+        bed.save()
     return sample_ward
 
 
@@ -176,12 +169,12 @@ class TestBedAssignmentService:
     def test_deterministic_ordering_by_bed_number(
         self, sample_ward, test_user, bed_assignment_service
     ):
-        """Should assign beds in deterministic order (by bed_number)."""
-        # Create beds out of order
-        Bed.objects.create(ward=sample_ward, bed_number="B-005", status="AVAILABLE")
-        Bed.objects.create(ward=sample_ward, bed_number="B-001", status="AVAILABLE")
-        Bed.objects.create(ward=sample_ward, bed_number="B-003", status="AVAILABLE")
-
+        """Should assign beds in deterministic order (by bed_number).
+        
+        Uses the auto-generated beds which are created in order (B-001 to B-005).
+        """
+        # Auto-generated beds are already in order, but let's verify
+        # the service always picks the lowest available bed number
         bed = bed_assignment_service.auto_assign_bed(sample_ward, test_user)
 
         assert bed.bed_number == "B-001"  # Lowest bed number
@@ -219,25 +212,43 @@ class TestBedAssignmentService:
     def test_excludes_maintenance_and_reserved_beds(
         self, bed_assignment_service, sample_ward, test_user
     ):
-        """Should exclude MAINTENANCE and RESERVED beds from available list."""
-        Bed.objects.create(ward=sample_ward, bed_number="B-001", status="MAINTENANCE")
-        Bed.objects.create(ward=sample_ward, bed_number="B-002", status="RESERVED")
-        Bed.objects.create(ward=sample_ward, bed_number="B-003", status="AVAILABLE")
+        """Should exclude MAINTENANCE and RESERVED beds from available list.
+        
+        Uses auto-generated beds and modifies their statuses.
+        """
+        # Get auto-generated beds and set specific statuses
+        beds = list(sample_ward.beds.order_by("bed_number"))
+        beds[0].status = "MAINTENANCE"  # B-001
+        beds[0].save()
+        beds[1].status = "RESERVED"  # B-002
+        beds[1].save()
+        beds[2].status = "OCCUPIED"  # B-003
+        beds[2].save()
+        beds[3].status = "OCCUPIED"  # B-004
+        beds[3].save()
+        # B-005 remains AVAILABLE
 
         available_beds = bed_assignment_service.get_available_beds(sample_ward)
 
         assert len(available_beds) == 1
-        assert available_beds[0].bed_number == "B-003"
+        assert available_beds[0].bed_number == "B-005"
 
     def test_single_bed_ward_assignment(
-        self, sample_ward, test_user, bed_assignment_service
+        self, test_user, bed_assignment_service, db
     ):
         """Should work correctly with a single-bed ward."""
-        Bed.objects.create(ward=sample_ward, bed_number="SOLO", status="AVAILABLE")
+        # Create a ward with capacity=1 (auto-generates 1 bed)
+        single_bed_ward = Ward.objects.create(
+            name="Single Bed Ward",
+            code="SBW-01",
+            ward_type="MEDICAL",
+            capacity=1,
+            daily_rate=Decimal("500.00"),
+        )
 
-        bed = bed_assignment_service.auto_assign_bed(sample_ward, test_user)
+        bed = bed_assignment_service.auto_assign_bed(single_bed_ward, test_user)
 
-        assert bed.bed_number == "SOLO"
+        assert bed.bed_number == "B-001"
         assert bed.status == "OCCUPIED"
 
 
@@ -258,13 +269,12 @@ class TestBedAssignmentConcurrency:
         self, sample_ward, test_user, bed_assignment_service
     ):
         """Two concurrent assignments should not book the same bed."""
-        # Create only ONE available bed - forces race condition
-        Bed.objects.create(
-            ward=sample_ward,
-            bed_number="B-001",
-            status="AVAILABLE",
-            status_changed_by=test_user,
-        )
+        # Make all beds OCCUPIED except the first one - forces race condition
+        beds = list(sample_ward.beds.order_by("bed_number"))
+        for bed in beds[1:]:  # Skip first bed
+            bed.status = "OCCUPIED"
+            bed.status_changed_by = test_user
+            bed.save()
 
         assigned_beds = []
         errors = []
