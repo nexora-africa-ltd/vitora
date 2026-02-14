@@ -54,13 +54,32 @@ export async function initCornerstone(): Promise<void> {
     cornerstoneTools = toolsModule;
     dicomImageLoader = dicomLoaderModule.default || dicomLoaderModule;
 
-    // Initialize DICOM image loader with dicom-parser
-    dicomImageLoader.init({
+    // Configure codec options to suppress filesystem warnings
+    // The "Unable to add filesystem" is a known Emscripten issue when codecs initialize
+    const dicomImageLoaderConfig = {
       strict: false,
-    });
+      // Use web workers for decoding when available
+      useWebWorkers: true,
+      // Decode config - simpler decoding without advanced codecs if needed
+      decodeConfig: {
+        // Allow native decoding where possible
+        convertFloatPixelDataToInt: false,
+      },
+    };
+
+    // Initialize DICOM image loader with dicom-parser
+    dicomImageLoader.init(dicomImageLoaderConfig);
 
     // Configure wadouri
     dicomImageLoader.external.dicomParser = dicomParserModule.default || dicomParserModule;
+
+    // Configure cornerstone core (suppress WebGL warnings for SSR)
+    try {
+      cornerstoneCore.setUseSharedArrayBuffer?.(false);
+    } catch {
+      // SharedArrayBuffer may not be available without cross-origin isolation
+      console.warn('[Cornerstone] SharedArrayBuffer not available');
+    }
 
     // Initialize tools
     await cornerstoneTools.init();
