@@ -35,8 +35,8 @@ function handleGlobalError(error: Error): void {
 
 const defaultOptions: DefaultOptions = {
   queries: {
-    // Stale time: 1 minute
-    staleTime: 60 * 1000,
+    // Stale time: 2 minutes (increased from 1 minute to reduce refetching)
+    staleTime: 2 * 60 * 1000,
 
     // Cache time: 5 minutes
     gcTime: 5 * 60 * 1000,
@@ -52,8 +52,12 @@ const defaultOptions: DefaultOptions = {
       return failureCount < 1;
     },
 
-    // Don't refetch on window focus in development
-    refetchOnWindowFocus: process.env.NODE_ENV === 'production',
+    // Disable refetch on window focus to prevent excessive reloads
+    // Users can manually refresh via pull-to-refresh or refresh button
+    refetchOnWindowFocus: false,
+
+    // Only refetch on reconnect if data is stale
+    refetchOnReconnect: 'always',
 
     // Network mode
     networkMode: 'offlineFirst',

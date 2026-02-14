@@ -1,3 +1,13 @@
+const { execSync } = require('child_process');
+
+// Get build ID at config load time so it's available for env vars
+let BUILD_ID;
+try {
+  BUILD_ID = execSync('git rev-parse --short HEAD').toString().trim();
+} catch {
+  BUILD_ID = `build-${Date.now()}`;
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -6,6 +16,17 @@ const nextConfig = {
       bodySizeLimit: '2mb',
     },
   },
+
+  // Expose build info as environment variables for version checking
+  env: {
+    NEXT_PUBLIC_BUILD_ID: BUILD_ID,
+    BUILD_ID: BUILD_ID,
+    BUILD_TIME: new Date().toISOString(),
+  },
+
+  // Generate a consistent build ID based on git commit hash
+  // This helps with cache invalidation when deploying new versions
+  generateBuildId: async () => BUILD_ID,
 
   // Route aliases: /billing/* → /transactions/*
   // Allows cleaner URLs while keeping existing folder structure
@@ -18,6 +39,33 @@ const nextConfig = {
       {
         source: '/billing/:path*',
         destination: '/transactions/:path*',
+      },
+    ];
+  },
+
+  // Set cache headers for static assets
+  // Hashed files (_next/static) can be cached forever
+  // Other assets should revalidate
+  async headers() {
+    return [
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        // HTML pages should revalidate
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
       },
     ];
   },

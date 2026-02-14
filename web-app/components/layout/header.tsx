@@ -1,6 +1,7 @@
 'use client';
 
-import { Menu, Search, User, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { Menu, Search, User, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -28,6 +29,7 @@ import { useSyncStatus, formatLastSync } from '@/lib/context/sync-context';
 import { usePageRefresh, formatLastFetch, formatLastFetchShort } from '@/lib/context/page-refresh-context';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { NotificationPanel } from '@/components/notifications/notification-panel';
+import { clearCacheAndReload } from '@/lib/utils/version-check';
 import { cn } from '@/lib/utils/cn';
 
 interface HeaderProps {
@@ -41,6 +43,13 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   const { isOnline } = useNetworkStatus();
   const { lastSyncTime, isSyncing, pendingChanges, lastError, triggerSync } = useSyncStatus();
   const { lastFetchTime, isRefreshing, refresh } = usePageRefresh();
+  const [isClearingCache, setIsClearingCache] = useState(false);
+
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    await clearCacheAndReload();
+    // Note: Page will reload, so this state won't persist
+  };
 
   const handleSyncClick = async () => {
     if (!isSyncing && isOnline) {
@@ -251,6 +260,15 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                 Profile
               </DropdownMenuItem>
               <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleClearCache}
+                disabled={isClearingCache}
+                className="text-muted-foreground"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {isClearingCache ? 'Clearing...' : 'Clear Cache & Refresh'}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={logout} className="text-destructive">
                 Logout
