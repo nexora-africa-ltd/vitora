@@ -8,9 +8,13 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     EncounterLabOrderViewSet,
     LabAttachmentViewSet,
+    LabCriticalValuesReportView,
     LabOrderViewSet,
     LabQueueViewSet,
     LabResultViewSet,
+    LabSampleRejectionReportView,
+    LabTurnaroundTimeReportView,
+    LabWorkloadReportView,
     LOINCCodeViewSet,
     PatientLabOrderViewSet,
     PatientLabResultViewSet,
@@ -26,6 +30,14 @@ router.register(r"queue", LabQueueViewSet, basename="lab-queue")
 router.register(r"loinc-codes", LOINCCodeViewSet, basename="loinc-code")
 
 urlpatterns = [
+    path("reports/turnaround-time/", LabTurnaroundTimeReportView.as_view(), name="lab-report-tat"),
+    path("reports/workload/", LabWorkloadReportView.as_view(), name="lab-report-workload"),
+    path(
+        "reports/critical-values/",
+        LabCriticalValuesReportView.as_view(),
+        name="lab-report-critical-values",
+    ),
+    path("reports/rejections/", LabSampleRejectionReportView.as_view(), name="lab-report-rejections"),
     path("", include(router.urls)),
 ]
 

@@ -3,6 +3,7 @@ Views for laboratory API endpoints.
 """
 
 import logging
+from datetime import date
 
 from django.db import models
 from django_filters import rest_framework as filters
@@ -11,6 +12,8 @@ from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.exceptions import ValidationError
 
 from .models import LabOrder, LabOrderItem, LabResult, LabResultAttachment, LOINCCode, TestCatalog
 from .serializers import (
@@ -27,8 +30,38 @@ from .serializers import (
     TestCatalogSerializer,
 )
 from .services import LabAlertService, LabWorkflowService
+from .reports import LabReportService
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_date_range(request) -> tuple[date, date]:
+    start_param = request.query_params.get("start")
+    end_param = request.query_params.get("end")
+
+    errors: dict[str, str] = {}
+    if not start_param:
+        errors["start"] = "start query param is required (YYYY-MM-DD)."
+    if not end_param:
+        errors["end"] = "end query param is required (YYYY-MM-DD)."
+
+    if errors:
+        raise ValidationError(errors)
+
+    try:
+        start_date = date.fromisoformat(start_param)
+    except ValueError as exc:
+        raise ValidationError({"start": "Invalid date format. Use YYYY-MM-DD."}) from exc
+
+    try:
+        end_date = date.fromisoformat(end_param)
+    except ValueError as exc:
+        raise ValidationError({"end": "Invalid date format. Use YYYY-MM-DD."}) from exc
+
+    if start_date > end_date:
+        raise ValidationError({"end": "End date must be on or after start date."})
+
+    return start_date, end_date
 
 
 class TestCatalogViewSet(viewsets.ReadOnlyModelViewSet):
@@ -720,3 +753,47 @@ class LabQueueViewSet(viewsets.ModelViewSet):
         users = User.objects.filter(is_active=True)
 
         return Response(TechnicianSerializer(users, many=True).data)
+
+
+class LabTurnaroundTimeReportView(APIView):
+    """Report turnaround time metrics for lab operations."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start_date, end_date = _parse_date_range(request)
+        data = LabReportService.turnaround_time_report(start_date, end_date)
+        return Response(data)
+
+
+class LabWorkloadReportView(APIView):
+    """Report lab workload metrics."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start_date, end_date = _parse_date_range(request)
+        data = LabReportService.workload_report(start_date, end_date)
+        return Response(data)
+
+
+class LabCriticalValuesReportView(APIView):
+    """Report critical values metrics."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start_date, end_date = _parse_date_range(request)
+        data = LabReportService.critical_values_report(start_date, end_date)
+        return Response(data)
+
+
+class LabSampleRejectionReportView(APIView):
+    """Report sample rejection metrics."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start_date, end_date = _parse_date_range(request)
+        data = LabReportService.sample_rejection_report(start_date, end_date)
+        return Response(data)
