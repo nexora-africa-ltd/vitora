@@ -3,7 +3,7 @@
 > **Created**: 2026-02-14  
 > **Updated**: 2026-02-15  
 > **Owner**: Engineering  
-> **Status**: In Progress (Phase L0 & L1 Complete)  
+> **Status**: In Progress (Phase L0, L1 & L2 Complete)  
 > **Scope**: Laboratory module architecture evolution
 
 ---
@@ -115,7 +115,7 @@ DiagnosticReport (final output)
 | `Specimen` model | ✅ `Specimen` model implemented | None | ~~HIGH~~ **DONE** |
 | Results on specimens | ✅ `LabResult.specimen` FK | None | ~~HIGH~~ **DONE** |
 | Barcode as primary key | ✅ `Specimen.barcode` (unique, indexed) | None | ~~Low~~ **DONE** |
-| Two-stage validation | Single `verified_by` | Add technical validation | Medium |
+| Two-stage validation | ✅ `ResultValidation` model | None | ~~Medium~~ **DONE** |
 | `AnalyzerRun` tracking | None | Add when analyzers connected | Low |
 | `DiagnosticReport` output | `LabResultAttachment` partial | Add report model | Medium |
 | Rejection tracking | ✅ `Specimen.rejection_reason` + queue | Works | None |
@@ -257,8 +257,9 @@ class LabQueue(models.Model):
 
 ---
 
-### Phase L2 — Two-Stage Validation
+### Phase L2 — Two-Stage Validation ✅ COMPLETE
 
+**Implemented**: 2026-02-15  
 **Goal**: Support technical validation (lab tech) + clinical sign-off (pathologist).
 
 **Deliverables**:
@@ -292,8 +293,20 @@ class ResultValidation(models.Model):
 - Clinical sign-off by pathologist (optional based on test complexity)
 - Result `verification_status` derived from validations
 
-**Effort**: 4-8 hours  
-**Risk**: Low
+**Effort**: 4-8 hours → **Actual**: ~4 hours  
+**Risk**: Low → **Outcome**: Successful
+
+**Implementation Notes**:
+- `ResultValidation` model created with unique constraint per validation type per result
+- `TestCatalog.requires_clinical_signoff` field added to indicate which tests need pathologist review
+- `LabResult.verify()` updated to create validation records (backward compatible)
+- `LabResult.add_validation()` method for explicit two-stage workflow
+- `LabResult._update_verification_status()` derives overall status from validations
+- `LabResult.get_validation_summary()` returns structured validation state for frontend
+- API endpoints: `/validate/` (add validation), `/validations/` (list), `/pending-clinical-signoff/`
+- Serializers include `validation_summary` field for frontend display
+- 25 new tests covering model, methods, and API endpoints
+- Migration `0014_add_result_validation_model.py` applied
 
 ---
 
@@ -423,7 +436,7 @@ class DiagnosticReport(models.Model):
      │                 │                 │
      │   L0: Specimen  │   L1: Results   │
      │   Model         │   → Specimens   │
-     │   ★★★★★         │   ★★★★★         │
+     │   ★★★★★       │   ★★★★★      │
      │   (8-16 hrs)    │   (4-8 hrs)     │
      │                 │                 │
 LOW ─┼─────────────────┼─────────────────┼─ HIGH

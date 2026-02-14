@@ -4,6 +4,7 @@ Serializers for laboratory models.
 
 
 from typing import Optional
+
 from rest_framework import serializers
 
 from .models import (
@@ -13,6 +14,7 @@ from .models import (
     LabResult,
     LabResultAttachment,
     LOINCCode,
+    ResultValidation,
     TestCatalog,
 )
 
@@ -115,6 +117,8 @@ class LabResultNestedSerializer(serializers.ModelSerializer):
     result_flag = serializers.SerializerMethodField()
     # Use model's get_formatted_value method
     formatted_value = serializers.CharField(source="get_formatted_value", read_only=True)
+    # Two-stage validation summary (Phase L2)
+    validation_summary = serializers.SerializerMethodField()
 
     class Meta:
         model = LabResult
@@ -149,6 +153,7 @@ class LabResultNestedSerializer(serializers.ModelSerializer):
             "external_result_date",
             "created_at",
             "updated_at",
+            "validation_summary",
         ]
         read_only_fields = fields
 
@@ -170,6 +175,10 @@ class LabResultNestedSerializer(serializers.ModelSerializer):
         if obj.verified_by:
             return obj.verified_by.get_full_name() or obj.verified_by.username
         return None
+
+    def get_validation_summary(self, obj) -> Optional[dict]:
+        """Return two-stage validation summary for frontend display."""
+        return obj.get_validation_summary()
 
 
 class LabOrderItemSerializer(serializers.ModelSerializer):
@@ -315,6 +324,8 @@ class LabResultSerializer(serializers.ModelSerializer):
     test_code = serializers.CharField(source="order_item.test.code", read_only=True)
     formatted_value = serializers.CharField(source="get_formatted_value", read_only=True)
     numeric_value = serializers.SerializerMethodField()
+    # Two-stage validation summary (Phase L2)
+    validation_summary = serializers.SerializerMethodField()
 
     class Meta:
         model = LabResult
@@ -339,14 +350,19 @@ class LabResultSerializer(serializers.ModelSerializer):
             "is_amended",
             "created_at",
             "updated_at",
+            "validation_summary",
         ]
-        read_only_fields = ["entered_by", "entered_at", "result_flag"]
+        read_only_fields = ["entered_by", "entered_at", "result_flag", "validation_summary"]
 
     def get_numeric_value(self, obj) -> float | None:
         """Return numeric_value as float for frontend compatibility."""
         if obj.numeric_value is not None:
             return float(obj.numeric_value)
         return None
+
+    def get_validation_summary(self, obj) -> dict | None:
+        """Return two-stage validation summary for frontend display."""
+        return obj.get_validation_summary()
 
 
 class LabResultCreateSerializer(serializers.ModelSerializer):
@@ -390,10 +406,16 @@ class LabResultCreateSerializer(serializers.ModelSerializer):
 
 
 class LabResultVerifySerializer(serializers.Serializer):
-    """Verify result action."""
+    """Verify result action with two-stage validation support."""
 
     approved = serializers.BooleanField()
-    comments = serializers.CharField(required=False, allow_blank=True)
+    comments = serializers.CharField(required=False, allow_blank=True, default="")
+    validation_type = serializers.ChoiceField(
+        choices=["TECHNICAL", "CLINICAL"],
+        required=False,
+        default="TECHNICAL",
+        help_text="Type of validation: TECHNICAL (lab tech) or CLINICAL (pathologist)",
+    )
 
 
 class LOINCCodeSerializer(serializers.ModelSerializer):
@@ -593,3 +615,53 @@ class TechnicianSerializer(serializers.Serializer):
 
     def get_full_name(self, obj) -> str:
         return obj.get_full_name() or obj.username
+
+
+# ============================================================================
+# Result Validation Serializers (Phase L2 — Two-Stage Validation)
+# ============================================================================
+
+
+class ResultValidationSerializer(serializers.ModelSerializer):
+    """Serializer for result validation records."""
+
+    validated_by_name = serializers.SerializerMethodField()
+    validation_type_display = serializers.CharField(
+        source="get_validation_type_display", read_only=True
+    )
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = ResultValidation
+        fields = [
+            "id",
+            "result",
+            "validation_type",
+            "validation_type_display",
+            "status",
+            "status_display",
+            "validated_by",
+            "validated_by_name",
+            "validated_at",
+            "comment",
+        ]
+        read_only_fields = fields
+
+    def get_validated_by_name(self, obj) -> Optional[str]:
+        if obj.validated_by:
+            return obj.validated_by.get_full_name() or obj.validated_by.username
+        return None
+
+
+class ResultValidationCreateSerializer(serializers.Serializer):
+    """Serializer for creating a validation record."""
+
+    validation_type = serializers.ChoiceField(
+        choices=["TECHNICAL", "CLINICAL"],
+        help_text="Type of validation: TECHNICAL (lab tech) or CLINICAL (pathologist)",
+    )
+    status = serializers.ChoiceField(
+        choices=["APPROVED", "REJECTED"],
+        help_text="Validation decision",
+    )
+    comment = serializers.CharField(required=False, allow_blank=True, default="")
