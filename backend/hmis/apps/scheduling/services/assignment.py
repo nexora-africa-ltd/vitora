@@ -215,9 +215,7 @@ class RuleEvaluator:
         Returns:
             EvaluationResult from the first matching rule, or None
         """
-        rules = AssignmentRule.objects.get_active_for_type(
-            assignment_type, for_date=date.today()
-        )
+        rules = AssignmentRule.objects.get_active_for_type(assignment_type, for_date=date.today())
 
         for rule in rules:
             # Check if rule's "when" conditions are met
@@ -631,7 +629,7 @@ class AssignmentService:
         """
         try:
             # Ensure candidates is a list
-            if hasattr(candidates, '__iter__') and not isinstance(candidates, list):
+            if hasattr(candidates, "__iter__") and not isinstance(candidates, list):
                 candidates = list(candidates)
 
             # Build context for evaluation (include candidates for temp resource)
@@ -671,6 +669,7 @@ class AssignmentService:
 
         except Exception as e:
             import traceback
+
             return AssignmentResult(
                 success=False,
                 error=f"{str(e)}: {traceback.format_exc()}",

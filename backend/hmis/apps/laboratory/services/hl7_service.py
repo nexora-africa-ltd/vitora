@@ -41,7 +41,9 @@ COMPONENT_SEPARATOR = "^"
 REPETITION_SEPARATOR = "~"
 ESCAPE_CHARACTER = "\\"
 SUBCOMPONENT_SEPARATOR = "&"
-ENCODING_CHARACTERS = f"{COMPONENT_SEPARATOR}{REPETITION_SEPARATOR}{ESCAPE_CHARACTER}{SUBCOMPONENT_SEPARATOR}"
+ENCODING_CHARACTERS = (
+    f"{COMPONENT_SEPARATOR}{REPETITION_SEPARATOR}{ESCAPE_CHARACTER}{SUBCOMPONENT_SEPARATOR}"
+)
 
 
 class HL7ServiceError(Exception):
@@ -202,7 +204,7 @@ class HL7Service:
         formats = ["%Y%m%d%H%M%S", "%Y%m%d%H%M", "%Y%m%d"]
         for fmt in formats:
             try:
-                return datetime.strptime(dt_str[:len(fmt.replace("%", ""))], fmt)
+                return datetime.strptime(dt_str[: len(fmt.replace("%", ""))], fmt)
             except ValueError:
                 continue
         return None
@@ -310,7 +312,9 @@ class HL7Service:
         gender = gender_map.get(patient.gender, "U")
 
         # Patient ID: MRN with assigning authority
-        patient_id = f"{patient.mrn}{COMPONENT_SEPARATOR}{COMPONENT_SEPARATOR}{COMPONENT_SEPARATOR}MRN"
+        patient_id = (
+            f"{patient.mrn}{COMPONENT_SEPARATOR}{COMPONENT_SEPARATOR}{COMPONENT_SEPARATOR}MRN"
+        )
 
         # Phone number
         phone = getattr(patient, "phone_number", "") or ""
@@ -352,9 +356,7 @@ class HL7Service:
             "IPD": "I",
             "EMERGENCY": "E",
         }
-        patient_class = encounter_type_map.get(
-            getattr(encounter, "encounter_type", "OPD"), "O"
-        )
+        patient_class = encounter_type_map.get(getattr(encounter, "encounter_type", "OPD"), "O")
 
         # Attending doctor
         attending = ""
@@ -832,7 +834,9 @@ class HL7Service:
 
         message = "\r".join(segments) + "\r"
 
-        logger.debug("Generated ACK message: %s for message %s", ack_code, original_message_control_id)
+        logger.debug(
+            "Generated ACK message: %s for message %s", ack_code, original_message_control_id
+        )
         return message
 
     def parse_ack(self, message: str) -> HL7AckResponse:
@@ -930,11 +934,10 @@ class HL7Service:
 
         if test_code:
             # Try matching by LOINC code or internal code
-            order_item = order.items.filter(
-                test__loinc_code=test_code
-            ).first() or order.items.filter(
-                test__code=test_code
-            ).first()
+            order_item = (
+                order.items.filter(test__loinc_code=test_code).first()
+                or order.items.filter(test__code=test_code).first()
+            )
 
         if not order_item:
             logger.warning(
@@ -981,7 +984,9 @@ class HL7Service:
             reference_range_text=hl7_result.reference_range or "",
             result_flag=result_flag,
             is_external_result=True,
-            external_result_date=hl7_result.result_datetime.date() if hl7_result.result_datetime else None,
+            external_result_date=hl7_result.result_datetime.date()
+            if hl7_result.result_datetime
+            else None,
             entered_by=entered_by,
             verification_status="UNVERIFIED",
         )

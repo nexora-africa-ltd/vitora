@@ -5,8 +5,8 @@ Sprint 1.5-1.6 Track E: Triage Module MVP
 """
 
 
-from typing import Optional
 from decimal import Decimal
+from typing import Optional
 
 from django.utils import timezone
 from rest_framework import serializers

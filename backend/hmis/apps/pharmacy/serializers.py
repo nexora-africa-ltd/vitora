@@ -3,17 +3,14 @@ Serializers for Pharmacy app.
 """
 
 
-from typing import Optional
 import re
+from typing import Optional
 
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from hmis.apps.core.qr_utils import (
-    generate_document_signature,
-    get_verification_base_url,
-)
+from hmis.apps.core.qr_utils import generate_document_signature, get_verification_base_url
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.pharmacy.models import (
     AlertSettings,
@@ -83,8 +80,8 @@ class DrugSerializer(serializers.ModelSerializer):
             "brand_names",
             "strength",
             "form",
-            "category",      # Primary category (backward compatible)
-            "categories",    # All categories (new)
+            "category",  # Primary category (backward compatible)
+            "categories",  # All categories (new)
             "unit",
             "schedule",
             "is_essential",
@@ -113,7 +110,7 @@ class DrugSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         """Map legacy `category` to `categories` and validate against registry."""
         # Backward compat: allow `category` on create/update
-        if ("categories" not in attrs or not attrs.get("categories")):
+        if "categories" not in attrs or not attrs.get("categories"):
             category = self.initial_data.get("category")
             if category:
                 attrs["categories"] = [category] if isinstance(category, str) else list(category)
@@ -122,8 +119,9 @@ class DrugSerializer(serializers.ModelSerializer):
         if categories:
             DrugCategory = apps.get_model("pharmacy", "DrugCategory")
             existing = set(
-                DrugCategory.objects.filter(is_active=True, code__in=categories)
-                .values_list("code", flat=True)
+                DrugCategory.objects.filter(is_active=True, code__in=categories).values_list(
+                    "code", flat=True
+                )
             )
             missing = [c for c in categories if c not in existing]
             if missing:
@@ -155,9 +153,7 @@ class StockBatchSerializer(serializers.ModelSerializer):
     is_expired = serializers.BooleanField(read_only=True)
     is_low_stock = serializers.BooleanField(read_only=True)
     # Decimal fields - return as numbers, not strings
-    cost_price = serializers.DecimalField(
-        max_digits=10, decimal_places=2, coerce_to_string=False
-    )
+    cost_price = serializers.DecimalField(max_digits=10, decimal_places=2, coerce_to_string=False)
     selling_price = serializers.DecimalField(
         max_digits=12, decimal_places=2, coerce_to_string=False
     )

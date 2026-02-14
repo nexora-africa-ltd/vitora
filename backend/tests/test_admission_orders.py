@@ -13,7 +13,6 @@ from hmis.apps.inpatient.models import Admission
 from hmis.apps.laboratory.models import LabOrder, LabOrderItem, TestCatalog
 from hmis.apps.pharmacy.models import Prescription, PrescriptionItem
 
-
 # Note: sample_admission fixture is already defined in conftest.py
 
 
@@ -224,9 +223,7 @@ class TestAdmissionOrdersEndpoints:
 
     def test_get_admission_orders_unauthorized(self, api_client, sample_admission):
         """Test that unauthenticated requests are rejected."""
-        response = api_client.get(
-            f"/api/inpatient/admissions/{sample_admission.id}/orders/"
-        )
+        response = api_client.get(f"/api/inpatient/admissions/{sample_admission.id}/orders/")
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -282,9 +279,7 @@ class TestAdmissionFKOnOrders:
         )
         assert prescription.admission is None
 
-    def test_lab_order_with_admission(
-        self, db, sample_lab_test, sample_admission, test_user
-    ):
+    def test_lab_order_with_admission(self, db, sample_lab_test, sample_admission, test_user):
         """Test lab order with admission FK."""
         order = LabOrder.objects.create(
             patient=sample_admission.patient,

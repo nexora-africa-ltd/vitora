@@ -201,9 +201,9 @@ class TestSHAClaimAttachmentModel:
         """Should reject Word documents."""
         from hmis.apps.billing.models import SHAClaimAttachment
 
-        valid_attachment_data["mime_type"] = (
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        )
+        valid_attachment_data[
+            "mime_type"
+        ] = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
         with pytest.raises(ValidationError) as exc_info:
             SHAClaimAttachment.objects.create(**valid_attachment_data)

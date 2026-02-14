@@ -2,8 +2,8 @@
 
 import logging
 
-from django.conf import settings
 import africastalking
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 

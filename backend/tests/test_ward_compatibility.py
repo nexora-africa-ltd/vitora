@@ -174,7 +174,9 @@ class TestWardCompatibilityService:
         )
         assert result.compatible is False
         assert result.has_critical_violations is True
-        assert any(v.code == "ISOLATION_REQUIRED" and v.severity == "CRITICAL" for v in result.violations)
+        assert any(
+            v.code == "ISOLATION_REQUIRED" and v.severity == "CRITICAL" for v in result.violations
+        )
 
 
 @pytest.mark.django_db
@@ -236,7 +238,9 @@ class TestWardAutoPopulateDefaults:
 
 @pytest.mark.django_db
 class TestCompatibilityEndpoints:
-    def test_check_compatibility_endpoint(self, authenticated_client, female_patient, male_only_ward):
+    def test_check_compatibility_endpoint(
+        self, authenticated_client, female_patient, male_only_ward
+    ):
         response = authenticated_client.post(
             f"/api/inpatient/wards/{male_only_ward.id}/check_compatibility/",
             {"patient_id": female_patient.id, "requires_isolation": False},
@@ -246,7 +250,9 @@ class TestCompatibilityEndpoints:
         assert response.data["compatible"] is False
         assert "violations" in response.data
 
-    def test_bulk_check_returns_compatible_wards(self, authenticated_client, child_patient, adult_patient):
+    def test_bulk_check_returns_compatible_wards(
+        self, authenticated_client, child_patient, adult_patient
+    ):
         from decimal import Decimal
 
         from hmis.apps.inpatient.models import Ward
@@ -316,7 +322,9 @@ class TestAdmissionOverrideFlow:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "compatibility" in response.data
 
-    def test_override_admission_records_violations(self, authenticated_client, female_patient, male_only_ward, test_user):
+    def test_override_admission_records_violations(
+        self, authenticated_client, female_patient, male_only_ward, test_user
+    ):
         # Use the first auto-generated bed
         bed = male_only_ward.beds.filter(status="AVAILABLE").first()
 
@@ -345,7 +353,9 @@ class TestAdmissionOverrideFlow:
         assert response.data["constraint_override"] is True
         assert response.data["constraint_override_reason"] == "No other beds available"
         assert isinstance(response.data["constraint_violations"], list)
-        assert any(v.get("code") == "GENDER_MISMATCH" for v in response.data["constraint_violations"])
+        assert any(
+            v.get("code") == "GENDER_MISMATCH" for v in response.data["constraint_violations"]
+        )
 
 
 @pytest.mark.django_db

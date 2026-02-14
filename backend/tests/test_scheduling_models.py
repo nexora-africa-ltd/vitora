@@ -20,7 +20,6 @@ import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-
 # =============================================================================
 # Resource Model Tests
 # =============================================================================
@@ -326,7 +325,7 @@ class TestScheduleModel:
             next_monday += timedelta(days=1)
 
         slots = schedule.get_available_slots(next_monday)
-        
+
         # 9:00-11:00, 30 min slots = 4 slots
         assert len(slots) == 4
         assert slots[0]["start_time"] == time(9, 0)
@@ -355,7 +354,7 @@ class TestScheduleModel:
             next_monday += timedelta(days=1)
 
         slots = schedule.get_available_slots(next_monday)
-        
+
         # 30 + 5 = 35 min per slot
         # 90 min / 35 min = 2 complete slots (70 min), leaves 20 min unused
         assert len(slots) == 2
@@ -410,7 +409,7 @@ class TestScheduleModel:
             next_monday += timedelta(days=1)
 
         slots = schedule.get_available_slots(next_monday)
-        
+
         # 9-14 = 5 hours, minus 1 hour lunch = 4 slots
         assert len(slots) == 4
         slot_times = [s["start_time"] for s in slots]
@@ -443,7 +442,9 @@ class TestAppointmentModel:
         assert apt.patient == sample_patient
         assert apt.resource == sample_person_resource
 
-    def test_appointment_lifecycle_transitions(self, db, sample_patient, sample_person_resource, test_user):
+    def test_appointment_lifecycle_transitions(
+        self, db, sample_patient, sample_person_resource, test_user
+    ):
         """Should follow valid lifecycle transitions."""
         from hmis.apps.scheduling.models import Appointment
 
@@ -512,7 +513,9 @@ class TestAppointmentModel:
         apt.mark_no_show(user=test_user)
         assert apt.status == "NO_SHOW"
 
-    def test_appointment_invalid_transition_rejected(self, db, sample_patient, sample_person_resource, test_user):
+    def test_appointment_invalid_transition_rejected(
+        self, db, sample_patient, sample_person_resource, test_user
+    ):
         """Should reject invalid status transitions."""
         from hmis.apps.scheduling.models import Appointment
 
@@ -652,7 +655,9 @@ class TestConflictDetection:
 
         assert apt2.id is not None
 
-    def test_cancelled_appointments_dont_conflict(self, db, sample_patient, sample_person_resource, test_user):
+    def test_cancelled_appointments_dont_conflict(
+        self, db, sample_patient, sample_person_resource, test_user
+    ):
         """Cancelled appointments should not cause conflicts."""
         from hmis.apps.scheduling.models import Appointment
 
@@ -889,6 +894,6 @@ def sample_role(db):
             "name": "Doctor",
             "category": "CLINICAL",
             "description": "Medical Doctor",
-        }
+        },
     )
     return role

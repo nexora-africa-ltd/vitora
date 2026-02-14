@@ -1586,9 +1586,9 @@ class SHAMember(models.Model):
             and not self.principal_sha_number
             and not self.principal
         ):
-            errors["principal_sha_number"] = (
-                "Dependents must have a principal SHA number or principal member reference"
-            )
+            errors[
+                "principal_sha_number"
+            ] = "Dependents must have a principal SHA number or principal member reference"
         # Validate principal FK points to a principal member
         if (
             self.membership_type != self.MembershipType.PRINCIPAL

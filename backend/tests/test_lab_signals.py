@@ -223,7 +223,7 @@ class TestCreateLabQueueEntrySignal:
         self, lab_patient, lab_encounter, lab_user, lab_test_catalog_urine
     ):
         """LabQueue.sample_type should match test.specimen_type when item is added.
-        
+
         Note: The signal uses the specimen_type from the first order item's test catalog.
         If the order is created before items are added, the queue is created when the
         first item is added, inheriting that item's specimen_type.
@@ -396,7 +396,7 @@ class TestUpdateOrderStatusOnResultSignal:
         self, lab_patient, lab_encounter, lab_user, lab_test_catalog, lab_test_catalog_urine
     ):
         """First result entry should transition order to IN_PROGRESS.
-        
+
         For single-item orders, the first result is also the last, so it transitions
         all the way to REVIEW. We use a 2-item order to test intermediate state.
         """
@@ -597,9 +597,7 @@ class TestNotifyOnResultVerificationSignal:
             entered_by=lab_user,
         )
 
-        with patch(
-            "hmis.apps.laboratory.websockets.broadcast_result_verified"
-        ) as mock_broadcast:
+        with patch("hmis.apps.laboratory.websockets.broadcast_result_verified") as mock_broadcast:
             # Update to verified status
             result.verification_status = "VERIFIED"
             result.verified_by = lab_tech_user
@@ -676,9 +674,7 @@ class TestNotifyOnResultVerificationSignal:
             entered_by=lab_user,
         )
 
-        with patch(
-            "hmis.apps.laboratory.websockets.broadcast_result_verified"
-        ), patch(
+        with patch("hmis.apps.laboratory.websockets.broadcast_result_verified"), patch(
             "hmis.apps.laboratory.websockets.broadcast_order_completed"
         ) as mock_completed, patch(
             "hmis.apps.laboratory.services.notifications.LabNotificationService.send_result_notification"
@@ -717,9 +713,7 @@ class TestNotifyOnResultVerificationSignal:
             entered_by=lab_user,
         )
 
-        with patch(
-            "hmis.apps.laboratory.websockets.broadcast_result_verified"
-        ), patch(
+        with patch("hmis.apps.laboratory.websockets.broadcast_result_verified"), patch(
             "hmis.apps.laboratory.websockets.broadcast_order_completed"
         ), patch(
             "hmis.apps.laboratory.services.notifications.LabNotificationService.send_result_notification"
@@ -750,9 +744,7 @@ class TestNotifyOnResultVerificationSignal:
             unit_cost=lab_test_catalog.cost,
         )
 
-        with patch(
-            "hmis.apps.laboratory.websockets.broadcast_result_verified"
-        ) as mock_broadcast:
+        with patch("hmis.apps.laboratory.websockets.broadcast_result_verified") as mock_broadcast:
             # Create result (not update)
             LabResult.objects.create(
                 order_item=item,
@@ -792,9 +784,7 @@ class TestNotifyOnResultVerificationSignal:
             entered_by=lab_user,
         )
 
-        with patch(
-            "hmis.apps.laboratory.websockets.broadcast_result_verified"
-        ) as mock_broadcast:
+        with patch("hmis.apps.laboratory.websockets.broadcast_result_verified") as mock_broadcast:
             # Update to REJECTED (not VERIFIED)
             result.verification_status = "REJECTED"
             result.save()
@@ -861,9 +851,7 @@ class TestSignalErrorHandling:
             entered_by=lab_user,
         )
 
-        with patch(
-            "hmis.apps.laboratory.websockets.broadcast_result_verified"
-        ), patch(
+        with patch("hmis.apps.laboratory.websockets.broadcast_result_verified"), patch(
             "hmis.apps.laboratory.websockets.broadcast_order_completed"
         ), patch(
             "hmis.apps.laboratory.services.notifications.LabNotificationService.send_result_notification",

@@ -122,7 +122,7 @@ class TestBedAPI:
 
     def test_filter_beds_by_status(self, authenticated_client, sample_inpatient_ward):
         """Should filter beds by availability status.
-        
+
         Uses auto-generated beds and modifies their statuses.
         """
         # Get auto-generated beds and set specific statuses

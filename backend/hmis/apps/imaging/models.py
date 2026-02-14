@@ -91,9 +91,7 @@ class ImagingProcedure(models.Model):
     body_region = models.CharField(max_length=30, choices=BODY_REGION_CHOICES)
 
     # Interoperability codes
-    radlex_code = models.CharField(
-        max_length=50, blank=True, help_text="RadLex Playbook ID"
-    )
+    radlex_code = models.CharField(max_length=50, blank=True, help_text="RadLex Playbook ID")
     loinc_code = models.CharField(
         max_length=20, blank=True, help_text="LOINC code for interoperability"
     )
@@ -101,20 +99,14 @@ class ImagingProcedure(models.Model):
     # Requirements
     requires_contrast = models.BooleanField(default=False)
     requires_sedation = models.BooleanField(default=False)
-    special_preparation = models.TextField(
-        blank=True, help_text="Patient preparation instructions"
-    )
+    special_preparation = models.TextField(blank=True, help_text="Patient preparation instructions")
     turnaround_hours = models.IntegerField(
         default=24, help_text="Expected turnaround time in hours"
     )
 
     # Pricing & SHA
-    cost = models.DecimalField(
-        max_digits=10, decimal_places=2, default=Decimal("0.00")
-    )
-    sha_claimable = models.BooleanField(
-        default=True, help_text="Covered by Kenya SHA"
-    )
+    cost = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    sha_claimable = models.BooleanField(default=True, help_text="Covered by Kenya SHA")
     sha_intervention_code = models.CharField(
         max_length=50, blank=True, help_text="SHA intervention code for claims"
     )
@@ -206,9 +198,7 @@ class ImagingOrder(models.Model):
     )
 
     # Order details
-    priority = models.CharField(
-        max_length=20, choices=PRIORITY_LEVELS, default="ROUTINE"
-    )
+    priority = models.CharField(max_length=20, choices=PRIORITY_LEVELS, default="ROUTINE")
     clinical_indication = models.TextField(help_text="Clinical reason for imaging")
     relevant_clinical_history = models.TextField(
         blank=True, help_text="Relevant clinical history for radiologist"
@@ -241,9 +231,7 @@ class ImagingOrder(models.Model):
     )
 
     # Billing
-    total_cost = models.DecimalField(
-        max_digits=10, decimal_places=2, default=Decimal("0.00")
-    )
+    total_cost = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     is_paid = models.BooleanField(default=False)
 
     # Timestamps
@@ -309,9 +297,7 @@ class ImagingOrder(models.Model):
 
         valid_transitions = self.STATUS_TRANSITIONS.get(self.status, [])
         if new_status not in valid_transitions:
-            raise ValidationError(
-                f"Cannot transition from {self.status} to {new_status}"
-            )
+            raise ValidationError(f"Cannot transition from {self.status} to {new_status}")
 
         self.status = new_status
 
@@ -358,17 +344,13 @@ class ImagingOrderItem(models.Model):
         on_delete=models.PROTECT,
         related_name="order_items",
     )
-    laterality = models.CharField(
-        max_length=20, choices=LATERALITY_CHOICES, default="NA"
-    )
+    laterality = models.CharField(max_length=20, choices=LATERALITY_CHOICES, default="NA")
     specific_instructions = models.TextField(
         blank=True, help_text="Specific instructions for this procedure"
     )
     is_completed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(null=True, blank=True)
-    unit_cost = models.DecimalField(
-        max_digits=10, decimal_places=2, default=Decimal("0.00")
-    )
+    unit_cost = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
 
     class Meta:
         verbose_name = "Imaging Order Item"

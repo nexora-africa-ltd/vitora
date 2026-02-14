@@ -35,9 +35,7 @@ class Command(BaseCommand):
         drugs = Drug.objects.filter(is_active=True)
 
         if not drugs.exists():
-            self.stdout.write(
-                self.style.WARNING("No drugs found. Run import_drugs first.")
-            )
+            self.stdout.write(self.style.WARNING("No drugs found. Run import_drugs first."))
             return
 
         # Get a pharmacist for received_by
@@ -46,9 +44,7 @@ class Command(BaseCommand):
             pharmacist = User.objects.filter(is_staff=True).first()
 
         if not pharmacist:
-            self.stdout.write(
-                self.style.ERROR("No staff user found. Create a user first.")
-            )
+            self.stdout.write(self.style.ERROR("No staff user found. Create a user first."))
             return
 
         today = date.today()
@@ -117,10 +113,7 @@ class Command(BaseCommand):
                     # Location based on drug type
                     if drug.is_controlled or drug.is_narcotic:
                         location = "Controlled Substances Cabinet"
-                    elif (
-                        drug.storage_requirements
-                        and "cold" in drug.storage_requirements.lower()
-                    ):
+                    elif drug.storage_requirements and "cold" in drug.storage_requirements.lower():
                         location = "Cold Storage Unit 1"
                     else:
                         location = choice(LOCATIONS[:4])  # Regular shelves
@@ -157,6 +150,4 @@ class Command(BaseCommand):
         self.stdout.write(f"Created {batches_created} stock batches for {drugs.count()} drugs")
         self.stdout.write(f"Skipped {batches_skipped} drugs (already have stock)")
         self.stdout.write(f"Total stock value: KES {total_stock_value:,.2f}")
-        self.stdout.write(
-            self.style.SUCCESS("✅ Pharmacy stock data created successfully!")
-        )
+        self.stdout.write(self.style.SUCCESS("✅ Pharmacy stock data created successfully!"))

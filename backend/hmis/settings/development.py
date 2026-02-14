@@ -53,7 +53,9 @@ CSRF_TRUSTED_ORIGINS = [
 
 # Disable CSRF for API endpoints in development
 # This is safe because we use JWT authentication, not session cookies
-MIDDLEWARE = [m for m in MIDDLEWARE if m != "django.middleware.csrf.CsrfViewMiddleware"]  # noqa: F405
+MIDDLEWARE = [
+    m for m in MIDDLEWARE if m != "django.middleware.csrf.CsrfViewMiddleware"
+]  # noqa: F405
 
 # Whitenoise for static files (needed when using daphne/ASGI instead of runserver)
 MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")

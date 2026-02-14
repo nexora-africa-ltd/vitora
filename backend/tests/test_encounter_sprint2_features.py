@@ -12,7 +12,6 @@ from rest_framework import status
 
 from hmis.apps.encounters.models import Encounter
 
-
 # =============================================================================
 # Phase 2B: Encounter Linking
 # =============================================================================
@@ -146,9 +145,7 @@ class TestEncounterLinking:
         assert follow_up1 in related
         assert follow_up2 in related
 
-    def test_api_related_encounters_endpoint(
-        self, authenticated_client, sample_patient
-    ):
+    def test_api_related_encounters_endpoint(self, authenticated_client, sample_patient):
         """GET /api/encounters/{id}/related/ should return linked encounters."""
         original = Encounter.objects.create(
             patient=sample_patient,
@@ -162,9 +159,7 @@ class TestEncounterLinking:
             linked_encounter=original,
         )
 
-        response = authenticated_client.get(
-            f"/api/encounters/{original.id}/related/"
-        )
+        response = authenticated_client.get(f"/api/encounters/{original.id}/related/")
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 1
         assert response.data[0]["chief_complaint"] == "Follow-up"
@@ -175,9 +170,7 @@ class TestEncounterLinking:
         """Check-in should auto-suggest linkable encounters for follow-up patients."""
         patient, _encounter = sample_patient_with_recent_visit
 
-        response = authenticated_client.get(
-            f"/api/checkin/lookup/?q={patient.mrn}"
-        )
+        response = authenticated_client.get(f"/api/checkin/lookup/?q={patient.mrn}")
 
         assert response.status_code == status.HTTP_200_OK
         assert "linkable_encounter_id" in response.data
@@ -215,9 +208,7 @@ class TestSkipTriageLogic:
 
         assert should_skip_triage("FOLLOW_UP") is False
 
-    def test_checkin_response_includes_skip_triage(
-        self, authenticated_client, sample_patient
-    ):
+    def test_checkin_response_includes_skip_triage(self, authenticated_client, sample_patient):
         """Check-in response should indicate whether triage was skipped."""
         response = authenticated_client.post(
             f"/api/checkin/patients/{sample_patient.id}/checkin/",
@@ -285,9 +276,7 @@ class TestVisitReasonTaxonomy:
         )
         assert encounter.visit_reason == "NEW_COMPLAINT"
 
-    def test_api_create_encounter_with_visit_reason(
-        self, authenticated_client, sample_patient
-    ):
+    def test_api_create_encounter_with_visit_reason(self, authenticated_client, sample_patient):
         """API should accept visit_reason on creation."""
         response = authenticated_client.post(
             "/api/encounters/",
@@ -302,9 +291,7 @@ class TestVisitReasonTaxonomy:
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["visit_reason"] == "CHRONIC_CARE"
 
-    def test_api_filter_encounters_by_visit_reason(
-        self, authenticated_client, sample_patient
-    ):
+    def test_api_filter_encounters_by_visit_reason(self, authenticated_client, sample_patient):
         """Should filter encounters by visit_reason."""
         Encounter.objects.create(
             patient=sample_patient,
@@ -324,9 +311,7 @@ class TestVisitReasonTaxonomy:
         for enc in response.data["results"]:
             assert enc["visit_reason"] == "CHRONIC_CARE"
 
-    def test_checkin_sets_visit_reason_on_encounter(
-        self, authenticated_client, sample_patient
-    ):
+    def test_checkin_sets_visit_reason_on_encounter(self, authenticated_client, sample_patient):
         """Check-in should propagate visit_reason to created encounter."""
         response = authenticated_client.post(
             f"/api/checkin/patients/{sample_patient.id}/checkin/",
@@ -341,9 +326,7 @@ class TestVisitReasonTaxonomy:
         encounter = Encounter.objects.get(id=encounter_id)
         assert encounter.visit_reason == "CHRONIC_CARE"
 
-    def test_encounter_list_includes_visit_reason(
-        self, authenticated_client, sample_patient
-    ):
+    def test_encounter_list_includes_visit_reason(self, authenticated_client, sample_patient):
         """Encounter list serializer should include visit_reason."""
         Encounter.objects.create(
             patient=sample_patient,
@@ -354,7 +337,4 @@ class TestVisitReasonTaxonomy:
 
         response = authenticated_client.get("/api/encounters/")
         assert response.status_code == status.HTTP_200_OK
-        assert any(
-            e.get("visit_reason") == "LAB_REVIEW"
-            for e in response.data["results"]
-        )
+        assert any(e.get("visit_reason") == "LAB_REVIEW" for e in response.data["results"])

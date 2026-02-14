@@ -60,10 +60,7 @@ class ImagingSchedulingService:
 
         if modality:
             # Filter by modality capability (Python-side for SQLite compatibility)
-            resources = [
-                r for r in resources
-                if modality in r.metadata.get("modalities", [])
-            ]
+            resources = [r for r in resources if modality in r.metadata.get("modalities", [])]
 
         return resources
 
@@ -199,18 +196,22 @@ class ImagingSchedulingService:
                     appointment = apt
                     break
 
-            enriched_slots.append({
-                "date": for_date.isoformat(),
-                "start_time": slot["start_time"].isoformat(),
-                "end_time": slot["end_time"].isoformat(),
-                "is_available": is_available,
-                "appointment": {
-                    "id": appointment.id,
-                    "patient_name": str(appointment.patient) if appointment.patient else None,
-                    "appointment_number": appointment.appointment_number,
-                    "status": appointment.status,
-                } if appointment else None,
-            })
+            enriched_slots.append(
+                {
+                    "date": for_date.isoformat(),
+                    "start_time": slot["start_time"].isoformat(),
+                    "end_time": slot["end_time"].isoformat(),
+                    "is_available": is_available,
+                    "appointment": {
+                        "id": appointment.id,
+                        "patient_name": str(appointment.patient) if appointment.patient else None,
+                        "appointment_number": appointment.appointment_number,
+                        "status": appointment.status,
+                    }
+                    if appointment
+                    else None,
+                }
+            )
 
         return enriched_slots
 
@@ -237,13 +238,15 @@ class ImagingSchedulingService:
         for day_offset in range(7):
             check_date = start_date + timedelta(days=day_offset)
             slots = cls.get_resource_availability(resource, check_date)
-            weekly.append({
-                "date": check_date.isoformat(),
-                "day_name": check_date.strftime("%A"),
-                "slots": slots,
-                "total_slots": len(slots),
-                "available_slots": sum(1 for s in slots if s["is_available"]),
-            })
+            weekly.append(
+                {
+                    "date": check_date.isoformat(),
+                    "day_name": check_date.strftime("%A"),
+                    "slots": slots,
+                    "total_slots": len(slots),
+                    "available_slots": sum(1 for s in slots if s["is_available"]),
+                }
+            )
 
         return weekly
 
@@ -383,18 +386,20 @@ class ImagingSchedulingService:
 
         for resource in resources:
             slots = cls.get_resource_availability(resource, for_date)
-            calendar_data.append({
-                "resource": {
-                    "id": resource.id,
-                    "code": resource.code,
-                    "name": resource.name,
-                    "resource_type": resource.resource_type,
-                    "metadata": resource.metadata,
-                },
-                "slots": slots,
-                "total_slots": len(slots),
-                "available_slots": sum(1 for s in slots if s["is_available"]),
-                "booked_slots": sum(1 for s in slots if not s["is_available"]),
-            })
+            calendar_data.append(
+                {
+                    "resource": {
+                        "id": resource.id,
+                        "code": resource.code,
+                        "name": resource.name,
+                        "resource_type": resource.resource_type,
+                        "metadata": resource.metadata,
+                    },
+                    "slots": slots,
+                    "total_slots": len(slots),
+                    "available_slots": sum(1 for s in slots if s["is_available"]),
+                    "booked_slots": sum(1 for s in slots if not s["is_available"]),
+                }
+            )
 
         return calendar_data

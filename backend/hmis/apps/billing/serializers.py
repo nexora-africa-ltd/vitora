@@ -6,6 +6,7 @@ Following TDD - implemented to pass API tests.
 
 
 from decimal import Decimal
+
 from rest_framework import serializers
 
 from hmis.apps.billing.models import (
@@ -143,7 +144,11 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
     def get_lab_order_name(self, obj) -> str | None:
         """Return lab order test name if available."""
         if obj.lab_order:
-            return obj.lab_order.test_name if hasattr(obj.lab_order, "test_name") else str(obj.lab_order)
+            return (
+                obj.lab_order.test_name
+                if hasattr(obj.lab_order, "test_name")
+                else str(obj.lab_order)
+            )
         return None
 
 
@@ -155,7 +160,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
     created_by_username = serializers.CharField(source="created_by.username", read_only=True)
     items = InvoiceItemSerializer(many=True, read_only=True)
     balance = serializers.SerializerMethodField()
-    balance_due = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True, coerce_to_string=True)
+    balance_due = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True, coerce_to_string=True
+    )
 
     # Proforma-specific fields
     is_valid = serializers.BooleanField(read_only=True)

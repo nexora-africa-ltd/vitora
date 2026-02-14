@@ -8,8 +8,9 @@ These tests cover:
 - Permission requirements
 """
 
-import pytest  # type: ignore
 from decimal import Decimal
+
+import pytest  # type: ignore
 from django.contrib.auth.models import Permission
 from django.utils import timezone
 from rest_framework import status
@@ -62,17 +63,14 @@ def isolation_ward(db):
 
 
 @pytest.fixture
-def admission_with_critical_violation(
-    db, sample_patient, isolation_ward, test_user
-):
+def admission_with_critical_violation(db, sample_patient, isolation_ward, test_user):
     """
     Admission with CRITICAL violation (isolation patient in non-isolation ward).
     Note: We manually set constraint_violations to simulate a critical override.
     """
-    from hmis.apps.inpatient.models import Admission
-
     # Create a non-isolation ward to admit the patient
-    from hmis.apps.inpatient.models import Ward
+    from hmis.apps.inpatient.models import Admission, Ward
+
     non_iso_ward = Ward.objects.create(
         name="Non-Isolation Ward",
         code="NISO-01",
@@ -90,6 +88,7 @@ def admission_with_critical_violation(
 
     # Create encounter for the admission
     from hmis.apps.encounters.models import Encounter
+
     encounter = Encounter.objects.create(
         patient=sample_patient,
         encounter_type="IPD",
@@ -122,9 +121,7 @@ def admission_with_critical_violation(
 
 
 @pytest.fixture
-def admission_with_warning_violation(
-    db, sample_county, sample_sub_county, medical_ward, test_user
-):
+def admission_with_warning_violation(db, sample_county, sample_sub_county, medical_ward, test_user):
     """Admission with WARNING violation (gender mismatch)."""
     from hmis.apps.inpatient.models import Admission, Bed, Ward
     from hmis.apps.patients.models import Patient
@@ -153,6 +150,7 @@ def admission_with_warning_violation(
 
     # Create encounter for the admission
     from hmis.apps.encounters.models import Encounter
+
     encounter = Encounter.objects.create(
         patient=female_patient,
         encounter_type="IPD",
@@ -205,10 +203,10 @@ class TestSupervisorAlertsList:
         """Only admissions with CRITICAL violations appear in alerts."""
         response = supervisor_client.get("/api/inpatient/supervisor/alerts/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         alerts = response.data["alerts"]
         admission_ids = [a["admission_id"] for a in alerts]
-        
+
         # Critical violation should be in list
         assert admission_with_critical_violation.id in admission_ids
         # Warning violation should NOT be in list
@@ -223,7 +221,8 @@ class TestSupervisorAlertsList:
         # First check it's not acknowledged
         response = supervisor_client.get("/api/inpatient/supervisor/alerts/")
         alert = next(
-            a for a in response.data["alerts"]
+            a
+            for a in response.data["alerts"]
             if a["admission_id"] == admission_with_critical_violation.id
         )
         assert alert["is_acknowledged"] is False
@@ -238,7 +237,8 @@ class TestSupervisorAlertsList:
         # Check again
         response = supervisor_client.get("/api/inpatient/supervisor/alerts/")
         alert = next(
-            a for a in response.data["alerts"]
+            a
+            for a in response.data["alerts"]
             if a["admission_id"] == admission_with_critical_violation.id
         )
         assert alert["is_acknowledged"] is True
@@ -249,7 +249,9 @@ class TestSupervisorAlertsList:
 class TestSupervisorAlertAcknowledge:
     """Tests for the acknowledge endpoint."""
 
-    def test_acknowledge_requires_permission(self, authenticated_client, admission_with_critical_violation):
+    def test_acknowledge_requires_permission(
+        self, authenticated_client, admission_with_critical_violation
+    ):
         """User without permission cannot acknowledge alerts."""
         response = authenticated_client.post(
             "/api/inpatient/supervisor/alerts/acknowledge/",
@@ -258,9 +260,7 @@ class TestSupervisorAlertAcknowledge:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_acknowledge_success(
-        self, supervisor_client, admission_with_critical_violation
-    ):
+    def test_acknowledge_success(self, supervisor_client, admission_with_critical_violation):
         """Supervisor can acknowledge an alert."""
         response = supervisor_client.post(
             "/api/inpatient/supervisor/alerts/acknowledge/",
@@ -275,9 +275,7 @@ class TestSupervisorAlertAcknowledge:
         assert "acknowledgment_id" in response.data
         assert "acknowledged_at" in response.data
 
-    def test_acknowledge_without_notes(
-        self, supervisor_client, admission_with_critical_violation
-    ):
+    def test_acknowledge_without_notes(self, supervisor_client, admission_with_critical_violation):
         """Acknowledgment works without notes."""
         response = supervisor_client.post(
             "/api/inpatient/supervisor/alerts/acknowledge/",
@@ -350,7 +348,7 @@ class TestConstraintOverrideMetrics:
         """Supervisor can access metrics."""
         response = supervisor_client.get("/api/inpatient/supervisor/alerts/metrics/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         # Check all expected fields are present
         assert "total_admissions" in response.data
         assert "override_count" in response.data
@@ -376,7 +374,7 @@ class TestConstraintOverrideMetrics:
         """Metrics correctly count admissions."""
         response = supervisor_client.get("/api/inpatient/supervisor/alerts/metrics/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         # We have 2 admissions with overrides
         assert response.data["override_count"] == 2
         # Only 1 has critical violations
@@ -410,21 +408,21 @@ class TestConstraintOverrideMetrics:
         """Metrics include violation breakdown by type."""
         response = supervisor_client.get("/api/inpatient/supervisor/alerts/metrics/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         violations = response.data["violation_breakdown"]
         codes = [v["code"] for v in violations]
         assert "ISOLATION_REQUIRED" in codes
 
-    def test_metrics_ward_breakdown(
-        self, supervisor_client, admission_with_critical_violation
-    ):
+    def test_metrics_ward_breakdown(self, supervisor_client, admission_with_critical_violation):
         """Metrics include ward breakdown."""
         response = supervisor_client.get("/api/inpatient/supervisor/alerts/metrics/")
         assert response.status_code == status.HTTP_200_OK
-        
+
         ward_stats = response.data["ward_breakdown"]
         assert len(ward_stats) > 0
-        assert all("ward_id" in w and "ward_name" in w and "override_count" in w for w in ward_stats)
+        assert all(
+            "ward_id" in w and "ward_name" in w and "override_count" in w for w in ward_stats
+        )
 
 
 @pytest.mark.django_db
@@ -449,6 +447,7 @@ class TestSupervisorAlertAcknowledgmentModel:
     ):
         """Cannot create duplicate acknowledgments for the same admission."""
         from django.db import IntegrityError
+
         from hmis.apps.inpatient.models import SupervisorAlertAcknowledgment
 
         SupervisorAlertAcknowledgment.objects.create(

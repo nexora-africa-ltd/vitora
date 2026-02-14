@@ -23,7 +23,6 @@ from rest_framework import status
 from hmis.apps.imaging.models import ImagingOrder, ImagingProcedure
 from hmis.apps.scheduling.models import Appointment, Resource, Schedule
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -180,9 +179,7 @@ class TestImagingResourcesAPI:
         self, authenticated_client, imaging_room_resource, ct_scanner_resource
     ):
         """Should list resources filtered by radiology department."""
-        response = authenticated_client.get(
-            "/api/imaging/resources/"
-        )
+        response = authenticated_client.get("/api/imaging/resources/")
 
         assert response.status_code == status.HTTP_200_OK
         # Only radiology resources should be returned
@@ -194,9 +191,7 @@ class TestImagingResourcesAPI:
         self, authenticated_client, imaging_room_resource, ct_scanner_resource
     ):
         """Should filter imaging resources by modality."""
-        response = authenticated_client.get(
-            "/api/imaging/resources/?modality=XR"
-        )
+        response = authenticated_client.get("/api/imaging/resources/?modality=XR")
 
         assert response.status_code == status.HTTP_200_OK
         # Only X-Ray capable resources should be returned
@@ -431,9 +426,7 @@ class TestScheduleImagingOrderAPI:
         )
 
         # Reschedule to different time
-        new_datetime = datetime.combine(
-            next_monday, time(14, 0), tzinfo=ZoneInfo("Africa/Nairobi")
-        )
+        new_datetime = datetime.combine(next_monday, time(14, 0), tzinfo=ZoneInfo("Africa/Nairobi"))
 
         response = authenticated_client.post(
             f"/api/imaging/orders/{imaging_order.order_number}/schedule/",
@@ -525,7 +518,11 @@ class TestImagingCalendarViewAPI:
 
         # Find the imaging room in response
         room_data = next(
-            (r for r in response.data["resources"] if r["resource"]["id"] == imaging_room_resource.id),
+            (
+                r
+                for r in response.data["resources"]
+                if r["resource"]["id"] == imaging_room_resource.id
+            ),
             None,
         )
         assert room_data is not None

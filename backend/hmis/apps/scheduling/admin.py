@@ -6,13 +6,7 @@ Phase 1: Core Scheduling Foundation
 
 from django.contrib import admin
 
-from hmis.apps.scheduling.models import (
-    Appointment,
-    Resource,
-    Schedule,
-    ScheduleBreak,
-    TimeSlot,
-)
+from hmis.apps.scheduling.models import Appointment, Resource, Schedule, ScheduleBreak, TimeSlot
 
 
 class ScheduleBreakInline(admin.TabularInline):

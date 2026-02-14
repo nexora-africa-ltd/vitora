@@ -15,7 +15,6 @@ from rest_framework import status
 
 from hmis.apps.encounters.models import Encounter
 
-
 # =============================================================================
 # Phase 2A: Encounter State Machine
 # =============================================================================
@@ -335,9 +334,9 @@ class TestEncounterStateHistory:
                 reason=reason,
             )
 
-        history = EncounterStateHistory.objects.filter(
-            encounter=sample_encounter
-        ).order_by("changed_at")
+        history = EncounterStateHistory.objects.filter(encounter=sample_encounter).order_by(
+            "changed_at"
+        )
         assert history.count() == 5
         assert list(history.values_list("to_status", flat=True)) == [
             "CHECKED_IN",

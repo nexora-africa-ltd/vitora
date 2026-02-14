@@ -24,11 +24,7 @@ import logging
 import re
 from typing import Any
 
-from hmis.apps.core.fhir.profiles import (
-    ProfileConstraint,
-    ProfileSeverity,
-    SHAProfile,
-)
+from hmis.apps.core.fhir.profiles import ProfileConstraint, ProfileSeverity, SHAProfile
 from hmis.apps.core.services.sha_profile_validator import ProfileViolation
 
 logger = logging.getLogger(__name__)
@@ -37,6 +33,7 @@ logger = logging.getLogger(__name__)
 # Try to import fhirpath for expression evaluation
 try:
     from fhirpath import evaluate as fhirpath_evaluate
+
     FHIRPATH_AVAILABLE = True
 except ImportError:
     FHIRPATH_AVAILABLE = False
@@ -75,9 +72,7 @@ class ConstraintEvaluator:
         """
         self.use_fhirpath = use_fhirpath and FHIRPATH_AVAILABLE
 
-    def evaluate(
-        self, resource: dict, profile: SHAProfile
-    ) -> list[ProfileViolation]:
+    def evaluate(self, resource: dict, profile: SHAProfile) -> list[ProfileViolation]:
         """
         Evaluate all constraints in a profile against a resource.
 
@@ -116,49 +111,37 @@ class ConstraintEvaluator:
 
         # Check min_cardinality
         if constraint.min_cardinality is not None:
-            violation = self._check_min_cardinality(
-                path_value, constraint
-            )
+            violation = self._check_min_cardinality(path_value, constraint)
             if violation:
                 violations.append(violation)
 
         # Check max_cardinality
         if constraint.max_cardinality is not None:
-            violation = self._check_max_cardinality(
-                path_value, constraint
-            )
+            violation = self._check_max_cardinality(path_value, constraint)
             if violation:
                 violations.append(violation)
 
         # Check fixed_value
         if constraint.fixed_value is not None:
-            violation = self._check_fixed_value(
-                path_value, constraint
-            )
+            violation = self._check_fixed_value(path_value, constraint)
             if violation:
                 violations.append(violation)
 
         # Check pattern
         if constraint.pattern is not None:
-            violation = self._check_pattern(
-                path_value, constraint
-            )
+            violation = self._check_pattern(path_value, constraint)
             if violation:
                 violations.append(violation)
 
         # Check FHIRPath expression
         if constraint.expression is not None and self.use_fhirpath:
-            violation = self._check_fhirpath_expression(
-                resource, constraint
-            )
+            violation = self._check_fhirpath_expression(resource, constraint)
             if violation:
                 violations.append(violation)
 
         # Check binding (basic ValueSet support)
         if constraint.binding_valueset is not None:
-            violation = self._check_binding(
-                path_value, constraint
-            )
+            violation = self._check_binding(path_value, constraint)
             if violation:
                 violations.append(violation)
 
@@ -346,9 +329,7 @@ class ConstraintEvaluator:
 
         return None
 
-    def _check_pattern(
-        self, value: Any, constraint: ProfileConstraint
-    ) -> ProfileViolation | None:
+    def _check_pattern(self, value: Any, constraint: ProfileConstraint) -> ProfileViolation | None:
         """Check regex pattern constraint."""
         pattern = constraint.pattern
         if pattern is None:
@@ -389,7 +370,9 @@ class ConstraintEvaluator:
             Violation if expression evaluates to false/empty
         """
         if not self.use_fhirpath:
-            logger.debug(f"Skipping FHIRPath expression for {constraint.id}: fhirpath not available")
+            logger.debug(
+                f"Skipping FHIRPath expression for {constraint.id}: fhirpath not available"
+            )
             return None
 
         expression = constraint.expression
@@ -430,9 +413,7 @@ class ConstraintEvaluator:
 
         return None
 
-    def _check_binding(
-        self, value: Any, constraint: ProfileConstraint
-    ) -> ProfileViolation | None:
+    def _check_binding(self, value: Any, constraint: ProfileConstraint) -> ProfileViolation | None:
         """
         Check ValueSet binding constraint.
 
@@ -460,14 +441,26 @@ class ConstraintEvaluator:
         # Known ValueSet mappings
         known_valuesets = {
             "http://hl7.org/fhir/ValueSet/administrative-gender": [
-                "male", "female", "other", "unknown"
+                "male",
+                "female",
+                "other",
+                "unknown",
             ],
             "http://hl7.org/fhir/ValueSet/encounter-status": [
-                "planned", "arrived", "triaged", "in-progress",
-                "onleave", "finished", "cancelled", "entered-in-error", "unknown"
+                "planned",
+                "arrived",
+                "triaged",
+                "in-progress",
+                "onleave",
+                "finished",
+                "cancelled",
+                "entered-in-error",
+                "unknown",
             ],
             "http://hl7.org/fhir/ValueSet/claim-use": [
-                "claim", "preauthorization", "predetermination"
+                "claim",
+                "preauthorization",
+                "predetermination",
             ],
         }
 
@@ -500,6 +493,7 @@ class ConstraintEvaluator:
 # =============================================================================
 # Convenience functions
 # =============================================================================
+
 
 def evaluate_profile_constraints(
     resource: dict,
@@ -555,9 +549,7 @@ if __name__ == "__main__":
         "gender": "female",
     }
 
-    is_valid, violations = evaluate_profile_constraints(
-        test_patient, SHA_PATIENT_PROFILE
-    )
+    is_valid, violations = evaluate_profile_constraints(test_patient, SHA_PATIENT_PROFILE)
 
     print(f"Valid: {is_valid}")
     print(f"Violations: {len(violations)}")

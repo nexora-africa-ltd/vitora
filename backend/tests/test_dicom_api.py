@@ -24,11 +24,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from pydicom.uid import generate_uid
 from rest_framework import status
 
-from tests.dicom_test_utils import (
-    create_test_dicom_file,
-    create_test_dicom_study,
-)
-
+from tests.dicom_test_utils import create_test_dicom_file, create_test_dicom_study
 
 # ============================================================================
 # Fixtures
@@ -83,7 +79,9 @@ def sample_imaging_order(db, sample_patient, sample_encounter, test_user, sample
 
 
 @pytest.fixture
-def completed_imaging_order(db, sample_patient, sample_encounter, test_user, sample_imaging_procedure):
+def completed_imaging_order(
+    db, sample_patient, sample_encounter, test_user, sample_imaging_procedure
+):
     """Create a sample imaging order in COMPLETED status."""
     from hmis.apps.imaging.models import ImagingOrder, ImagingOrderItem
 
@@ -342,9 +340,7 @@ class TestDICOMUploadEndpoint:
         )
 
         assert response.status_code == status.HTTP_201_CREATED
-        study = DICOMStudy.objects.get(
-            study_instance_uid=response.data["study_instance_uid"]
-        )
+        study = DICOMStudy.objects.get(study_instance_uid=response.data["study_instance_uid"])
         assert study.imaging_order == sample_imaging_order
 
     def test_upload_without_order(
@@ -411,9 +407,7 @@ class TestDICOMUploadEndpoint:
         )
 
         assert response.status_code == status.HTTP_201_CREATED
-        study = DICOMStudy.objects.get(
-            study_instance_uid=response.data["study_instance_uid"]
-        )
+        study = DICOMStudy.objects.get(study_instance_uid=response.data["study_instance_uid"])
         # Thumbnail should be set on the study
         assert study.thumbnail_path != ""
 
@@ -444,9 +438,7 @@ class TestDICOMUploadEndpoint:
 class TestStudyListAPI:
     """Tests for GET /api/imaging/studies/."""
 
-    def test_list_studies(
-        self, authenticated_client, sample_dicom_study
-    ):
+    def test_list_studies(self, authenticated_client, sample_dicom_study):
         """Should list DICOM studies."""
         response = authenticated_client.get("/api/imaging/studies/")
 
@@ -462,29 +454,21 @@ class TestStudyListAPI:
         self, authenticated_client, sample_dicom_study, sample_patient
     ):
         """Should filter studies by patient."""
-        response = authenticated_client.get(
-            f"/api/imaging/studies/?patient={sample_patient.id}"
-        )
+        response = authenticated_client.get(f"/api/imaging/studies/?patient={sample_patient.id}")
 
         assert response.status_code == status.HTTP_200_OK
         for study in response.data["results"]:
             assert study["patient"] == sample_patient.id
 
-    def test_list_studies_filter_by_modality(
-        self, authenticated_client, sample_dicom_study
-    ):
+    def test_list_studies_filter_by_modality(self, authenticated_client, sample_dicom_study):
         """Should filter studies by modality."""
-        response = authenticated_client.get(
-            "/api/imaging/studies/?modality=XR"
-        )
+        response = authenticated_client.get("/api/imaging/studies/?modality=XR")
 
         assert response.status_code == status.HTTP_200_OK
         for study in response.data["results"]:
             assert study["modality"] == "XR"
 
-    def test_list_studies_filter_by_date_range(
-        self, authenticated_client, sample_dicom_study
-    ):
+    def test_list_studies_filter_by_date_range(self, authenticated_client, sample_dicom_study):
         """Should filter studies by date range."""
         response = authenticated_client.get(
             "/api/imaging/studies/?study_date_after=2026-01-01&study_date_before=2026-12-31"
@@ -492,9 +476,7 @@ class TestStudyListAPI:
 
         assert response.status_code == status.HTTP_200_OK
 
-    def test_retrieve_study_detail(
-        self, authenticated_client, sample_dicom_study
-    ):
+    def test_retrieve_study_detail(self, authenticated_client, sample_dicom_study):
         """Should retrieve a single study by study_instance_uid."""
         response = authenticated_client.get(
             f"/api/imaging/studies/{sample_dicom_study.study_instance_uid}/"
@@ -515,9 +497,7 @@ class TestStudyListAPI:
         assert "series" in response.data
         assert len(response.data["series"]) >= 1
 
-    def test_study_detail_includes_order_number(
-        self, authenticated_client, sample_dicom_study
-    ):
+    def test_study_detail_includes_order_number(self, authenticated_client, sample_dicom_study):
         """Should include order_number in study detail."""
         response = authenticated_client.get(
             f"/api/imaging/studies/{sample_dicom_study.study_instance_uid}/"
@@ -571,16 +551,12 @@ class TestWADORSEndpoint:
 
     def test_retrieve_nonexistent_instance(self, authenticated_client):
         """Should return 404 for non-existent instance."""
-        response = authenticated_client.get(
-            "/api/imaging/dicom/1.2.3.4.5.nonexistent/"
-        )
+        response = authenticated_client.get("/api/imaging/dicom/1.2.3.4.5.nonexistent/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_retrieve_requires_auth(self, api_client, sample_dicom_instance, temp_media_dir):
         """Should require authentication."""
-        response = api_client.get(
-            f"/api/imaging/dicom/{sample_dicom_instance.sop_instance_uid}/"
-        )
+        response = api_client.get(f"/api/imaging/dicom/{sample_dicom_instance.sop_instance_uid}/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_retrieve_has_correct_content_disposition(
@@ -614,9 +590,7 @@ class TestWADORSEndpoint:
         """Should create an audit log for DICOM retrieval."""
         from hmis.apps.core.models import AuditLog
 
-        authenticated_client.get(
-            f"/api/imaging/dicom/{sample_dicom_instance.sop_instance_uid}/"
-        )
+        authenticated_client.get(f"/api/imaging/dicom/{sample_dicom_instance.sop_instance_uid}/")
 
         assert AuditLog.objects.filter(action="dicom_retrieve").exists()
 
@@ -645,14 +619,10 @@ class TestStudyOrderLinkage:
         )
 
         assert response.status_code == status.HTTP_201_CREATED
-        study = DICOMStudy.objects.get(
-            study_instance_uid=response.data["study_instance_uid"]
-        )
+        study = DICOMStudy.objects.get(study_instance_uid=response.data["study_instance_uid"])
         assert study.imaging_order_id == sample_imaging_order.id
 
-    def test_order_has_dicom_studies_relation(
-        self, sample_imaging_order, sample_dicom_study
-    ):
+    def test_order_has_dicom_studies_relation(self, sample_imaging_order, sample_dicom_study):
         """Should access studies via imaging_order.dicom_studies."""
         studies = sample_imaging_order.dicom_studies.all()
         assert sample_dicom_study in studies
@@ -704,8 +674,12 @@ class TestStudyDeletionCleanup:
     """Tests for study deletion with PACS file cleanup."""
 
     def test_delete_study_removes_pacs_files(
-        self, authenticated_client, sample_dicom_study, sample_dicom_series,
-        sample_dicom_instance, temp_media_dir
+        self,
+        authenticated_client,
+        sample_dicom_study,
+        sample_dicom_series,
+        sample_dicom_instance,
+        temp_media_dir,
     ):
         """Should delete PACS files when study is deleted via API."""
         study_uid = sample_dicom_study.study_instance_uid
@@ -713,9 +687,7 @@ class TestStudyDeletionCleanup:
         abs_path = os.path.join(temp_media_dir, sample_dicom_instance.file_path)
         assert os.path.exists(abs_path)
 
-        response = authenticated_client.delete(
-            f"/api/imaging/studies/{study_uid}/"
-        )
+        response = authenticated_client.delete(f"/api/imaging/studies/{study_uid}/")
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
         # PACS directory should be cleaned up
@@ -723,8 +695,12 @@ class TestStudyDeletionCleanup:
         assert not os.path.exists(study_dir)
 
     def test_delete_study_removes_db_records(
-        self, authenticated_client, sample_dicom_study, sample_dicom_series,
-        sample_dicom_instance, temp_media_dir,
+        self,
+        authenticated_client,
+        sample_dicom_study,
+        sample_dicom_series,
+        sample_dicom_instance,
+        temp_media_dir,
     ):
         """Should cascade delete series and instances from DB."""
         from hmis.apps.imaging.models import DICOMInstance, DICOMSeries, DICOMStudy
@@ -733,9 +709,7 @@ class TestStudyDeletionCleanup:
         series_pk = sample_dicom_series.pk
         instance_pk = sample_dicom_instance.pk
 
-        response = authenticated_client.delete(
-            f"/api/imaging/studies/{study_uid}/"
-        )
+        response = authenticated_client.delete(f"/api/imaging/studies/{study_uid}/")
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not DICOMStudy.objects.filter(study_instance_uid=study_uid).exists()
@@ -751,14 +725,16 @@ class TestStudyDeletionCleanup:
 
     def test_delete_nonexistent_study_404(self, authenticated_client):
         """Should return 404 for non-existent study."""
-        response = authenticated_client.delete(
-            "/api/imaging/studies/1.2.3.4.5.nonexistent/"
-        )
+        response = authenticated_client.delete("/api/imaging/studies/1.2.3.4.5.nonexistent/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_delete_study_audit_logged(
-        self, authenticated_client, sample_dicom_study, sample_dicom_series,
-        sample_dicom_instance, temp_media_dir
+        self,
+        authenticated_client,
+        sample_dicom_study,
+        sample_dicom_series,
+        sample_dicom_instance,
+        temp_media_dir,
     ):
         """Should create audit log entry for study deletion."""
         from hmis.apps.core.models import AuditLog
@@ -779,21 +755,17 @@ class TestStudyDeletionCleanup:
 class TestDICOMFrameRenderingEndpoint:
     """Tests for GET /api/imaging/dicom/{sop_uid}/frame/."""
 
-    def test_render_frame_as_png(
-        self, authenticated_client, sample_dicom_instance, temp_media_dir
-    ):
+    def test_render_frame_as_png(self, authenticated_client, sample_dicom_instance, temp_media_dir):
         """Should render DICOM instance as PNG image."""
         sop_uid = sample_dicom_instance.sop_instance_uid
 
-        response = authenticated_client.get(
-            f"/api/imaging/dicom/{sop_uid}/frame/"
-        )
+        response = authenticated_client.get(f"/api/imaging/dicom/{sop_uid}/frame/")
 
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "image/png"
         # PNG magic bytes: 0x89 P N G
-        content = response.getvalue() if hasattr(response, 'getvalue') else response.content
-        assert content[:4] == b'\x89PNG'
+        content = response.getvalue() if hasattr(response, "getvalue") else response.content
+        assert content[:4] == b"\x89PNG"
 
     def test_render_frame_with_custom_size(
         self, authenticated_client, sample_dicom_instance, temp_media_dir
@@ -801,9 +773,7 @@ class TestDICOMFrameRenderingEndpoint:
         """Should respect size query parameter."""
         sop_uid = sample_dicom_instance.sop_instance_uid
 
-        response = authenticated_client.get(
-            f"/api/imaging/dicom/{sop_uid}/frame/?size=128"
-        )
+        response = authenticated_client.get(f"/api/imaging/dicom/{sop_uid}/frame/?size=128")
 
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "image/png"
@@ -827,15 +797,11 @@ class TestDICOMFrameRenderingEndpoint:
         """Should render specific frame by index (for multi-frame DICOM)."""
         sop_uid = sample_dicom_instance.sop_instance_uid
 
-        response = authenticated_client.get(
-            f"/api/imaging/dicom/{sop_uid}/frame/?frame=0"
-        )
+        response = authenticated_client.get(f"/api/imaging/dicom/{sop_uid}/frame/?frame=0")
 
         assert response.status_code == status.HTTP_200_OK
 
-    def test_render_frame_requires_auth(
-        self, api_client, sample_dicom_instance
-    ):
+    def test_render_frame_requires_auth(self, api_client, sample_dicom_instance):
         """Should require authentication."""
         response = api_client.get(
             f"/api/imaging/dicom/{sample_dicom_instance.sop_instance_uid}/frame/"
@@ -844,9 +810,7 @@ class TestDICOMFrameRenderingEndpoint:
 
     def test_render_frame_nonexistent_404(self, authenticated_client):
         """Should return 404 for non-existent SOP Instance UID."""
-        response = authenticated_client.get(
-            "/api/imaging/dicom/1.2.3.4.5.nonexistent/frame/"
-        )
+        response = authenticated_client.get("/api/imaging/dicom/1.2.3.4.5.nonexistent/frame/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_render_frame_invalid_frame_number(
@@ -855,9 +819,7 @@ class TestDICOMFrameRenderingEndpoint:
         """Should return 400 for invalid frame index."""
         sop_uid = sample_dicom_instance.sop_instance_uid
 
-        response = authenticated_client.get(
-            f"/api/imaging/dicom/{sop_uid}/frame/?frame=999"
-        )
+        response = authenticated_client.get(f"/api/imaging/dicom/{sop_uid}/frame/?frame=999")
 
         # Should either return 400 or render first frame as fallback
         assert response.status_code in (status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST)

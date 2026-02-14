@@ -246,9 +246,7 @@ class TestWardCompatibilityConsumerConnection:
 
         ward = await create_test_ward(name="Valid Ward", code="VW-001")
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/inpatient/wards/{ward.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/inpatient/wards/{ward.id}/")
         connected, _ = await communicator.connect()
 
         assert connected is True
@@ -258,9 +256,7 @@ class TestWardCompatibilityConsumerConnection:
         """Should reject connection to non-existent ward."""
         from hmis.asgi import application
 
-        communicator = WebsocketCommunicator(
-            application, "/ws/inpatient/wards/99999/"
-        )
+        communicator = WebsocketCommunicator(application, "/ws/inpatient/wards/99999/")
         connected, _ = await communicator.connect()
 
         assert connected is False
@@ -271,9 +267,7 @@ class TestWardCompatibilityConsumerConnection:
 
         ward = await create_test_ward(name="Group Test Ward", code="GTW-001")
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/inpatient/wards/{ward.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/inpatient/wards/{ward.id}/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -302,9 +296,7 @@ class TestWardCompatibilityConsumerConnection:
 
         ward = await create_test_ward(name="Disconnect Test Ward", code="DTW-001")
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/inpatient/wards/{ward.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/inpatient/wards/{ward.id}/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -339,9 +331,7 @@ class TestSupervisorAlertConsumerConnection:
         """Should accept connection to supervisor alerts channel."""
         from hmis.asgi import application
 
-        communicator = WebsocketCommunicator(
-            application, "/ws/inpatient/supervisor/alerts/"
-        )
+        communicator = WebsocketCommunicator(application, "/ws/inpatient/supervisor/alerts/")
         connected, _ = await communicator.connect()
 
         assert connected is True
@@ -351,9 +341,7 @@ class TestSupervisorAlertConsumerConnection:
         """Should join the supervisor_alerts channel group on connect."""
         from hmis.asgi import application
 
-        communicator = WebsocketCommunicator(
-            application, "/ws/inpatient/supervisor/alerts/"
-        )
+        communicator = WebsocketCommunicator(application, "/ws/inpatient/supervisor/alerts/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -394,9 +382,7 @@ class TestWardEventBroadcasts:
 
         ward = await create_test_ward(name="Constraints Ward", code="CW-001")
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/inpatient/wards/{ward.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/inpatient/wards/{ward.id}/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -425,9 +411,7 @@ class TestWardEventBroadcasts:
 
         ward = await create_test_ward(name="Capacity Ward", code="CAP-001")
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/inpatient/wards/{ward.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/inpatient/wards/{ward.id}/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -454,9 +438,7 @@ class TestWardEventBroadcasts:
 
         ward = await create_test_ward(name="Violation Ward", code="VIO-001")
 
-        communicator = WebsocketCommunicator(
-            application, f"/ws/inpatient/wards/{ward.id}/"
-        )
+        communicator = WebsocketCommunicator(application, f"/ws/inpatient/wards/{ward.id}/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -496,9 +478,7 @@ class TestSupervisorAlertBroadcasts:
         from hmis.apps.inpatient.websockets import broadcast_supervisor_alert
         from hmis.asgi import application
 
-        communicator = WebsocketCommunicator(
-            application, "/ws/inpatient/supervisor/alerts/"
-        )
+        communicator = WebsocketCommunicator(application, "/ws/inpatient/supervisor/alerts/")
         connected, _ = await communicator.connect()
         assert connected is True
 
@@ -540,9 +520,7 @@ class TestWardConstraintsSignalHandler:
     """Test signal handler for ward constraint updates."""
 
     @patch("hmis.apps.inpatient.signals.broadcast_ward_event_sync")
-    def test_ward_constraint_update_triggers_broadcast(
-        self, mock_broadcast, inpatient_ward
-    ):
+    def test_ward_constraint_update_triggers_broadcast(self, mock_broadcast, inpatient_ward):
         """Should broadcast event when ward constraints are updated."""
         # Update ward constraints
         inpatient_ward.gender_restriction = "MALE_ONLY"
@@ -895,13 +873,9 @@ class TestNotifySupervisorsCriticalViolationTask:
 class TestPollingFallbackEndpoint:
     """Tests for the polling fallback endpoint when WebSocket is unavailable."""
 
-    def test_get_ward_updates_returns_recent_events(
-        self, authenticated_client, inpatient_ward
-    ):
+    def test_get_ward_updates_returns_recent_events(self, authenticated_client, inpatient_ward):
         """Should return list of recent events for a ward."""
-        response = authenticated_client.get(
-            f"/api/inpatient/wards/{inpatient_ward.id}/updates/"
-        )
+        response = authenticated_client.get(f"/api/inpatient/wards/{inpatient_ward.id}/updates/")
 
         assert response.status_code == 200
         assert "events" in response.data

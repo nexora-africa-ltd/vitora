@@ -12,7 +12,12 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view, inline_serializer
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    extend_schema,
+    extend_schema_view,
+    inline_serializer,
+)
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -290,7 +295,12 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("item_id", OpenApiTypes.INT, location="path", description="Invoice item ID to remove"),
+            OpenApiParameter(
+                "item_id",
+                OpenApiTypes.INT,
+                location="path",
+                description="Invoice item ID to remove",
+            ),
         ],
         responses={204: None},
     )
@@ -641,7 +651,12 @@ class MpesaViewSet(viewsets.ViewSet):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("checkout_request_id", OpenApiTypes.STR, location="path", description="M-Pesa checkout request ID"),
+            OpenApiParameter(
+                "checkout_request_id",
+                OpenApiTypes.STR,
+                location="path",
+                description="M-Pesa checkout request ID",
+            ),
         ],
         responses={
             200: inline_serializer(
@@ -744,7 +759,9 @@ class ReportViewSet(viewsets.ViewSet):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("date", OpenApiTypes.DATE, description="Report date (YYYY-MM-DD)", required=True),
+            OpenApiParameter(
+                "date", OpenApiTypes.DATE, description="Report date (YYYY-MM-DD)", required=True
+            ),
         ],
         responses={200: OpenApiTypes.OBJECT},
     )
@@ -773,8 +790,15 @@ class ReportViewSet(viewsets.ViewSet):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("start_date", OpenApiTypes.DATE, description="Start date (YYYY-MM-DD)", required=True),
-            OpenApiParameter("end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=True),
+            OpenApiParameter(
+                "start_date",
+                OpenApiTypes.DATE,
+                description="Start date (YYYY-MM-DD)",
+                required=True,
+            ),
+            OpenApiParameter(
+                "end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=True
+            ),
         ],
         responses={200: OpenApiTypes.OBJECT},
     )
@@ -820,8 +844,15 @@ class ReportViewSet(viewsets.ViewSet):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("start_date", OpenApiTypes.DATE, description="Start date (YYYY-MM-DD)", required=True),
-            OpenApiParameter("end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=True),
+            OpenApiParameter(
+                "start_date",
+                OpenApiTypes.DATE,
+                description="Start date (YYYY-MM-DD)",
+                required=True,
+            ),
+            OpenApiParameter(
+                "end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=True
+            ),
         ],
         responses={200: OpenApiTypes.OBJECT},
     )
@@ -854,8 +885,15 @@ class ReportViewSet(viewsets.ViewSet):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("start_date", OpenApiTypes.DATE, description="Start date (YYYY-MM-DD)", required=True),
-            OpenApiParameter("end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=True),
+            OpenApiParameter(
+                "start_date",
+                OpenApiTypes.DATE,
+                description="Start date (YYYY-MM-DD)",
+                required=True,
+            ),
+            OpenApiParameter(
+                "end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=True
+            ),
         ],
         responses={200: OpenApiTypes.OBJECT},
     )

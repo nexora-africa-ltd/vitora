@@ -58,12 +58,14 @@ def health_check(request):
     except Exception:
         websocket_enabled = False
 
-    return JsonResponse({
-        "status": "healthy",
-        "service": "vitora-hmis",
-        "version": "0.1.0",
-        "websocket_enabled": websocket_enabled,
-    })
+    return JsonResponse(
+        {
+            "status": "healthy",
+            "service": "vitora-hmis",
+            "version": "0.1.0",
+            "websocket_enabled": websocket_enabled,
+        }
+    )
 
 
 # Create a router for API endpoints

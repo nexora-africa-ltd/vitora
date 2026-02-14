@@ -29,7 +29,6 @@ from hmis.apps.core.services.sha_profile_validator import (
     validate_sha_resource,
 )
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -361,9 +360,7 @@ class TestSHAPatientValidation:
     def test_patient_missing_cr_identifier_fails(self, validator_no_fhir, valid_sha_patient):
         """Patient without CR identifier should fail."""
         patient = valid_sha_patient.copy()
-        patient["identifier"] = [
-            {"system": "urn:kenya:national-id", "value": "12345678"}
-        ]
+        patient["identifier"] = [{"system": "urn:kenya:national-id", "value": "12345678"}]
         result = validator_no_fhir.validate_patient(patient)
         assert result.is_valid is False
         assert any("sha-patient-2" in v.constraint_id for v in result.violations)
@@ -371,9 +368,7 @@ class TestSHAPatientValidation:
     def test_patient_invalid_cr_format_fails(self, validator_no_fhir, valid_sha_patient):
         """Patient with invalid CR format should fail."""
         patient = valid_sha_patient.copy()
-        patient["identifier"] = [
-            {"system": "urn:sha:client-registry", "value": "INVALID123"}
-        ]
+        patient["identifier"] = [{"system": "urn:sha:client-registry", "value": "INVALID123"}]
         result = validator_no_fhir.validate_patient(patient)
         assert result.is_valid is False
         assert any("sha-patient-3" in v.constraint_id for v in result.violations)
@@ -584,9 +579,7 @@ class TestSHAOrganizationValidation:
         assert result.is_valid is True
         assert len(result.errors) == 0
 
-    def test_organization_missing_identifier_fails(
-        self, validator_no_fhir, valid_sha_organization
-    ):
+    def test_organization_missing_identifier_fails(self, validator_no_fhir, valid_sha_organization):
         """Organization without identifier should fail."""
         org = valid_sha_organization.copy()
         org["identifier"] = []
@@ -602,9 +595,7 @@ class TestSHAOrganizationValidation:
         assert result.is_valid is False
         assert any("sha-org-2" in v.constraint_id for v in result.violations)
 
-    def test_organization_invalid_mfl_format_fails(
-        self, validator_no_fhir, valid_sha_organization
-    ):
+    def test_organization_invalid_mfl_format_fails(self, validator_no_fhir, valid_sha_organization):
         """Organization with invalid MFL format should fail."""
         org = valid_sha_organization.copy()
         org["identifier"] = [{"system": "urn:kenya:mfl", "value": "123"}]  # Too short
@@ -649,14 +640,11 @@ class TestSHAClaimBundleValidation:
         result = validator_no_fhir.validate_claim_bundle(bundle)
         assert any("sha-bundle-2" in v.constraint_id for v in result.violations)
 
-    def test_bundle_missing_organization_fails(
-        self, validator_no_fhir, valid_sha_claim_bundle
-    ):
+    def test_bundle_missing_organization_fails(self, validator_no_fhir, valid_sha_claim_bundle):
         """Bundle without Organization should fail."""
         bundle = valid_sha_claim_bundle.copy()
         bundle["entry"] = [
-            e for e in bundle["entry"]
-            if e["resource"]["resourceType"] != "Organization"
+            e for e in bundle["entry"] if e["resource"]["resourceType"] != "Organization"
         ]
         result = validator_no_fhir.validate_claim_bundle(bundle)
         assert any("sha-bundle-4" in v.constraint_id for v in result.violations)
@@ -664,20 +652,14 @@ class TestSHAClaimBundleValidation:
     def test_bundle_missing_patient_fails(self, validator_no_fhir, valid_sha_claim_bundle):
         """Bundle without Patient should fail."""
         bundle = valid_sha_claim_bundle.copy()
-        bundle["entry"] = [
-            e for e in bundle["entry"]
-            if e["resource"]["resourceType"] != "Patient"
-        ]
+        bundle["entry"] = [e for e in bundle["entry"] if e["resource"]["resourceType"] != "Patient"]
         result = validator_no_fhir.validate_claim_bundle(bundle)
         assert any("sha-bundle-5" in v.constraint_id for v in result.violations)
 
     def test_bundle_missing_claim_fails(self, validator_no_fhir, valid_sha_claim_bundle):
         """Bundle without Claim should fail."""
         bundle = valid_sha_claim_bundle.copy()
-        bundle["entry"] = [
-            e for e in bundle["entry"]
-            if e["resource"]["resourceType"] != "Claim"
-        ]
+        bundle["entry"] = [e for e in bundle["entry"] if e["resource"]["resourceType"] != "Claim"]
         result = validator_no_fhir.validate_claim_bundle(bundle)
         assert any("sha-bundle-7" in v.constraint_id for v in result.violations)
 

@@ -23,7 +23,6 @@ class TestSeedInitialClinics:
             "DIABETIC-DEFAULT": ("DIABETIC", "Diabetic Clinic"),
             "HYPERTENSION-DEFAULT": ("HYPERTENSION", "Hypertension Clinic"),
             "GBV-DEFAULT": ("OTHER", "GBV Clinic"),
-
             # Additional specialty/procedure clinics (0007)
             "FILTER-DEFAULT": ("FILTER_CLINIC", "Filter/Screening Clinic"),
             "ORTHO-DEFAULT": ("ORTHO", "Orthopedic Clinic"),
@@ -90,7 +89,10 @@ class TestSeedInitialClinics:
                 "required_permission": "clinics.view_mental_health_clinic",
             },
         )
-        if not mental_health.is_sensitive or mental_health.required_permission != "clinics.view_mental_health_clinic":
+        if (
+            not mental_health.is_sensitive
+            or mental_health.required_permission != "clinics.view_mental_health_clinic"
+        ):
             mental_health.is_sensitive = True
             mental_health.required_permission = "clinics.view_mental_health_clinic"
             mental_health.save(update_fields=["is_sensitive", "required_permission"])

@@ -1583,16 +1583,19 @@ class Command(BaseCommand):
         weekday = today.weekday()
 
         # Resolve demo users
-        demo_admin = User.objects.filter(username="demo_admin").first() or User.objects.filter(
-            is_superuser=True
-        ).first()
+        demo_admin = (
+            User.objects.filter(username="demo_admin").first()
+            or User.objects.filter(is_superuser=True).first()
+        )
         receptionist = User.objects.filter(username="demo_receptionist").first() or demo_admin
         nurse = User.objects.filter(username="demo_nurse").first() or demo_admin
         doctor = User.objects.filter(username="demo_doctor").first() or demo_admin
         clinical_officer = User.objects.filter(username="demo_clinical_officer").first() or doctor
 
         if demo_admin is None:
-            self.stdout.write(self.style.WARNING("  No admin user found. Skipping clinics demo data."))
+            self.stdout.write(
+                self.style.WARNING("  No admin user found. Skipping clinics demo data.")
+            )
             return
 
         # -----------------------------------------------------------------
@@ -1936,9 +1939,7 @@ class Command(BaseCommand):
                     },
                 )
 
-        self.stdout.write(
-            f"  Schedules: {schedules_created} created, {schedules_updated} updated"
-        )
+        self.stdout.write(f"  Schedules: {schedules_created} created, {schedules_updated} updated")
 
         # -----------------------------------------------------------------
         # Staff assignments
@@ -1971,13 +1972,28 @@ class Command(BaseCommand):
             # Default staffing patterns
             assign(clinic, receptionist, "CLERK", is_primary=(clinic.clinic_type == "GENERAL_OPD"))
 
-            if clinic.clinic_type in {"GENERAL_OPD", "SURGICAL", "ORTHO", "DERM", "EYE", "ENT", "DENTAL"}:
+            if clinic.clinic_type in {
+                "GENERAL_OPD",
+                "SURGICAL",
+                "ORTHO",
+                "DERM",
+                "EYE",
+                "ENT",
+                "DENTAL",
+            }:
                 assign(clinic, doctor, "DOCTOR", is_primary=True)
             elif clinic.clinic_type in {"FILTER_CLINIC"}:
                 assign(clinic, clinical_officer, "DOCTOR", is_primary=True)
             elif clinic.clinic_type in {"ANC", "PNC", "FP", "CWC", "IMMUNIZATION", "NUTRITION"}:
                 assign(clinic, nurse, "NURSE", is_primary=True)
-            elif clinic.clinic_type in {"CCC", "TB", "DIABETIC", "HYPERTENSION", "ONCOLOGY", "DIALYSIS"}:
+            elif clinic.clinic_type in {
+                "CCC",
+                "TB",
+                "DIABETIC",
+                "HYPERTENSION",
+                "ONCOLOGY",
+                "DIALYSIS",
+            }:
                 assign(clinic, doctor, "DOCTOR", is_primary=True)
                 assign(clinic, nurse, "NURSE", is_primary=False)
             elif clinic.code == "GBV-DEFAULT":
@@ -2073,7 +2089,8 @@ class Command(BaseCommand):
                     "enrollment_date": today - timedelta(days=randint(30, 365)),
                     "status": "ACTIVE",
                     "enrolled_by": doctor,
-                    "next_appointment": today + timedelta(days=extra.get("appointment_interval_days", 30)),
+                    "next_appointment": today
+                    + timedelta(days=extra.get("appointment_interval_days", 30)),
                     "appointment_interval_days": extra.get("appointment_interval_days", 30),
                 },
             )
@@ -2126,7 +2143,9 @@ class Command(BaseCommand):
             "DEMO-PT-0902",
             "DEMO-PT-0903",
         ]
-        preferred_patients = [p for p in (get_patient_by_temp_id(t) for t in preferred_temp_ids) if p]
+        preferred_patients = [
+            p for p in (get_patient_by_temp_id(t) for t in preferred_temp_ids) if p
+        ]
 
         other_patients = list(
             Patient.objects.exclude(id__in=[p.id for p in preferred_patients])
@@ -2195,7 +2214,11 @@ class Command(BaseCommand):
                 pool_index += 1
 
                 priority = choice(["STANDARD", "PRIORITY", "URGENT"])
-                assigned_user = doctor if clinic.clinic_type not in {"ANC", "PNC", "FP", "CWC", "IMMUNIZATION"} else nurse
+                assigned_user = (
+                    doctor
+                    if clinic.clinic_type not in {"ANC", "PNC", "FP", "CWC", "IMMUNIZATION"}
+                    else nurse
+                )
                 if clinic.clinic_type == "FILTER_CLINIC":
                     assigned_user = clinical_officer
                 if clinic.code == "GBV-DEFAULT":
@@ -2208,14 +2231,24 @@ class Command(BaseCommand):
                     priority=priority,
                     source="TRIAGE" if clinic.triage_required else "DIRECT",
                     visit_type=choice(["NEW", "RETURN", "FOLLOW_UP"]),
-                    assigned=assigned_user if s in {"CALLED", "IN_CONSULTATION", "COMPLETED"} else None,
+                    assigned=assigned_user
+                    if s in {"CALLED", "IN_CONSULTATION", "COMPLETED"}
+                    else None,
                 )
 
                 # Add timestamps for realism
-                if visit.status in {"CALLED", "IN_CONSULTATION", "COMPLETED"} and visit.called_at is None:
+                if (
+                    visit.status in {"CALLED", "IN_CONSULTATION", "COMPLETED"}
+                    and visit.called_at is None
+                ):
                     visit.called_at = timezone.now() - timedelta(minutes=randint(5, 60))
-                if visit.status in {"IN_CONSULTATION", "COMPLETED"} and visit.consultation_started_at is None:
-                    visit.consultation_started_at = timezone.now() - timedelta(minutes=randint(1, 30))
+                if (
+                    visit.status in {"IN_CONSULTATION", "COMPLETED"}
+                    and visit.consultation_started_at is None
+                ):
+                    visit.consultation_started_at = timezone.now() - timedelta(
+                        minutes=randint(1, 30)
+                    )
                 if visit.status == "COMPLETED" and visit.completed_at is None:
                     visit.completed_at = timezone.now() - timedelta(minutes=randint(1, 10))
                 visit.save()
@@ -2239,7 +2272,9 @@ class Command(BaseCommand):
                     visit_type="NEW",
                     assigned=clinical_officer,
                 )
-                src_visit.refer_to_clinic(target_clinic, "Referred for clinician review", clinical_officer)
+                src_visit.refer_to_clinic(
+                    target_clinic, "Referred for clinician review", clinical_officer
+                )
         except Exception as e:
             # Do not fail demo seeding because referral creation is best-effort
             self.stdout.write(self.style.WARNING(f"    Referral creation skipped: {e}"))
@@ -2271,9 +2306,7 @@ class Command(BaseCommand):
             procedure_count = ImagingProcedure.objects.filter(is_active=True).count()
             self.stdout.write(f"    Imaging catalog ready: {procedure_count} procedures")
         except Exception as e:
-            self.stdout.write(
-                self.style.WARNING(f"    Could not seed imaging catalog: {e}")
-            )
+            self.stdout.write(self.style.WARNING(f"    Could not seed imaging catalog: {e}"))
 
         # =================================================================
         # Step 2: Get required users and patients
@@ -2300,17 +2333,13 @@ class Command(BaseCommand):
             patients = list(Patient.objects.all()[:10])
 
         if not patients:
-            self.stdout.write(
-                self.style.WARNING("  No patients found. Skipping imaging orders.")
-            )
+            self.stdout.write(self.style.WARNING("  No patients found. Skipping imaging orders."))
             return
 
         # Get procedures grouped by modality for realistic ordering patterns
         procedures = list(ImagingProcedure.objects.filter(is_active=True))
         if not procedures:
-            self.stdout.write(
-                self.style.WARNING("  No imaging procedures found. Skipping orders.")
-            )
+            self.stdout.write(self.style.WARNING("  No imaging procedures found. Skipping orders."))
             return
 
         xray_procedures = [p for p in procedures if p.modality == "XR"]
@@ -2472,8 +2501,7 @@ class Command(BaseCommand):
                 ):
                     priority = choice(["URGENT", "STAT"])
                 elif any(
-                    kw in clinical_indication.lower()
-                    for kw in ["severe", "altered", "hemorrhage"]
+                    kw in clinical_indication.lower() for kw in ["severe", "altered", "hemorrhage"]
                 ):
                     priority = "URGENT"
 
@@ -2502,7 +2530,9 @@ class Command(BaseCommand):
                 if status in ["SCHEDULED", "IN_PROGRESS", "COMPLETED", "REPORTED"]:
                     order.status = "SCHEDULED"
                     order.scheduled_datetime = ordered_at + timedelta(hours=randint(2, 48))
-                    order.scheduled_room = choice(["X-Ray Room 1", "X-Ray Room 2", "US Room A", "CT Suite", "MRI Suite"])
+                    order.scheduled_room = choice(
+                        ["X-Ray Room 1", "X-Ray Room 2", "US Room A", "CT Suite", "MRI Suite"]
+                    )
                     order.save(update_fields=["status", "scheduled_datetime", "scheduled_room"])
 
                 if status in ["IN_PROGRESS", "COMPLETED", "REPORTED"]:
@@ -2537,7 +2567,10 @@ class Command(BaseCommand):
                     laterality = "NA"
                     if item_procedure.body_region in ["UPPER_EXTREMITY", "LOWER_EXTREMITY"]:
                         laterality = choice(["LEFT", "RIGHT", "BILATERAL"])
-                    elif item_procedure.body_region == "CHEST" and "lateral" in item_procedure.name.lower():
+                    elif (
+                        item_procedure.body_region == "CHEST"
+                        and "lateral" in item_procedure.name.lower()
+                    ):
                         laterality = "NA"
 
                     # Create order item
@@ -2545,16 +2578,22 @@ class Command(BaseCommand):
                         order=order,
                         procedure=item_procedure,
                         laterality=laterality,
-                        specific_instructions="" if randint(0, 3) else choice([
-                            "Use small focal spot",
-                            "Include comparison with previous study",
-                            "Full bladder required",
-                            "Patient anxious, may need reassurance",
-                            "Portable study if patient unstable",
-                        ]),
+                        specific_instructions=""
+                        if randint(0, 3)
+                        else choice(
+                            [
+                                "Use small focal spot",
+                                "Include comparison with previous study",
+                                "Full bladder required",
+                                "Patient anxious, may need reassurance",
+                                "Portable study if patient unstable",
+                            ]
+                        ),
                         unit_cost=item_procedure.cost,
                         is_completed=status in ["COMPLETED", "REPORTED"],
-                        completed_at=order.completed_at if status in ["COMPLETED", "REPORTED"] else None,
+                        completed_at=order.completed_at
+                        if status in ["COMPLETED", "REPORTED"]
+                        else None,
                     )
                     items_created += 1
 

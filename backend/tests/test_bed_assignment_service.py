@@ -25,10 +25,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from hmis.apps.inpatient.models import Bed, Ward
-from hmis.apps.inpatient.services.bed_assignment import (
-    BedAssignmentService,
-    NoBedAvailableError,
-)
+from hmis.apps.inpatient.services.bed_assignment import BedAssignmentService, NoBedAvailableError
 
 User = get_user_model()
 
@@ -50,7 +47,7 @@ def sample_ward(db):
 @pytest.fixture
 def ward_with_beds(sample_ward, test_user):
     """Configure a ward with 5 beds (3 available, 1 occupied, 1 maintenance).
-    
+
     Uses auto-generated beds and modifies their statuses.
     """
     # Get the auto-generated beds and set their statuses
@@ -78,7 +75,7 @@ def ward_with_beds(sample_ward, test_user):
 @pytest.fixture
 def full_ward(sample_ward, test_user):
     """Configure a ward where all beds are occupied.
-    
+
     Uses auto-generated beds and sets them all to OCCUPIED.
     """
     for bed in sample_ward.beds.all():
@@ -155,9 +152,11 @@ class TestBedAssignmentService:
     ):
         """Should only consider beds with AVAILABLE status."""
         # Mark first available bed as RESERVED
-        first_bed = Bed.objects.filter(
-            ward=ward_with_beds, status="AVAILABLE"
-        ).order_by("bed_number").first()
+        first_bed = (
+            Bed.objects.filter(ward=ward_with_beds, status="AVAILABLE")
+            .order_by("bed_number")
+            .first()
+        )
         first_bed.status = "RESERVED"
         first_bed.save()
 
@@ -170,7 +169,7 @@ class TestBedAssignmentService:
         self, sample_ward, test_user, bed_assignment_service
     ):
         """Should assign beds in deterministic order (by bed_number).
-        
+
         Uses the auto-generated beds which are created in order (B-001 to B-005).
         """
         # Auto-generated beds are already in order, but let's verify
@@ -190,9 +189,7 @@ class TestBedAssignmentService:
         assert bed.status_changed_by == test_user
         assert bed.status_changed_at is not None
 
-    def test_get_available_beds_returns_correct_list(
-        self, bed_assignment_service, ward_with_beds
-    ):
+    def test_get_available_beds_returns_correct_list(self, bed_assignment_service, ward_with_beds):
         """Should return list of available beds only."""
         available_beds = bed_assignment_service.get_available_beds(ward_with_beds)
 
@@ -200,9 +197,7 @@ class TestBedAssignmentService:
         for bed in available_beds:
             assert bed.status == "AVAILABLE"
 
-    def test_get_available_beds_ordered_by_bed_number(
-        self, bed_assignment_service, ward_with_beds
-    ):
+    def test_get_available_beds_ordered_by_bed_number(self, bed_assignment_service, ward_with_beds):
         """Should return beds ordered by bed_number."""
         available_beds = bed_assignment_service.get_available_beds(ward_with_beds)
         bed_numbers = [bed.bed_number for bed in available_beds]
@@ -213,7 +208,7 @@ class TestBedAssignmentService:
         self, bed_assignment_service, sample_ward, test_user
     ):
         """Should exclude MAINTENANCE and RESERVED beds from available list.
-        
+
         Uses auto-generated beds and modifies their statuses.
         """
         # Get auto-generated beds and set specific statuses
@@ -233,9 +228,7 @@ class TestBedAssignmentService:
         assert len(available_beds) == 1
         assert available_beds[0].bed_number == "B-005"
 
-    def test_single_bed_ward_assignment(
-        self, test_user, bed_assignment_service, db
-    ):
+    def test_single_bed_ward_assignment(self, test_user, bed_assignment_service, db):
         """Should work correctly with a single-bed ward."""
         # Create a ward with capacity=1 (auto-generates 1 bed)
         single_bed_ward = Ward.objects.create(
@@ -262,8 +255,9 @@ class TestBedAssignmentConcurrency:
     """
 
     @pytest.mark.skipif(
-        "sqlite" in str(__import__("django").conf.settings.DATABASES.get("default", {}).get("ENGINE", "")),
-        reason="SQLite does not support row-level locking (SELECT FOR UPDATE)"
+        "sqlite"
+        in str(__import__("django").conf.settings.DATABASES.get("default", {}).get("ENGINE", "")),
+        reason="SQLite does not support row-level locking (SELECT FOR UPDATE)",
     )
     def test_concurrent_assignment_no_double_booking(
         self, sample_ward, test_user, bed_assignment_service

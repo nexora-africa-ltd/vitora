@@ -18,12 +18,12 @@ class TestEncounterClinicalSnapshotAPI:
 
     def test_requires_authentication(self, api_client, sample_encounter):
         """Unauthenticated requests should be rejected."""
-        response = api_client.get(
-            f"/api/encounters/{sample_encounter.id}/clinical_snapshot/"
-        )
+        response = api_client.get(f"/api/encounters/{sample_encounter.id}/clinical_snapshot/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_returns_clinical_snapshot_for_encounter(self, authenticated_client, sample_patient_with_allergies):
+    def test_returns_clinical_snapshot_for_encounter(
+        self, authenticated_client, sample_patient_with_allergies
+    ):
         """Should return snapshot generated from patient's clinical history."""
         from hmis.apps.encounters.models import Encounter
 
@@ -35,9 +35,7 @@ class TestEncounterClinicalSnapshotAPI:
         )
         assert encounter is not None
 
-        response = authenticated_client.get(
-            f"/api/encounters/{encounter.id}/clinical_snapshot/"
-        )
+        response = authenticated_client.get(f"/api/encounters/{encounter.id}/clinical_snapshot/")
 
         assert response.status_code == status.HTTP_200_OK
         data = response.data

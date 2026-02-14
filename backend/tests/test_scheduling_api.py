@@ -19,7 +19,6 @@ import pytest  # type: ignore
 from django.utils import timezone
 from rest_framework import status
 
-
 # =============================================================================
 # Resource API Tests
 # =============================================================================
@@ -35,7 +34,9 @@ class TestResourceAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
 
-    def test_list_resources_filter_by_type(self, authenticated_client, sample_person_resource, sample_place_resource):
+    def test_list_resources_filter_by_type(
+        self, authenticated_client, sample_person_resource, sample_place_resource
+    ):
         """Should filter resources by type."""
         response = authenticated_client.get("/api/scheduling/resources/?resource_type=PERSON")
 
@@ -82,7 +83,9 @@ class TestResourceAPI:
         assert response.data["name"] == "Dr. New Doctor"
         assert response.data["code"] == "DOC-NEW-001"
 
-    def test_create_resource_validates_unique_code(self, authenticated_client, sample_person_resource):
+    def test_create_resource_validates_unique_code(
+        self, authenticated_client, sample_person_resource
+    ):
         """Should reject duplicate resource codes."""
         data = {
             "name": "Duplicate Code",
@@ -97,7 +100,9 @@ class TestResourceAPI:
 
     def test_retrieve_resource(self, authenticated_client, sample_person_resource):
         """Should retrieve a single resource."""
-        response = authenticated_client.get(f"/api/scheduling/resources/{sample_person_resource.id}/")
+        response = authenticated_client.get(
+            f"/api/scheduling/resources/{sample_person_resource.id}/"
+        )
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["id"] == sample_person_resource.id
@@ -118,7 +123,9 @@ class TestResourceAPI:
 
     def test_delete_resource_soft_delete(self, authenticated_client, sample_person_resource):
         """Should soft delete (deactivate) a resource."""
-        response = authenticated_client.delete(f"/api/scheduling/resources/{sample_person_resource.id}/")
+        response = authenticated_client.delete(
+            f"/api/scheduling/resources/{sample_person_resource.id}/"
+        )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -312,7 +319,9 @@ class TestAppointmentAPI:
         assert response.data["appointment_number"] is not None
         assert response.data["appointment_number"].startswith("APT-")
 
-    def test_create_appointment_detects_conflict(self, authenticated_client, sample_appointment, sample_patient):
+    def test_create_appointment_detects_conflict(
+        self, authenticated_client, sample_appointment, sample_patient
+    ):
         """Should reject conflicting appointments."""
         data = {
             "patient": sample_patient.id,
@@ -330,7 +339,9 @@ class TestAppointmentAPI:
 
     def test_retrieve_appointment(self, authenticated_client, sample_appointment):
         """Should retrieve a single appointment."""
-        response = authenticated_client.get(f"/api/scheduling/appointments/{sample_appointment.id}/")
+        response = authenticated_client.get(
+            f"/api/scheduling/appointments/{sample_appointment.id}/"
+        )
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["id"] == sample_appointment.id
@@ -440,7 +451,9 @@ class TestAppointmentAPI:
 class TestAvailabilityAPI:
     """Tests for availability query endpoints."""
 
-    def test_get_resource_availability(self, authenticated_client, sample_person_resource, sample_schedule):
+    def test_get_resource_availability(
+        self, authenticated_client, sample_person_resource, sample_schedule
+    ):
         """Should return available slots for a resource on a date."""
         # Find next Monday
         target_date = date.today()
@@ -455,7 +468,9 @@ class TestAvailabilityAPI:
         assert "slots" in response.data
         assert len(response.data["slots"]) > 0
 
-    def test_get_resource_weekly_availability(self, authenticated_client, sample_person_resource, sample_schedule):
+    def test_get_resource_weekly_availability(
+        self, authenticated_client, sample_person_resource, sample_schedule
+    ):
         """Should return weekly availability for a resource."""
         response = authenticated_client.get(
             f"/api/scheduling/resources/{sample_person_resource.id}/availability/weekly/"
@@ -499,7 +514,9 @@ class TestAvailabilityAPI:
         slot_times = [s["start_time"] for s in response.data["slots"]]
         assert sample_schedule.start_time.isoformat() not in slot_times
 
-    def test_check_slot_availability(self, authenticated_client, sample_person_resource, sample_schedule):
+    def test_check_slot_availability(
+        self, authenticated_client, sample_person_resource, sample_schedule
+    ):
         """Should check if specific slot is available."""
         target_date = date.today()
         while target_date.weekday() != sample_schedule.day_of_week:
@@ -523,7 +540,9 @@ class TestAvailabilityAPI:
 class TestSchedulingAuditLog:
     """Tests for audit logging of scheduling actions."""
 
-    def test_appointment_creation_logged(self, authenticated_client, sample_patient, sample_person_resource):
+    def test_appointment_creation_logged(
+        self, authenticated_client, sample_patient, sample_person_resource
+    ):
         """Should log appointment creation."""
         from hmis.apps.core.models import AuditLog
 

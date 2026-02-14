@@ -76,13 +76,13 @@ def create_test_dicom_file(
 
     # Determine SOP Class UID based on modality
     sop_class_map = {
-        "XR": "1.2.840.10008.5.1.4.1.1.1",        # CR Image Storage
-        "CT": "1.2.840.10008.5.1.4.1.1.2",        # CT Image Storage
-        "MRI": "1.2.840.10008.5.1.4.1.1.4",       # MR Image Storage
-        "US": "1.2.840.10008.5.1.4.1.1.6.1",      # US Image Storage
-        "NM": "1.2.840.10008.5.1.4.1.1.20",       # NM Image Storage
-        "MG": "1.2.840.10008.5.1.4.1.1.1.2",      # Digital Mammography
-        "FL": "1.2.840.10008.5.1.4.1.1.12.2",     # XA Image Storage
+        "XR": "1.2.840.10008.5.1.4.1.1.1",  # CR Image Storage
+        "CT": "1.2.840.10008.5.1.4.1.1.2",  # CT Image Storage
+        "MRI": "1.2.840.10008.5.1.4.1.1.4",  # MR Image Storage
+        "US": "1.2.840.10008.5.1.4.1.1.6.1",  # US Image Storage
+        "NM": "1.2.840.10008.5.1.4.1.1.20",  # NM Image Storage
+        "MG": "1.2.840.10008.5.1.4.1.1.1.2",  # Digital Mammography
+        "FL": "1.2.840.10008.5.1.4.1.1.12.2",  # XA Image Storage
     }
     sop_class_uid = sop_class_map.get(modality, "1.2.840.10008.5.1.4.1.1.1")
 
@@ -193,9 +193,7 @@ def create_multi_frame_dicom(
     # Modify to make multi-frame
     ds = pydicom.dcmread(path)
     ds.NumberOfFrames = num_frames
-    pixel_array = np.random.randint(
-        0, 4095, (num_frames, rows, columns), dtype=np.uint16
-    )
+    pixel_array = np.random.randint(0, 4095, (num_frames, rows, columns), dtype=np.uint16)
     ds.PixelData = pixel_array.tobytes()
     ds.save_as(path)
 

@@ -24,7 +24,9 @@ DASHBOARD_STATS_TTL = 300  # 5 minutes
 
 @extend_schema(
     parameters=[
-        OpenApiParameter("refresh", OpenApiTypes.BOOL, description="Bypass cache and compute fresh stats"),
+        OpenApiParameter(
+            "refresh", OpenApiTypes.BOOL, description="Bypass cache and compute fresh stats"
+        ),
     ],
     responses={200: OpenApiTypes.OBJECT},
 )
@@ -307,9 +309,15 @@ ENCOUNTER_TYPES = [
 
 @extend_schema(
     parameters=[
-        OpenApiParameter("start_date", OpenApiTypes.DATE, description="Start date (YYYY-MM-DD)", required=True),
-        OpenApiParameter("end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=True),
-        OpenApiParameter("granularity", OpenApiTypes.STR, description="'day', 'week', or 'month'", required=False),
+        OpenApiParameter(
+            "start_date", OpenApiTypes.DATE, description="Start date (YYYY-MM-DD)", required=True
+        ),
+        OpenApiParameter(
+            "end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=True
+        ),
+        OpenApiParameter(
+            "granularity", OpenApiTypes.STR, description="'day', 'week', or 'month'", required=False
+        ),
         OpenApiParameter("refresh", OpenApiTypes.BOOL, description="Bypass cache", required=False),
     ],
     responses={200: OpenApiTypes.OBJECT},
@@ -583,9 +591,18 @@ VALID_GROUP_BY_OPTIONS = ["category", "item_type", "payment_method"]
 
 @extend_schema(
     parameters=[
-        OpenApiParameter("start_date", OpenApiTypes.DATE, description="Start date (YYYY-MM-DD)", required=True),
-        OpenApiParameter("end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=True),
-        OpenApiParameter("group_by", OpenApiTypes.STR, description="'category', 'item_type', or 'payment_method'", required=False),
+        OpenApiParameter(
+            "start_date", OpenApiTypes.DATE, description="Start date (YYYY-MM-DD)", required=True
+        ),
+        OpenApiParameter(
+            "end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=True
+        ),
+        OpenApiParameter(
+            "group_by",
+            OpenApiTypes.STR,
+            description="'category', 'item_type', or 'payment_method'",
+            required=False,
+        ),
         OpenApiParameter("refresh", OpenApiTypes.BOOL, description="Bypass cache", required=False),
     ],
     responses={200: OpenApiTypes.OBJECT},
@@ -821,10 +838,27 @@ ACTIVITY_FEED_TTL = 60  # 1 minute (shorter TTL for real-time feel)
 
 @extend_schema(
     parameters=[
-        OpenApiParameter("limit", OpenApiTypes.INT, description="Number of items to return (default: 20, max: 100)", required=False),
-        OpenApiParameter("offset", OpenApiTypes.INT, description="Pagination offset (default: 0)", required=False),
-        OpenApiParameter("types", OpenApiTypes.STR, description="Comma-separated list of activity types to filter", required=False),
-        OpenApiParameter("actions", OpenApiTypes.STR, description="Comma-separated list of actions to filter", required=False),
+        OpenApiParameter(
+            "limit",
+            OpenApiTypes.INT,
+            description="Number of items to return (default: 20, max: 100)",
+            required=False,
+        ),
+        OpenApiParameter(
+            "offset", OpenApiTypes.INT, description="Pagination offset (default: 0)", required=False
+        ),
+        OpenApiParameter(
+            "types",
+            OpenApiTypes.STR,
+            description="Comma-separated list of activity types to filter",
+            required=False,
+        ),
+        OpenApiParameter(
+            "actions",
+            OpenApiTypes.STR,
+            description="Comma-separated list of actions to filter",
+            required=False,
+        ),
         OpenApiParameter("refresh", OpenApiTypes.BOOL, description="Bypass cache", required=False),
     ],
     responses={200: OpenApiTypes.OBJECT},

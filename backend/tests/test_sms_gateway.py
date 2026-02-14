@@ -1,12 +1,15 @@
-import pytest # type: ignore
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest  # type: ignore
 from django.conf import settings
+
 from hmis.apps.core.sms_gateway import SMSGateway
+
 
 class TestSMSGatewayInitialization:
     """Tests for SMSGateway initialization."""
 
-    @patch('hmis.apps.core.sms_gateway.africastalking')
+    @patch("hmis.apps.core.sms_gateway.africastalking")
     def test_initialization_configures_africastalking(self, mock_at):
         """Should initialize Africa's Talking with credentials from settings."""
         mock_sms = Mock()
@@ -20,7 +23,7 @@ class TestSMSGatewayInitialization:
         )
         assert gateway.sms == mock_sms
 
-    @patch('hmis.apps.core.sms_gateway.africastalking')
+    @patch("hmis.apps.core.sms_gateway.africastalking")
     def test_initialization_sets_sms_service(self, mock_at):
         """Should store SMS service reference after initialization."""
         mock_sms = Mock()
@@ -35,11 +38,11 @@ class TestSMSGatewayInitialization:
 class TestSMSSending:
     """Tests for sending SMS reminders."""
 
-    @patch('hmis.apps.core.sms_gateway.africastalking')
+    @patch("hmis.apps.core.sms_gateway.africastalking")
     def test_send_reminder_with_valid_data(self, mock_at):
         """Should send SMS with correct parameters."""
         mock_sms = Mock()
-        mock_sms.send = Mock(return_value={'status': 'success'})
+        mock_sms.send = Mock(return_value={"status": "success"})
         mock_at.SMS = mock_sms
 
         gateway = SMSGateway()
@@ -48,13 +51,9 @@ class TestSMSSending:
 
         gateway.send_reminder(phone, message)
 
-        mock_sms.send.assert_called_once_with(
-            message,
-            [phone],
-            sender_id=settings.SMS_SENDER_ID
-        )
+        mock_sms.send.assert_called_once_with(message, [phone], sender_id=settings.SMS_SENDER_ID)
 
-    @patch('hmis.apps.core.sms_gateway.africastalking')
+    @patch("hmis.apps.core.sms_gateway.africastalking")
     def test_send_reminder_uses_sender_id_from_settings(self, mock_at):
         """Should use SMS_SENDER_ID from Django settings."""
         mock_sms = Mock()
@@ -64,9 +63,9 @@ class TestSMSSending:
         gateway.send_reminder("+254712345678", "Test message")
 
         call_kwargs = mock_sms.send.call_args[1]
-        assert call_kwargs['sender_id'] == settings.SMS_SENDER_ID
+        assert call_kwargs["sender_id"] == settings.SMS_SENDER_ID
 
-    @patch('hmis.apps.core.sms_gateway.africastalking')
+    @patch("hmis.apps.core.sms_gateway.africastalking")
     def test_send_reminder_with_international_format(self, mock_at):
         """Should handle phone numbers in international format."""
         mock_sms = Mock()
@@ -82,7 +81,7 @@ class TestSMSSending:
         call_args = mock_sms.send.call_args[0]
         assert call_args[1] == [phone]
 
-    @patch('hmis.apps.core.sms_gateway.africastalking')
+    @patch("hmis.apps.core.sms_gateway.africastalking")
     def test_send_reminder_wraps_phone_in_list(self, mock_at):
         """Should wrap single phone number in list for API call."""
         mock_sms = Mock()
@@ -102,8 +101,8 @@ class TestSMSSending:
 class TestSMSErrorHandling:
     """Tests for SMS sending error scenarios."""
 
-    @patch('hmis.apps.core.sms_gateway.africastalking')
-    @patch('hmis.apps.core.sms_gateway.logger')
+    @patch("hmis.apps.core.sms_gateway.africastalking")
+    @patch("hmis.apps.core.sms_gateway.logger")
     def test_send_reminder_handles_api_exception(self, mock_logger, mock_at):
         """Should log and raise RuntimeError when API call fails."""
         mock_sms = Mock()
@@ -118,8 +117,8 @@ class TestSMSErrorHandling:
 
         mock_logger.exception.assert_called_once()
 
-    @patch('hmis.apps.core.sms_gateway.africastalking')
-    @patch('hmis.apps.core.sms_gateway.logger')
+    @patch("hmis.apps.core.sms_gateway.africastalking")
+    @patch("hmis.apps.core.sms_gateway.logger")
     def test_send_reminder_logs_phone_number_on_failure(self, mock_logger, mock_at):
         """Should log recipient phone number when sending fails."""
         mock_sms = Mock()
@@ -138,7 +137,7 @@ class TestSMSErrorHandling:
         call_args = mock_logger.exception.call_args[0]
         assert phone in call_args  # phone is passed as argument to format string
 
-    @patch('hmis.apps.core.sms_gateway.africastalking')
+    @patch("hmis.apps.core.sms_gateway.africastalking")
     def test_send_reminder_preserves_original_exception(self, mock_at):
         """Should chain original exception when raising RuntimeError."""
         original_error = ValueError("Invalid phone format")
@@ -157,7 +156,7 @@ class TestSMSErrorHandling:
 class TestSMSIntegration:
     """Integration-style tests for SMSGateway."""
 
-    @patch('hmis.apps.core.sms_gateway.africastalking')
+    @patch("hmis.apps.core.sms_gateway.africastalking")
     def test_multiple_reminders_reuse_same_client(self, mock_at):
         """Should reuse same SMS client for multiple sends."""
         mock_sms = Mock()
@@ -172,7 +171,7 @@ class TestSMSIntegration:
         # Verify send called twice
         assert mock_sms.send.call_count == 2
 
-    @patch('hmis.apps.core.sms_gateway.africastalking')
+    @patch("hmis.apps.core.sms_gateway.africastalking")
     def test_gateway_handles_empty_message(self, mock_at):
         """Should handle empty message string."""
         mock_sms = Mock()

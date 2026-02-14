@@ -262,9 +262,7 @@ class FHIRClient:
         if self.session:
             self.session.close()
 
-    def wait_for_server(
-        self, max_wait_seconds: int = 120, poll_interval: int = 5
-    ) -> bool:
+    def wait_for_server(self, max_wait_seconds: int = 120, poll_interval: int = 5) -> bool:
         """
         Wait for FHIR server to become available.
 
@@ -349,9 +347,7 @@ class FHIRClient:
             logger.error(f"FHIR request error: {e}")
             raise FHIRClientError(f"FHIR request failed: {e}")
 
-    def _parse_response(
-        self, response: requests.Response, elapsed_ms: float
-    ) -> FHIRResponse:
+    def _parse_response(self, response: requests.Response, elapsed_ms: float) -> FHIRResponse:
         """Parse HTTP response into FHIRResponse."""
         result = FHIRResponse(
             success=response.ok,
@@ -377,9 +373,7 @@ class FHIRClient:
                 # Parse OperationOutcome issues
                 if result.resource_type == "OperationOutcome":
                     issues = data.get("issue", [])
-                    result.issues = [
-                        FHIROperationOutcome.from_dict(issue) for issue in issues
-                    ]
+                    result.issues = [FHIROperationOutcome.from_dict(issue) for issue in issues]
 
                 # For Bundle, extract entry resources
                 if result.resource_type == "Bundle":
@@ -454,13 +448,9 @@ class FHIRClient:
             # Conditional create - resource already exists
             logger.info(f"Resource already exists: {resource_type}/{result.resource_id}")
         elif result.status_code == 400:
-            raise FHIRValidationError(
-                f"Validation failed: {result.get_error_message()}", result
-            )
+            raise FHIRValidationError(f"Validation failed: {result.get_error_message()}", result)
         elif result.status_code == 409:
-            raise FHIRConflictError(
-                f"Conflict: {result.get_error_message()}", result
-            )
+            raise FHIRConflictError(f"Conflict: {result.get_error_message()}", result)
 
         return result
 
@@ -494,14 +484,10 @@ class FHIRClient:
         result = self._make_request("GET", url)
 
         if result.status_code == 404:
-            raise FHIRNotFoundError(
-                f"{resource_type}/{resource_id} not found", result
-            )
+            raise FHIRNotFoundError(f"{resource_type}/{resource_id} not found", result)
 
         if result.success:
-            logger.debug(
-                f"Read {resource_type}/{resource_id} in {result.response_time_ms:.1f}ms"
-            )
+            logger.debug(f"Read {resource_type}/{resource_id} in {result.response_time_ms:.1f}ms")
 
         return result
 
@@ -545,18 +531,13 @@ class FHIRClient:
         result = self._make_request("PUT", url, data=resource, headers=headers)
 
         if result.status_code == 404:
-            raise FHIRNotFoundError(
-                f"{resource_type}/{resource_id} not found", result
-            )
+            raise FHIRNotFoundError(f"{resource_type}/{resource_id} not found", result)
         if result.status_code == 409:
-            raise FHIRConflictError(
-                f"Version conflict: {result.get_error_message()}", result
-            )
+            raise FHIRConflictError(f"Version conflict: {result.get_error_message()}", result)
 
         if result.success:
             logger.info(
-                f"Updated {resource_type}/{resource_id} "
-                f"in {result.response_time_ms:.1f}ms"
+                f"Updated {resource_type}/{resource_id} " f"in {result.response_time_ms:.1f}ms"
             )
 
         return result
@@ -595,15 +576,11 @@ class FHIRClient:
         result = self._make_request("PATCH", url, data=patch_operations, headers=headers)
 
         if result.status_code == 404:
-            raise FHIRNotFoundError(
-                f"{resource_type}/{resource_id} not found", result
-            )
+            raise FHIRNotFoundError(f"{resource_type}/{resource_id} not found", result)
 
         return result
 
-    def delete_resource(
-        self, resource_type: str, resource_id: str
-    ) -> FHIRResponse:
+    def delete_resource(self, resource_type: str, resource_id: str) -> FHIRResponse:
         """
         Delete a FHIR resource.
 
@@ -625,8 +602,7 @@ class FHIRClient:
 
         if result.success:
             logger.info(
-                f"Deleted {resource_type}/{resource_id} "
-                f"in {result.response_time_ms:.1f}ms"
+                f"Deleted {resource_type}/{resource_id} " f"in {result.response_time_ms:.1f}ms"
             )
 
         return result
@@ -699,9 +675,7 @@ class FHIRClient:
     # Bundle Operations
     # =========================================================================
 
-    def submit_bundle(
-        self, bundle: dict, bundle_type: str = "transaction"
-    ) -> FHIRResponse:
+    def submit_bundle(self, bundle: dict, bundle_type: str = "transaction") -> FHIRResponse:
         """
         Submit a FHIR Bundle.
 
@@ -721,8 +695,7 @@ class FHIRClient:
         """
         if bundle.get("type") != bundle_type:
             logger.warning(
-                f"Bundle type mismatch: expected {bundle_type}, "
-                f"got {bundle.get('type')}"
+                f"Bundle type mismatch: expected {bundle_type}, " f"got {bundle.get('type')}"
             )
 
         url = self.base_url
@@ -731,9 +704,7 @@ class FHIRClient:
         result = self._make_request("POST", url, data=bundle)
 
         if result.success:
-            logger.info(
-                f"Submitted {bundle_type} bundle in {result.response_time_ms:.1f}ms"
-            )
+            logger.info(f"Submitted {bundle_type} bundle in {result.response_time_ms:.1f}ms")
 
         return result
 
@@ -795,9 +766,7 @@ class FHIRClient:
         except FHIRClientError:
             return False
 
-    def get_resource_history(
-        self, resource_type: str, resource_id: str
-    ) -> FHIRSearchResult:
+    def get_resource_history(self, resource_type: str, resource_id: str) -> FHIRSearchResult:
         """
         Get version history for a resource.
 
@@ -831,9 +800,7 @@ class FHIRClient:
     # Utility Methods
     # =========================================================================
 
-    def validate_resource(
-        self, resource_type: str, resource: dict
-    ) -> FHIRResponse:
+    def validate_resource(self, resource_type: str, resource: dict) -> FHIRResponse:
         """
         Validate a resource against server's profiles.
 
@@ -881,9 +848,7 @@ class FHIRClient:
 # =============================================================================
 
 
-def create_fhir_client(
-    base_url: str | None = None, **kwargs
-) -> FHIRClient:
+def create_fhir_client(base_url: str | None = None, **kwargs) -> FHIRClient:
     """
     Create a FHIR client with default settings.
 

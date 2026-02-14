@@ -1056,9 +1056,7 @@ class Encounter(models.Model):
             return
 
         if not self.is_valid_transition("CANCELLED"):
-            raise ValidationError(
-                f"Cannot cancel encounter with status '{self.status}'."
-            )
+            raise ValidationError(f"Cannot cancel encounter with status '{self.status}'.")
 
         self.status = "CANCELLED"
         self.cancellation_reason = reason
@@ -1091,7 +1089,14 @@ class Encounter(models.Model):
 
         # Check disposition-based closure
         dispositions_requiring_notes = {"ADVICE_ONLY", "LEFT_AMA"}
-        dispositions_allowing_close = {"ADVICE_ONLY", "REFERRED", "ADMITTED", "FOLLOW_UP_SCHEDULED", "LEFT_AMA", "TREATED_DISCHARGED"}
+        dispositions_allowing_close = {
+            "ADVICE_ONLY",
+            "REFERRED",
+            "ADMITTED",
+            "FOLLOW_UP_SCHEDULED",
+            "LEFT_AMA",
+            "TREATED_DISCHARGED",
+        }
 
         if has_documentation:
             # Has clinical documentation, can close without explicit disposition
@@ -1111,7 +1116,9 @@ class Encounter(models.Model):
 
         # Check notes requirement for specific dispositions
         if self.disposition in dispositions_requiring_notes and not self.disposition_notes:
-            disposition_display = dict(self.DISPOSITION_CHOICES).get(self.disposition, self.disposition)
+            disposition_display = dict(self.DISPOSITION_CHOICES).get(
+                self.disposition, self.disposition
+            )
             raise ValidationError(
                 f"'{disposition_display}' disposition requires disposition notes documenting the advice given."
             )

@@ -88,9 +88,9 @@ class LabReportService:
             F("released_at") - F("processing_started_at"), output_field=DurationField()
         )
 
-        queue_collect_stats = queue_released.filter(
-            specimen__collected_at__isnull=False
-        ).aggregate(released_count=Count("id"), avg_tat=Avg(collect_tat_expr))
+        queue_collect_stats = queue_released.filter(specimen__collected_at__isnull=False).aggregate(
+            released_count=Count("id"), avg_tat=Avg(collect_tat_expr)
+        )
         queue_processing_stats = queue_released.filter(
             processing_started_at__isnull=False
         ).aggregate(avg_tat=Avg(processing_tat_expr))
@@ -126,9 +126,7 @@ class LabReportService:
             ],
             "queue_tat": {
                 "released_count": queue_collect_stats.get("released_count", 0) or 0,
-                "avg_collect_to_release_hours": _duration_hours(
-                    queue_collect_stats.get("avg_tat")
-                ),
+                "avg_collect_to_release_hours": _duration_hours(queue_collect_stats.get("avg_tat")),
                 "avg_processing_to_release_hours": _duration_hours(
                     queue_processing_stats.get("avg_tat")
                 ),
@@ -155,14 +153,10 @@ class LabReportService:
             verified_at__lt=date_range.end,
         )
 
-        entered_by_day = entered_results.annotate(day=TruncDate("entered_at")).values(
-            "day"
-        )
+        entered_by_day = entered_results.annotate(day=TruncDate("entered_at")).values("day")
         entered_by_day = entered_by_day.annotate(tests_entered=Count("id"))
 
-        verified_by_day = verified_results.annotate(day=TruncDate("verified_at")).values(
-            "day"
-        )
+        verified_by_day = verified_results.annotate(day=TruncDate("verified_at")).values("day")
         verified_by_day = verified_by_day.annotate(tests_verified=Count("id"))
 
         daily = {}
@@ -175,9 +169,7 @@ class LabReportService:
             }
         for row in verified_by_day:
             day_key = row["day"].isoformat()
-            daily.setdefault(
-                day_key, {"date": day_key, "tests_entered": 0, "tests_verified": 0}
-            )
+            daily.setdefault(day_key, {"date": day_key, "tests_entered": 0, "tests_verified": 0})
             daily[day_key]["tests_verified"] = row["tests_verified"]
 
         entered_by_tech = entered_results.values(
@@ -187,12 +179,16 @@ class LabReportService:
             "entered_by__username",
         ).annotate(entered_count=Count("id"))
 
-        verified_by_tech = verified_results.filter(verified_by__isnull=False).values(
-            "verified_by",
-            "verified_by__first_name",
-            "verified_by__last_name",
-            "verified_by__username",
-        ).annotate(verified_count=Count("id"))
+        verified_by_tech = (
+            verified_results.filter(verified_by__isnull=False)
+            .values(
+                "verified_by",
+                "verified_by__first_name",
+                "verified_by__last_name",
+                "verified_by__username",
+            )
+            .annotate(verified_count=Count("id"))
+        )
 
         tech_stats = {}
         for row in entered_by_tech:
@@ -310,8 +306,7 @@ class LabReportService:
             "rejected_orders": rejected_count,
             "rejection_rate": rejection_rate,
             "reasons": [
-                {"reason": row["rejection_reason"], "count": row["count"]}
-                for row in reasons
+                {"reason": row["rejection_reason"], "count": row["count"]} for row in reasons
             ],
         }
 

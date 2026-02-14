@@ -535,7 +535,7 @@ class TestAdmissionQueries:
         """Should retrieve patient admission history."""
         # Use auto-generated beds from the ward
         beds = list(sample_ward.beds.filter(status="AVAILABLE").order_by("bed_number")[:3])
-        
+
         # Create multiple admissions
         for i, bed in enumerate(beds):
             enc = Encounter.objects.create(
@@ -580,8 +580,10 @@ class TestAdmissionQueries:
             patients.append(p)
 
         # Use auto-generated beds from the ward
-        available_beds = list(sample_ward.beds.filter(status="AVAILABLE").order_by("bed_number")[:3])
-        
+        available_beds = list(
+            sample_ward.beds.filter(status="AVAILABLE").order_by("bed_number")[:3]
+        )
+
         # Create admissions with different statuses for different patients
         statuses = ["ACTIVE", "DISCHARGED", "ACTIVE"]
         for i, (patient, status) in enumerate(zip(patients, statuses, strict=False)):

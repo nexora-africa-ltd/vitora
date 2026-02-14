@@ -23,7 +23,15 @@ from rest_framework.views import APIView
 from hmis.apps.core.models import AuditLog
 from hmis.apps.scheduling.models import Resource
 
-from .models import DICOMInstance, DICOMSeries, DICOMStudy, ImagingOrder, ImagingProcedure, RadiologyReport, ReportAmendment
+from .models import (
+    DICOMInstance,
+    DICOMSeries,
+    DICOMStudy,
+    ImagingOrder,
+    ImagingProcedure,
+    RadiologyReport,
+    ReportAmendment,
+)
 from .serializers import (
     AmendReportSerializer,
     AppointmentSummarySerializer,
@@ -72,9 +80,9 @@ class ImagingResourceViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         """Get imaging resources filtered by department and optional modality."""
         # Check if this is a schema generation request
-        if getattr(self, 'swagger_fake_view', False):
+        if getattr(self, "swagger_fake_view", False):
             return Resource.objects.none()
-        
+
         modality = self.request.query_params.get("modality", None)
         return ImagingSchedulingService.get_imaging_resources(modality)
 
@@ -82,10 +90,12 @@ class ImagingResourceViewSet(viewsets.ReadOnlyModelViewSet):
         """List imaging resources with pagination."""
         resources = self.get_queryset()
         serializer = ImagingResourceSerializer(resources, many=True)
-        return Response({
-            "count": len(resources),
-            "results": serializer.data,
-        })
+        return Response(
+            {
+                "count": len(resources),
+                "results": serializer.data,
+            }
+        )
 
     def retrieve(self, request, *args, **kwargs):
         """Retrieve a single imaging resource."""
@@ -134,11 +144,13 @@ class ImagingResourceViewSet(viewsets.ReadOnlyModelViewSet):
             for_date = None  # Service will default to today
 
         slots = ImagingSchedulingService.get_resource_availability(resource, for_date)
-        return Response({
-            "resource_id": resource.id,
-            "date": for_date.isoformat() if for_date else None,
-            "slots": slots,
-        })
+        return Response(
+            {
+                "resource_id": resource.id,
+                "date": for_date.isoformat() if for_date else None,
+                "slots": slots,
+            }
+        )
 
     @action(detail=True, methods=["get"], url_path="availability/weekly")
     def availability_weekly(self, request, pk=None):
@@ -169,10 +181,12 @@ class ImagingResourceViewSet(viewsets.ReadOnlyModelViewSet):
             start_date = None
 
         days = ImagingSchedulingService.get_weekly_availability(resource, start_date)
-        return Response({
-            "resource_id": resource.id,
-            "days": days,
-        })
+        return Response(
+            {
+                "resource_id": resource.id,
+                "days": days,
+            }
+        )
 
     @action(detail=True, methods=["get"], url_path="availability/check")
     def availability_check(self, request, pk=None):
@@ -218,17 +232,17 @@ class ImagingResourceViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        is_available = ImagingSchedulingService.check_slot_available(
-            resource, slot_start, slot_end
-        )
+        is_available = ImagingSchedulingService.check_slot_available(resource, slot_start, slot_end)
 
-        return Response({
-            "is_available": is_available,
-            "resource_id": resource.id,
-            "date": date_str,
-            "start_time": start_time_str,
-            "end_time": end_time_str,
-        })
+        return Response(
+            {
+                "is_available": is_available,
+                "resource_id": resource.id,
+                "date": date_str,
+                "start_time": start_time_str,
+                "end_time": end_time_str,
+            }
+        )
 
 
 class ImagingCalendarView(APIView):
@@ -240,8 +254,18 @@ class ImagingCalendarView(APIView):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("date", OpenApiTypes.DATE, description="Date to show (YYYY-MM-DD, defaults to today)", required=False),
-            OpenApiParameter("modality", OpenApiTypes.STR, description="Filter by modality (XR, CT, MRI, etc.)", required=False),
+            OpenApiParameter(
+                "date",
+                OpenApiTypes.DATE,
+                description="Date to show (YYYY-MM-DD, defaults to today)",
+                required=False,
+            ),
+            OpenApiParameter(
+                "modality",
+                OpenApiTypes.STR,
+                description="Filter by modality (XR, CT, MRI, etc.)",
+                required=False,
+            ),
         ],
         responses={200: OpenApiTypes.OBJECT},
     )
@@ -269,10 +293,12 @@ class ImagingCalendarView(APIView):
 
         calendar_data = ImagingSchedulingService.get_department_calendar(for_date, modality)
 
-        return Response({
-            "date": for_date.isoformat() if for_date else None,
-            "resources": calendar_data,
-        })
+        return Response(
+            {
+                "date": for_date.isoformat() if for_date else None,
+                "resources": calendar_data,
+            }
+        )
 
 
 class ImagingProcedureViewSet(viewsets.ReadOnlyModelViewSet):
@@ -741,9 +767,7 @@ class DICOMStudyViewSet(viewsets.ReadOnlyModelViewSet):
     def instances(self, request, study_instance_uid=None):
         """List all instances across all series in a study."""
         study = self.get_object()
-        instances_qs = DICOMInstance.objects.filter(
-            series__study=study
-        ).select_related("series")
+        instances_qs = DICOMInstance.objects.filter(series__study=study).select_related("series")
         serializer = DICOMInstanceSerializer(instances_qs, many=True)
         return Response(serializer.data)
 
@@ -769,13 +793,13 @@ class DICOMUploadView(APIView):
 
     @extend_schema(
         request={
-            'multipart/form-data': {
-                'type': 'object',
-                'properties': {
-                    'files': {'type': 'array', 'items': {'type': 'string', 'format': 'binary'}},
-                    'imaging_order': {'type': 'integer'},
-                    'patient': {'type': 'integer'},
-                }
+            "multipart/form-data": {
+                "type": "object",
+                "properties": {
+                    "files": {"type": "array", "items": {"type": "string", "format": "binary"}},
+                    "imaging_order": {"type": "integer"},
+                    "patient": {"type": "integer"},
+                },
             }
         },
         responses={200: OpenApiTypes.OBJECT},
@@ -835,17 +859,13 @@ class DICOMUploadView(APIView):
         for uploaded_file in files:
             # Write to temp file for parsing
             try:
-                with tempfile.NamedTemporaryFile(
-                    suffix=".dcm", delete=False
-                ) as tmp:
+                with tempfile.NamedTemporaryFile(suffix=".dcm", delete=False) as tmp:
                     for chunk in uploaded_file.chunks():
                         tmp.write(chunk)
                     tmp_path = tmp.name
 
                 # Validate
-                is_valid, validation_errors = DICOMParsingService.validate_dicom_file(
-                    tmp_path
-                )
+                is_valid, validation_errors = DICOMParsingService.validate_dicom_file(tmp_path)
                 if not is_valid:
                     errors.append(
                         {
@@ -878,22 +898,13 @@ class DICOMUploadView(APIView):
                     defaults={
                         "patient": patient,
                         "imaging_order": imaging_order,
-                        "study_date": metadata["study_date"]
-                        or datetime.now().date(),
+                        "study_date": metadata["study_date"] or datetime.now().date(),
                         "study_time": metadata.get("study_time"),
-                        "study_description": metadata.get(
-                            "study_description", ""
-                        ),
-                        "accession_number": metadata.get(
-                            "accession_number", ""
-                        ),
-                        "referring_physician_name": metadata.get(
-                            "referring_physician_name", ""
-                        ),
+                        "study_description": metadata.get("study_description", ""),
+                        "accession_number": metadata.get("accession_number", ""),
+                        "referring_physician_name": metadata.get("referring_physician_name", ""),
                         "modality": metadata["modality"],
-                        "institution_name": metadata.get(
-                            "institution_name", ""
-                        ),
+                        "institution_name": metadata.get("institution_name", ""),
                         "uploaded_by": request.user,
                     },
                 )
@@ -908,13 +919,9 @@ class DICOMUploadView(APIView):
                     defaults={
                         "study": dicom_study,
                         "series_number": metadata.get("series_number"),
-                        "series_description": metadata.get(
-                            "series_description", ""
-                        ),
+                        "series_description": metadata.get("series_description", ""),
                         "modality": metadata["modality"],
-                        "body_part_examined": metadata.get(
-                            "body_part_examined", ""
-                        ),
+                        "body_part_examined": metadata.get("body_part_examined", ""),
                     },
                 )
 
@@ -927,9 +934,7 @@ class DICOMUploadView(APIView):
                         "instance_number": metadata.get("instance_number"),
                         "file_path": stored_path,
                         "file_size": metadata.get("file_size", 0),
-                        "transfer_syntax_uid": metadata.get(
-                            "transfer_syntax_uid", ""
-                        ),
+                        "transfer_syntax_uid": metadata.get("transfer_syntax_uid", ""),
                         "rows": metadata.get("rows"),
                         "columns": metadata.get("columns"),
                         "bits_allocated": metadata.get("bits_allocated"),
@@ -954,12 +959,8 @@ class DICOMUploadView(APIView):
                             dicom_study.save(update_fields=["thumbnail_path"])
 
             except Exception as exc:
-                logger.exception(
-                    "Error processing DICOM file %s", uploaded_file.name
-                )
-                errors.append(
-                    {"file": uploaded_file.name, "errors": [str(exc)]}
-                )
+                logger.exception("Error processing DICOM file %s", uploaded_file.name)
+                errors.append({"file": uploaded_file.name, "errors": [str(exc)]})
                 # Clean up temp file
                 if "tmp_path" in locals() and os.path.exists(tmp_path):
                     os.unlink(tmp_path)
@@ -1023,18 +1024,18 @@ class DICOMRetrieveView(APIView):
     @extend_schema(
         responses={
             200: {
-                'type': 'string',
-                'format': 'binary',
-                'description': 'DICOM file',
+                "type": "string",
+                "format": "binary",
+                "description": "DICOM file",
             }
         },
     )
     def get(self, request, sop_instance_uid):
         """Retrieve a DICOM instance file by SOP Instance UID."""
         try:
-            instance = DICOMInstance.objects.select_related(
-                "series__study"
-            ).get(sop_instance_uid=sop_instance_uid)
+            instance = DICOMInstance.objects.select_related("series__study").get(
+                sop_instance_uid=sop_instance_uid
+            )
         except DICOMInstance.DoesNotExist:
             return Response(
                 {"error": "DICOM instance not found."},
@@ -1045,9 +1046,7 @@ class DICOMRetrieveView(APIView):
         file_path = pacs.get_absolute_path(instance.file_path)
 
         if not os.path.exists(file_path):
-            logger.error(
-                "DICOM file missing from PACS: %s", instance.file_path
-            )
+            logger.error("DICOM file missing from PACS: %s", instance.file_path)
             return Response(
                 {"error": "DICOM file not found on disk."},
                 status=status.HTTP_404_NOT_FOUND,
@@ -1136,9 +1135,9 @@ class DICOMFrameRenderView(APIView):
         from PIL import Image
 
         try:
-            instance = DICOMInstance.objects.select_related(
-                "series__study"
-            ).get(sop_instance_uid=sop_instance_uid)
+            instance = DICOMInstance.objects.select_related("series__study").get(
+                sop_instance_uid=sop_instance_uid
+            )
         except DICOMInstance.DoesNotExist:
             return Response(
                 {"error": "DICOM instance not found."},
@@ -1149,9 +1148,7 @@ class DICOMFrameRenderView(APIView):
         file_path = pacs.get_absolute_path(instance.file_path)
 
         if not os.path.exists(file_path):
-            logger.error(
-                "DICOM file missing from PACS: %s", instance.file_path
-            )
+            logger.error("DICOM file missing from PACS: %s", instance.file_path)
             return Response(
                 {"error": "DICOM file not found on disk."},
                 status=status.HTTP_404_NOT_FOUND,
@@ -1206,9 +1203,7 @@ class DICOMFrameRenderView(APIView):
             p_min = pixel_array.min()
             p_max = pixel_array.max()
             if p_max > p_min:
-                pixel_array = (
-                    (pixel_array - p_min) / (p_max - p_min) * 255
-                ).astype(np.uint8)
+                pixel_array = ((pixel_array - p_min) / (p_max - p_min) * 255).astype(np.uint8)
             else:
                 pixel_array = np.zeros_like(pixel_array, dtype=np.uint8)
 
@@ -1254,10 +1249,7 @@ def _update_study_statistics(study: DICOMStudy) -> None:
 
     for series in series_qs:
         inst_count = series.instances.count()
-        inst_size = (
-            series.instances.aggregate(total=models.Sum("file_size"))["total"]
-            or 0
-        )
+        inst_size = series.instances.aggregate(total=models.Sum("file_size"))["total"] or 0
         series.number_of_instances = inst_count
         series.total_file_size = inst_size
         series.save(update_fields=["number_of_instances", "total_file_size"])
@@ -1343,22 +1335,26 @@ class RadiologyReportViewSet(viewsets.ModelViewSet):
 
     from .models import RadiologyReport, ReportAmendment
     from .serializers import (
-        RadiologyReportSerializer,
-        RadiologyReportCreateSerializer,
-        RadiologyReportUpdateSerializer,
-        SignReportSerializer,
         AmendReportSerializer,
         CommunicateCriticalSerializer,
+        RadiologyReportCreateSerializer,
+        RadiologyReportSerializer,
+        RadiologyReportUpdateSerializer,
+        SignReportSerializer,
     )
 
-    queryset = RadiologyReport.objects.all().select_related(
-        "imaging_order",
-        "imaging_order__patient",
-        "study",
-        "reported_by",
-        "last_amended_by",
-        "critical_communicated_by",
-    ).prefetch_related("amendments", "imaging_order__items__procedure")
+    queryset = (
+        RadiologyReport.objects.all()
+        .select_related(
+            "imaging_order",
+            "imaging_order__patient",
+            "study",
+            "reported_by",
+            "last_amended_by",
+            "critical_communicated_by",
+        )
+        .prefetch_related("amendments", "imaging_order__items__procedure")
+    )
     permission_classes = [IsAuthenticated]
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = RadiologyReportFilter
@@ -1380,14 +1376,18 @@ class RadiologyReportViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         from .models import RadiologyReport
 
-        queryset = RadiologyReport.objects.all().select_related(
-            "imaging_order",
-            "imaging_order__patient",
-            "study",
-            "reported_by",
-            "last_amended_by",
-            "critical_communicated_by",
-        ).prefetch_related("amendments", "imaging_order__items__procedure")
+        queryset = (
+            RadiologyReport.objects.all()
+            .select_related(
+                "imaging_order",
+                "imaging_order__patient",
+                "study",
+                "reported_by",
+                "last_amended_by",
+                "critical_communicated_by",
+            )
+            .prefetch_related("amendments", "imaging_order__items__procedure")
+        )
 
         # Filter by imaging order if provided
         order_number = self.request.query_params.get("order", None)
@@ -1450,11 +1450,9 @@ class RadiologyReportViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        from .serializers import RadiologyReportUpdateSerializer, RadiologyReportSerializer
+        from .serializers import RadiologyReportSerializer, RadiologyReportUpdateSerializer
 
-        serializer = RadiologyReportUpdateSerializer(
-            instance, data=request.data, partial=partial
-        )
+        serializer = RadiologyReportUpdateSerializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
@@ -1647,13 +1645,7 @@ class RadiologyReportViewSet(viewsets.ModelViewSet):
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib.units import mm
-        from reportlab.platypus import (
-            Paragraph,
-            SimpleDocTemplate,
-            Spacer,
-            Table,
-            TableStyle,
-        )
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
         report = self.get_object()
 
@@ -1679,15 +1671,11 @@ class RadiologyReportViewSet(viewsets.ModelViewSet):
         )
 
         styles = getSampleStyleSheet()
-        title_style = ParagraphStyle(
-            "Title", parent=styles["Heading1"], fontSize=16, spaceAfter=12
-        )
+        title_style = ParagraphStyle("Title", parent=styles["Heading1"], fontSize=16, spaceAfter=12)
         heading_style = ParagraphStyle(
             "Heading", parent=styles["Heading2"], fontSize=12, spaceBefore=12, spaceAfter=6
         )
-        body_style = ParagraphStyle(
-            "Body", parent=styles["Normal"], fontSize=10, spaceAfter=6
-        )
+        body_style = ParagraphStyle("Body", parent=styles["Normal"], fontSize=10, spaceAfter=6)
         critical_style = ParagraphStyle(
             "Critical", parent=body_style, textColor=colors.red, fontName="Helvetica-Bold"
         )
@@ -1701,17 +1689,26 @@ class RadiologyReportViewSet(viewsets.ModelViewSet):
         # Report info table
         patient = report.imaging_order.patient
         info_data = [
-            ["Report Number:", report.report_number, "Date:", report.created_at.strftime("%Y-%m-%d")],
+            [
+                "Report Number:",
+                report.report_number,
+                "Date:",
+                report.created_at.strftime("%Y-%m-%d"),
+            ],
             ["Patient:", f"{patient.first_name} {patient.last_name}", "MRN:", patient.mrn],
             ["Order:", report.imaging_order.order_number, "Status:", report.get_status_display()],
         ]
         info_table = Table(info_data, colWidths=[30 * mm, 55 * mm, 25 * mm, 55 * mm])
-        info_table.setStyle(TableStyle([
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-            ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ]))
+        info_table.setStyle(
+            TableStyle(
+                [
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("FONTNAME", (2, 0), (2, -1), "Helvetica-Bold"),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ]
+            )
+        )
         elements.append(info_table)
         elements.append(Spacer(1, 8 * mm))
 
@@ -1787,4 +1784,3 @@ class RadiologyReportViewSet(viewsets.ModelViewSet):
         response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{report.report_number}.pdf"'
         return response
-
