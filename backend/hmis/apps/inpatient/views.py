@@ -288,6 +288,58 @@ class WardViewSet(viewsets.ModelViewSet):
             },
         })
 
+    @extend_schema(
+        summary="Generate beds for ward",
+        description=(
+            "Generate missing bed records for a ward based on its capacity. "
+            "Useful for wards that have capacity defined but no individual bed records. "
+            "Only creates beds if ward.beds.count() < ward.capacity."
+        ),
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "created": {"type": "integer", "description": "Number of beds created"},
+                    "total": {"type": "integer", "description": "Total beds after generation"},
+                    "capacity": {"type": "integer", "description": "Ward capacity"},
+                },
+            }
+        },
+        tags=["Inpatient - Wards"],
+    )
+    @action(detail=True, methods=["post"], url_path="generate_beds")
+    def generate_beds(self, request, pk=None):
+        """
+        Generate missing bed records for a ward.
+
+        Creates bed records up to the ward's capacity if fewer beds
+        currently exist than the capacity allows.
+
+        Returns:
+            created: Number of beds created
+            total: Total beds after generation
+            capacity: Ward capacity
+        """
+        ward = self.get_object()
+        existing = ward.beds.count()
+
+        if existing >= ward.capacity:
+            return Response({
+                "created": 0,
+                "total": existing,
+                "capacity": ward.capacity,
+                "message": "Ward already has enough beds",
+            })
+
+        created = ward.generate_missing_beds()
+
+        return Response({
+            "created": created,
+            "total": ward.beds.count(),
+            "capacity": ward.capacity,
+            "message": f"Generated {created} bed(s)",
+        })
+
 
 class SupervisorAlertViewSet(viewsets.ViewSet):
     """

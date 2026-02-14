@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ import {
   useCreateAdmission,
   useInpatientWards,
   useCheckWardCompatibility,
+  useGenerateWardBeds,
 } from '@/lib/hooks/use-inpatient';
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { useICD10Search } from '@/lib/hooks/use-encounter-form';
@@ -92,6 +94,24 @@ export default function NewAdmissionPage() {
   // Fetch all beds for the ward (not just available) so users see full occupancy
   const { data: beds } = useBeds({ ward: selectedWardId });
   const createAdmission = useCreateAdmission();
+  const generateBeds = useGenerateWardBeds();
+
+  // Get selected ward's capacity from wards list
+  const selectedWardCapacity = useMemo(() => {
+    const wardsList = (wards as any)?.results ?? wards ?? [];
+    const ward = wardsList.find((w: any) => String(w.id) === wardId);
+    return ward?.capacity || 0;
+  }, [wards, wardId]);
+
+  // Show toast on generate beds success/error
+  useEffect(() => {
+    if (generateBeds.isSuccess && generateBeds.data) {
+      toast.success(`Generated ${generateBeds.data.created} beds for this ward`);
+    }
+    if (generateBeds.isError) {
+      toast.error('Failed to generate beds. Please try again or contact admin.');
+    }
+  }, [generateBeds.isSuccess, generateBeds.isError, generateBeds.data]);
 
   // ICD-10 search
   const { data: icd10SearchResults, isLoading: isSearching } = useICD10Search(icd10SearchQuery);
@@ -363,6 +383,9 @@ export default function NewAdmissionPage() {
                   onSelectBed={(id) => setBedId(String(id))}
                   isLoading={!beds}
                   disabled={checkCompatibility.isPending}
+                  wardCapacity={selectedWardCapacity}
+                  onGenerateBeds={selectedWardId ? () => generateBeds.mutate(selectedWardId) : undefined}
+                  isGeneratingBeds={generateBeds.isPending}
                 />
               )}
             </div>

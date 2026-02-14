@@ -1,8 +1,9 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Bed as BedIcon, AlertTriangle, Check, Ban } from 'lucide-react';
+import { Bed as BedIcon, AlertTriangle, Check, Ban, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { cn } from '@/lib/utils/cn';
@@ -22,6 +23,12 @@ interface BedSelectionGridProps {
   onSelectBed: (bedId: number) => void;
   isLoading?: boolean;
   disabled?: boolean;
+  /** Ward capacity - if set and no beds exist, show generate beds option */
+  wardCapacity?: number;
+  /** Callback to generate missing beds */
+  onGenerateBeds?: () => void;
+  /** Whether generate beds action is in progress */
+  isGeneratingBeds?: boolean;
 }
 
 const STATUS_STYLES: Record<BedCompatibilityStatus, { bg: string; border: string; icon: string }> = {
@@ -131,6 +138,9 @@ export function BedSelectionGrid({
   onSelectBed,
   isLoading,
   disabled,
+  wardCapacity,
+  onGenerateBeds,
+  isGeneratingBeds,
 }: BedSelectionGridProps) {
   // Enrich beds with compatibility status based on the ward-level check
   const enrichedBeds = useMemo(() => {
@@ -175,13 +185,33 @@ export function BedSelectionGrid({
   }
 
   if (beds.length === 0) {
+    // Show generate beds option if ward has capacity but no beds
+    const canGenerateBeds = wardCapacity && wardCapacity > 0 && onGenerateBeds;
+    
     return (
       <div className="py-6 text-center text-muted-foreground">
         <BedIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
         <p className="text-sm">No beds configured for this ward</p>
-        <p className="text-xs text-muted-foreground/60 mt-1">
-          Contact admin to add beds to this ward
-        </p>
+        {canGenerateBeds ? (
+          <>
+            <p className="text-xs text-muted-foreground/60 mt-1 mb-3">
+              Ward has capacity for {wardCapacity} beds. Generate bed records to continue.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onGenerateBeds}
+              disabled={isGeneratingBeds}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              {isGeneratingBeds ? 'Generating...' : `Generate ${wardCapacity} Beds`}
+            </Button>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground/60 mt-1">
+            Contact admin to add beds to this ward
+          </p>
+        )}
       </div>
     );
   }
