@@ -15,9 +15,23 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import LabOrder, LabOrderItem, LabResult, LabResultAttachment, LOINCCode, TestCatalog
+from .models import (
+    AnalyzerRun,
+    Instrument,
+    LabOrder,
+    LabOrderItem,
+    LabResult,
+    LabResultAttachment,
+    LOINCCode,
+    TestCatalog,
+)
 from .reports import LabReportService
 from .serializers import (
+    AnalyzerRunCreateSerializer,
+    AnalyzerRunMarkErrorSerializer,
+    AnalyzerRunSerializer,
+    InstrumentCreateSerializer,
+    InstrumentSerializer,
     LabOrderCreateSerializer,
     LabOrderItemSerializer,
     LabOrderSerializer,
@@ -922,3 +936,114 @@ class LabSampleRejectionReportView(APIView):
         start_date, end_date = _parse_date_range(request)
         data = LabReportService.sample_rejection_report(start_date, end_date)
         return Response(data)
+
+
+# ============================================================================
+# Phase L3 — Analyzer Integration Support
+# ============================================================================
+
+
+class InstrumentFilter(filters.FilterSet):
+    """Filter for instruments."""
+
+    search = filters.CharFilter(method="filter_search")
+
+    class Meta:
+        model = Instrument
+        fields = {
+            "is_active": ["exact"],
+            "interface_type": ["exact"],
+            "department": ["exact", "icontains"],
+        }
+
+    def filter_search(self, queryset, name, value):
+        """Search by code or name."""
+        return queryset.filter(
+            models.Q(code__icontains=value) | models.Q(name__icontains=value)
+        )
+
+
+class InstrumentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for laboratory instruments.
+
+    Provides CRUD operations for managing lab analyzers and instruments.
+    """
+
+    queryset = Instrument.objects.all()
+    permission_classes = [IsAuthenticated]
+    filterset_class = InstrumentFilter
+
+    def get_serializer_class(self):
+        if self.action in ["create", "update", "partial_update"]:
+            return InstrumentCreateSerializer
+        return InstrumentSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Default to showing only active instruments unless filtered
+        if "is_active" not in self.request.query_params:
+            queryset = queryset.filter(is_active=True)
+        return queryset
+
+
+class AnalyzerRunFilter(filters.FilterSet):
+    """Filter for analyzer runs."""
+
+    specimen_barcode = filters.CharFilter(field_name="specimen__barcode")
+    order_number = filters.CharFilter(field_name="specimen__lab_order__order_number")
+
+    class Meta:
+        model = AnalyzerRun
+        fields = {
+            "status": ["exact"],
+            "instrument": ["exact"],
+            "run_datetime": ["gte", "lte"],
+        }
+
+
+class AnalyzerRunViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for analyzer runs.
+
+    Provides CRUD operations for managing raw analyzer data and
+    tracking instrument message processing.
+    """
+
+    queryset = AnalyzerRun.objects.select_related(
+        "specimen", "instrument", "operator"
+    ).all()
+    permission_classes = [IsAuthenticated]
+    filterset_class = AnalyzerRunFilter
+
+    def get_serializer_class(self):
+        if self.action in ["create"]:
+            return AnalyzerRunCreateSerializer
+        if self.action == "mark_error":
+            return AnalyzerRunMarkErrorSerializer
+        return AnalyzerRunSerializer
+
+    @action(detail=True, methods=["post"])
+    def mark_error(self, request, pk=None):
+        """Mark this analyzer run as failed with an error message."""
+        run = self.get_object()
+        serializer = AnalyzerRunMarkErrorSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        run.mark_error(serializer.validated_data["error_message"])
+        return Response(AnalyzerRunSerializer(run).data)
+
+    @action(detail=True, methods=["post"])
+    def mark_applied(self, request, pk=None):
+        """Mark this analyzer run as applied (results created)."""
+        run = self.get_object()
+
+        if run.status != AnalyzerRun.Status.PARSED:
+            return Response(
+                {"detail": "Can only mark PARSED runs as APPLIED."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        run.mark_applied()
+        return Response(AnalyzerRunSerializer(run).data)
+

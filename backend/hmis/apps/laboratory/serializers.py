@@ -8,6 +8,8 @@ from typing import Optional
 from rest_framework import serializers
 
 from .models import (
+    AnalyzerRun,
+    Instrument,
     LabOrder,
     LabOrderItem,
     LabQueue,
@@ -665,3 +667,133 @@ class ResultValidationCreateSerializer(serializers.Serializer):
         help_text="Validation decision",
     )
     comment = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+# ============================================================================
+# Phase L3 — Analyzer Integration Support
+# ============================================================================
+
+
+class InstrumentSerializer(serializers.ModelSerializer):
+    """Serializer for laboratory instruments."""
+
+    interface_type_display = serializers.CharField(
+        source="get_interface_type_display", read_only=True
+    )
+
+    class Meta:
+        model = Instrument
+        fields = [
+            "id",
+            "code",
+            "name",
+            "manufacturer",
+            "model",
+            "serial_number",
+            "department",
+            "is_active",
+            "interface_type",
+            "interface_type_display",
+            "integration_config",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at", "interface_type_display"]
+
+
+class InstrumentCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating instruments."""
+
+    class Meta:
+        model = Instrument
+        fields = [
+            "code",
+            "name",
+            "manufacturer",
+            "model",
+            "serial_number",
+            "department",
+            "is_active",
+            "interface_type",
+            "integration_config",
+        ]
+
+    def validate_code(self, value: str) -> str:
+        """Ensure code is uppercase."""
+        return value.upper()
+
+
+class AnalyzerRunSerializer(serializers.ModelSerializer):
+    """Serializer for analyzer runs."""
+
+    specimen_barcode = serializers.CharField(source="specimen.barcode", read_only=True)
+    instrument_code = serializers.CharField(source="instrument.code", read_only=True)
+    instrument_name = serializers.CharField(source="instrument.name", read_only=True)
+    operator_name = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = AnalyzerRun
+        fields = [
+            "id",
+            "specimen",
+            "specimen_barcode",
+            "instrument",
+            "instrument_code",
+            "instrument_name",
+            "operator",
+            "operator_name",
+            "run_datetime",
+            "raw_message",
+            "raw_payload",
+            "status",
+            "status_display",
+            "error_message",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "specimen_barcode",
+            "instrument_code",
+            "instrument_name",
+            "operator_name",
+            "status_display",
+            "created_at",
+        ]
+
+    def get_operator_name(self, obj) -> Optional[str]:
+        if obj.operator:
+            return obj.operator.get_full_name() or obj.operator.username
+        return None
+
+
+class AnalyzerRunCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating analyzer runs."""
+
+    class Meta:
+        model = AnalyzerRun
+        fields = [
+            "specimen",
+            "instrument",
+            "operator",
+            "run_datetime",
+            "raw_message",
+            "raw_payload",
+            "status",
+        ]
+
+    def validate(self, attrs):
+        """Validate that specimen belongs to an active lab order."""
+        specimen = attrs.get("specimen")
+        if specimen and specimen.status == "DISPOSED":
+            raise serializers.ValidationError(
+                {"specimen": "Cannot add analyzer run to disposed specimen."}
+            )
+        return attrs
+
+
+class AnalyzerRunMarkErrorSerializer(serializers.Serializer):
+    """Serializer for marking an analyzer run as error."""
+
+    error_message = serializers.CharField(required=True, help_text="Error details")
+
