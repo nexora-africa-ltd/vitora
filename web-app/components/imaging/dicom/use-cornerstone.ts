@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { DICOMViewerTool } from '@/lib/types/imaging';
+import { tokenStorage } from '@/lib/auth/storage';
 
 // =============================================================================
 // MODULE REFERENCES (populated after dynamic import)
@@ -67,8 +68,7 @@ export async function initCornerstone(): Promise<void> {
       },
       // Configure request headers for authentication
       beforeSend: (xhr: XMLHttpRequest) => {
-        // Get token from localStorage
-        const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+        const token = tokenStorage.getAccessToken();
         if (token) {
           xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         }
@@ -86,7 +86,7 @@ export async function initCornerstone(): Promise<void> {
     if (dicomImageLoader.wadouri?.configure) {
       dicomImageLoader.wadouri.configure({
         beforeSend: (xhr: XMLHttpRequest) => {
-          const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+          const token = tokenStorage.getAccessToken();
           if (token) {
             xhr.setRequestHeader('Authorization', `Bearer ${token}`);
           }
@@ -221,6 +221,7 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
   // Initialize Cornerstone and create viewport
   useEffect(() => {
     let mounted = true;
+    let resizeObserver: ResizeObserver | null = null;
 
     async function setup() {
       if (!containerRef.current || imageUrls.length === 0) return;
@@ -257,6 +258,20 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
           type: Enums?.ViewportType?.STACK ?? 'stack',
         };
         renderingEngine.enableElement(viewportInput);
+
+        // Keep the rendering engine in sync with the container size.
+        // Without this, the canvas can be CSS-scaled which causes visible stretching/distortion.
+        if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
+          resizeObserver?.disconnect();
+          resizeObserver = new ResizeObserver(() => {
+            const engine = renderingEngineRef.current;
+            if (!engine) return;
+            // keepCamera=true preserves current zoom/pan while resizing.
+            engine.resize(true, true);
+            engine.getViewport(viewportId)?.render();
+          });
+          resizeObserver.observe(element);
+        }
 
         // Get the stack viewport
         const viewport = renderingEngine.getViewport(viewportId);
@@ -320,6 +335,8 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
 
     return () => {
       mounted = false;
+      resizeObserver?.disconnect();
+      resizeObserver = null;
       // Cleanup
       if (renderingEngineRef.current) {
         renderingEngineRef.current.destroy();
