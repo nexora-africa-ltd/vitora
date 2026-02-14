@@ -256,7 +256,17 @@ export const PaginatedPatientDetailSchema = patientPaginatedResponse(PatientSche
 /**
  * Emergency contacts array response
  */
-export const EmergencyContactArrayResponseSchema = z.array(EmergencyContactSchema);
+export const EmergencyContactArrayResponseSchema = z.union([
+  // Some endpoints return a raw list
+  z.array(EmergencyContactSchema),
+  // DRF pagination (common when global pagination is enabled)
+  z.object({
+    count: z.number(),
+    next: z.string().nullable(),
+    previous: z.string().nullable(),
+    results: z.array(EmergencyContactSchema),
+  }),
+]);
 
 /**
  * Patient encounters array response
