@@ -1,15 +1,20 @@
+"""SMS Gateway module for sending SMS via Africa's Talking."""
+
+import logging
+
 from django.conf import settings
 import africastalking
+
+logger = logging.getLogger(__name__)
 
 
 class SMSGateway:
     """
     Simple wrapper around the Africa's Talking SMS client used to send
-        )
-        self.sms = africastalking.SMS
+    SMS messages.
 
-    def send_reminder(self, phone: str, message: str):
-        return self.sms.send(message, [phone], sender_id=settings.SMS_SENDER_ID)
+    The gateway requires the following Django settings to be configured:
+
     * ``AT_USERNAME`` - Africa's Talking application username.
     * ``AT_API_KEY`` - API key for authenticating with Africa's Talking.
     * ``SMS_SENDER_ID`` - Sender ID to be used when sending SMS messages.
@@ -42,15 +47,14 @@ class SMSGateway:
             phone: The recipient's phone number in international format.
             message: The message body to send.
 
+        Raises:
+            RuntimeError: If the SMS delivery fails for any reason.
+
         The message is sent using the Africa's Talking SMS service configured
         in ``__init__``, with the sender ID taken from
         ``settings.SMS_SENDER_ID``. The underlying client is responsible for
         performing the HTTP request and raising any errors on failure.
         """
-        self.sms.send(message, [phone], sender_id=settings.SMS_SENDER_ID)
-        self.sms = africastalking.SMS
-
-    def send_reminder(self, phone: str, message: str):
         try:
             self.sms.send(message, [phone], sender_id=settings.SMS_SENDER_ID)
         except Exception as exc:
