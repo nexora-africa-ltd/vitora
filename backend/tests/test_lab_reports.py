@@ -113,15 +113,17 @@ def report_data(sample_patient, sample_encounter, test_user, another_user, lab_t
     queue2 = LabQueue.objects.get(lab_order=order2)
     queue3 = LabQueue.objects.get(lab_order=order3)
 
-    queue1.collected_at = entered_at_1 - timedelta(hours=1)
+    queue1.specimen.collected_at = entered_at_1 - timedelta(hours=1)
     queue1.processing_started_at = entered_at_1 - timedelta(minutes=30)
     queue1.released_at = verified_at_1
-    queue1.save(update_fields=["collected_at", "processing_started_at", "released_at"])
+    queue1.specimen.save(update_fields=["collected_at"])
+    queue1.save(update_fields=["processing_started_at", "released_at"])
 
-    queue2.collected_at = entered_at_2 - timedelta(hours=2)
+    queue2.specimen.collected_at = entered_at_2 - timedelta(hours=2)
     queue2.processing_started_at = entered_at_2 - timedelta(hours=1)
     queue2.released_at = verified_at_2
-    queue2.save(update_fields=["collected_at", "processing_started_at", "released_at"])
+    queue2.specimen.save(update_fields=["collected_at"])
+    queue2.save(update_fields=["processing_started_at", "released_at"])
 
     queue3.rejection_reason = "Hemolyzed sample"
     queue3.save(update_fields=["rejection_reason"])

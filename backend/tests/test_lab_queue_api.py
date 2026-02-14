@@ -167,6 +167,8 @@ class TestLabQueueCollectSample:
         sample_lab_queue.refresh_from_db()
         assert sample_lab_queue.queue_status == "COLLECTED"
         assert sample_lab_queue.sample_id == "TUBE-001"
+        assert sample_lab_queue.specimen is not None
+        assert sample_lab_queue.specimen.barcode == "TUBE-001"
 
     def test_collect_sample_already_collected(self, authenticated_client, sample_lab_queue):
         """Should handle already collected samples."""

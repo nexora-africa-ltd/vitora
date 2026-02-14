@@ -140,6 +140,9 @@ class TestCreateLabQueueEntrySignal:
         assert queue.queue_status == "PENDING"
         assert queue.priority == "ROUTINE"
         assert queue.sample_type == "BLOOD"
+        assert queue.specimen is not None
+        assert queue.specimen.specimen_type == "BLOOD"
+        assert queue.specimen.barcode == queue.queue_number
 
     def test_queue_created_for_in_house_order_with_draft_status(
         self, lab_patient, lab_encounter, lab_user, lab_test_catalog
@@ -163,6 +166,7 @@ class TestCreateLabQueueEntrySignal:
         assert LabQueue.objects.filter(lab_order=order).exists()
         queue = LabQueue.objects.get(lab_order=order)
         assert queue.priority == "URGENT"
+        assert queue.specimen is not None
 
     def test_queue_not_created_for_external_order(
         self, lab_patient, lab_encounter, lab_user, lab_test_catalog
@@ -243,6 +247,8 @@ class TestCreateLabQueueEntrySignal:
         # Queue sample_type comes from the first item's test.specimen_type
         # or defaults to BLOOD if test has no specimen_type
         assert queue.sample_type in ["URINE", "BLOOD"]  # Either is valid based on signal timing
+        assert queue.specimen is not None
+        assert queue.specimen.specimen_type in ["URINE", "BLOOD"]
 
 
 # ============================================================================

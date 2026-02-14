@@ -376,6 +376,12 @@ class LabResultCreateSerializer(serializers.ModelSerializer):
         entered_by = self.context["request"].user
         result = LabResult.objects.create(entered_by=entered_by, **validated_data)
 
+        if result.specimen is None:
+            queue_entry = getattr(result.order_item.lab_order, "queue_entry", None)
+            if queue_entry and queue_entry.specimen:
+                result.specimen = queue_entry.specimen
+                result.save(update_fields=["specimen"])
+
         # Auto-flag numeric results if not manually set
         if result.numeric_value is not None and not result.result_flag:
             result.auto_flag_result()
@@ -419,6 +425,12 @@ class LabQueueSerializer(serializers.ModelSerializer):
     collected_by_name = serializers.SerializerMethodField()
     reviewed_by_name = serializers.SerializerMethodField()
 
+    specimen_id = serializers.IntegerField(source="specimen.id", read_only=True)
+    sample_type = serializers.SerializerMethodField()
+    sample_id = serializers.SerializerMethodField()
+    collected_by = serializers.SerializerMethodField()
+    collected_at = serializers.SerializerMethodField()
+
     # TAT fields
     expected_tat_hours = serializers.SerializerMethodField()
     elapsed_hours = serializers.SerializerMethodField()
@@ -436,6 +448,7 @@ class LabQueueSerializer(serializers.ModelSerializer):
             "tests",
             "priority",
             "queue_status",
+            "specimen_id",
             "sample_type",
             "sample_id",
             "assigned_technician",
@@ -461,6 +474,7 @@ class LabQueueSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "queue_number",
+            "specimen_id",
             "created_at",
             "updated_at",
         ]
@@ -480,9 +494,29 @@ class LabQueueSerializer(serializers.ModelSerializer):
         return None
 
     def get_collected_by_name(self, obj) -> Optional[str]:
-        if obj.collected_by:
-            return obj.collected_by.get_full_name() or obj.collected_by.username
+        collected_by = obj.specimen.collected_by if obj.specimen else obj.collected_by
+        if collected_by:
+            return collected_by.get_full_name() or collected_by.username
         return None
+
+    def get_sample_type(self, obj) -> Optional[str]:
+        if obj.specimen:
+            return obj.specimen.specimen_type
+        return obj.sample_type or "BLOOD"
+
+    def get_sample_id(self, obj) -> Optional[str]:
+        if obj.specimen:
+            return obj.specimen.barcode
+        return obj.sample_id or None
+
+    def get_collected_by(self, obj) -> Optional[int]:
+        if obj.specimen and obj.specimen.collected_by:
+            return obj.specimen.collected_by_id
+        return obj.collected_by_id
+
+    def get_collected_at(self, obj) -> Optional[str]:
+        collected_at = obj.specimen.collected_at if obj.specimen else obj.collected_at
+        return collected_at
 
     def get_reviewed_by_name(self, obj) -> Optional[str]:
         if obj.reviewed_by:
@@ -522,7 +556,13 @@ class LabQueueSerializer(serializers.ModelSerializer):
 class LabQueueCollectSerializer(serializers.Serializer):
     """Serializer for sample collection action."""
 
+    barcode = serializers.CharField(required=False, allow_blank=True, default="")
     sample_id = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def validate(self, attrs):
+        if not attrs.get("barcode") and attrs.get("sample_id"):
+            attrs["barcode"] = attrs["sample_id"]
+        return attrs
 
 
 class LabQueueAssignSerializer(serializers.Serializer):

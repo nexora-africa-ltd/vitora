@@ -213,6 +213,10 @@ class TestLabQueueModel:
         assert queue.collected_by == sample_user
         assert queue.sample_id == sample_id
         assert queue.collected_at is not None
+        assert queue.specimen is not None
+        assert queue.specimen.barcode == sample_id
+        assert queue.specimen.collected_by == sample_user
+        assert queue.specimen.collected_at is not None
 
     def test_sample_id_recorded(self, sample_lab_order, sample_user):
         """Barcode/tube ID should be stored."""
@@ -226,6 +230,8 @@ class TestLabQueueModel:
 
         queue.refresh_from_db()
         assert queue.sample_id == barcode
+        assert queue.specimen is not None
+        assert queue.specimen.barcode == barcode
 
     def test_start_processing(self, sample_lab_order, lab_technician):
         """Status should change to processing."""
