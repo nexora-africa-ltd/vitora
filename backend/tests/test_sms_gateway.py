@@ -132,9 +132,11 @@ class TestSMSErrorHandling:
         with pytest.raises(RuntimeError):
             gateway.send_reminder(phone, "Test")
 
-        # Verify phone number is in log message
-        log_call = mock_logger.exception.call_args[0][0]
-        assert phone in log_call
+        # Verify phone number is in log message args
+        # logger.exception is called with format string and args
+        mock_logger.exception.assert_called_once()
+        call_args = mock_logger.exception.call_args[0]
+        assert phone in call_args  # phone is passed as argument to format string
 
     @patch('hmis.apps.core.sms_gateway.africastalking')
     def test_send_reminder_preserves_original_exception(self, mock_at):
