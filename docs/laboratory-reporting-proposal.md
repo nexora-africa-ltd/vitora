@@ -272,6 +272,48 @@ This plan is intentionally incremental to reduce risk.
 - **Extended edge case tests**: Empty date ranges, single result scenarios
 
 
+### Pre-Phase C — External Code Mapping Foundation
+
+**Goal**: Enable HL7/MLLP integration to resolve external LIS test codes to internal `TestCatalog` entries without hardcoding.
+
+**Why this is needed**:
+- Phase C HL7 parser will receive ORU messages with external test codes (e.g., `"12345"` from vendor LIS)
+- Must map these to internal `TestCatalog.code` (e.g., `"CBC"`)
+- Without a mapping layer, code resolution is hardcoded and unmaintainable
+- This is also foundational for future SHA/NHIF tariff mappings
+
+**Deliverables**:
+- Add `ExternalCodeMapping` model to `core` app:
+  ```python
+  class ExternalCodeMapping(models.Model):
+      """Maps external system codes to internal Vitora codes."""
+      code_system = models.CharField(max_length=100)  # e.g., "LIS_ACME", "NHIF", "LOINC"
+      external_code = models.CharField(max_length=100)
+      content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+      object_id = models.PositiveIntegerField()
+      internal_object = GenericForeignKey('content_type', 'object_id')
+      display_name = models.CharField(max_length=255, blank=True)  # Cache external display
+      is_active = models.BooleanField(default=True)
+      created_at = models.DateTimeField(auto_now_add=True)
+      
+      class Meta:
+          unique_together = ['code_system', 'external_code']
+          indexes = [models.Index(fields=['code_system', 'external_code'])]
+  ```
+- Add admin interface for mapping management
+- Add lookup utility: `ExternalCodeMapping.resolve(code_system, external_code) -> Model | None`
+- Add basic tests for mapping CRUD and lookup
+
+**Effort**: ~2-4 hours (low risk, high ROI)
+
+**Acceptance criteria**:
+- External code `("LIS_ACME", "12345")` can be mapped to `TestCatalog` instance
+- Lookup returns `None` for unmapped codes (HL7 parser handles gracefully)
+- Admin can add/edit/deactivate mappings
+
+**Ref**: `docs/terminology-strategy.md` for full terminology architecture vision
+
+
 ### Phase C — External exchange wiring (HL7/MLLP) behind flags
 
 **Goal**: Turn the HL7/MLLP scaffolding into an optional working integration seam.
@@ -319,14 +361,16 @@ This plan is intentionally incremental to reduce risk.
 
 1. ~~Phase A: normalize attachments + unify requisition generator.~~ ✅ **COMPLETED**
 2. ~~**Phase B: implement lab analytics services + endpoints + tests.**~~ ✅ **COMPLETED**
-3. **Phase C: wire HL7/MLLP in a feature-flagged, testable manner.** ← Next
-4. (Optional) Phase B+ enhancements: percentile TAT, category grouping, time-to-notify metrics
+3. **Pre-Phase C: add `ExternalCodeMapping` model for external code resolution.** ← Next (2-4 hours)
+4. **Phase C: wire HL7/MLLP in a feature-flagged, testable manner.**
+5. (Optional) Phase B+ enhancements: percentile TAT, category grouping, time-to-notify metrics
 
 ---
 
 ## 10) References
 
 - `docs/labsyncgap.md`
+- `docs/terminology-strategy.md` (terminology architecture and external code mapping strategy)
 - `docs/sprint-1.3-1.4-track-b-lab-deliverables.md`
 - `docs/sprint-1.5-1.6-track-b-lab-workflow-deliverables.md`
 - `backend/hmis/apps/laboratory/` (models, views, signals, websockets, services)
