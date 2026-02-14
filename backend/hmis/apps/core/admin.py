@@ -8,6 +8,7 @@ from .models import (
     AuditLog,
     County,
     Department,
+    ExternalCodeMapping,
     NetworkStatus,
     Role,
     StaffProfile,
@@ -530,3 +531,76 @@ class StaffProfileAdmin(admin.ModelAdmin):
             )
 
         return response
+
+
+@admin.register(ExternalCodeMapping)
+class ExternalCodeMappingAdmin(admin.ModelAdmin):
+    """Admin configuration for ExternalCodeMapping model."""
+
+    list_display = [
+        "code_system",
+        "external_code",
+        "external_display",
+        "content_type",
+        "object_id",
+        "relationship",
+        "is_active",
+        "updated_at",
+    ]
+    list_filter = [
+        "code_system",
+        "content_type",
+        "relationship",
+        "is_active",
+    ]
+    search_fields = [
+        "external_code",
+        "external_display",
+        "code_system",
+        "notes",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    raw_id_fields = ["content_type"]
+    ordering = ["code_system", "external_code"]
+
+    fieldsets = (
+        (
+            "External System",
+            {
+                "fields": (
+                    "code_system",
+                    "external_code",
+                    "external_display",
+                )
+            },
+        ),
+        (
+            "Internal Entity",
+            {
+                "fields": (
+                    "content_type",
+                    "object_id",
+                )
+            },
+        ),
+        (
+            "Mapping Metadata",
+            {
+                "fields": (
+                    "relationship",
+                    "is_active",
+                    "notes",
+                )
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ["collapse"],
+            },
+        ),
+    )

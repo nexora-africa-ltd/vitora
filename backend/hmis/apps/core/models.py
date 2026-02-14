@@ -7,6 +7,8 @@ and sync-related models for offline-first functionality.
 """
 
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
 
@@ -1637,3 +1639,195 @@ class IdempotencyKey(models.Model):
         cutoff = timezone.now() - timedelta(hours=hours)
         deleted, _ = cls.objects.filter(created_at__lt=cutoff).delete()
         return deleted
+
+
+class ExternalCodeMapping(models.Model):
+    """
+    Maps external system codes to internal Vitora entities.
+
+    This model provides a translation layer between external systems (LIS vendors,
+    SHA/NHIF tariffs, LOINC, etc.) and internal Vitora entities (TestCatalog,
+    ICD10Code, future ProcedureCatalog, DrugCatalog, etc.).
+
+    Supports any model via GenericForeignKey, enabling flexible mapping without
+    requiring changes to domain models.
+
+    Example usage:
+        # In HL7 ORU parser
+        test = ExternalCodeMapping.resolve('LIS_ACME', '12345')
+        if test:
+            LabResult.objects.create(order_item=item, ...)
+
+    Attributes:
+        code_system: External system identifier (e.g., 'LIS_ACME', 'SHA_TARIFF')
+        external_code: Code in the external system
+        external_display: Display name in external system (for reference)
+        internal_object: The internal Vitora entity (via GenericForeignKey)
+        relationship: How the codes relate (equivalent, broader, narrower, related)
+        is_active: Whether this mapping is currently active
+        notes: Additional notes about the mapping
+    """
+
+    # Relationship type choices
+    RELATIONSHIP_CHOICES = [
+        ("EQUIVALENT", "Equivalent"),
+        ("BROADER", "Broader"),
+        ("NARROWER", "Narrower"),
+        ("RELATED", "Related"),
+    ]
+
+    # External system identifier
+    code_system = models.CharField(
+        max_length=100,
+        db_index=True,
+        help_text="External system ID, e.g., 'LIS_ACME', 'SHA_TARIFF', 'NHIF_2025', 'LOINC'",
+    )
+    external_code = models.CharField(
+        max_length=100,
+        db_index=True,
+        help_text="Code in the external system",
+    )
+    external_display = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Display name in external system (for reference)",
+    )
+
+    # Internal Vitora entity (generic)
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        help_text="Type of internal Vitora entity",
+    )
+    object_id = models.PositiveIntegerField(
+        help_text="ID of the internal Vitora entity",
+    )
+    internal_object = GenericForeignKey("content_type", "object_id")
+
+    # Mapping metadata
+    relationship = models.CharField(
+        max_length=20,
+        choices=RELATIONSHIP_CHOICES,
+        default="EQUIVALENT",
+        help_text="How the external code relates to the internal entity",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Whether this mapping is currently active",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Additional notes about this mapping",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When this mapping was created",
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="When this mapping was last updated",
+    )
+
+    class Meta:
+        """Meta options for ExternalCodeMapping model."""
+
+        unique_together = ["code_system", "external_code"]
+        indexes = [
+            models.Index(fields=["code_system", "external_code"]),
+            models.Index(fields=["content_type", "object_id"]),
+        ]
+        verbose_name = "External Code Mapping"
+        verbose_name_plural = "External Code Mappings"
+
+    def __str__(self) -> str:
+        """String representation of the mapping."""
+        return f"{self.code_system}:{self.external_code} → {self.internal_object}"
+
+    @classmethod
+    def resolve(cls, code_system: str, external_code: str):
+        """
+        Resolve an external code to its internal Vitora object.
+
+        Args:
+            code_system: The external system identifier
+            external_code: The code in the external system
+
+        Returns:
+            The internal Vitora object, or None if not mapped.
+        """
+        try:
+            mapping = cls.objects.select_related("content_type").get(
+                code_system=code_system,
+                external_code=external_code,
+                is_active=True,
+            )
+            return mapping.internal_object
+        except cls.DoesNotExist:
+            return None
+
+    @classmethod
+    def resolve_or_raise(cls, code_system: str, external_code: str):
+        """
+        Resolve an external code or raise DoesNotExist.
+
+        Args:
+            code_system: The external system identifier
+            external_code: The code in the external system
+
+        Returns:
+            The internal Vitora object.
+
+        Raises:
+            ExternalCodeMapping.DoesNotExist: If no active mapping exists.
+        """
+        mapping = cls.objects.select_related("content_type").get(
+            code_system=code_system,
+            external_code=external_code,
+            is_active=True,
+        )
+        return mapping.internal_object
+
+    @classmethod
+    def get_mappings_for_object(cls, obj):
+        """
+        Get all external mappings for a given internal object.
+
+        Args:
+            obj: The internal Vitora object
+
+        Returns:
+            QuerySet of ExternalCodeMapping instances.
+        """
+        content_type = ContentType.objects.get_for_model(obj)
+        return cls.objects.filter(
+            content_type=content_type,
+            object_id=obj.pk,
+            is_active=True,
+        )
+
+    @classmethod
+    def get_external_code(cls, obj, code_system: str) -> str | None:
+        """
+        Get the external code for an internal object in a specific code system.
+
+        Args:
+            obj: The internal Vitora object
+            code_system: The external system identifier
+
+        Returns:
+            The external code string, or None if not mapped.
+        """
+        content_type = ContentType.objects.get_for_model(obj)
+        try:
+            mapping = cls.objects.get(
+                content_type=content_type,
+                object_id=obj.pk,
+                code_system=code_system,
+                is_active=True,
+            )
+            return mapping.external_code
+        except cls.DoesNotExist:
+            return None
