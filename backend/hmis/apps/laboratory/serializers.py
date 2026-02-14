@@ -9,6 +9,7 @@ from rest_framework import serializers
 
 from .models import (
     AnalyzerRun,
+    DiagnosticReport,
     Instrument,
     LabOrder,
     LabOrderItem,
@@ -796,4 +797,139 @@ class AnalyzerRunMarkErrorSerializer(serializers.Serializer):
     """Serializer for marking an analyzer run as error."""
 
     error_message = serializers.CharField(required=True, help_text="Error details")
+
+
+# ============================================================================
+# Phase L4 — Diagnostic Report Serializers
+# ============================================================================
+
+
+class DiagnosticReportSerializer(serializers.ModelSerializer):
+    """Serializer for reading diagnostic reports."""
+
+    lab_order_number = serializers.CharField(source="lab_order.order_number", read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    issued_by_name = serializers.SerializerMethodField()
+    amended_by_name = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    is_finalized = serializers.BooleanField(read_only=True)
+    pdf_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DiagnosticReport
+        fields = [
+            "id",
+            "report_number",
+            "lab_order",
+            "lab_order_number",
+            "patient_name",
+            "status",
+            "status_display",
+            "is_finalized",
+            "issued_by",
+            "issued_by_name",
+            "issued_at",
+            "conclusion",
+            "clinical_info",
+            "amended_by",
+            "amended_by_name",
+            "amended_at",
+            "cancellation_reason",
+            "pdf_file",
+            "pdf_url",
+            "fhir_resource_id",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "report_number",
+            "lab_order_number",
+            "patient_name",
+            "status_display",
+            "is_finalized",
+            "issued_by_name",
+            "amended_by_name",
+            "pdf_url",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_patient_name(self, obj) -> str:
+        """Get patient full name from lab order."""
+        return str(obj.lab_order.patient)
+
+    def get_issued_by_name(self, obj) -> str:
+        """Get name of user who issued the report."""
+        if obj.issued_by:
+            return obj.issued_by.get_full_name() or obj.issued_by.username
+        return ""
+
+    def get_amended_by_name(self, obj) -> Optional[str]:
+        """Get name of user who amended the report."""
+        if obj.amended_by:
+            return obj.amended_by.get_full_name() or obj.amended_by.username
+        return None
+
+    def get_pdf_url(self, obj) -> Optional[str]:
+        """Get URL for the PDF file if it exists."""
+        if obj.pdf_file:
+            request = self.context.get("request")
+            if request:
+                return request.build_absolute_uri(obj.pdf_file.url)
+            return obj.pdf_file.url
+        return None
+
+
+class DiagnosticReportCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating diagnostic reports."""
+
+    class Meta:
+        model = DiagnosticReport
+        fields = [
+            "lab_order",
+            "conclusion",
+            "clinical_info",
+            "fhir_resource_id",
+        ]
+
+    def create(self, validated_data):
+        """Create report with issued_by set to current user."""
+        validated_data["issued_by"] = self.context["request"].user
+        return super().create(validated_data)
+
+
+class DiagnosticReportUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating diagnostic reports (draft only)."""
+
+    class Meta:
+        model = DiagnosticReport
+        fields = [
+            "conclusion",
+            "clinical_info",
+            "fhir_resource_id",
+            "status",
+        ]
+
+    def validate_status(self, value):
+        """Prevent direct status changes on finalized reports."""
+        instance = self.instance
+        if instance and instance.is_finalized:
+            if value != instance.status:
+                raise serializers.ValidationError(
+                    "Cannot change status of finalized report. Use amend or cancel actions."
+                )
+        return value
+
+
+class DiagnosticReportAmendSerializer(serializers.Serializer):
+    """Serializer for amending a diagnostic report."""
+
+    conclusion = serializers.CharField(required=True, help_text="Updated conclusion text")
+
+
+class DiagnosticReportCancelSerializer(serializers.Serializer):
+    """Serializer for cancelling a diagnostic report."""
+
+    reason = serializers.CharField(required=True, help_text="Reason for cancellation")
 
