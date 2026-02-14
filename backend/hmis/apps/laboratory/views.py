@@ -12,13 +12,15 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import LabOrder, LabOrderItem, LabResult, LOINCCode, TestCatalog
+from .models import LabOrder, LabOrderItem, LabResult, LabResultAttachment, LOINCCode, TestCatalog
 from .serializers import (
     LabOrderCreateSerializer,
     LabOrderItemSerializer,
     LabOrderSerializer,
     LabResultCreateSerializer,
     LabResultSerializer,
+    LabResultAttachmentCreateSerializer,
+    LabResultAttachmentSerializer,
     LabResultVerifySerializer,
     LOINCCodeSerializer,
     TestCatalogDetailSerializer,
@@ -171,16 +173,19 @@ class LabOrderViewSet(viewsets.ModelViewSet):
         """Generate PDF requisition for external lab."""
         from django.http import HttpResponse
 
-        from .external import ExternalLabRequisition
+        from .services.requisition import ExternalLabRequisition
 
         order = self.get_object()
         try:
-            pdf_bytes = ExternalLabRequisition.generate_pdf(order)
+            pdf_buffer = ExternalLabRequisition(order).generate_pdf()
+            pdf_bytes = pdf_buffer.getvalue()
             response = HttpResponse(pdf_bytes, content_type="application/pdf")
             response["Content-Disposition"] = (
                 f'attachment; filename="lab_requisition_{order.order_number}.pdf"'
             )
             return response
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception:
             logger.exception("Error generating requisition PDF for order %s", order.pk)
             return Response(
@@ -194,6 +199,32 @@ class LabOrderViewSet(viewsets.ModelViewSet):
         order = self.get_object()
         alerts = LabAlertService.check_critical_results(order)
         return Response({"alerts": alerts})
+
+    @action(
+        detail=True,
+        methods=["get", "post"],
+        url_path="attachments",
+        parser_classes=[MultiPartParser, FormParser],
+    )
+    def attachments(self, request, order_number=None):
+        """List or upload attachments for this lab order."""
+        order = self.get_object()
+
+        if request.method == "GET":
+            attachments = order.attachments.all()
+            serializer = LabResultAttachmentSerializer(attachments, many=True)
+            return Response(serializer.data)
+
+        serializer = LabResultAttachmentCreateSerializer(
+            data=request.data,
+            context={"request": request, "lab_order": order},
+        )
+        serializer.is_valid(raise_exception=True)
+        attachment = serializer.save()
+        return Response(
+            LabResultAttachmentSerializer(attachment).data,
+            status=status.HTTP_201_CREATED,
+        )
 
     @action(detail=True, methods=["get", "post"], url_path="items")
     def manage_items(self, request, order_number=None):
@@ -329,7 +360,12 @@ class LabResultViewSet(viewsets.ModelViewSet):
         parser_classes=[MultiPartParser, FormParser],
     )
     def upload_attachment(self, request, pk=None):
-        """Upload external result attachment."""
+        """Upload external result attachment.
+
+        Backward-compatible endpoint:
+        - Stores uploads in LabResultAttachment (canonical)
+        - Links LabResult.external_result_attachment to the same stored file
+        """
         result = self.get_object()
 
         if "file" not in request.FILES:
@@ -340,21 +376,46 @@ class LabResultViewSet(viewsets.ModelViewSet):
 
         uploaded_file = request.FILES["file"]
 
-        # Validate file type
-        allowed_types = ["application/pdf", "image/jpeg", "image/png"]
-        if uploaded_file.content_type not in allowed_types:
-            return Response(
-                {"error": f"Invalid file type. Allowed types: {', '.join(allowed_types)}"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        from .validators import validate_lab_attachment
 
-        # Save the file
-        result.external_result_attachment = uploaded_file
+        try:
+            validate_lab_attachment(uploaded_file)
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        attachment_type = request.data.get("attachment_type") or LabResultAttachment.AttachmentType.EXTERNAL_REPORT
+        description = request.data.get("description") or ""
+
+        attachment = LabResultAttachment.objects.create(
+            lab_order=result.order_item.lab_order,
+            file=uploaded_file,
+            attachment_type=attachment_type,
+            description=description,
+            uploaded_by=request.user,
+        )
+
+        # Point legacy field to the same stored file (avoid double storage)
+        result.external_result_attachment.name = attachment.file.name
         result.is_external_result = True
         result.save(update_fields=["external_result_attachment", "is_external_result"])
 
         serializer = self.get_serializer(result)
         return Response(serializer.data)
+
+
+class LabAttachmentViewSet(viewsets.GenericViewSet):
+    """Delete lab attachments."""
+
+    queryset = LabResultAttachment.objects.all().select_related("lab_order", "uploaded_by")
+    permission_classes = [IsAuthenticated]
+
+    def destroy(self, request, pk=None):
+        instance = self.get_object()
+
+        if instance.file:
+            instance.file.delete(save=False)
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PatientLabOrderViewSet(viewsets.ReadOnlyModelViewSet):

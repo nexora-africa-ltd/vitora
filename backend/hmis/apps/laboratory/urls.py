@@ -7,6 +7,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     EncounterLabOrderViewSet,
+    LabAttachmentViewSet,
     LabOrderViewSet,
     LabQueueViewSet,
     LabResultViewSet,
@@ -20,6 +21,7 @@ router = DefaultRouter()
 router.register(r"tests", TestCatalogViewSet, basename="test-catalog")
 router.register(r"orders", LabOrderViewSet, basename="lab-order")
 router.register(r"results", LabResultViewSet, basename="lab-result")
+router.register(r"attachments", LabAttachmentViewSet, basename="lab-attachment")
 router.register(r"queue", LabQueueViewSet, basename="lab-queue")
 router.register(r"loinc-codes", LOINCCodeViewSet, basename="loinc-code")
 

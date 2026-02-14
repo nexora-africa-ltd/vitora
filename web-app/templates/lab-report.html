@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Laboratory Report</title>
+  <style>
+    /* Reference template for the document printing system.
+       Runtime printing uses web-app/lib/documents/print-lab-report.ts */
+
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+
+    body {
+      font-family: "Inter", Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 0;
+      color: #111;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .report {
+      width: 180mm;
+      margin: auto;
+      background: #ffffff;
+      padding: 15mm;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #1a365d;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+
+    .facility h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a365d;
+    }
+
+    .facility p {
+      margin: 3px 0;
+      font-size: 11px;
+      color: #555;
+    }
+
+    .doc-meta {
+      text-align: right;
+      font-size: 11px;
+    }
+
+    .doc-meta .title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a365d;
+      margin-bottom: 6px;
+    }
+
+    .qr {
+      width: 80px;
+      height: 80px;
+      border: 1px dashed #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #666;
+      margin-top: 8px;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      font-size: 10px;
+      font-weight: 600;
+      border-radius: 10px;
+      text-transform: uppercase;
+    }
+
+    .status-preliminary {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-final {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .patient-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 24px;
+      background: #f8fafc;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 11px;
+    }
+
+    .patient-info .row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .patient-info .label {
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .patient-info .value {
+      color: #1e293b;
+    }
+
+    .section {
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1a365d;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    th, td {
+      border: 1px solid #e2e8f0;
+      padding: 8px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fafc;
+      text-align: left;
+      font-weight: 700;
+      color: #334155;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .footer {
+      margin-top: 24px;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      font-size: 9px;
+      color: #94a3b8;
+    }
+
+    @media print {
+      body { background: white; }
+      .report { width: 100%; padding: 0; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="report">
+    <div class="header">
+      <div class="facility">
+        <h1>[Facility Name]</h1>
+        <p>[Facility Address]</p>
+        <p>Tel: [Facility Phone]</p>
+        <p>License: [Facility License]</p>
+      </div>
+      <div class="doc-meta">
+        <div class="title">LABORATORY REPORT</div>
+        <div>Order: [LAB-XXXXXXXXXXXX]</div>
+        <div>Date: [YYYY-MM-DD]</div>
+        <div class="status-badge status-final">Final</div>
+        <div class="qr">QR</div>
+      </div>
+    </div>
+
+    <div class="patient-info">
+      <div class="row"><span class="label">Patient:</span><span class="value">[Full Name]</span></div>
+      <div class="row"><span class="label">MRN:</span><span class="value">[MRN-XXXX]</span></div>
+      <div class="row"><span class="label">Age/Sex:</span><span class="value">[Age] / [Sex]</span></div>
+      <div class="row"><span class="label">Priority:</span><span class="value">[Routine/Urgent/Stat]</span></div>
+      <div class="row"><span class="label">Ordered By:</span><span class="value">[Clinician]</span></div>
+      <div class="row"><span class="label">Specimen:</span><span class="value">[Collected/Not collected]</span></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Results</div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Test</th>
+            <th>Result</th>
+            <th>Unit</th>
+            <th>Reference</th>
+            <th>Flag</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>[CBC]</td>
+            <td>[7.5]</td>
+            <td>[x10^9/L]</td>
+            <td>[4.0 - 11.0]</td>
+            <td>[Normal]</td>
+            <td>[Verified]</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      <div>
+        Generated by Vitora HMIS. For clinical use only.
+      </div>
+      <div>
+        QR supports verification when enabled.
+      </div>
+    </div>
+  </div>
+</body>
+</html>

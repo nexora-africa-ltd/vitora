@@ -6,7 +6,73 @@ Serializers for laboratory models.
 from typing import Optional
 from rest_framework import serializers
 
-from .models import LabOrder, LabOrderItem, LabQueue, LabResult, LOINCCode, TestCatalog
+from .models import (
+    LabOrder,
+    LabOrderItem,
+    LabQueue,
+    LabResult,
+    LabResultAttachment,
+    LOINCCode,
+    TestCatalog,
+)
+
+
+class LabResultAttachmentSerializer(serializers.ModelSerializer):
+    """Serializer for lab result attachments (read)."""
+
+    uploaded_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LabResultAttachment
+        fields = [
+            "id",
+            "lab_order",
+            "file",
+            "filename",
+            "file_type",
+            "file_size",
+            "attachment_type",
+            "description",
+            "uploaded_by",
+            "uploaded_by_name",
+            "uploaded_at",
+        ]
+        read_only_fields = fields
+
+    def get_uploaded_by_name(self, obj) -> Optional[str]:
+        if obj.uploaded_by:
+            return obj.uploaded_by.get_full_name() or obj.uploaded_by.username
+        return None
+
+
+class LabResultAttachmentCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating lab result attachments."""
+
+    class Meta:
+        model = LabResultAttachment
+        fields = [
+            "file",
+            "attachment_type",
+            "description",
+        ]
+
+    def validate_file(self, value):
+        from .validators import validate_lab_attachment
+
+        validate_lab_attachment(value)
+        return value
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        lab_order = self.context.get("lab_order")
+        if request is None or lab_order is None:
+            raise serializers.ValidationError("Missing request or lab_order context")
+
+        return LabResultAttachment.objects.create(
+            lab_order=lab_order,
+            uploaded_by=request.user,
+            **validated_data,
+        )
 
 
 class TestCatalogSerializer(serializers.ModelSerializer):

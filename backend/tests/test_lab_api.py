@@ -264,6 +264,7 @@ class TestLabOrderWorkflowAPI:
             patient=sample_encounter.patient,
             encounter=sample_encounter,
             ordered_by=authenticated_user,
+            order_type="EXTERNAL",
         )
         LabOrderItem.objects.create(
             lab_order=order,
@@ -827,4 +828,4 @@ class TestResultAttachmentUpload:
         )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Invalid file type" in response.data["error"]
+        assert "File type not allowed" in str(response.data)
