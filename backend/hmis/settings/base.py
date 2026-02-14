@@ -618,3 +618,8 @@ OAUTH2_PROVIDER = {
 
 # FHIR server base URL (used in SMART configuration)
 FHIR_BASE_URL = os.getenv("FHIR_BASE_URL", "http://localhost:9088")
+
+AT_USERNAME = os.getenv("AT_USERNAME", "")
+AT_API_KEY = os.getenv("AT_API_KEY", "")
+SMS_SENDER_ID = os.getenv("SMS_SENDER_ID", "VitoraHMIS")
+SMS_BACKEND = os.getenv("SMS_BACKEND", "hmis.apps.core.sms.backends.MockSMSBackend")
