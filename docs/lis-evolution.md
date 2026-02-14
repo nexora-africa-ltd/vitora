@@ -586,9 +586,10 @@ Each phase should be reversible:
 | ~~Design `Specimen` model migration~~ | Backend | 2 hrs | Phase L0 | ✅ Done |
 | ~~Implement Phase L0 (Specimen)~~ | Backend | 8-16 hrs | Phase L1 | ✅ Done |
 | ~~Implement Phase L1 (Results → Specimens)~~ | Backend | 4-8 hrs | Phase C accuracy | ✅ Done |
+| ~~Implement Phase L2 (Two-Stage Validation)~~ | Backend | 4-8 hrs | — | ✅ Done |
+| ~~Implement Phase L3 (AnalyzerRun)~~ | Backend | 8-12 hrs | Analyzer connection | ✅ Done |
+| ~~Implement Phase L4 (Diagnostic Report)~~ | Backend | 8-12 hrs | — | ✅ Done |
 | Implement `ExternalCodeMapping` (Phase T0) | Backend | 2-4 hrs | Phase C | Pending |
-| Implement Phase L2 (Two-Stage Validation) | Backend | 4-8 hrs | — | Pending |
-| Implement Phase L3 (AnalyzerRun) | Backend | 8-12 hrs | Analyzer connection | Future |
 
 ---
 
