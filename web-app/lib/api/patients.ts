@@ -101,9 +101,11 @@ export const patientsApi = {
     const response = await apiClient.get<EmergencyContact[]>(
       `/api/patients/${patientId}/emergency-contacts/`
     );
-    return parseResponse(EmergencyContactArrayResponseSchema, response.data, {
+    const validated = parseResponse(EmergencyContactArrayResponseSchema, response.data, {
       context: 'patientsApi.getEmergencyContacts',
-    }) as EmergencyContact[];
+    });
+
+    return Array.isArray(validated) ? validated : validated.results;
   },
 
   /**
