@@ -2,14 +2,16 @@
 
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
-import { useState, ReactNode, Suspense } from 'react';
+import { useState, ReactNode, Suspense, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { AuthProvider } from '@/lib/auth/context';
 import { Toaster } from '@/components/ui/toaster';
 import { NavigationProgress } from '@/components/layout/navigation-progress';
 import { DemoBanner, DemoWatermark } from '@/components/shared/demo-banner';
+import { NewVersionToast } from '@/components/shared/new-version-toast';
 import { PageRefreshProvider } from '@/lib/context/page-refresh-context';
 import { createQueryClient } from '@/lib/query-client';
+import { initChunkErrorHandler } from '@/lib/utils/chunk-error-handler';
 
 // Only load devtools in development - use dynamic import to avoid build errors
 const ReactQueryDevtools = dynamic(
@@ -38,6 +40,11 @@ export function Providers({ children }: ProvidersProps) {
   // Use centralized createQueryClient for consistent config and global error handling
   const [queryClient] = useState(() => createQueryClient());
 
+  // Initialize chunk error handler to recover from stale chunks after deployment
+  useEffect(() => {
+    initChunkErrorHandler();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <PageRefreshProvider>
@@ -55,6 +62,8 @@ export function Providers({ children }: ProvidersProps) {
             </Suspense>
             {children}
             <Toaster />
+            {/* New version notification toast */}
+            <NewVersionToast />
             {/* Demo watermark - subtle indicator for screenshots */}
             <DemoWatermark />
           </AuthProvider>
