@@ -419,6 +419,7 @@ EFFORT                 │                EFFORT
 ## 10) References
 
 - `docs/laboratory-reporting-proposal.md` (Phase C HL7/MLLP integration)
+- `docs/lis-evolution.md` (LIS architecture evolution, Specimen model, analyzer integration)
 - `backend/hmis/apps/laboratory/models.py` (`TestCatalog` with LOINC fields)
 - `backend/hmis/apps/encounters/models.py` (`ICD10Code`)
 - HL7 FHIR Terminology Module: https://hl7.org/fhir/terminology-module.html

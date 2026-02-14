@@ -318,19 +318,26 @@ This plan is intentionally incremental to reduce risk.
 
 **Goal**: Turn the HL7/MLLP scaffolding into an optional working integration seam.
 
+**Dependencies** (from `docs/lis-evolution.md`):
+- Phase T0: `ExternalCodeMapping` for test code resolution
+- Phase L0/L1: `Specimen` model for proper result attachment (recommended before Phase C)
+
 **Deliverables**:
-- Create a “send order” integration entry point:
+- Create a "send order" integration entry point:
   - Build ORM^O01 from `LabOrder`
   - Send via MLLP (config from settings/env)
-- Create a “receive results” entry point:
+- Create a "receive results" entry point:
   - Parse ORU^R01 into typed `HL7LabResult`
-  - Map results to `LabOrderItem` by `test_code`
+  - Resolve external test codes via `ExternalCodeMapping`
+  - Attach results to `Specimen` (if Phase L1 complete) or `LabOrderItem`
   - Create/Update `LabResult` + mark `is_external_result=True`
 - Provide admin/management command for controlled ingestion testing (no always-on socket listener yet).
 
 **Acceptance criteria**:
 - When enabled, a sample ORU message can create results for an existing lab order.
 - When disabled, system behavior is unchanged.
+
+**Ref**: `docs/lis-evolution.md` — Phase L3 (AnalyzerRun) for storing raw HL7 messages
 
 
 ### Phase D — Offline-first (future)
@@ -370,6 +377,7 @@ This plan is intentionally incremental to reduce risk.
 ## 10) References
 
 - `docs/labsyncgap.md`
+- `docs/lis-evolution.md` (LIS architecture evolution: Specimen model, two-stage validation, analyzer integration)
 - `docs/terminology-strategy.md` (terminology architecture and external code mapping strategy)
 - `docs/sprint-1.3-1.4-track-b-lab-deliverables.md`
 - `docs/sprint-1.5-1.6-track-b-lab-workflow-deliverables.md`
