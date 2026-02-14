@@ -9,28 +9,28 @@ from django.db import models
 from django_filters import rest_framework as filters
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.exceptions import ValidationError
 
 from .models import LabOrder, LabOrderItem, LabResult, LabResultAttachment, LOINCCode, TestCatalog
+from .reports import LabReportService
 from .serializers import (
     LabOrderCreateSerializer,
     LabOrderItemSerializer,
     LabOrderSerializer,
-    LabResultCreateSerializer,
-    LabResultSerializer,
     LabResultAttachmentCreateSerializer,
     LabResultAttachmentSerializer,
+    LabResultCreateSerializer,
+    LabResultSerializer,
     LabResultVerifySerializer,
     LOINCCodeSerializer,
     TestCatalogDetailSerializer,
     TestCatalogSerializer,
 )
 from .services import LabAlertService, LabWorkflowService
-from .reports import LabReportService
 
 logger = logging.getLogger(__name__)
 
@@ -213,9 +213,9 @@ class LabOrderViewSet(viewsets.ModelViewSet):
             pdf_buffer = ExternalLabRequisition(order).generate_pdf()
             pdf_bytes = pdf_buffer.getvalue()
             response = HttpResponse(pdf_bytes, content_type="application/pdf")
-            response["Content-Disposition"] = (
-                f'attachment; filename="lab_requisition_{order.order_number}.pdf"'
-            )
+            response[
+                "Content-Disposition"
+            ] = f'attachment; filename="lab_requisition_{order.order_number}.pdf"'
             return response
         except ValueError as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -346,7 +346,17 @@ class LabResultViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def verify(self, request, pk=None):
-        """Verify or reject a result."""
+        """
+        Verify or reject a result (two-stage validation support).
+
+        Accepts:
+        - approved: boolean
+        - comments: optional string
+        - validation_type: TECHNICAL (default) or CLINICAL
+
+        For backward compatibility, approved=True creates an APPROVED validation,
+        approved=False creates a REJECTED validation.
+        """
         result = self.get_object()
         serializer = LabResultVerifySerializer(data=request.data)
 
@@ -355,34 +365,140 @@ class LabResultViewSet(viewsets.ModelViewSet):
 
         approved = serializer.validated_data.get("approved", True)
         comments = serializer.validated_data.get("comments", "")
+        validation_type = serializer.validated_data.get("validation_type", "TECHNICAL")
 
         if approved:
-            result.verify(request.user)
-            if comments:
-                result.interpretation = (
-                    f"{result.interpretation}\n\nVerification note: {comments}".strip()
-                )
-                result.save(update_fields=["interpretation"])
+            result.verify(request.user, validation_type=validation_type, comment=comments)
         else:
-            # Reject the result
-            result.verification_status = "REJECTED"
-            result.verified_by = request.user
-            from django.utils import timezone
-
-            result.verified_at = timezone.now()
+            # Reject via the validation system
+            result.add_validation(
+                validation_type=validation_type,
+                status="REJECTED",
+                validated_by=request.user,
+                comment=comments,
+            )
+            result._update_verification_status()
+            # Add rejection reason to interpretation for backward compatibility
             if comments:
                 result.interpretation = (
                     f"{result.interpretation}\n\nRejection reason: {comments}".strip()
                 )
-            result.save()
+                result.save(update_fields=["interpretation"])
 
         serializer = self.get_serializer(result)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["get"], url_path="validations")
+    def validations(self, request, pk=None):
+        """
+        Get all validation records for a result.
+
+        Returns the list of technical and clinical validations.
+        """
+        from .serializers import ResultValidationSerializer
+
+        result = self.get_object()
+        validations = result.validations.all()
+        serializer = ResultValidationSerializer(validations, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="validate")
+    def add_validation(self, request, pk=None):
+        """
+        Add a validation record (TECHNICAL or CLINICAL).
+
+        Use this endpoint for explicit two-stage validation workflow.
+        For simple approve/reject, use the /verify/ endpoint instead.
+
+        Accepts:
+        - validation_type: TECHNICAL or CLINICAL
+        - status: APPROVED or REJECTED
+        - comment: optional string
+        """
+        from .serializers import ResultValidationCreateSerializer, ResultValidationSerializer
+
+        result = self.get_object()
+        serializer = ResultValidationCreateSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        validation_type = serializer.validated_data["validation_type"]
+        status_value = serializer.validated_data["status"]
+        comment = serializer.validated_data.get("comment", "")
+
+        # Check if validation of this type already exists
+        existing = result.validations.filter(validation_type=validation_type).first()
+        if existing:
+            return Response(
+                {
+                    "error": f"{validation_type} validation already exists for this result. "
+                    "Delete it first to re-validate."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        validation = result.add_validation(
+            validation_type=validation_type,
+            status=status_value,
+            validated_by=request.user,
+            comment=comment,
+        )
+        result._update_verification_status()
+
+        return Response(ResultValidationSerializer(validation).data, status=status.HTTP_201_CREATED)
+
     @action(detail=False, methods=["get"], url_path="pending-verification")
     def pending_verification(self, request):
-        """Get results pending verification."""
+        """
+        Get results pending verification.
+
+        Query params:
+        - validation_type: TECHNICAL or CLINICAL (optional)
+          - TECHNICAL: Results without technical validation
+          - CLINICAL: Results with technical approval but pending clinical sign-off
+
+        Without validation_type, returns all unverified results.
+        """
+
+        validation_type = request.query_params.get("validation_type")
         results = self.queryset.filter(verification_status="UNVERIFIED")
+
+        if validation_type == "TECHNICAL":
+            # Results without any technical validation
+            results = results.exclude(
+                validations__validation_type="TECHNICAL", validations__status="APPROVED"
+            )
+        elif validation_type == "CLINICAL":
+            # Results that have technical approval but need clinical sign-off
+            results = results.filter(
+                order_item__test__requires_clinical_signoff=True,
+                validations__validation_type="TECHNICAL",
+                validations__status="APPROVED",
+            ).exclude(validations__validation_type="CLINICAL", validations__status="APPROVED")
+
+        serializer = self.get_serializer(results.distinct(), many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"], url_path="pending-clinical-signoff")
+    def pending_clinical_signoff(self, request):
+        """
+        Get results that have technical approval but are pending clinical sign-off.
+
+        These are results where:
+        - The test requires clinical sign-off
+        - Technical validation is APPROVED
+        - No clinical validation exists OR clinical validation is PENDING
+        """
+        results = (
+            self.queryset.filter(
+                order_item__test__requires_clinical_signoff=True,
+                validations__validation_type="TECHNICAL",
+                validations__status="APPROVED",
+            )
+            .exclude(validations__validation_type="CLINICAL", validations__status="APPROVED")
+            .distinct()
+        )
         serializer = self.get_serializer(results, many=True)
         return Response(serializer.data)
 
@@ -416,7 +532,10 @@ class LabResultViewSet(viewsets.ModelViewSet):
         except Exception as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        attachment_type = request.data.get("attachment_type") or LabResultAttachment.AttachmentType.EXTERNAL_REPORT
+        attachment_type = (
+            request.data.get("attachment_type")
+            or LabResultAttachment.AttachmentType.EXTERNAL_REPORT
+        )
         description = request.data.get("description") or ""
 
         attachment = LabResultAttachment.objects.create(

@@ -106,6 +106,12 @@ class TestCatalog(models.Model):
         default=24, help_text="Expected turnaround time in hours"
     )
 
+    # Validation requirements (Phase L2)
+    requires_clinical_signoff = models.BooleanField(
+        default=False,
+        help_text="Whether this test requires pathologist/clinical sign-off in addition to technical validation",
+    )
+
     # Availability
     available_in_house = models.BooleanField(default=True)
     external_lab_partner = models.CharField(max_length=100, blank=True)
@@ -669,22 +675,16 @@ class Specimen(models.Model):
     container_type = models.CharField(max_length=50, blank=True)
 
     # Linkage
-    lab_order = models.ForeignKey(
-        LabOrder, on_delete=models.CASCADE, related_name="specimens"
-    )
+    lab_order = models.ForeignKey(LabOrder, on_delete=models.CASCADE, related_name="specimens")
     order_items = models.ManyToManyField(LabOrderItem, related_name="specimens")
 
     # Collection
-    collected_by = models.ForeignKey(
-        User, null=True, on_delete=models.SET_NULL, related_name="+"
-    )
+    collected_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name="+")
     collected_at = models.DateTimeField(null=True, blank=True)
     collection_site = models.CharField(max_length=100, blank=True)
 
     # Lab receipt
-    received_by = models.ForeignKey(
-        User, null=True, on_delete=models.SET_NULL, related_name="+"
-    )
+    received_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name="+")
     received_at = models.DateTimeField(null=True, blank=True)
 
     # Status
@@ -944,17 +944,206 @@ class LabResult(models.Model):
 
         return ""
 
-    def verify(self, user):
+    def verify(self, user, validation_type: str = "TECHNICAL", comment: str = ""):
         """
-        Mark result as verified.
+        Mark result as verified via technical validation.
+
+        For backward compatibility, this creates a technical validation
+        and updates overall status. Use add_validation() for explicit
+        two-stage validation.
 
         Args:
             user: User verifying the result
+            validation_type: TECHNICAL or CLINICAL (default: TECHNICAL)
+            comment: Optional comment for the validation
         """
-        self.verification_status = "VERIFIED"
-        self.verified_by = user
-        self.verified_at = timezone.now()
-        self.save()
+        # Create validation record
+        self.add_validation(
+            validation_type=validation_type,
+            status="APPROVED",
+            validated_by=user,
+            comment=comment,
+        )
+        # Update derived fields for backward compatibility
+        self._update_verification_status()
+
+    def add_validation(
+        self,
+        validation_type: str,
+        status: str,
+        validated_by,
+        comment: str = "",
+    ):
+        """
+        Add a validation record (technical or clinical).
+
+        Args:
+            validation_type: TECHNICAL or CLINICAL
+            status: APPROVED, REJECTED, or PENDING
+            validated_by: User performing the validation
+            comment: Optional comment
+
+        Returns:
+            ResultValidation: The created validation record
+        """
+        return ResultValidation.objects.create(
+            result=self,
+            validation_type=validation_type,
+            status=status,
+            validated_by=validated_by,
+            comment=comment,
+        )
+
+    def _update_verification_status(self):
+        """
+        Derive verification_status from validations.
+
+        Business rules:
+        - If any validation is REJECTED → REJECTED
+        - If test requires clinical sign-off and no CLINICAL approval → UNVERIFIED
+        - If no TECHNICAL approval → UNVERIFIED
+        - If all required validations are APPROVED → VERIFIED
+        """
+        validations = self.validations.all()
+
+        # Check for rejections first
+        if validations.filter(status="REJECTED").exists():
+            self.verification_status = "REJECTED"
+            # Set verified_by to the rejecting user
+            rejection = validations.filter(status="REJECTED").order_by("-validated_at").first()
+            if rejection:
+                self.verified_by = rejection.validated_by
+                self.verified_at = rejection.validated_at
+            self.save(update_fields=["verification_status", "verified_by", "verified_at"])
+            return
+
+        # Check for technical approval
+        technical_approved = validations.filter(
+            validation_type="TECHNICAL", status="APPROVED"
+        ).exists()
+
+        # Check if clinical sign-off is required
+        requires_clinical = self.order_item.test.requires_clinical_signoff
+        clinical_approved = validations.filter(
+            validation_type="CLINICAL", status="APPROVED"
+        ).exists()
+
+        # Determine final status
+        if technical_approved and (not requires_clinical or clinical_approved):
+            self.verification_status = "VERIFIED"
+            # Set verified_by to the most recent approver
+            last_approval = validations.filter(status="APPROVED").order_by("-validated_at").first()
+            if last_approval:
+                self.verified_by = last_approval.validated_by
+                self.verified_at = last_approval.validated_at
+        else:
+            self.verification_status = "UNVERIFIED"
+            self.verified_by = None
+            self.verified_at = None
+
+        self.save(update_fields=["verification_status", "verified_by", "verified_at"])
+
+    def get_validation_summary(self) -> dict:
+        """
+        Get summary of all validations for this result.
+
+        Returns:
+            dict: Validation summary including status and requirements
+        """
+        validations = self.validations.all()
+        requires_clinical = self.order_item.test.requires_clinical_signoff
+
+        technical = validations.filter(validation_type="TECHNICAL").first()
+        clinical = validations.filter(validation_type="CLINICAL").first()
+
+        return {
+            "requires_clinical_signoff": requires_clinical,
+            "technical_validation": {
+                "status": technical.status if technical else "PENDING",
+                "validated_by": (
+                    technical.validated_by.get_full_name()
+                    if technical and technical.validated_by
+                    else None
+                ),
+                "validated_at": technical.validated_at if technical else None,
+                "comment": technical.comment if technical else "",
+            },
+            "clinical_validation": (
+                {
+                    "status": clinical.status if clinical else "PENDING",
+                    "validated_by": (
+                        clinical.validated_by.get_full_name()
+                        if clinical and clinical.validated_by
+                        else None
+                    ),
+                    "validated_at": clinical.validated_at if clinical else None,
+                    "comment": clinical.comment if clinical else "",
+                }
+                if requires_clinical
+                else None
+            ),
+        }
+
+
+class ResultValidation(models.Model):
+    """
+    Validation/approval record for a lab result.
+
+    Supports two-stage validation workflow:
+    - Technical validation: Lab technician reviews result accuracy
+    - Clinical sign-off: Pathologist approves interpretation (for complex tests)
+
+    Phase L2 implementation as per lis-evolution.md
+    """
+
+    class ValidationType(models.TextChoices):
+        TECHNICAL = "TECHNICAL", "Technical Review"
+        CLINICAL = "CLINICAL", "Clinical Sign-off"
+
+    class ValidationStatus(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        APPROVED = "APPROVED", "Approved"
+        REJECTED = "REJECTED", "Rejected"
+
+    result = models.ForeignKey(
+        LabResult,
+        on_delete=models.CASCADE,
+        related_name="validations",
+    )
+    validation_type = models.CharField(
+        max_length=20,
+        choices=ValidationType.choices,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ValidationStatus.choices,
+        default=ValidationStatus.PENDING,
+    )
+    validated_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="result_validations",
+    )
+    validated_at = models.DateTimeField(auto_now_add=True)
+    comment = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "Result Validation"
+        verbose_name_plural = "Result Validations"
+        ordering = ["-validated_at"]
+        # Ensure only one validation per type per result
+        constraints = [
+            models.UniqueConstraint(
+                fields=["result", "validation_type"],
+                name="unique_validation_per_type",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["result", "validation_type"]),
+        ]
+
+    def __str__(self):
+        return f"{self.get_validation_type_display()} - {self.get_status_display()} for Result #{self.result_id}"
 
 
 def generate_queue_number():
