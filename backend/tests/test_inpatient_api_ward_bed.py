@@ -121,17 +121,25 @@ class TestBedAPI:
         assert audit_log.user == test_user
 
     def test_filter_beds_by_status(self, authenticated_client, sample_inpatient_ward):
-        """Should filter beds by availability status."""
-        # Create beds with different statuses
-        Bed.objects.create(ward=sample_inpatient_ward, bed_number="B-001", status="AVAILABLE")
-        Bed.objects.create(ward=sample_inpatient_ward, bed_number="B-002", status="OCCUPIED")
-        Bed.objects.create(ward=sample_inpatient_ward, bed_number="B-003", status="AVAILABLE")
+        """Should filter beds by availability status.
+        
+        Uses auto-generated beds and modifies their statuses.
+        """
+        # Get auto-generated beds and set specific statuses
+        beds = list(sample_inpatient_ward.beds.order_by("bed_number")[:3])
+        beds[0].status = "AVAILABLE"  # Already default
+        beds[0].save()
+        beds[1].status = "OCCUPIED"
+        beds[1].save()
+        beds[2].status = "AVAILABLE"  # Already default
+        beds[2].save()
 
         response = authenticated_client.get(
             f"/api/inpatient/wards/{sample_inpatient_ward.id}/beds/", {"status": "AVAILABLE"}
         )
 
         assert response.status_code == status.HTTP_200_OK
+        # Ward has 20 beds by default (capacity=20), all AVAILABLE except 1 OCCUPIED
         assert len(response.data["results"]) >= 2
         for bed in response.data["results"]:
             assert bed["status"] == "AVAILABLE"

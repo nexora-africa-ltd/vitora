@@ -32,12 +32,12 @@ User = get_user_model()
 
 @pytest.fixture
 def sample_ward(db):
-    """Create a sample ward for bed tests."""
+    """Create a sample ward for bed tests (no auto-generated beds)."""
     return Ward.objects.create(
         name="Test Ward",
         code="TW-01",
         ward_type="MEDICAL",
-        capacity=10,
+        capacity=0,  # No auto-generated beds, tests create beds explicitly
         daily_rate=Decimal("500.00"),
     )
 
@@ -97,14 +97,14 @@ class TestBedCreation:
             name="Ward 1",
             code="W1",
             ward_type="MEDICAL",
-            capacity=10,
+            capacity=0,  # No auto-generated beds
             daily_rate=Decimal("500.00"),
         )
         ward2 = Ward.objects.create(
             name="Ward 2",
             code="W2",
             ward_type="SURGICAL",
-            capacity=10,
+            capacity=0,  # No auto-generated beds
             daily_rate=Decimal("600.00"),
         )
 
@@ -227,14 +227,14 @@ class TestBedQueryOperations:
             name="Ward 1",
             code="W1",
             ward_type="MEDICAL",
-            capacity=5,
+            capacity=0,  # No auto-generated beds
             daily_rate=Decimal("500.00"),
         )
         ward2 = Ward.objects.create(
             name="Ward 2",
             code="W2",
             ward_type="SURGICAL",
-            capacity=5,
+            capacity=0,  # No auto-generated beds
             daily_rate=Decimal("600.00"),
         )
 
@@ -361,20 +361,39 @@ class TestBedWardRelationship:
         bed = Bed.objects.create(ward=sample_ward, bed_number="B-501")
         assert bed.ward == sample_ward
 
-    def test_ward_beds_reverse_relationship(self, sample_ward):
+    def test_ward_beds_reverse_relationship(self, db):
         """Should access beds from ward via reverse relationship."""
-        Bed.objects.create(ward=sample_ward, bed_number="B-601")
-        Bed.objects.create(ward=sample_ward, bed_number="B-602")
-        Bed.objects.create(ward=sample_ward, bed_number="B-603")
+        # Create ward with capacity=0 to have full control over beds
+        ward = Ward.objects.create(
+            name="Test Ward Reverse",
+            code="TWR-01",
+            ward_type="MEDICAL",
+            capacity=0,
+            daily_rate=Decimal("500.00"),
+        )
+        Bed.objects.create(ward=ward, bed_number="B-601")
+        Bed.objects.create(ward=ward, bed_number="B-602")
+        Bed.objects.create(ward=ward, bed_number="B-603")
 
-        assert sample_ward.beds.count() == 3
+        assert ward.beds.count() == 3
 
-    def test_ward_available_beds_property(self, sample_ward):
+    def test_ward_available_beds_property(self, db):
         """Should correctly count available beds via ward property."""
-        Bed.objects.create(ward=sample_ward, bed_number="B-701", status="AVAILABLE")
-        Bed.objects.create(ward=sample_ward, bed_number="B-702", status="AVAILABLE")
-        Bed.objects.create(ward=sample_ward, bed_number="B-703", status="OCCUPIED")
+        # Create ward with capacity > 0 to test capacity-based availability
+        ward = Ward.objects.create(
+            name="Test Ward Capacity",
+            code="TWC-01",
+            ward_type="MEDICAL",
+            capacity=10,  # Has capacity for available_beds calculation
+            daily_rate=Decimal("500.00"),
+        )
+        # Ward auto-generates 10 beds (all AVAILABLE by default)
+        # Set statuses on auto-generated beds
+        beds = list(ward.beds.order_by("bed_number"))
+        beds[0].status = "OCCUPIED"
+        beds[0].save()
+        # Remaining 9 beds are AVAILABLE
 
-        # This tests the Ward.available_beds property indirectly
-        # Capacity-based availability: capacity - occupied - maintenance - reserved
-        assert sample_ward.available_beds == 9
+        # available_beds = capacity - occupied - maintenance - reserved
+        # = 10 - 1 - 0 - 0 = 9
+        assert ward.available_beds == 9
