@@ -18,7 +18,12 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view, inline_serializer
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    extend_schema,
+    extend_schema_view,
+    inline_serializer,
+)
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
@@ -758,9 +763,9 @@ class SHAClaimViewSet(viewsets.ModelViewSet):
                 output.read(),
                 content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
-            response["Content-Disposition"] = (
-                f'attachment; filename="sha_claims_{date.today()}.xlsx"'
-            )
+            response[
+                "Content-Disposition"
+            ] = f'attachment; filename="sha_claims_{date.today()}.xlsx"'
             return response
 
         except ImportError:
@@ -798,7 +803,9 @@ class TerminologySearchView(APIView):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("search", OpenApiTypes.STR, description="Search query (min 2 characters)"),
+            OpenApiParameter(
+                "search", OpenApiTypes.STR, description="Search query (min 2 characters)"
+            ),
             OpenApiParameter("limit", OpenApiTypes.INT, description="Max results (default 50)"),
         ],
         responses={
@@ -1065,11 +1072,15 @@ class ClientRegistryView(APIView):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("national_id", OpenApiTypes.STR, description="Kenya National ID number"),
+            OpenApiParameter(
+                "national_id", OpenApiTypes.STR, description="Kenya National ID number"
+            ),
             OpenApiParameter("client_number", OpenApiTypes.STR, description="CR client number"),
             OpenApiParameter("huduma_number", OpenApiTypes.STR, description="Huduma Namba"),
             OpenApiParameter("passport_number", OpenApiTypes.STR, description="Passport number"),
-            OpenApiParameter("identification_type", OpenApiTypes.STR, description="Generic ID type"),
+            OpenApiParameter(
+                "identification_type", OpenApiTypes.STR, description="Generic ID type"
+            ),
             OpenApiParameter("identification_number", OpenApiTypes.STR, description="ID value"),
         ],
         responses={
@@ -1483,10 +1494,22 @@ class PractitionerSearchView(APIView):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("identification_number", OpenApiTypes.STR, description="National ID or Passport number"),
-            OpenApiParameter("identification_type", OpenApiTypes.STR, description="'National ID' or 'passport'"),
-            OpenApiParameter("registration_number", OpenApiTypes.STR, description="Registration number (PUID)"),
-            OpenApiParameter("license_number", OpenApiTypes.STR, description="License number (alias for registration_number)"),
+            OpenApiParameter(
+                "identification_number",
+                OpenApiTypes.STR,
+                description="National ID or Passport number",
+            ),
+            OpenApiParameter(
+                "identification_type", OpenApiTypes.STR, description="'National ID' or 'passport'"
+            ),
+            OpenApiParameter(
+                "registration_number", OpenApiTypes.STR, description="Registration number (PUID)"
+            ),
+            OpenApiParameter(
+                "license_number",
+                OpenApiTypes.STR,
+                description="License number (alias for registration_number)",
+            ),
         ],
         responses={
             200: inline_serializer(
@@ -1724,7 +1747,9 @@ class DirectEligibilityCheckView(APIView):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("national_id", OpenApiTypes.STR, description="Kenya National ID number"),
+            OpenApiParameter(
+                "national_id", OpenApiTypes.STR, description="Kenya National ID number"
+            ),
             OpenApiParameter("sha_number", OpenApiTypes.STR, description="SHA/CR number"),
             OpenApiParameter("identification_type", OpenApiTypes.STR, description="Custom ID type"),
             OpenApiParameter("identification_number", OpenApiTypes.STR, description="ID value"),

@@ -481,11 +481,11 @@ class WaitTimesReportView(APIView):
 
     # KETA target wait times by triage category (in minutes)
     KETA_TARGETS = {
-        "RED": 0,       # Immediate
-        "ORANGE": 10,   # Very urgent - 10 min
-        "YELLOW": 60,   # Urgent - 1 hour
-        "GREEN": 240,   # Non-urgent - 4 hours
-        "BLUE": 240,    # Dead on arrival / administrative
+        "RED": 0,  # Immediate
+        "ORANGE": 10,  # Very urgent - 10 min
+        "YELLOW": 60,  # Urgent - 1 hour
+        "GREEN": 240,  # Non-urgent - 4 hours
+        "BLUE": 240,  # Dead on arrival / administrative
     }
 
     @extend_schema(
@@ -493,12 +493,13 @@ class WaitTimesReportView(APIView):
     )
     def get(self, request):
         """Get wait time statistics."""
-        from django.utils import timezone
         import statistics
+
+        from django.utils import timezone
 
         # Get date range from query params (default: today)
         date_range = request.query_params.get("date_range", "today")
-        
+
         if date_range == "today":
             start_date = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
         elif date_range == "week":
@@ -516,26 +517,26 @@ class WaitTimesReportView(APIView):
         triage_durations = []  # triage_start → triage_end (assessment duration)
         met_target_count = 0
         total_with_category = 0
-        
+
         for assessment in assessments:
             # Wait time: arrival to triage start
             if assessment.triage_start_time:
                 wait_delta = assessment.triage_start_time - assessment.arrival_time
                 wait_minutes = int(wait_delta.total_seconds() / 60)
                 wait_times.append(wait_minutes)
-                
+
                 # Check if wait time met KETA target for this category
                 if assessment.triage_category:
                     total_with_category += 1
                     target = self.KETA_TARGETS.get(assessment.triage_category, 240)
                     if wait_minutes <= target:
                         met_target_count += 1
-            
+
             # Completion time: arrival to triage end (for completed assessments)
             if assessment.triage_end_time:
                 completion_delta = assessment.triage_end_time - assessment.arrival_time
                 completion_times.append(int(completion_delta.total_seconds() / 60))
-                
+
                 # Triage duration: start to end
                 if assessment.triage_start_time:
                     duration_delta = assessment.triage_end_time - assessment.triage_start_time
@@ -555,20 +556,26 @@ class WaitTimesReportView(APIView):
         # Completion stats (arrival to triage end)
         completion_stats = {
             "count": len(completion_times),
-            "avg_minutes": round(sum(completion_times) / len(completion_times), 1) if completion_times else 0,
-            "median_minutes": round(statistics.median(completion_times), 1) if completion_times else 0,
+            "avg_minutes": round(sum(completion_times) / len(completion_times), 1)
+            if completion_times
+            else 0,
+            "median_minutes": round(statistics.median(completion_times), 1)
+            if completion_times
+            else 0,
         }
-        
+
         # Triage duration stats (how long actual assessment takes)
         triage_duration_stats = {
             "count": len(triage_durations),
-            "avg_minutes": round(sum(triage_durations) / len(triage_durations), 1) if triage_durations else 0,
+            "avg_minutes": round(sum(triage_durations) / len(triage_durations), 1)
+            if triage_durations
+            else 0,
         }
 
         # Calculate target met percentage
         target_met_percentage = (
-            (met_target_count / total_with_category * 100) 
-            if total_with_category > 0 
+            (met_target_count / total_with_category * 100)
+            if total_with_category > 0
             else 100  # No assessments = 100% (no violations)
         )
 
@@ -585,13 +592,21 @@ class WaitTimesReportView(APIView):
             target_time = self.KETA_TARGETS.get(category, 240)
             met_count = sum(1 for wt in category_wait_times if wt <= target_time)
 
-            category_stats.append({
-                "category": category,
-                "count": len(category_assessments),
-                "avg_wait_minutes": round(sum(category_wait_times) / len(category_wait_times), 1) if category_wait_times else 0,
-                "target_minutes": target_time,
-                "target_met_percentage": round(met_count / len(category_wait_times) * 100, 1) if category_wait_times else 100,
-            })
+            category_stats.append(
+                {
+                    "category": category,
+                    "count": len(category_assessments),
+                    "avg_wait_minutes": round(
+                        sum(category_wait_times) / len(category_wait_times), 1
+                    )
+                    if category_wait_times
+                    else 0,
+                    "target_minutes": target_time,
+                    "target_met_percentage": round(met_count / len(category_wait_times) * 100, 1)
+                    if category_wait_times
+                    else 100,
+                }
+            )
 
         # Calculate REAL-TIME queue wait times (patients currently waiting)
         current_queue = WaitingQueue.objects.filter(status__in=["WAITING_TRIAGE", "IN_TRIAGE"])
@@ -599,10 +614,12 @@ class WaitTimesReportView(APIView):
         for entry in current_queue:
             wait_minutes = int((timezone.now() - entry.check_in_time).total_seconds() / 60)
             current_wait_times.append(wait_minutes)
-        
+
         current_queue_stats = {
             "count": len(current_wait_times),
-            "avg_wait_minutes": round(sum(current_wait_times) / len(current_wait_times), 1) if current_wait_times else 0,
+            "avg_wait_minutes": round(sum(current_wait_times) / len(current_wait_times), 1)
+            if current_wait_times
+            else 0,
             "max_wait_minutes": max(current_wait_times) if current_wait_times else 0,
             "longest_waiting_patient": max(current_wait_times) if current_wait_times else 0,
         }

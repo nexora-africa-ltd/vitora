@@ -25,7 +25,6 @@ from tests.dicom_test_utils import (
     create_test_dicom_study,
 )
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -333,9 +332,7 @@ class TestDICOMParsingService:
         file_meta.TransferSyntaxUID = "1.2.840.10008.1.2.1"
         file_meta.ImplementationClassUID = generate_uid()
 
-        ds = pydicom.dataset.FileDataset(
-            path, {}, file_meta=file_meta, preamble=b"\x00" * 128
-        )
+        ds = pydicom.dataset.FileDataset(path, {}, file_meta=file_meta, preamble=b"\x00" * 128)
         # Deliberately omit StudyInstanceUID
         ds.SOPClassUID = file_meta.MediaStorageSOPClassUID
         ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID
@@ -647,9 +644,7 @@ class TestThumbnailService:
         """Should generate a JPEG thumbnail from a DICOM file."""
         from hmis.apps.imaging.services.dicom import DICOMParsingService
 
-        thumb_path = DICOMParsingService.generate_thumbnail(
-            temp_dicom_file, temp_media_dir
-        )
+        thumb_path = DICOMParsingService.generate_thumbnail(temp_dicom_file, temp_media_dir)
 
         assert thumb_path is not None
         assert os.path.exists(os.path.join(temp_media_dir, thumb_path))
@@ -659,9 +654,7 @@ class TestThumbnailService:
         """Should create thumbnail with reasonable file size (< 100KB)."""
         from hmis.apps.imaging.services.dicom import DICOMParsingService
 
-        thumb_path = DICOMParsingService.generate_thumbnail(
-            temp_dicom_file, temp_media_dir
-        )
+        thumb_path = DICOMParsingService.generate_thumbnail(temp_dicom_file, temp_media_dir)
         full_path = os.path.join(temp_media_dir, thumb_path)
 
         file_size = os.path.getsize(full_path)
@@ -686,9 +679,7 @@ class TestThumbnailService:
         """Should generate thumbnail for CT images."""
         from hmis.apps.imaging.services.dicom import DICOMParsingService
 
-        thumb_path = DICOMParsingService.generate_thumbnail(
-            temp_ct_dicom_file, temp_media_dir
-        )
+        thumb_path = DICOMParsingService.generate_thumbnail(temp_ct_dicom_file, temp_media_dir)
         assert thumb_path is not None
         assert os.path.exists(os.path.join(temp_media_dir, thumb_path))
 
@@ -707,9 +698,7 @@ class TestThumbnailService:
         """Should store thumbnails under thumbnails/ subdirectory."""
         from hmis.apps.imaging.services.dicom import DICOMParsingService
 
-        thumb_path = DICOMParsingService.generate_thumbnail(
-            temp_dicom_file, temp_media_dir
-        )
+        thumb_path = DICOMParsingService.generate_thumbnail(temp_dicom_file, temp_media_dir)
 
         assert thumb_path.startswith("thumbnails/")
 
@@ -717,19 +706,13 @@ class TestThumbnailService:
         """Should apply windowing (window/level) for CT thumbnails."""
         from hmis.apps.imaging.services.dicom import DICOMParsingService
 
-        thumb_path = DICOMParsingService.generate_thumbnail(
-            temp_ct_dicom_file, temp_media_dir
-        )
+        thumb_path = DICOMParsingService.generate_thumbnail(temp_ct_dicom_file, temp_media_dir)
         assert thumb_path is not None
 
     def test_generate_thumbnail_idempotent(self, temp_dicom_file, temp_media_dir):
         """Should overwrite existing thumbnail if regenerated."""
         from hmis.apps.imaging.services.dicom import DICOMParsingService
 
-        path1 = DICOMParsingService.generate_thumbnail(
-            temp_dicom_file, temp_media_dir
-        )
-        path2 = DICOMParsingService.generate_thumbnail(
-            temp_dicom_file, temp_media_dir
-        )
+        path1 = DICOMParsingService.generate_thumbnail(temp_dicom_file, temp_media_dir)
+        path2 = DICOMParsingService.generate_thumbnail(temp_dicom_file, temp_media_dir)
         assert path1 == path2

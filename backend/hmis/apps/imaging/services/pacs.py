@@ -86,9 +86,7 @@ class PACSStorageService:
             sop_uid = str(getattr(ds, "SOPInstanceUID", os.path.basename(source_path)))
 
         # Build destination path
-        relative_path = os.path.join(
-            "dicom", study_uid, series_uid, f"{sop_uid}.dcm"
-        )
+        relative_path = os.path.join("dicom", study_uid, series_uid, f"{sop_uid}.dcm")
         absolute_path = os.path.join(self.base_path, relative_path)
 
         # Create directories

@@ -9,8 +9,8 @@ validation logic.
 import pytest  # type: ignore
 
 from hmis.apps.core.fhir.profiles import (
-    SHA_PATIENT_PROFILE,
     SHA_CLAIM_PROFILE,
+    SHA_PATIENT_PROFILE,
     ProfileConstraint,
     ProfileSeverity,
     SHAProfile,
@@ -19,7 +19,6 @@ from hmis.apps.core.services.constraint_evaluator import (
     ConstraintEvaluator,
     evaluate_profile_constraints,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -170,9 +169,7 @@ class TestCardinalityChecks:
             description="Name required",
             min_cardinality=1,
         )
-        violation = evaluator._check_min_cardinality(
-            [{"family": "Test"}], constraint
-        )
+        violation = evaluator._check_min_cardinality([{"family": "Test"}], constraint)
         assert violation is None
 
     def test_min_cardinality_fail(self, evaluator):
@@ -195,9 +192,7 @@ class TestCardinalityChecks:
             description="Max 3 identifiers",
             max_cardinality=3,
         )
-        violation = evaluator._check_max_cardinality(
-            [{"value": "1"}, {"value": "2"}], constraint
-        )
+        violation = evaluator._check_max_cardinality([{"value": "1"}, {"value": "2"}], constraint)
         assert violation is None
 
     def test_max_cardinality_fail(self, evaluator):
@@ -401,9 +396,7 @@ class TestConvenienceFunction:
 
     def test_evaluate_profile_constraints_valid(self, valid_sha_patient):
         """Should return is_valid=True for valid resource."""
-        is_valid, violations = evaluate_profile_constraints(
-            valid_sha_patient, SHA_PATIENT_PROFILE
-        )
+        is_valid, violations = evaluate_profile_constraints(valid_sha_patient, SHA_PATIENT_PROFILE)
         # Filter to only errors
         errors = [v for v in violations if v.severity == ProfileSeverity.ERROR]
         assert len(errors) == 0
@@ -414,9 +407,7 @@ class TestConvenienceFunction:
             "resourceType": "Patient",
             # Missing everything required
         }
-        is_valid, violations = evaluate_profile_constraints(
-            invalid_patient, SHA_PATIENT_PROFILE
-        )
+        is_valid, violations = evaluate_profile_constraints(invalid_patient, SHA_PATIENT_PROFILE)
         assert is_valid is False
         assert len(violations) > 0
 
@@ -452,9 +443,7 @@ class TestEdgeCases:
             "diagnosis": [
                 {
                     "diagnosisCodeableConcept": {
-                        "coding": [
-                            {"system": "http://icd11.org", "code": "ABC"}
-                        ]
+                        "coding": [{"system": "http://icd11.org", "code": "ABC"}]
                     }
                 }
             ],

@@ -18,7 +18,6 @@ import pytest  # type: ignore
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-
 # =============================================================================
 # AssignmentRule Model Tests
 # =============================================================================
@@ -403,7 +402,9 @@ class TestAssignmentDecisionModel:
         assert decision.assigned_resource is None
         assert len(decision.candidates_evaluated) == 2
 
-    def test_assignment_decision_tracks_all_inputs(self, db, sample_rule, sample_appointment, test_user):
+    def test_assignment_decision_tracks_all_inputs(
+        self, db, sample_rule, sample_appointment, test_user
+    ):
         """Should log all inputs used in decision for full explainability."""
         from hmis.apps.scheduling.models import AssignmentDecision
 
@@ -464,7 +465,9 @@ class TestAssignmentDecisionModel:
         assert decisions[0].decision_outcome == "ASSIGNED"
         assert decisions[1].decision_outcome == "UNASSIGNED"
 
-    def test_decision_immutable_after_creation(self, db, sample_rule, sample_appointment, test_user):
+    def test_decision_immutable_after_creation(
+        self, db, sample_rule, sample_appointment, test_user
+    ):
         """Decision records should not be modifiable (audit trail)."""
         from hmis.apps.scheduling.models import AssignmentDecision
 
@@ -550,7 +553,9 @@ class TestAssignmentOverrideModel:
         assert override.override_reason == "PATIENT_REQUEST"
         assert "ongoing care relationship" in override.justification
 
-    def test_override_requires_justification(self, db, sample_appointment, sample_resource, another_resource, test_user):
+    def test_override_requires_justification(
+        self, db, sample_appointment, sample_resource, another_resource, test_user
+    ):
         """Should require justification for manual overrides."""
         from hmis.apps.scheduling.models import AssignmentOverride
 
@@ -567,7 +572,9 @@ class TestAssignmentOverrideModel:
         with pytest.raises(ValidationError):
             override.full_clean()
 
-    def test_override_reason_choices(self, db, sample_appointment, sample_resource, another_resource, test_user):
+    def test_override_reason_choices(
+        self, db, sample_appointment, sample_resource, another_resource, test_user
+    ):
         """Should support predefined override reason categories."""
         from hmis.apps.scheduling.models import AssignmentOverride
 
@@ -690,11 +697,13 @@ class TestRuleEvaluatorService:
         from hmis.apps.scheduling.models import Resource
 
         resources = []
-        for i, (name, specialty, load) in enumerate([
-            ("Dr. Smith", "General Medicine", 3),
-            ("Dr. Johnson", "General Medicine", 5),
-            ("Dr. Williams", "Pediatrics", 2),
-        ]):
+        for i, (name, specialty, load) in enumerate(
+            [
+                ("Dr. Smith", "General Medicine", 3),
+                ("Dr. Johnson", "General Medicine", 5),
+                ("Dr. Williams", "Pediatrics", 2),
+            ]
+        ):
             resource = Resource.objects.create(
                 name=name,
                 resource_type="PERSON",
@@ -843,9 +852,7 @@ class TestRuleEvaluatorService:
         assert decision.scoring_details is not None
         assert decision.evaluation_time_ms >= 0
 
-    def test_evaluate_respects_rule_priority(
-        self, db, staff_resources, sample_patient, test_user
-    ):
+    def test_evaluate_respects_rule_priority(self, db, staff_resources, sample_patient, test_user):
         """Should apply rules in priority order."""
         from hmis.apps.scheduling.models import Appointment, AssignmentRule
         from hmis.apps.scheduling.services.assignment import RuleEvaluator
@@ -929,16 +936,18 @@ class TestAssignmentEngineIntegration:
         # Create doctors
         doctors = []
         for i in range(3):
-            doctors.append(Resource.objects.create(
-                name=f"Dr. Test {i}",
-                resource_type="PERSON",
-                code=f"DOC-INT-{i:03d}",
-                metadata={
-                    "specialty": "General Medicine",
-                    "current_load": i * 2,
-                    "status": "on_duty",
-                },
-            ))
+            doctors.append(
+                Resource.objects.create(
+                    name=f"Dr. Test {i}",
+                    resource_type="PERSON",
+                    code=f"DOC-INT-{i:03d}",
+                    metadata={
+                        "specialty": "General Medicine",
+                        "current_load": i * 2,
+                        "status": "on_duty",
+                    },
+                )
+            )
 
         # Create rule
         rule = AssignmentRule.objects.create(

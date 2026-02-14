@@ -13,8 +13,7 @@ using the same best-fit mapping as ClinicVisit.start_consultation.
 from io import StringIO
 
 import pytest  # type: ignore
-from django.core.management import call_command
-from django.core.management import get_commands
+from django.core.management import call_command, get_commands
 
 from hmis.apps.clinical_templates.models import ClinicalTemplate
 from hmis.apps.clinics.models import Clinic

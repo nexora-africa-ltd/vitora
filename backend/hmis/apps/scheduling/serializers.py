@@ -12,12 +12,7 @@ This module contains serializers for:
 
 from rest_framework import serializers
 
-from hmis.apps.scheduling.models import (
-    Appointment,
-    Resource,
-    Schedule,
-    ScheduleBreak,
-)
+from hmis.apps.scheduling.models import Appointment, Resource, Schedule, ScheduleBreak
 
 # =============================================================================
 # Resource Serializers
@@ -58,7 +53,11 @@ class ResourceSerializer(serializers.ModelSerializer):
     def validate_code(self, value: str) -> str:
         """Validate unique code."""
         instance = self.instance
-        if Resource.objects.filter(code=value).exclude(pk=instance.pk if instance else None).exists():
+        if (
+            Resource.objects.filter(code=value)
+            .exclude(pk=instance.pk if instance else None)
+            .exists()
+        ):
             raise serializers.ValidationError("Resource with this code already exists.")
         return value
 
@@ -93,9 +92,7 @@ class ScheduleBreakSerializer(serializers.ModelSerializer):
         start_time = attrs.get("start_time")
         end_time = attrs.get("end_time")
         if start_time and end_time and end_time <= start_time:
-            raise serializers.ValidationError(
-                {"end_time": "End time must be after start time"}
-            )
+            raise serializers.ValidationError({"end_time": "End time must be after start time"})
         return attrs
 
 
@@ -104,9 +101,7 @@ class ScheduleSerializer(serializers.ModelSerializer):
 
     resource_name = serializers.CharField(source="resource.name", read_only=True)
     breaks = ScheduleBreakSerializer(many=True, read_only=True)
-    day_of_week_display = serializers.CharField(
-        source="get_day_of_week_display", read_only=True
-    )
+    day_of_week_display = serializers.CharField(source="get_day_of_week_display", read_only=True)
 
     class Meta:
         """Meta options for ScheduleSerializer."""
@@ -133,7 +128,14 @@ class ScheduleSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "resource_name", "day_of_week_display", "breaks", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "resource_name",
+            "day_of_week_display",
+            "breaks",
+            "created_at",
+            "updated_at",
+        ]
 
     def validate(self, attrs):
         """Validate schedule data."""
@@ -144,9 +146,7 @@ class ScheduleSerializer(serializers.ModelSerializer):
         specific_date = attrs.get("specific_date")
 
         if start_time and end_time and end_time <= start_time:
-            raise serializers.ValidationError(
-                {"end_time": "End time must be after start time"}
-            )
+            raise serializers.ValidationError({"end_time": "End time must be after start time"})
 
         if schedule_type == "RECURRING" and day_of_week is None:
             raise serializers.ValidationError(
@@ -350,7 +350,9 @@ class AppointmentCreateSerializer(serializers.ModelSerializer):
 
         if conflicts.exists():
             raise serializers.ValidationError(
-                {"scheduled_start": "Scheduling conflict: Resource already has an appointment at this time"}
+                {
+                    "scheduled_start": "Scheduling conflict: Resource already has an appointment at this time"
+                }
             )
 
         return attrs
@@ -512,7 +514,10 @@ class AssignmentRuleSerializer(serializers.ModelSerializer):
     def get_created_by_name(self, obj) -> str | None:
         """Get creator's display name."""
         if obj.created_by:
-            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip() or obj.created_by.username
+            return (
+                f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+                or obj.created_by.username
+            )
         return None
 
     def validate_rule_code(self, value: str) -> str:
@@ -520,7 +525,11 @@ class AssignmentRuleSerializer(serializers.ModelSerializer):
         from hmis.apps.scheduling.models import AssignmentRule
 
         instance = self.instance
-        if AssignmentRule.objects.filter(rule_code=value).exclude(pk=instance.pk if instance else None).exists():
+        if (
+            AssignmentRule.objects.filter(rule_code=value)
+            .exclude(pk=instance.pk if instance else None)
+            .exists()
+        ):
             raise serializers.ValidationError("Rule with this code already exists.")
         return value
 
@@ -589,7 +598,10 @@ class AssignmentDecisionSerializer(serializers.ModelSerializer):
     def get_triggered_by_name(self, obj) -> str | None:
         """Get triggering user's name."""
         if obj.triggered_by:
-            return f"{obj.triggered_by.first_name} {obj.triggered_by.last_name}".strip() or obj.triggered_by.username
+            return (
+                f"{obj.triggered_by.first_name} {obj.triggered_by.last_name}".strip()
+                or obj.triggered_by.username
+            )
         return None
 
 
@@ -658,13 +670,19 @@ class AssignmentOverrideSerializer(serializers.ModelSerializer):
     def get_overridden_by_name(self, obj) -> str | None:
         """Get overriding user's name."""
         if obj.overridden_by:
-            return f"{obj.overridden_by.first_name} {obj.overridden_by.last_name}".strip() or obj.overridden_by.username
+            return (
+                f"{obj.overridden_by.first_name} {obj.overridden_by.last_name}".strip()
+                or obj.overridden_by.username
+            )
         return None
 
     def get_approved_by_name(self, obj) -> str | None:
         """Get approving user's name."""
         if obj.approved_by:
-            return f"{obj.approved_by.first_name} {obj.approved_by.last_name}".strip() or obj.approved_by.username
+            return (
+                f"{obj.approved_by.first_name} {obj.approved_by.last_name}".strip()
+                or obj.approved_by.username
+            )
         return None
 
     def validate_justification(self, value: str) -> str:
@@ -748,4 +766,3 @@ class ManualOverrideResponseSerializer(serializers.Serializer):
     success = serializers.BooleanField()
     override = AssignmentOverrideSerializer(allow_null=True)
     error = serializers.CharField(allow_null=True, required=False)
-

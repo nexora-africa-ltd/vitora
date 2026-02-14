@@ -37,7 +37,9 @@ urlpatterns = [
         LabCriticalValuesReportView.as_view(),
         name="lab-report-critical-values",
     ),
-    path("reports/rejections/", LabSampleRejectionReportView.as_view(), name="lab-report-rejections"),
+    path(
+        "reports/rejections/", LabSampleRejectionReportView.as_view(), name="lab-report-rejections"
+    ),
     path("", include(router.urls)),
 ]
 

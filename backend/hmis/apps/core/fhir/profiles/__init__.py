@@ -66,6 +66,7 @@ class SHAProfile:
 # Kenya SHA Coding Systems
 # =============================================================================
 
+
 class SHACodingSystems:
     """Standard coding system URIs for Kenya SHA."""
 

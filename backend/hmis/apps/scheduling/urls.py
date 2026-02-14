@@ -34,4 +34,3 @@ app_name = "scheduling"
 urlpatterns = [
     path("", include(router.urls)),
 ]
-

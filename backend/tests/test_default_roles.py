@@ -8,9 +8,8 @@ in sync with the current implementation.
 """
 
 import json
-from pathlib import Path
-
 from io import StringIO
+from pathlib import Path
 
 import pytest  # type: ignore
 from django.contrib.auth.models import Group

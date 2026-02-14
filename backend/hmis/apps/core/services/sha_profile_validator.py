@@ -297,8 +297,7 @@ class SHAProfileValidator:
 
         # Check for CR identifier
         cr_identifiers = [
-            i for i in identifiers
-            if i.get("system") == SHACodingSystems.CLIENT_REGISTRY
+            i for i in identifiers if i.get("system") == SHACodingSystems.CLIENT_REGISTRY
         ]
 
         if not cr_identifiers:
@@ -327,9 +326,7 @@ class SHAProfileValidator:
                 )
             )
 
-    def _validate_patient_name(
-        self, patient: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_patient_name(self, patient: dict, result: SHAProfileValidationResult) -> None:
         """Validate patient name requirements."""
         names = patient.get("name", [])
 
@@ -366,9 +363,7 @@ class SHAProfileValidator:
                 )
             )
 
-    def _validate_patient_gender(
-        self, patient: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_patient_gender(self, patient: dict, result: SHAProfileValidationResult) -> None:
         """Validate patient gender."""
         gender = patient.get("gender")
         if not gender:
@@ -391,9 +386,7 @@ class SHAProfileValidator:
                 )
             )
 
-    def _validate_patient_contact(
-        self, patient: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_patient_contact(self, patient: dict, result: SHAProfileValidationResult) -> None:
         """Validate patient contact information."""
         telecom = patient.get("telecom", [])
         if not telecom:
@@ -410,9 +403,7 @@ class SHAProfileValidator:
     # Claim Validation Helpers
     # =========================================================================
 
-    def _validate_claim_use(
-        self, claim: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_claim_use(self, claim: dict, result: SHAProfileValidationResult) -> None:
         """Validate claim use field."""
         use = claim.get("use")
         if use != "claim":
@@ -427,9 +418,7 @@ class SHAProfileValidator:
                 )
             )
 
-    def _validate_claim_patient(
-        self, claim: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_claim_patient(self, claim: dict, result: SHAProfileValidationResult) -> None:
         """Validate claim patient reference."""
         patient = claim.get("patient")
         if not patient or not patient.get("reference"):
@@ -442,9 +431,7 @@ class SHAProfileValidator:
                 )
             )
 
-    def _validate_claim_provider(
-        self, claim: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_claim_provider(self, claim: dict, result: SHAProfileValidationResult) -> None:
         """Validate claim provider reference."""
         provider = claim.get("provider")
         if not provider or not provider.get("reference"):
@@ -457,9 +444,7 @@ class SHAProfileValidator:
                 )
             )
 
-    def _validate_claim_insurance(
-        self, claim: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_claim_insurance(self, claim: dict, result: SHAProfileValidationResult) -> None:
         """Validate claim insurance reference."""
         insurance = claim.get("insurance", [])
         if not insurance:
@@ -472,9 +457,7 @@ class SHAProfileValidator:
                 )
             )
 
-    def _validate_claim_diagnosis(
-        self, claim: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_claim_diagnosis(self, claim: dict, result: SHAProfileValidationResult) -> None:
         """Validate claim diagnosis with ICD-11 requirement."""
         diagnoses = claim.get("diagnosis", [])
 
@@ -506,12 +489,8 @@ class SHAProfileValidator:
                 continue
 
             # Check if using ICD-11
-            has_icd11 = any(
-                c.get("system") == SHACodingSystems.ICD11 for c in codings
-            )
-            has_icd10 = any(
-                SHACodingSystems.ICD10 in (c.get("system") or "") for c in codings
-            )
+            has_icd11 = any(c.get("system") == SHACodingSystems.ICD11 for c in codings)
+            has_icd10 = any(SHACodingSystems.ICD10 in (c.get("system") or "") for c in codings)
 
             if has_icd10 and not has_icd11:
                 result.add_violation(
@@ -537,9 +516,7 @@ class SHAProfileValidator:
                     )
                 )
 
-    def _validate_claim_items(
-        self, claim: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_claim_items(self, claim: dict, result: SHAProfileValidationResult) -> None:
         """Validate claim items."""
         items = claim.get("item", [])
         if not items:
@@ -552,9 +529,7 @@ class SHAProfileValidator:
                 )
             )
 
-    def _validate_claim_total(
-        self, claim: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_claim_total(self, claim: dict, result: SHAProfileValidationResult) -> None:
         """Validate claim total amount."""
         total = claim.get("total")
         if not total:
@@ -585,9 +560,7 @@ class SHAProfileValidator:
     # Coverage Validation Helpers
     # =========================================================================
 
-    def _validate_coverage_status(
-        self, coverage: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_coverage_status(self, coverage: dict, result: SHAProfileValidationResult) -> None:
         """Validate coverage status."""
         status = coverage.get("status")
         if status != "active":
@@ -617,9 +590,7 @@ class SHAProfileValidator:
                 )
             )
 
-    def _validate_coverage_scheme(
-        self, coverage: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_coverage_scheme(self, coverage: dict, result: SHAProfileValidationResult) -> None:
         """Validate SHA scheme in coverage class."""
         classes = coverage.get("class", [])
 
@@ -661,9 +632,7 @@ class SHAProfileValidator:
     # Organization Validation Helpers
     # =========================================================================
 
-    def _validate_organization_mfl(
-        self, org: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_organization_mfl(self, org: dict, result: SHAProfileValidationResult) -> None:
         """Validate organization MFL code."""
         identifiers = org.get("identifier", [])
 
@@ -679,10 +648,7 @@ class SHAProfileValidator:
             return
 
         # Check for MFL identifier
-        mfl_identifiers = [
-            i for i in identifiers
-            if i.get("system") == SHACodingSystems.MFL_CODE
-        ]
+        mfl_identifiers = [i for i in identifiers if i.get("system") == SHACodingSystems.MFL_CODE]
 
         if not mfl_identifiers:
             result.add_violation(
@@ -710,9 +676,7 @@ class SHAProfileValidator:
                 )
             )
 
-    def _validate_organization_name(
-        self, org: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_organization_name(self, org: dict, result: SHAProfileValidationResult) -> None:
         """Validate organization name."""
         name = org.get("name")
         if not name:
@@ -729,9 +693,7 @@ class SHAProfileValidator:
     # Bundle Validation Helpers
     # =========================================================================
 
-    def _validate_bundle_type(
-        self, bundle: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_bundle_type(self, bundle: dict, result: SHAProfileValidationResult) -> None:
         """Validate bundle type for claims."""
         bundle_type = bundle.get("type")
         if bundle_type != "message":
@@ -746,9 +708,7 @@ class SHAProfileValidator:
                 )
             )
 
-    def _validate_bundle_timestamp(
-        self, bundle: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_bundle_timestamp(self, bundle: dict, result: SHAProfileValidationResult) -> None:
         """Validate bundle timestamp."""
         timestamp = bundle.get("timestamp")
         if not timestamp:
@@ -805,9 +765,7 @@ class SHAProfileValidator:
                     )
                 )
 
-    def _validate_bundle_resources(
-        self, bundle: dict, result: SHAProfileValidationResult
-    ) -> None:
+    def _validate_bundle_resources(self, bundle: dict, result: SHAProfileValidationResult) -> None:
         """Validate each resource in the bundle against its profile."""
         entries = bundle.get("entry", [])
 

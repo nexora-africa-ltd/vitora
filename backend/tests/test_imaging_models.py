@@ -795,7 +795,9 @@ class TestImagingOrderItem:
             procedure=order_setup["procedure"],
         )
         str_repr = str(item)
-        assert order_setup["procedure"].name in str_repr or order_setup["procedure"].code in str_repr
+        assert (
+            order_setup["procedure"].name in str_repr or order_setup["procedure"].code in str_repr
+        )
 
     def test_order_related_name_items(self, order_setup):
         """Order should access items via related_name='items'."""

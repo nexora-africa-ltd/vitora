@@ -40,7 +40,9 @@ class TestAsgiConfiguration:
         assert len(lab_patterns) >= 1, "Lab WebSocket patterns should be included"
 
         # Verify inpatient patterns are included
-        inpatient_patterns = [p for p in websocket_urlpatterns if "inpatient" in p.pattern.regex.pattern]
+        inpatient_patterns = [
+            p for p in websocket_urlpatterns if "inpatient" in p.pattern.regex.pattern
+        ]
         assert len(inpatient_patterns) >= 1, "Inpatient WebSocket patterns should be included"
 
     def test_websocket_urlpatterns_count(self):
@@ -138,11 +140,11 @@ class TestAsgiWebsocketRouting:
         """Invalid WebSocket routes should not match any defined patterns."""
         # Test that the patterns don't include invalid routes
         pattern_paths = [p.pattern.regex.pattern for p in websocket_urlpatterns]
-        
+
         # These invalid patterns should not exist in our routes
         assert not any("invalid" in p for p in pattern_paths)
         assert not any("unknown" in p for p in pattern_paths)
-        
+
         # All our patterns should only match clinic, lab, or inpatient routes
         for pattern in pattern_paths:
             assert "clinics" in pattern or "lab" in pattern or "inpatient" in pattern

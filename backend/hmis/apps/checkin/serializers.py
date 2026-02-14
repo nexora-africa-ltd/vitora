@@ -6,6 +6,7 @@ Sprint: Returning Patient Workflow - Sprint 1
 
 
 from typing import Optional
+
 from rest_framework import serializers
 
 from hmis.apps.clinics.models import Clinic
@@ -157,17 +158,13 @@ class CheckInRequestSerializer(serializers.Serializer):
                 )
             return clinic_id
         except ValueError:
-            raise serializers.ValidationError(
-                "Destination must be 'TRIAGE' or a valid clinic ID."
-            )
+            raise serializers.ValidationError("Destination must be 'TRIAGE' or a valid clinic ID.")
 
     def validate_linked_encounter_id(self, value):
         """Validate linked encounter exists."""
         if value is not None:
             if not Encounter.objects.filter(id=value).exists():
-                raise serializers.ValidationError(
-                    f"Encounter with ID {value} not found."
-                )
+                raise serializers.ValidationError(f"Encounter with ID {value} not found.")
         return value
 
 
@@ -194,7 +191,7 @@ class CheckInResponseSerializer(serializers.ModelSerializer):
     estimated_wait_minutes = serializers.SerializerMethodField()
     encounter_id = serializers.IntegerField(source="encounter.id", allow_null=True)
     linked_encounter_id = serializers.IntegerField(
-        source="linked_encounter.id", 
+        source="linked_encounter.id",
         allow_null=True,
     )
     clinic_visit_id = serializers.IntegerField(
@@ -243,18 +240,24 @@ class CheckInResponseSerializer(serializers.ModelSerializer):
         if obj.waiting_queue_entry:
             from hmis.apps.triage.models import WaitingQueue
 
-            return WaitingQueue.objects.filter(
-                status__in=["WAITING_TRIAGE", "IN_TRIAGE"],
-                check_in_time__lt=obj.waiting_queue_entry.check_in_time,
-            ).count() + 1
+            return (
+                WaitingQueue.objects.filter(
+                    status__in=["WAITING_TRIAGE", "IN_TRIAGE"],
+                    check_in_time__lt=obj.waiting_queue_entry.check_in_time,
+                ).count()
+                + 1
+            )
         elif obj.clinic_visit:
             from hmis.apps.clinics.models import ClinicVisit
 
-            return ClinicVisit.objects.filter(
-                session=obj.clinic_visit.session,
-                status__in=["REGISTERED", "WAITING"],
-                queue_number__lt=obj.clinic_visit.queue_number,
-            ).count() + 1
+            return (
+                ClinicVisit.objects.filter(
+                    session=obj.clinic_visit.session,
+                    status__in=["REGISTERED", "WAITING"],
+                    queue_number__lt=obj.clinic_visit.queue_number,
+                ).count()
+                + 1
+            )
         return 1
 
     def get_estimated_wait_minutes(self, obj) -> int:

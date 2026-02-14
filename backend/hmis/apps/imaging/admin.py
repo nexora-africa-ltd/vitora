@@ -46,27 +46,37 @@ class ImagingProcedureAdmin(admin.ModelAdmin):
     search_fields = ("code", "name", "radlex_code", "loinc_code", "sha_intervention_code")
     ordering = ("modality", "name")
     fieldsets = (
-        (None, {
-            "fields": ("code", "name", "modality", "body_region")
-        }),
-        ("Interoperability", {
-            "fields": ("radlex_code", "loinc_code"),
-            "classes": ("collapse",),
-        }),
-        ("Requirements", {
-            "fields": (
-                "requires_contrast",
-                "requires_sedation",
-                "special_preparation",
-                "turnaround_hours",
-            ),
-        }),
-        ("Pricing & SHA", {
-            "fields": ("cost", "sha_claimable", "sha_intervention_code"),
-        }),
-        ("Availability", {
-            "fields": ("is_active", "available_in_house"),
-        }),
+        (None, {"fields": ("code", "name", "modality", "body_region")}),
+        (
+            "Interoperability",
+            {
+                "fields": ("radlex_code", "loinc_code"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Requirements",
+            {
+                "fields": (
+                    "requires_contrast",
+                    "requires_sedation",
+                    "special_preparation",
+                    "turnaround_hours",
+                ),
+            },
+        ),
+        (
+            "Pricing & SHA",
+            {
+                "fields": ("cost", "sha_claimable", "sha_intervention_code"),
+            },
+        ),
+        (
+            "Availability",
+            {
+                "fields": ("is_active", "available_in_house"),
+            },
+        ),
     )
 
 
@@ -100,37 +110,55 @@ class ImagingOrderAdmin(admin.ModelAdmin):
     date_hierarchy = "ordered_at"
     inlines = [ImagingOrderItemInline]
     fieldsets = (
-        (None, {
-            "fields": (
-                "order_number",
-                "patient",
-                "encounter",
-                "ordered_by",
-            )
-        }),
-        ("Order Details", {
-            "fields": (
-                "priority",
-                "clinical_indication",
-                "relevant_clinical_history",
-                "status",
-            ),
-        }),
-        ("Scheduling", {
-            "fields": ("scheduled_datetime", "scheduled_room"),
-            "classes": ("collapse",),
-        }),
-        ("DICOM/PACS", {
-            "fields": ("accession_number", "study_instance_uid"),
-            "classes": ("collapse",),
-        }),
-        ("Billing", {
-            "fields": ("total_cost", "is_paid"),
-        }),
-        ("Timestamps", {
-            "fields": ("ordered_at", "status_changed_at", "completed_at"),
-            "classes": ("collapse",),
-        }),
+        (
+            None,
+            {
+                "fields": (
+                    "order_number",
+                    "patient",
+                    "encounter",
+                    "ordered_by",
+                )
+            },
+        ),
+        (
+            "Order Details",
+            {
+                "fields": (
+                    "priority",
+                    "clinical_indication",
+                    "relevant_clinical_history",
+                    "status",
+                ),
+            },
+        ),
+        (
+            "Scheduling",
+            {
+                "fields": ("scheduled_datetime", "scheduled_room"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "DICOM/PACS",
+            {
+                "fields": ("accession_number", "study_instance_uid"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Billing",
+            {
+                "fields": ("total_cost", "is_paid"),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("ordered_at", "status_changed_at", "completed_at"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
 
@@ -218,36 +246,48 @@ class DICOMStudyAdmin(admin.ModelAdmin):
     date_hierarchy = "study_date"
     inlines = [DICOMSeriesInline]
     fieldsets = (
-        (None, {
-            "fields": (
-                "study_instance_uid",
-                "patient",
-                "imaging_order",
-                "modality",
-            ),
-        }),
-        ("Study Details", {
-            "fields": (
-                "study_date",
-                "study_time",
-                "study_description",
-                "accession_number",
-                "referring_physician_name",
-                "institution_name",
-            ),
-        }),
-        ("Statistics", {
-            "fields": (
-                "number_of_series",
-                "number_of_instances",
-                "total_file_size",
-                "thumbnail_path",
-            ),
-        }),
-        ("Metadata", {
-            "fields": ("uploaded_by", "created_at", "updated_at"),
-            "classes": ("collapse",),
-        }),
+        (
+            None,
+            {
+                "fields": (
+                    "study_instance_uid",
+                    "patient",
+                    "imaging_order",
+                    "modality",
+                ),
+            },
+        ),
+        (
+            "Study Details",
+            {
+                "fields": (
+                    "study_date",
+                    "study_time",
+                    "study_description",
+                    "accession_number",
+                    "referring_physician_name",
+                    "institution_name",
+                ),
+            },
+        ),
+        (
+            "Statistics",
+            {
+                "fields": (
+                    "number_of_series",
+                    "number_of_instances",
+                    "total_file_size",
+                    "thumbnail_path",
+                ),
+            },
+        ),
+        (
+            "Metadata",
+            {
+                "fields": ("uploaded_by", "created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
 

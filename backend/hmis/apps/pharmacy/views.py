@@ -74,18 +74,15 @@ class DrugViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Filter by category if provided (searches within categories array)."""
-        from django.db.models import Q, Value
+        from django.db.models import CharField, Q, Value
         from django.db.models.functions import Cast
-        from django.db.models import CharField
 
         queryset = super().get_queryset()
         category = self.request.query_params.get("category")
         if category:
             # For SQLite compatibility, check if category appears in JSON string
             # This works because JSONField stores as text in SQLite
-            queryset = queryset.filter(
-                Q(categories__icontains=f'"{category}"')
-            )
+            queryset = queryset.filter(Q(categories__icontains=f'"{category}"'))
         return queryset
 
 
@@ -481,7 +478,9 @@ class ExpiryReportView(APIView):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("days", OpenApiTypes.INT, description="Days threshold (default 90)", required=False),
+            OpenApiParameter(
+                "days", OpenApiTypes.INT, description="Days threshold (default 90)", required=False
+            ),
         ],
         responses={200: OpenApiTypes.OBJECT},
     )
@@ -527,8 +526,15 @@ class DispensingReportView(APIView):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("start_date", OpenApiTypes.DATE, description="Start date (YYYY-MM-DD)", required=False),
-            OpenApiParameter("end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=False),
+            OpenApiParameter(
+                "start_date",
+                OpenApiTypes.DATE,
+                description="Start date (YYYY-MM-DD)",
+                required=False,
+            ),
+            OpenApiParameter(
+                "end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=False
+            ),
         ],
         responses={200: OpenApiTypes.OBJECT},
     )
@@ -576,8 +582,15 @@ class StockMovementReportView(APIView):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("start_date", OpenApiTypes.DATE, description="Start date (YYYY-MM-DD)", required=False),
-            OpenApiParameter("end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=False),
+            OpenApiParameter(
+                "start_date",
+                OpenApiTypes.DATE,
+                description="Start date (YYYY-MM-DD)",
+                required=False,
+            ),
+            OpenApiParameter(
+                "end_date", OpenApiTypes.DATE, description="End date (YYYY-MM-DD)", required=False
+            ),
         ],
         responses={200: OpenApiTypes.OBJECT},
     )

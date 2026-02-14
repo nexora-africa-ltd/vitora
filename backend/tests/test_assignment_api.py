@@ -28,12 +28,8 @@ class TestAssignmentRuleAPI:
             "applies_to": "APPOINTMENT",
             "rule_definition": {
                 "version": "1.0",
-                "constraints": [
-                    {"field": "metadata.status", "operator": "==", "value": "on_duty"}
-                ],
-                "scoring": [
-                    {"field": "metadata.current_load", "weight": -1}
-                ],
+                "constraints": [{"field": "metadata.status", "operator": "==", "value": "on_duty"}],
+                "scoring": [{"field": "metadata.current_load", "weight": -1}],
             },
             "priority": 100,
             "description": "Test rule for API",
@@ -165,11 +161,7 @@ class TestAssignmentDecisionAPI:
     @pytest.fixture
     def sample_decision(self, db, test_user, sample_patient):
         """Create a sample decision for testing."""
-        from hmis.apps.scheduling.models import (
-            AssignmentDecision,
-            AssignmentRule,
-            Resource,
-        )
+        from hmis.apps.scheduling.models import AssignmentDecision, AssignmentRule, Resource
 
         resource = Resource.objects.create(
             name="Dr. Decision Test",
@@ -312,7 +304,9 @@ class TestAssignmentOverrideAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
 
-    def test_approve_override(self, authenticated_client, sample_resources, test_user, another_user):
+    def test_approve_override(
+        self, authenticated_client, sample_resources, test_user, another_user
+    ):
         """Should approve a pending override."""
         from hmis.apps.scheduling.models import AssignmentOverride
 
@@ -384,15 +378,17 @@ class TestAutoAssignmentAPI:
 
         resources = []
         for i, load in enumerate([3, 1, 5]):
-            resources.append(Resource.objects.create(
-                name=f"Dr. Auto {i}",
-                resource_type="PERSON",
-                code=f"DOC-AUTO-{i:03d}",
-                metadata={
-                    "status": "on_duty",
-                    "current_load": load,
-                },
-            ))
+            resources.append(
+                Resource.objects.create(
+                    name=f"Dr. Auto {i}",
+                    resource_type="PERSON",
+                    code=f"DOC-AUTO-{i:03d}",
+                    metadata={
+                        "status": "on_duty",
+                        "current_load": load,
+                    },
+                )
+            )
 
         rule = AssignmentRule.objects.create(
             name="Auto Assignment Rule",
@@ -435,7 +431,9 @@ class TestAutoAssignmentAPI:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["success"] is True
-        assert response.data["assigned_resource"]["id"] == assignment_setup["resources"][1].id  # Lowest load
+        assert (
+            response.data["assigned_resource"]["id"] == assignment_setup["resources"][1].id
+        )  # Lowest load
 
     def test_auto_assign_returns_decision_details(self, authenticated_client, assignment_setup):
         """Should return decision details in response."""

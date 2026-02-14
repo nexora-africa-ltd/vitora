@@ -16,7 +16,6 @@ from rest_framework import status
 
 from hmis.apps.imaging.models import ImagingOrder, ImagingOrderItem, ImagingProcedure
 
-
 # ============================================================================
 # Imaging Procedure (Catalog) API Tests (20 tests)
 # ============================================================================
@@ -235,9 +234,7 @@ class TestImagingOrderAPI:
         self, authenticated_client, sample_imaging_order, sample_patient
     ):
         """Should filter orders by patient."""
-        response = authenticated_client.get(
-            f"/api/imaging/orders/?patient={sample_patient.id}"
-        )
+        response = authenticated_client.get(f"/api/imaging/orders/?patient={sample_patient.id}")
         assert response.status_code == status.HTTP_200_OK
         for order in response.data["results"]:
             assert order["patient"] == sample_patient.id
@@ -264,9 +261,7 @@ class TestImagingOrderAPI:
 
     def test_create_order(self, authenticated_client, order_data):
         """Should create imaging order."""
-        response = authenticated_client.post(
-            "/api/imaging/orders/", order_data, format="json"
-        )
+        response = authenticated_client.post("/api/imaging/orders/", order_data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["order_number"].startswith("RAD-")
         assert response.data["status"] == "DRAFT"
@@ -274,17 +269,13 @@ class TestImagingOrderAPI:
 
     def test_create_order_sets_ordered_by(self, authenticated_client, order_data, test_user):
         """Should set ordered_by to authenticated user."""
-        response = authenticated_client.post(
-            "/api/imaging/orders/", order_data, format="json"
-        )
+        response = authenticated_client.post("/api/imaging/orders/", order_data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["ordered_by"] == test_user.id
 
     def test_create_order_calculates_total_cost(self, authenticated_client, order_data):
         """Should calculate total cost from items."""
-        response = authenticated_client.post(
-            "/api/imaging/orders/", order_data, format="json"
-        )
+        response = authenticated_client.post("/api/imaging/orders/", order_data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         assert Decimal(response.data["total_cost"]) == Decimal("1500.00")
 
@@ -293,10 +284,18 @@ class TestImagingOrderAPI:
     ):
         """Should create order with multiple items."""
         proc1 = ImagingProcedure.objects.create(
-            code="MULTI-1", name="Multi 1", modality="XR", body_region="CHEST", cost=Decimal("1000.00")
+            code="MULTI-1",
+            name="Multi 1",
+            modality="XR",
+            body_region="CHEST",
+            cost=Decimal("1000.00"),
         )
         proc2 = ImagingProcedure.objects.create(
-            code="MULTI-2", name="Multi 2", modality="CT", body_region="HEAD", cost=Decimal("5000.00")
+            code="MULTI-2",
+            name="Multi 2",
+            modality="CT",
+            body_region="HEAD",
+            cost=Decimal("5000.00"),
         )
         data = {
             "patient": sample_patient.id,
@@ -368,9 +367,7 @@ class TestImagingOrderAPI:
         assert "items" in response.data
         assert len(response.data["items"]) >= 1
 
-    def test_retrieve_order_includes_patient_name(
-        self, authenticated_client, sample_imaging_order
-    ):
+    def test_retrieve_order_includes_patient_name(self, authenticated_client, sample_imaging_order):
         """Order detail should include patient name."""
         response = authenticated_client.get(
             f"/api/imaging/orders/{sample_imaging_order.order_number}/"
@@ -628,9 +625,7 @@ class TestImagingAuditLogging:
         from hmis.apps.core.models import AuditLog
 
         initial_count = AuditLog.objects.filter(action="imaging_order_create").count()
-        response = authenticated_client.post(
-            "/api/imaging/orders/", order_data, format="json"
-        )
+        response = authenticated_client.post("/api/imaging/orders/", order_data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         new_count = AuditLog.objects.filter(action="imaging_order_create").count()
         assert new_count == initial_count + 1
@@ -733,9 +728,7 @@ class TestImagingAuditLogging:
         """Audit log should include user who performed action."""
         from hmis.apps.core.models import AuditLog
 
-        response = authenticated_client.post(
-            "/api/imaging/orders/", order_data, format="json"
-        )
+        response = authenticated_client.post("/api/imaging/orders/", order_data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         log = AuditLog.objects.filter(action="imaging_order_create").last()
         assert log is not None
@@ -745,9 +738,7 @@ class TestImagingAuditLogging:
         """Audit log should include resource ID."""
         from hmis.apps.core.models import AuditLog
 
-        response = authenticated_client.post(
-            "/api/imaging/orders/", order_data, format="json"
-        )
+        response = authenticated_client.post("/api/imaging/orders/", order_data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         log = AuditLog.objects.filter(action="imaging_order_create").last()
         assert log is not None

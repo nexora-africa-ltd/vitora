@@ -116,9 +116,7 @@ def broadcast_result_verified(result) -> None:
 
     # Broadcast to encounter channel
     if lab_order.encounter_id:
-        broadcast_lab_event_sync(
-            f"lab_encounter_{lab_order.encounter_id}", "result_verified", data
-        )
+        broadcast_lab_event_sync(f"lab_encounter_{lab_order.encounter_id}", "result_verified", data)
 
     # Broadcast to order channel
     broadcast_lab_event_sync(f"lab_order_{lab_order.id}", "result_verified", data)
@@ -191,15 +189,11 @@ def broadcast_critical_alert(result) -> None:
 
     # Broadcast to encounter channel
     if lab_order.encounter_id:
-        broadcast_lab_event_sync(
-            f"lab_encounter_{lab_order.encounter_id}", "critical_alert", data
-        )
+        broadcast_lab_event_sync(f"lab_encounter_{lab_order.encounter_id}", "critical_alert", data)
 
     # Broadcast to ordering clinician (high priority)
     if lab_order.ordered_by_id:
-        broadcast_lab_event_sync(
-            f"lab_clinician_{lab_order.ordered_by_id}", "critical_alert", data
-        )
+        broadcast_lab_event_sync(f"lab_clinician_{lab_order.ordered_by_id}", "critical_alert", data)
 
 
 def broadcast_order_completed(lab_order) -> None:
@@ -227,9 +221,7 @@ def broadcast_order_completed(lab_order) -> None:
 
     # Broadcast to encounter channel
     if lab_order.encounter_id:
-        broadcast_lab_event_sync(
-            f"lab_encounter_{lab_order.encounter_id}", "order_completed", data
-        )
+        broadcast_lab_event_sync(f"lab_encounter_{lab_order.encounter_id}", "order_completed", data)
 
     # Broadcast to ordering clinician
     if lab_order.ordered_by_id:

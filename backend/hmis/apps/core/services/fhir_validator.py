@@ -21,8 +21,6 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from pydantic import ValidationError
-
 # Import FHIR R4 resources
 from fhir.resources.R4B.bundle import Bundle
 from fhir.resources.R4B.claim import Claim
@@ -38,6 +36,7 @@ from fhir.resources.R4B.organization import Organization
 from fhir.resources.R4B.patient import Patient
 from fhir.resources.R4B.practitioner import Practitioner
 from fhir.resources.R4B.servicerequest import ServiceRequest
+from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -237,8 +236,17 @@ class FHIRValidator:
 
         # Validate bundle type
         bundle_type = bundle_dict.get("type")
-        valid_types = ["document", "message", "transaction", "transaction-response",
-                       "batch", "batch-response", "history", "searchset", "collection"]
+        valid_types = [
+            "document",
+            "message",
+            "transaction",
+            "transaction-response",
+            "batch",
+            "batch-response",
+            "history",
+            "searchset",
+            "collection",
+        ]
         if bundle_type and bundle_type not in valid_types:
             result.add_error(
                 "type",
@@ -367,9 +375,7 @@ class FHIRValidator:
         result = self.validate_resource(resource_dict)
         return [e.to_dict() for e in result.errors]
 
-    def _parse_validation_errors(
-        self, exception: Exception, result: FHIRValidationResult
-    ) -> None:
+    def _parse_validation_errors(self, exception: Exception, result: FHIRValidationResult) -> None:
         """Parse Pydantic validation errors into structured format."""
         if hasattr(exception, "errors"):
             # Pydantic ValidationError
@@ -397,8 +403,7 @@ class FHIRValidator:
         # Check for CR identifier (warning only, not error)
         cr_systems = ["urn:sha:client-registry", "urn:kenya:cr"]
         has_cr_id = any(
-            any(cr in (id_item.get("system") or "") for cr in cr_systems)
-            for id_item in identifiers
+            any(cr in (id_item.get("system") or "") for cr in cr_systems) for id_item in identifiers
         )
         if not has_cr_id:
             result.add_warning(

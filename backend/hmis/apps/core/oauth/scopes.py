@@ -118,15 +118,11 @@ class SMARTScopes(BaseScopes):
         all_scopes.update(cls.SYSTEM_SCOPES)
         return all_scopes
 
-    def get_available_scopes(
-        self, application=None, request=None, *args, **kwargs
-    ) -> list[str]:
+    def get_available_scopes(self, application=None, request=None, *args, **kwargs) -> list[str]:
         """Return list of available scope names."""
         return list(self.get_all_scopes().keys())
 
-    def get_default_scopes(
-        self, application=None, request=None, *args, **kwargs
-    ) -> list[str]:
+    def get_default_scopes(self, application=None, request=None, *args, **kwargs) -> list[str]:
         """Return default scopes for authorization requests without explicit scope."""
         return ["openid", "profile"]
 

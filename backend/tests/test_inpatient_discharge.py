@@ -474,7 +474,7 @@ class TestDischargeQueries:
         """Should filter discharges by type."""
         # Get available beds from the ward (auto-generated)
         available_beds = list(sample_ward.beds.order_by("bed_number")[:3])
-        
+
         # Create multiple admissions and discharges
         for i, (discharge_type, bed) in enumerate(
             zip(["NORMAL", "AGAINST_ADVICE", "TRANSFERRED"], available_beds, strict=False)

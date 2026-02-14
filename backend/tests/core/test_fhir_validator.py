@@ -20,7 +20,6 @@ from hmis.apps.core.services.fhir_validator import (
     validate_fhir_resource,
 )
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -448,7 +447,7 @@ class TestFHIRValidatorPatient:
 
     def test_patient_invalid_gender(self, validator, valid_patient_resource):
         """Patient with invalid gender should fail or warn.
-        
+
         Note: fhir.resources library may be lenient with some invalid values.
         We test that the validator processes the resource without crashing.
         """
@@ -483,7 +482,7 @@ class TestFHIRValidatorEncounter:
 
     def test_encounter_invalid_status(self, validator, valid_encounter_resource):
         """Encounter with invalid status should be processed.
-        
+
         Note: fhir.resources library may be lenient with some invalid values.
         """
         encounter = valid_encounter_resource.copy()
@@ -523,19 +522,15 @@ class TestFHIRValidatorObservation:
 class TestFHIRValidatorMedicationRequest:
     """Tests for MedicationRequest resource validation."""
 
-    def test_valid_medication_request_passes(
-        self, validator, valid_medication_request_resource
-    ):
+    def test_valid_medication_request_passes(self, validator, valid_medication_request_resource):
         """Valid medication request should pass validation."""
         result = validator.validate_medication_request(valid_medication_request_resource)
         assert result.is_valid is True
         assert result.resource_type == "MedicationRequest"
 
-    def test_medication_request_invalid_status(
-        self, validator, valid_medication_request_resource
-    ):
+    def test_medication_request_invalid_status(self, validator, valid_medication_request_resource):
         """MedicationRequest with invalid status should be processed.
-        
+
         Note: fhir.resources library may be lenient with some invalid values.
         """
         med_req = valid_medication_request_resource.copy()

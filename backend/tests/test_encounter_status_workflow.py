@@ -60,8 +60,15 @@ class TestEncounterStatusField:
         """Status field should only accept valid choices."""
 
         valid_statuses = [
-            "CREATED", "CHECKED_IN", "TRIAGED", "IN_PROGRESS", "ON_HOLD",
-            "ORDERS_PLACED", "RESULTS_PENDING", "READY_TO_CLOSE", "CLOSED",
+            "CREATED",
+            "CHECKED_IN",
+            "TRIAGED",
+            "IN_PROGRESS",
+            "ON_HOLD",
+            "ORDERS_PLACED",
+            "RESULTS_PENDING",
+            "READY_TO_CLOSE",
+            "CLOSED",
             "CANCELLED",
         ]
 
@@ -414,9 +421,7 @@ class TestEncounterStatusAPI:
         assert response.status_code == http_status.HTTP_200_OK
         assert response.data["chief_complaint"] == "Updated complaint"
 
-    def test_update_closed_encounter_fails(
-        self, authenticated_client, sample_patient, test_user
-    ):
+    def test_update_closed_encounter_fails(self, authenticated_client, sample_patient, test_user):
         """PATCH /api/encounters/{id}/ should fail for CLOSED encounters."""
         from hmis.apps.encounters.models import Encounter
 
@@ -579,11 +584,10 @@ class TestEncounterStatusSerializer:
 
     def test_serializer_includes_status(self, sample_encounter):
         """EncounterSerializer should include status field."""
-        from hmis.apps.encounters.serializers import EncounterSerializer
-
         # Reload to ensure related Patient fields have correct Python types
         # (DateField values may remain as input strings on the in-memory instance).
         from hmis.apps.encounters.models import Encounter
+        from hmis.apps.encounters.serializers import EncounterSerializer
 
         encounter = Encounter.objects.select_related("patient").get(pk=sample_encounter.pk)
 
@@ -592,9 +596,8 @@ class TestEncounterStatusSerializer:
 
     def test_serializer_includes_finalized_by(self, sample_encounter):
         """EncounterSerializer should include finalized_by field."""
-        from hmis.apps.encounters.serializers import EncounterSerializer
-
         from hmis.apps.encounters.models import Encounter
+        from hmis.apps.encounters.serializers import EncounterSerializer
 
         encounter = Encounter.objects.select_related("patient").get(pk=sample_encounter.pk)
 
@@ -603,9 +606,8 @@ class TestEncounterStatusSerializer:
 
     def test_serializer_includes_finalized_at(self, sample_encounter):
         """EncounterSerializer should include finalized_at field."""
-        from hmis.apps.encounters.serializers import EncounterSerializer
-
         from hmis.apps.encounters.models import Encounter
+        from hmis.apps.encounters.serializers import EncounterSerializer
 
         encounter = Encounter.objects.select_related("patient").get(pk=sample_encounter.pk)
 

@@ -90,7 +90,4 @@ def create_invoice_item_for_imaging(sender, instance, created, **kwargs):
             f"{procedure.name} on order {imaging_order.order_number}"
         )
     except Exception as e:
-        logger.error(
-            f"Failed to create invoice item for imaging order item "
-            f"{instance.id}: {e}"
-        )
+        logger.error(f"Failed to create invoice item for imaging order item " f"{instance.id}: {e}")

@@ -125,7 +125,10 @@ class TestCloseEncounterValidation:
             format="json",
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert "disposition" in str(response.data).lower() or "documentation" in str(response.data).lower()
+        assert (
+            "disposition" in str(response.data).lower()
+            or "documentation" in str(response.data).lower()
+        )
 
     def test_close_with_disposition_advice_only_without_notes_fails(
         self, authenticated_client, sample_encounter
@@ -149,7 +152,9 @@ class TestCloseEncounterValidation:
         """ADVICE_ONLY with disposition_notes should allow closing."""
         sample_encounter.status = "READY_TO_CLOSE"
         sample_encounter.disposition = "ADVICE_ONLY"
-        sample_encounter.disposition_notes = "Patient advised to rest and hydrate. No medication needed."
+        sample_encounter.disposition_notes = (
+            "Patient advised to rest and hydrate. No medication needed."
+        )
         sample_encounter.save()
 
         response = authenticated_client.post(

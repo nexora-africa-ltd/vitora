@@ -22,24 +22,24 @@ logger = logging.getLogger(__name__)
 # DICOM uses some codes that differ from the imaging module's choices.
 DICOM_MODALITY_MAP: dict[str, str] = {
     # X-Ray variants → XR
-    "CR": "XR",      # Computed Radiography
-    "DX": "XR",      # Digital Radiography
-    "XR": "XR",      # General X-Ray (non-standard but used)
+    "CR": "XR",  # Computed Radiography
+    "DX": "XR",  # Digital Radiography
+    "XR": "XR",  # General X-Ray (non-standard but used)
     # CT
     "CT": "CT",
     # MRI variants → MRI
     "MR": "MRI",
-    "MRI": "MRI",    # Non-standard but sometimes used
+    "MRI": "MRI",  # Non-standard but sometimes used
     # Ultrasound
     "US": "US",
     # Nuclear Medicine
     "NM": "NM",
-    "PT": "NM",      # PET → Nuclear Medicine
+    "PT": "NM",  # PET → Nuclear Medicine
     # Mammography
     "MG": "MG",
     # Fluoroscopy variants → FL
-    "RF": "FL",      # Radio-Fluoroscopy
-    "XA": "FL",      # X-Ray Angiography
+    "RF": "FL",  # Radio-Fluoroscopy
+    "XA": "FL",  # X-Ray Angiography
     "FL": "FL",
 }
 
@@ -83,9 +83,7 @@ class DICOMParsingService:
         except pydicom.errors.InvalidDicomError as exc:
             raise ValueError(f"Invalid DICOM file: {file_path}") from exc
         except Exception as exc:
-            raise ValueError(
-                f"Could not parse DICOM file: {file_path} — {exc}"
-            ) from exc
+            raise ValueError(f"Could not parse DICOM file: {file_path} — {exc}") from exc
 
         file_size = os.path.getsize(file_path)
 
@@ -105,23 +103,15 @@ class DICOMParsingService:
             "study_time": cls._parse_time(cls._get_tag_value(ds, "StudyTime", "")),
             "study_description": str(cls._get_tag_value(ds, "StudyDescription", "")),
             "accession_number": str(cls._get_tag_value(ds, "AccessionNumber", "")),
-            "referring_physician_name": str(
-                cls._get_tag_value(ds, "ReferringPhysicianName", "")
-            ),
+            "referring_physician_name": str(cls._get_tag_value(ds, "ReferringPhysicianName", "")),
             "institution_name": str(cls._get_tag_value(ds, "InstitutionName", "")),
             # Series-level tags
-            "series_instance_uid": str(
-                cls._get_tag_value(ds, "SeriesInstanceUID", "")
-            ),
+            "series_instance_uid": str(cls._get_tag_value(ds, "SeriesInstanceUID", "")),
             "series_number": cls._get_int_tag(ds, "SeriesNumber"),
-            "series_description": str(
-                cls._get_tag_value(ds, "SeriesDescription", "")
-            ),
+            "series_description": str(cls._get_tag_value(ds, "SeriesDescription", "")),
             "modality": modality,
             "raw_modality": raw_modality,
-            "body_part_examined": str(
-                cls._get_tag_value(ds, "BodyPartExamined", "")
-            ),
+            "body_part_examined": str(cls._get_tag_value(ds, "BodyPartExamined", "")),
             # Instance-level tags
             "sop_instance_uid": str(cls._get_tag_value(ds, "SOPInstanceUID", "")),
             "sop_class_uid": str(cls._get_tag_value(ds, "SOPClassUID", "")),
@@ -232,9 +222,7 @@ class DICOMParsingService:
         try:
             ds = pydicom.dcmread(dicom_file_path)
             if not hasattr(ds, "PixelData"):
-                logger.warning(
-                    "No pixel data in %s, cannot generate thumbnail", dicom_file_path
-                )
+                logger.warning("No pixel data in %s, cannot generate thumbnail", dicom_file_path)
                 return None
 
             pixel_array = ds.pixel_array.astype(float)
@@ -259,9 +247,7 @@ class DICOMParsingService:
                 p_min = pixel_array.min()
                 p_max = pixel_array.max()
                 if p_max > p_min:
-                    pixel_array = ((pixel_array - p_min) / (p_max - p_min) * 255).astype(
-                        np.uint8
-                    )
+                    pixel_array = ((pixel_array - p_min) / (p_max - p_min) * 255).astype(np.uint8)
                 else:
                     pixel_array = np.zeros_like(pixel_array, dtype=np.uint8)
 
@@ -284,9 +270,7 @@ class DICOMParsingService:
             return thumb_relative
 
         except Exception:
-            logger.exception(
-                "Failed to generate thumbnail for %s", dicom_file_path
-            )
+            logger.exception("Failed to generate thumbnail for %s", dicom_file_path)
             return None
 
     @classmethod

@@ -7,7 +7,7 @@ import pytest  # type: ignore
 from django.utils import timezone
 from rest_framework import status
 
-from hmis.apps.laboratory.models import LabOrder, LabOrderItem, LabResult, LabQueue, TestCatalog
+from hmis.apps.laboratory.models import LabOrder, LabOrderItem, LabQueue, LabResult, TestCatalog
 
 
 @pytest.fixture
@@ -164,9 +164,7 @@ class TestLabReportsAPI:
         start = report_data["start"].isoformat()
         end = report_data["end"].isoformat()
 
-        response = authenticated_client.get(
-            f"/api/lab/reports/workload/?start={start}&end={end}"
-        )
+        response = authenticated_client.get(f"/api/lab/reports/workload/?start={start}&end={end}")
 
         assert response.status_code == status.HTTP_200_OK
         payload = response.data
@@ -197,9 +195,7 @@ class TestLabReportsAPI:
         start = report_data["start"].isoformat()
         end = report_data["end"].isoformat()
 
-        response = authenticated_client.get(
-            f"/api/lab/reports/rejections/?start={start}&end={end}"
-        )
+        response = authenticated_client.get(f"/api/lab/reports/rejections/?start={start}&end={end}")
 
         assert response.status_code == status.HTTP_200_OK
         payload = response.data

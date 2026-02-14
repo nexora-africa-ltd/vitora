@@ -5,7 +5,12 @@ Views for core app.
 from django.contrib.auth.models import Permission
 from django.contrib.auth.signals import user_logged_in, user_login_failed
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, extend_schema, extend_schema_view, inline_serializer
+from drf_spectacular.utils import (
+    OpenApiParameter,
+    extend_schema,
+    extend_schema_view,
+    inline_serializer,
+)
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
@@ -13,7 +18,17 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import AuditLog, County, Department, FrontendEvent, Notification, Role, StaffProfile, SubCounty, Ward
+from .models import (
+    AuditLog,
+    County,
+    Department,
+    FrontendEvent,
+    Notification,
+    Role,
+    StaffProfile,
+    SubCounty,
+    Ward,
+)
 from .permissions import AuditLogPermission
 from .serializers import (
     AuditLogSerializer,
@@ -567,22 +582,30 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
 @extend_schema_view(
     retrieve=extend_schema(
         parameters=[
-            OpenApiParameter("id", OpenApiTypes.INT, location="path", description="Notification ID"),
+            OpenApiParameter(
+                "id", OpenApiTypes.INT, location="path", description="Notification ID"
+            ),
         ],
     ),
     partial_update=extend_schema(
         parameters=[
-            OpenApiParameter("id", OpenApiTypes.INT, location="path", description="Notification ID"),
+            OpenApiParameter(
+                "id", OpenApiTypes.INT, location="path", description="Notification ID"
+            ),
         ],
     ),
     update=extend_schema(
         parameters=[
-            OpenApiParameter("id", OpenApiTypes.INT, location="path", description="Notification ID"),
+            OpenApiParameter(
+                "id", OpenApiTypes.INT, location="path", description="Notification ID"
+            ),
         ],
     ),
     destroy=extend_schema(
         parameters=[
-            OpenApiParameter("id", OpenApiTypes.INT, location="path", description="Notification ID"),
+            OpenApiParameter(
+                "id", OpenApiTypes.INT, location="path", description="Notification ID"
+            ),
         ],
     ),
 )
@@ -691,7 +714,12 @@ from rest_framework.permissions import IsAuthenticated as IsAuth
 
 @extend_schema(
     parameters=[
-        OpenApiParameter("facility_code", OpenApiTypes.STR, description="Optional facility code override", required=False),
+        OpenApiParameter(
+            "facility_code",
+            OpenApiTypes.STR,
+            description="Optional facility code override",
+            required=False,
+        ),
     ],
     responses={
         200: inline_serializer(
@@ -725,8 +753,18 @@ def generate_prc_number_view(request):
 
 @extend_schema(
     parameters=[
-        OpenApiParameter("prefix", OpenApiTypes.STR, description="Case type prefix (e.g., 'GBV', 'RTA', 'TRAUMA')", required=False),
-        OpenApiParameter("facility_code", OpenApiTypes.STR, description="Optional facility code override", required=False),
+        OpenApiParameter(
+            "prefix",
+            OpenApiTypes.STR,
+            description="Case type prefix (e.g., 'GBV', 'RTA', 'TRAUMA')",
+            required=False,
+        ),
+        OpenApiParameter(
+            "facility_code",
+            OpenApiTypes.STR,
+            description="Optional facility code override",
+            required=False,
+        ),
     ],
     responses={
         200: inline_serializer(
@@ -767,12 +805,25 @@ def generate_case_number_view(request):
 
 @extend_schema(
     parameters=[
-        OpenApiParameter("qr_data", OpenApiTypes.STR, description="Full QR code string", required=False),
-        OpenApiParameter("type", OpenApiTypes.STR, description="Document type ('RECEIPT' or 'INVOICE')", required=False),
+        OpenApiParameter(
+            "qr_data", OpenApiTypes.STR, description="Full QR code string", required=False
+        ),
+        OpenApiParameter(
+            "type",
+            OpenApiTypes.STR,
+            description="Document type ('RECEIPT' or 'INVOICE')",
+            required=False,
+        ),
         OpenApiParameter("number", OpenApiTypes.STR, description="Document number", required=False),
-        OpenApiParameter("amount", OpenApiTypes.STR, description="Amount as string", required=False),
-        OpenApiParameter("date", OpenApiTypes.DATE, description="Date (YYYY-MM-DD)", required=False),
-        OpenApiParameter("signature", OpenApiTypes.STR, description="8-character hex signature", required=False),
+        OpenApiParameter(
+            "amount", OpenApiTypes.STR, description="Amount as string", required=False
+        ),
+        OpenApiParameter(
+            "date", OpenApiTypes.DATE, description="Date (YYYY-MM-DD)", required=False
+        ),
+        OpenApiParameter(
+            "signature", OpenApiTypes.STR, description="8-character hex signature", required=False
+        ),
     ],
     request=inline_serializer(
         name="VerifyDocumentRequest",

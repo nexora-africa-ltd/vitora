@@ -76,9 +76,7 @@ class TestHL7ServiceMessageBuilding:
         )
 
     @pytest.fixture
-    def lab_order_with_items(
-        self, db, sample_patient, sample_encounter, test_user, test_catalog
-    ):
+    def lab_order_with_items(self, db, sample_patient, sample_encounter, test_user, test_catalog):
         """Create lab order with items for testing."""
         order = LabOrder.objects.create(
             patient=sample_patient,
@@ -187,9 +185,7 @@ class TestHL7ServiceMessageBuilding:
         if test_item.test.loinc_code:
             assert test_item.test.loinc_code in obr_segment
 
-    def test_build_orm_o01_multiple_tests(
-        self, hl7_service, lab_order_with_items, db
-    ):
+    def test_build_orm_o01_multiple_tests(self, hl7_service, lab_order_with_items, db):
         """Should generate OBR segments for each test in order."""
         # Add second test
         test2 = TestCatalog.objects.create(
@@ -229,9 +225,7 @@ class TestHL7ServiceMessageBuilding:
         with pytest.raises(HL7ValidationError, match="at least one test item"):
             hl7_service.build_orm_o01(order)
 
-    def test_build_orm_o01_escapes_special_characters(
-        self, hl7_service, lab_order_with_items
-    ):
+    def test_build_orm_o01_escapes_special_characters(self, hl7_service, lab_order_with_items):
         """Should escape HL7 special characters in text fields."""
         lab_order_with_items.clinical_notes = "Patient has fever | headache ^ fatigue"
         lab_order_with_items.save()
@@ -461,9 +455,7 @@ class TestHL7ServiceResultImport:
 
         return order
 
-    def test_import_result_creates_lab_result(
-        self, hl7_service, lab_order_for_import, test_user
-    ):
+    def test_import_result_creates_lab_result(self, hl7_service, lab_order_for_import, test_user):
         """Should create LabResult from parsed HL7 data."""
         hl7_result = HL7LabResult(
             order_control="RE",
@@ -517,9 +509,7 @@ class TestHL7ServiceResultImport:
         order_item.refresh_from_db()
         assert order_item.status == "COMPLETED"
 
-    def test_import_result_with_abnormal_flag(
-        self, hl7_service, lab_order_for_import, test_user
-    ):
+    def test_import_result_with_abnormal_flag(self, hl7_service, lab_order_for_import, test_user):
         """Should map HL7 abnormal flags to our flag system."""
         hl7_result = HL7LabResult(
             order_control="RE",
@@ -541,9 +531,7 @@ class TestHL7ServiceResultImport:
 
         assert result.result_flag == "CRITICAL_LOW"
 
-    def test_import_result_order_not_found_returns_none(
-        self, hl7_service, test_user
-    ):
+    def test_import_result_order_not_found_returns_none(self, hl7_service, test_user):
         """Should return None when order is not found."""
         hl7_result = HL7LabResult(
             order_control="RE",
@@ -565,9 +553,7 @@ class TestHL7ServiceResultImport:
 
         assert result is None
 
-    def test_import_result_duplicate_prevented(
-        self, hl7_service, lab_order_for_import, test_user
-    ):
+    def test_import_result_duplicate_prevented(self, hl7_service, lab_order_for_import, test_user):
         """Should not create duplicate result for same order item."""
         hl7_result = HL7LabResult(
             order_control="RE",
@@ -841,9 +827,7 @@ class TestHL7FullWorkflow:
         return HL7Service()
 
     @pytest.fixture
-    def complete_lab_order(
-        self, db, sample_patient, sample_encounter, test_user
-    ):
+    def complete_lab_order(self, db, sample_patient, sample_encounter, test_user):
         """Create complete lab order for workflow testing."""
         # Create test catalog
         test_catalog = TestCatalog.objects.create(
@@ -880,9 +864,7 @@ class TestHL7FullWorkflow:
 
         return order
 
-    def test_round_trip_order_to_result(
-        self, hl7_service, complete_lab_order, test_user
-    ):
+    def test_round_trip_order_to_result(self, hl7_service, complete_lab_order, test_user):
         """Should complete full order -> message -> result workflow."""
         # Step 1: Generate order message
         order_message = hl7_service.build_orm_o01(complete_lab_order)
@@ -913,9 +895,7 @@ class TestHL7FullWorkflow:
         order_item.refresh_from_db()
         assert order_item.status == "COMPLETED"
 
-    def test_generate_ack_for_received_result(
-        self, hl7_service, complete_lab_order
-    ):
+    def test_generate_ack_for_received_result(self, hl7_service, complete_lab_order):
         """Should generate appropriate ACK for received result."""
         # Receive result message
         result_message = (

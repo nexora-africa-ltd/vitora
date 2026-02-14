@@ -5,13 +5,6 @@ Phase 1: Availability services
 Phase 2: Assignment engine services
 """
 
-# Re-export Phase 1 availability services (for backward compatibility)
-from hmis.apps.scheduling.services.availability import (
-    check_slot_available,
-    get_available_slots,
-    get_weekly_availability,
-)
-
 # Export Phase 2 assignment engine services
 from hmis.apps.scheduling.services.assignment import (
     AssignmentResult,
@@ -20,6 +13,13 @@ from hmis.apps.scheduling.services.assignment import (
     EvaluationResult,
     OverrideResult,
     RuleEvaluator,
+)
+
+# Re-export Phase 1 availability services (for backward compatibility)
+from hmis.apps.scheduling.services.availability import (
+    check_slot_available,
+    get_available_slots,
+    get_weekly_availability,
 )
 
 __all__ = [

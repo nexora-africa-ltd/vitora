@@ -62,7 +62,12 @@ class PatientLookupView(views.APIView):
 
     @extend_schema(
         parameters=[
-            OpenApiParameter("q", OpenApiTypes.STR, description="Search query (MRN, ID, phone, or name)", required=True),
+            OpenApiParameter(
+                "q",
+                OpenApiTypes.STR,
+                description="Search query (MRN, ID, phone, or name)",
+                required=True,
+            ),
         ],
         responses={200: PatientLookupSerializer},
     )
@@ -90,28 +95,23 @@ class PatientLookupView(views.APIView):
             # Try phone number (strip leading zeros for flexibility)
             normalized_phone = query.lstrip("0").replace("+254", "")
             patient = Patient.objects.filter(
-                Q(phone_number__icontains=normalized_phone)
-                | Q(phone_number=query)
+                Q(phone_number__icontains=normalized_phone) | Q(phone_number=query)
             ).first()
 
         if not patient:
             # Try identification number
-            patient = Patient.objects.filter(
-                identification_number__iexact=query
-            ).first()
+            patient = Patient.objects.filter(identification_number__iexact=query).first()
 
         if not patient:
             # Try name search (first + last)
             name_parts = query.split()
             if len(name_parts) >= 2:
                 patient = Patient.objects.filter(
-                    Q(first_name__icontains=name_parts[0])
-                    & Q(last_name__icontains=name_parts[-1])
+                    Q(first_name__icontains=name_parts[0]) & Q(last_name__icontains=name_parts[-1])
                 ).first()
             else:
                 patient = Patient.objects.filter(
-                    Q(first_name__icontains=query)
-                    | Q(last_name__icontains=query)
+                    Q(first_name__icontains=query) | Q(last_name__icontains=query)
                 ).first()
 
         if not patient:
@@ -146,11 +146,16 @@ class PatientLookupView(views.APIView):
         # Add linkable encounter for follow-up visits
         from hmis.apps.encounters.models import Encounter
 
-        linkable = Encounter.objects.filter(
-            patient=patient,
-        ).exclude(
-            status__in=["CANCELLED"],
-        ).order_by("-encounter_date", "-created_at").first()
+        linkable = (
+            Encounter.objects.filter(
+                patient=patient,
+            )
+            .exclude(
+                status__in=["CANCELLED"],
+            )
+            .order_by("-encounter_date", "-created_at")
+            .first()
+        )
 
         response_data["linkable_encounter_id"] = linkable.id if linkable else None
 

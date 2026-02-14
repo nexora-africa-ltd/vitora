@@ -148,8 +148,13 @@ class TestDispensingAutoBilling:
     """Tests for auto-creating InvoiceItem when Dispensing is created."""
 
     def test_direct_dispensing_creates_invoice_item(
-        self, sample_patient_for_billing, sample_encounter_with_invoice,
-        draft_invoice, sample_drug, sample_stock_batch, sample_user
+        self,
+        sample_patient_for_billing,
+        sample_encounter_with_invoice,
+        draft_invoice,
+        sample_drug,
+        sample_stock_batch,
+        sample_user,
     ):
         """Direct dispensing (OTC, without prescription) should auto-create InvoiceItem.
 
@@ -188,8 +193,13 @@ class TestDispensingAutoBilling:
         assert sample_drug.generic_name in invoice_item.description
 
     def test_dispensing_with_prescription_uses_existing_invoice_item(
-        self, sample_patient_for_billing, sample_encounter_with_invoice,
-        draft_invoice, sample_drug, sample_stock_batch, sample_user
+        self,
+        sample_patient_for_billing,
+        sample_encounter_with_invoice,
+        draft_invoice,
+        sample_drug,
+        sample_stock_batch,
+        sample_user,
     ):
         """Dispensing from prescription should link to existing InvoiceItem (no duplicate).
 
@@ -236,18 +246,25 @@ class TestDispensingAutoBilling:
         draft_invoice.refresh_from_db()
 
         # Should NOT create a duplicate - count should remain the same
-        assert draft_invoice.items.count() == initial_count, \
-            "Should not duplicate billing for prescription-based dispensing"
+        assert (
+            draft_invoice.items.count() == initial_count
+        ), "Should not duplicate billing for prescription-based dispensing"
 
         # The existing invoice item should now be linked to dispensing
         invoice_item = draft_invoice.items.filter(drug=sample_drug).first()
         assert invoice_item is not None
-        assert invoice_item.dispensing == dispensing, \
-            "Existing invoice item should be linked to the dispensing"
+        assert (
+            invoice_item.dispensing == dispensing
+        ), "Existing invoice item should be linked to the dispensing"
 
     def test_direct_dispensing_no_duplicate_invoice_items(
-        self, sample_patient_for_billing, sample_encounter_with_invoice,
-        draft_invoice, sample_drug, sample_stock_batch, sample_user
+        self,
+        sample_patient_for_billing,
+        sample_encounter_with_invoice,
+        draft_invoice,
+        sample_drug,
+        sample_stock_batch,
+        sample_user,
     ):
         """Re-saving direct dispensing should not create duplicate InvoiceItems."""
         from hmis.apps.pharmacy.models import Dispensing
@@ -264,7 +281,9 @@ class TestDispensingAutoBilling:
 
         draft_invoice.refresh_from_db()
         item_count_after_create = draft_invoice.items.filter(dispensing=dispensing).count()
-        assert item_count_after_create == 1, "Direct dispensing should create exactly 1 invoice item"
+        assert (
+            item_count_after_create == 1
+        ), "Direct dispensing should create exactly 1 invoice item"
 
         # Save the dispensing again (simulating update)
         dispensing.notes = "Updated notes"
@@ -275,8 +294,13 @@ class TestDispensingAutoBilling:
         assert item_count_after_update == 1, "Should not create duplicate invoice item on update"
 
     def test_dispensing_updates_invoice_totals(
-        self, sample_patient_for_billing, sample_encounter_with_invoice,
-        draft_invoice, sample_drug, sample_stock_batch, sample_user
+        self,
+        sample_patient_for_billing,
+        sample_encounter_with_invoice,
+        draft_invoice,
+        sample_drug,
+        sample_stock_batch,
+        sample_user,
     ):
         """Creating dispensing should update invoice totals."""
         from hmis.apps.pharmacy.models import Dispensing
@@ -307,8 +331,12 @@ class TestImagingOrderAutoBilling:
     """Tests for auto-creating InvoiceItem when ImagingOrderItem is created."""
 
     def test_imaging_order_item_creates_invoice_item(
-        self, sample_patient_for_billing, sample_encounter_with_invoice,
-        draft_invoice, sample_imaging_procedure, sample_user
+        self,
+        sample_patient_for_billing,
+        sample_encounter_with_invoice,
+        draft_invoice,
+        sample_imaging_procedure,
+        sample_user,
     ):
         """ImagingOrderItem should auto-create InvoiceItem linked to invoice."""
         from hmis.apps.imaging.models import ImagingOrder, ImagingOrderItem
@@ -347,8 +375,12 @@ class TestImagingOrderAutoBilling:
         assert sample_imaging_procedure.name in invoice_item.description
 
     def test_multiple_imaging_items_create_multiple_invoice_items(
-        self, sample_patient_for_billing, sample_encounter_with_invoice,
-        draft_invoice, sample_imaging_procedure, sample_user
+        self,
+        sample_patient_for_billing,
+        sample_encounter_with_invoice,
+        draft_invoice,
+        sample_imaging_procedure,
+        sample_user,
     ):
         """Multiple ImagingOrderItems should create separate InvoiceItems."""
         from hmis.apps.imaging.models import ImagingOrder, ImagingOrderItem, ImagingProcedure
@@ -396,8 +428,12 @@ class TestImagingOrderAutoBilling:
         assert imaging_items.count() == 2
 
     def test_imaging_order_item_no_duplicate_on_update(
-        self, sample_patient_for_billing, sample_encounter_with_invoice,
-        draft_invoice, sample_imaging_procedure, sample_user
+        self,
+        sample_patient_for_billing,
+        sample_encounter_with_invoice,
+        draft_invoice,
+        sample_imaging_procedure,
+        sample_user,
     ):
         """Re-saving ImagingOrderItem should not create duplicate InvoiceItems."""
         from hmis.apps.imaging.models import ImagingOrder, ImagingOrderItem
@@ -446,8 +482,12 @@ class TestInvoiceItemImagingOrderField:
         assert InvoiceItem.ItemType.IMAGING == "imaging"
 
     def test_invoice_item_can_link_to_imaging_order(
-        self, sample_patient_for_billing, sample_encounter_with_invoice,
-        draft_invoice, sample_imaging_procedure, sample_user
+        self,
+        sample_patient_for_billing,
+        sample_encounter_with_invoice,
+        draft_invoice,
+        sample_imaging_procedure,
+        sample_user,
     ):
         """InvoiceItem should be able to link to ImagingOrder."""
         from hmis.apps.imaging.models import ImagingOrder
@@ -521,8 +561,12 @@ class TestAutoBillingEdgeCases:
         assert InvoiceItem.objects.filter(dispensing=dispensing).count() == 0
 
     def test_imaging_order_in_non_draft_invoice_not_modified(
-        self, sample_patient_for_billing, sample_encounter_with_invoice,
-        draft_invoice, sample_imaging_procedure, sample_user
+        self,
+        sample_patient_for_billing,
+        sample_encounter_with_invoice,
+        draft_invoice,
+        sample_imaging_procedure,
+        sample_user,
     ):
         """Imaging items for finalized invoices should not auto-add.
 

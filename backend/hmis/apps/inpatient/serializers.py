@@ -706,9 +706,7 @@ class ConstraintOverrideMetricsSerializer(serializers.Serializer):
     violation_breakdown = ViolationTypeBreakdownSerializer(
         many=True, help_text="Violations by type"
     )
-    ward_breakdown = WardOverrideStatsSerializer(
-        many=True, help_text="Overrides by ward"
-    )
+    ward_breakdown = WardOverrideStatsSerializer(many=True, help_text="Overrides by ward")
 
     # Common override reasons
     common_reasons = serializers.ListField(

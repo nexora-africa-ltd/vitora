@@ -4,6 +4,7 @@ Serializers for core app.
 
 
 from typing import Optional
+
 from django.contrib.auth.models import Permission
 from rest_framework import serializers
 

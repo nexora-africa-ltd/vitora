@@ -80,16 +80,12 @@ class SMARTOAuth2Validator(OAuth2Validator):
         # Validate each scope
         for scope in scopes:
             if not smart_scopes.is_valid_scope(scope):
-                logger.warning(
-                    f"Invalid SMART scope requested: {scope} for client {client_id}"
-                )
+                logger.warning(f"Invalid SMART scope requested: {scope} for client {client_id}")
                 return False
 
         # Validate launch scope rules
         if "launch" in scopes and not getattr(request, "launch_context", None):
-            logger.warning(
-                f"Launch scope requested without launch context for client {client_id}"
-            )
+            logger.warning(f"Launch scope requested without launch context for client {client_id}")
             # Allow for now, but log warning
 
         return super().validate_scopes(client_id, scopes, client, request, *args, **kwargs)
@@ -109,9 +105,7 @@ class SMARTOAuth2Validator(OAuth2Validator):
 
         super().save_bearer_token(token, request, *args, **kwargs)
 
-    def validate_bearer_token(
-        self, token: str, scopes: list[str], request
-    ) -> bool:
+    def validate_bearer_token(self, token: str, scopes: list[str], request) -> bool:
         """
         Validate bearer token and extract SMART context.
 
@@ -146,13 +140,9 @@ class SMARTClientAuthenticationValidator:
         auth_method = getattr(client, "token_endpoint_auth_method", "client_secret_basic")
 
         if auth_method == "private_key_jwt":
-            return SMARTClientAuthenticationValidator._validate_private_key_jwt(
-                request, client
-            )
+            return SMARTClientAuthenticationValidator._validate_private_key_jwt(request, client)
         elif auth_method == "client_secret_post":
-            return SMARTClientAuthenticationValidator._validate_client_secret_post(
-                request, client
-            )
+            return SMARTClientAuthenticationValidator._validate_client_secret_post(request, client)
         else:
             # Default: client_secret_basic (handled by django-oauth-toolkit)
             return True
@@ -190,7 +180,9 @@ class SMARTClientAuthenticationValidator:
             # In production, use jwcrypto for proper JWK handling
             payload = jwt.decode(
                 client_assertion,
-                options={"verify_signature": False},  # TODO: Implement proper signature verification
+                options={
+                    "verify_signature": False
+                },  # TODO: Implement proper signature verification
                 algorithms=["RS256", "RS384", "RS512", "ES256", "ES384", "ES512"],
             )
 

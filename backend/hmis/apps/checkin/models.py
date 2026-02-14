@@ -239,11 +239,11 @@ class CheckIn(TimeStampedModel):
     def get_today_checkins(cls):
         """Get all check-ins for today."""
         today = timezone.localdate()
-        return cls.objects.filter(
-            checked_in_at__date=today
-        ).select_related(
-            "patient", "destination_clinic", "checked_in_by", "encounter"
-        ).order_by("-checked_in_at")
+        return (
+            cls.objects.filter(checked_in_at__date=today)
+            .select_related("patient", "destination_clinic", "checked_in_by", "encounter")
+            .order_by("-checked_in_at")
+        )
 
     @classmethod
     def patient_checked_in_today(cls, patient_id: int) -> bool:

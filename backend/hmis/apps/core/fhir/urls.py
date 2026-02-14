@@ -45,56 +45,48 @@ urlpatterns = [
         FHIRPatientSummaryView.as_view(),
         name="patient-summary",
     ),
-    
     # Practitioner resources
     path(
         "Practitioner/<int:pk>",
         FHIRPractitionerView.as_view(),
         name="practitioner-read",
     ),
-    
     # Organization resources
     path(
         "Organization/<int:pk>",
         FHIROrganizationView.as_view(),
         name="organization-read",
     ),
-    
     # Observation resources (vitals, lab results)
     path(
         "Observation/<int:pk>",
         FHIRObservationView.as_view(),
         name="observation-read",
     ),
-    
     # Condition resources (diagnoses)
     path(
         "Condition/<int:pk>",
         FHIRConditionView.as_view(),
         name="condition-read",
     ),
-    
     # Composition resources (IPS document structure)
     path(
         "Composition/<int:pk>",
         FHIRCompositionView.as_view(),
         name="composition-read",
     ),
-    
     # AllergyIntolerance resources
     path(
         "AllergyIntolerance/<int:pk>",
         FHIRAllergyIntoleranceView.as_view(),
         name="allergy-read",
     ),
-    
     # MedicationStatement resources
     path(
         "MedicationStatement/<int:pk>",
         FHIRMedicationStatementView.as_view(),
         name="medication-statement-read",
     ),
-    
     # Device resources
     path(
         "Device/<int:pk>",

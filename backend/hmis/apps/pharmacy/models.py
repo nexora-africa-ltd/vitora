@@ -166,9 +166,7 @@ class Drug(models.Model):
         if self.categories:
             invalid = [c for c in self.categories if c not in valid_categories]
             if invalid:
-                raise ValidationError(
-                    {"categories": f"Invalid categories: {', '.join(invalid)}"}
-                )
+                raise ValidationError({"categories": f"Invalid categories: {', '.join(invalid)}"})
 
     @property
     def category(self):

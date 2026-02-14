@@ -13,7 +13,6 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils import timezone
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================
@@ -76,9 +75,7 @@ def sop_instance_uid():
 
 
 @pytest.fixture
-def sample_dicom_study(
-    db, sample_patient, sample_imaging_order, study_instance_uid, test_user
-):
+def sample_dicom_study(db, sample_patient, sample_imaging_order, study_instance_uid, test_user):
     """Create a sample DICOM study."""
     from hmis.apps.imaging.models import DICOMStudy
 
@@ -100,9 +97,7 @@ def sample_dicom_study(
 
 
 @pytest.fixture
-def sample_dicom_series(
-    db, sample_dicom_study, series_instance_uid
-):
+def sample_dicom_series(db, sample_dicom_study, series_instance_uid):
     """Create a sample DICOM series."""
     from hmis.apps.imaging.models import DICOMSeries
 
@@ -118,9 +113,7 @@ def sample_dicom_series(
 
 
 @pytest.fixture
-def sample_dicom_instance(
-    db, sample_dicom_series, sop_instance_uid
-):
+def sample_dicom_instance(db, sample_dicom_series, sop_instance_uid):
     """Create a sample DICOM instance."""
     from hmis.apps.imaging.models import DICOMInstance
 
@@ -207,9 +200,7 @@ class TestDICOMStudyModel:
         assert sample_dicom_study.created_at is not None
         assert sample_dicom_study.updated_at is not None
 
-    def test_study_optional_fields(
-        self, db, sample_patient, sample_imaging_order, test_user
-    ):
+    def test_study_optional_fields(self, db, sample_patient, sample_imaging_order, test_user):
         """Should allow optional fields to be blank/null."""
         from hmis.apps.imaging.models import DICOMStudy
 
@@ -238,9 +229,7 @@ class TestDICOMStudyModel:
         with pytest.raises(Exception):
             sample_imaging_order.delete()
 
-    def test_study_ordering(
-        self, db, sample_patient, sample_imaging_order, test_user
-    ):
+    def test_study_ordering(self, db, sample_patient, sample_imaging_order, test_user):
         """Should order by -study_date, -created_at by default."""
         from hmis.apps.imaging.models import DICOMStudy
 
@@ -268,9 +257,7 @@ class TestDICOMStudyModel:
         assert studies[0] == study2  # More recent first
         assert studies[1] == study1
 
-    def test_study_modality_choices(
-        self, db, sample_patient, sample_imaging_order, test_user
-    ):
+    def test_study_modality_choices(self, db, sample_patient, sample_imaging_order, test_user):
         """Should accept all valid modality choices."""
         from hmis.apps.imaging.models import DICOMStudy
 
@@ -287,9 +274,7 @@ class TestDICOMStudyModel:
             )
             assert study.modality == modality
 
-    def test_study_file_size_tracking(
-        self, db, sample_patient, sample_imaging_order, test_user
-    ):
+    def test_study_file_size_tracking(self, db, sample_patient, sample_imaging_order, test_user):
         """Should track total file size in bytes."""
         from hmis.apps.imaging.models import DICOMStudy
 
@@ -310,9 +295,7 @@ class TestDICOMStudyModel:
         from hmis.apps.imaging.models import DICOMStudy
 
         meta = DICOMStudy._meta
-        index_fields = [
-            tuple(idx.fields) for idx in meta.indexes
-        ]
+        index_fields = [tuple(idx.fields) for idx in meta.indexes]
         # Should have indexes on frequently queried fields
         assert ("study_instance_uid",) in index_fields or any(
             "study_instance_uid" in f for idx in meta.indexes for f in idx.fields
@@ -323,9 +306,7 @@ class TestDICOMStudyModel:
         studies = sample_patient.dicom_studies.all()
         assert sample_dicom_study in studies
 
-    def test_study_imaging_order_nullable(
-        self, db, sample_patient, test_user
-    ):
+    def test_study_imaging_order_nullable(self, db, sample_patient, test_user):
         """Should allow imaging_order to be null (for externally uploaded studies)."""
         from hmis.apps.imaging.models import DICOMStudy
 
@@ -530,9 +511,7 @@ class TestDICOMInstanceModel:
         result = str(sample_dicom_instance)
         assert "1" in result  # instance_number
 
-    def test_instance_cascade_delete_from_series(
-        self, sample_dicom_series, sample_dicom_instance
-    ):
+    def test_instance_cascade_delete_from_series(self, sample_dicom_series, sample_dicom_instance):
         """Should cascade delete instances when series is deleted."""
         from hmis.apps.imaging.models import DICOMInstance
 
@@ -598,15 +577,11 @@ class TestDICOMInstanceModel:
             file_size=1024,
         )
 
-        instances = list(
-            DICOMInstance.objects.filter(series=sample_dicom_series)
-        )
+        instances = list(DICOMInstance.objects.filter(series=sample_dicom_series))
         assert instances[0] == i2  # instance_number=1 first
         assert instances[1] == i1
 
-    def test_instance_related_name_on_series(
-        self, sample_dicom_series, sample_dicom_instance
-    ):
+    def test_instance_related_name_on_series(self, sample_dicom_series, sample_dicom_instance):
         """Should be accessible via series.instances."""
         instances = sample_dicom_series.instances.all()
         assert sample_dicom_instance in instances

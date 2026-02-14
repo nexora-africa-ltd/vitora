@@ -230,9 +230,7 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
         if instance.verification_status == "VERIFIED":
             # Broadcast verified result
             broadcast_result_verified(instance)
-            logger.info(
-                f"Broadcasted verification notification for result {instance.id}"
-            )
+            logger.info(f"Broadcasted verification notification for result {instance.id}")
 
             # If critical, also send critical alert
             if instance.is_critical_result:
@@ -242,22 +240,16 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
             # Check if all results for this order are now verified
             lab_order = instance.order_item.lab_order
             total_items = lab_order.items.count()
-            verified_count = lab_order.items.filter(
-                result__verification_status="VERIFIED"
-            ).count()
+            verified_count = lab_order.items.filter(result__verification_status="VERIFIED").count()
 
             if verified_count == total_items:
                 # All results verified - update order status and notify
                 lab_order.update_status("COMPLETED", instance.verified_by)
                 broadcast_order_completed(lab_order)
-                logger.info(
-                    f"Order {lab_order.order_number} completed - all results verified"
-                )
+                logger.info(f"Order {lab_order.order_number} completed - all results verified")
 
                 # Create in-app notification for the ordering clinician
-                from hmis.apps.laboratory.services.notifications import (
-                    LabNotificationService,
-                )
+                from hmis.apps.laboratory.services.notifications import LabNotificationService
 
                 try:
                     LabNotificationService().send_result_notification(lab_order)
@@ -266,4 +258,3 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
 
     except Exception as e:
         logger.error(f"Failed to send verification notification for result {instance.id}: {e}")
-

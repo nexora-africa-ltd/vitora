@@ -28,10 +28,7 @@ from hmis.apps.core.oauth.permissions import (
     get_smart_filter_for_patient_scopes,
 )
 from hmis.apps.core.oauth.scopes import SCOPE_CATEGORIES, SMARTScopes
-from hmis.apps.core.oauth.validators import (
-    SMARTClientAuthenticationValidator,
-    SMARTOAuth2Validator,
-)
+from hmis.apps.core.oauth.validators import SMARTClientAuthenticationValidator, SMARTOAuth2Validator
 
 User = get_user_model()
 
@@ -110,9 +107,7 @@ class TestSMARTScopes:
     def test_get_scope_descriptions(self):
         """Should return descriptions for requested scopes."""
         smart_scopes = SMARTScopes()
-        descriptions = smart_scopes.get_scope_descriptions(
-            ["openid", "patient/Patient.read"]
-        )
+        descriptions = smart_scopes.get_scope_descriptions(["openid", "patient/Patient.read"])
 
         assert "openid" in descriptions
         assert "patient/Patient.read" in descriptions
@@ -202,9 +197,7 @@ class TestSMARTClientAuthenticationValidator:
         client.client_id = "test-client"
         client.client_secret = "test-secret"
 
-        result = SMARTClientAuthenticationValidator._validate_client_secret_post(
-            request, client
-        )
+        result = SMARTClientAuthenticationValidator._validate_client_secret_post(request, client)
         assert result is True
 
     def test_validate_client_secret_post_wrong_secret(self):
@@ -219,9 +212,7 @@ class TestSMARTClientAuthenticationValidator:
         client.client_id = "test-client"
         client.client_secret = "test-secret"
 
-        result = SMARTClientAuthenticationValidator._validate_client_secret_post(
-            request, client
-        )
+        result = SMARTClientAuthenticationValidator._validate_client_secret_post(request, client)
         assert result is False
 
 
@@ -260,17 +251,13 @@ class TestSMARTScopePermission:
         """Should deny access when resource doesn't match."""
         permission = SMARTScopePermission()
 
-        assert not permission._scope_allows_access(
-            "patient/Patient.read", "Encounter", "read"
-        )
+        assert not permission._scope_allows_access("patient/Patient.read", "Encounter", "read")
 
     def test_scope_denies_mismatched_action(self):
         """Should deny access when action doesn't match."""
         permission = SMARTScopePermission()
 
-        assert not permission._scope_allows_access(
-            "patient/Patient.read", "Patient", "write"
-        )
+        assert not permission._scope_allows_access("patient/Patient.read", "Patient", "write")
 
     def test_check_scope_access_finds_matching_scope(self):
         """Should find matching scope in list."""
@@ -507,9 +494,7 @@ class TestSMARTEndpoints:
             "patient": "123",
             "encounter": "456",
         }
-        launch_token = base64.urlsafe_b64encode(
-            json.dumps(context).encode()
-        ).decode().rstrip("=")
+        launch_token = base64.urlsafe_b64encode(json.dumps(context).encode()).decode().rstrip("=")
 
         response = api_client.get(
             "/smart/launch",
@@ -596,9 +581,7 @@ class TestLaunchTokenEncoding:
         }
 
         # Encode
-        encoded = base64.urlsafe_b64encode(
-            json.dumps(context).encode()
-        ).decode().rstrip("=")
+        encoded = base64.urlsafe_b64encode(json.dumps(context).encode()).decode().rstrip("=")
 
         # Decode (with padding)
         decoded_bytes = base64.urlsafe_b64decode(encoded + "==")

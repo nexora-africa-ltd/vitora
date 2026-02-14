@@ -129,9 +129,7 @@ class ImagingOrderItemCreateSerializer(serializers.Serializer):
     """Serializer for creating order items."""
 
     procedure_code = serializers.CharField()
-    laterality = serializers.ChoiceField(
-        choices=ImagingOrderItem.LATERALITY_CHOICES, default="NA"
-    )
+    laterality = serializers.ChoiceField(choices=ImagingOrderItem.LATERALITY_CHOICES, default="NA")
     specific_instructions = serializers.CharField(required=False, allow_blank=True)
 
 
@@ -542,9 +540,7 @@ class RadiologyReportCreateSerializer(serializers.ModelSerializer):
             )
         # Check if report already exists
         if RadiologyReport.objects.filter(imaging_order=value).exists():
-            raise serializers.ValidationError(
-                "A report already exists for this imaging order."
-            )
+            raise serializers.ValidationError("A report already exists for this imaging order.")
         return value
 
     def create(self, validated_data):

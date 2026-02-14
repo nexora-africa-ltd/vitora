@@ -92,9 +92,7 @@ class SMARTScopePermission(permissions.BasePermission):
         if has_patient_scopes and not (has_user_scopes or has_system_scopes):
             # Must have patient context and object must belong to that patient
             if not context_patient_id:
-                logger.warning(
-                    "Patient scope used without patient context in launch"
-                )
+                logger.warning("Patient scope used without patient context in launch")
                 return False
 
             # Check if object belongs to the patient in context
@@ -146,9 +144,7 @@ class SMARTScopePermission(permissions.BasePermission):
         )
         return False
 
-    def _scope_allows_access(
-        self, scope: str, resource_type: str, action: str
-    ) -> bool:
+    def _scope_allows_access(self, scope: str, resource_type: str, action: str) -> bool:
         """Check if a single scope allows the requested access."""
         # Parse scope
         match = re.match(r"^(patient|user|system)/(\*|[A-Z][a-zA-Z]*)\.(\*|read|write)$", scope)
@@ -262,9 +258,7 @@ class SMARTPatientAccessPermission(permissions.BasePermission):
 
         # If using patient/* scopes, ensure patient context is present
         has_patient_scopes = any(s.startswith("patient/") for s in scopes)
-        has_broader_scopes = any(
-            s.startswith("user/") or s.startswith("system/") for s in scopes
-        )
+        has_broader_scopes = any(s.startswith("user/") or s.startswith("system/") for s in scopes)
 
         if has_patient_scopes and not has_broader_scopes:
             launch_context = getattr(request, "launch_context", {})
@@ -285,9 +279,7 @@ class SMARTPatientAccessPermission(permissions.BasePermission):
 
         scopes = (getattr(access_token, "scope", "") or "").split()
         has_patient_scopes = any(s.startswith("patient/") for s in scopes)
-        has_broader_scopes = any(
-            s.startswith("user/") or s.startswith("system/") for s in scopes
-        )
+        has_broader_scopes = any(s.startswith("user/") or s.startswith("system/") for s in scopes)
 
         if has_patient_scopes and not has_broader_scopes:
             launch_context = getattr(request, "launch_context", {})
@@ -337,9 +329,7 @@ def get_smart_filter_for_patient_scopes(request: Request, queryset):
 
     scopes = (getattr(access_token, "scope", "") or "").split()
     has_patient_scopes = any(s.startswith("patient/") for s in scopes)
-    has_broader_scopes = any(
-        s.startswith("user/") or s.startswith("system/") for s in scopes
-    )
+    has_broader_scopes = any(s.startswith("user/") or s.startswith("system/") for s in scopes)
 
     if has_patient_scopes and not has_broader_scopes:
         launch_context = getattr(request, "launch_context", {})

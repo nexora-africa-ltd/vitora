@@ -40,13 +40,16 @@ def get_available_slots(
         List of available slot dictionaries with start_time, end_time, date
     """
     # Get applicable schedules for this date
-    schedules = resource.get_schedules().filter(
-        Q(schedule_type="RECURRING", day_of_week=for_date.weekday())
-        | Q(schedule_type="ONE_TIME", specific_date=for_date)
-    ).filter(
-        effective_from__lte=for_date,
-    ).filter(
-        Q(effective_until__isnull=True) | Q(effective_until__gte=for_date)
+    schedules = (
+        resource.get_schedules()
+        .filter(
+            Q(schedule_type="RECURRING", day_of_week=for_date.weekday())
+            | Q(schedule_type="ONE_TIME", specific_date=for_date)
+        )
+        .filter(
+            effective_from__lte=for_date,
+        )
+        .filter(Q(effective_until__isnull=True) | Q(effective_until__gte=for_date))
     )
 
     # Generate all possible slots from schedules
@@ -159,15 +162,20 @@ def check_slot_available(
     slot_end = slot_start + timedelta(minutes=duration_minutes)
 
     # Check if within resource schedule
-    schedules = resource.get_schedules().filter(
-        Q(schedule_type="RECURRING", day_of_week=slot_date.weekday())
-        | Q(schedule_type="ONE_TIME", specific_date=slot_date)
-    ).filter(
-        effective_from__lte=slot_date,
-        start_time__lte=start_time,
-        end_time__gte=(datetime.combine(slot_date, start_time) + timedelta(minutes=duration_minutes)).time(),
-    ).filter(
-        Q(effective_until__isnull=True) | Q(effective_until__gte=slot_date)
+    schedules = (
+        resource.get_schedules()
+        .filter(
+            Q(schedule_type="RECURRING", day_of_week=slot_date.weekday())
+            | Q(schedule_type="ONE_TIME", specific_date=slot_date)
+        )
+        .filter(
+            effective_from__lte=slot_date,
+            start_time__lte=start_time,
+            end_time__gte=(
+                datetime.combine(slot_date, start_time) + timedelta(minutes=duration_minutes)
+            ).time(),
+        )
+        .filter(Q(effective_until__isnull=True) | Q(effective_until__gte=slot_date))
     )
 
     if not schedules.exists():
@@ -227,9 +235,7 @@ def get_next_available_slot(
 
         for slot in slots:
             nairobi_tz = ZoneInfo("Africa/Nairobi")
-            slot_datetime = datetime.combine(
-                check_date, slot["start_time"], tzinfo=nairobi_tz
-            )
+            slot_datetime = datetime.combine(check_date, slot["start_time"], tzinfo=nairobi_tz)
             if slot_datetime > after_datetime:
                 return {
                     "date": check_date,
@@ -271,10 +277,12 @@ def get_resources_with_availability(
     for resource in resources:
         slots = get_available_slots(resource, for_date)
         if len(slots) >= min_slots:
-            result.append({
-                "resource": resource,
-                "available_slots": len(slots),
-                "next_slot": slots[0] if slots else None,
-            })
+            result.append(
+                {
+                    "resource": resource,
+                    "available_slots": len(slots),
+                    "next_slot": slots[0] if slots else None,
+                }
+            )
 
     return result

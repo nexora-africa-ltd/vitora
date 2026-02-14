@@ -58,10 +58,7 @@ class BedAssignmentService:
         Returns:
             QuerySet of available Bed objects, ordered by bed_number
         """
-        return (
-            Bed.objects.filter(ward=ward, status="AVAILABLE")
-            .order_by("bed_number")
-        )
+        return Bed.objects.filter(ward=ward, status="AVAILABLE").order_by("bed_number")
 
     @transaction.atomic
     def auto_assign_bed(
@@ -98,9 +95,7 @@ class BedAssignmentService:
         )
 
         if bed is None:
-            raise NoBedAvailableError(
-                f"No available beds in ward {ward.code} ({ward.name})"
-            )
+            raise NoBedAvailableError(f"No available beds in ward {ward.code} ({ward.name})")
 
         # Mark as occupied
         bed.mark_occupied(user)

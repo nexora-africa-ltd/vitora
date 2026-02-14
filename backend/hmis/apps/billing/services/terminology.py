@@ -998,6 +998,7 @@ class TerminologyService:
     def _is_loinc_code_format(self, query: str) -> bool:
         """Check if query looks like a LOINC code (e.g., '2345-7')."""
         import re
+
         return bool(re.match(r"^\d+-\d+$", query.strip()))
 
     def _lookup_loinc_code_fhir(self, code: str) -> list[RemoteLOINCCode]:

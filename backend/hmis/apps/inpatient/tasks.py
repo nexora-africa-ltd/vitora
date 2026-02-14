@@ -50,11 +50,15 @@ def notify_supervisors_critical_violation(self, admission_id: int) -> dict:  # n
         return {"status": "error", "message": f"Admission {admission_id} not found"}
 
     # Get all users with receive_critical_alerts permission
-    supervisors = User.objects.filter(
-        user_permissions__codename="receive_critical_alerts",
-        is_active=True,
-        email__isnull=False,
-    ).exclude(email="").distinct()
+    supervisors = (
+        User.objects.filter(
+            user_permissions__codename="receive_critical_alerts",
+            is_active=True,
+            email__isnull=False,
+        )
+        .exclude(email="")
+        .distinct()
+    )
 
     if not supervisors.exists():
         logger.warning(

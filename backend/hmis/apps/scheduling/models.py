@@ -203,9 +203,7 @@ class TimeSlot(TimeStampedModel):
         """Validate time slot data."""
         super().clean()
         if self.end_time and self.start_time and self.end_time <= self.start_time:
-            raise ValidationError(
-                {"end_time": "End time must be after start time"}
-            )
+            raise ValidationError({"end_time": "End time must be after start time"})
 
     @property
     def duration_minutes(self) -> int:
@@ -463,11 +461,13 @@ class Schedule(TimeStampedModel):
                     break
 
             if not slot_in_break:
-                slots.append({
-                    "start_time": current_start.time(),
-                    "end_time": slot_end.time(),
-                    "date": for_date,
-                })
+                slots.append(
+                    {
+                        "start_time": current_start.time(),
+                        "end_time": slot_end.time(),
+                        "date": for_date,
+                    }
+                )
                 current_start = current_start + total_slot_time
 
         return slots
@@ -520,9 +520,7 @@ class ScheduleBreak(TimeStampedModel):
         """Validate break data."""
         super().clean()
         if self.end_time <= self.start_time:
-            raise ValidationError(
-                {"end_time": "End time must be after start time"}
-            )
+            raise ValidationError({"end_time": "End time must be after start time"})
 
 
 # =============================================================================
@@ -797,9 +795,7 @@ class Appointment(TimeStampedModel):
         prefix = f"APT-{today}-"
 
         # Get count of appointments created today
-        count = Appointment.objects.filter(
-            appointment_number__startswith=prefix
-        ).count() + 1
+        count = Appointment.objects.filter(appointment_number__startswith=prefix).count() + 1
 
         return f"{prefix}{count:04d}"
 
@@ -998,13 +994,17 @@ class AssignmentRuleManager(models.Manager):
         if for_date is None:
             for_date = date.today()
 
-        return self.filter(
-            applies_to=applies_to,
-            is_active=True,
-            effective_from__lte=for_date,
-        ).filter(
-            models.Q(effective_until__isnull=True) | models.Q(effective_until__gte=for_date)
-        ).order_by("-priority")
+        return (
+            self.filter(
+                applies_to=applies_to,
+                is_active=True,
+                effective_from__lte=for_date,
+            )
+            .filter(
+                models.Q(effective_until__isnull=True) | models.Q(effective_until__gte=for_date)
+            )
+            .order_by("-priority")
+        )
 
 
 class AssignmentRule(TimeStampedModel):

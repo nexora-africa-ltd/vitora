@@ -49,26 +49,17 @@ class Command(BaseCommand):
         from hmis.apps.patients.models import Patient
 
         # Get or create test county (Nairobi)
-        county, _ = County.objects.get_or_create(
-            code=47,
-            defaults={"name": "Nairobi"}
-        )
+        county, _ = County.objects.get_or_create(code=47, defaults={"name": "Nairobi"})
         self.stdout.write(f"  ✓ County: {county.name}")
 
         # Get or create test sub-county
         sub_county, _ = SubCounty.objects.get_or_create(
-            county=county,
-            name="Westlands",
-            defaults={}
+            county=county, name="Westlands", defaults={}
         )
         self.stdout.write(f"  ✓ SubCounty: {sub_county.name}")
 
         # Get or create test ward
-        ward, _ = Ward.objects.get_or_create(
-            sub_county=sub_county,
-            name="Parklands",
-            defaults={}
-        )
+        ward, _ = Ward.objects.get_or_create(sub_county=sub_county, name="Parklands", defaults={})
         self.stdout.write(f"  ✓ Ward: {ward.name}")
 
         # Create test user for registered_by
@@ -79,7 +70,7 @@ class Command(BaseCommand):
                 "first_name": "FHIR",
                 "last_name": "Tester",
                 "is_active": True,
-            }
+            },
         )
         if created:
             test_user.set_password("testpass123")
@@ -92,14 +83,13 @@ class Command(BaseCommand):
             defaults={
                 "clinic_type": "GENERAL_OPD",
                 "status": "OPEN",
-            }
+            },
         )
         self.stdout.write(f"  ✓ Clinic (Organization ID={clinic.id}): {clinic.name}")
 
         # Create department for staff
         department, _ = Department.objects.get_or_create(
-            code="GEN-MED",
-            defaults={"name": "General Medicine", "department_type": "CLINICAL"}
+            code="GEN-MED", defaults={"name": "General Medicine", "department_type": "CLINICAL"}
         )
 
         # Create role for staff (look up existing DOCTOR role or create)
@@ -108,8 +98,7 @@ class Command(BaseCommand):
             role = Role.objects.filter(name__icontains="doctor").first()
         if not role:
             role, _ = Role.objects.get_or_create(
-                code="FHIR-DOCTOR",
-                defaults={"name": "Doctor (FHIR Test)"}
+                code="FHIR-DOCTOR", defaults={"name": "Doctor (FHIR Test)"}
             )
 
         # Create test practitioner (StaffProfile)
@@ -120,7 +109,7 @@ class Command(BaseCommand):
                 "first_name": "Jane",
                 "last_name": "Doctor",
                 "is_active": True,
-            }
+            },
         )
         if created:
             practitioner_user.set_password("testpass123")
@@ -133,9 +122,11 @@ class Command(BaseCommand):
                 "primary_department": department,
                 "primary_role": role,
                 "date_joined": date.today(),
-            }
+            },
         )
-        self.stdout.write(f"  ✓ Practitioner (ID={staff_profile.id}): Dr. {practitioner_user.first_name} {practitioner_user.last_name}")
+        self.stdout.write(
+            f"  ✓ Practitioner (ID={staff_profile.id}): Dr. {practitioner_user.first_name} {practitioner_user.last_name}"
+        )
 
         # Create test patient
         patient, _ = Patient.objects.get_or_create(
@@ -153,9 +144,11 @@ class Command(BaseCommand):
                 "registered_by": test_user,
                 "referral_source": "self",
                 "consent_given": True,
-            }
+            },
         )
-        self.stdout.write(f"  ✓ Patient (ID={patient.id}): {patient.first_name} {patient.last_name}, MRN: {patient.mrn}")
+        self.stdout.write(
+            f"  ✓ Patient (ID={patient.id}): {patient.first_name} {patient.last_name}, MRN: {patient.mrn}"
+        )
 
         # Create test encounter with vitals
         encounter, _ = Encounter.objects.get_or_create(
@@ -171,9 +164,11 @@ class Command(BaseCommand):
                 "spo2": Decimal("98.0"),
                 "weight": Decimal("75.5"),
                 "height": Decimal("175.0"),
-            }
+            },
         )
-        self.stdout.write(f"  ✓ Encounter (ID={encounter.id}): {encounter.encounter_type} on {encounter.encounter_date}")
+        self.stdout.write(
+            f"  ✓ Encounter (ID={encounter.id}): {encounter.encounter_type} on {encounter.encounter_date}"
+        )
 
         # Get or create ICD-10 codes for diagnoses
         icd10_j06, _ = ICD10Code.objects.get_or_create(
@@ -183,7 +178,7 @@ class Command(BaseCommand):
                 "short_description": "Acute URI",
                 "chapter": "10",
                 "category": "J06",
-            }
+            },
         )
         icd10_i10, _ = ICD10Code.objects.get_or_create(
             code="I10",
@@ -192,7 +187,7 @@ class Command(BaseCommand):
                 "short_description": "Hypertension",
                 "chapter": "9",
                 "category": "I10",
-            }
+            },
         )
 
         # Create diagnoses (Conditions)
@@ -202,9 +197,11 @@ class Command(BaseCommand):
             defaults={
                 "diagnosis_type": "PRIMARY",
                 "notes": "Acute upper respiratory infection for FHIR testing",
-            }
+            },
         )
-        self.stdout.write(f"  ✓ Diagnosis (Condition ID={diagnosis1.id}): {diagnosis1.icd10_code.code}")
+        self.stdout.write(
+            f"  ✓ Diagnosis (Condition ID={diagnosis1.id}): {diagnosis1.icd10_code.code}"
+        )
 
         diagnosis2, _ = Diagnosis.objects.get_or_create(
             encounter=encounter,
@@ -212,9 +209,11 @@ class Command(BaseCommand):
             defaults={
                 "diagnosis_type": "SECONDARY",
                 "notes": "Essential hypertension for FHIR testing",
-            }
+            },
         )
-        self.stdout.write(f"  ✓ Diagnosis (Condition ID={diagnosis2.id}): {diagnosis2.icd10_code.code}")
+        self.stdout.write(
+            f"  ✓ Diagnosis (Condition ID={diagnosis2.id}): {diagnosis2.icd10_code.code}"
+        )
 
         # Print summary for Inferno test inputs
         self.stdout.write("")

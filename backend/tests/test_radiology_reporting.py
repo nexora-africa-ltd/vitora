@@ -9,8 +9,9 @@ Tests the RadiologyReport model and API endpoints including:
 - PDF generation
 """
 
-import pytest
 from datetime import date
+
+import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
@@ -202,9 +203,7 @@ class TestRadiologyReportModel:
 class TestRadiologyReportAPI:
     """Tests for radiology report API endpoints."""
 
-    def test_create_report_draft(
-        self, authenticated_client, completed_imaging_order
-    ):
+    def test_create_report_draft(self, authenticated_client, completed_imaging_order):
         """Should create a report draft."""
         url = reverse("radiology-report-list")
         data = {
@@ -246,9 +245,7 @@ class TestRadiologyReportAPI:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "completed" in str(response.data).lower()
 
-    def test_update_draft_report(
-        self, authenticated_client, draft_report
-    ):
+    def test_update_draft_report(self, authenticated_client, draft_report):
         """Should update a draft report."""
         url = reverse("radiology-report-detail", args=[draft_report.report_number])
         data = {
@@ -261,9 +258,7 @@ class TestRadiologyReportAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["findings"] == "Updated findings"
 
-    def test_cannot_update_signed_report(
-        self, authenticated_client, signed_report
-    ):
+    def test_cannot_update_signed_report(self, authenticated_client, signed_report):
         """Should reject updating a signed report."""
         url = reverse("radiology-report-detail", args=[signed_report.report_number])
         data = {"findings": "Try to update"}
@@ -296,17 +291,12 @@ class TestRadiologyReportAPI:
         assert response.data["status"] == "AMENDED"
         assert response.data["amendment_count"] == 1
 
-    def test_communicate_critical_finding(
-        self, authenticated_client, critical_report
-    ):
+    def test_communicate_critical_finding(self, authenticated_client, critical_report):
         """Should record critical finding communication."""
         # First sign the report
         critical_report.sign(critical_report.reported_by)
 
-        url = reverse(
-            "radiology-report-communicate-critical",
-            args=[critical_report.report_number]
-        )
+        url = reverse("radiology-report-communicate-critical", args=[critical_report.report_number])
         data = {
             "communicated_to": "Dr. Smith",
             "method": "phone",
@@ -322,10 +312,7 @@ class TestRadiologyReportAPI:
         self, authenticated_client, draft_report
     ):
         """Should reject communication for non-critical reports."""
-        url = reverse(
-            "radiology-report-communicate-critical",
-            args=[draft_report.report_number]
-        )
+        url = reverse("radiology-report-communicate-critical", args=[draft_report.report_number])
         data = {"communicated_to": "Dr. Smith", "method": "phone"}
 
         response = authenticated_client.post(url, data, format="json")
@@ -341,9 +328,7 @@ class TestRadiologyReportAPI:
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert not RadiologyReport.objects.filter(pk=draft_report.pk).exists()
 
-    def test_cannot_delete_signed_report(
-        self, authenticated_client, signed_report
-    ):
+    def test_cannot_delete_signed_report(self, authenticated_client, signed_report):
         """Should reject deleting a signed report."""
         url = reverse("radiology-report-detail", args=[signed_report.report_number])
 
@@ -359,10 +344,7 @@ class TestRadiologyReportAPI:
 
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "application/pdf"
-        assert (
-            f"{signed_report.report_number}.pdf"
-            in response["Content-Disposition"]
-        )
+        assert f"{signed_report.report_number}.pdf" in response["Content-Disposition"]
 
     def test_list_reports_filter_by_status(
         self, authenticated_client, completed_imaging_order, radiologist
@@ -385,9 +367,7 @@ class TestRadiologyReportAPI:
         assert all(r["status"] == "DRAFT" for r in response.data["results"])
         assert any(r["report_number"] == draft.report_number for r in response.data["results"])
 
-    def test_list_reports_filter_by_order(
-        self, authenticated_client, draft_report
-    ):
+    def test_list_reports_filter_by_order(self, authenticated_client, draft_report):
         """Should filter reports by order number."""
         url = reverse("radiology-report-list")
         order_number = draft_report.imaging_order.order_number
@@ -402,9 +382,7 @@ class TestRadiologyReportAPI:
 class TestReportAmendmentModel:
     """Tests for ReportAmendment model."""
 
-    def test_amendment_stores_previous_values(
-        self, signed_report, radiologist
-    ):
+    def test_amendment_stores_previous_values(self, signed_report, radiologist):
         """Amendment should store previous findings and impression."""
         original_findings = signed_report.findings
         original_impression = signed_report.impression

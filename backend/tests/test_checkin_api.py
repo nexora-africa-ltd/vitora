@@ -254,9 +254,7 @@ class TestPatientCheckinAPI:
     # Basic Check-in Tests
     # -------------------------------------------------------------------------
 
-    def test_checkin_to_triage(
-        self, authenticated_client, sample_patient
-    ):
+    def test_checkin_to_triage(self, authenticated_client, sample_patient):
         """
         GIVEN a valid patient
         WHEN checking in to triage
@@ -276,9 +274,7 @@ class TestPatientCheckinAPI:
         assert "queue_position" in response.data
         assert response.data["destination"] == "TRIAGE"
 
-    def test_checkin_to_specific_clinic(
-        self, authenticated_client, sample_patient, sample_clinic
-    ):
+    def test_checkin_to_specific_clinic(self, authenticated_client, sample_patient, sample_clinic):
         """
         GIVEN a valid patient and clinic
         WHEN checking in directly to clinic (skip triage)
@@ -319,9 +315,7 @@ class TestPatientCheckinAPI:
         # Otherwise RETURN for returning patients
         assert response.data["visit_type"] in ["RETURN", "FOLLOW_UP"]
 
-    def test_checkin_creates_encounter(
-        self, authenticated_client, sample_patient
-    ):
+    def test_checkin_creates_encounter(self, authenticated_client, sample_patient):
         """
         GIVEN a valid patient
         WHEN checking in
@@ -339,9 +333,7 @@ class TestPatientCheckinAPI:
         assert "encounter_id" in response.data
         assert response.data["encounter_id"] is not None
 
-    def test_checkin_links_to_waiting_queue(
-        self, authenticated_client, sample_patient
-    ):
+    def test_checkin_links_to_waiting_queue(self, authenticated_client, sample_patient):
         """
         GIVEN a valid patient checking in to triage
         WHEN check-in is processed
@@ -382,7 +374,7 @@ class TestPatientCheckinAPI:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert "clinic_visit_id" in response.data
-        
+
         # Verify clinic visit was created
         clinic_visit = ClinicVisit.objects.get(id=response.data["clinic_visit_id"])
         assert clinic_visit.patient == sample_patient

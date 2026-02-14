@@ -173,6 +173,7 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
+
 # drf-spectacular settings
 def _model_attr(dotted_path: str, attr: str):
     module_path, class_name = dotted_path.rsplit(".", 1)

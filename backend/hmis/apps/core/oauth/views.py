@@ -14,12 +14,11 @@ from typing import Any
 from django.conf import settings
 from django.http import JsonResponse
 from django.views import View
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import extend_schema
-
 from rest_framework.views import APIView
 
 from hmis.apps.core.oauth.scopes import SMARTScopes
@@ -512,8 +511,8 @@ class SMARTLaunchContextView(APIView):
 
     Used by the EHR to create a launch token for third-party apps.
     """
-    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
 
+    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
     def post(self, request) -> Response:
         """
         Create a new launch context token.
@@ -549,9 +548,7 @@ class SMARTLaunchContextView(APIView):
         }
 
         # Encode as launch token
-        token = base64.urlsafe_b64encode(
-            json.dumps(context).encode()
-        ).decode().rstrip("=")
+        token = base64.urlsafe_b64encode(json.dumps(context).encode()).decode().rstrip("=")
 
         base_url = get_base_url(request)
 
@@ -578,8 +575,8 @@ class SMARTTokenIntrospectionView(APIView):
     - Scopes granted
     - Launch context (patient, encounter)
     """
-    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
 
+    @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
     def post(self, request) -> Response:
         """
         Introspect an access token.

@@ -106,7 +106,15 @@ class AppointmentFilter(filters.FilterSet):
         """Meta options for AppointmentFilter."""
 
         model = Appointment
-        fields = ["patient", "resource", "status", "appointment_type", "priority", "from_date", "to_date"]
+        fields = [
+            "patient",
+            "resource",
+            "status",
+            "appointment_type",
+            "priority",
+            "from_date",
+            "to_date",
+        ]
 
 
 # =============================================================================
@@ -167,13 +175,15 @@ class ResourceViewSet(viewsets.ModelViewSet):
 
         slots = get_available_slots(resource, target_date, appointment_type)
 
-        return Response({
-            "resource": resource.id,
-            "resource_name": resource.name,
-            "date": target_date,
-            "slots": slots,
-            "total_available": len(slots),
-        })
+        return Response(
+            {
+                "resource": resource.id,
+                "resource_name": resource.name,
+                "date": target_date,
+                "slots": slots,
+                "total_available": len(slots),
+            }
+        )
 
     @action(detail=True, methods=["get"], url_path="availability/weekly")
     def availability_weekly(self, request, pk=None):
@@ -414,9 +424,13 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        self._log_action("appointment_cancel", appointment, {
-            "reason": serializer.validated_data.get("reason", ""),
-        })
+        self._log_action(
+            "appointment_cancel",
+            appointment,
+            {
+                "reason": serializer.validated_data.get("reason", ""),
+            },
+        )
         return Response(AppointmentSerializer(appointment).data)
 
     @action(detail=True, methods=["post"], url_path="no-show")
@@ -620,7 +634,9 @@ class AssignmentViewSet(viewsets.ViewSet):
                 "scheduled_start": serializers.DateTimeField(),
                 "scheduled_end": serializers.DateTimeField(),
                 "reason": serializers.CharField(required=False),
-                "candidate_ids": serializers.ListField(child=serializers.IntegerField(), required=False),
+                "candidate_ids": serializers.ListField(
+                    child=serializers.IntegerField(), required=False
+                ),
             },
         ),
         responses={200: OpenApiTypes.OBJECT},
@@ -702,8 +718,12 @@ class AssignmentViewSet(viewsets.ViewSet):
 
         response_data = {
             "success": result.success,
-            "assigned_resource": ResourceListSerializer(result.assigned_resource).data if result.assigned_resource else None,
-            "decision": AssignmentDecisionSerializer(result.decision).data if result.decision else None,
+            "assigned_resource": ResourceListSerializer(result.assigned_resource).data
+            if result.assigned_resource
+            else None,
+            "decision": AssignmentDecisionSerializer(result.decision).data
+            if result.decision
+            else None,
             "target_id": result.target_id,
             "error": result.error,
         }
@@ -771,9 +791,10 @@ class AssignmentViewSet(viewsets.ViewSet):
 
         response_data = {
             "success": result.success,
-            "override": AssignmentOverrideSerializer(result.override).data if result.override else None,
+            "override": AssignmentOverrideSerializer(result.override).data
+            if result.override
+            else None,
             "error": result.error,
         }
 
         return Response(response_data)
-

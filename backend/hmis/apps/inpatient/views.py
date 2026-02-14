@@ -160,7 +160,9 @@ class WardViewSet(viewsets.ModelViewSet):
         wards = Ward.objects.filter(is_active=True).prefetch_related("beds")
 
         results = []
-        for patient_id, requires_isolation in zip(patient_ids, requires_isolation_list, strict=False):
+        for patient_id, requires_isolation in zip(
+            patient_ids, requires_isolation_list, strict=False
+        ):
             patient = patients_by_id.get(patient_id)
             if patient is None:
                 results.append(
@@ -249,10 +251,14 @@ class WardViewSet(viewsets.ModelViewSet):
         since_dt = parse_datetime(since_param) if since_param else None
 
         # Get recent admissions with violations for this ward
-        violations_qs = Admission.objects.filter(
-            ward=ward,
-            constraint_violations__isnull=False,
-        ).exclude(constraint_violations=[]).order_by("-created_at")
+        violations_qs = (
+            Admission.objects.filter(
+                ward=ward,
+                constraint_violations__isnull=False,
+            )
+            .exclude(constraint_violations=[])
+            .order_by("-created_at")
+        )
 
         if since_dt:
             violations_qs = violations_qs.filter(created_at__gt=since_dt)
@@ -262,31 +268,35 @@ class WardViewSet(viewsets.ModelViewSet):
 
         events = []
         for admission in violations_qs:
-            events.append({
-                "type": "compatibility_violation",
-                "admission_id": admission.id,
-                "patient_name": f"{admission.patient.first_name} {admission.patient.last_name}",
-                "violations": [
-                    v.get("message", v.get("code", "Unknown violation"))
-                    for v in admission.constraint_violations
-                ],
-                "timestamp": admission.created_at.isoformat(),
-            })
+            events.append(
+                {
+                    "type": "compatibility_violation",
+                    "admission_id": admission.id,
+                    "patient_name": f"{admission.patient.first_name} {admission.patient.last_name}",
+                    "violations": [
+                        v.get("message", v.get("code", "Unknown violation"))
+                        for v in admission.constraint_violations
+                    ],
+                    "timestamp": admission.created_at.isoformat(),
+                }
+            )
 
-        return Response({
-            "events": events,
-            "current_state": {
-                "ward_id": ward.id,
-                "ward_name": ward.name,
-                "gender_restriction": ward.gender_restriction,
-                "min_age_years": ward.min_age_years,
-                "max_age_years": ward.max_age_years,
-                "isolation_capable": ward.isolation_capable,
-                "oxygen_equipped": ward.oxygen_equipped,
-                "ventilator_capable": ward.ventilator_capable,
-                "available_beds": ward.available_beds,
-            },
-        })
+        return Response(
+            {
+                "events": events,
+                "current_state": {
+                    "ward_id": ward.id,
+                    "ward_name": ward.name,
+                    "gender_restriction": ward.gender_restriction,
+                    "min_age_years": ward.min_age_years,
+                    "max_age_years": ward.max_age_years,
+                    "isolation_capable": ward.isolation_capable,
+                    "oxygen_equipped": ward.oxygen_equipped,
+                    "ventilator_capable": ward.ventilator_capable,
+                    "available_beds": ward.available_beds,
+                },
+            }
+        )
 
     @extend_schema(
         summary="Generate beds for ward",
@@ -324,21 +334,25 @@ class WardViewSet(viewsets.ModelViewSet):
         existing = ward.beds.count()
 
         if existing >= ward.capacity:
-            return Response({
-                "created": 0,
-                "total": existing,
-                "capacity": ward.capacity,
-                "message": "Ward already has enough beds",
-            })
+            return Response(
+                {
+                    "created": 0,
+                    "total": existing,
+                    "capacity": ward.capacity,
+                    "message": "Ward already has enough beds",
+                }
+            )
 
         created = ward.generate_missing_beds()
 
-        return Response({
-            "created": created,
-            "total": ward.beds.count(),
-            "capacity": ward.capacity,
-            "message": f"Generated {created} bed(s)",
-        })
+        return Response(
+            {
+                "created": created,
+                "total": ward.beds.count(),
+                "capacity": ward.capacity,
+                "message": f"Generated {created} bed(s)",
+            }
+        )
 
 
 class SupervisorAlertViewSet(viewsets.ViewSet):
@@ -408,52 +422,65 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
         limit = int(request.query_params.get("limit", 20))
 
         # Get admissions with CRITICAL violations
-        admissions_qs = Admission.objects.filter(
-            constraint_violations__isnull=False,
-            constraint_override=True,
-        ).exclude(constraint_violations=[]).select_related(
-            "patient", "ward", "bed", "admitting_officer", "alert_acknowledgment__acknowledged_by"
-        ).order_by("-created_at")
+        admissions_qs = (
+            Admission.objects.filter(
+                constraint_violations__isnull=False,
+                constraint_override=True,
+            )
+            .exclude(constraint_violations=[])
+            .select_related(
+                "patient",
+                "ward",
+                "bed",
+                "admitting_officer",
+                "alert_acknowledgment__acknowledged_by",
+            )
+            .order_by("-created_at")
+        )
 
         if since_dt:
             admissions_qs = admissions_qs.filter(created_at__gt=since_dt)
 
         # Filter only those with CRITICAL violations
         alerts = []
-        for admission in admissions_qs[:limit * 2]:  # Get extra to filter
+        for admission in admissions_qs[: limit * 2]:  # Get extra to filter
             critical_violations = [
-                v for v in admission.constraint_violations
-                if v.get("severity") == "CRITICAL"
+                v for v in admission.constraint_violations if v.get("severity") == "CRITICAL"
             ]
             if critical_violations:
                 # Check if acknowledged
                 is_acknowledged = hasattr(admission, "alert_acknowledgment")
-                alerts.append({
-                    "admission_id": admission.id,
-                    "admission_number": admission.admission_number,
-                    "patient_id": admission.patient.id,
-                    "patient_name": f"{admission.patient.first_name} {admission.patient.last_name}",
-                    "patient_mrn": admission.patient.mrn,
-                    "ward_id": admission.ward.id,
-                    "ward_name": admission.ward.name,
-                    "bed_number": admission.bed.bed_number,
-                    "critical_violations": critical_violations,
-                    "override_reason": admission.constraint_override_reason,
-                    "admitted_by": (
-                        admission.admitting_officer.get_full_name()
-                        if admission.admitting_officer else "Unknown"
-                    ),
-                    "timestamp": admission.created_at.isoformat(),
-                    "is_acknowledged": is_acknowledged,
-                    "acknowledged_by": (
-                        admission.alert_acknowledgment.acknowledged_by.get_full_name()
-                        if is_acknowledged else None
-                    ),
-                    "acknowledged_at": (
-                        admission.alert_acknowledgment.acknowledged_at.isoformat()
-                        if is_acknowledged else None
-                    ),
-                })
+                alerts.append(
+                    {
+                        "admission_id": admission.id,
+                        "admission_number": admission.admission_number,
+                        "patient_id": admission.patient.id,
+                        "patient_name": f"{admission.patient.first_name} {admission.patient.last_name}",
+                        "patient_mrn": admission.patient.mrn,
+                        "ward_id": admission.ward.id,
+                        "ward_name": admission.ward.name,
+                        "bed_number": admission.bed.bed_number,
+                        "critical_violations": critical_violations,
+                        "override_reason": admission.constraint_override_reason,
+                        "admitted_by": (
+                            admission.admitting_officer.get_full_name()
+                            if admission.admitting_officer
+                            else "Unknown"
+                        ),
+                        "timestamp": admission.created_at.isoformat(),
+                        "is_acknowledged": is_acknowledged,
+                        "acknowledged_by": (
+                            admission.alert_acknowledgment.acknowledged_by.get_full_name()
+                            if is_acknowledged
+                            else None
+                        ),
+                        "acknowledged_at": (
+                            admission.alert_acknowledgment.acknowledged_at.isoformat()
+                            if is_acknowledged
+                            else None
+                        ),
+                    }
+                )
                 if len(alerts) >= limit:
                     break
 
@@ -469,7 +496,10 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
             "application/json": {
                 "type": "object",
                 "properties": {
-                    "admission_id": {"type": "integer", "description": "Admission ID to acknowledge"},
+                    "admission_id": {
+                        "type": "integer",
+                        "description": "Admission ID to acknowledge",
+                    },
                     "notes": {"type": "string", "description": "Optional notes from supervisor"},
                 },
                 "required": ["admission_id"],
@@ -519,8 +549,7 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
 
         # Check if admission has critical violations
         critical_violations = [
-            v for v in admission.constraint_violations
-            if v.get("severity") == "CRITICAL"
+            v for v in admission.constraint_violations if v.get("severity") == "CRITICAL"
         ]
         if not critical_violations:
             return Response(
@@ -556,11 +585,13 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
             ip_address=get_client_ip(request),
         )
 
-        return Response({
-            "message": "Alert acknowledged successfully.",
-            "acknowledgment_id": ack.id,
-            "acknowledged_at": ack.acknowledged_at.isoformat(),
-        })
+        return Response(
+            {
+                "message": "Alert acknowledged successfully.",
+                "acknowledgment_id": ack.id,
+                "acknowledged_at": ack.acknowledged_at.isoformat(),
+            }
+        )
 
     @extend_schema(
         summary="Get constraint override metrics",
@@ -622,8 +653,7 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
         critical_admissions = []
         for admission in override_qs.exclude(constraint_violations=[]):
             has_critical = any(
-                v.get("severity") == "CRITICAL"
-                for v in admission.constraint_violations
+                v.get("severity") == "CRITICAL" for v in admission.constraint_violations
             )
             if has_critical:
                 critical_admissions.append(admission.id)
@@ -644,14 +674,12 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
                 violation_counter[code] += 1
 
         violation_breakdown = [
-            {"code": code, "count": count}
-            for code, count in violation_counter.most_common()
+            {"code": code, "count": count} for code, count in violation_counter.most_common()
         ]
 
         # Ward breakdown
         ward_stats = (
-            override_qs
-            .values("ward__id", "ward__name")
+            override_qs.values("ward__id", "ward__name")
             .annotate(override_count=Count("id"))
             .order_by("-override_count")
         )
@@ -672,21 +700,22 @@ class SupervisorAlertViewSet(viewsets.ViewSet):
                 reason_counter[reason] += 1
 
         common_reasons = [
-            {"reason": reason, "count": count}
-            for reason, count in reason_counter.most_common(10)
+            {"reason": reason, "count": count} for reason, count in reason_counter.most_common(10)
         ]
 
-        return Response({
-            "total_admissions": total_admissions,
-            "override_count": override_count,
-            "override_rate": round(override_rate, 2),
-            "critical_override_count": critical_override_count,
-            "acknowledged_count": acknowledged_count,
-            "pending_acknowledgment_count": pending_acknowledgment_count,
-            "violation_breakdown": violation_breakdown,
-            "ward_breakdown": ward_breakdown,
-            "common_reasons": common_reasons,
-        })
+        return Response(
+            {
+                "total_admissions": total_admissions,
+                "override_count": override_count,
+                "override_rate": round(override_rate, 2),
+                "critical_override_count": critical_override_count,
+                "acknowledged_count": acknowledged_count,
+                "pending_acknowledgment_count": pending_acknowledgment_count,
+                "violation_breakdown": violation_breakdown,
+                "ward_breakdown": ward_breakdown,
+                "common_reasons": common_reasons,
+            }
+        )
 
 
 class BedViewSet(viewsets.ModelViewSet):
@@ -999,9 +1028,11 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         from hmis.apps.laboratory.serializers import LabOrderSerializer
 
         admission = self.get_object()
-        orders = LabOrder.objects.filter(admission=admission).select_related(
-            "patient", "encounter", "ordered_by"
-        ).prefetch_related("items__test", "items__result")
+        orders = (
+            LabOrder.objects.filter(admission=admission)
+            .select_related("patient", "encounter", "ordered_by")
+            .prefetch_related("items__test", "items__result")
+        )
         serializer = LabOrderSerializer(orders, many=True)
         return Response(serializer.data)
 
@@ -1017,9 +1048,11 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         from hmis.apps.imaging.serializers import ImagingOrderSerializer
 
         admission = self.get_object()
-        orders = ImagingOrder.objects.filter(admission=admission).select_related(
-            "patient", "encounter", "ordered_by"
-        ).prefetch_related("items__procedure")
+        orders = (
+            ImagingOrder.objects.filter(admission=admission)
+            .select_related("patient", "encounter", "ordered_by")
+            .prefetch_related("items__procedure")
+        )
         serializer = ImagingOrderSerializer(orders, many=True)
         return Response(serializer.data)
 
@@ -1035,9 +1068,11 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         from hmis.apps.pharmacy.serializers import PrescriptionSerializer
 
         admission = self.get_object()
-        prescriptions = Prescription.objects.filter(admission=admission).select_related(
-            "patient", "encounter", "prescribed_by"
-        ).prefetch_related("items__drug")
+        prescriptions = (
+            Prescription.objects.filter(admission=admission)
+            .select_related("patient", "encounter", "prescribed_by")
+            .prefetch_related("items__drug")
+        )
         serializer = PrescriptionSerializer(prescriptions, many=True)
         return Response(serializer.data)
 
@@ -1058,23 +1093,31 @@ class AdmissionViewSet(viewsets.ModelViewSet):
 
         admission = self.get_object()
 
-        lab_orders = LabOrder.objects.filter(admission=admission).select_related(
-            "patient", "encounter", "ordered_by"
-        ).prefetch_related("items__test", "items__result")
+        lab_orders = (
+            LabOrder.objects.filter(admission=admission)
+            .select_related("patient", "encounter", "ordered_by")
+            .prefetch_related("items__test", "items__result")
+        )
 
-        imaging_orders = ImagingOrder.objects.filter(admission=admission).select_related(
-            "patient", "encounter", "ordered_by"
-        ).prefetch_related("items__procedure")
+        imaging_orders = (
+            ImagingOrder.objects.filter(admission=admission)
+            .select_related("patient", "encounter", "ordered_by")
+            .prefetch_related("items__procedure")
+        )
 
-        prescriptions = Prescription.objects.filter(admission=admission).select_related(
-            "patient", "encounter", "prescribed_by"
-        ).prefetch_related("items__drug")
+        prescriptions = (
+            Prescription.objects.filter(admission=admission)
+            .select_related("patient", "encounter", "prescribed_by")
+            .prefetch_related("items__drug")
+        )
 
-        return Response({
-            "lab_orders": LabOrderSerializer(lab_orders, many=True).data,
-            "imaging_orders": ImagingOrderSerializer(imaging_orders, many=True).data,
-            "prescriptions": PrescriptionSerializer(prescriptions, many=True).data,
-        })
+        return Response(
+            {
+                "lab_orders": LabOrderSerializer(lab_orders, many=True).data,
+                "imaging_orders": ImagingOrderSerializer(imaging_orders, many=True).data,
+                "prescriptions": PrescriptionSerializer(prescriptions, many=True).data,
+            }
+        )
 
 
 class DischargeViewSet(viewsets.ModelViewSet):

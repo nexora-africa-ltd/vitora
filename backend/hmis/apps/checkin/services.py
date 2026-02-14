@@ -59,9 +59,7 @@ def get_clinical_snapshot(patient) -> ClinicalSnapshot:
 
     # Get most recent encounter with medical history
     last_encounter = (
-        Encounter.objects.filter(patient=patient)
-        .order_by("-encounter_date", "-created_at")
-        .first()
+        Encounter.objects.filter(patient=patient).order_by("-encounter_date", "-created_at").first()
     )
 
     # Parse allergies
@@ -113,9 +111,7 @@ def get_clinical_snapshot(patient) -> ClinicalSnapshot:
     alerts = []
     if allergies:
         severity_keywords = ["severe", "anaphylaxis", "critical"]
-        has_severe = any(
-            any(kw in a.lower() for kw in severity_keywords) for a in allergies
-        )
+        has_severe = any(any(kw in a.lower() for kw in severity_keywords) for a in allergies)
         if has_severe:
             alerts.append("⚠️ SEVERE ALLERGY: Check allergy list before prescribing")
         else:
@@ -162,9 +158,8 @@ def determine_visit_context(patient) -> VisitContext:
     from hmis.apps.laboratory.models import LabOrder
 
     # Check for any previous visits
-    last_encounter = (
-        Encounter.objects.filter(patient=patient)
-        .aggregate(last_date=Max("encounter_date"))
+    last_encounter = Encounter.objects.filter(patient=patient).aggregate(
+        last_date=Max("encounter_date")
     )
     last_encounter_date = last_encounter.get("last_date")
 
@@ -194,9 +189,7 @@ def determine_visit_context(patient) -> VisitContext:
 
     # Check for chronic conditions
     has_chronic_conditions = (
-        Encounter.objects.filter(patient=patient)
-        .exclude(chronic_conditions="")
-        .exists()
+        Encounter.objects.filter(patient=patient).exclude(chronic_conditions="").exists()
     )
 
     if days_since_last <= 30:

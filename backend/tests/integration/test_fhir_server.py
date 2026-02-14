@@ -49,7 +49,6 @@ from hmis.apps.core.services.fhir_client import (
 )
 from hmis.apps.core.services.fhir_validator import FHIRValidator
 
-
 # =============================================================================
 # Test Configuration
 # =============================================================================
@@ -796,9 +795,7 @@ class TestFHIRServerConnection:
 
         assert result.resource.get("fhirVersion") == "4.0.1"
 
-    def test_capability_statement_lists_supported_resources(
-        self, fhir_client: FHIRClient
-    ):
+    def test_capability_statement_lists_supported_resources(self, fhir_client: FHIRClient):
         """CapabilityStatement should list supported resource types."""
         result = fhir_client.get_capability_statement()
 
@@ -826,17 +823,13 @@ class TestFHIRServerConnection:
         ]
 
         for resource_type in required_resources:
-            assert resource_type in resource_types, (
-                f"Server should support {resource_type}"
-            )
+            assert resource_type in resource_types, f"Server should support {resource_type}"
 
 
 class TestPatientResourceCRUD:
     """Tests for Patient resource CRUD operations."""
 
-    def test_create_patient_succeeds(
-        self, fhir_client: FHIRClient, valid_patient_resource: dict
-    ):
+    def test_create_patient_succeeds(self, fhir_client: FHIRClient, valid_patient_resource: dict):
         """Should create a Patient resource successfully."""
         result = fhir_client.create_resource("Patient", valid_patient_resource)
 
@@ -856,9 +849,7 @@ class TestPatientResourceCRUD:
         assert result.resource.get("id") == result.resource_id
         assert result.resource.get("resourceType") == "Patient"
 
-    def test_read_patient_after_create(
-        self, fhir_client: FHIRClient, valid_patient_resource: dict
-    ):
+    def test_read_patient_after_create(self, fhir_client: FHIRClient, valid_patient_resource: dict):
         """Should be able to read a Patient after creating it."""
         create_result = fhir_client.create_resource("Patient", valid_patient_resource)
         patient_id = create_result.resource_id
@@ -878,9 +869,7 @@ class TestPatientResourceCRUD:
 
         assert exc_info.value.response.status_code == 404
 
-    def test_update_patient_succeeds(
-        self, fhir_client: FHIRClient, valid_patient_resource: dict
-    ):
+    def test_update_patient_succeeds(self, fhir_client: FHIRClient, valid_patient_resource: dict):
         """Should update a Patient resource successfully."""
         # Create patient
         create_result = fhir_client.create_resource("Patient", valid_patient_resource)
@@ -900,9 +889,7 @@ class TestPatientResourceCRUD:
         assert read_result.resource.get("active") is False
         assert read_result.resource["name"][0]["family"] == "UpdatedFamily"
 
-    def test_delete_patient_succeeds(
-        self, fhir_client: FHIRClient, valid_patient_resource: dict
-    ):
+    def test_delete_patient_succeeds(self, fhir_client: FHIRClient, valid_patient_resource: dict):
         """Should delete a Patient resource successfully."""
         # Create patient
         create_result = fhir_client.create_resource("Patient", valid_patient_resource)
@@ -1011,9 +998,7 @@ class TestPractitionerResourceCRUD:
         self, fhir_client: FHIRClient, valid_practitioner_resource: dict
     ):
         """Should read a Practitioner after creating it."""
-        create_result = fhir_client.create_resource(
-            "Practitioner", valid_practitioner_resource
-        )
+        create_result = fhir_client.create_resource("Practitioner", valid_practitioner_resource)
 
         read_result = fhir_client.read_resource("Practitioner", create_result.resource_id)
 
@@ -1105,9 +1090,7 @@ class TestEncounterResourceCRUD:
         """Should search Encounters by status."""
         # Create patient and encounter
         patient_result = fhir_client.create_resource("Patient", valid_patient_resource)
-        valid_encounter_resource["subject"] = {
-            "reference": f"Patient/{patient_result.resource_id}"
-        }
+        valid_encounter_resource["subject"] = {"reference": f"Patient/{patient_result.resource_id}"}
         fhir_client.create_resource("Encounter", valid_encounter_resource)
 
         # Search by status
@@ -1224,9 +1207,7 @@ class TestConditionResourceCRUD:
         """Should search Conditions by ICD code."""
         # Create patient and condition
         patient_result = fhir_client.create_resource("Patient", valid_patient_resource)
-        valid_condition_resource["subject"] = {
-            "reference": f"Patient/{patient_result.resource_id}"
-        }
+        valid_condition_resource["subject"] = {"reference": f"Patient/{patient_result.resource_id}"}
         fhir_client.create_resource("Condition", valid_condition_resource)
 
         # Search by ICD-11 code
@@ -1263,9 +1244,7 @@ class TestMedicationRequestResourceCRUD:
             "reference": f"Practitioner/{practitioner_result.resource_id}"
         }
 
-        result = fhir_client.create_resource(
-            "MedicationRequest", valid_medication_request_resource
-        )
+        result = fhir_client.create_resource("MedicationRequest", valid_medication_request_resource)
 
         assert result.success is True
         assert result.status_code == 201
@@ -1286,9 +1265,7 @@ class TestMedicationRequestResourceCRUD:
             "MedicationRequest", valid_medication_request_resource
         )
 
-        read_result = fhir_client.read_resource(
-            "MedicationRequest", create_result.resource_id
-        )
+        read_result = fhir_client.read_resource("MedicationRequest", create_result.resource_id)
 
         assert "dosageInstruction" in read_result.resource
         assert len(read_result.resource["dosageInstruction"]) > 0
@@ -1333,9 +1310,7 @@ class TestServiceRequestResourceCRUD:
             "reference": f"Patient/{patient_result.resource_id}"
         }
 
-        result = fhir_client.create_resource(
-            "ServiceRequest", valid_service_request_resource
-        )
+        result = fhir_client.create_resource("ServiceRequest", valid_service_request_resource)
 
         assert result.success is True
         assert result.status_code == 201
@@ -1393,19 +1368,14 @@ class TestCoverageResourceCRUD:
         create_result = fhir_client.create_resource("Coverage", valid_coverage_resource)
 
         # Search by identifier system and value (more reliable than subscriber-id)
-        search_result = fhir_client.search(
-            "Coverage", {"identifier": subscriber_id}
-        )
+        search_result = fhir_client.search("Coverage", {"identifier": subscriber_id})
 
         # HAPI may or may not index subscriber-id depending on configuration
         # Verify the coverage was created and can be retrieved
         assert create_result.success is True
         # If search works, verify results; otherwise just confirm creation worked
         if search_result.success and search_result.total > 0:
-            assert any(
-                r.get("subscriberId") == subscriber_id
-                for r in search_result.resources
-            )
+            assert any(r.get("subscriberId") == subscriber_id for r in search_result.resources)
 
 
 class TestClaimResourceCRUD:
@@ -1420,16 +1390,10 @@ class TestClaimResourceCRUD:
     ):
         """Should create a Claim resource successfully."""
         patient_result = fhir_client.create_resource("Patient", valid_patient_resource)
-        org_result = fhir_client.create_resource(
-            "Organization", valid_organization_resource
-        )
+        org_result = fhir_client.create_resource("Organization", valid_organization_resource)
 
-        valid_claim_resource["patient"] = {
-            "reference": f"Patient/{patient_result.resource_id}"
-        }
-        valid_claim_resource["provider"] = {
-            "reference": f"Organization/{org_result.resource_id}"
-        }
+        valid_claim_resource["patient"] = {"reference": f"Patient/{patient_result.resource_id}"}
+        valid_claim_resource["provider"] = {"reference": f"Organization/{org_result.resource_id}"}
 
         result = fhir_client.create_resource("Claim", valid_claim_resource)
 
@@ -1444,9 +1408,7 @@ class TestClaimResourceCRUD:
     ):
         """Claim should preserve total amount in KES."""
         patient_result = fhir_client.create_resource("Patient", valid_patient_resource)
-        valid_claim_resource["patient"] = {
-            "reference": f"Patient/{patient_result.resource_id}"
-        }
+        valid_claim_resource["patient"] = {"reference": f"Patient/{patient_result.resource_id}"}
 
         create_result = fhir_client.create_resource("Claim", valid_claim_resource)
         read_result = fhir_client.read_resource("Claim", create_result.resource_id)
@@ -1507,9 +1469,9 @@ class TestBundleOperations:
 
         for entry in entries:
             response = entry.get("response", {})
-            assert response.get("status").startswith("201"), (
-                f"Expected 201, got {response.get('status')}"
-            )
+            assert response.get("status").startswith(
+                "201"
+            ), f"Expected 201, got {response.get('status')}"
 
     def test_transaction_bundle_rolls_back_on_failure(
         self,
@@ -1696,9 +1658,7 @@ class TestResourceVersioning:
 
         assert version2 != version1
 
-    def test_can_read_specific_version(
-        self, fhir_client: FHIRClient, valid_patient_resource: dict
-    ):
+    def test_can_read_specific_version(self, fhir_client: FHIRClient, valid_patient_resource: dict):
         """Should be able to read a specific version of a resource."""
         # Create and get initial version
         create_result = fhir_client.create_resource("Patient", valid_patient_resource)
@@ -1718,9 +1678,7 @@ class TestResourceVersioning:
 
         assert historical.resource["name"][0]["family"] == original_family
 
-    def test_get_resource_history(
-        self, fhir_client: FHIRClient, valid_patient_resource: dict
-    ):
+    def test_get_resource_history(self, fhir_client: FHIRClient, valid_patient_resource: dict):
         """Should retrieve resource version history."""
         # Create and update to have history
         create_result = fhir_client.create_resource("Patient", valid_patient_resource)
@@ -1770,9 +1728,7 @@ class TestResourceValidation:
         # Should be rejected
         assert result.status_code >= 400
 
-    def test_validate_operation(
-        self, fhir_client: FHIRClient, valid_patient_resource: dict
-    ):
+    def test_validate_operation(self, fhir_client: FHIRClient, valid_patient_resource: dict):
         """$validate operation should validate without creating."""
         result = fhir_client.validate_resource("Patient", valid_patient_resource)
 
@@ -1783,31 +1739,25 @@ class TestResourceValidation:
 class TestResponseTimes:
     """Tests for response time performance requirements."""
 
-    def test_single_create_under_500ms(
-        self, fhir_client: FHIRClient, valid_patient_resource: dict
-    ):
+    def test_single_create_under_500ms(self, fhir_client: FHIRClient, valid_patient_resource: dict):
         """Single resource create should complete under 500ms."""
         result = fhir_client.create_resource("Patient", valid_patient_resource)
 
-        assert result.response_time_ms < MAX_RESPONSE_TIME_MS, (
-            f"Create took {result.response_time_ms:.1f}ms, expected <{MAX_RESPONSE_TIME_MS}ms"
-        )
+        assert (
+            result.response_time_ms < MAX_RESPONSE_TIME_MS
+        ), f"Create took {result.response_time_ms:.1f}ms, expected <{MAX_RESPONSE_TIME_MS}ms"
 
-    def test_single_read_under_500ms(
-        self, fhir_client: FHIRClient, valid_patient_resource: dict
-    ):
+    def test_single_read_under_500ms(self, fhir_client: FHIRClient, valid_patient_resource: dict):
         """Single resource read should complete under 500ms."""
         create_result = fhir_client.create_resource("Patient", valid_patient_resource)
 
         result = fhir_client.read_resource("Patient", create_result.resource_id)
 
-        assert result.response_time_ms < MAX_RESPONSE_TIME_MS, (
-            f"Read took {result.response_time_ms:.1f}ms, expected <{MAX_RESPONSE_TIME_MS}ms"
-        )
+        assert (
+            result.response_time_ms < MAX_RESPONSE_TIME_MS
+        ), f"Read took {result.response_time_ms:.1f}ms, expected <{MAX_RESPONSE_TIME_MS}ms"
 
-    def test_simple_search_under_500ms(
-        self, fhir_client: FHIRClient, valid_patient_resource: dict
-    ):
+    def test_simple_search_under_500ms(self, fhir_client: FHIRClient, valid_patient_resource: dict):
         """Simple search should complete under 500ms."""
         # Create a patient to search for
         unique_family = f"PerfTest{uuid.uuid4().hex[:8]}"
@@ -1816,9 +1766,9 @@ class TestResponseTimes:
 
         result = fhir_client.search("Patient", {"family": unique_family})
 
-        assert result.response_time_ms < MAX_RESPONSE_TIME_MS, (
-            f"Search took {result.response_time_ms:.1f}ms, expected <{MAX_RESPONSE_TIME_MS}ms"
-        )
+        assert (
+            result.response_time_ms < MAX_RESPONSE_TIME_MS
+        ), f"Search took {result.response_time_ms:.1f}ms, expected <{MAX_RESPONSE_TIME_MS}ms"
 
 
 class TestVitoraSpecificScenarios:
@@ -1837,9 +1787,7 @@ class TestVitoraSpecificScenarios:
         """Test SHA claim bundle structure matches expected format."""
         # Create supporting resources
         patient_result = fhir_client.create_resource("Patient", valid_patient_resource)
-        org_result = fhir_client.create_resource(
-            "Organization", valid_organization_resource
-        )
+        org_result = fhir_client.create_resource("Organization", valid_organization_resource)
         practitioner_result = fhir_client.create_resource(
             "Practitioner", valid_practitioner_resource
         )
@@ -1851,12 +1799,8 @@ class TestVitoraSpecificScenarios:
         coverage_result = fhir_client.create_resource("Coverage", valid_coverage_resource)
 
         # Update claim with references
-        valid_claim_resource["patient"] = {
-            "reference": f"Patient/{patient_result.resource_id}"
-        }
-        valid_claim_resource["provider"] = {
-            "reference": f"Organization/{org_result.resource_id}"
-        }
+        valid_claim_resource["patient"] = {"reference": f"Patient/{patient_result.resource_id}"}
+        valid_claim_resource["provider"] = {"reference": f"Organization/{org_result.resource_id}"}
         valid_claim_resource["insurance"][0]["coverage"] = {
             "reference": f"Coverage/{coverage_result.resource_id}"
         }
@@ -1869,15 +1813,11 @@ class TestVitoraSpecificScenarios:
         # Verify all components are retrievable
         assert fhir_client.read_resource("Patient", patient_result.resource_id).success
         assert fhir_client.read_resource("Organization", org_result.resource_id).success
-        assert fhir_client.read_resource(
-            "Practitioner", practitioner_result.resource_id
-        ).success
+        assert fhir_client.read_resource("Practitioner", practitioner_result.resource_id).success
         assert fhir_client.read_resource("Coverage", coverage_result.resource_id).success
         assert fhir_client.read_resource("Claim", claim_result.resource_id).success
 
-    def test_patient_with_kenya_demographics(
-        self, fhir_client: FHIRClient, unique_id: str
-    ):
+    def test_patient_with_kenya_demographics(self, fhir_client: FHIRClient, unique_id: str):
         """Patient with Kenya-specific demographics should be created correctly."""
         kenya_patient = {
             "resourceType": "Patient",
@@ -1958,11 +1898,7 @@ class TestVitoraSpecificScenarios:
             },
             "subject": {"reference": f"Patient/{patient_result.resource_id}"},
             "participant": [
-                {
-                    "individual": {
-                        "reference": f"Practitioner/{practitioner_result.resource_id}"
-                    }
-                }
+                {"individual": {"reference": f"Practitioner/{practitioner_result.resource_id}"}}
             ],
             "period": {
                 "start": now_tz,
@@ -1999,9 +1935,9 @@ class TestVitoraSpecificScenarios:
 
         # Verify final state
         final = fhir_client.read_resource("Encounter", encounter_id)
-        assert final.resource.get("resourceType") == "Encounter", (
-            f"Expected Encounter, got {final.resource.get('resourceType')}"
-        )
+        assert (
+            final.resource.get("resourceType") == "Encounter"
+        ), f"Expected Encounter, got {final.resource.get('resourceType')}"
         assert final.resource.get("status") == "finished"
 
 
@@ -2017,18 +1953,14 @@ class TestFHIRClientErrorHandling:
         with pytest.raises(FHIRConnectionError):
             client.get_capability_statement()
 
-    def test_not_found_error_raised_for_missing_resource(
-        self, fhir_client: FHIRClient
-    ):
+    def test_not_found_error_raised_for_missing_resource(self, fhir_client: FHIRClient):
         """Should raise FHIRNotFoundError for missing resources."""
         with pytest.raises(FHIRNotFoundError) as exc_info:
             fhir_client.read_resource("Patient", "definitely-not-a-real-id-12345")
 
         assert exc_info.value.response.status_code == 404
 
-    def test_client_handles_server_error_gracefully(
-        self, fhir_client: FHIRClient
-    ):
+    def test_client_handles_server_error_gracefully(self, fhir_client: FHIRClient):
         """Client should handle server errors without crashing."""
         # Try to create a resource with an invalid type
         result = fhir_client.create_resource(
