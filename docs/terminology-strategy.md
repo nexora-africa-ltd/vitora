@@ -1,8 +1,9 @@
 # Terminology Strategy for Vitora HMIS
 
 > **Created**: 2026-02-14  
+> **Updated**: 2026-02-15  
 > **Owner**: Engineering  
-> **Status**: Planning  
+> **Status**: Phase T0 Implemented  
 > **Scope**: Clinical coding, external system mappings, interoperability foundation
 
 ---
@@ -41,9 +42,9 @@ Therefore: **Vitora codes are the canonical internal language; external codes ar
 | Diagnoses | `ICD10Code` | `hmis.apps.encounters` | ✅ Imported, searchable |
 | LOINC codes | `LOINCCode` | `hmis.apps.laboratory` | ✅ Reference table |
 | Procedures | None (implicit in billing items) | Scattered | ⚠️ Gap |
-| External mappings | None | N/A | ❌ Gap (blocks Phase C) |
+| External mappings | `ExternalCodeMapping` | `hmis.apps.core` | ✅ Implemented (Phase T0) |
 
-**Key observation**: We have domain-specific code tables but no **cross-system mapping layer**.
+**Key observation**: We now have `ExternalCodeMapping` as a **cross-system mapping layer** using GenericForeignKey.
 
 ---
 
@@ -84,11 +85,85 @@ Therefore: **Vitora codes are the canonical internal language; external codes ar
 
 ## 5) Phased Implementation Plan
 
-### Phase T0 — External Code Mapping (Immediate, Pre-Phase C)
+### Phase T0 — External Code Mapping ✅ IMPLEMENTED
 
 **ROI**: High (unblocks HL7/MLLP, SHA claims, LIS integrations)  
 **Effort**: 2-4 hours  
-**Risk**: None (additive, no refactoring)
+**Risk**: None (additive, no refactoring)  
+**Status**: ✅ Completed 2026-02-15
+
+#### Implementation Summary
+
+| Component | Location | Details |
+|-----------|----------|---------|
+| Model | `hmis/apps/core/models.py` | `ExternalCodeMapping` with GenericForeignKey |
+| Migration | `core.0014_external_code_mapping` | Applied |
+| Admin | `hmis/apps/core/admin.py` | Full CRUD with filters |
+| Tests | `tests/test_external_code_mapping.py` | 20 tests (CRUD, resolve, reverse lookup) |
+
+#### Key Features Implemented
+
+- **GenericForeignKey**: Maps to any model (TestCatalog, ICD10Code, etc.)
+- **`resolve(code_system, external_code)`**: Returns internal object or None
+- **`resolve_or_raise(code_system, external_code)`**: Returns internal object or raises DoesNotExist
+- **`get_mappings_for_object(obj)`**: Get all external codes for an internal entity
+- **`get_external_code(obj, code_system)`**: Get specific external code
+- **Unique constraint**: `(code_system, external_code)` ensures no duplicates
+- **Soft deactivation**: `is_active` flag for retiring mappings without deletion
+
+#### Usage Examples
+
+```python
+from hmis.apps.core.models import ExternalCodeMapping
+
+# === LIS Result Import (HL7 ORU Parser) ===
+# Resolve external LIS code to internal TestCatalog
+test = ExternalCodeMapping.resolve("LIS_ACME", "12345")
+if test is None:
+    logger.warning("Unmapped LIS code: 12345 - queuing for review")
+    UnmappedCodeQueue.objects.create(code_system="LIS_ACME", code="12345")
+else:
+    LabResult.objects.create(
+        order_item=order_item,
+        test=test,
+        value=oru_message.get_value(),
+        ...
+    )
+
+# === SHA Claim Export ===
+# Get SHA tariff code for a diagnosis
+sha_code = ExternalCodeMapping.get_external_code(diagnosis, "SHA_TARIFF_2025")
+if sha_code:
+    claim_bundle.add_diagnosis(code=sha_code, system="https://sha.go.ke/tariff/2025")
+else:
+    logger.warning(f"No SHA mapping for {diagnosis.code}, using ICD-10 directly")
+
+# === Bulk Import Mappings ===
+from django.contrib.contenttypes.models import ContentType
+from hmis.apps.laboratory.models import TestCatalog
+
+test = TestCatalog.objects.get(code="CBC")
+content_type = ContentType.objects.get_for_model(test)
+
+ExternalCodeMapping.objects.create(
+    code_system="LIS_MINDRAY",
+    external_code="MR_CBC_001",
+    external_display="Complete Blood Count (Mindray)",
+    content_type=content_type,
+    object_id=test.pk,
+    relationship="EQUIVALENT",
+    notes="Mapped during Mindray BC-5800 integration",
+)
+
+# === Get All Mappings for an Entity ===
+mappings = ExternalCodeMapping.get_mappings_for_object(test)
+for m in mappings:
+    print(f"{m.code_system}: {m.external_code}")
+# Output:
+# LIS_ACME: 12345
+# LIS_MINDRAY: MR_CBC_001
+# LOINC: 57021-8
+```
 
 **Deliverables**:
 1. Add `ExternalCodeMapping` model to `hmis.apps.core`:
@@ -188,6 +263,24 @@ class ExternalCodeMapping(models.Model):
 2. Add Django Admin interface for mapping management
 3. Add basic tests for CRUD and resolution
 4. Document supported `code_system` values
+
+#### Supported `code_system` Values
+
+| Code System | Description | Target Models | Example External Code |
+|-------------|-------------|---------------|----------------------|
+| `LIS_<vendor>` | Laboratory Information System vendor codes | `TestCatalog` | `LIS_ACME:12345` |
+| `SHA_TARIFF_<year>` | SHA (Social Health Authority) tariff codes | `ICD10Code`, `ProcedureCatalog` | `SHA_TARIFF_2025:SHA_A00` |
+| `NHIF_<year>` | Legacy NHIF codes (pre-SHA) | `ICD10Code`, `ProcedureCatalog` | `NHIF_2024:NHF001` |
+| `LOINC` | Logical Observation Identifiers Names and Codes | `TestCatalog` | `LOINC:2951-2` |
+| `KHIS` | Kenya Health Information System (DHIS2) codes | `ICD10Code`, `TestCatalog` | `KHIS:DIAG_001` |
+| `SNOMED_CT` | SNOMED Clinical Terms | `ICD10Code`, `ProcedureCatalog` | `SNOMED_CT:195967001` |
+| `NDC` | National Drug Code (for pharmacy) | `DrugCatalog` | `NDC:12345-678-90` |
+| `KEBS_DRUG` | Kenya Bureau of Standards drug codes | `DrugCatalog` | `KEBS_DRUG:KE001` |
+
+**Naming Convention**:
+- Use UPPERCASE with underscores
+- Include version/year suffix when applicable (e.g., `SHA_TARIFF_2025`)
+- Prefix vendor-specific codes with vendor identifier (e.g., `LIS_ACME`, `LIS_MINDRAY`)
 
 **Usage example (Phase C HL7 parser)**:
 ```python

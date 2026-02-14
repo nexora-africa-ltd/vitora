@@ -254,6 +254,20 @@ def sample_encounter(db, sample_patient):
     )
 
 
+@pytest.fixture
+def sample_icd10_code(db):
+    """Create a sample ICD-10 code for testing."""
+    from hmis.apps.encounters.models import ICD10Code
+
+    return ICD10Code.objects.create(
+        code="A00",
+        description="Cholera",
+        short_description="Cholera",
+        category="Certain infectious and parasitic diseases",
+        chapter=1,
+    )
+
+
 # =========================================================================
 # Inpatient (IPD) Test Fixtures
 # =========================================================================
