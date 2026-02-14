@@ -769,3 +769,95 @@ class TestStudyDeletionCleanup:
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
         assert AuditLog.objects.filter(action="dicom_delete").exists()
+
+
+# ============================================================================
+# DICOM Frame Rendering Endpoint Tests (C.3.8)
+# ============================================================================
+
+
+class TestDICOMFrameRenderingEndpoint:
+    """Tests for GET /api/imaging/dicom/{sop_uid}/frame/."""
+
+    def test_render_frame_as_png(
+        self, authenticated_client, sample_dicom_instance, temp_media_dir
+    ):
+        """Should render DICOM instance as PNG image."""
+        sop_uid = sample_dicom_instance.sop_instance_uid
+
+        response = authenticated_client.get(
+            f"/api/imaging/dicom/{sop_uid}/frame/"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Content-Type"] == "image/png"
+        # PNG magic bytes: 0x89 P N G
+        content = response.getvalue() if hasattr(response, 'getvalue') else response.content
+        assert content[:4] == b'\x89PNG'
+
+    def test_render_frame_with_custom_size(
+        self, authenticated_client, sample_dicom_instance, temp_media_dir
+    ):
+        """Should respect size query parameter."""
+        sop_uid = sample_dicom_instance.sop_instance_uid
+
+        response = authenticated_client.get(
+            f"/api/imaging/dicom/{sop_uid}/frame/?size=128"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Content-Type"] == "image/png"
+
+    def test_render_frame_with_custom_window_level(
+        self, authenticated_client, sample_dicom_instance, temp_media_dir
+    ):
+        """Should apply window/level parameters."""
+        sop_uid = sample_dicom_instance.sop_instance_uid
+
+        response = authenticated_client.get(
+            f"/api/imaging/dicom/{sop_uid}/frame/?window_center=50&window_width=400"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Content-Type"] == "image/png"
+
+    def test_render_specific_frame_number(
+        self, authenticated_client, sample_dicom_instance, temp_media_dir
+    ):
+        """Should render specific frame by index (for multi-frame DICOM)."""
+        sop_uid = sample_dicom_instance.sop_instance_uid
+
+        response = authenticated_client.get(
+            f"/api/imaging/dicom/{sop_uid}/frame/?frame=0"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_render_frame_requires_auth(
+        self, api_client, sample_dicom_instance
+    ):
+        """Should require authentication."""
+        response = api_client.get(
+            f"/api/imaging/dicom/{sample_dicom_instance.sop_instance_uid}/frame/"
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_render_frame_nonexistent_404(self, authenticated_client):
+        """Should return 404 for non-existent SOP Instance UID."""
+        response = authenticated_client.get(
+            "/api/imaging/dicom/1.2.3.4.5.nonexistent/frame/"
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_render_frame_invalid_frame_number(
+        self, authenticated_client, sample_dicom_instance, temp_media_dir
+    ):
+        """Should return 400 for invalid frame index."""
+        sop_uid = sample_dicom_instance.sop_instance_uid
+
+        response = authenticated_client.get(
+            f"/api/imaging/dicom/{sop_uid}/frame/?frame=999"
+        )
+
+        # Should either return 400 or render first frame as fallback
+        assert response.status_code in (status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST)

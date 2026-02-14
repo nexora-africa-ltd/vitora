@@ -16,7 +16,9 @@ import {
   TestTube2,
   History,
   Shield,
-  UserCheck
+  UserCheck,
+  ScanLine,
+  Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +32,7 @@ import { calculateAge, formatDate, formatPhoneNumber } from '@/lib/utils/format'
 import { PatientEncounters } from '@/components/patients/patient-encounters';
 import { EmergencyContactsList } from '@/components/patients/emergency-contacts-list';
 import { QuickCheckinDialog } from '@/components/patients/quick-checkin-dialog';
+import { PatientImagingSection } from '@/components/patients/patient-imaging-section';
 import { EligibilityBanner, DependentsView } from '@/components/billing/sha';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -280,6 +283,10 @@ export default function PatientDetailPage() {
         <TabsList>
           <TabsTrigger value="encounters">Encounters</TabsTrigger>
           <TabsTrigger value="emergency-contacts">Emergency Contacts</TabsTrigger>
+          <TabsTrigger value="imaging">
+            <ScanLine className="h-4 w-4 mr-1.5" />
+            Imaging
+          </TabsTrigger>
           <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
           <TabsTrigger value="lab-results">Lab Results</TabsTrigger>
         </TabsList>
@@ -290,6 +297,10 @@ export default function PatientDetailPage() {
 
         <TabsContent value="emergency-contacts">
           <EmergencyContactsList contacts={emergencyContacts || []} />
+        </TabsContent>
+
+        <TabsContent value="imaging">
+          <PatientImagingSection patientId={patientId} />
         </TabsContent>
 
         <TabsContent value="prescriptions">

@@ -39,6 +39,7 @@ import {
   Syringe,
   Stethoscope as StethoscopeIcon,
   UserCheck,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -98,6 +99,8 @@ export const mainNavItems: NavItemType[] = [
     children: [
       { label: 'Laboratory', href: '/laboratory', icon: Microscope },
       { label: 'Imaging', href: '/imaging', icon: ScanLine },
+      { label: 'Imaging Orders', href: '/imaging/orders', icon: ClipboardList },
+      { label: 'DICOM Studies', href: '/imaging/studies', icon: ImageIcon },
     ],
   },
   {

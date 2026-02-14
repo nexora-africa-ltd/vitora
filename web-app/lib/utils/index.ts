@@ -8,6 +8,8 @@ export {
   formatPhoneNumber,
   formatCurrency,
   formatMRN,
+  formatBytes,
+  formatTime,
 } from './format';
 export {
   API_BASE_URL,

@@ -6,6 +6,7 @@ from django.urls import include, path, re_path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    DICOMFrameRenderView,
     DICOMRetrieveView,
     DICOMStudyViewSet,
     DICOMUploadView,
@@ -28,6 +29,11 @@ urlpatterns = [
         r"^dicom/(?P<sop_instance_uid>[\d.]+)/$",
         DICOMRetrieveView.as_view(),
         name="dicom-retrieve",
+    ),
+    re_path(
+        r"^dicom/(?P<sop_instance_uid>[\d.]+)/frame/$",
+        DICOMFrameRenderView.as_view(),
+        name="dicom-frame-render",
     ),
     path("calendar/", ImagingCalendarView.as_view(), name="imaging-calendar"),
     path("", include(router.urls)),

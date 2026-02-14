@@ -1,9 +1,10 @@
 /**
  * Imaging API client.
  * Phase B: Frontend Order Management
+ * Phase C Sprint C.3: DICOM Viewer
  */
 
-import { apiClient } from './client';
+import { apiClient, getApiBaseUrl } from './client';
 import {
   ImagingProcedure,
   ImagingProcedureDetail,
@@ -21,6 +22,12 @@ import {
   ImagingCalendarSlot,
   ImagingWeeklyDay,
   SlotAvailabilityCheckResponse,
+  DICOMStudy,
+  DICOMStudyDetail,
+  DICOMSeriesList,
+  DICOMInstance,
+  DICOMStudyListParams,
+  DICOMUploadResponse,
 } from '@/lib/types/imaging';
 import { PaginatedResponse } from '@/lib/types';
 import { parseResponse } from '@/lib/schemas/validation';
@@ -40,6 +47,12 @@ import {
   ImagingWeeklyAvailabilityResponseSchema,
   SlotAvailabilityCheckResponseSchema,
   ImagingCalendarSlotSchema,
+  DICOMStudySchema,
+  DICOMStudyDetailSchema,
+  PaginatedDICOMStudySchema,
+  DICOMSeriesArraySchema,
+  DICOMInstanceArraySchema,
+  DICOMUploadResponseSchema,
 } from '@/lib/schemas/imaging.schema';
 
 export const imagingApi = {
@@ -420,6 +433,145 @@ export const imagingApi = {
     return parseResponse(ImagingCalendarResponseSchema, response.data, {
       context: 'imagingApi.getCalendar',
     }) as ImagingCalendarResponse;
+  },
+
+  // ============ DICOM Studies (Phase C Sprint C.3) ============
+
+  /**
+   * Get paginated list of DICOM studies.
+   */
+  async listStudies(
+    params?: DICOMStudyListParams
+  ): Promise<PaginatedResponse<DICOMStudy>> {
+    const response = await apiClient.get<PaginatedResponse<DICOMStudy>>(
+      '/api/imaging/studies/',
+      { params }
+    );
+    return parseResponse(PaginatedDICOMStudySchema, response.data, {
+      context: 'imagingApi.listStudies',
+    }) as PaginatedResponse<DICOMStudy>;
+  },
+
+  /**
+   * Get DICOM study details by study instance UID.
+   */
+  async getStudy(studyInstanceUid: string): Promise<DICOMStudyDetail> {
+    const response = await apiClient.get<DICOMStudyDetail>(
+      `/api/imaging/studies/${studyInstanceUid}/`
+    );
+    return parseResponse(DICOMStudyDetailSchema, response.data, {
+      context: 'imagingApi.getStudy',
+    }) as DICOMStudyDetail;
+  },
+
+  /**
+   * Get all series for a DICOM study.
+   */
+  async getStudySeries(studyInstanceUid: string): Promise<DICOMSeriesList[]> {
+    const response = await apiClient.get<DICOMSeriesList[]>(
+      `/api/imaging/studies/${studyInstanceUid}/series/`
+    );
+    return parseResponse(DICOMSeriesArraySchema, response.data, {
+      context: 'imagingApi.getStudySeries',
+    }) as DICOMSeriesList[];
+  },
+
+  /**
+   * Get all instances for a DICOM study.
+   */
+  async getStudyInstances(studyInstanceUid: string): Promise<DICOMInstance[]> {
+    const response = await apiClient.get<DICOMInstance[]>(
+      `/api/imaging/studies/${studyInstanceUid}/instances/`
+    );
+    return parseResponse(DICOMInstanceArraySchema, response.data, {
+      context: 'imagingApi.getStudyInstances',
+    }) as DICOMInstance[];
+  },
+
+  /**
+   * Upload DICOM files.
+   * @param files - Array of DICOM files to upload
+   * @param imagingOrderId - Optional imaging order ID to link
+   * @param patientId - Patient ID (required if no imaging order)
+   */
+  async uploadDICOM(
+    files: File[],
+    options?: { imagingOrderId?: number; patientId?: number }
+  ): Promise<DICOMUploadResponse> {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    if (options?.imagingOrderId) {
+      formData.append('imaging_order', String(options.imagingOrderId));
+    }
+    if (options?.patientId) {
+      formData.append('patient', String(options.patientId));
+    }
+
+    const response = await apiClient.post<DICOMUploadResponse>(
+      '/api/imaging/studies/upload/',
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }
+    );
+    return parseResponse(DICOMUploadResponseSchema, response.data, {
+      context: 'imagingApi.uploadDICOM',
+    }) as DICOMUploadResponse;
+  },
+
+  /**
+   * Delete a DICOM study.
+   */
+  async deleteStudy(studyInstanceUid: string): Promise<void> {
+    await apiClient.delete(`/api/imaging/studies/${studyInstanceUid}/`);
+  },
+
+  /**
+   * Get the URL for retrieving a DICOM file via WADO.
+   * This URL can be used with cornerstone-wado-image-loader.
+   */
+  getDICOMFileUrl(sopInstanceUid: string): string {
+    const baseUrl = getApiBaseUrl();
+    return `${baseUrl}/api/imaging/dicom/${sopInstanceUid}/`;
+  },
+
+  /**
+   * Get the URL for rendering a DICOM frame as PNG.
+   * Useful for browsers without native DICOM support or for previews.
+   *
+   * @param sopInstanceUid - SOP Instance UID
+   * @param options - Rendering options
+   */
+  getFrameRenderUrl(
+    sopInstanceUid: string,
+    options?: {
+      size?: number;
+      frame?: number;
+      windowCenter?: number;
+      windowWidth?: number;
+    }
+  ): string {
+    const baseUrl = getApiBaseUrl();
+    const params = new URLSearchParams();
+    if (options?.size) params.append('size', String(options.size));
+    if (options?.frame !== undefined) params.append('frame', String(options.frame));
+    if (options?.windowCenter !== undefined)
+      params.append('window_center', String(options.windowCenter));
+    if (options?.windowWidth !== undefined)
+      params.append('window_width', String(options.windowWidth));
+
+    const queryString = params.toString();
+    return `${baseUrl}/api/imaging/dicom/${sopInstanceUid}/frame/${queryString ? '?' + queryString : ''}`;
+  },
+
+  /**
+   * Get the URL for a DICOM instance thumbnail.
+   */
+  getThumbnailUrl(thumbnailPath: string | null | undefined): string | null {
+    if (!thumbnailPath) return null;
+    const baseUrl = getApiBaseUrl();
+    // thumbnail_path is relative to MEDIA_ROOT, served at /media/
+    return `${baseUrl}/media/${thumbnailPath}`;
   },
 };
 

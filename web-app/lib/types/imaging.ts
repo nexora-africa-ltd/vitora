@@ -408,3 +408,139 @@ export interface ResourceAvailabilityParams {
 export interface WeeklyAvailabilityParams {
   start_date?: string;
 }
+
+// =============================================================================
+// DICOM TYPES (Phase C - Sprint C.3)
+// =============================================================================
+
+/**
+ * DICOM instance (individual image/slice).
+ */
+export interface DICOMInstance {
+  id: number;
+  sop_instance_uid: string;
+  sop_class_uid?: string | null;
+  instance_number?: number | null;
+  file_path: string;
+  file_size: number;
+  transfer_syntax_uid?: string | null;
+  rows?: number | null;
+  columns?: number | null;
+  bits_allocated?: number | null;
+  photometric_interpretation?: string | null;
+  thumbnail_path?: string | null;
+  created_at: string;
+}
+
+/**
+ * DICOM series (list view, without instances).
+ */
+export interface DICOMSeriesList {
+  id: number;
+  series_instance_uid: string;
+  series_number?: number | null;
+  series_description?: string | null;
+  modality: string;
+  body_part_examined?: string | null;
+  number_of_instances: number;
+  total_file_size?: number | null;
+  thumbnail_path?: string | null;
+  created_at: string;
+}
+
+/**
+ * DICOM series with nested instances.
+ */
+export interface DICOMSeries extends DICOMSeriesList {
+  instances: DICOMInstance[];
+}
+
+/**
+ * DICOM study (list view).
+ */
+export interface DICOMStudy {
+  id: number;
+  study_instance_uid: string;
+  patient: number;
+  patient_name: string;
+  imaging_order?: number | null;
+  study_date: string;
+  study_time?: string | null;
+  study_description?: string | null;
+  accession_number?: string | null;
+  referring_physician_name?: string | null;
+  modality: string;
+  institution_name?: string | null;
+  number_of_series: number;
+  number_of_instances: number;
+  total_file_size?: number | null;
+  thumbnail_path?: string | null;
+  uploaded_by?: number | null;
+  uploaded_by_name?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * DICOM study detail (with nested series).
+ */
+export interface DICOMStudyDetail extends DICOMStudy {
+  series: DICOMSeriesList[];
+}
+
+/**
+ * DICOM upload response.
+ */
+export interface DICOMUploadResponse {
+  study_instance_uid: string | null;
+  instances_created: number;
+  files_submitted: number;
+  errors?: Array<{
+    file: string;
+    errors: string[];
+  }>;
+}
+
+/**
+ * Params for listing DICOM studies.
+ */
+export interface DICOMStudyListParams {
+  patient?: number;
+  modality?: string;
+  study_date_after?: string;
+  study_date_before?: string;
+  imaging_order?: number;
+  page?: number;
+  page_size?: number;
+}
+
+/**
+ * DICOM viewer tool types.
+ */
+export type DICOMViewerTool = 
+  | 'pan'
+  | 'zoom'
+  | 'window_level'
+  | 'ruler'
+  | 'angle'
+  | 'rectangle'
+  | 'ellipse'
+  | 'freehand'
+  | 'reset';
+
+/**
+ * DICOM viewer state.
+ */
+export interface DICOMViewerState {
+  activeTool: DICOMViewerTool;
+  currentInstanceIndex: number;
+  currentSeriesIndex: number;
+  windowWidth: number;
+  windowCenter: number;
+  zoom: number;
+  pan: { x: number; y: number };
+  invert: boolean;
+  flipH: boolean;
+  flipV: boolean;
+  rotation: number;
+}

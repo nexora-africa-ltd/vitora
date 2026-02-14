@@ -69,6 +69,28 @@ const nextConfig = {
       },
     ];
   },
+
+  // Webpack config for handling Node.js modules in browser (Cornerstone.js WASM codecs)
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Provide empty fallbacks for Node.js modules used by Cornerstone.js codecs
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        crypto: false,
+      };
+    }
+    return config;
+  },
+
+  // Turbopack config for dev mode (handles same issue)
+  turbopack: {
+    resolveAlias: {
+      fs: { browser: './empty-module.js' },
+      path: { browser: 'path-browserify' },
+    },
+  },
 }
 
 module.exports = nextConfig
