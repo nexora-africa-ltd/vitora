@@ -3,142 +3,109 @@
 /**
  * New Version Toast
  *
- * A persistent toast notification that appears when a new app version
- * is detected. Prompts users to refresh to get the latest updates.
- * Shows a warning if there's pending unsaved data.
+ * Uses Sonner toast to notify users when a new app version is available.
+ * Shows a persistent toast with Refresh action.
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { useVersionCheck } from '@/lib/hooks/use-version-check';
-import { getPendingUserData, PendingUserData } from '@/lib/utils/version-check';
+import { getPendingUserData } from '@/lib/utils/version-check';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, X, Sparkles, AlertTriangle } from 'lucide-react';
+import { RefreshCw, XIcon, Sparkles  } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export function NewVersionToast() {
-  const { newVersionAvailable, refresh, dismiss, isRefreshing } = useVersionCheck();
-  const [pendingData, setPendingData] = useState<PendingUserData | null>(null);
-  const [showConfirm, setShowConfirm] = useState(false);
+interface VersionToastProps {
+  id: string | number;
+  onRefresh: () => Promise<void>;
+  onDismiss: () => void;
+  pendingCount: number;
+}
 
-  // Check for pending data when toast appears
-  useEffect(() => {
-    if (newVersionAvailable) {
-      setPendingData(getPendingUserData());
-    }
-  }, [newVersionAvailable]);
-
-  if (!newVersionAvailable) {
-    return null;
-  }
-
-  const hasPending = pendingData && pendingData.count > 0;
-
-  const handleRefreshClick = () => {
-    if (hasPending && !showConfirm) {
-      setShowConfirm(true);
-      return;
-    }
-    refresh();
+function VersionToastContent({ id, onRefresh, onDismiss, pendingCount }: VersionToastProps) {
+  const handleRefresh = async () => {
+    toast.dismiss(id);
+    await onRefresh();
   };
 
   return (
     <div
       className={cn(
-        'fixed bottom-4 right-4 z-[100]',
-        'flex flex-col gap-2 p-4',
-        'bg-background border border-border rounded-lg shadow-lg',
-        'animate-in slide-in-from-bottom-5 fade-in duration-300',
-        'max-w-sm'
+        'group relative flex w-full items-start gap-3 overflow-hidden rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg',
+        'border-l-4 border-l-green-500'
       )}
-      role="alert"
-      aria-live="polite"
     >
-      <div className="flex items-start gap-3">
-        {/* Icon */}
-        <div className="flex-shrink-0">
-          <div className={cn(
-            'w-10 h-10 rounded-full flex items-center justify-center',
-            showConfirm ? 'bg-amber-500/10' : 'bg-primary/10'
-          )}>
-            {showConfirm ? (
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
-            ) : (
-              <Sparkles className="w-5 h-5 text-primary" />
-            )}
-          </div>
-        </div>
+      <Sparkles className="mt-0.5 size-5 shrink-0 text-green-500" />
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          {showConfirm ? (
-            <>
-              <p className="text-sm font-medium text-foreground">
-                Unsaved data detected
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {pendingData?.hasDrafts && `${pendingData.draftKeys.length} draft form(s)`}
-                {pendingData?.hasDrafts && pendingData?.hasOfflineQueue && ' and '}
-                {pendingData?.hasOfflineQueue && 'pending offline changes'}
-                {' will be preserved. Refresh anyway?'}
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-sm font-medium text-foreground">
-                New version available
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Refresh to get the latest updates
-                {hasPending && (
-                  <span className="text-amber-500 block mt-0.5">
-                    {pendingData.count} unsaved item(s) detected
-                  </span>
-                )}
-              </p>
-            </>
+      <div className="flex-1 space-y-1">
+        <p className="text-base font-medium leading-tight">New version available</p>
+        <p className="text-sm text-muted-foreground">
+          Refresh to get the latest updates
+          {pendingCount > 0 && (
+            <span className="text-amber-500 block mt-0.5">
+              {pendingCount} unsaved item(s) will be preserved
+            </span>
           )}
-        </div>
+        </p>
+      </div>
 
-        {/* Close button */}
+      <div className="flex items-center gap-1 shrink-0">
+        <Button
+          variant="default"
+          size="sm"
+          onClick={handleRefresh}
+          className="gap-1.5 h-7"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Refresh
+        </Button>
         <Button
           variant="ghost"
           size="icon"
           onClick={() => {
-            if (showConfirm) {
-              setShowConfirm(false);
-            } else {
-              dismiss();
-            }
+            toast.dismiss(id);
+            onDismiss();
           }}
-          className="w-8 h-8 text-muted-foreground hover:text-foreground flex-shrink-0"
-          aria-label={showConfirm ? 'Cancel' : 'Dismiss'}
+          className="size-6 shrink-0 opacity-70 hover:opacity-100"
         >
-          <X className="w-4 h-4" />
-        </Button>
-      </div>
-
-      {/* Action buttons */}
-      <div className="flex justify-end gap-2">
-        {showConfirm && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowConfirm(false)}
-          >
-            Cancel
-          </Button>
-        )}
-        <Button
-          variant={showConfirm ? 'default' : 'default'}
-          size="sm"
-          onClick={handleRefreshClick}
-          disabled={isRefreshing}
-          className="gap-1.5"
-        >
-          <RefreshCw className={cn('w-3.5 h-3.5', isRefreshing && 'animate-spin')} />
-          {isRefreshing ? 'Refreshing...' : showConfirm ? 'Refresh Anyway' : 'Refresh'}
+          <XIcon className="size-4" />
         </Button>
       </div>
     </div>
   );
+}
+
+export function NewVersionToast() {
+  const { newVersionAvailable, refresh, dismiss } = useVersionCheck();
+  const toastShownRef = useRef(false);
+
+  useEffect(() => {
+    if (newVersionAvailable && !toastShownRef.current) {
+      toastShownRef.current = true;
+      const pendingData = getPendingUserData();
+      
+      toast.custom(
+        (id) => (
+          <VersionToastContent
+            id={id}
+            onRefresh={refresh}
+            onDismiss={dismiss}
+            pendingCount={pendingData.count}
+          />
+        ),
+        {
+          duration: Infinity, // Persistent until user acts
+          id: 'new-version-toast', // Prevent duplicates
+        }
+      );
+    }
+    
+    // Reset when version is no longer available (user dismissed)
+    if (!newVersionAvailable) {
+      toastShownRef.current = false;
+    }
+  }, [newVersionAvailable, refresh, dismiss]);
+
+  // This component doesn't render anything - it just triggers the toast
+  return null;
 }
