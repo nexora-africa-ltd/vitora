@@ -96,6 +96,20 @@ export const inpatientApi = {
     return parseResponse(WardSchema, response.data, { context: 'inpatientApi.updateWard' });
   },
 
+  /**
+   * Generate missing beds for a ward based on its capacity.
+   * Creates bed records up to the ward's capacity if fewer beds currently exist.
+   */
+  async generateWardBeds(wardId: number): Promise<{
+    created: number;
+    total: number;
+    capacity: number;
+    message: string;
+  }> {
+    const response = await apiClient.post(`/api/inpatient/wards/${wardId}/generate_beds/`);
+    return response.data;
+  },
+
   async listWardBeds(
     wardId: number,
     params?: Omit<BedListParams, 'ward'> & { page?: number; page_size?: number }

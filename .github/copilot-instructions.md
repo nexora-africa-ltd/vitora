@@ -721,6 +721,38 @@ class WardSerializer(...)           # in core/serializers.py
 class InpatientWardSerializer(...)  # in inpatient/serializers.py
 ```
 
+### 10. Ward Bed Auto-Generation
+
+Wards have a `capacity` field but individual `Bed` records must exist for admissions. Beds are auto-generated:
+
+**On Ward Creation:**
+```python
+# When a new ward is created with capacity=20, 20 Bed records are auto-created:
+# B-001, B-002, ..., B-020 (all with status='AVAILABLE')
+ward = Ward.objects.create(name="Medical Ward 1", code="MW001", capacity=20, ...)
+# ward.beds.count() == 20  # Automatic!
+```
+
+**Backfill Existing Wards:**
+```bash
+# Generate missing beds for all wards
+python manage.py generate_ward_beds
+
+# Dry run to preview
+python manage.py generate_ward_beds --dry-run
+
+# Specific ward only
+python manage.py generate_ward_beds --ward MW001
+```
+
+**API Endpoint:**
+```
+POST /api/inpatient/wards/{id}/generate_beds/
+# Returns: { created: 10, total: 20, capacity: 20, message: "Generated 10 bed(s)" }
+```
+
+**Frontend:** The admission form shows a "Generate Beds" button when ward has capacity but no beds.
+
 ---
 
 ## 🔐 Security & Compliance

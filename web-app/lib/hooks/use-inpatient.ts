@@ -98,6 +98,22 @@ export function useUpdateWard() {
   });
 }
 
+/**
+ * Generate missing beds for a ward based on its capacity.
+ * Creates bed records up to the ward's capacity if fewer beds currently exist.
+ */
+export function useGenerateWardBeds() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (wardId: number) => inpatientApi.generateWardBeds(wardId),
+    onSuccess: (_, wardId) => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.ward(wardId) });
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wardBeds(wardId) });
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.beds() });
+    },
+  });
+}
+
 export function useWardBeds(
   wardId: number | undefined,
   params?: Omit<BedListParams, 'ward'> & { page?: number; page_size?: number }

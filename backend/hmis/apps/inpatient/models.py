@@ -176,7 +176,7 @@ class Ward(TimeStampedModel):
         return f"{self.name} ({self.code})"
 
     def save(self, *args, **kwargs):
-        """Auto-populate compatibility defaults on ward creation."""
+        """Auto-populate compatibility defaults and create beds on ward creation."""
         is_new = self.pk is None
 
         if is_new and self.ward_type in self.WARD_TYPE_AGE_DEFAULTS:
@@ -190,6 +190,51 @@ class Ward(TimeStampedModel):
                 self.gender_restriction = "FEMALE_ONLY"
 
         super().save(*args, **kwargs)
+
+        # Auto-generate beds for new wards
+        if is_new and self.capacity > 0:
+            self._generate_beds()
+
+    def _generate_beds(self, start_number: int = 1) -> int:
+        """
+        Generate bed records up to ward capacity.
+
+        Args:
+            start_number: Starting bed number (default 1)
+
+        Returns:
+            Number of beds created
+        """
+        # Import here to avoid circular import at module level
+        existing_count = self.beds.count()
+        beds_to_create = self.capacity - existing_count
+
+        if beds_to_create <= 0:
+            return 0
+
+        # Create beds with sequential numbering
+        beds = []
+        for i in range(beds_to_create):
+            bed_num = existing_count + i + start_number
+            beds.append(
+                Bed(
+                    ward=self,
+                    bed_number=f"B-{bed_num:03d}",
+                    status="AVAILABLE",
+                )
+            )
+
+        Bed.objects.bulk_create(beds)
+        return len(beds)
+
+    def generate_missing_beds(self) -> int:
+        """
+        Generate any missing beds to match capacity.
+
+        Returns:
+            Number of beds created
+        """
+        return self._generate_beds()
 
     @property
     def available_beds(self) -> int:
