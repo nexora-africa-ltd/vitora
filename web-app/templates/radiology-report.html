@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Radiology Report</title>
+  <style>
+    /* ================= A4 PAGE SETUP ================= */
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+
+    body {
+      font-family: "Inter", Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 0;
+      color: #111;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .report {
+      width: 180mm;
+      margin: auto;
+      background: #ffffff;
+      padding: 15mm;
+    }
+
+    /* ================= HEADER ================= */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #1a365d;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+
+    .facility h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a365d;
+    }
+
+    .facility p {
+      margin: 3px 0;
+      font-size: 11px;
+      color: #555;
+    }
+
+    .doc-meta {
+      text-align: right;
+      font-size: 11px;
+    }
+
+    .doc-meta .title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a365d;
+      margin-bottom: 6px;
+    }
+
+    .qr {
+      width: 80px;
+      height: 80px;
+      border: 1px dashed #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #666;
+      margin-top: 8px;
+    }
+
+    /* ================= STATUS BADGES ================= */
+    .status-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      font-size: 10px;
+      font-weight: 600;
+      border-radius: 10px;
+      text-transform: uppercase;
+    }
+
+    .status-draft {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-preliminary {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-final {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-amended {
+      background: #fce7f3;
+      color: #9d174d;
+    }
+
+    /* ================= CRITICAL ALERT ================= */
+    .critical-alert {
+      background: #fef2f2;
+      border: 2px solid #ef4444;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+
+    .critical-alert h3 {
+      margin: 0 0 6px;
+      color: #dc2626;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .critical-alert p {
+      margin: 4px 0;
+      font-size: 11px;
+      color: #7f1d1d;
+    }
+
+    /* ================= PATIENT INFO ================= */
+    .patient-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 24px;
+      background: #f8fafc;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 11px;
+    }
+
+    .patient-info .row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .patient-info .label {
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .patient-info .value {
+      color: #1e293b;
+    }
+
+    /* ================= SECTIONS ================= */
+    .section {
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #1a365d;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+    }
+
+    .section-content {
+      white-space: pre-wrap;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    /* ================= SIGNATURE ================= */
+    .signature-block {
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .signature-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 12px;
+    }
+
+    .signature-name {
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    .signature-date {
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .electronic-signature {
+      font-size: 10px;
+      color: #16a34a;
+      font-style: italic;
+    }
+
+    /* ================= AMENDMENTS ================= */
+    .amendments {
+      margin-top: 20px;
+      padding: 12px;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 6px;
+    }
+
+    .amendments h4 {
+      margin: 0 0 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #92400e;
+    }
+
+    .amendment-item {
+      font-size: 10px;
+      padding: 6px 0;
+      border-bottom: 1px dashed #fcd34d;
+    }
+
+    .amendment-item:last-child {
+      border-bottom: none;
+    }
+
+    /* ================= FOOTER ================= */
+    .footer {
+      margin-top: 24px;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      font-size: 9px;
+      color: #94a3b8;
+    }
+
+    .footer-notes {
+      max-width: 60%;
+    }
+
+    /* ================= PRINT STYLES ================= */
+    @media print {
+      body {
+        background: white;
+      }
+
+      .report {
+        width: 100%;
+        padding: 0;
+        margin: 0;
+      }
+
+      .critical-alert {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+
+    @media screen {
+      body {
+        padding: 24px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="report">
+
+  <!-- ================= HEADER ================= -->
+  <div class="header">
+    <div class="facility">
+      <h1>{{facility_name}}</h1>
+      <p>{{facility_address}}</p>
+      <p>Tel: {{facility_phone}}</p>
+      <p>License No: {{facility_license}}</p>
+    </div>
+
+    <div class="doc-meta">
+      <div class="title">RADIOLOGY REPORT</div>
+      <div>Report No: {{report_number}}</div>
+      <div>Order No: {{order_number}}</div>
+      <div>Date: {{report_date}}</div>
+      <div class="status-badge {{status_class}}">{{report_status}}</div>
+      <div class="qr">
+        QR Code
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CRITICAL ALERT ================= -->
+  <div class="critical-alert" style="display: {{critical_display}};">
+    <h3>⚠️ CRITICAL FINDING</h3>
+    <p><strong>Finding:</strong> {{critical_description}}</p>
+    <p><strong>Communication:</strong> {{critical_communication}}</p>
+  </div>
+
+  <!-- ================= PATIENT INFO ================= -->
+  <div class="patient-info">
+    <div class="row">
+      <span class="label">Patient:</span>
+      <span class="value">{{patient_name}}</span>
+    </div>
+    <div class="row">
+      <span class="label">MRN:</span>
+      <span class="value">{{patient_mrn}}</span>
+    </div>
+    <div class="row">
+      <span class="label">Age/Sex:</span>
+      <span class="value">{{patient_age}} / {{patient_sex}}</span>
+    </div>
+    <div class="row">
+      <span class="label">Referring Physician:</span>
+      <span class="value">{{referring_physician}}</span>
+    </div>
+    <div class="row">
+      <span class="label">Study Date:</span>
+      <span class="value">{{study_date}}</span>
+    </div>
+    <div class="row">
+      <span class="label">Modality:</span>
+      <span class="value">{{modality}}</span>
+    </div>
+    <div class="row" style="grid-column: span 2;">
+      <span class="label">Exam/Procedure:</span>
+      <span class="value">{{study_description}}</span>
+    </div>
+  </div>
+
+  <!-- ================= CLINICAL INDICATION ================= -->
+  <div class="section">
+    <div class="section-title">Clinical Indication</div>
+    <div class="section-content">{{clinical_indication}}</div>
+  </div>
+
+  <!-- ================= TECHNIQUE ================= -->
+  <div class="section" style="display: {{technique_display}};">
+    <div class="section-title">Technique</div>
+    <div class="section-content">{{technique}}</div>
+  </div>
+
+  <!-- ================= COMPARISON ================= -->
+  <div class="section" style="display: {{comparison_display}};">
+    <div class="section-title">Comparison</div>
+    <div class="section-content">{{comparison}}</div>
+  </div>
+
+  <!-- ================= FINDINGS ================= -->
+  <div class="section">
+    <div class="section-title">Findings</div>
+    <div class="section-content">{{findings}}</div>
+  </div>
+
+  <!-- ================= IMPRESSION ================= -->
+  <div class="section">
+    <div class="section-title">Impression</div>
+    <div class="section-content">{{impression}}</div>
+  </div>
+
+  <!-- ================= RECOMMENDATIONS ================= -->
+  <div class="section" style="display: {{recommendations_display}};">
+    <div class="section-title">Recommendations</div>
+    <div class="section-content">{{recommendations}}</div>
+  </div>
+
+  <!-- ================= SIGNATURE ================= -->
+  <div class="signature-block">
+    <div class="signature-line">
+      <div>
+        <div class="signature-name">{{radiologist_name}}</div>
+        <div class="signature-date">{{radiologist_credentials}}</div>
+      </div>
+      <div>
+        <div class="signature-date">{{signature_datetime}}</div>
+        <div class="electronic-signature">{{signature_status}}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= AMENDMENTS ================= -->
+  <div class="amendments" style="display: {{amendments_display}};">
+    <h4>Amendment History</h4>
+    <!-- Amendment items will be injected here -->
+    <div class="amendment-item">
+      Amendment #{{amendment_number}}: {{amendment_reason}} 
+      (by {{amendment_by}} on {{amendment_date}})
+    </div>
+  </div>
+
+  <!-- ================= FOOTER ================= -->
+  <div class="footer">
+    <div class="footer-notes">
+      <p>This report was generated electronically by {{system_name}}.</p>
+      <p>It is signed digitally and valid without a physical signature where permitted by law.</p>
+    </div>
+    <div class="qr">
+      QR Code
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -544,3 +544,145 @@ export interface DICOMViewerState {
   flipV: boolean;
   rotation: number;
 }
+
+// =============================================================================
+// RADIOLOGY REPORTING (Phase D)
+// =============================================================================
+
+/**
+ * Radiology report status values.
+ */
+export type RadiologyReportStatus = 'DRAFT' | 'PRELIMINARY' | 'FINAL' | 'AMENDED';
+
+/**
+ * Critical finding communication methods.
+ */
+export type CriticalCommMethod = 'phone' | 'in_person' | 'secure_message' | 'pager' | 'other';
+
+/**
+ * Status display labels for reports.
+ */
+export const REPORT_STATUS_LABELS: Record<RadiologyReportStatus, string> = {
+  DRAFT: 'Draft',
+  PRELIMINARY: 'Preliminary',
+  FINAL: 'Final',
+  AMENDED: 'Amended',
+};
+
+/**
+ * Report amendment record.
+ */
+export interface ReportAmendment {
+  id: number;
+  amendment_number: number;
+  reason: string;
+  previous_findings: string;
+  previous_impression: string;
+  new_findings: string;
+  new_impression: string;
+  amended_by: number;
+  amended_by_name: string;
+  amended_at: string;
+}
+
+/**
+ * Radiology report (full detail).
+ */
+export interface RadiologyReport {
+  id: number;
+  report_number: string;
+  imaging_order: number;
+  order_number: string;
+  study?: number | null;
+
+  // Patient context (from order)
+  patient_name: string;
+  patient_mrn: string;
+  modality: string;
+  study_description: string;
+
+  // Report content
+  technique: string;
+  comparison: string;
+  findings: string;
+  impression: string;
+  recommendations: string;
+
+  // Critical findings
+  is_critical: boolean;
+  critical_finding_description: string;
+  critical_communicated: boolean;
+  critical_communicated_to: string;
+  critical_communicated_method: string;
+  critical_communicated_at?: string | null;
+  critical_communicated_by?: number | null;
+  critical_communicated_by_name: string;
+
+  // Status and workflow
+  status: RadiologyReportStatus;
+  reported_by: number;
+  reported_by_name: string;
+  signed_at?: string | null;
+
+  // Amendments
+  amendment_count: number;
+  last_amendment_reason: string;
+  last_amended_at?: string | null;
+  last_amended_by?: number | null;
+  last_amended_by_name: string;
+  amendments: ReportAmendment[];
+
+  // Computed
+  can_edit: boolean;
+  can_sign: boolean;
+  can_amend: boolean;
+
+  // Timestamps
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Data for creating a radiology report draft.
+ */
+export interface RadiologyReportCreateData {
+  imaging_order: number;
+  study?: number | null;
+  technique?: string;
+  comparison?: string;
+  findings: string;
+  impression: string;
+  recommendations?: string;
+  is_critical?: boolean;
+  critical_finding_description?: string;
+}
+
+/**
+ * Data for updating a radiology report.
+ */
+export interface RadiologyReportUpdateData {
+  technique?: string;
+  comparison?: string;
+  findings?: string;
+  impression?: string;
+  recommendations?: string;
+  is_critical?: boolean;
+  critical_finding_description?: string;
+}
+
+/**
+ * Data for amending a radiology report.
+ */
+export interface RadiologyReportAmendData {
+  reason: string;
+  findings?: string;
+  impression?: string;
+}
+
+/**
+ * Data for communicating a critical finding.
+ */
+export interface CommunicateCriticalData {
+  communicated_to: string;
+  method?: CriticalCommMethod;
+}

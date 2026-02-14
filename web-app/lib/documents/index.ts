@@ -56,6 +56,12 @@ export { prescriptionSchema, prescriptionDefaults } from './schemas/prescription
 export { labelSchema, labelDefaults } from './schemas/label.schema';
 export { receiptSchema, receiptDefaults } from './schemas/receipt.schema';
 export { invoiceSchema, invoiceDefaults, invoiceStatusColors } from './schemas/invoice.schema';
+export {
+  radiologyReportSchema,
+  radiologyReportDefaults,
+  reportStatusClasses,
+  reportStatusLabels,
+} from './schemas/radiology-report.schema';
 
 // =============================================================================
 // RENDERER
@@ -130,3 +136,9 @@ export {
   previewInvoice,
   type PrintInvoiceOptions,
 } from './print-invoice';
+
+export {
+  printRadiologyReport,
+  getRadiologyReportQRContent,
+  type PrintRadiologyReportData,
+} from './print-report';

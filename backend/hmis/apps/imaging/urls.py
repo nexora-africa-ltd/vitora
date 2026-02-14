@@ -14,6 +14,7 @@ from .views import (
     ImagingOrderViewSet,
     ImagingProcedureViewSet,
     ImagingResourceViewSet,
+    RadiologyReportViewSet,
 )
 
 router = DefaultRouter()
@@ -21,6 +22,7 @@ router.register(r"procedures", ImagingProcedureViewSet, basename="imaging-proced
 router.register(r"orders", ImagingOrderViewSet, basename="imaging-order")
 router.register(r"resources", ImagingResourceViewSet, basename="imaging-resource")
 router.register(r"studies", DICOMStudyViewSet, basename="dicom-study")
+router.register(r"reports", RadiologyReportViewSet, basename="radiology-report")
 
 urlpatterns = [
     # DICOM-specific endpoints (must be before router to avoid conflicts)

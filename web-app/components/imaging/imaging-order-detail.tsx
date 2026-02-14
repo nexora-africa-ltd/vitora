@@ -615,6 +615,34 @@ export function ImagingOrderDetail({ orderNumber }: ImagingOrderDetailProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Radiology Report - shown for COMPLETED or REPORTED orders */}
+      {(order.status === 'COMPLETED' || order.status === 'REPORTED') && (
+        <Card className={order.status === 'REPORTED' ? 'border-green-500/20 bg-green-50/50 dark:bg-green-950/20' : ''}>
+          <CardHeader className="pb-2 sm:pb-3">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Radiology Report
+            </CardTitle>
+            <CardDescription>
+              {order.status === 'REPORTED'
+                ? 'Final report is available'
+                : 'Create or view the radiology report'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-3 sm:px-6">
+            <Link href={`/imaging/orders/${orderNumber}/report`}>
+              <Button
+                variant={order.status === 'REPORTED' ? 'default' : 'outline'}
+                className="w-full sm:w-auto"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                {order.status === 'REPORTED' ? 'View Report' : 'Create Report'}
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

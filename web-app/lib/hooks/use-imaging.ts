@@ -16,6 +16,10 @@ import {
   ResourceAvailabilityParams,
   WeeklyAvailabilityParams,
   ImagingModality,
+  RadiologyReportCreateData,
+  RadiologyReportUpdateData,
+  RadiologyReportAmendData,
+  CommunicateCriticalData,
 } from '@/lib/types/imaging';
 
 // ============ Query Keys ============
@@ -53,6 +57,17 @@ export const imagingKeys = {
     [...imagingKeys.resources(), 'weekly', resourceId, params] as const,
   calendar: (params?: ImagingCalendarParams) =>
     [...imagingKeys.all, 'calendar', params] as const,
+  // Radiology reports
+  reports: () => [...imagingKeys.all, 'reports'] as const,
+  reportsList: (params?: {
+    status?: string;
+    is_critical?: boolean;
+    order?: string;
+  }) => [...imagingKeys.reports(), 'list', params] as const,
+  reportDetail: (reportNumber: string) =>
+    [...imagingKeys.reports(), 'detail', reportNumber] as const,
+  reportByOrder: (orderNumber: string) =>
+    [...imagingKeys.reports(), 'by-order', orderNumber] as const,
 };
 
 // ============ Procedure Catalog Hooks ============
@@ -404,5 +419,165 @@ export function useCheckSlotAvailability() {
       startTime: string;
       endTime: string;
     }) => imagingApi.checkSlotAvailability(resourceId, date, startTime, endTime),
+  });
+}
+
+// ============ Radiology Report Hooks (Phase D) ============
+
+/**
+ * Hook for fetching a radiology report by report number.
+ */
+export function useRadiologyReport(reportNumber: string) {
+  return useQuery({
+    queryKey: imagingKeys.reportDetail(reportNumber),
+    queryFn: () => imagingApi.getReport(reportNumber),
+    enabled: !!reportNumber,
+  });
+}
+
+/**
+ * Hook for fetching a radiology report by order number.
+ */
+export function useRadiologyReportByOrder(orderNumber: string) {
+  return useQuery({
+    queryKey: imagingKeys.reportByOrder(orderNumber),
+    queryFn: () => imagingApi.getReportByOrder(orderNumber),
+    enabled: !!orderNumber,
+  });
+}
+
+/**
+ * Hook for fetching radiology reports list.
+ */
+export function useRadiologyReports(params?: {
+  status?: string;
+  is_critical?: boolean;
+  order?: string;
+  page?: number;
+  page_size?: number;
+}) {
+  return useQuery({
+    queryKey: imagingKeys.reportsList(params),
+    queryFn: () => imagingApi.listReports(params),
+  });
+}
+
+/**
+ * Hook for creating a radiology report.
+ */
+export function useCreateRadiologyReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: RadiologyReportCreateData) => imagingApi.createReport(data),
+    onSuccess: (newReport) => {
+      queryClient.invalidateQueries({ queryKey: imagingKeys.reports() });
+      queryClient.invalidateQueries({
+        queryKey: imagingKeys.orderDetail(newReport.order_number),
+      });
+    },
+  });
+}
+
+/**
+ * Hook for updating a radiology report.
+ */
+export function useUpdateRadiologyReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      reportNumber,
+      data,
+    }: {
+      reportNumber: string;
+      data: RadiologyReportUpdateData;
+    }) => imagingApi.updateReport(reportNumber, data),
+    onSuccess: (updatedReport) => {
+      queryClient.invalidateQueries({ queryKey: imagingKeys.reports() });
+      queryClient.invalidateQueries({
+        queryKey: imagingKeys.reportDetail(updatedReport.report_number),
+      });
+    },
+  });
+}
+
+/**
+ * Hook for signing a radiology report.
+ */
+export function useSignRadiologyReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (reportNumber: string) => imagingApi.signReport(reportNumber),
+    onSuccess: (signedReport) => {
+      queryClient.invalidateQueries({ queryKey: imagingKeys.reports() });
+      queryClient.invalidateQueries({
+        queryKey: imagingKeys.reportDetail(signedReport.report_number),
+      });
+      queryClient.invalidateQueries({
+        queryKey: imagingKeys.orderDetail(signedReport.order_number),
+      });
+    },
+  });
+}
+
+/**
+ * Hook for amending a radiology report.
+ */
+export function useAmendRadiologyReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      reportNumber,
+      data,
+    }: {
+      reportNumber: string;
+      data: RadiologyReportAmendData;
+    }) => imagingApi.amendReport(reportNumber, data),
+    onSuccess: (amendedReport) => {
+      queryClient.invalidateQueries({ queryKey: imagingKeys.reports() });
+      queryClient.invalidateQueries({
+        queryKey: imagingKeys.reportDetail(amendedReport.report_number),
+      });
+    },
+  });
+}
+
+/**
+ * Hook for communicating a critical finding.
+ */
+export function useCommunicateCritical() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      reportNumber,
+      data,
+    }: {
+      reportNumber: string;
+      data: CommunicateCriticalData;
+    }) => imagingApi.communicateCritical(reportNumber, data),
+    onSuccess: (report) => {
+      queryClient.invalidateQueries({ queryKey: imagingKeys.reports() });
+      queryClient.invalidateQueries({
+        queryKey: imagingKeys.reportDetail(report.report_number),
+      });
+    },
+  });
+}
+
+/**
+ * Hook for deleting a radiology report.
+ */
+export function useDeleteRadiologyReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (reportNumber: string) => imagingApi.deleteReport(reportNumber),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: imagingKeys.reports() });
+    },
   });
 }

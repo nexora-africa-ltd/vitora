@@ -84,11 +84,14 @@ const nextConfig = {
     return config;
   },
 
-  // Turbopack config for dev mode (handles same issue)
+  // Turbopack config for dev mode (handles same issue as webpack fallbacks)
+  // These modules are used by @cornerstonejs WASM codecs but only in Node.js environments
   turbopack: {
     resolveAlias: {
-      fs: { browser: './empty-module.js' },
-      path: { browser: 'path-browserify' },
+      // Provide empty module stubs for Node.js built-ins
+      fs: './empty-module.js',
+      path: './empty-module.js',
+      crypto: './empty-module.js',
     },
   },
 }
