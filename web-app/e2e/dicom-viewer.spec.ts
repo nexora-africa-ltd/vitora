@@ -264,21 +264,9 @@ test.describe('DICOM Study Detail Page', () => {
     });
 
     await page.goto('/imaging/studies/1.2.3.4.5.mock');
-    await page.waitForLoadState('networkidle');
 
-    // Wait for tablist to appear (tabs only render when study loads successfully)
-    const tabsList = page.locator('[role="tablist"]');
-    await expect(tabsList).toBeVisible({ timeout: 10000 });
-
-    // Check that tabs with 'viewer' and 'details' values exist
-    const viewerTab = tabsList.locator('button[data-state]').filter({ hasText: /viewer/i }).or(
-      tabsList.locator('button[value="viewer"]')
-    );
-    const detailsTab = tabsList.locator('button[data-state]').filter({ hasText: /details/i }).or(
-      tabsList.locator('button[value="details"]')
-    );
-
-    await expect(viewerTab.first()).toBeVisible();
-    await expect(detailsTab.first()).toBeVisible();
+    // Tabs only render when the study loads successfully; assert on the tabs directly.
+    await expect(page.getByRole('tab', { name: /viewer/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('tab', { name: /details/i })).toBeVisible();
   });
 });
