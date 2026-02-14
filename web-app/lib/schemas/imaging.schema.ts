@@ -442,3 +442,111 @@ export type DICOMUploadResponseSchemaType = z.infer<typeof DICOMUploadResponseSc
 export const DICOMStudyArraySchema = z.array(DICOMStudySchema);
 export const DICOMSeriesArraySchema = z.array(DICOMSeriesListSchema);
 export const DICOMInstanceArraySchema = z.array(DICOMInstanceSchema);
+
+// =============================================================================
+// RADIOLOGY REPORT SCHEMAS (Phase D)
+// =============================================================================
+
+export const RadiologyReportStatusSchema = z.enum(['DRAFT', 'PRELIMINARY', 'FINAL', 'AMENDED']);
+
+export const CriticalCommMethodSchema = z.enum([
+  'phone',
+  'in_person',
+  'secure_message',
+  'pager',
+  'other',
+]);
+
+/**
+ * Schema for report amendment record.
+ */
+export const ReportAmendmentSchema = z.object({
+  id: z.number(),
+  amendment_number: z.number(),
+  reason: z.string(),
+  previous_findings: z.string(),
+  previous_impression: z.string(),
+  new_findings: z.string(),
+  new_impression: z.string(),
+  amended_by: z.number(),
+  amended_by_name: z.string(),
+  amended_at: z.string(),
+});
+
+export type ReportAmendmentSchemaType = z.infer<typeof ReportAmendmentSchema>;
+
+/**
+ * Schema for radiology report (full detail).
+ */
+export const RadiologyReportSchema = z.object({
+  id: z.number(),
+  report_number: z.string(),
+  imaging_order: z.number(),
+  order_number: z.string(),
+  study: z.number().nullable().optional(),
+
+  // Patient context
+  patient_name: z.string(),
+  patient_mrn: z.string(),
+  modality: z.string(),
+  study_description: z.string(),
+
+  // Report content
+  technique: z.string(),
+  comparison: z.string(),
+  findings: z.string(),
+  impression: z.string(),
+  recommendations: z.string(),
+
+  // Critical findings
+  is_critical: z.boolean(),
+  critical_finding_description: z.string(),
+  critical_communicated: z.boolean(),
+  critical_communicated_to: z.string(),
+  critical_communicated_method: z.string(),
+  critical_communicated_at: z.string().nullable().optional(),
+  critical_communicated_by: z.number().nullable().optional(),
+  critical_communicated_by_name: z.string(),
+
+  // Status and workflow
+  status: RadiologyReportStatusSchema,
+  reported_by: z.number(),
+  reported_by_name: z.string(),
+  signed_at: z.string().nullable().optional(),
+
+  // Amendments
+  amendment_count: z.number(),
+  last_amendment_reason: z.string(),
+  last_amended_at: z.string().nullable().optional(),
+  last_amended_by: z.number().nullable().optional(),
+  last_amended_by_name: z.string(),
+  amendments: z.array(ReportAmendmentSchema),
+
+  // Computed
+  can_edit: z.boolean(),
+  can_sign: z.boolean(),
+  can_amend: z.boolean(),
+
+  // Timestamps
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type RadiologyReportSchemaType = z.infer<typeof RadiologyReportSchema>;
+
+/**
+ * Schema for paginated radiology reports.
+ */
+export const PaginatedRadiologyReportSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(RadiologyReportSchema),
+});
+
+export type PaginatedRadiologyReportSchemaType = z.infer<typeof PaginatedRadiologyReportSchema>;
+
+/**
+ * Array schema for radiology reports.
+ */
+export const RadiologyReportArraySchema = z.array(RadiologyReportSchema);

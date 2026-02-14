@@ -152,7 +152,7 @@ export interface EmergencyContact {
   full_name: string;
   relationship: string;
   phone_number: string;
-  alternative_phone?: string;
+  alternative_phone?: string | null;
   created_at: string;
   updated_at: string;
 }

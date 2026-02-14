@@ -48,8 +48,10 @@ def create_invoice_item_for_imaging(sender, instance, created, **kwargs):
         )
         return
 
-    # Calculate line total
+    # Calculate line total - ensure we have a Decimal
     unit_price = instance.unit_cost or procedure.cost
+    if not isinstance(unit_price, Decimal):
+        unit_price = Decimal(str(unit_price))
     line_total = unit_price.quantize(Decimal("0.01"))
 
     # Determine laterality suffix for description

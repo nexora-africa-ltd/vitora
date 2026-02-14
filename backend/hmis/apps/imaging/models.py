@@ -754,3 +754,366 @@ class DICOMInstance(models.Model):
     def __str__(self):
         num = self.instance_number or "?"
         return f"Instance {num} ({self.sop_instance_uid[:30]}...)"
+
+
+# ============================================================================
+# Radiology Reporting Models (Phase D)
+# ============================================================================
+
+
+def generate_report_number():
+    """
+    Generate a unique radiology report number.
+
+    Format: RPT-YYYYMMDD-XXXX
+    Where XXXX is a 4-digit sequential number for the day.
+
+    Returns:
+        str: A unique report number string
+    """
+    today = datetime.now().strftime("%Y%m%d")
+    prefix = f"RPT-{today}-"
+
+    # Find the highest report number for today
+    latest_report = (
+        RadiologyReport.objects.filter(report_number__startswith=prefix)
+        .order_by("-report_number")
+        .first()
+    )
+
+    if latest_report:
+        # Extract the sequence number and increment
+        last_sequence = int(latest_report.report_number.split("-")[-1])
+        sequence = last_sequence + 1
+    else:
+        # First report of the day
+        sequence = 1
+
+    return f"{prefix}{sequence:04d}"
+
+
+class RadiologyReport(models.Model):
+    """
+    Radiology report for an imaging study.
+
+    Represents a radiologist's interpretation of imaging findings,
+    with support for:
+    - Draft/Preliminary/Final/Amended workflow
+    - Critical findings tracking and communication
+    - Amendment history
+    - PDF generation
+    """
+
+    REPORT_STATUS = [
+        ("DRAFT", "Draft"),
+        ("PRELIMINARY", "Preliminary"),
+        ("FINAL", "Final"),
+        ("AMENDED", "Amended"),
+    ]
+
+    # Valid status transitions
+    STATUS_TRANSITIONS = {
+        "DRAFT": ["PRELIMINARY", "FINAL"],
+        "PRELIMINARY": ["FINAL"],
+        "FINAL": ["AMENDED"],
+        "AMENDED": ["AMENDED"],  # Can be amended multiple times
+    }
+
+    # Identity
+    report_number = models.CharField(max_length=30, unique=True, editable=False)
+
+    # Relationships
+    imaging_order = models.OneToOneField(
+        ImagingOrder,
+        on_delete=models.PROTECT,
+        related_name="report",
+        help_text="The imaging order this report is for",
+    )
+    study = models.ForeignKey(
+        DICOMStudy,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reports",
+        help_text="The DICOM study linked to this report (if available)",
+    )
+
+    # Report content
+    technique = models.TextField(
+        blank=True,
+        default="",
+        help_text="Imaging technique/protocol used",
+    )
+    comparison = models.TextField(
+        blank=True,
+        default="",
+        help_text="Comparison with prior studies (if any)",
+    )
+    findings = models.TextField(
+        help_text="Detailed radiological findings",
+    )
+    impression = models.TextField(
+        help_text="Summary impression/conclusion",
+    )
+    recommendations = models.TextField(
+        blank=True,
+        default="",
+        help_text="Recommended follow-up or additional studies",
+    )
+
+    # Critical findings workflow
+    is_critical = models.BooleanField(
+        default=False,
+        help_text="Critical finding requiring urgent communication",
+    )
+    critical_finding_description = models.TextField(
+        blank=True,
+        default="",
+        help_text="Description of the critical finding",
+    )
+    critical_communicated = models.BooleanField(
+        default=False,
+        help_text="Whether critical finding has been communicated",
+    )
+    critical_communicated_to = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Name/identifier of person notified",
+    )
+    critical_communicated_method = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Communication method (phone, in-person, etc.)",
+    )
+    critical_communicated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When critical finding was communicated",
+    )
+    critical_communicated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="critical_communications",
+        help_text="User who communicated the critical finding",
+    )
+
+    # Status and workflow
+    status = models.CharField(
+        max_length=20,
+        choices=REPORT_STATUS,
+        default="DRAFT",
+    )
+
+    # Reporting metadata
+    reported_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="radiology_reports",
+        help_text="Radiologist who created/owns the report",
+    )
+    signed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the report was signed/finalized",
+    )
+
+    # Amendment tracking
+    amendment_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of times this report has been amended",
+    )
+    last_amendment_reason = models.TextField(
+        blank=True,
+        default="",
+        help_text="Reason for the most recent amendment",
+    )
+    last_amended_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+    last_amended_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="amended_radiology_reports",
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Radiology Report"
+        verbose_name_plural = "Radiology Reports"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["report_number"]),
+            models.Index(fields=["imaging_order"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["is_critical"]),
+            models.Index(fields=["reported_by"]),
+        ]
+
+    def __str__(self):
+        return f"{self.report_number} - {self.imaging_order.order_number}"
+
+    def save(self, *args, **kwargs):
+        """Override save to auto-generate report number."""
+        if not self.pk and not self.report_number:
+            self.report_number = generate_report_number()
+        super().save(*args, **kwargs)
+
+    def can_edit(self) -> bool:
+        """Check if the report can still be edited."""
+        return self.status in ("DRAFT", "PRELIMINARY")
+
+    def can_sign(self) -> bool:
+        """Check if the report can be signed/finalized."""
+        return self.status in ("DRAFT", "PRELIMINARY")
+
+    def can_amend(self) -> bool:
+        """Check if the report can be amended."""
+        return self.status in ("FINAL", "AMENDED")
+
+    def sign(self, user: User):
+        """
+        Sign and finalize the report.
+
+        Args:
+            user: The radiologist signing the report
+
+        Raises:
+            ValidationError: If report cannot be signed
+        """
+        if not self.can_sign():
+            raise ValidationError(
+                f"Cannot sign report in status '{self.status}'. "
+                "Only DRAFT or PRELIMINARY reports can be signed."
+            )
+
+        self.status = "FINAL"
+        self.signed_at = timezone.now()
+        self.save(update_fields=["status", "signed_at", "updated_at"])
+
+        # Update the imaging order status to REPORTED
+        self.imaging_order.status = "REPORTED"
+        self.imaging_order.save(update_fields=["status", "status_changed_at"])
+
+    def amend(self, user: User, reason: str, new_findings: str = None, new_impression: str = None):
+        """
+        Amend a finalized report.
+
+        Args:
+            user: The radiologist making the amendment
+            reason: Reason for the amendment
+            new_findings: Updated findings (optional)
+            new_impression: Updated impression (optional)
+
+        Raises:
+            ValidationError: If report cannot be amended
+        """
+        if not self.can_amend():
+            raise ValidationError(
+                f"Cannot amend report in status '{self.status}'. "
+                "Only FINAL or already AMENDED reports can be amended."
+            )
+
+        if not reason:
+            raise ValidationError("Amendment reason is required.")
+
+        # Update content if provided
+        if new_findings:
+            self.findings = new_findings
+        if new_impression:
+            self.impression = new_impression
+
+        # Track amendment
+        self.status = "AMENDED"
+        self.amendment_count += 1
+        self.last_amendment_reason = reason
+        self.last_amended_at = timezone.now()
+        self.last_amended_by = user
+
+        self.save()
+
+    def communicate_critical(
+        self,
+        user: User,
+        communicated_to: str,
+        method: str = "phone",
+    ):
+        """
+        Record communication of a critical finding.
+
+        Args:
+            user: User who communicated the finding
+            communicated_to: Name/identifier of person notified
+            method: Communication method
+        """
+        self.critical_communicated = True
+        self.critical_communicated_to = communicated_to
+        self.critical_communicated_method = method
+        self.critical_communicated_at = timezone.now()
+        self.critical_communicated_by = user
+        self.save()
+
+
+class ReportAmendment(models.Model):
+    """
+    Tracks individual amendments to a radiology report.
+
+    Provides a full audit trail of all changes made after a report
+    is finalized.
+    """
+
+    report = models.ForeignKey(
+        RadiologyReport,
+        on_delete=models.CASCADE,
+        related_name="amendments",
+    )
+    amendment_number = models.PositiveIntegerField(
+        help_text="Sequential amendment number for this report",
+    )
+    reason = models.TextField(
+        help_text="Reason for the amendment",
+    )
+    previous_findings = models.TextField(
+        blank=True,
+        default="",
+        help_text="Findings before this amendment",
+    )
+    previous_impression = models.TextField(
+        blank=True,
+        default="",
+        help_text="Impression before this amendment",
+    )
+    new_findings = models.TextField(
+        blank=True,
+        default="",
+        help_text="Findings after this amendment (if changed)",
+    )
+    new_impression = models.TextField(
+        blank=True,
+        default="",
+        help_text="Impression after this amendment (if changed)",
+    )
+    amended_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="report_amendments",
+    )
+    amended_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Report Amendment"
+        verbose_name_plural = "Report Amendments"
+        ordering = ["-amendment_number"]
+        unique_together = [["report", "amendment_number"]]
+
+    def __str__(self):
+        return f"{self.report.report_number} - Amendment #{self.amendment_number}"

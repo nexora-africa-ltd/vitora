@@ -28,6 +28,11 @@ import {
   DICOMInstance,
   DICOMStudyListParams,
   DICOMUploadResponse,
+  RadiologyReport,
+  RadiologyReportCreateData,
+  RadiologyReportUpdateData,
+  RadiologyReportAmendData,
+  CommunicateCriticalData,
 } from '@/lib/types/imaging';
 import { PaginatedResponse } from '@/lib/types';
 import { parseResponse } from '@/lib/schemas/validation';
@@ -53,6 +58,8 @@ import {
   DICOMSeriesArraySchema,
   DICOMInstanceArraySchema,
   DICOMUploadResponseSchema,
+  RadiologyReportSchema,
+  PaginatedRadiologyReportSchema,
 } from '@/lib/schemas/imaging.schema';
 
 export const imagingApi = {
@@ -572,6 +579,154 @@ export const imagingApi = {
     const baseUrl = getApiBaseUrl();
     // thumbnail_path is relative to MEDIA_ROOT, served at /media/
     return `${baseUrl}/media/${thumbnailPath}`;
+  },
+
+  // ============ Radiology Reports (Phase D) ============
+
+  /**
+   * List radiology reports with optional filters.
+   */
+  async listReports(params?: {
+    status?: string;
+    is_critical?: boolean;
+    reported_by?: number;
+    patient?: number;
+    order?: string;
+    date_from?: string;
+    date_to?: string;
+    page?: number;
+    page_size?: number;
+  }): Promise<PaginatedResponse<RadiologyReport>> {
+    const response = await apiClient.get<PaginatedResponse<RadiologyReport>>(
+      '/api/imaging/reports/',
+      { params }
+    );
+    return parseResponse(PaginatedRadiologyReportSchema, response.data, {
+      context: 'imagingApi.listReports',
+    }) as PaginatedResponse<RadiologyReport>;
+  },
+
+  /**
+   * Get a radiology report by report number.
+   */
+  async getReport(reportNumber: string): Promise<RadiologyReport> {
+    const response = await apiClient.get<RadiologyReport>(
+      `/api/imaging/reports/${reportNumber}/`
+    );
+    return parseResponse(RadiologyReportSchema, response.data, {
+      context: 'imagingApi.getReport',
+    }) as RadiologyReport;
+  },
+
+  /**
+   * Get a radiology report by imaging order number (convenience method).
+   * Returns null if no report exists for the order.
+   */
+  async getReportByOrder(orderNumber: string): Promise<RadiologyReport | null> {
+    try {
+      const response = await apiClient.get<PaginatedResponse<RadiologyReport>>(
+        '/api/imaging/reports/',
+        { params: { order: orderNumber } }
+      );
+      const data = parseResponse(PaginatedRadiologyReportSchema, response.data, {
+        context: 'imagingApi.getReportByOrder',
+      }) as PaginatedResponse<RadiologyReport>;
+      return data.results[0] ?? null;
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  /**
+   * Create a new radiology report draft.
+   */
+  async createReport(data: RadiologyReportCreateData): Promise<RadiologyReport> {
+    const response = await apiClient.post<RadiologyReport>(
+      '/api/imaging/reports/',
+      data
+    );
+    return parseResponse(RadiologyReportSchema, response.data, {
+      context: 'imagingApi.createReport',
+    }) as RadiologyReport;
+  },
+
+  /**
+   * Update a draft radiology report.
+   */
+  async updateReport(
+    reportNumber: string,
+    data: RadiologyReportUpdateData
+  ): Promise<RadiologyReport> {
+    const response = await apiClient.patch<RadiologyReport>(
+      `/api/imaging/reports/${reportNumber}/`,
+      data
+    );
+    return parseResponse(RadiologyReportSchema, response.data, {
+      context: 'imagingApi.updateReport',
+    }) as RadiologyReport;
+  },
+
+  /**
+   * Sign and finalize a radiology report.
+   */
+  async signReport(reportNumber: string): Promise<RadiologyReport> {
+    const response = await apiClient.post<RadiologyReport>(
+      `/api/imaging/reports/${reportNumber}/sign/`
+    );
+    return parseResponse(RadiologyReportSchema, response.data, {
+      context: 'imagingApi.signReport',
+    }) as RadiologyReport;
+  },
+
+  /**
+   * Amend a finalized radiology report.
+   */
+  async amendReport(
+    reportNumber: string,
+    data: RadiologyReportAmendData
+  ): Promise<RadiologyReport> {
+    const response = await apiClient.post<RadiologyReport>(
+      `/api/imaging/reports/${reportNumber}/amend/`,
+      data
+    );
+    return parseResponse(RadiologyReportSchema, response.data, {
+      context: 'imagingApi.amendReport',
+    }) as RadiologyReport;
+  },
+
+  /**
+   * Communicate a critical finding.
+   */
+  async communicateCritical(
+    reportNumber: string,
+    data: CommunicateCriticalData
+  ): Promise<RadiologyReport> {
+    const response = await apiClient.post<RadiologyReport>(
+      `/api/imaging/reports/${reportNumber}/communicate-critical/`,
+      data
+    );
+    return parseResponse(RadiologyReportSchema, response.data, {
+      context: 'imagingApi.communicateCritical',
+    }) as RadiologyReport;
+  },
+
+  /**
+   * Delete a draft radiology report.
+   * Only drafts can be deleted.
+   */
+  async deleteReport(reportNumber: string): Promise<void> {
+    await apiClient.delete(`/api/imaging/reports/${reportNumber}/`);
+  },
+
+  /**
+   * Get the URL for downloading report PDF.
+   */
+  getReportPdfUrl(reportNumber: string): string {
+    const baseUrl = getApiBaseUrl();
+    return `${baseUrl}/api/imaging/reports/${reportNumber}/pdf/`;
   },
 };
 

@@ -11,6 +11,8 @@ from .models import (
     ImagingOrder,
     ImagingOrderItem,
     ImagingProcedure,
+    RadiologyReport,
+    ReportAmendment,
 )
 
 
@@ -365,3 +367,241 @@ class DICOMStudyDetailSerializer(DICOMStudySerializer):
 
     class Meta(DICOMStudySerializer.Meta):
         fields = DICOMStudySerializer.Meta.fields + ["series"]
+
+
+# ============================================================================
+# Radiology Report Serializers (Phase D)
+# ============================================================================
+
+
+class ReportAmendmentSerializer(serializers.ModelSerializer):
+    """Serializer for report amendment history."""
+
+    amended_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ReportAmendment
+        fields = [
+            "id",
+            "amendment_number",
+            "reason",
+            "previous_findings",
+            "previous_impression",
+            "new_findings",
+            "new_impression",
+            "amended_by",
+            "amended_by_name",
+            "amended_at",
+        ]
+        read_only_fields = fields
+
+    def get_amended_by_name(self, obj) -> str:
+        return obj.amended_by.get_full_name() or obj.amended_by.username
+
+
+class RadiologyReportSerializer(serializers.ModelSerializer):
+    """Full serializer for radiology reports."""
+
+    reported_by_name = serializers.SerializerMethodField()
+    last_amended_by_name = serializers.SerializerMethodField()
+    critical_communicated_by_name = serializers.SerializerMethodField()
+    order_number = serializers.CharField(source="imaging_order.order_number", read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    patient_mrn = serializers.SerializerMethodField()
+    modality = serializers.SerializerMethodField()
+    study_description = serializers.SerializerMethodField()
+    amendments = ReportAmendmentSerializer(many=True, read_only=True)
+    can_edit = serializers.BooleanField(read_only=True)
+    can_sign = serializers.BooleanField(read_only=True)
+    can_amend = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = RadiologyReport
+        fields = [
+            "id",
+            "report_number",
+            "imaging_order",
+            "order_number",
+            "study",
+            "patient_name",
+            "patient_mrn",
+            "modality",
+            "study_description",
+            # Content
+            "technique",
+            "comparison",
+            "findings",
+            "impression",
+            "recommendations",
+            # Critical findings
+            "is_critical",
+            "critical_finding_description",
+            "critical_communicated",
+            "critical_communicated_to",
+            "critical_communicated_method",
+            "critical_communicated_at",
+            "critical_communicated_by",
+            "critical_communicated_by_name",
+            # Status
+            "status",
+            "reported_by",
+            "reported_by_name",
+            "signed_at",
+            # Amendments
+            "amendment_count",
+            "last_amendment_reason",
+            "last_amended_at",
+            "last_amended_by",
+            "last_amended_by_name",
+            "amendments",
+            # Computed
+            "can_edit",
+            "can_sign",
+            "can_amend",
+            # Timestamps
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "report_number",
+            "reported_by",
+            "signed_at",
+            "amendment_count",
+            "last_amendment_reason",
+            "last_amended_at",
+            "last_amended_by",
+            "critical_communicated",
+            "critical_communicated_at",
+            "critical_communicated_by",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_reported_by_name(self, obj) -> str:
+        return obj.reported_by.get_full_name() or obj.reported_by.username
+
+    def get_last_amended_by_name(self, obj) -> str:
+        if obj.last_amended_by:
+            return obj.last_amended_by.get_full_name() or obj.last_amended_by.username
+        return ""
+
+    def get_critical_communicated_by_name(self, obj) -> str:
+        if obj.critical_communicated_by:
+            return (
+                obj.critical_communicated_by.get_full_name()
+                or obj.critical_communicated_by.username
+            )
+        return ""
+
+    def get_patient_name(self, obj) -> str:
+        patient = obj.imaging_order.patient
+        return f"{patient.first_name} {patient.last_name}"
+
+    def get_patient_mrn(self, obj) -> str:
+        return obj.imaging_order.patient.mrn
+
+    def get_modality(self, obj) -> str:
+        # Get primary modality from order items
+        items = obj.imaging_order.items.all()
+        if items.exists():
+            return items.first().procedure.modality
+        return ""
+
+    def get_study_description(self, obj) -> str:
+        if obj.study:
+            return obj.study.study_description
+        # Fall back to first procedure name
+        items = obj.imaging_order.items.all()
+        if items.exists():
+            return items.first().procedure.name
+        return ""
+
+
+class RadiologyReportCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating a new radiology report draft."""
+
+    class Meta:
+        model = RadiologyReport
+        fields = [
+            "imaging_order",
+            "study",
+            "technique",
+            "comparison",
+            "findings",
+            "impression",
+            "recommendations",
+            "is_critical",
+            "critical_finding_description",
+        ]
+
+    def validate_imaging_order(self, value):
+        """Ensure order is COMPLETED and doesn't already have a report."""
+        if value.status not in ("COMPLETED", "REPORTED"):
+            raise serializers.ValidationError(
+                "Cannot create report for an order that is not completed."
+            )
+        # Check if report already exists
+        if RadiologyReport.objects.filter(imaging_order=value).exists():
+            raise serializers.ValidationError(
+                "A report already exists for this imaging order."
+            )
+        return value
+
+    def create(self, validated_data):
+        reported_by = self.context["request"].user
+        return RadiologyReport.objects.create(reported_by=reported_by, **validated_data)
+
+
+class RadiologyReportUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating a draft report."""
+
+    class Meta:
+        model = RadiologyReport
+        fields = [
+            "technique",
+            "comparison",
+            "findings",
+            "impression",
+            "recommendations",
+            "is_critical",
+            "critical_finding_description",
+        ]
+
+    def validate(self, attrs):
+        if not self.instance.can_edit():
+            raise serializers.ValidationError(
+                "Cannot edit a signed/finalized report. Use amendment instead."
+            )
+        return attrs
+
+
+class SignReportSerializer(serializers.Serializer):
+    """Serializer for signing/finalizing a report."""
+
+    pass  # No additional fields required, user comes from request
+
+
+class AmendReportSerializer(serializers.Serializer):
+    """Serializer for amending a finalized report."""
+
+    reason = serializers.CharField(required=True, help_text="Reason for the amendment")
+    findings = serializers.CharField(required=False, allow_blank=True)
+    impression = serializers.CharField(required=False, allow_blank=True)
+
+
+class CommunicateCriticalSerializer(serializers.Serializer):
+    """Serializer for recording critical finding communication."""
+
+    communicated_to = serializers.CharField(
+        required=True, help_text="Name/identifier of person notified"
+    )
+    method = serializers.ChoiceField(
+        choices=[
+            ("phone", "Phone"),
+            ("in_person", "In Person"),
+            ("secure_message", "Secure Message"),
+            ("pager", "Pager"),
+            ("other", "Other"),
+        ],
+        default="phone",
+    )
