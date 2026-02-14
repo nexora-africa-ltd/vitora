@@ -65,13 +65,43 @@ export async function initCornerstone(): Promise<void> {
         // Allow native decoding where possible
         convertFloatPixelDataToInt: false,
       },
+      // Configure request headers for authentication
+      beforeSend: (xhr: XMLHttpRequest) => {
+        // Get token from localStorage
+        const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+        if (token) {
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        }
+      },
     };
 
     // Initialize DICOM image loader with dicom-parser
-    dicomImageLoader.init(dicomImageLoaderConfig);
+    // Note: In @cornerstonejs/dicom-image-loader v4+, dicom-parser is bundled internally
+    // so we don't need to set external.dicomParser manually
+    if (dicomImageLoader.init) {
+      dicomImageLoader.init(dicomImageLoaderConfig);
+    }
 
-    // Configure wadouri
-    dicomImageLoader.external.dicomParser = dicomParserModule.default || dicomParserModule;
+    // Also configure wadouri loader headers if available (alternative location)
+    if (dicomImageLoader.wadouri?.configure) {
+      dicomImageLoader.wadouri.configure({
+        beforeSend: (xhr: XMLHttpRequest) => {
+          const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+          if (token) {
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+          }
+        },
+      });
+    }
+
+    // Configure external dicomParser if the property exists (older API compatibility)
+    if (dicomImageLoader.external) {
+      dicomImageLoader.external.dicomParser = dicomParserModule.default || dicomParserModule;
+    } else if (dicomImageLoader.wadouri?.externalModules) {
+      // Alternative location in some versions
+      dicomImageLoader.wadouri.externalModules.dicomParser = dicomParserModule.default || dicomParserModule;
+    }
+    // If neither exists, dicom-parser is bundled internally (v4+ behavior)
 
     // Configure cornerstone core (suppress WebGL warnings for SSR)
     try {
@@ -80,6 +110,9 @@ export async function initCornerstone(): Promise<void> {
       // SharedArrayBuffer may not be available without cross-origin isolation
       console.warn('[Cornerstone] SharedArrayBuffer not available');
     }
+
+    // Initialize cornerstone core (required before creating RenderingEngine)
+    await cornerstoneCore.init();
 
     // Initialize tools
     await cornerstoneTools.init();
@@ -203,6 +236,9 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
         const { RenderingEngine, Enums } = cornerstoneCore;
         const { ToolGroupManager } = cornerstoneTools;
 
+        // Debug: log available viewport types
+        console.log('[Cornerstone] ViewportType enum:', Enums?.ViewportType);
+
         // Clean up any existing rendering engine
         if (renderingEngineRef.current) {
           renderingEngineRef.current.destroy();
@@ -212,12 +248,13 @@ export function useCornerstone(options: UseCornerstoneOptions): UseCornerstoneRe
         const renderingEngine = new RenderingEngine(renderingEngineId);
         renderingEngineRef.current = renderingEngine;
 
-        // Create viewport
+        // Create viewport - use string literal for ViewportType in v4+
+        // In CST3D v4, ViewportType values are: 'stack', 'orthographic', 'perspective', 'video'
         const element = containerRef.current;
         const viewportInput = {
           viewportId,
           element,
-          type: Enums.ViewportType.STACK,
+          type: Enums?.ViewportType?.STACK ?? 'stack',
         };
         renderingEngine.enableElement(viewportInput);
 
