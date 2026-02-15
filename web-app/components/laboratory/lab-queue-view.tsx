@@ -50,7 +50,7 @@ import {
   Search,
   Timer,
 } from 'lucide-react';
-import { LabQueue, QueueStatus, LabPriority } from '@/lib/types/laboratory';
+import { LabQueue, QueueStatus, LabPriority, SpecimenStatus } from '@/lib/types/laboratory';
 import {
   useLabQueue,
   useCollectSample,
@@ -98,6 +98,19 @@ const PRIORITY_CONFIG: Record<LabPriority, { label: string; className: string }>
   ROUTINE: { label: 'Routine', className: 'text-muted-foreground' },
   URGENT: { label: 'Urgent', className: 'text-warning font-medium' },
   STAT: { label: 'STAT', className: 'text-destructive font-bold' },
+};
+
+const SPECIMEN_STATUS_CONFIG: Record<SpecimenStatus, {
+  label: string;
+  variant: 'default' | 'secondary' | 'destructive' | 'outline';
+}> = {
+  PENDING: { label: 'Pending', variant: 'outline' },
+  COLLECTED: { label: 'Collected', variant: 'secondary' },
+  RECEIVED: { label: 'Received', variant: 'secondary' },
+  PROCESSING: { label: 'Processing', variant: 'default' },
+  REJECTED: { label: 'Rejected', variant: 'destructive' },
+  STORED: { label: 'Stored', variant: 'secondary' },
+  DISPOSED: { label: 'Disposed', variant: 'outline' },
 };
 
 const STATUS_FILTERS: { value: QueueStatus | ''; label: string }[] = [
@@ -334,7 +347,8 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
       item.queue_number.toLowerCase().includes(search) ||
       item.patient_name?.toLowerCase().includes(search) ||
       item.patient_mrn?.toLowerCase().includes(search) ||
-      item.sample_id?.toLowerCase().includes(search)
+      item.sample_id?.toLowerCase().includes(search) ||
+      item.specimen?.barcode?.toLowerCase().includes(search)
     );
   });
 
@@ -514,14 +528,42 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                   },
                   {
                     key: 'sample',
-                    header: 'Sample',
+                    header: 'Specimen',
                     hideOnMobile: true,
                     cell: (item) => (
-                      <div>
-                        <p className="text-sm">{item.sample_type}</p>
-                        {item.sample_id ? (
-                          <p className="text-xs text-muted-foreground font-mono">{item.sample_id}</p>
-                        ) : null}
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          {item.specimen?.barcode || item.sample_id ? (
+                            <span className="font-mono text-sm font-medium">
+                              {item.specimen?.barcode || item.sample_id}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">No barcode</span>
+                          )}
+                          {item.specimen?.status ? (
+                            <Badge
+                              variant={SPECIMEN_STATUS_CONFIG[item.specimen.status].variant}
+                              className="shrink-0 w-fit"
+                            >
+                              {SPECIMEN_STATUS_CONFIG[item.specimen.status].label}
+                            </Badge>
+                          ) : null}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                          <span>{item.sample_type}</span>
+                          {item.specimen?.collected_at || item.collected_at ? (
+                            <span>
+                              Collected{' '}
+                              {formatRelativeTime(
+                                item.specimen?.collected_at || item.collected_at || ''
+                              )}
+                            </span>
+                          ) : null}
+                          {item.specimen?.storage_location ? (
+                            <span>Stored: {item.specimen.storage_location}</span>
+                          ) : null}
+                        </div>
                       </div>
                     ),
                   },
@@ -686,6 +728,9 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                 mobileCard={(item) => {
                   const status = STATUS_CONFIG[item.queue_status] || STATUS_CONFIG.PENDING;
                   const priority = PRIORITY_CONFIG[item.priority];
+                  const specimenBarcode = item.specimen?.barcode || item.sample_id;
+                  const specimenStatus = item.specimen?.status;
+                  const collectedAt = item.specimen?.collected_at || item.collected_at;
                   return (
                     <Card className="p-3 space-y-2">
                       <div className="flex items-start justify-between gap-3">
@@ -696,14 +741,47 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                           </p>
                           <p className="text-xs text-muted-foreground font-mono">{item.queue_number}</p>
                         </div>
-                        <Badge className="shrink-0 w-fit" variant={status.variant}>
+                        <Badge className="shrink-0 w-fit self-start sm:self-auto" variant={status.variant}>
                           {status.label}
                         </Badge>
                       </div>
+
                       <div className="flex items-center justify-between text-sm">
                         <span className={priority.className}>{priority.label}</span>
                         <span className="text-muted-foreground">{item.sample_type}</span>
                       </div>
+
+                      {specimenBarcode || specimenStatus || collectedAt ? (
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between gap-3">
+                            {specimenBarcode ? (
+                              <span className="font-mono text-xs text-muted-foreground truncate">
+                                {specimenBarcode}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">No barcode</span>
+                            )}
+                            {specimenStatus ? (
+                              <Badge
+                                variant={SPECIMEN_STATUS_CONFIG[specimenStatus].variant}
+                                className="shrink-0 w-fit self-start sm:self-auto"
+                              >
+                                {SPECIMEN_STATUS_CONFIG[specimenStatus].label}
+                              </Badge>
+                            ) : null}
+                          </div>
+                          {collectedAt ? (
+                            <span className="text-xs text-muted-foreground">
+                              Collected {formatRelativeTime(collectedAt)}
+                            </span>
+                          ) : null}
+                          {item.specimen?.storage_location ? (
+                            <span className="text-xs text-muted-foreground">
+                              Stored: {item.specimen.storage_location}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </Card>
                   );
                 }}
@@ -743,6 +821,52 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                   <span className={PRIORITY_CONFIG[selectedQueueEntry.priority]?.className}>
                     {PRIORITY_CONFIG[selectedQueueEntry.priority]?.label}
                   </span>
+                </div>
+
+                {/* Specimen */}
+                <div className="border-t pt-3 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Barcode:</span>
+                    <span className="font-mono">
+                      {selectedQueueEntry.specimen?.barcode || selectedQueueEntry.sample_id || '—'}
+                    </span>
+                  </div>
+
+                  {selectedQueueEntry.specimen?.status ? (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Specimen status:</span>
+                      <Badge
+                        variant={
+                          SPECIMEN_STATUS_CONFIG[selectedQueueEntry.specimen.status]?.variant ||
+                          'outline'
+                        }
+                        className="shrink-0 w-fit self-start sm:self-auto"
+                      >
+                        {SPECIMEN_STATUS_CONFIG[selectedQueueEntry.specimen.status]?.label ||
+                          selectedQueueEntry.specimen.status}
+                      </Badge>
+                    </div>
+                  ) : null}
+
+                  {selectedQueueEntry.specimen?.collected_at || selectedQueueEntry.collected_at ? (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Collected:</span>
+                      <span>
+                        {formatRelativeTime(
+                          selectedQueueEntry.specimen?.collected_at ||
+                            selectedQueueEntry.collected_at ||
+                            ''
+                        )}
+                      </span>
+                    </div>
+                  ) : null}
+
+                  {selectedQueueEntry.specimen?.storage_location ? (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Storage:</span>
+                      <span className="truncate">{selectedQueueEntry.specimen.storage_location}</span>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="border-t pt-3 space-y-2">
