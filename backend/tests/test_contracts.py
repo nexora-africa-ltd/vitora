@@ -1293,6 +1293,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "is_external_result",
                 "is_critical_result",
                 "is_amended",
+                "validation_summary",
                 "created_at",
                 "updated_at",
             }
