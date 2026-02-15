@@ -589,7 +589,7 @@ Each phase should be reversible:
 | ~~Implement Phase L2 (Two-Stage Validation)~~ | Backend | 4-8 hrs | — | ✅ Done |
 | ~~Implement Phase L3 (AnalyzerRun)~~ | Backend | 8-12 hrs | Analyzer connection | ✅ Done |
 | ~~Implement Phase L4 (Diagnostic Report)~~ | Backend | 8-12 hrs | — | ✅ Done |
-| Implement `ExternalCodeMapping` (Phase T0) | Backend | 2-4 hrs | Phase C | Pending |
+| ~~Implement `ExternalCodeMapping` (Phase T0)~~ | Backend | 2-4 hrs | Phase C | ✅ Done |
 
 ---
 
