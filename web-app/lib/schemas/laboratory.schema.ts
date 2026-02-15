@@ -43,6 +43,32 @@ export const SpecimenTypeSchema = z.enum([
 
 export const ResultTypeSchema = z.enum(['NUMERIC', 'TEXT', 'OPTION', 'PANEL', 'OPTIONS']);
 
+export const SpecimenStatusSchema = z.enum([
+  'PENDING',
+  'COLLECTED',
+  'RECEIVED',
+  'PROCESSING',
+  'REJECTED',
+  'STORED',
+  'DISPOSED',
+]);
+
+export const ValidationTypeSchema = z.enum(['TECHNICAL', 'CLINICAL']);
+
+export const ValidationStatusSchema = z.enum(['PENDING', 'APPROVED', 'REJECTED']);
+
+export const InterfaceTypeSchema = z.enum(['ASTM', 'HL7', 'SERIAL', 'TCP', 'NONE']);
+
+export const AnalyzerRunStatusSchema = z.enum(['RECEIVED', 'PARSED', 'APPLIED', 'ERROR']);
+
+export const DiagnosticReportStatusSchema = z.enum([
+  'DRAFT',
+  'PRELIMINARY',
+  'FINAL',
+  'AMENDED',
+  'CANCELLED',
+]);
+
 export const OrderTypeSchema = z.enum(['IN_HOUSE', 'EXTERNAL']);
 
 export const LabOrderStatusSchema = z.enum([
@@ -128,6 +154,125 @@ export const LabResultSchema = z.object({
 });
 
 export type LabResultSchemaType = z.infer<typeof LabResultSchema>;
+
+// =============================================================================
+// SPECIMEN SCHEMA
+// =============================================================================
+
+export const SpecimenSchema = z.object({
+  id: z.number(),
+  barcode: z.string(),
+  specimen_type: SpecimenTypeSchema,
+  container_type: z.string().nullable().optional(),
+  lab_order: z.number(),
+  order_items: z.array(z.number()),
+  collected_by: z.number().nullable().optional(),
+  collected_by_name: z.string().nullable().optional(),
+  collected_at: z.string().nullable().optional(),
+  collection_site: z.string().nullable().optional(),
+  received_by: z.number().nullable().optional(),
+  received_at: z.string().nullable().optional(),
+  status: SpecimenStatusSchema,
+  rejection_reason: z.string().nullable().optional(),
+  storage_location: z.string().nullable().optional(),
+  storage_temperature: z.string().nullable().optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type SpecimenSchemaType = z.infer<typeof SpecimenSchema>;
+
+// =============================================================================
+// RESULT VALIDATION SCHEMA
+// =============================================================================
+
+export const ResultValidationSchema = z.object({
+  id: z.number(),
+  result: z.number(),
+  validation_type: ValidationTypeSchema,
+  validation_type_display: z.string(),
+  status: ValidationStatusSchema,
+  status_display: z.string(),
+  validated_by: z.number().nullable().optional(),
+  validated_by_name: z.string().nullable().optional(),
+  validated_at: z.string().nullable().optional(),
+  comment: z.string().nullable().optional(),
+});
+
+export type ResultValidationSchemaType = z.infer<typeof ResultValidationSchema>;
+
+// =============================================================================
+// INSTRUMENTS & ANALYZER RUNS
+// =============================================================================
+
+export const InstrumentSchema = z.object({
+  id: z.number(),
+  code: z.string(),
+  name: z.string(),
+  manufacturer: z.string().nullable().optional(),
+  model: z.string().nullable().optional(),
+  serial_number: z.string().nullable().optional(),
+  department: z.string().nullable().optional(),
+  is_active: z.boolean(),
+  interface_type: InterfaceTypeSchema,
+  interface_type_display: z.string(),
+  integration_config: z.record(z.unknown()).nullable().optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type InstrumentSchemaType = z.infer<typeof InstrumentSchema>;
+
+export const AnalyzerRunSchema = z.object({
+  id: z.number(),
+  specimen: z.number(),
+  specimen_barcode: z.string(),
+  instrument: z.number(),
+  instrument_code: z.string(),
+  instrument_name: z.string(),
+  operator: z.number().nullable().optional(),
+  operator_name: z.string().nullable().optional(),
+  run_datetime: z.string(),
+  raw_message: z.string().nullable().optional(),
+  raw_payload: z.record(z.unknown()).nullable().optional(),
+  status: AnalyzerRunStatusSchema,
+  status_display: z.string(),
+  error_message: z.string().nullable().optional(),
+  created_at: z.string(),
+});
+
+export type AnalyzerRunSchemaType = z.infer<typeof AnalyzerRunSchema>;
+
+// =============================================================================
+// DIAGNOSTIC REPORTS
+// =============================================================================
+
+export const DiagnosticReportSchema = z.object({
+  id: z.number(),
+  report_number: z.string(),
+  lab_order: z.number(),
+  lab_order_number: z.string(),
+  patient_name: z.string(),
+  status: DiagnosticReportStatusSchema,
+  status_display: z.string(),
+  is_finalized: z.boolean(),
+  issued_by: z.number(),
+  issued_by_name: z.string(),
+  issued_at: z.string().nullable().optional(),
+  conclusion: z.string().nullable().optional(),
+  clinical_info: z.string().nullable().optional(),
+  amended_by: z.number().nullable().optional(),
+  amended_by_name: z.string().nullable().optional(),
+  amended_at: z.string().nullable().optional(),
+  cancellation_reason: z.string().nullable().optional(),
+  pdf_file: z.string().nullable().optional(),
+  pdf_url: z.string().nullable().optional(),
+  fhir_resource_id: z.string().nullable().optional(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type DiagnosticReportSchemaType = z.infer<typeof DiagnosticReportSchema>;
 
 // =============================================================================
 // LAB TEST CATALOG SCHEMAS
@@ -305,6 +450,98 @@ export const CriticalAlertSchema = z.object({
 export type CriticalAlertSchemaType = z.infer<typeof CriticalAlertSchema>;
 
 // =============================================================================
+// LAB OPERATIONAL REPORTS
+// =============================================================================
+
+export const TurnaroundTimeReportSchema = z.object({
+  start: z.string(),
+  end: z.string(),
+  overall: z.object({
+    results_verified: z.number(),
+    avg_result_tat_hours: z.number().nullable(),
+  }),
+  by_test: z.array(
+    z.object({
+      test_code: z.string(),
+      test_name: z.string(),
+      result_count: z.number(),
+      avg_tat_hours: z.number().nullable(),
+    })
+  ),
+  by_priority: z.array(
+    z.object({
+      priority: LabPrioritySchema,
+      result_count: z.number(),
+      avg_tat_hours: z.number().nullable(),
+    })
+  ),
+  queue_tat: z.object({
+    released_count: z.number(),
+    avg_collect_to_release_hours: z.number().nullable(),
+    avg_processing_to_release_hours: z.number().nullable(),
+  }),
+});
+
+export type TurnaroundTimeReportSchemaType = z.infer<typeof TurnaroundTimeReportSchema>;
+
+export const WorkloadReportSchema = z.object({
+  start: z.string(),
+  end: z.string(),
+  totals: z.object({
+    tests_entered: z.number(),
+    tests_verified: z.number(),
+  }),
+  by_day: z.array(
+    z.object({
+      date: z.string(),
+      tests_entered: z.number(),
+      tests_verified: z.number(),
+    })
+  ),
+  by_technician: z.array(
+    z.object({
+      technician_id: z.number(),
+      technician_name: z.string(),
+      entered_count: z.number(),
+      verified_count: z.number(),
+    })
+  ),
+});
+
+export type WorkloadReportSchemaType = z.infer<typeof WorkloadReportSchema>;
+
+export const CriticalValuesReportSchema = z.object({
+  start: z.string(),
+  end: z.string(),
+  total_critical: z.number(),
+  by_test: z.array(
+    z.object({
+      test_code: z.string(),
+      test_name: z.string(),
+      critical_count: z.number(),
+    })
+  ),
+});
+
+export type CriticalValuesReportSchemaType = z.infer<typeof CriticalValuesReportSchema>;
+
+export const SampleRejectionReportSchema = z.object({
+  start: z.string(),
+  end: z.string(),
+  total_orders: z.number(),
+  rejected_orders: z.number(),
+  rejection_rate: z.number(),
+  reasons: z.array(
+    z.object({
+      reason: z.string(),
+      count: z.number(),
+    })
+  ),
+});
+
+export type SampleRejectionReportSchemaType = z.infer<typeof SampleRejectionReportSchema>;
+
+// =============================================================================
 // PAGINATED RESPONSES
 // =============================================================================
 
@@ -371,3 +608,13 @@ export const LabResultAttachmentSchema = z.object({
 });
 
 export const LabResultAttachmentArraySchema = z.array(LabResultAttachmentSchema);
+
+// =============================================================================
+// ARRAY RESPONSES FOR NEW TYPES
+// =============================================================================
+
+export const SpecimenArraySchema = z.array(SpecimenSchema);
+export const ResultValidationArraySchema = z.array(ResultValidationSchema);
+export const InstrumentArraySchema = z.array(InstrumentSchema);
+export const AnalyzerRunArraySchema = z.array(AnalyzerRunSchema);
+export const DiagnosticReportArraySchema = z.array(DiagnosticReportSchema);

@@ -79,6 +79,211 @@ export type SpecimenType =
 
 export type ResultType = 'NUMERIC' | 'TEXT' | 'OPTION' | 'OPTIONS' | 'PANEL';
 
+// =========== Phase L0 — Specimen ===========
+
+export type SpecimenStatus =
+  | 'PENDING'
+  | 'COLLECTED'
+  | 'RECEIVED'
+  | 'PROCESSING'
+  | 'REJECTED'
+  | 'STORED'
+  | 'DISPOSED';
+
+export interface Specimen {
+  id: number;
+  barcode: string;
+  specimen_type: SpecimenType;
+  container_type?: string | null;
+  lab_order: number;
+  order_items: number[];
+  collected_by?: number | null;
+  collected_by_name?: string | null;
+  collected_at?: string | null;
+  collection_site?: string | null;
+  received_by?: number | null;
+  received_at?: string | null;
+  status: SpecimenStatus;
+  rejection_reason?: string | null;
+  storage_location?: string | null;
+  storage_temperature?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// =========== Phase L2 — Two-Stage Validation ===========
+
+export type ValidationType = 'TECHNICAL' | 'CLINICAL';
+export type ValidationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface ResultValidation {
+  id: number;
+  result: number;
+  validation_type: ValidationType;
+  validation_type_display: string;
+  status: ValidationStatus;
+  status_display: string;
+  validated_by?: number | null;
+  validated_by_name?: string | null;
+  validated_at?: string | null;
+  comment?: string | null;
+}
+
+export interface ResultValidationCreateData {
+  validation_type: ValidationType;
+  status: 'APPROVED' | 'REJECTED';
+  comment?: string;
+}
+
+// =========== Phase L3 — Instruments & Analyzer Runs ===========
+
+export type InterfaceType = 'ASTM' | 'HL7' | 'SERIAL' | 'TCP' | 'NONE';
+export type AnalyzerRunStatus = 'RECEIVED' | 'PARSED' | 'APPLIED' | 'ERROR';
+
+export interface Instrument {
+  id: number;
+  code: string;
+  name: string;
+  manufacturer?: string | null;
+  model?: string | null;
+  serial_number?: string | null;
+  department?: string | null;
+  is_active: boolean;
+  interface_type: InterfaceType;
+  interface_type_display: string;
+  integration_config?: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AnalyzerRun {
+  id: number;
+  specimen: number;
+  specimen_barcode: string;
+  instrument: number;
+  instrument_code: string;
+  instrument_name: string;
+  operator?: number | null;
+  operator_name?: string | null;
+  run_datetime: string;
+  raw_message?: string | null;
+  raw_payload?: Record<string, unknown> | null;
+  status: AnalyzerRunStatus;
+  status_display: string;
+  error_message?: string | null;
+  created_at: string;
+}
+
+// =========== Phase L4 — Diagnostic Reports ===========
+
+export type DiagnosticReportStatus =
+  | 'DRAFT'
+  | 'PRELIMINARY'
+  | 'FINAL'
+  | 'AMENDED'
+  | 'CANCELLED';
+
+export interface DiagnosticReport {
+  id: number;
+  report_number: string;
+  lab_order: number;
+  lab_order_number: string;
+  patient_name: string;
+  status: DiagnosticReportStatus;
+  status_display: string;
+  is_finalized: boolean;
+  issued_by: number;
+  issued_by_name: string;
+  issued_at?: string | null;
+  conclusion?: string | null;
+  clinical_info?: string | null;
+  amended_by?: number | null;
+  amended_by_name?: string | null;
+  amended_at?: string | null;
+  cancellation_reason?: string | null;
+  pdf_file?: string | null;
+  pdf_url?: string | null;
+  fhir_resource_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiagnosticReportCreateData {
+  lab_order: number;
+  conclusion?: string;
+  clinical_info?: string;
+}
+
+// =========== Phase C — Lab Operational Reports ===========
+
+export interface TurnaroundTimeReport {
+  start: string;
+  end: string;
+  overall: {
+    results_verified: number;
+    avg_result_tat_hours: number | null;
+  };
+  by_test: Array<{
+    test_code: string;
+    test_name: string;
+    result_count: number;
+    avg_tat_hours: number | null;
+  }>;
+  by_priority: Array<{
+    priority: LabPriority;
+    result_count: number;
+    avg_tat_hours: number | null;
+  }>;
+  queue_tat: {
+    released_count: number;
+    avg_collect_to_release_hours: number | null;
+    avg_processing_to_release_hours: number | null;
+  };
+}
+
+export interface WorkloadReport {
+  start: string;
+  end: string;
+  totals: {
+    tests_entered: number;
+    tests_verified: number;
+  };
+  by_day: Array<{
+    date: string;
+    tests_entered: number;
+    tests_verified: number;
+  }>;
+  by_technician: Array<{
+    technician_id: number;
+    technician_name: string;
+    entered_count: number;
+    verified_count: number;
+  }>;
+}
+
+export interface CriticalValuesReport {
+  start: string;
+  end: string;
+  total_critical: number;
+  by_test: Array<{
+    test_code: string;
+    test_name: string;
+    critical_count: number;
+  }>;
+}
+
+export interface SampleRejectionReport {
+  start: string;
+  end: string;
+  total_orders: number;
+  rejected_orders: number;
+  rejection_rate: number;
+  reasons: Array<{
+    reason: string;
+    count: number;
+  }>;
+}
+
 // Lab order types
 export interface LabOrder {
   id: number;
