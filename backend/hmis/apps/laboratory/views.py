@@ -26,6 +26,7 @@ from .models import (
     LabResult,
     LabResultAttachment,
     LOINCCode,
+    Specimen,
     TestCatalog,
 )
 from .reports import LabReportService
@@ -49,6 +50,7 @@ from .serializers import (
     LabResultSerializer,
     LabResultVerifySerializer,
     LOINCCodeSerializer,
+    SpecimenSerializer,
     TestCatalogDetailSerializer,
     TestCatalogSerializer,
 )
@@ -379,6 +381,18 @@ class LabOrderViewSet(viewsets.ModelViewSet):
         report = serializer.save()
         output = DiagnosticReportSerializer(report, context={"request": request})
         return Response(output.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["get"], url_path="specimens")
+    def specimens(self, request, order_number=None):
+        """
+        List all specimens for a lab order.
+
+        GET: List all specimens associated with this order.
+        """
+        order = self.get_object()
+        specimens = order.specimens.select_related("collected_by", "received_by").all()
+        serializer = SpecimenSerializer(specimens, many=True, context={"request": request})
+        return Response(serializer.data)
 
 
 class LabResultViewSet(viewsets.ModelViewSet):
@@ -1405,4 +1419,59 @@ class DiagnosticReportViewSet(viewsets.ModelViewSet):
                 "pdf_url": request.build_absolute_uri(report.pdf_file.url),
             }
         )
+
+
+# ============================================================================
+# Specimen ViewSet
+# ============================================================================
+
+
+class SpecimenFilter(filters.FilterSet):
+    """Filter for specimens."""
+
+    order_number = filters.CharFilter(field_name="lab_order__order_number")
+    patient = filters.NumberFilter(field_name="lab_order__patient_id")
+
+    class Meta:
+        model = Specimen
+        fields = {
+            "status": ["exact"],
+            "specimen_type": ["exact"],
+            "lab_order": ["exact"],
+            "collected_at": ["gte", "lte"],
+            "created_at": ["gte", "lte"],
+        }
+
+
+class SpecimenViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for specimens — read-only.
+
+    Provides list and retrieve operations for specimen tracking.
+    Specimens are created automatically via signals when lab orders/queue entries are created.
+
+    Lookup is by barcode (unique identifier).
+    """
+
+    queryset = Specimen.objects.select_related(
+        "lab_order",
+        "lab_order__patient",
+        "collected_by",
+        "received_by",
+    ).prefetch_related("order_items").all()
+    serializer_class = SpecimenSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = SpecimenFilter
+    lookup_field = "barcode"
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Search by barcode prefix
+        barcode = self.request.query_params.get("barcode")
+        if barcode:
+            queryset = queryset.filter(barcode__icontains=barcode)
+
+        return queryset
 

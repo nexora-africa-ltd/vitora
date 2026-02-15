@@ -221,7 +221,14 @@ class LabQueue(models.Model):
 - Specimen status syncs with queue workflow (collect → COLLECTED, process → PROCESSING, etc.)
 - API responses now derive `sample_id`/`sample_type` from Specimen while keeping legacy field names
 - Queue lookup supports specimen barcode search
-- 289 lab tests passing
+- **Specimen API endpoints added (2026-02-15)**:
+  - `GET /api/lab/specimens/` — List specimens with filters (status, specimen_type, lab_order)
+  - `GET /api/lab/specimens/{barcode}/` — Get specimen by barcode (lookup field)
+  - `GET /api/lab/orders/{order_number}/specimens/` — Nested endpoint to list specimens for order
+  - ViewSet is read-only (specimens created via signals, not direct API)
+  - 20 API tests covering list, detail, nested, filters, and read-only enforcement
+- Default ordering `-created_at` added to fix pagination warnings
+- 401 lab tests passing (including 20 new specimen API tests)
 
 ---
 
