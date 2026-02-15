@@ -30,7 +30,8 @@ import {
 // TYPES
 // =============================================================================
 
-interface LabReportPatientInfo extends PatientInfo {
+// Use Omit to allow full_name to be optional (PatientInfo requires it)
+interface LabReportPatientInfo extends Omit<PatientInfo, 'full_name'> {
   name?: string; // allow alternate naming for convenience
   full_name?: string;
   mrn?: string;
@@ -311,17 +312,17 @@ function computeReportStatus(order: LabOrder): { label: string; cssClass: string
 
   if (results.length === 0) {
     return {
-      label: labReportStatusLabels.DRAFT,
-      cssClass: labReportStatusClasses.DRAFT,
+      label: labReportStatusLabels.DRAFT!,
+      cssClass: labReportStatusClasses.DRAFT!,
     };
   }
 
   const allVerified = results.every((r) => r.verification_status === 'VERIFIED');
   return allVerified
-    ? { label: labReportStatusLabels.FINAL, cssClass: labReportStatusClasses.FINAL }
+    ? { label: labReportStatusLabels.FINAL!, cssClass: labReportStatusClasses.FINAL! }
     : {
-        label: labReportStatusLabels.PRELIMINARY,
-        cssClass: labReportStatusClasses.PRELIMINARY,
+        label: labReportStatusLabels.PRELIMINARY!,
+        cssClass: labReportStatusClasses.PRELIMINARY!,
       };
 }
 
@@ -334,7 +335,7 @@ function buildResultsRows(order: LabOrder): { rowsHtml: string; hasCritical: boo
       const result = getResultForItem(item);
 
       const testName = escapeHtml(item.test_name || item.test_code || '');
-      const value = result?.formatted_value || result?.text_value || result?.option_value || result?.numeric_value;
+      const value = result?.text_value || result?.option_value || result?.numeric_value;
       const valueStr = value === null || value === undefined ? '' : escapeHtml(String(value));
 
       const flag = result?.result_flag ? escapeHtml(String(result.result_flag)) : '';
