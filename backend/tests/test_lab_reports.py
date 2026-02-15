@@ -53,7 +53,9 @@ def report_data(sample_patient, sample_encounter, test_user, another_user, lab_t
         unit_cost=lab_test_catalog[0].cost,
     )
 
-    entered_at_1 = now - timedelta(days=5, hours=4)
+    # Use midday times to avoid timezone boundary issues (Kenya is UTC+3)
+    entered_at_1 = now - timedelta(days=5)
+    entered_at_1 = entered_at_1.replace(hour=12, minute=0, second=0, microsecond=0)
     verified_at_1 = entered_at_1 + timedelta(hours=2)
     result1 = LabResult.objects.create(
         order_item=item1,
@@ -80,7 +82,8 @@ def report_data(sample_patient, sample_encounter, test_user, another_user, lab_t
         unit_cost=lab_test_catalog[1].cost,
     )
 
-    entered_at_2 = now - timedelta(days=3, hours=2)
+    entered_at_2 = now - timedelta(days=3)
+    entered_at_2 = entered_at_2.replace(hour=14, minute=0, second=0, microsecond=0)
     verified_at_2 = entered_at_2 + timedelta(hours=1)
     result2 = LabResult.objects.create(
         order_item=item2,
