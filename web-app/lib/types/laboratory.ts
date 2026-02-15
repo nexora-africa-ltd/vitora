@@ -348,9 +348,12 @@ export type LabOrderItemStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANC
 export interface LabResult {
   id: number;
   order_item: number;
+  test_name?: string | null;
+  test_code?: string | null;
   numeric_value?: number | null;
   text_value?: string | null;
   option_value?: string | null;
+  formatted_value?: string | null;
   result_unit?: string | null;
   reference_low?: number | null;
   reference_high?: number | null;
