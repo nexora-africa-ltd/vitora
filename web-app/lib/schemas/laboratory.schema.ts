@@ -400,6 +400,7 @@ export const LabQueueSchema = z.object({
   queue_status: QueueStatusSchema,
   sample_type: z.string(),
   sample_id: z.string().nullable().optional(),
+  specimen: SpecimenSchema.nullable().optional(),
   tests: z.array(z.object({ code: z.string(), name: z.string() })).nullable().optional(),
   collected_at: z.string().nullable().optional(),
   collected_by: z.number().nullable().optional(),

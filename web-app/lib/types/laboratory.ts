@@ -400,6 +400,7 @@ export interface LabQueue {
   queue_status: QueueStatus;
   sample_type: string;
   sample_id?: string | null;
+  specimen?: Specimen | null;
   tests?: Array<{ code: string; name: string }> | null;
   collected_at?: string | null;
   collected_by?: number | null;

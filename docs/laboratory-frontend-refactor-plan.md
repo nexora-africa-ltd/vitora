@@ -372,6 +372,14 @@ async getSampleRejectionReport(startDate: string, endDate: string): Promise<Samp
 
 **Goal**: Update queue view to display specimen information.
 
+**Status**: ✅ Completed (2026-02-15)
+
+**Implementation Notes**:
+- `LabQueue` now supports an optional nested `specimen?: Specimen | null`.
+- `LabQueueSchema` updated so `parseResponse()` preserves specimen data from `/api/lab/queue/`.
+- Queue UI now shows: specimen barcode (fallback to legacy `sample_id`), specimen status badge, collected timestamp, and storage location when present.
+- Queue quick search includes specimen barcode.
+
 #### 3.3.1 Update `LabQueue` Type
 
 Add optional `specimen` field to `LabQueue` interface:
