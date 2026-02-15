@@ -36,14 +36,18 @@ from hmis.apps.clinical_templates.serializers import (
 )
 from hmis.apps.clinics.serializers import (
     ClinicEnrollmentSerializer,
+    ClinicListSerializer,
     ClinicScheduleSerializer,
     ClinicSerializer,
     ClinicSessionSerializer,
     ClinicStaffSerializer,
     ClinicVisitSerializer,
+    MonthlyClinicReportSerializer,
+    QueueStatsSerializer,
 )
 from hmis.apps.core.serializers import (
     AuditLogSerializer,
+    CodeSystemSerializer,
     CountySerializer,
     DepartmentSerializer,
     NotificationSerializer,
@@ -63,25 +67,45 @@ from hmis.apps.encounters.serializers import (
     TreatmentPlanTemplateSerializer,
 )
 from hmis.apps.imaging.serializers import (
+    AppointmentSummarySerializer,
+    DICOMInstanceSerializer,
+    DICOMSeriesSerializer,
+    DICOMStudySerializer,
+    ImagingCalendarSerializer,
     ImagingOrderItemSerializer,
     ImagingOrderSerializer,
     ImagingProcedureDetailSerializer,
     ImagingProcedureSerializer,
+    ImagingResourceSerializer,
+    ImagingSlotSerializer,
+    RadiologyReportSerializer,
+    ReportAmendmentSerializer,
 )
 from hmis.apps.inpatient.serializers import (
     AdmissionRecommendationSerializer,
     AdmissionSerializer,
     BedSerializer,
+    ConstraintOverrideMetricsSerializer,
     DischargeSerializer,
     InpatientWardSerializer,
     NursingKardexSerializer,
     ShiftHandoverSerializer,
     TransferSerializer,
+    WardCurrentStateSerializer,
     WardRoundSerializer,
 )
 from hmis.apps.laboratory.serializers import (
+    AnalyzerRunSerializer,
+    DiagnosticReportSerializer,
+    InstrumentSerializer,
+    LabOrderItemSerializer,
     LabOrderSerializer,
+    LabQueueSerializer,
+    LabResultAttachmentSerializer,
     LabResultSerializer,
+    LOINCCodeSerializer,
+    ResultValidationSerializer,
+    TechnicianSerializer,
     TestCatalogSerializer,
 )
 from hmis.apps.patients.serializers import EmergencyContactSerializer, PatientSerializer
@@ -97,13 +121,18 @@ from hmis.apps.pharmacy.serializers import (
     StockBatchSerializer,
 )
 from hmis.apps.scheduling.serializers import (
+    AppointmentListSerializer,
     AppointmentSerializer,
+    AssignmentRuleSerializer,
+    AvailabilitySlotSerializer,
     ResourceSerializer,
+    ScheduleBreakSerializer,
     ScheduleSerializer,
 )
 from hmis.apps.triage.serializers import (
     TriageAssessmentSerializer,
     TriageQueueSerializer,
+    TriageVitalThresholdSerializer,
     WaitingQueueSerializer,
 )
 
@@ -1901,6 +1930,570 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "is_upcoming",
                 "created_by",
                 "created_by_name",
+                "created_at",
+                "updated_at",
+            }
+        ),
+    ),
+    # ── core (additional) ───────────────────────────────────────────
+    (
+        CodeSystemSerializer,
+        frozenset(
+            {
+                "id",
+                "slug",
+                "name",
+                "uri",
+                "version",
+                "publisher",
+                "description",
+                "is_internal",
+                "is_active",
+                "created_at",
+                "updated_at",
+            }
+        ),
+    ),
+    # ── clinics (additional) ────────────────────────────────────────
+    (
+        ClinicListSerializer,
+        frozenset(
+            {
+                "id",
+                "code",
+                "name",
+                "clinic_type",
+                "clinic_type_display",
+                "location",
+                "status",
+                "is_sensitive",
+                "is_open_today",
+            }
+        ),
+    ),
+    (
+        QueueStatsSerializer,
+        frozenset(
+            {
+                "total",
+                "waiting",
+                "in_consultation",
+                "completed",
+                "called",
+                "referred",
+                "no_show",
+                "average_wait_time",
+            }
+        ),
+    ),
+    (
+        MonthlyClinicReportSerializer,
+        frozenset(
+            {
+                "id",
+                "clinic",
+                "year",
+                "month",
+                "total_visits",
+                "new_visits",
+                "revisits",
+                "male_visits",
+                "female_visits",
+                "under_5_visits",
+                "under_18_visits",
+                "adult_visits",
+                "over_60_visits",
+                "new_enrollments",
+                "active_enrollments",
+                "defaulters",
+                "anc_first_visits",
+                "anc_revisits",
+                "deliveries",
+                "priority_red",
+                "priority_orange",
+                "priority_yellow",
+                "priority_green",
+                "priority_blue",
+                "sha_claims_amount",
+                "cash_amount",
+                "total_revenue",
+                "dhis2_submitted",
+                "dhis2_submitted_at",
+                "dhis2_response",
+                "created_at",
+                "updated_at",
+            }
+        ),
+    ),
+    # ── laboratory (additional) ─────────────────────────────────────
+    (
+        LabQueueSerializer,
+        frozenset(
+            {
+                "id",
+                "queue_number",
+                "order_number",
+                "patient_name",
+                "patient_mrn",
+                "tests",
+                "sample_id",
+                "specimen_id",
+                "sample_type",
+                "priority",
+                "queue_status",
+                "collected_by",
+                "collected_by_name",
+                "collected_at",
+                "assigned_technician",
+                "assigned_technician_name",
+                "processing_started_at",
+                "processing_completed_at",
+                "released_at",
+                "reviewed_by",
+                "reviewed_by_name",
+                "reviewed_at",
+                "rejection_reason",
+                "technician_notes",
+                "expected_tat_hours",
+                "elapsed_hours",
+                "actual_tat_hours",
+                "is_overdue",
+                "created_at",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        LabOrderItemSerializer,
+        frozenset(
+            {
+                "id",
+                "lab_order",
+                "test",
+                "test_code",
+                "test_name",
+                "status",
+                "unit_cost",
+                "special_instructions",
+                "result",
+                "has_result",
+                "created_at",
+            }
+        ),
+    ),
+    (
+        LOINCCodeSerializer,
+        frozenset(
+            {
+                "code",
+                "long_common_name",
+                "short_name",
+                "component",
+                "property",
+                "time_aspect",
+                "system",
+                "scale_type",
+                "method_type",
+            }
+        ),
+    ),
+    (
+        InstrumentSerializer,
+        frozenset(
+            {
+                "id",
+                "code",
+                "name",
+                "manufacturer",
+                "model",
+                "serial_number",
+                "department",
+                "interface_type",
+                "interface_type_display",
+                "integration_config",
+                "is_active",
+                "created_at",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        DiagnosticReportSerializer,
+        frozenset(
+            {
+                "id",
+                "report_number",
+                "lab_order",
+                "lab_order_number",
+                "patient_name",
+                "status",
+                "status_display",
+                "conclusion",
+                "clinical_info",
+                "issued_by",
+                "issued_by_name",
+                "issued_at",
+                "amended_by",
+                "amended_by_name",
+                "amended_at",
+                "cancellation_reason",
+                "pdf_file",
+                "pdf_url",
+                "fhir_resource_id",
+                "is_finalized",
+                "created_at",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        LabResultAttachmentSerializer,
+        frozenset(
+            {
+                "id",
+                "lab_order",
+                "file",
+                "filename",
+                "file_type",
+                "file_size",
+                "attachment_type",
+                "description",
+                "uploaded_by",
+                "uploaded_by_name",
+                "uploaded_at",
+            }
+        ),
+    ),
+    (
+        TechnicianSerializer,
+        frozenset(
+            {
+                "id",
+                "username",
+                "full_name",
+            }
+        ),
+    ),
+    (
+        ResultValidationSerializer,
+        frozenset(
+            {
+                "id",
+                "result",
+                "validation_type",
+                "validation_type_display",
+                "status",
+                "status_display",
+                "comment",
+                "validated_by",
+                "validated_by_name",
+                "validated_at",
+            }
+        ),
+    ),
+    (
+        AnalyzerRunSerializer,
+        frozenset(
+            {
+                "id",
+                "instrument",
+                "instrument_code",
+                "instrument_name",
+                "specimen",
+                "specimen_barcode",
+                "raw_message",
+                "raw_payload",
+                "status",
+                "status_display",
+                "error_message",
+                "run_datetime",
+                "operator",
+                "operator_name",
+                "created_at",
+            }
+        ),
+    ),
+    # ── imaging (additional) ────────────────────────────────────────
+    (
+        DICOMStudySerializer,
+        frozenset(
+            {
+                "id",
+                "study_instance_uid",
+                "accession_number",
+                "study_date",
+                "study_time",
+                "study_description",
+                "modality",
+                "referring_physician_name",
+                "institution_name",
+                "patient",
+                "patient_name",
+                "imaging_order",
+                "number_of_series",
+                "number_of_instances",
+                "total_file_size",
+                "thumbnail_path",
+                "uploaded_by",
+                "uploaded_by_name",
+                "created_at",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        DICOMSeriesSerializer,
+        frozenset(
+            {
+                "id",
+                "series_instance_uid",
+                "series_number",
+                "series_description",
+                "modality",
+                "body_part_examined",
+                "number_of_instances",
+                "total_file_size",
+                "thumbnail_path",
+                "instances",
+                "created_at",
+            }
+        ),
+    ),
+    (
+        DICOMInstanceSerializer,
+        frozenset(
+            {
+                "id",
+                "sop_instance_uid",
+                "sop_class_uid",
+                "instance_number",
+                "rows",
+                "columns",
+                "bits_allocated",
+                "photometric_interpretation",
+                "transfer_syntax_uid",
+                "file_path",
+                "file_size",
+                "thumbnail_path",
+                "created_at",
+            }
+        ),
+    ),
+    (
+        RadiologyReportSerializer,
+        frozenset(
+            {
+                "id",
+                "report_number",
+                "imaging_order",
+                "order_number",
+                "study",
+                "study_description",
+                "modality",
+                "patient_name",
+                "patient_mrn",
+                "status",
+                "technique",
+                "comparison",
+                "findings",
+                "impression",
+                "recommendations",
+                "is_critical",
+                "critical_finding_description",
+                "critical_communicated",
+                "critical_communicated_at",
+                "critical_communicated_to",
+                "critical_communicated_by",
+                "critical_communicated_by_name",
+                "critical_communicated_method",
+                "reported_by",
+                "reported_by_name",
+                "signed_at",
+                "last_amended_by",
+                "last_amended_by_name",
+                "last_amended_at",
+                "last_amendment_reason",
+                "amendment_count",
+                "amendments",
+                "can_edit",
+                "can_sign",
+                "can_amend",
+                "created_at",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        ImagingResourceSerializer,
+        frozenset(
+            {
+                "id",
+                "code",
+                "name",
+                "resource_type",
+                "is_active",
+                "metadata",
+            }
+        ),
+    ),
+    (
+        ImagingSlotSerializer,
+        frozenset(
+            {
+                "date",
+                "start_time",
+                "end_time",
+                "is_available",
+                "appointment",
+            }
+        ),
+    ),
+    (
+        ImagingCalendarSerializer,
+        frozenset(
+            {
+                "resources",
+            }
+        ),
+    ),
+    (
+        AppointmentSummarySerializer,
+        frozenset(
+            {
+                "id",
+                "appointment_number",
+                "resource",
+                "scheduled_start",
+                "scheduled_end",
+                "status",
+            }
+        ),
+    ),
+    (
+        ReportAmendmentSerializer,
+        frozenset(
+            {
+                "id",
+                "amendment_number",
+                "reason",
+                "previous_findings",
+                "previous_impression",
+                "new_findings",
+                "new_impression",
+                "amended_by",
+                "amended_by_name",
+                "amended_at",
+            }
+        ),
+    ),
+    # ── scheduling (additional) ─────────────────────────────────────
+    (
+        AssignmentRuleSerializer,
+        frozenset(
+            {
+                "id",
+                "rule_code",
+                "name",
+                "description",
+                "rule_definition",
+                "priority",
+                "applies_to",
+                "effective_from",
+                "effective_until",
+                "is_active",
+                "version",
+                "created_by",
+                "created_by_name",
+                "created_at",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        AppointmentListSerializer,
+        frozenset(
+            {
+                "id",
+                "appointment_number",
+                "patient",
+                "patient_name",
+                "resource",
+                "resource_name",
+                "appointment_type",
+                "scheduled_start",
+                "scheduled_end",
+                "status",
+                "priority",
+            }
+        ),
+    ),
+    (
+        AvailabilitySlotSerializer,
+        frozenset(
+            {
+                "date",
+                "start_time",
+                "end_time",
+            }
+        ),
+    ),
+    (
+        ScheduleBreakSerializer,
+        frozenset(
+            {
+                "id",
+                "start_time",
+                "end_time",
+                "reason",
+                "created_at",
+            }
+        ),
+    ),
+    # ── inpatient (additional) ──────────────────────────────────────
+    (
+        WardCurrentStateSerializer,
+        frozenset(
+            {
+                "ward_id",
+                "ward_name",
+                "available_beds",
+                "gender_restriction",
+                "min_age_years",
+                "max_age_years",
+                "isolation_capable",
+                "oxygen_equipped",
+                "ventilator_capable",
+            }
+        ),
+    ),
+    (
+        ConstraintOverrideMetricsSerializer,
+        frozenset(
+            {
+                "total_admissions",
+                "override_count",
+                "override_rate",
+                "critical_override_count",
+                "acknowledged_count",
+                "pending_acknowledgment_count",
+                "violation_breakdown",
+                "ward_breakdown",
+                "common_reasons",
+            }
+        ),
+    ),
+    # ── triage (additional) ─────────────────────────────────────────
+    (
+        TriageVitalThresholdSerializer,
+        frozenset(
+            {
+                "id",
+                "vital_type",
+                "warning_low",
+                "warning_high",
+                "critical_low",
+                "critical_high",
+                "is_active",
                 "created_at",
                 "updated_at",
             }
