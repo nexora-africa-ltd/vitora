@@ -16,6 +16,18 @@ import {
   TestCatalogListParams,
   LabOrderListParams,
   CriticalAlert,
+  Specimen,
+  ResultValidation,
+  ResultValidationCreateData,
+  Instrument,
+  AnalyzerRun,
+  DiagnosticReport,
+  DiagnosticReportCreateData,
+  DiagnosticReportStatus,
+  TurnaroundTimeReport,
+  WorkloadReport,
+  CriticalValuesReport,
+  SampleRejectionReport,
 } from '@/lib/types/laboratory';
 import { PaginatedResponse } from '@/lib/types';
 import { parseResponse } from '@/lib/schemas/validation';
@@ -33,6 +45,20 @@ import {
   LabTechnicianArraySchema,
   LabQueueStatsSchema,
   LabResultAttachmentArraySchema,
+  SpecimenSchema,
+  ResultValidationSchema,
+  InstrumentSchema,
+  AnalyzerRunSchema,
+  DiagnosticReportSchema,
+  TurnaroundTimeReportSchema,
+  WorkloadReportSchema,
+  CriticalValuesReportSchema,
+  SampleRejectionReportSchema,
+  SpecimenArraySchema,
+  ResultValidationArraySchema,
+  InstrumentArraySchema,
+  AnalyzerRunArraySchema,
+  DiagnosticReportArraySchema,
 } from '@/lib/schemas/laboratory.schema';
 
 export const laboratoryApi = {
@@ -304,6 +330,255 @@ export const laboratoryApi = {
   async getPendingVerification(): Promise<LabResult[]> {
     const response = await apiClient.get<LabResult[]>('/api/lab/results/pending-verification/');
     return parseResponse(z.array(LabResultSchema), response.data, { context: 'laboratoryApi.getPendingVerification' });
+  },
+
+  // ============ Specimens ============
+
+  /**
+   * Get a specimen by barcode.
+   */
+  async getSpecimen(barcode: string): Promise<Specimen> {
+    const response = await apiClient.get<Specimen>(`/api/lab/specimens/${barcode}/`);
+    return parseResponse(SpecimenSchema, response.data, { context: 'laboratoryApi.getSpecimen' });
+  },
+
+  /**
+   * List specimens for a lab order.
+   */
+  async listOrderSpecimens(orderNumber: string): Promise<Specimen[]> {
+    const response = await apiClient.get<Specimen[]>(`/api/lab/orders/${orderNumber}/specimens/`);
+    return parseResponse(SpecimenArraySchema, response.data, { context: 'laboratoryApi.listOrderSpecimens' });
+  },
+
+  // ============ Result Validations (Two-Stage) ============
+
+  /**
+   * Get validation history for a result.
+   */
+  async getResultValidations(resultId: number): Promise<ResultValidation[]> {
+    const response = await apiClient.get<ResultValidation[]>(`/api/lab/results/${resultId}/validations/`);
+    return parseResponse(ResultValidationArraySchema, response.data, { context: 'laboratoryApi.getResultValidations' });
+  },
+
+  /**
+   * Add a validation record for a result.
+   */
+  async createResultValidation(
+    resultId: number,
+    data: ResultValidationCreateData
+  ): Promise<ResultValidation> {
+    const response = await apiClient.post<ResultValidation>(`/api/lab/results/${resultId}/validate/`, data);
+    return parseResponse(ResultValidationSchema, response.data, { context: 'laboratoryApi.createResultValidation' });
+  },
+
+  // ============ Instruments ============
+
+  /**
+   * List instruments (optionally filtered).
+   */
+  async listInstruments(params?: { is_active?: boolean; search?: string }): Promise<Instrument[]> {
+    const response = await apiClient.get<Instrument[] | { results: Instrument[] }>(
+      '/api/lab/instruments/',
+      { params }
+    );
+    if (Array.isArray(response.data)) {
+      return parseResponse(InstrumentArraySchema, response.data, { context: 'laboratoryApi.listInstruments' });
+    }
+    return parseResponse(InstrumentArraySchema, response.data.results || [], { context: 'laboratoryApi.listInstruments' });
+  },
+
+  /**
+   * Get a single instrument.
+   */
+  async getInstrument(id: number): Promise<Instrument> {
+    const response = await apiClient.get<Instrument>(`/api/lab/instruments/${id}/`);
+    return parseResponse(InstrumentSchema, response.data, { context: 'laboratoryApi.getInstrument' });
+  },
+
+  /**
+   * Create a new instrument.
+   */
+  async createInstrument(data: Partial<Instrument>): Promise<Instrument> {
+    const response = await apiClient.post<Instrument>('/api/lab/instruments/', data);
+    return parseResponse(InstrumentSchema, response.data, { context: 'laboratoryApi.createInstrument' });
+  },
+
+  /**
+   * Update an instrument.
+   */
+  async updateInstrument(id: number, data: Partial<Instrument>): Promise<Instrument> {
+    const response = await apiClient.patch<Instrument>(`/api/lab/instruments/${id}/`, data);
+    return parseResponse(InstrumentSchema, response.data, { context: 'laboratoryApi.updateInstrument' });
+  },
+
+  // ============ Analyzer Runs ============
+
+  /**
+   * List analyzer runs, optionally filtered by specimen.
+   */
+  async listAnalyzerRuns(specimenId?: number): Promise<AnalyzerRun[]> {
+    const params = specimenId ? { specimen: specimenId } : undefined;
+    const response = await apiClient.get<AnalyzerRun[] | { results: AnalyzerRun[] }>(
+      '/api/lab/analyzer-runs/',
+      { params }
+    );
+    if (Array.isArray(response.data)) {
+      return parseResponse(AnalyzerRunArraySchema, response.data, { context: 'laboratoryApi.listAnalyzerRuns' });
+    }
+    return parseResponse(AnalyzerRunArraySchema, response.data.results || [], { context: 'laboratoryApi.listAnalyzerRuns' });
+  },
+
+  /**
+   * Get a single analyzer run.
+   */
+  async getAnalyzerRun(id: number): Promise<AnalyzerRun> {
+    const response = await apiClient.get<AnalyzerRun>(`/api/lab/analyzer-runs/${id}/`);
+    return parseResponse(AnalyzerRunSchema, response.data, { context: 'laboratoryApi.getAnalyzerRun' });
+  },
+
+  /**
+   * Mark an analyzer run as failed.
+   */
+  async markAnalyzerRunError(id: number, errorMessage: string): Promise<AnalyzerRun> {
+    const response = await apiClient.post<AnalyzerRun>(`/api/lab/analyzer-runs/${id}/mark_error/`, {
+      error_message: errorMessage,
+    });
+    return parseResponse(AnalyzerRunSchema, response.data, { context: 'laboratoryApi.markAnalyzerRunError' });
+  },
+
+  // ============ Diagnostic Reports ============
+
+  /**
+   * List diagnostic reports (optionally filtered).
+   */
+  async listDiagnosticReports(params?: {
+    lab_order?: number;
+    status?: DiagnosticReportStatus;
+  }): Promise<DiagnosticReport[]> {
+    const response = await apiClient.get<DiagnosticReport[] | { results: DiagnosticReport[] }>(
+      '/api/lab/diagnostic-reports/',
+      { params }
+    );
+    if (Array.isArray(response.data)) {
+      return parseResponse(DiagnosticReportArraySchema, response.data, { context: 'laboratoryApi.listDiagnosticReports' });
+    }
+    return parseResponse(DiagnosticReportArraySchema, response.data.results || [], { context: 'laboratoryApi.listDiagnosticReports' });
+  },
+
+  /**
+   * Get a single diagnostic report.
+   */
+  async getDiagnosticReport(id: number | string): Promise<DiagnosticReport> {
+    const response = await apiClient.get<DiagnosticReport>(`/api/lab/diagnostic-reports/${id}/`);
+    return parseResponse(DiagnosticReportSchema, response.data, { context: 'laboratoryApi.getDiagnosticReport' });
+  },
+
+  /**
+   * Create a diagnostic report.
+   */
+  async createDiagnosticReport(data: DiagnosticReportCreateData): Promise<DiagnosticReport> {
+    const response = await apiClient.post<DiagnosticReport>('/api/lab/diagnostic-reports/', data);
+    return parseResponse(DiagnosticReportSchema, response.data, { context: 'laboratoryApi.createDiagnosticReport' });
+  },
+
+  /**
+   * Update a diagnostic report.
+   */
+  async updateDiagnosticReport(
+    id: number,
+    data: Partial<DiagnosticReport>
+  ): Promise<DiagnosticReport> {
+    const response = await apiClient.patch<DiagnosticReport>(`/api/lab/diagnostic-reports/${id}/`, data);
+    return parseResponse(DiagnosticReportSchema, response.data, { context: 'laboratoryApi.updateDiagnosticReport' });
+  },
+
+  /**
+   * Finalize a diagnostic report.
+   */
+  async finalizeDiagnosticReport(id: number): Promise<DiagnosticReport> {
+    const response = await apiClient.post<DiagnosticReport>(`/api/lab/diagnostic-reports/${id}/finalize/`);
+    return parseResponse(DiagnosticReportSchema, response.data, { context: 'laboratoryApi.finalizeDiagnosticReport' });
+  },
+
+  /**
+   * Amend a diagnostic report.
+   */
+  async amendDiagnosticReport(id: number, conclusion: string): Promise<DiagnosticReport> {
+    const response = await apiClient.post<DiagnosticReport>(`/api/lab/diagnostic-reports/${id}/amend/`, {
+      conclusion,
+    });
+    return parseResponse(DiagnosticReportSchema, response.data, { context: 'laboratoryApi.amendDiagnosticReport' });
+  },
+
+  /**
+   * Cancel a diagnostic report.
+   */
+  async cancelDiagnosticReport(id: number, reason: string): Promise<DiagnosticReport> {
+    const response = await apiClient.post<DiagnosticReport>(`/api/lab/diagnostic-reports/${id}/cancel/`, {
+      reason,
+    });
+    return parseResponse(DiagnosticReportSchema, response.data, { context: 'laboratoryApi.cancelDiagnosticReport' });
+  },
+
+  /**
+   * Generate and download a diagnostic report PDF.
+   */
+  async downloadDiagnosticReportPdf(id: number): Promise<Blob> {
+    const pdfResponse = await apiClient.post<{ pdf_url?: string | null }>(
+      `/api/lab/diagnostic-reports/${id}/generate_pdf/`
+    );
+    const pdfData = parseResponse(
+      z.object({ pdf_url: z.string().nullable().optional() }),
+      pdfResponse.data,
+      { context: 'laboratoryApi.downloadDiagnosticReportPdf' }
+    );
+    if (!pdfData.pdf_url) {
+      throw new Error('Diagnostic report PDF URL was not returned.');
+    }
+    const fileResponse = await apiClient.get<Blob>(pdfData.pdf_url, { responseType: 'blob' });
+    return fileResponse.data;
+  },
+
+  // ============ Lab Operational Reports ============
+
+  /**
+   * Get turnaround time report.
+   */
+  async getTurnaroundTimeReport(startDate: string, endDate: string): Promise<TurnaroundTimeReport> {
+    const response = await apiClient.get<TurnaroundTimeReport>('/api/lab/reports/turnaround-time/', {
+      params: { start: startDate, end: endDate },
+    });
+    return parseResponse(TurnaroundTimeReportSchema, response.data, { context: 'laboratoryApi.getTurnaroundTimeReport' });
+  },
+
+  /**
+   * Get workload report.
+   */
+  async getWorkloadReport(startDate: string, endDate: string): Promise<WorkloadReport> {
+    const response = await apiClient.get<WorkloadReport>('/api/lab/reports/workload/', {
+      params: { start: startDate, end: endDate },
+    });
+    return parseResponse(WorkloadReportSchema, response.data, { context: 'laboratoryApi.getWorkloadReport' });
+  },
+
+  /**
+   * Get critical values report.
+   */
+  async getCriticalValuesReport(startDate: string, endDate: string): Promise<CriticalValuesReport> {
+    const response = await apiClient.get<CriticalValuesReport>('/api/lab/reports/critical-values/', {
+      params: { start: startDate, end: endDate },
+    });
+    return parseResponse(CriticalValuesReportSchema, response.data, { context: 'laboratoryApi.getCriticalValuesReport' });
+  },
+
+  /**
+   * Get sample rejection report.
+   */
+  async getSampleRejectionReport(startDate: string, endDate: string): Promise<SampleRejectionReport> {
+    const response = await apiClient.get<SampleRejectionReport>('/api/lab/reports/rejections/', {
+      params: { start: startDate, end: endDate },
+    });
+    return parseResponse(SampleRejectionReportSchema, response.data, { context: 'laboratoryApi.getSampleRejectionReport' });
   },
 
   // ============ Lab Queue ============
