@@ -39,12 +39,12 @@ The backend laboratory module has evolved significantly through Phases L0-L4, T0
 | `LabQueue` | ✅ Complete | Has `sample_id` but no `specimen` object |
 | `LabTechnician` | ✅ Complete | |
 | `CriticalAlert` | ✅ Complete | |
-| `Specimen` | ❌ Missing | NEW in L0 |
-| `ResultValidation` | ❌ Missing | NEW in L2 |
-| `Instrument` | ❌ Missing | NEW in L3 |
-| `AnalyzerRun` | ❌ Missing | NEW in L3 |
-| `DiagnosticReport` | ❌ Missing | NEW in L4 |
-| Lab Report Types | ❌ Missing | NEW in Phase C |
+| `Specimen` | ✅ Complete | NEW in L0 |
+| `ResultValidation` | ✅ Complete | NEW in L2 |
+| `Instrument` | ✅ Complete | NEW in L3 |
+| `AnalyzerRun` | ✅ Complete | NEW in L3 |
+| `DiagnosticReport` | ✅ Complete | NEW in L4 |
+| Lab Report Types | ✅ Complete | NEW in Phase C |
 
 ### 2.2 Existing API Client (`lib/api/laboratory.ts`)
 
@@ -84,6 +84,8 @@ The backend laboratory module has evolved significantly through Phases L0-L4, T0
 ### Phase F1 — Types & Schemas (Priority: HIGH) ⏱️ 4-6 hours
 
 **Goal**: Add missing TypeScript types and Zod schemas for new backend models.
+
+**Status**: ✅ Completed (2026-02-15)
 
 #### 3.1.1 Add to `lib/types/laboratory.ts`
 
