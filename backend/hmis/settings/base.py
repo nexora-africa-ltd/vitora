@@ -304,6 +304,46 @@ SPECTACULAR_SETTINGS = {
         "TriageBypassReasonEnum": lambda: _model_attr(
             "hmis.apps.encounters.models.Encounter", "TRIAGE_BYPASS_REASON_CHOICES"
         ),
+        # Laboratory status enums
+        "LabSpecimenStatusEnum": lambda: _model_attr(
+            "hmis.apps.laboratory.models.Specimen", "STATUS_CHOICES"
+        ),
+        "LabResultVerificationStatusEnum": lambda: _model_attr(
+            "hmis.apps.laboratory.models.LabResult", "VERIFICATION_STATUS"
+        ),
+        "DiagnosticReportStatusEnum": lambda: _model_attr(
+            "hmis.apps.laboratory.models.DiagnosticReport", "Status"
+        ),
+        "LabQueueStatusEnum": lambda: _model_attr(
+            "hmis.apps.laboratory.models.LabQueue", "QueueStatus"
+        ),
+        "ResultValidationStatusEnum": lambda: _model_attr(
+            "hmis.apps.laboratory.models.ResultValidation", "ValidationStatus"
+        ),
+        "AnalyzerRunStatusEnum": lambda: _model_attr(
+            "hmis.apps.laboratory.models.AnalyzerRun", "Status"
+        ),
+        # Inpatient admission status
+        "AdmissionStatusEnum": lambda: _model_attr(
+            "hmis.apps.inpatient.models.Admission", "STATUS_CHOICES"
+        ),
+        "WardRoundConditionStatusEnum": lambda: _model_attr(
+            "hmis.apps.inpatient.models.WardRound", "CONDITION_STATUS_CHOICES"
+        ),
+        # Imaging status
+        "RadiologyReportStatusEnum": lambda: _model_attr(
+            "hmis.apps.imaging.models.RadiologyReport", "REPORT_STATUS"
+        ),
+        # Payment and method enums
+        "PaymentMethodEnum": lambda: _model_attr(
+            "hmis.apps.billing.models.Payment", "Method"
+        ),
+        "CheckInIdentityMethodEnum": lambda: _model_attr(
+            "hmis.apps.checkin.models.CheckIn", "IDENTITY_METHOD_CHOICES"
+        ),
+        "ShaClaimSubmissionMethodEnum": lambda: _model_attr(
+            "hmis.apps.billing.models.SHAClaim", "SubmissionMethod"
+        ),
     },
 }
 
