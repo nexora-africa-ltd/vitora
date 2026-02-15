@@ -10,6 +10,7 @@ from rest_framework import serializers
 
 from .models import (
     AuditLog,
+    CodeSystem,
     County,
     Department,
     FrontendEvent,
@@ -398,6 +399,34 @@ class StaffProfileCreateSerializer(serializers.Serializer):
 # ============================================================================
 # Notification Serializers (Phase 2.3 - Notification System)
 # ============================================================================
+
+
+class CodeSystemSerializer(serializers.ModelSerializer):
+    """
+    Serializer for CodeSystem model (read-only).
+
+    Provides a registry of code systems used in Vitora for FHIR compliance
+    and self-documenting API responses.
+    """
+
+    class Meta:
+        """Meta options for CodeSystemSerializer."""
+
+        model = CodeSystem
+        fields = [
+            "id",
+            "slug",
+            "name",
+            "uri",
+            "version",
+            "publisher",
+            "description",
+            "is_internal",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
 
 
 class NotificationSerializer(serializers.ModelSerializer):

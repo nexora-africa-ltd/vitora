@@ -1641,6 +1641,94 @@ class IdempotencyKey(models.Model):
         return deleted
 
 
+class CodeSystem(models.Model):
+    """
+    Registry of code systems used in Vitora HMIS.
+
+    This model provides a centralized registry of all vocabularies and code systems
+    used within Vitora, including internal codes (like vitora-lab) and external
+    standards (like ICD-10, LOINC, SHA tariffs).
+
+    Used for:
+    - FHIR exports to reference proper CodeSystem URIs
+    - Self-documenting API responses
+    - Terminology governance and version tracking
+
+    Example:
+        CodeSystem(slug='vitora-lab', uri='https://vitora.health/fhir/CodeSystem/laboratory')
+        CodeSystem(slug='icd-10', uri='http://hl7.org/fhir/sid/icd-10')
+
+    Attributes:
+        slug: Unique identifier used in ExternalCodeMapping.code_system
+        name: Human-readable name
+        uri: FHIR CodeSystem URI for interoperability
+        version: Optional version string (e.g., '2025', 'R4')
+        publisher: Organization/authority responsible for the code system
+        description: Detailed description of the code system
+        is_internal: Whether this is a Vitora-managed vocabulary
+        is_active: Whether this code system is currently in use
+    """
+
+    slug = models.SlugField(
+        unique=True,
+        max_length=100,
+        help_text="Unique identifier (e.g., 'vitora-lab', 'icd-10', 'loinc')",
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text="Human-readable name of the code system",
+    )
+    uri = models.URLField(
+        max_length=255,
+        help_text="FHIR CodeSystem URI (e.g., 'http://hl7.org/fhir/sid/icd-10')",
+    )
+    version = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Code system version (e.g., '2025', 'R4')",
+    )
+    publisher = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Organization responsible for the code system",
+    )
+    description = models.TextField(
+        blank=True,
+        default="",
+        help_text="Detailed description of the code system",
+    )
+    is_internal = models.BooleanField(
+        default=False,
+        help_text="Whether this is a Vitora-managed vocabulary",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Whether this code system is currently in use",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When this code system was registered",
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        help_text="When this code system was last updated",
+    )
+
+    class Meta:
+        """Meta options for CodeSystem model."""
+
+        verbose_name = "Code System"
+        verbose_name_plural = "Code Systems"
+        ordering = ["slug"]
+
+    def __str__(self) -> str:
+        """String representation of the code system."""
+        return f"{self.name} ({self.slug})"
+
+
 class ExternalCodeMapping(models.Model):
     """
     Maps external system codes to internal Vitora entities.
@@ -1681,6 +1769,14 @@ class ExternalCodeMapping(models.Model):
         max_length=100,
         db_index=True,
         help_text="External system ID, e.g., 'LIS_ACME', 'SHA_TARIFF', 'NHIF_2025', 'LOINC'",
+    )
+    code_system_ref = models.ForeignKey(
+        "CodeSystem",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mappings",
+        help_text="Optional link to CodeSystem registry for FHIR compliance",
     )
     external_code = models.CharField(
         max_length=100,
@@ -1831,3 +1927,17 @@ class ExternalCodeMapping(models.Model):
             return mapping.external_code
         except cls.DoesNotExist:
             return None
+
+    def get_fhir_uri(self) -> str | None:
+        """
+        Get the FHIR CodeSystem URI for this mapping.
+
+        Returns the URI from the linked CodeSystem if available,
+        otherwise returns None.
+
+        Returns:
+            FHIR CodeSystem URI string, or None if not linked.
+        """
+        if self.code_system_ref:
+            return self.code_system_ref.uri
+        return None

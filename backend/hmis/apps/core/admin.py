@@ -6,6 +6,7 @@ from django.contrib import admin
 
 from .models import (
     AuditLog,
+    CodeSystem,
     County,
     Department,
     ExternalCodeMapping,
@@ -533,12 +534,86 @@ class StaffProfileAdmin(admin.ModelAdmin):
         return response
 
 
+@admin.register(CodeSystem)
+class CodeSystemAdmin(admin.ModelAdmin):
+    """Admin configuration for CodeSystem model."""
+
+    list_display = [
+        "slug",
+        "name",
+        "uri",
+        "version",
+        "publisher",
+        "is_internal",
+        "is_active",
+        "updated_at",
+    ]
+    list_filter = [
+        "is_internal",
+        "is_active",
+        "publisher",
+    ]
+    search_fields = [
+        "slug",
+        "name",
+        "uri",
+        "publisher",
+        "description",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    ordering = ["slug"]
+    prepopulated_fields = {"slug": ("name",)}
+
+    fieldsets = (
+        (
+            "Identity",
+            {
+                "fields": (
+                    "slug",
+                    "name",
+                    "uri",
+                )
+            },
+        ),
+        (
+            "Details",
+            {
+                "fields": (
+                    "version",
+                    "publisher",
+                    "description",
+                )
+            },
+        ),
+        (
+            "Status",
+            {
+                "fields": (
+                    "is_internal",
+                    "is_active",
+                )
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ["collapse"],
+            },
+        ),
+    )
+
+
 @admin.register(ExternalCodeMapping)
 class ExternalCodeMappingAdmin(admin.ModelAdmin):
     """Admin configuration for ExternalCodeMapping model."""
 
     list_display = [
         "code_system",
+        "code_system_ref",
         "external_code",
         "external_display",
         "content_type",
@@ -549,6 +624,7 @@ class ExternalCodeMappingAdmin(admin.ModelAdmin):
     ]
     list_filter = [
         "code_system",
+        "code_system_ref",
         "content_type",
         "relationship",
         "is_active",
@@ -561,6 +637,7 @@ class ExternalCodeMappingAdmin(admin.ModelAdmin):
     ]
     readonly_fields = ["created_at", "updated_at"]
     raw_id_fields = ["content_type"]
+    autocomplete_fields = ["code_system_ref"]
     ordering = ["code_system", "external_code"]
 
     fieldsets = (
@@ -569,6 +646,7 @@ class ExternalCodeMappingAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "code_system",
+                    "code_system_ref",
                     "external_code",
                     "external_display",
                 )
