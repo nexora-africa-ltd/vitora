@@ -3,7 +3,7 @@
 > **Created**: 2026-02-14  
 > **Updated**: 2026-02-15  
 > **Owner**: Engineering  
-> **Status**: Phase T0 Implemented  
+> **Status**: Phase T0-T1 Implemented  
 > **Scope**: Clinical coding, external system mappings, interoperability foundation
 
 ---
@@ -301,38 +301,75 @@ else:
 
 ---
 
-### Phase T1 — Code System Registry (Post-Phase C)
+### Phase T1 — Code System Registry ✅ IMPLEMENTED
 
 **ROI**: Medium (enables self-documenting API, FHIR compliance)  
 **Effort**: 4-8 hours  
-**Risk**: Low
+**Risk**: Low  
+**Status**: ✅ Completed 2026-02-15
 
-**Deliverables**:
-1. Add `CodeSystem` model to track vocabularies:
+#### Implementation Summary
 
-```python
-class CodeSystem(models.Model):
-    """Registry of code systems used in Vitora."""
-    
-    slug = models.SlugField(unique=True)  # e.g., "vitora-lab", "icd-10", "loinc"
-    name = models.CharField(max_length=100)
-    uri = models.URLField(help_text="FHIR CodeSystem URI")
-    version = models.CharField(max_length=50, blank=True)
-    publisher = models.CharField(max_length=100, blank=True)
-    description = models.TextField(blank=True)
-    is_internal = models.BooleanField(default=False)  # Vitora-managed vs external
-    is_active = models.BooleanField(default=True)
+| Component | Location | Details |
+|-----------|----------|---------||
+| Model | `hmis/apps/core/models.py` | `CodeSystem` with slug, uri, version, publisher |
+| FK Extension | `ExternalCodeMapping.code_system_ref` | Optional link to CodeSystem |
+| Migration | `core.0015_add_code_system` | Schema migration |
+| Data Migration | `core.0016_populate_code_systems` | Pre-populated 7 code systems |
+| Serializer | `hmis/apps/core/serializers.py` | `CodeSystemSerializer` (read-only) |
+| ViewSet | `hmis/apps/core/views.py` | `CodeSystemViewSet` (list/retrieve by slug) |
+| Admin | `hmis/apps/core/admin.py` | `CodeSystemAdmin` with search/filter |
+| Tests | `tests/test_code_system.py` | 20 tests (model, API, integration) |
+
+#### Key Features Implemented
+
+- **CodeSystem model**: Registry of vocabularies with FHIR URIs
+- **Slug-based lookup**: `/api/terminology/codesystems/{slug}/`
+- **ExternalCodeMapping.code_system_ref**: Optional FK for FHIR compliance
+- **get_fhir_uri()**: Helper to get CodeSystem URI from mapping
+- **Pre-populated systems**: 7 standard code systems seeded via migration
+
+#### Pre-populated Code Systems
+
+| Slug | Name | URI | Internal |
+|------|------|-----|----------|
+| `vitora-lab` | Vitora Laboratory Codes | `https://vitora.health/fhir/CodeSystem/laboratory` | ✅ |
+| `icd-10` | ICD-10 | `http://hl7.org/fhir/sid/icd-10` | ❌ |
+| `loinc` | LOINC | `http://loinc.org` | ❌ |
+| `sha-tariff-2025` | SHA Tariff 2025 | `https://sha.go.ke/tariff/2025` | ❌ |
+| `snomed-ct` | SNOMED CT | `http://snomed.info/sct` | ❌ |
+| `khis` | KHIS/DHIS2 Codes | `https://hiskenya.org/khis` | ❌ |
+| `ndc` | National Drug Code | `http://hl7.org/fhir/sid/ndc` | ❌ |
+
+#### API Endpoints
+
+```
+GET  /api/terminology/codesystems/           # List all active code systems
+GET  /api/terminology/codesystems/{slug}/    # Retrieve by slug (e.g., "loinc")
 ```
 
-2. Pre-populate with:
-   - `vitora-lab` → `https://vitora.health/fhir/CodeSystem/laboratory`
-   - `icd-10` → `http://hl7.org/fhir/sid/icd-10`
-   - `loinc` → `http://loinc.org`
-   - `sha-tariff-2025` → `https://sha.go.ke/tariff/2025`
+#### Usage Examples
 
-3. Link `ExternalCodeMapping.code_system` to `CodeSystem.slug`
+```python
+from hmis.apps.core.models import CodeSystem, ExternalCodeMapping
 
-4. Add `/api/terminology/codesystems/` endpoint (read-only)
+# Get FHIR URI for a code system
+loinc = CodeSystem.objects.get(slug="loinc")
+print(loinc.uri)  # "http://loinc.org"
+
+# Link mapping to code system for FHIR exports
+mapping = ExternalCodeMapping.objects.create(
+    code_system="LOINC",
+    code_system_ref=loinc,  # Optional FK for FHIR compliance
+    external_code="2951-2",
+    external_display="Sodium [Moles/volume] in Serum or Plasma",
+    content_type=content_type,
+    object_id=test.pk,
+)
+
+# Get FHIR URI from mapping
+fhir_uri = mapping.get_fhir_uri()  # "http://loinc.org"
+```
 
 **Benefit**: FHIR exports can reference proper CodeSystem URIs.
 

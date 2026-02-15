@@ -20,6 +20,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import (
     AuditLog,
+    CodeSystem,
     County,
     Department,
     FrontendEvent,
@@ -32,6 +33,7 @@ from .models import (
 from .permissions import AuditLogPermission
 from .serializers import (
     AuditLogSerializer,
+    CodeSystemSerializer,
     CountySerializer,
     DepartmentSerializer,
     FrontendEventBatchSerializer,
@@ -155,6 +157,29 @@ class PermissionViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericView
     ordering_fields = ["codename", "name"]
     ordering = ["content_type__app_label", "codename"]
     pagination_class = None  # Return all permissions without pagination
+
+
+class CodeSystemViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):
+    """
+    ViewSet for listing and retrieving code systems (read-only).
+
+    Provides a registry of code systems used in Vitora, including:
+    - Internal Vitora vocabularies (e.g., vitora-lab)
+    - External standards (e.g., ICD-10, LOINC)
+    - Integration-specific codes (e.g., SHA tariff, LIS vendor codes)
+
+    Useful for FHIR compliance and self-documenting API responses.
+    """
+
+    queryset = CodeSystem.objects.filter(is_active=True)
+    serializer_class = CodeSystemSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["slug", "name", "publisher", "description"]
+    ordering_fields = ["slug", "name", "created_at"]
+    ordering = ["slug"]
+    pagination_class = None  # Return all code systems without pagination
+    lookup_field = "slug"
 
 
 class CountyViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):

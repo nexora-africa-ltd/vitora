@@ -14,6 +14,7 @@ from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from hmis.apps.core.views import (
     AuditedTokenObtainPairView,
     AuditLogViewSet,
+    CodeSystemViewSet,
     CountyViewSet,
     DepartmentViewSet,
     NotificationViewSet,
@@ -93,12 +94,17 @@ location_router.register(r"counties", CountyViewSet, basename="county")
 location_router.register(r"sub-counties", SubCountyViewSet, basename="subcounty")
 location_router.register(r"wards", WardViewSet, basename="ward")
 
+# Terminology routes under /api/terminology/
+terminology_router = routers.DefaultRouter()
+terminology_router.register(r"codesystems", CodeSystemViewSet, basename="codesystem")
+
 urlpatterns = [
     path("", health_check, name="health_check"),
     path("api/health/", health_check, name="api_health_check"),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
     path("api/locations/", include(location_router.urls)),
+    path("api/terminology/", include(terminology_router.urls)),
     # Nested route for emergency contacts under patients
     path(
         "api/patients/<int:patient_pk>/emergency-contacts/",
