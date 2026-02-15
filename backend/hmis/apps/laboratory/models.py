@@ -704,6 +704,7 @@ class Specimen(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["barcode"]),
             models.Index(fields=["status"]),

@@ -54,12 +54,12 @@ The backend laboratory module has evolved significantly through Phases L0-L4, T0
 | Lab Orders | ✅ Complete | CRUD, submit, collect, cancel |
 | Lab Results | ✅ Complete | CRUD, verify, attachments |
 | Lab Queue | ✅ Complete | All workflow actions |
-| Specimens | ❌ Missing | No specimen CRUD |
-| Result Validations | ❌ Missing | No two-stage validation |
-| Instruments | ❌ Missing | No instrument management |
-| Analyzer Runs | ❌ Missing | No analyzer run tracking |
-| Diagnostic Reports | ❌ Missing | No report generation/viewing |
-| Lab Reports | ❌ Missing | TAT, workload, critical, rejections |
+| Specimens | ✅ Complete | getSpecimen, listOrderSpecimens |
+| Result Validations | ✅ Complete | getValidations, createValidation |
+| Instruments | ✅ Complete | CRUD operations |
+| Analyzer Runs | ✅ Complete | list, get, markError, markApplied |
+| Diagnostic Reports | ✅ Complete | CRUD, finalize, amend, cancel, PDF |
+| Lab Reports | ✅ Complete | TAT, workload, critical, rejections |
 
 ### 2.3 Existing Pages/Components
 
@@ -305,6 +305,15 @@ Add corresponding Zod schemas for all new types (Specimen, ResultValidation, Ins
 ### Phase F2 — API Client Extensions (Priority: HIGH) ⏱️ 4-6 hours
 
 **Goal**: Add API methods for new backend endpoints.
+
+**Status**: ✅ Completed (2026-02-15)
+
+**Implementation Notes**:
+- Backend `SpecimenViewSet` added as read-only endpoint (lookup by barcode)
+- Nested endpoint `GET /api/lab/orders/{order_number}/specimens/` implemented
+- All API methods include Zod schema validation via `parseResponse()`
+- 20 specimen API tests passing
+- Specimen model default ordering added to fix pagination warnings
 
 #### 3.2.1 Add to `lib/api/laboratory.ts`
 

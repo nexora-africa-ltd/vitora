@@ -18,6 +18,7 @@ from .models import (
     LabResultAttachment,
     LOINCCode,
     ResultValidation,
+    Specimen,
     TestCatalog,
 )
 
@@ -932,4 +933,86 @@ class DiagnosticReportCancelSerializer(serializers.Serializer):
     """Serializer for cancelling a diagnostic report."""
 
     reason = serializers.CharField(required=True, help_text="Reason for cancellation")
+
+
+# ============================================================================
+# Specimen Serializers
+# ============================================================================
+
+
+class SpecimenSerializer(serializers.ModelSerializer):
+    """Serializer for specimen listing and detail."""
+
+    order_number = serializers.CharField(source="lab_order.order_number", read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    patient_mrn = serializers.CharField(source="lab_order.patient.mrn", read_only=True)
+    collected_by_name = serializers.SerializerMethodField()
+    received_by_name = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    specimen_type_display = serializers.CharField(source="get_specimen_type_display", read_only=True)
+    order_item_ids = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Specimen
+        fields = [
+            "id",
+            "barcode",
+            "specimen_type",
+            "specimen_type_display",
+            "container_type",
+            "lab_order",
+            "order_number",
+            "patient_name",
+            "patient_mrn",
+            "order_item_ids",
+            "collected_by",
+            "collected_by_name",
+            "collected_at",
+            "collection_site",
+            "received_by",
+            "received_by_name",
+            "received_at",
+            "status",
+            "status_display",
+            "rejection_reason",
+            "storage_location",
+            "storage_temperature",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "barcode",
+            "order_number",
+            "patient_name",
+            "patient_mrn",
+            "status_display",
+            "specimen_type_display",
+            "collected_by_name",
+            "received_by_name",
+            "order_item_ids",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_patient_name(self, obj) -> str:
+        """Get patient full name."""
+        patient = obj.lab_order.patient
+        return f"{patient.first_name} {patient.last_name}"
+
+    def get_collected_by_name(self, obj) -> Optional[str]:
+        """Get name of user who collected the specimen."""
+        if obj.collected_by:
+            return obj.collected_by.get_full_name() or obj.collected_by.username
+        return None
+
+    def get_received_by_name(self, obj) -> Optional[str]:
+        """Get name of user who received the specimen."""
+        if obj.received_by:
+            return obj.received_by.get_full_name() or obj.received_by.username
+        return None
+
+    def get_order_item_ids(self, obj) -> list[int]:
+        """Get list of linked order item IDs."""
+        return list(obj.order_items.values_list("id", flat=True))
 

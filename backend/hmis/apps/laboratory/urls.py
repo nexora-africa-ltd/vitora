@@ -21,6 +21,7 @@ from .views import (
     LOINCCodeViewSet,
     PatientLabOrderViewSet,
     PatientLabResultViewSet,
+    SpecimenViewSet,
     TestCatalogViewSet,
 )
 
@@ -34,6 +35,7 @@ router.register(r"loinc-codes", LOINCCodeViewSet, basename="loinc-code")
 router.register(r"instruments", InstrumentViewSet, basename="instrument")
 router.register(r"analyzer-runs", AnalyzerRunViewSet, basename="analyzer-run")
 router.register(r"diagnostic-reports", DiagnosticReportViewSet, basename="diagnostic-report")
+router.register(r"specimens", SpecimenViewSet, basename="specimen")
 
 urlpatterns = [
     path("reports/turnaround-time/", LabTurnaroundTimeReportView.as_view(), name="lab-report-tat"),
