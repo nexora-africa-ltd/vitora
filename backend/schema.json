@@ -9860,6 +9860,52 @@ paths:
                 format: binary
                 description: DICOM file
           description: ''
+  /api/imaging/dicom/{sop_instance_uid}/frame/:
+    get:
+      operationId: api_imaging_dicom_frame_retrieve
+      description: Render a DICOM instance as PNG.
+      parameters:
+      - in: query
+        name: frame
+        schema:
+          type: integer
+        description: 'Frame index for multi-frame DICOM (default: 0)'
+      - in: query
+        name: size
+        schema:
+          type: integer
+        description: 'Maximum dimension in pixels (default: 512)'
+      - in: path
+        name: sop_instance_uid
+        schema:
+          type: string
+          pattern: ^[\d.]+$
+        required: true
+      - in: query
+        name: window_center
+        schema:
+          type: number
+          format: double
+        description: Window center override
+      - in: query
+        name: window_width
+        schema:
+          type: number
+          format: double
+        description: Window width override
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+                format: binary
+                description: PNG image
+          description: ''
   /api/imaging/orders/:
     get:
       operationId: api_imaging_orders_list
@@ -10297,6 +10343,326 @@ paths:
               schema:
                 $ref: '#/components/schemas/ImagingProcedureDetail'
           description: ''
+  /api/imaging/reports/:
+    get:
+      operationId: api_imaging_reports_list
+      description: |-
+        ViewSet for radiology reports.
+
+        Provides CRUD operations plus workflow actions:
+        - sign: Finalize a draft/preliminary report
+        - amend: Amend a finalized report
+        - communicate_critical: Record critical finding communication
+        - pdf: Generate PDF report
+
+        Endpoints:
+            GET    /api/imaging/reports/                  → list
+            POST   /api/imaging/reports/                  → create draft
+            GET    /api/imaging/reports/{report_number}/  → retrieve
+            PATCH  /api/imaging/reports/{report_number}/  → update draft
+            DELETE /api/imaging/reports/{report_number}/  → delete (draft only)
+            POST   /api/imaging/reports/{report_number}/sign/    → finalize
+            POST   /api/imaging/reports/{report_number}/amend/   → amend
+            POST   /api/imaging/reports/{report_number}/communicate_critical/  → record comm
+            GET    /api/imaging/reports/{report_number}/pdf/     → download PDF
+      parameters:
+      - in: query
+        name: date_from
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: date_to
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: is_critical
+        schema:
+          type: boolean
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: patient
+        schema:
+          type: integer
+      - in: query
+        name: reported_by
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRadiologyReportList'
+          description: ''
+    post:
+      operationId: api_imaging_reports_create
+      description: Create a new radiology report draft.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RadiologyReportCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RadiologyReportCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RadiologyReportCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RadiologyReportCreate'
+          description: ''
+  /api/imaging/reports/{report_number}/:
+    get:
+      operationId: api_imaging_reports_retrieve
+      description: Retrieve a radiology report.
+      parameters:
+      - in: path
+        name: report_number
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RadiologyReport'
+          description: ''
+    put:
+      operationId: api_imaging_reports_update
+      description: Update a draft radiology report.
+      parameters:
+      - in: path
+        name: report_number
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RadiologyReportUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RadiologyReportUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RadiologyReportUpdateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RadiologyReportUpdate'
+          description: ''
+    patch:
+      operationId: api_imaging_reports_partial_update
+      description: |-
+        ViewSet for radiology reports.
+
+        Provides CRUD operations plus workflow actions:
+        - sign: Finalize a draft/preliminary report
+        - amend: Amend a finalized report
+        - communicate_critical: Record critical finding communication
+        - pdf: Generate PDF report
+
+        Endpoints:
+            GET    /api/imaging/reports/                  → list
+            POST   /api/imaging/reports/                  → create draft
+            GET    /api/imaging/reports/{report_number}/  → retrieve
+            PATCH  /api/imaging/reports/{report_number}/  → update draft
+            DELETE /api/imaging/reports/{report_number}/  → delete (draft only)
+            POST   /api/imaging/reports/{report_number}/sign/    → finalize
+            POST   /api/imaging/reports/{report_number}/amend/   → amend
+            POST   /api/imaging/reports/{report_number}/communicate_critical/  → record comm
+            GET    /api/imaging/reports/{report_number}/pdf/     → download PDF
+      parameters:
+      - in: path
+        name: report_number
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRadiologyReportUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRadiologyReportUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRadiologyReportUpdateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RadiologyReportUpdate'
+          description: ''
+    delete:
+      operationId: api_imaging_reports_destroy
+      description: Delete a draft radiology report.
+      parameters:
+      - in: path
+        name: report_number
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/imaging/reports/{report_number}/amend/:
+    post:
+      operationId: api_imaging_reports_amend_create
+      description: Amend a finalized radiology report.
+      parameters:
+      - in: path
+        name: report_number
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AmendReportRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AmendReportRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AmendReportRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AmendReport'
+          description: ''
+  /api/imaging/reports/{report_number}/communicate-critical/:
+    post:
+      operationId: api_imaging_reports_communicate_critical_create
+      description: Record communication of a critical finding.
+      parameters:
+      - in: path
+        name: report_number
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommunicateCriticalRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CommunicateCriticalRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CommunicateCriticalRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommunicateCritical'
+          description: ''
+  /api/imaging/reports/{report_number}/pdf/:
+    get:
+      operationId: api_imaging_reports_pdf_retrieve
+      description: Generate and download PDF report.
+      parameters:
+      - in: path
+        name: report_number
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RadiologyReport'
+          description: ''
+  /api/imaging/reports/{report_number}/sign/:
+    post:
+      operationId: api_imaging_reports_sign_create
+      description: Sign and finalize a radiology report.
+      parameters:
+      - in: path
+        name: report_number
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/imaging/resources/:
     get:
       operationId: api_imaging_resources_list
@@ -13499,6 +13865,53 @@ paths:
               schema:
                 $ref: '#/components/schemas/InpatientWard'
           description: ''
+  /api/inpatient/wards/{id}/generate_beds/:
+    post:
+      operationId: api_inpatient_wards_generate_beds_create
+      description: Generate missing bed records for a ward based on its capacity.
+        Useful for wards that have capacity defined but no individual bed records.
+        Only creates beds if ward.beds.count() < ward.capacity.
+      summary: Generate beds for ward
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Ward.
+        required: true
+      tags:
+      - Inpatient - Wards
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InpatientWardRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InpatientWardRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InpatientWardRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  created:
+                    type: integer
+                    description: Number of beds created
+                  total:
+                    type: integer
+                    description: Total beds after generation
+                  capacity:
+                    type: integer
+                    description: Ward capacity
+          description: ''
   /api/inpatient/wards/{id}/updates/:
     get:
       operationId: api_inpatient_wards_updates_retrieve
@@ -13555,6 +13968,931 @@ paths:
               schema:
                 $ref: '#/components/schemas/InpatientWard'
           description: ''
+  /api/lab/analyzer-runs/:
+    get:
+      operationId: api_lab_analyzer_runs_list
+      description: |-
+        ViewSet for analyzer runs.
+
+        Provides CRUD operations for managing raw analyzer data and
+        tracking instrument message processing.
+      parameters:
+      - in: query
+        name: instrument
+        schema:
+          type: integer
+      - in: query
+        name: order_number
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: run_datetime__gte
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: run_datetime__lte
+        schema:
+          type: string
+          format: date-time
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: specimen_barcode
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPLIED
+          - ERROR
+          - PARSED
+          - RECEIVED
+        description: |-
+          Processing status of this run
+
+          * `RECEIVED` - Message Received
+          * `PARSED` - Parsed Successfully
+          * `APPLIED` - Results Applied
+          * `ERROR` - Parse Error
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAnalyzerRunList'
+          description: ''
+    post:
+      operationId: api_lab_analyzer_runs_create
+      description: |-
+        ViewSet for analyzer runs.
+
+        Provides CRUD operations for managing raw analyzer data and
+        tracking instrument message processing.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzerRunCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AnalyzerRunCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AnalyzerRunCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzerRunCreate'
+          description: ''
+  /api/lab/analyzer-runs/{id}/:
+    get:
+      operationId: api_lab_analyzer_runs_retrieve
+      description: |-
+        ViewSet for analyzer runs.
+
+        Provides CRUD operations for managing raw analyzer data and
+        tracking instrument message processing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Analyzer Run.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzerRun'
+          description: ''
+    put:
+      operationId: api_lab_analyzer_runs_update
+      description: |-
+        ViewSet for analyzer runs.
+
+        Provides CRUD operations for managing raw analyzer data and
+        tracking instrument message processing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Analyzer Run.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzerRunRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AnalyzerRunRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AnalyzerRunRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzerRun'
+          description: ''
+    patch:
+      operationId: api_lab_analyzer_runs_partial_update
+      description: |-
+        ViewSet for analyzer runs.
+
+        Provides CRUD operations for managing raw analyzer data and
+        tracking instrument message processing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Analyzer Run.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAnalyzerRunRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAnalyzerRunRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAnalyzerRunRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzerRun'
+          description: ''
+    delete:
+      operationId: api_lab_analyzer_runs_destroy
+      description: |-
+        ViewSet for analyzer runs.
+
+        Provides CRUD operations for managing raw analyzer data and
+        tracking instrument message processing.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Analyzer Run.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/lab/analyzer-runs/{id}/mark_applied/:
+    post:
+      operationId: api_lab_analyzer_runs_mark_applied_create
+      description: Mark this analyzer run as applied (results created).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Analyzer Run.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzerRunRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AnalyzerRunRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AnalyzerRunRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzerRun'
+          description: ''
+  /api/lab/analyzer-runs/{id}/mark_error/:
+    post:
+      operationId: api_lab_analyzer_runs_mark_error_create
+      description: Mark this analyzer run as failed with an error message.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Analyzer Run.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzerRunMarkErrorRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AnalyzerRunMarkErrorRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AnalyzerRunMarkErrorRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyzerRunMarkError'
+          description: ''
+  /api/lab/attachments/{id}/:
+    delete:
+      operationId: api_lab_attachments_destroy
+      description: Delete lab attachments.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Lab Result Attachment.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/lab/diagnostic-reports/:
+    get:
+      operationId: api_lab_diagnostic_reports_list
+      description: |-
+        ViewSet for diagnostic reports (Phase L4).
+
+        Provides CRUD operations for formal patient-facing lab reports,
+        with workflow actions for finalization, amendment, and cancellation.
+      parameters:
+      - in: query
+        name: created_at__gte
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: created_at__lte
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: issued_at__gte
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: issued_at__lte
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: issued_by
+        schema:
+          type: integer
+      - in: query
+        name: lab_order
+        schema:
+          type: integer
+      - in: query
+        name: lab_order_number
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: patient
+        schema:
+          type: number
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - AMENDED
+          - CANCELLED
+          - DRAFT
+          - FINAL
+          - PRELIMINARY
+        description: |-
+          Report workflow status
+
+          * `DRAFT` - Draft
+          * `PRELIMINARY` - Preliminary
+          * `FINAL` - Final
+          * `AMENDED` - Amended
+          * `CANCELLED` - Cancelled
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDiagnosticReportList'
+          description: ''
+    post:
+      operationId: api_lab_diagnostic_reports_create
+      description: Create a new diagnostic report and return full representation.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticReportCreate'
+          description: ''
+  /api/lab/diagnostic-reports/{id}/:
+    get:
+      operationId: api_lab_diagnostic_reports_retrieve
+      description: |-
+        ViewSet for diagnostic reports (Phase L4).
+
+        Provides CRUD operations for formal patient-facing lab reports,
+        with workflow actions for finalization, amendment, and cancellation.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Diagnostic Report.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticReport'
+          description: ''
+    put:
+      operationId: api_lab_diagnostic_reports_update
+      description: |-
+        ViewSet for diagnostic reports (Phase L4).
+
+        Provides CRUD operations for formal patient-facing lab reports,
+        with workflow actions for finalization, amendment, and cancellation.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Diagnostic Report.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportUpdateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticReportUpdate'
+          description: ''
+    patch:
+      operationId: api_lab_diagnostic_reports_partial_update
+      description: |-
+        ViewSet for diagnostic reports (Phase L4).
+
+        Provides CRUD operations for formal patient-facing lab reports,
+        with workflow actions for finalization, amendment, and cancellation.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Diagnostic Report.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDiagnosticReportUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDiagnosticReportUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDiagnosticReportUpdateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticReportUpdate'
+          description: ''
+    delete:
+      operationId: api_lab_diagnostic_reports_destroy
+      description: |-
+        ViewSet for diagnostic reports (Phase L4).
+
+        Provides CRUD operations for formal patient-facing lab reports,
+        with workflow actions for finalization, amendment, and cancellation.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Diagnostic Report.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/lab/diagnostic-reports/{id}/amend/:
+    post:
+      operationId: api_lab_diagnostic_reports_amend_create
+      description: |-
+        Amend a finalized diagnostic report.
+
+        Updates conclusion and sets status to AMENDED.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Diagnostic Report.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportAmendRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportAmendRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportAmendRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticReportAmend'
+          description: ''
+  /api/lab/diagnostic-reports/{id}/cancel/:
+    post:
+      operationId: api_lab_diagnostic_reports_cancel_create
+      description: |-
+        Cancel a diagnostic report.
+
+        Sets status to CANCELLED and records cancellation reason.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Diagnostic Report.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportCancelRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportCancelRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportCancelRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticReportCancel'
+          description: ''
+  /api/lab/diagnostic-reports/{id}/finalize/:
+    post:
+      operationId: api_lab_diagnostic_reports_finalize_create
+      description: |-
+        Finalize a draft diagnostic report.
+
+        Sets status to FINAL and records issued_at timestamp.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Diagnostic Report.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticReport'
+          description: ''
+  /api/lab/diagnostic-reports/{id}/generate_pdf/:
+    post:
+      operationId: api_lab_diagnostic_reports_generate_pdf_create
+      description: |-
+        Generate PDF for a diagnostic report.
+
+        Creates a PDF file from the lab results and stores it.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Diagnostic Report.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DiagnosticReportRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticReport'
+          description: ''
+  /api/lab/instruments/:
+    get:
+      operationId: api_lab_instruments_list
+      description: |-
+        ViewSet for laboratory instruments.
+
+        Provides CRUD operations for managing lab analyzers and instruments.
+      parameters:
+      - in: query
+        name: department
+        schema:
+          type: string
+      - in: query
+        name: department__icontains
+        schema:
+          type: string
+      - in: query
+        name: interface_type
+        schema:
+          type: string
+          enum:
+          - ASTM
+          - FHIR
+          - HL7_MLLP
+          - MANUAL
+        description: |-
+          Communication protocol type
+
+          * `HL7_MLLP` - HL7 v2 over MLLP
+          * `ASTM` - ASTM/LIS2-A2
+          * `FHIR` - FHIR R4
+          * `MANUAL` - Manual Entry
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedInstrumentList'
+          description: ''
+    post:
+      operationId: api_lab_instruments_create
+      description: |-
+        ViewSet for laboratory instruments.
+
+        Provides CRUD operations for managing lab analyzers and instruments.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstrumentCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InstrumentCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InstrumentCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstrumentCreate'
+          description: ''
+  /api/lab/instruments/{id}/:
+    get:
+      operationId: api_lab_instruments_retrieve
+      description: |-
+        ViewSet for laboratory instruments.
+
+        Provides CRUD operations for managing lab analyzers and instruments.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Instrument.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Instrument'
+          description: ''
+    put:
+      operationId: api_lab_instruments_update
+      description: |-
+        ViewSet for laboratory instruments.
+
+        Provides CRUD operations for managing lab analyzers and instruments.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Instrument.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstrumentCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InstrumentCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InstrumentCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstrumentCreate'
+          description: ''
+    patch:
+      operationId: api_lab_instruments_partial_update
+      description: |-
+        ViewSet for laboratory instruments.
+
+        Provides CRUD operations for managing lab analyzers and instruments.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Instrument.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedInstrumentCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedInstrumentCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedInstrumentCreateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstrumentCreate'
+          description: ''
+    delete:
+      operationId: api_lab_instruments_destroy
+      description: |-
+        ViewSet for laboratory instruments.
+
+        Provides CRUD operations for managing lab analyzers and instruments.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Instrument.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/lab/loinc-codes/:
     get:
       operationId: api_lab_loinc_codes_list
@@ -13831,6 +15169,56 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/lab/orders/{order_number}/attachments/:
+    get:
+      operationId: api_lab_orders_attachments_retrieve
+      description: List or upload attachments for this lab order.
+      parameters:
+      - in: path
+        name: order_number
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabOrder'
+          description: ''
+    post:
+      operationId: api_lab_orders_attachments_create
+      description: List or upload attachments for this lab order.
+      parameters:
+      - in: path
+        name: order_number
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LabOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LabOrderRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabOrder'
+          description: ''
   /api/lab/orders/{order_number}/cancel/:
     post:
       operationId: api_lab_orders_cancel_create
@@ -13994,6 +15382,67 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/lab/orders/{order_number}/reports/:
+    get:
+      operationId: api_lab_orders_reports_retrieve
+      description: |-
+        List or create diagnostic reports for a lab order.
+
+        GET: List all reports for this order
+        POST: Create a new report for this order
+      parameters:
+      - in: path
+        name: order_number
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabOrder'
+          description: ''
+    post:
+      operationId: api_lab_orders_reports_create
+      description: |-
+        List or create diagnostic reports for a lab order.
+
+        GET: List all reports for this order
+        POST: Create a new report for this order
+      parameters:
+      - in: path
+        name: order_number
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LabOrderRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LabOrderRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LabOrderRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabOrder'
+          description: ''
   /api/lab/orders/{order_number}/requisition/:
     get:
       operationId: api_lab_orders_requisition_retrieve
@@ -14203,7 +15652,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/LabQueueRequest'
-        required: true
       security:
       - jwtAuth: []
       responses:
@@ -14282,7 +15730,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/LabQueueRequest'
-        required: true
       security:
       - jwtAuth: []
       responses:
@@ -14518,7 +15965,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/LabQueueRequest'
-        required: true
       security:
       - jwtAuth: []
       responses:
@@ -14551,7 +15997,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/LabQueueRequest'
-        required: true
       security:
       - jwtAuth: []
       responses:
@@ -14584,7 +16029,6 @@ paths:
           multipart/form-data:
             schema:
               $ref: '#/components/schemas/LabQueueRequest'
-        required: true
       security:
       - jwtAuth: []
       responses:
@@ -14597,7 +16041,7 @@ paths:
   /api/lab/queue/lookup/:
     get:
       operationId: api_lab_queue_lookup_retrieve
-      description: Find queue entry by barcode (sample_id or queue_number).
+      description: Find queue entry by barcode (specimen barcode, sample_id, or queue_number).
       tags:
       - api
       security:
@@ -14638,6 +16082,66 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LabQueue'
+          description: ''
+  /api/lab/reports/critical-values/:
+    get:
+      operationId: api_lab_reports_critical_values_retrieve
+      description: Report critical values metrics.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CriticalValuesReportResponse'
+          description: ''
+  /api/lab/reports/rejections/:
+    get:
+      operationId: api_lab_reports_rejections_retrieve
+      description: Report sample rejection metrics.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SampleRejectionReportResponse'
+          description: ''
+  /api/lab/reports/turnaround-time/:
+    get:
+      operationId: api_lab_reports_turnaround_time_retrieve
+      description: Report turnaround time metrics for lab operations.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TurnaroundTimeReportResponse'
+          description: ''
+  /api/lab/reports/workload/:
+    get:
+      operationId: api_lab_reports_workload_retrieve
+      description: Report lab workload metrics.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkloadReportResponse'
           description: ''
   /api/lab/results/:
     get:
@@ -14824,7 +16328,12 @@ paths:
   /api/lab/results/{id}/attachment/:
     post:
       operationId: api_lab_results_attachment_create
-      description: Upload external result attachment.
+      description: |-
+        Upload external result attachment.
+
+        Backward-compatible endpoint:
+        - Stores uploads in LabResultAttachment (canonical)
+        - Links LabResult.external_result_attachment to the same stored file
       parameters:
       - in: path
         name: id
@@ -14852,10 +16361,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/LabResult'
           description: ''
-  /api/lab/results/{id}/verify/:
+  /api/lab/results/{id}/validate/:
     post:
-      operationId: api_lab_results_verify_create
-      description: Verify or reject a result.
+      operationId: api_lab_results_validate_create
+      description: |-
+        Add a validation record (TECHNICAL or CLINICAL).
+
+        Use this endpoint for explicit two-stage validation workflow.
+        For simple approve/reject, use the /verify/ endpoint instead.
+
+        Accepts:
+        - validation_type: TECHNICAL or CLINICAL
+        - status: APPROVED or REJECTED
+        - comment: optional string
       parameters:
       - in: path
         name: id
@@ -14886,10 +16404,107 @@ paths:
               schema:
                 $ref: '#/components/schemas/LabResult'
           description: ''
+  /api/lab/results/{id}/validations/:
+    get:
+      operationId: api_lab_results_validations_retrieve
+      description: |-
+        Get all validation records for a result.
+
+        Returns the list of technical and clinical validations.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Lab Result.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabResult'
+          description: ''
+  /api/lab/results/{id}/verify/:
+    post:
+      operationId: api_lab_results_verify_create
+      description: |-
+        Verify or reject a result (two-stage validation support).
+
+        Accepts:
+        - approved: boolean
+        - comments: optional string
+        - validation_type: TECHNICAL (default) or CLINICAL
+
+        For backward compatibility, approved=True creates an APPROVED validation,
+        approved=False creates a REJECTED validation.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Lab Result.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LabResultRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LabResultRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LabResultRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabResult'
+          description: ''
+  /api/lab/results/pending-clinical-signoff/:
+    get:
+      operationId: api_lab_results_pending_clinical_signoff_retrieve
+      description: |-
+        Get results that have technical approval but are pending clinical sign-off.
+
+        These are results where:
+        - The test requires clinical sign-off
+        - Technical validation is APPROVED
+        - No clinical validation exists OR clinical validation is PENDING
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabResult'
+          description: ''
   /api/lab/results/pending-verification/:
     get:
       operationId: api_lab_results_pending_verification_retrieve
-      description: Get results pending verification.
+      description: |-
+        Get results pending verification.
+
+        Query params:
+        - validation_type: TECHNICAL or CLINICAL (optional)
+          - TECHNICAL: Results without technical validation
+          - CLINICAL: Results with technical approval but pending clinical sign-off
+
+        Without validation_type, returns all unverified results.
       tags:
       - api
       security:
@@ -22004,6 +23619,74 @@ paths:
               schema:
                 $ref: '#/components/schemas/StaffProfile'
           description: ''
+  /api/terminology/codesystems/:
+    get:
+      operationId: api_terminology_codesystems_list
+      description: |-
+        ViewSet for listing and retrieving code systems (read-only).
+
+        Provides a registry of code systems used in Vitora, including:
+        - Internal Vitora vocabularies (e.g., vitora-lab)
+        - External standards (e.g., ICD-10, LOINC)
+        - Integration-specific codes (e.g., SHA tariff, LIS vendor codes)
+
+        Useful for FHIR compliance and self-documenting API responses.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CodeSystem'
+          description: ''
+  /api/terminology/codesystems/{slug}/:
+    get:
+      operationId: api_terminology_codesystems_retrieve
+      description: |-
+        ViewSet for listing and retrieving code systems (read-only).
+
+        Provides a registry of code systems used in Vitora, including:
+        - Internal Vitora vocabularies (e.g., vitora-lab)
+        - External standards (e.g., ICD-10, LOINC)
+        - Integration-specific codes (e.g., SHA tariff, LIS vendor codes)
+
+        Useful for FHIR compliance and self-documenting API responses.
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+          description: Unique identifier (e.g., 'vitora-lab', 'icd-10', 'loinc')
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeSystem'
+          description: ''
   /api/token/:
     post:
       operationId: api_token_create
@@ -24175,6 +25858,258 @@ components:
         * `EXPIRING_SOON` - Expiring Soon
         * `EXPIRED` - Expired
         * `RECALLED` - Product Recalled
+    AmendReport:
+      type: object
+      description: Serializer for amending a finalized report.
+      properties:
+        reason:
+          type: string
+          description: Reason for the amendment
+        findings:
+          type: string
+        impression:
+          type: string
+      required:
+      - reason
+    AmendReportRequest:
+      type: object
+      description: Serializer for amending a finalized report.
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          description: Reason for the amendment
+        findings:
+          type: string
+        impression:
+          type: string
+      required:
+      - reason
+    AnalyzerRun:
+      type: object
+      description: Serializer for analyzer runs.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        specimen:
+          type: integer
+          description: Specimen this run is for
+        specimen_barcode:
+          type: string
+          readOnly: true
+        instrument:
+          type: integer
+          description: Instrument that produced this run
+        instrument_code:
+          type: string
+          readOnly: true
+        instrument_name:
+          type: string
+          readOnly: true
+        operator:
+          type: integer
+          nullable: true
+          description: Lab technician operating the instrument (null for automated
+            runs)
+        operator_name:
+          type: string
+          nullable: true
+          readOnly: true
+        run_datetime:
+          type: string
+          format: date-time
+          description: When the analyzer run occurred
+        raw_message:
+          type: string
+          description: Raw HL7/ASTM/FHIR message from instrument
+        raw_payload:
+          description: Parsed message data in structured format
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AnalyzerRunStatusEnum'
+          description: |-
+            Processing status of this run
+
+            * `RECEIVED` - Message Received
+            * `PARSED` - Parsed Successfully
+            * `APPLIED` - Results Applied
+            * `ERROR` - Parse Error
+        status_display:
+          type: string
+          readOnly: true
+        error_message:
+          type: string
+          description: Error details if parsing failed
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - instrument
+      - instrument_code
+      - instrument_name
+      - operator_name
+      - raw_message
+      - run_datetime
+      - specimen
+      - specimen_barcode
+      - status_display
+    AnalyzerRunCreate:
+      type: object
+      description: Serializer for creating analyzer runs.
+      properties:
+        specimen:
+          type: integer
+          description: Specimen this run is for
+        instrument:
+          type: integer
+          description: Instrument that produced this run
+        operator:
+          type: integer
+          nullable: true
+          description: Lab technician operating the instrument (null for automated
+            runs)
+        run_datetime:
+          type: string
+          format: date-time
+          description: When the analyzer run occurred
+        raw_message:
+          type: string
+          description: Raw HL7/ASTM/FHIR message from instrument
+        raw_payload:
+          description: Parsed message data in structured format
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AnalyzerRunStatusEnum'
+          description: |-
+            Processing status of this run
+
+            * `RECEIVED` - Message Received
+            * `PARSED` - Parsed Successfully
+            * `APPLIED` - Results Applied
+            * `ERROR` - Parse Error
+      required:
+      - instrument
+      - raw_message
+      - run_datetime
+      - specimen
+    AnalyzerRunCreateRequest:
+      type: object
+      description: Serializer for creating analyzer runs.
+      properties:
+        specimen:
+          type: integer
+          description: Specimen this run is for
+        instrument:
+          type: integer
+          description: Instrument that produced this run
+        operator:
+          type: integer
+          nullable: true
+          description: Lab technician operating the instrument (null for automated
+            runs)
+        run_datetime:
+          type: string
+          format: date-time
+          description: When the analyzer run occurred
+        raw_message:
+          type: string
+          minLength: 1
+          description: Raw HL7/ASTM/FHIR message from instrument
+        raw_payload:
+          description: Parsed message data in structured format
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AnalyzerRunStatusEnum'
+          description: |-
+            Processing status of this run
+
+            * `RECEIVED` - Message Received
+            * `PARSED` - Parsed Successfully
+            * `APPLIED` - Results Applied
+            * `ERROR` - Parse Error
+      required:
+      - instrument
+      - raw_message
+      - run_datetime
+      - specimen
+    AnalyzerRunMarkError:
+      type: object
+      description: Serializer for marking an analyzer run as error.
+      properties:
+        error_message:
+          type: string
+          description: Error details
+      required:
+      - error_message
+    AnalyzerRunMarkErrorRequest:
+      type: object
+      description: Serializer for marking an analyzer run as error.
+      properties:
+        error_message:
+          type: string
+          minLength: 1
+          description: Error details
+      required:
+      - error_message
+    AnalyzerRunRequest:
+      type: object
+      description: Serializer for analyzer runs.
+      properties:
+        specimen:
+          type: integer
+          description: Specimen this run is for
+        instrument:
+          type: integer
+          description: Instrument that produced this run
+        operator:
+          type: integer
+          nullable: true
+          description: Lab technician operating the instrument (null for automated
+            runs)
+        run_datetime:
+          type: string
+          format: date-time
+          description: When the analyzer run occurred
+        raw_message:
+          type: string
+          minLength: 1
+          description: Raw HL7/ASTM/FHIR message from instrument
+        raw_payload:
+          description: Parsed message data in structured format
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AnalyzerRunStatusEnum'
+          description: |-
+            Processing status of this run
+
+            * `RECEIVED` - Message Received
+            * `PARSED` - Parsed Successfully
+            * `APPLIED` - Results Applied
+            * `ERROR` - Parse Error
+        error_message:
+          type: string
+          description: Error details if parsing failed
+      required:
+      - instrument
+      - raw_message
+      - run_datetime
+      - specimen
+    AnalyzerRunStatusEnum:
+      enum:
+      - RECEIVED
+      - PARSED
+      - APPLIED
+      - ERROR
+      type: string
+      description: |-
+        * `RECEIVED` - Message Received
+        * `PARSED` - Parsed Successfully
+        * `APPLIED` - Results Applied
+        * `ERROR` - Parse Error
     AppliesToEnum:
       enum:
       - APPOINTMENT
@@ -25483,6 +27418,20 @@ components:
         * `provisional` - Provisional
         * `ruled_out` - Ruled Out
         * `suspected` - Suspected
+    CheckInIdentityMethodEnum:
+      enum:
+      - MRN
+      - NATIONAL_ID
+      - PHONE
+      - BIOMETRIC
+      - MANUAL
+      type: string
+      description: |-
+        * `MRN` - Medical Record Number
+        * `NATIONAL_ID` - National ID
+        * `PHONE` - Phone Number
+        * `BIOMETRIC` - Biometric Scan
+        * `MANUAL` - Manual Verification
     CheckInRequestRequest:
       type: object
       description: |-
@@ -25526,7 +27475,7 @@ components:
           description: ID of previous encounter for follow-up
         identity_method:
           allOf:
-          - $ref: '#/components/schemas/IdentityMethodEnum'
+          - $ref: '#/components/schemas/CheckInIdentityMethodEnum'
           default: MRN
       required:
       - destination
@@ -27904,18 +29853,114 @@ components:
       - content
       - name
       - template_type
-    ConditionStatusEnum:
+    CodeSystem:
+      type: object
+      description: |-
+        Serializer for CodeSystem model (read-only).
+
+        Provides a registry of code systems used in Vitora for FHIR compliance
+        and self-documenting API responses.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        slug:
+          type: string
+          readOnly: true
+          description: Unique identifier (e.g., 'vitora-lab', 'icd-10', 'loinc')
+          pattern: ^[-a-zA-Z0-9_]+$
+        name:
+          type: string
+          readOnly: true
+          description: Human-readable name of the code system
+        uri:
+          type: string
+          format: uri
+          readOnly: true
+          description: FHIR CodeSystem URI (e.g., 'http://hl7.org/fhir/sid/icd-10')
+        version:
+          type: string
+          readOnly: true
+          description: Code system version (e.g., '2025', 'R4')
+        publisher:
+          type: string
+          readOnly: true
+          description: Organization responsible for the code system
+        description:
+          type: string
+          readOnly: true
+          description: Detailed description of the code system
+        is_internal:
+          type: boolean
+          readOnly: true
+          description: Whether this is a Vitora-managed vocabulary
+        is_active:
+          type: boolean
+          readOnly: true
+          description: Whether this code system is currently in use
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this code system was registered
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this code system was last updated
+      required:
+      - created_at
+      - description
+      - id
+      - is_active
+      - is_internal
+      - name
+      - publisher
+      - slug
+      - updated_at
+      - uri
+      - version
+    CommunicateCritical:
+      type: object
+      description: Serializer for recording critical finding communication.
+      properties:
+        communicated_to:
+          type: string
+          description: Name/identifier of person notified
+        method:
+          allOf:
+          - $ref: '#/components/schemas/CommunicateCriticalMethodEnum'
+          default: phone
+      required:
+      - communicated_to
+    CommunicateCriticalMethodEnum:
       enum:
-      - STABLE
-      - IMPROVING
-      - DETERIORATING
-      - CRITICAL
+      - phone
+      - in_person
+      - secure_message
+      - pager
+      - other
       type: string
       description: |-
-        * `STABLE` - Stable
-        * `IMPROVING` - Improving
-        * `DETERIORATING` - Deteriorating
-        * `CRITICAL` - Critical
+        * `phone` - Phone
+        * `in_person` - In Person
+        * `secure_message` - Secure Message
+        * `pager` - Pager
+        * `other` - Other
+    CommunicateCriticalRequest:
+      type: object
+      description: Serializer for recording critical finding communication.
+      properties:
+        communicated_to:
+          type: string
+          minLength: 1
+          description: Name/identifier of person notified
+        method:
+          allOf:
+          - $ref: '#/components/schemas/CommunicateCriticalMethodEnum'
+          default: phone
+      required:
+      - communicated_to
     ConstraintOverrideMetrics:
       type: object
       description: Response serializer for constraint override metrics.
@@ -28182,6 +30227,23 @@ components:
         * `approved` - Approved
         * `refunded` - Refunded
         * `rejected` - Rejected
+    CriticalValuesReportResponse:
+      type: object
+      properties:
+        start:
+          type: string
+        end:
+          type: string
+        total_critical:
+          type: integer
+        by_test:
+          type: array
+          items: {}
+      required:
+      - by_test
+      - end
+      - start
+      - total_critical
     DICOMSeriesList:
       type: object
       description: Compact series serializer without instances (for listing).
@@ -28817,6 +30879,310 @@ components:
         * `SECONDARY` - Secondary Diagnosis
         * `DIFFERENTIAL` - Differential Diagnosis
         * `WORKING` - Working Diagnosis
+    DiagnosticReport:
+      type: object
+      description: Serializer for reading diagnostic reports.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        report_number:
+          type: string
+          readOnly: true
+        lab_order:
+          type: integer
+          description: Lab order this report is for
+        lab_order_number:
+          type: string
+          readOnly: true
+        patient_name:
+          type: string
+          description: Get patient full name from lab order.
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/DiagnosticReportStatusEnum'
+          description: |-
+            Report workflow status
+
+            * `DRAFT` - Draft
+            * `PRELIMINARY` - Preliminary
+            * `FINAL` - Final
+            * `AMENDED` - Amended
+            * `CANCELLED` - Cancelled
+        status_display:
+          type: string
+          readOnly: true
+        is_finalized:
+          type: boolean
+          readOnly: true
+        issued_by:
+          type: integer
+          description: User who issued the report
+        issued_by_name:
+          type: string
+          description: Get name of user who issued the report.
+          readOnly: true
+        issued_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the report was finalized
+        conclusion:
+          type: string
+          description: Summary/conclusion of the report
+        clinical_info:
+          type: string
+          description: Clinical information/context provided with order
+        amended_by:
+          type: integer
+          nullable: true
+          description: User who last amended the report
+        amended_by_name:
+          type: string
+          nullable: true
+          description: Get name of user who amended the report.
+          readOnly: true
+        amended_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the report was last amended
+        cancellation_reason:
+          type: string
+          description: Reason for cancellation
+        pdf_file:
+          type: string
+          format: uri
+          nullable: true
+          description: Generated PDF report file
+        pdf_url:
+          type: string
+          nullable: true
+          description: Get URL for the PDF file if it exists.
+          readOnly: true
+        fhir_resource_id:
+          type: string
+          description: FHIR DiagnosticReport resource ID
+          maxLength: 100
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amended_by_name
+      - created_at
+      - id
+      - is_finalized
+      - issued_by
+      - issued_by_name
+      - lab_order
+      - lab_order_number
+      - patient_name
+      - pdf_url
+      - report_number
+      - status_display
+      - updated_at
+    DiagnosticReportAmend:
+      type: object
+      description: Serializer for amending a diagnostic report.
+      properties:
+        conclusion:
+          type: string
+          description: Updated conclusion text
+      required:
+      - conclusion
+    DiagnosticReportAmendRequest:
+      type: object
+      description: Serializer for amending a diagnostic report.
+      properties:
+        conclusion:
+          type: string
+          minLength: 1
+          description: Updated conclusion text
+      required:
+      - conclusion
+    DiagnosticReportCancel:
+      type: object
+      description: Serializer for cancelling a diagnostic report.
+      properties:
+        reason:
+          type: string
+          description: Reason for cancellation
+      required:
+      - reason
+    DiagnosticReportCancelRequest:
+      type: object
+      description: Serializer for cancelling a diagnostic report.
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          description: Reason for cancellation
+      required:
+      - reason
+    DiagnosticReportCreate:
+      type: object
+      description: Serializer for creating diagnostic reports.
+      properties:
+        lab_order:
+          type: integer
+          description: Lab order this report is for
+        conclusion:
+          type: string
+          description: Summary/conclusion of the report
+        clinical_info:
+          type: string
+          description: Clinical information/context provided with order
+        fhir_resource_id:
+          type: string
+          description: FHIR DiagnosticReport resource ID
+          maxLength: 100
+      required:
+      - lab_order
+    DiagnosticReportCreateRequest:
+      type: object
+      description: Serializer for creating diagnostic reports.
+      properties:
+        lab_order:
+          type: integer
+          description: Lab order this report is for
+        conclusion:
+          type: string
+          description: Summary/conclusion of the report
+        clinical_info:
+          type: string
+          description: Clinical information/context provided with order
+        fhir_resource_id:
+          type: string
+          description: FHIR DiagnosticReport resource ID
+          maxLength: 100
+      required:
+      - lab_order
+    DiagnosticReportRequest:
+      type: object
+      description: Serializer for reading diagnostic reports.
+      properties:
+        lab_order:
+          type: integer
+          description: Lab order this report is for
+        status:
+          allOf:
+          - $ref: '#/components/schemas/DiagnosticReportStatusEnum'
+          description: |-
+            Report workflow status
+
+            * `DRAFT` - Draft
+            * `PRELIMINARY` - Preliminary
+            * `FINAL` - Final
+            * `AMENDED` - Amended
+            * `CANCELLED` - Cancelled
+        issued_by:
+          type: integer
+          description: User who issued the report
+        issued_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the report was finalized
+        conclusion:
+          type: string
+          description: Summary/conclusion of the report
+        clinical_info:
+          type: string
+          description: Clinical information/context provided with order
+        amended_by:
+          type: integer
+          nullable: true
+          description: User who last amended the report
+        amended_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the report was last amended
+        cancellation_reason:
+          type: string
+          description: Reason for cancellation
+        pdf_file:
+          type: string
+          format: binary
+          nullable: true
+          description: Generated PDF report file
+        fhir_resource_id:
+          type: string
+          description: FHIR DiagnosticReport resource ID
+          maxLength: 100
+      required:
+      - issued_by
+      - lab_order
+    DiagnosticReportStatusEnum:
+      enum:
+      - DRAFT
+      - PRELIMINARY
+      - FINAL
+      - AMENDED
+      - CANCELLED
+      type: string
+      description: |-
+        * `DRAFT` - Draft
+        * `PRELIMINARY` - Preliminary
+        * `FINAL` - Final
+        * `AMENDED` - Amended
+        * `CANCELLED` - Cancelled
+    DiagnosticReportUpdate:
+      type: object
+      description: Serializer for updating diagnostic reports (draft only).
+      properties:
+        conclusion:
+          type: string
+          description: Summary/conclusion of the report
+        clinical_info:
+          type: string
+          description: Clinical information/context provided with order
+        fhir_resource_id:
+          type: string
+          description: FHIR DiagnosticReport resource ID
+          maxLength: 100
+        status:
+          allOf:
+          - $ref: '#/components/schemas/DiagnosticReportStatusEnum'
+          description: |-
+            Report workflow status
+
+            * `DRAFT` - Draft
+            * `PRELIMINARY` - Preliminary
+            * `FINAL` - Final
+            * `AMENDED` - Amended
+            * `CANCELLED` - Cancelled
+    DiagnosticReportUpdateRequest:
+      type: object
+      description: Serializer for updating diagnostic reports (draft only).
+      properties:
+        conclusion:
+          type: string
+          description: Summary/conclusion of the report
+        clinical_info:
+          type: string
+          description: Clinical information/context provided with order
+        fhir_resource_id:
+          type: string
+          description: FHIR DiagnosticReport resource ID
+          maxLength: 100
+        status:
+          allOf:
+          - $ref: '#/components/schemas/DiagnosticReportStatusEnum'
+          description: |-
+            Report workflow status
+
+            * `DRAFT` - Draft
+            * `PRELIMINARY` - Preliminary
+            * `FINAL` - Final
+            * `AMENDED` - Amended
+            * `CANCELLED` - Cancelled
     DirectEligibilityResponse:
       type: object
       properties:
@@ -30822,20 +33188,6 @@ components:
         * `kra_pin` - KRA PIN
         * `temporary_id` - Temporary ID
         * `passport` - Passport Number
-    IdentityMethodEnum:
-      enum:
-      - MRN
-      - NATIONAL_ID
-      - PHONE
-      - BIOMETRIC
-      - MANUAL
-      type: string
-      description: |-
-        * `MRN` - Medical Record Number
-        * `NATIONAL_ID` - National ID
-        * `PHONE` - Phone Number
-        * `BIOMETRIC` - Biometric Scan
-        * `MANUAL` - Manual Verification
     ImagingOrder:
       type: object
       description: Order with status and items.
@@ -31486,6 +33838,176 @@ components:
       - daily_rate
       - name
       - ward_type
+    Instrument:
+      type: object
+      description: Serializer for laboratory instruments.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        code:
+          type: string
+          description: Unique instrument identifier code
+          maxLength: 50
+        name:
+          type: string
+          description: Full instrument name
+          maxLength: 200
+        manufacturer:
+          type: string
+          description: Equipment manufacturer
+          maxLength: 100
+        model:
+          type: string
+          description: Model number/name
+          maxLength: 100
+        serial_number:
+          type: string
+          description: Serial number
+          maxLength: 100
+        department:
+          type: string
+          description: Lab department (e.g., Hematology, Chemistry)
+          maxLength: 50
+        is_active:
+          type: boolean
+          description: Whether instrument is operational
+        interface_type:
+          allOf:
+          - $ref: '#/components/schemas/InterfaceTypeEnum'
+          description: |-
+            Communication protocol type
+
+            * `HL7_MLLP` - HL7 v2 over MLLP
+            * `ASTM` - ASTM/LIS2-A2
+            * `FHIR` - FHIR R4
+            * `MANUAL` - Manual Entry
+        interface_type_display:
+          type: string
+          readOnly: true
+        integration_config:
+          description: 'Integration settings: host, port, encoding, etc.'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - created_at
+      - id
+      - interface_type_display
+      - name
+      - updated_at
+    InstrumentCreate:
+      type: object
+      description: Serializer for creating/updating instruments.
+      properties:
+        code:
+          type: string
+          description: Unique instrument identifier code
+          maxLength: 50
+        name:
+          type: string
+          description: Full instrument name
+          maxLength: 200
+        manufacturer:
+          type: string
+          description: Equipment manufacturer
+          maxLength: 100
+        model:
+          type: string
+          description: Model number/name
+          maxLength: 100
+        serial_number:
+          type: string
+          description: Serial number
+          maxLength: 100
+        department:
+          type: string
+          description: Lab department (e.g., Hematology, Chemistry)
+          maxLength: 50
+        is_active:
+          type: boolean
+          description: Whether instrument is operational
+        interface_type:
+          allOf:
+          - $ref: '#/components/schemas/InterfaceTypeEnum'
+          description: |-
+            Communication protocol type
+
+            * `HL7_MLLP` - HL7 v2 over MLLP
+            * `ASTM` - ASTM/LIS2-A2
+            * `FHIR` - FHIR R4
+            * `MANUAL` - Manual Entry
+        integration_config:
+          description: 'Integration settings: host, port, encoding, etc.'
+      required:
+      - code
+      - name
+    InstrumentCreateRequest:
+      type: object
+      description: Serializer for creating/updating instruments.
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: Unique instrument identifier code
+          maxLength: 50
+        name:
+          type: string
+          minLength: 1
+          description: Full instrument name
+          maxLength: 200
+        manufacturer:
+          type: string
+          description: Equipment manufacturer
+          maxLength: 100
+        model:
+          type: string
+          description: Model number/name
+          maxLength: 100
+        serial_number:
+          type: string
+          description: Serial number
+          maxLength: 100
+        department:
+          type: string
+          description: Lab department (e.g., Hematology, Chemistry)
+          maxLength: 50
+        is_active:
+          type: boolean
+          description: Whether instrument is operational
+        interface_type:
+          allOf:
+          - $ref: '#/components/schemas/InterfaceTypeEnum'
+          description: |-
+            Communication protocol type
+
+            * `HL7_MLLP` - HL7 v2 over MLLP
+            * `ASTM` - ASTM/LIS2-A2
+            * `FHIR` - FHIR R4
+            * `MANUAL` - Manual Entry
+        integration_config:
+          description: 'Integration settings: host, port, encoding, etc.'
+      required:
+      - code
+      - name
+    InterfaceTypeEnum:
+      enum:
+      - HL7_MLLP
+      - ASTM
+      - FHIR
+      - MANUAL
+      type: string
+      description: |-
+        * `HL7_MLLP` - HL7 v2 over MLLP
+        * `ASTM` - ASTM/LIS2-A2
+        * `FHIR` - FHIR R4
+        * `MANUAL` - Manual Entry
     Invoice:
       type: object
       description: Serializer for Invoice model.
@@ -32419,13 +34941,18 @@ components:
         priority:
           $ref: '#/components/schemas/LabQueuePriorityEnum'
         queue_status:
-          $ref: '#/components/schemas/QueueStatusEnum'
+          $ref: '#/components/schemas/LabQueueStatusEnum'
+        specimen_id:
+          type: integer
+          readOnly: true
         sample_type:
           type: string
-          maxLength: 50
+          nullable: true
+          readOnly: true
         sample_id:
           type: string
-          maxLength: 50
+          nullable: true
+          readOnly: true
         assigned_technician:
           type: integer
           nullable: true
@@ -32435,14 +34962,15 @@ components:
         collected_by:
           type: integer
           nullable: true
+          readOnly: true
         collected_by_name:
           type: string
           nullable: true
           readOnly: true
         collected_at:
           type: string
-          format: date-time
           nullable: true
+          readOnly: true
         processing_started_at:
           type: string
           format: date-time
@@ -32498,6 +35026,8 @@ components:
       required:
       - actual_tat_hours
       - assigned_technician_name
+      - collected_at
+      - collected_by
       - collected_by_name
       - created_at
       - elapsed_hours
@@ -32509,7 +35039,9 @@ components:
       - patient_name
       - queue_number
       - reviewed_by_name
+      - sample_id
       - sample_type
+      - specimen_id
       - tests
       - updated_at
     LabQueueAssign:
@@ -32530,6 +35062,9 @@ components:
       type: object
       description: Serializer for sample collection action.
       properties:
+        barcode:
+          type: string
+          default: ''
         sample_id:
           type: string
           default: ''
@@ -32537,6 +35072,9 @@ components:
       type: object
       description: Serializer for sample collection action.
       properties:
+        barcode:
+          type: string
+          default: ''
         sample_id:
           type: string
           default: ''
@@ -32598,23 +35136,9 @@ components:
         priority:
           $ref: '#/components/schemas/LabQueuePriorityEnum'
         queue_status:
-          $ref: '#/components/schemas/QueueStatusEnum'
-        sample_type:
-          type: string
-          minLength: 1
-          maxLength: 50
-        sample_id:
-          type: string
-          maxLength: 50
+          $ref: '#/components/schemas/LabQueueStatusEnum'
         assigned_technician:
           type: integer
-          nullable: true
-        collected_by:
-          type: integer
-          nullable: true
-        collected_at:
-          type: string
-          format: date-time
           nullable: true
         processing_started_at:
           type: string
@@ -32639,8 +35163,20 @@ components:
           type: string
         rejection_reason:
           type: string
-      required:
-      - sample_type
+    LabQueueStatusEnum:
+      enum:
+      - PENDING
+      - COLLECTED
+      - PROCESSING
+      - REVIEW
+      - RELEASED
+      type: string
+      description: |-
+        * `PENDING` - Pending Collection
+        * `COLLECTED` - Sample Collected
+        * `PROCESSING` - Processing
+        * `REVIEW` - Pending Review
+        * `RELEASED` - Results Released
     LabResult:
       type: object
       description: Result with test info and flags.
@@ -32679,7 +35215,7 @@ components:
           type: string
           description: Pathologist notes
         verification_status:
-          $ref: '#/components/schemas/VerificationStatusEnum'
+          $ref: '#/components/schemas/LabResultVerificationStatusEnum'
         verified_by:
           type: integer
           nullable: true
@@ -32710,6 +35246,12 @@ components:
           type: string
           format: date-time
           readOnly: true
+        validation_summary:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          description: Return two-stage validation summary for frontend display.
+          readOnly: true
       required:
       - created_at
       - entered_at
@@ -32722,6 +35264,7 @@ components:
       - test_code
       - test_name
       - updated_at
+      - validation_summary
     LabResultCreate:
       type: object
       description: Create/update result.
@@ -32926,7 +35469,7 @@ components:
           type: string
           description: Pathologist notes
         verification_status:
-          $ref: '#/components/schemas/VerificationStatusEnum'
+          $ref: '#/components/schemas/LabResultVerificationStatusEnum'
         verified_by:
           type: integer
           nullable: true
@@ -32944,6 +35487,16 @@ components:
           description: Result has been amended
       required:
       - order_item
+    LabResultVerificationStatusEnum:
+      enum:
+      - UNVERIFIED
+      - VERIFIED
+      - REJECTED
+      type: string
+      description: |-
+        * `UNVERIFIED` - Unverified
+        * `VERIFIED` - Verified
+        * `REJECTED` - Rejected
     LabTestCategoryEnum:
       enum:
       - HEMATOLOGY
@@ -33301,24 +35854,6 @@ components:
         * `V` - Responds to Voice
         * `P` - Responds to Pain
         * `U` - Unresponsive
-    MethodEnum:
-      enum:
-      - cash
-      - mpesa
-      - card
-      - bank_transfer
-      - insurance
-      - corporate
-      - cheque
-      type: string
-      description: |-
-        * `cash` - Cash
-        * `mpesa` - M-Pesa
-        * `card` - Card
-        * `bank_transfer` - Bank Transfer
-        * `insurance` - Insurance Claim
-        * `corporate` - Corporate Account
-        * `cheque` - Cheque
     MobilityEnum:
       enum:
       - AMBULATORY
@@ -33775,6 +36310,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AdmissionRecommendation'
+    PaginatedAnalyzerRunList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalyzerRun'
     PaginatedAppointmentListList:
       type: object
       required:
@@ -34166,6 +36724,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Diagnosis'
+    PaginatedDiagnosticReportList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiagnosticReport'
     PaginatedDischargeList:
       type: object
       required:
@@ -34442,6 +37023,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/InpatientWard'
+    PaginatedInstrumentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Instrument'
     PaginatedInvoiceList:
       type: object
       required:
@@ -34718,6 +37322,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Prescription'
+    PaginatedRadiologyReportList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/RadiologyReport'
     PaginatedResourceListList:
       type: object
       required:
@@ -35342,6 +37969,44 @@ components:
         constraint_override_reason:
           type: string
           description: Reason for overriding compatibility constraints
+    PatchedAnalyzerRunRequest:
+      type: object
+      description: Serializer for analyzer runs.
+      properties:
+        specimen:
+          type: integer
+          description: Specimen this run is for
+        instrument:
+          type: integer
+          description: Instrument that produced this run
+        operator:
+          type: integer
+          nullable: true
+          description: Lab technician operating the instrument (null for automated
+            runs)
+        run_datetime:
+          type: string
+          format: date-time
+          description: When the analyzer run occurred
+        raw_message:
+          type: string
+          minLength: 1
+          description: Raw HL7/ASTM/FHIR message from instrument
+        raw_payload:
+          description: Parsed message data in structured format
+        status:
+          allOf:
+          - $ref: '#/components/schemas/AnalyzerRunStatusEnum'
+          description: |-
+            Processing status of this run
+
+            * `RECEIVED` - Message Received
+            * `PARSED` - Parsed Successfully
+            * `APPLIED` - Results Applied
+            * `ERROR` - Parse Error
+        error_message:
+          type: string
+          description: Error details if parsing failed
     PatchedAppointmentRequest:
       type: object
       description: Serializer for Appointment model.
@@ -36155,6 +38820,31 @@ components:
           type: integer
           nullable: true
           description: Clinician who made the diagnosis
+    PatchedDiagnosticReportUpdateRequest:
+      type: object
+      description: Serializer for updating diagnostic reports (draft only).
+      properties:
+        conclusion:
+          type: string
+          description: Summary/conclusion of the report
+        clinical_info:
+          type: string
+          description: Clinical information/context provided with order
+        fhir_resource_id:
+          type: string
+          description: FHIR DiagnosticReport resource ID
+          maxLength: 100
+        status:
+          allOf:
+          - $ref: '#/components/schemas/DiagnosticReportStatusEnum'
+          description: |-
+            Report workflow status
+
+            * `DRAFT` - Draft
+            * `PRELIMINARY` - Preliminary
+            * `FINAL` - Final
+            * `AMENDED` - Amended
+            * `CANCELLED` - Cancelled
     PatchedDischargeRequest:
       type: object
       description: Serializer for Discharge model.
@@ -36666,6 +39356,51 @@ components:
         ventilator_capable:
           type: boolean
           description: Whether ward supports ventilated patients
+    PatchedInstrumentCreateRequest:
+      type: object
+      description: Serializer for creating/updating instruments.
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: Unique instrument identifier code
+          maxLength: 50
+        name:
+          type: string
+          minLength: 1
+          description: Full instrument name
+          maxLength: 200
+        manufacturer:
+          type: string
+          description: Equipment manufacturer
+          maxLength: 100
+        model:
+          type: string
+          description: Model number/name
+          maxLength: 100
+        serial_number:
+          type: string
+          description: Serial number
+          maxLength: 100
+        department:
+          type: string
+          description: Lab department (e.g., Hematology, Chemistry)
+          maxLength: 50
+        is_active:
+          type: boolean
+          description: Whether instrument is operational
+        interface_type:
+          allOf:
+          - $ref: '#/components/schemas/InterfaceTypeEnum'
+          description: |-
+            Communication protocol type
+
+            * `HL7_MLLP` - HL7 v2 over MLLP
+            * `ASTM` - ASTM/LIS2-A2
+            * `FHIR` - FHIR R4
+            * `MANUAL` - Manual Entry
+        integration_config:
+          description: 'Integration settings: host, port, encoding, etc.'
     PatchedInvoiceRequest:
       type: object
       description: Serializer for Invoice model.
@@ -36768,23 +39503,9 @@ components:
         priority:
           $ref: '#/components/schemas/LabQueuePriorityEnum'
         queue_status:
-          $ref: '#/components/schemas/QueueStatusEnum'
-        sample_type:
-          type: string
-          minLength: 1
-          maxLength: 50
-        sample_id:
-          type: string
-          maxLength: 50
+          $ref: '#/components/schemas/LabQueueStatusEnum'
         assigned_technician:
           type: integer
-          nullable: true
-        collected_by:
-          type: integer
-          nullable: true
-        collected_at:
-          type: string
-          format: date-time
           nullable: true
         processing_started_at:
           type: string
@@ -37181,7 +39902,7 @@ components:
           description: Short unique code (e.g. CASH-01, MPESA-02)
           maxLength: 50
         method:
-          $ref: '#/components/schemas/MethodEnum'
+          $ref: '#/components/schemas/PaymentMethodEnum'
         till_number:
           type: string
           description: M-Pesa Till number (Buy Goods) for this payment point
@@ -37217,7 +39938,7 @@ components:
         invoice:
           type: integer
         method:
-          $ref: '#/components/schemas/MethodEnum'
+          $ref: '#/components/schemas/PaymentMethodEnum'
         payment_point:
           type: integer
           nullable: true
@@ -37256,6 +39977,33 @@ components:
           format: date
         clinical_notes:
           type: string
+    PatchedRadiologyReportUpdateRequest:
+      type: object
+      description: Serializer for updating a draft report.
+      properties:
+        technique:
+          type: string
+          description: Imaging technique/protocol used
+        comparison:
+          type: string
+          description: Comparison with prior studies (if any)
+        findings:
+          type: string
+          minLength: 1
+          description: Detailed radiological findings
+        impression:
+          type: string
+          minLength: 1
+          description: Summary impression/conclusion
+        recommendations:
+          type: string
+          description: Recommended follow-up or additional studies
+        is_critical:
+          type: boolean
+          description: Critical finding requiring urgent communication
+        critical_finding_description:
+          type: string
+          description: Description of the critical finding
     PatchedResourceRequest:
       type: object
       description: Serializer for Resource model.
@@ -37393,7 +40141,7 @@ components:
         secondary_diagnosis_codes:
           description: List of secondary ICD-10 diagnosis codes
         submission_method:
-          $ref: '#/components/schemas/SubmissionMethodEnum'
+          $ref: '#/components/schemas/ShaClaimSubmissionMethodEnum'
         preauth_number:
           type: string
           description: Pre-authorization reference number
@@ -38218,7 +40966,7 @@ components:
           minLength: 1
           description: Treatment plan, orders, next steps
         condition_status:
-          $ref: '#/components/schemas/ConditionStatusEnum'
+          $ref: '#/components/schemas/WardRoundConditionStatusEnum'
         requires_consultant_review:
           type: boolean
         consultant_specialty:
@@ -38759,7 +41507,7 @@ components:
           type: string
           readOnly: true
         method:
-          $ref: '#/components/schemas/MethodEnum'
+          $ref: '#/components/schemas/PaymentMethodEnum'
         payment_point:
           type: integer
           nullable: true
@@ -38814,6 +41562,24 @@ components:
       - received_by_username
       - status
       - updated_at
+    PaymentMethodEnum:
+      enum:
+      - cash
+      - mpesa
+      - card
+      - bank_transfer
+      - insurance
+      - corporate
+      - cheque
+      type: string
+      description: |-
+        * `cash` - Cash
+        * `mpesa` - M-Pesa
+        * `card` - Card
+        * `bank_transfer` - Bank Transfer
+        * `insurance` - Insurance Claim
+        * `corporate` - Corporate Account
+        * `cheque` - Cheque
     PaymentPoint:
       type: object
       description: Serializer for PaymentPoint model.
@@ -38829,7 +41595,7 @@ components:
           description: Short unique code (e.g. CASH-01, MPESA-02)
           maxLength: 50
         method:
-          $ref: '#/components/schemas/MethodEnum'
+          $ref: '#/components/schemas/PaymentMethodEnum'
         till_number:
           type: string
           description: M-Pesa Till number (Buy Goods) for this payment point
@@ -38895,7 +41661,7 @@ components:
           description: Short unique code (e.g. CASH-01, MPESA-02)
           maxLength: 50
         method:
-          $ref: '#/components/schemas/MethodEnum'
+          $ref: '#/components/schemas/PaymentMethodEnum'
         till_number:
           type: string
           description: M-Pesa Till number (Buy Goods) for this payment point
@@ -38935,7 +41701,7 @@ components:
         invoice:
           type: integer
         method:
-          $ref: '#/components/schemas/MethodEnum'
+          $ref: '#/components/schemas/PaymentMethodEnum'
         payment_point:
           type: integer
           nullable: true
@@ -39423,20 +42189,315 @@ components:
         * `DISPENSED` - Fully Dispensed
         * `CANCELLED` - Cancelled
         * `EXPIRED` - Expired
-    QueueStatusEnum:
+    RadiologyReport:
+      type: object
+      description: Full serializer for radiology reports.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        report_number:
+          type: string
+          readOnly: true
+        imaging_order:
+          type: integer
+          description: The imaging order this report is for
+        order_number:
+          type: string
+          readOnly: true
+        study:
+          type: integer
+          nullable: true
+          description: The DICOM study linked to this report (if available)
+        patient_name:
+          type: string
+          readOnly: true
+        patient_mrn:
+          type: string
+          readOnly: true
+        modality:
+          type: string
+          readOnly: true
+        study_description:
+          type: string
+          readOnly: true
+        technique:
+          type: string
+          description: Imaging technique/protocol used
+        comparison:
+          type: string
+          description: Comparison with prior studies (if any)
+        findings:
+          type: string
+          description: Detailed radiological findings
+        impression:
+          type: string
+          description: Summary impression/conclusion
+        recommendations:
+          type: string
+          description: Recommended follow-up or additional studies
+        is_critical:
+          type: boolean
+          description: Critical finding requiring urgent communication
+        critical_finding_description:
+          type: string
+          description: Description of the critical finding
+        critical_communicated:
+          type: boolean
+          readOnly: true
+          description: Whether critical finding has been communicated
+        critical_communicated_to:
+          type: string
+          description: Name/identifier of person notified
+          maxLength: 200
+        critical_communicated_method:
+          type: string
+          description: Communication method (phone, in-person, etc.)
+          maxLength: 50
+        critical_communicated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When critical finding was communicated
+        critical_communicated_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who communicated the critical finding
+        critical_communicated_by_name:
+          type: string
+          readOnly: true
+        status:
+          $ref: '#/components/schemas/RadiologyReportStatusEnum'
+        reported_by:
+          type: integer
+          readOnly: true
+          description: Radiologist who created/owns the report
+        reported_by_name:
+          type: string
+          readOnly: true
+        signed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When the report was signed/finalized
+        amendment_count:
+          type: integer
+          readOnly: true
+          description: Number of times this report has been amended
+        last_amendment_reason:
+          type: string
+          readOnly: true
+          description: Reason for the most recent amendment
+        last_amended_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        last_amended_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        last_amended_by_name:
+          type: string
+          readOnly: true
+        amendments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReportAmendment'
+          readOnly: true
+        can_edit:
+          type: boolean
+          readOnly: true
+        can_sign:
+          type: boolean
+          readOnly: true
+        can_amend:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amendment_count
+      - amendments
+      - can_amend
+      - can_edit
+      - can_sign
+      - created_at
+      - critical_communicated
+      - critical_communicated_at
+      - critical_communicated_by
+      - critical_communicated_by_name
+      - findings
+      - id
+      - imaging_order
+      - impression
+      - last_amended_at
+      - last_amended_by
+      - last_amended_by_name
+      - last_amendment_reason
+      - modality
+      - order_number
+      - patient_mrn
+      - patient_name
+      - report_number
+      - reported_by
+      - reported_by_name
+      - signed_at
+      - study_description
+      - updated_at
+    RadiologyReportCreate:
+      type: object
+      description: Serializer for creating a new radiology report draft.
+      properties:
+        imaging_order:
+          type: integer
+          description: The imaging order this report is for
+        study:
+          type: integer
+          nullable: true
+          description: The DICOM study linked to this report (if available)
+        technique:
+          type: string
+          description: Imaging technique/protocol used
+        comparison:
+          type: string
+          description: Comparison with prior studies (if any)
+        findings:
+          type: string
+          description: Detailed radiological findings
+        impression:
+          type: string
+          description: Summary impression/conclusion
+        recommendations:
+          type: string
+          description: Recommended follow-up or additional studies
+        is_critical:
+          type: boolean
+          description: Critical finding requiring urgent communication
+        critical_finding_description:
+          type: string
+          description: Description of the critical finding
+      required:
+      - findings
+      - imaging_order
+      - impression
+    RadiologyReportCreateRequest:
+      type: object
+      description: Serializer for creating a new radiology report draft.
+      properties:
+        imaging_order:
+          type: integer
+          description: The imaging order this report is for
+        study:
+          type: integer
+          nullable: true
+          description: The DICOM study linked to this report (if available)
+        technique:
+          type: string
+          description: Imaging technique/protocol used
+        comparison:
+          type: string
+          description: Comparison with prior studies (if any)
+        findings:
+          type: string
+          minLength: 1
+          description: Detailed radiological findings
+        impression:
+          type: string
+          minLength: 1
+          description: Summary impression/conclusion
+        recommendations:
+          type: string
+          description: Recommended follow-up or additional studies
+        is_critical:
+          type: boolean
+          description: Critical finding requiring urgent communication
+        critical_finding_description:
+          type: string
+          description: Description of the critical finding
+      required:
+      - findings
+      - imaging_order
+      - impression
+    RadiologyReportStatusEnum:
       enum:
-      - PENDING
-      - COLLECTED
-      - PROCESSING
-      - REVIEW
-      - RELEASED
+      - DRAFT
+      - PRELIMINARY
+      - FINAL
+      - AMENDED
       type: string
       description: |-
-        * `PENDING` - Pending Collection
-        * `COLLECTED` - Sample Collected
-        * `PROCESSING` - Processing
-        * `REVIEW` - Pending Review
-        * `RELEASED` - Results Released
+        * `DRAFT` - Draft
+        * `PRELIMINARY` - Preliminary
+        * `FINAL` - Final
+        * `AMENDED` - Amended
+    RadiologyReportUpdate:
+      type: object
+      description: Serializer for updating a draft report.
+      properties:
+        technique:
+          type: string
+          description: Imaging technique/protocol used
+        comparison:
+          type: string
+          description: Comparison with prior studies (if any)
+        findings:
+          type: string
+          description: Detailed radiological findings
+        impression:
+          type: string
+          description: Summary impression/conclusion
+        recommendations:
+          type: string
+          description: Recommended follow-up or additional studies
+        is_critical:
+          type: boolean
+          description: Critical finding requiring urgent communication
+        critical_finding_description:
+          type: string
+          description: Description of the critical finding
+      required:
+      - findings
+      - impression
+    RadiologyReportUpdateRequest:
+      type: object
+      description: Serializer for updating a draft report.
+      properties:
+        technique:
+          type: string
+          description: Imaging technique/protocol used
+        comparison:
+          type: string
+          description: Comparison with prior studies (if any)
+        findings:
+          type: string
+          minLength: 1
+          description: Detailed radiological findings
+        impression:
+          type: string
+          minLength: 1
+          description: Summary impression/conclusion
+        recommendations:
+          type: string
+          description: Recommended follow-up or additional studies
+        is_critical:
+          type: boolean
+          description: Critical finding requiring urgent communication
+        critical_finding_description:
+          type: string
+          description: Description of the critical finding
+      required:
+      - findings
+      - impression
     ReferralSourceEnum:
       enum:
       - self
@@ -39463,6 +42524,58 @@ components:
         * `sibling` - Sibling
         * `friend` - Friend
         * `other` - Other
+    ReportAmendment:
+      type: object
+      description: Serializer for report amendment history.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        amendment_number:
+          type: integer
+          readOnly: true
+          description: Sequential amendment number for this report
+        reason:
+          type: string
+          readOnly: true
+          description: Reason for the amendment
+        previous_findings:
+          type: string
+          readOnly: true
+          description: Findings before this amendment
+        previous_impression:
+          type: string
+          readOnly: true
+          description: Impression before this amendment
+        new_findings:
+          type: string
+          readOnly: true
+          description: Findings after this amendment (if changed)
+        new_impression:
+          type: string
+          readOnly: true
+          description: Impression after this amendment (if changed)
+        amended_by:
+          type: integer
+          readOnly: true
+        amended_by_name:
+          type: string
+          readOnly: true
+        amended_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - amended_at
+      - amended_by
+      - amended_by_name
+      - amendment_number
+      - id
+      - new_findings
+      - new_impression
+      - previous_findings
+      - previous_impression
+      - reason
     Resource:
       type: object
       description: Serializer for Resource model.
@@ -39999,7 +43112,7 @@ components:
           readOnly: true
           description: Amount to be paid by patient
         submission_method:
-          $ref: '#/components/schemas/SubmissionMethodEnum'
+          $ref: '#/components/schemas/ShaClaimSubmissionMethodEnum'
         submitted_at:
           type: string
           format: date-time
@@ -40261,7 +43374,7 @@ components:
           readOnly: true
           description: Amount to be paid by patient
         submission_method:
-          $ref: '#/components/schemas/SubmissionMethodEnum'
+          $ref: '#/components/schemas/ShaClaimSubmissionMethodEnum'
         submitted_at:
           type: string
           format: date-time
@@ -40534,7 +43647,7 @@ components:
         secondary_diagnosis_codes:
           description: List of secondary ICD-10 diagnosis codes
         submission_method:
-          $ref: '#/components/schemas/SubmissionMethodEnum'
+          $ref: '#/components/schemas/ShaClaimSubmissionMethodEnum'
         preauth_number:
           type: string
           description: Pre-authorization reference number
@@ -40936,6 +44049,30 @@ components:
       - result
       - status
       - timestamp
+    SampleRejectionReportResponse:
+      type: object
+      properties:
+        start:
+          type: string
+        end:
+          type: string
+        total_orders:
+          type: integer
+        rejected_orders:
+          type: integer
+        rejection_rate:
+          type: number
+          format: double
+        reasons:
+          type: array
+          items: {}
+      required:
+      - end
+      - reasons
+      - rejected_orders
+      - rejection_rate
+      - start
+      - total_orders
     Schedule:
       type: object
       description: Serializer for Schedule model.
@@ -41595,6 +44732,16 @@ components:
         * `appealed` - Appealed
         * `paid` - Paid
         * `written_off` - Written Off
+    ShaClaimSubmissionMethodEnum:
+      enum:
+      - api
+      - portal
+      - manual
+      type: string
+      description: |-
+        * `api` - API Integration
+        * `portal` - SHA Portal
+        * `manual` - Manual Submission
     ShaMemberStatusEnum:
       enum:
       - active
@@ -42673,16 +45820,6 @@ components:
       - county_name
       - id
       - name
-    SubmissionMethodEnum:
-      enum:
-      - api
-      - portal
-      - manual
-      type: string
-      description: |-
-        * `api` - API Integration
-        * `portal` - SHA Portal
-        * `manual` - Manual Submission
     SupervisorAlert:
       type: object
       description: Serializer for supervisor critical violation alerts.
@@ -42910,6 +46047,10 @@ components:
           minimum: -9223372036854775808
           format: int64
           description: Expected turnaround time in hours
+        requires_clinical_signoff:
+          type: boolean
+          description: Whether this test requires pathologist/clinical sign-off in
+            addition to technical validation
         available_in_house:
           type: boolean
         external_lab_partner:
@@ -44534,6 +47675,32 @@ components:
       - id
       - updated_at
       - vital_type
+    TurnaroundTimeReportResponse:
+      type: object
+      properties:
+        start:
+          type: string
+        end:
+          type: string
+        overall:
+          type: object
+          additionalProperties: {}
+        by_test:
+          type: array
+          items: {}
+        by_priority:
+          type: array
+          items: {}
+        queue_tat:
+          type: object
+          additionalProperties: {}
+      required:
+      - by_priority
+      - by_test
+      - end
+      - overall
+      - queue_tat
+      - start
     TypeEnum:
       enum:
       - ward_constraints_updated
@@ -44544,16 +47711,6 @@ components:
         * `ward_constraints_updated` - ward_constraints_updated
         * `compatibility_violation` - compatibility_violation
         * `bed_availability_changed` - bed_availability_changed
-    VerificationStatusEnum:
-      enum:
-      - UNVERIFIED
-      - VERIFIED
-      - REJECTED
-      type: string
-      description: |-
-        * `UNVERIFIED` - Unverified
-        * `VERIFIED` - Verified
-        * `REJECTED` - Rejected
     VerifyDocumentRequestRequest:
       type: object
       properties:
@@ -44909,7 +48066,7 @@ components:
           type: string
           description: Treatment plan, orders, next steps
         condition_status:
-          $ref: '#/components/schemas/ConditionStatusEnum'
+          $ref: '#/components/schemas/WardRoundConditionStatusEnum'
         condition_status_display:
           type: string
           readOnly: true
@@ -44943,6 +48100,18 @@ components:
       - round_time
       - subjective
       - updated_at
+    WardRoundConditionStatusEnum:
+      enum:
+      - STABLE
+      - IMPROVING
+      - DETERIORATING
+      - CRITICAL
+      type: string
+      description: |-
+        * `STABLE` - Stable
+        * `IMPROVING` - Improving
+        * `DETERIORATING` - Deteriorating
+        * `CRITICAL` - Critical
     WardRoundRequest:
       type: object
       description: Serializer for WardRound model.
@@ -44974,7 +48143,7 @@ components:
           minLength: 1
           description: Treatment plan, orders, next steps
         condition_status:
-          $ref: '#/components/schemas/ConditionStatusEnum'
+          $ref: '#/components/schemas/WardRoundConditionStatusEnum'
         requires_consultant_review:
           type: boolean
         consultant_specialty:
@@ -45079,6 +48248,28 @@ components:
         * `2` - Stage 2
         * `3` - Stage 3
         * `4` - Stage 4
+    WorkloadReportResponse:
+      type: object
+      properties:
+        start:
+          type: string
+        end:
+          type: string
+        totals:
+          type: object
+          additionalProperties: {}
+        by_day:
+          type: array
+          items: {}
+        by_technician:
+          type: array
+          items: {}
+      required:
+      - by_day
+      - by_technician
+      - end
+      - start
+      - totals
   securitySchemes:
     jwtAuth:
       type: http

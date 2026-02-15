@@ -7,6 +7,8 @@ from datetime import date
 
 from django.db import models
 from django_filters import rest_framework as filters
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers as drf_serializers
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -608,8 +610,10 @@ class LabAttachmentViewSet(viewsets.GenericViewSet):
     """Delete lab attachments."""
 
     queryset = LabResultAttachment.objects.all().select_related("lab_order", "uploaded_by")
+    serializer_class = LabResultAttachmentSerializer
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses={204: None})
     def destroy(self, request, pk=None):
         instance = self.get_object()
 
@@ -934,6 +938,21 @@ class LabTurnaroundTimeReportView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="TurnaroundTimeReportResponse",
+                fields={
+                    "start": drf_serializers.CharField(),
+                    "end": drf_serializers.CharField(),
+                    "overall": drf_serializers.DictField(),
+                    "by_test": drf_serializers.ListField(),
+                    "by_priority": drf_serializers.ListField(),
+                    "queue_tat": drf_serializers.DictField(),
+                },
+            )
+        }
+    )
     def get(self, request):
         start_date, end_date = _parse_date_range(request)
         data = LabReportService.turnaround_time_report(start_date, end_date)
@@ -945,6 +964,20 @@ class LabWorkloadReportView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="WorkloadReportResponse",
+                fields={
+                    "start": drf_serializers.CharField(),
+                    "end": drf_serializers.CharField(),
+                    "totals": drf_serializers.DictField(),
+                    "by_day": drf_serializers.ListField(),
+                    "by_technician": drf_serializers.ListField(),
+                },
+            )
+        }
+    )
     def get(self, request):
         start_date, end_date = _parse_date_range(request)
         data = LabReportService.workload_report(start_date, end_date)
@@ -956,6 +989,19 @@ class LabCriticalValuesReportView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="CriticalValuesReportResponse",
+                fields={
+                    "start": drf_serializers.CharField(),
+                    "end": drf_serializers.CharField(),
+                    "total_critical": drf_serializers.IntegerField(),
+                    "by_test": drf_serializers.ListField(),
+                },
+            )
+        }
+    )
     def get(self, request):
         start_date, end_date = _parse_date_range(request)
         data = LabReportService.critical_values_report(start_date, end_date)
@@ -967,6 +1013,21 @@ class LabSampleRejectionReportView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="SampleRejectionReportResponse",
+                fields={
+                    "start": drf_serializers.CharField(),
+                    "end": drf_serializers.CharField(),
+                    "total_orders": drf_serializers.IntegerField(),
+                    "rejected_orders": drf_serializers.IntegerField(),
+                    "rejection_rate": drf_serializers.FloatField(),
+                    "reasons": drf_serializers.ListField(),
+                },
+            )
+        }
+    )
     def get(self, request):
         start_date, end_date = _parse_date_range(request)
         data = LabReportService.sample_rejection_report(start_date, end_date)
