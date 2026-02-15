@@ -1,9 +1,9 @@
 # Laboratory Reporting: Current State vs Target State (Proposal & Concrete Plan)
 
 > **Created**: 2026-02-14  
-> **Updated**: 2026-02-14  
+> **Updated**: 2026-02-15  
 > **Owner**: Engineering  
-> **Status**: Phase B Complete  
+> **Status**: Phase C Complete  
 > **Scope**: Laboratory module (backend + web-app), reporting/analytics, external exchange foundations
 
 ---
@@ -87,7 +87,13 @@ This proposal distinguishes four reporting layers:
 ### 3.7 External exchange foundations (present but not wired end-to-end)
 
 - HL7 v2 service exists (`services/hl7_service.py`) and MLLP transport exists (`services/mllp_client.py`).
-- There is no end-to-end configured pipeline to send orders and ingest results into `LabResult`.
+- ✅ **Implemented**: `HL7IntegrationService` in `services/hl7_integration.py` now wires end-to-end:
+  - `send_order_to_lis()` — Build ORM^O01 and send via MLLP
+  - `process_oru_message()` — Parse ORU^R01 and create `LabResult` records
+  - Integration with `ExternalCodeMapping` for test code resolution
+- ✅ Feature-flagged via `HL7_INTEGRATION_ENABLED` setting (default: disabled)
+- ✅ Management command `hl7_ingest` for controlled testing
+- ✅ Test coverage in `backend/tests/test_hl7_phase_c_integration.py` (24 tests passing)
 
 ---
 
@@ -153,7 +159,7 @@ Add a small, testable reporting service that supports:
 | Lab analytics (TAT/workload/critical/rejection) | ✅ **Implemented** | All 4 reports + endpoints | **Closed** (see Phase B enhancements below) |
 | Attachments | ✅ **Implemented** | Use `LabResultAttachment` consistently | **Closed** |
 | Requisition PDF | ✅ **Consolidated** | One canonical implementation | **Closed** |
-| HL7/MLLP exchange | Services exist | Configured pipeline | Not wired end-to-end |
+| HL7/MLLP exchange | ✅ **Implemented** | Configured pipeline | **Closed** (feature-flagged) |
 | Offline (PowerSync) | Not implemented | Future | Explicitly deferred |
 
 ---
@@ -314,28 +320,53 @@ This plan is intentionally incremental to reduce risk.
 **Ref**: `docs/terminology-strategy.md` for full terminology architecture vision
 
 
-### Phase C — External exchange wiring (HL7/MLLP) behind flags
+### Phase C — External exchange wiring (HL7/MLLP) behind flags ✅ **COMPLETED**
 
 **Goal**: Turn the HL7/MLLP scaffolding into an optional working integration seam.
 
 **Dependencies** (from `docs/lis-evolution.md`):
-- Phase T0: `ExternalCodeMapping` for test code resolution
+- Phase T0: `ExternalCodeMapping` for test code resolution ✅ (already exists in core)
 - Phase L0/L1: `Specimen` model for proper result attachment (recommended before Phase C)
 
-**Deliverables**:
-- Create a "send order" integration entry point:
-  - Build ORM^O01 from `LabOrder`
-  - Send via MLLP (config from settings/env)
-- Create a "receive results" entry point:
-  - Parse ORU^R01 into typed `HL7LabResult`
-  - Resolve external test codes via `ExternalCodeMapping`
-  - Attach results to `Specimen` (if Phase L1 complete) or `LabOrderItem`
-  - Create/Update `LabResult` + mark `is_external_result=True`
-- Provide admin/management command for controlled ingestion testing (no always-on socket listener yet).
+**Deliverables** (all implemented):
+- ✅ `backend/hmis/apps/laboratory/services/hl7_integration.py`:
+  - `HL7IntegrationConfig` — Configuration dataclass from settings
+  - `HL7IntegrationService` — High-level orchestration service
+  - `send_order_to_lis(lab_order)` — Build ORM^O01 and send via MLLP
+  - `process_oru_message(oru_message, user)` — Parse ORU^R01, resolve codes, create results
+  - `validate_oru_message(message)` — Dry-run validation without import
+  - `generate_ack(message_id, ack_code, text)` — Build ACK response
+- ✅ Feature flag settings in `backend/hmis/settings/base.py`:
+  - `HL7_INTEGRATION_ENABLED` (default: False)
+  - `HL7_SENDING_APPLICATION`, `HL7_SENDING_FACILITY`, `HL7_RECEIVING_APPLICATION`, `HL7_RECEIVING_FACILITY`
+  - `MLLP_HOST`, `MLLP_PORT`, `MLLP_TIMEOUT`, `MLLP_MAX_RETRIES`
+  - `MLLP_USE_SSL`, `MLLP_SSL_VERIFY`, `MLLP_SSL_CERT_FILE`, `MLLP_SSL_KEY_FILE`, `MLLP_SSL_CA_FILE`
+  - `HL7_LIS_CODE_SYSTEM` — Code system for ExternalCodeMapping lookup
+- ✅ Management command `hl7_ingest` for controlled ingestion testing:
+  - `--file` / `-f` — Read ORU message from file
+  - `--validate` — Dry-run validation mode
+  - `--user` / `-u` — Username for result import
+  - `--code-system` / `-c` — Override ExternalCodeMapping code system
+  - `--force` — Bypass disabled feature flag
+  - `--verbose` — Show detailed output
+- ✅ ExternalCodeMapping integration — Resolves external LIS test codes to `TestCatalog`
 
-**Acceptance criteria**:
-- When enabled, a sample ORU message can create results for an existing lab order.
-- When disabled, system behavior is unchanged.
+**Tests** (24 passing in `backend/tests/test_hl7_phase_c_integration.py`):
+- ✅ Feature flag behavior (disabled vs enabled)
+- ✅ Send order workflow (builds ORM, sends via MLLP, parses ACK)
+- ✅ ACK rejection handling
+- ✅ MLLP connection error handling
+- ✅ ORU message parsing and LabResult creation
+- ✅ ExternalCodeMapping resolution for external test codes
+- ✅ Invalid/unknown message handling
+- ✅ Utility methods (validate, generate_ack, singleton)
+- ✅ Management command (validate mode, import mode, force flag, code system override)
+
+**Acceptance criteria** (all met):
+- ✅ When enabled, a sample ORU message creates results for an existing lab order
+- ✅ ExternalCodeMapping is used to resolve external test codes to internal TestCatalog
+- ✅ When disabled, system behavior is unchanged (no-ops return descriptive errors)
+- ✅ Management command provides controlled testing without always-on socket listener
 
 **Ref**: `docs/lis-evolution.md` — Phase L3 (AnalyzerRun) for storing raw HL7 messages
 
@@ -368,9 +399,10 @@ This plan is intentionally incremental to reduce risk.
 
 1. ~~Phase A: normalize attachments + unify requisition generator.~~ ✅ **COMPLETED**
 2. ~~**Phase B: implement lab analytics services + endpoints + tests.**~~ ✅ **COMPLETED**
-3. **Pre-Phase C: add `ExternalCodeMapping` model for external code resolution.** ← Next (2-4 hours)
-4. **Phase C: wire HL7/MLLP in a feature-flagged, testable manner.**
-5. (Optional) Phase B+ enhancements: percentile TAT, category grouping, time-to-notify metrics
+3. ~~**Pre-Phase C: add `ExternalCodeMapping` model for external code resolution.**~~ ✅ **COMPLETED** (already exists in core app)
+4. ~~**Phase C: wire HL7/MLLP in a feature-flagged, testable manner.**~~ ✅ **COMPLETED**
+5. (Optional) **Phase B+ enhancements**: percentile TAT, category grouping, time-to-notify metrics
+6. (Future) **Phase D**: Offline-first lab operations with PowerSync
 
 ---
 
@@ -383,5 +415,8 @@ This plan is intentionally incremental to reduce risk.
 - `docs/sprint-1.5-1.6-track-b-lab-workflow-deliverables.md`
 - `backend/hmis/apps/laboratory/` (models, views, signals, websockets, services)
 - `backend/hmis/apps/laboratory/reports.py` (Phase B implementation)
+- `backend/hmis/apps/laboratory/services/hl7_integration.py` (Phase C implementation)
+- `backend/hmis/apps/laboratory/management/commands/hl7_ingest.py` (Phase C management command)
 - `backend/tests/test_lab_reports.py` (Phase B tests)
+- `backend/tests/test_hl7_phase_c_integration.py` (Phase C tests - 24 tests)
 - `backend/hmis/apps/clinics/` (pattern for monthly reporting aggregation)

@@ -444,6 +444,36 @@ LAB_DEFAULT_TAT_HOURS = 24  # Default turnaround time in hours
 LAB_CRITICAL_ALERT_ENABLED = True  # Enable critical result alerts
 LAB_AUTO_FLAG_RESULTS = True  # Automatically flag abnormal results
 
+# ============================================================================
+# HL7/MLLP Integration Configuration (Phase C)
+# ============================================================================
+# Feature flag to enable/disable HL7 LIS integration
+# When disabled, all HL7/MLLP functions are no-ops
+HL7_INTEGRATION_ENABLED = os.getenv("HL7_INTEGRATION_ENABLED", "false").lower() == "true"
+
+# HL7 Message Configuration
+HL7_SENDING_APPLICATION = os.getenv("HL7_SENDING_APPLICATION", "VITORA_HMIS")
+HL7_SENDING_FACILITY = os.getenv("HL7_SENDING_FACILITY", "VITORA")
+HL7_RECEIVING_APPLICATION = os.getenv("HL7_RECEIVING_APPLICATION", "LAB_LIS")
+HL7_RECEIVING_FACILITY = os.getenv("HL7_RECEIVING_FACILITY", "EXTERNAL_LAB")
+
+# MLLP Connection Settings
+MLLP_HOST = os.getenv("MLLP_HOST", "localhost")
+MLLP_PORT = int(os.getenv("MLLP_PORT", "2575"))
+MLLP_TIMEOUT = float(os.getenv("MLLP_TIMEOUT", "30.0"))
+MLLP_RECEIVE_TIMEOUT = float(os.getenv("MLLP_RECEIVE_TIMEOUT", "60.0"))
+MLLP_MAX_RETRIES = int(os.getenv("MLLP_MAX_RETRIES", "3"))
+MLLP_USE_SSL = os.getenv("MLLP_USE_SSL", "false").lower() == "true"
+MLLP_SSL_VERIFY = os.getenv("MLLP_SSL_VERIFY", "true").lower() == "true"
+MLLP_SSL_CERT_FILE = os.getenv("MLLP_SSL_CERT_FILE", "")
+MLLP_SSL_KEY_FILE = os.getenv("MLLP_SSL_KEY_FILE", "")
+MLLP_SSL_CA_FILE = os.getenv("MLLP_SSL_CA_FILE", "")
+
+# External LIS Code System Identifier
+# Used for ExternalCodeMapping lookups when resolving external test codes
+# Example: "LIS_ACME" for ACME LIS vendor
+HL7_LIS_CODE_SYSTEM = os.getenv("HL7_LIS_CODE_SYSTEM", "LIS_DEFAULT")
+
 # External Lab Partners
 # These are common external lab partners in Kenya
 EXTERNAL_LAB_PARTNERS = [
