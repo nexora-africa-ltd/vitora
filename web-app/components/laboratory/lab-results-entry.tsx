@@ -32,6 +32,7 @@ import { useAddLabResult, useVerifyLabResult, useLabOrder } from '@/lib/hooks/us
 import { useToast, useLabOrderSocket, type LabResultVerifiedEvent } from '@/lib/hooks';
 import { cn } from '@/lib/utils/cn';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { ResultValidationPanel } from './result-validation-panel';
 
 const resultSchema = z.object({
   numeric_value: z.number().optional(),
@@ -562,14 +563,31 @@ export function LabResultsEntry({ orderNumber, items, onComplete, onResultAdded 
                 )}
               </div>
 
+              {/* Two-Stage Validation Panel */}
+              {activeItem.result && (
+                <ResultValidationPanel
+                  resultId={activeItem.result.id}
+                  verificationStatus={activeItem.result.verification_status}
+                  onValidationAdded={onResultAdded}
+                />
+              )}
+
+              {/* Legacy verify button - shown only if two-stage is disabled or already verified */}
               {activeItem.result?.verification_status !== 'VERIFIED' && (
-                <Button
-                  onClick={() => activeItem.result && handleVerify(activeItem.result.id)}
-                  disabled={verifyResult.isPending}
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  {verifyResult.isPending ? 'Verifying...' : 'Verify Result'}
-                </Button>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-2 border-t">
+                  <p className="text-sm text-muted-foreground">
+                    Or use quick verification (bypasses two-stage review)
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => activeItem.result && handleVerify(activeItem.result.id)}
+                    disabled={verifyResult.isPending}
+                    className="w-full sm:w-auto"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    {verifyResult.isPending ? 'Verifying...' : 'Quick Verify'}
+                  </Button>
+                </div>
               )}
             </div>
           ) : (

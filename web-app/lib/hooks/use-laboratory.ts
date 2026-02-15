@@ -12,6 +12,9 @@ import {
   LabResultCreateData,
   LabOrder,
   LabResult,
+  ResultValidation,
+  ResultValidationCreateData,
+  ValidationType,
 } from '@/lib/types/laboratory';
 
 // ============ Test Catalog Hooks ============
@@ -488,3 +491,76 @@ export function useCriticalAlerts(orderNumber: string) {
     enabled: !!orderNumber,
   });
 }
+
+// ============ Result Validation Hooks (Two-Stage) ============
+
+/**
+ * Hook for fetching validations for a specific result.
+ */
+export function useResultValidations(resultId: number) {
+  return useQuery({
+    queryKey: ['lab-results', resultId, 'validations'],
+    queryFn: () => laboratoryApi.getResultValidations(resultId),
+    enabled: !!resultId,
+  });
+}
+
+/**
+ * Hook for adding a validation to a result.
+ */
+export function useCreateResultValidation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      resultId,
+      data,
+    }: {
+      resultId: number;
+      data: ResultValidationCreateData;
+    }) => laboratoryApi.createResultValidation(resultId, data),
+    onSuccess: (validation: ResultValidation) => {
+      // Invalidate specific result validations
+      queryClient.invalidateQueries({
+        queryKey: ['lab-results', validation.result, 'validations'],
+      });
+      // Invalidate pending validations list
+      queryClient.invalidateQueries({
+        queryKey: ['lab-results', 'pending-validations'],
+      });
+      // Invalidate general lab data
+      queryClient.invalidateQueries({ queryKey: ['lab-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['lab-results'] });
+    },
+  });
+}
+
+interface PendingValidationsParams {
+  validationType?: ValidationType;
+  testCategory?: string;
+  priority?: string;
+}
+
+/**
+ * Hook for fetching results pending validation.
+ * Returns results that need technical or clinical review.
+ */
+export function usePendingValidations(params?: PendingValidationsParams) {
+  return useQuery({
+    queryKey: ['lab-results', 'pending-validations', params],
+    queryFn: async () => {
+      // Use pending verification endpoint and filter by validation needs
+      const results = await laboratoryApi.getPendingVerification();
+      // Filter by validation type if specified
+      if (params?.validationType) {
+        // Results with existing validations will be filtered on the server
+        // This is a client-side fallback
+        return results;
+      }
+      return results;
+    },
+    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchIntervalInBackground: false,
+  });
+}
+

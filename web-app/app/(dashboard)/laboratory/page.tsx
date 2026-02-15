@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, ClipboardList, Beaker, FileText, ClipboardClock } from 'lucide-react';
+import { Plus, ClipboardList, Beaker, FileText, ClipboardClock, Shield, ExternalLink } from 'lucide-react';
 import { LabOrderTable } from '@/components/laboratory/lab-order-table';
 import { LabQueueView } from '@/components/laboratory/lab-queue-view';
 import { PageHeader } from '@/components/shared/page-header';
@@ -63,6 +63,11 @@ export default function LaboratoryPage() {
               <span className="sm:hidden">Pending</span>
               <span className="hidden sm:inline">Pending Verification</span>
             </TabsTrigger>
+            <TabsTrigger value="validations" className="gap-2">
+              <Shield className="h-4 w-4" />
+              <span className="sm:hidden">Review</span>
+              <span className="hidden sm:inline">Two-Stage Review</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="orders">
@@ -85,6 +90,10 @@ export default function LaboratoryPage() {
 
           <TabsContent value="results">
             <PendingVerificationView />
+          </TabsContent>
+
+          <TabsContent value="validations">
+            <ValidationsQuickView />
           </TabsContent>
         </Tabs>
       </div>
@@ -149,6 +158,55 @@ function PendingVerificationView() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// Two-Stage Validations Quick View
+function ValidationsQuickView() {
+  const router = useRouter();
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="font-medium">Two-Stage Validation Workflow</h3>
+          <p className="text-sm text-muted-foreground">
+            Results require both technical and clinical review before release.
+          </p>
+        </div>
+        <Button
+          onClick={() => router.push('/laboratory/validations')}
+          className="gap-2 w-full sm:w-auto"
+        >
+          <Shield className="h-4 w-4" />
+          Open Validation Dashboard
+          <ExternalLink className="h-3 w-3" />
+        </Button>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="p-4 border rounded-lg bg-muted/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Shield className="h-5 w-5 text-blue-600" />
+            <span className="font-medium">Technical Review</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Verifies analytical accuracy: specimen quality, equipment calibration, 
+            QC results, and procedural compliance.
+          </p>
+        </div>
+        <div className="p-4 border rounded-lg bg-muted/30">
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="h-5 w-5 text-green-600" />
+            <span className="font-medium">Clinical Review</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Verifies clinical relevance: consistency with patient history, 
+            delta checks, and need for interpretation or repeat testing.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
