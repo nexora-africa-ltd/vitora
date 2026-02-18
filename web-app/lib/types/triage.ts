@@ -332,8 +332,8 @@ export interface TriageAlert {
   severity: AlertSeverity;
   vital_type: VitalType;
   message: string;
-  value: number;
-  threshold: number;
+  value: number | null;
+  threshold: number | null;
   clinical_note?: string | null;
   actions?: string[] | null;
 }

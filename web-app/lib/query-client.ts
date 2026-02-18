@@ -20,10 +20,12 @@ function handleGlobalError(error: Error): void {
     });
   } else if (error instanceof ZodError) {
     const context = (error as ZodError & { context?: string }).context;
-    console.error('[Query Error] Validation:', {
-      context: context || 'unknown',
-      issues: error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join(', '),
-    });
+    const issues = error.issues.map((i) => `${i.path.join('.') || 'root'}: ${i.message}`).join(', ');
+    console.error(`[Query Error] Validation failed (${context || 'unknown'}):`, issues);
+    // Log first few issues in detail for debugging
+    if (error.issues.length > 0) {
+      console.error('[Query Error] Issue details:', error.issues.slice(0, 3));
+    }
   } else {
     console.error('[Query Error] Unknown:', {
       name: error.name,

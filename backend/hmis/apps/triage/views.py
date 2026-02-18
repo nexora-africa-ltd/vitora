@@ -61,7 +61,7 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
     )
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["triage_category", "assigned_area", "mental_status"]
+    filterset_fields = ["triage_category", "assigned_area", "mental_status", "encounter"]
     search_fields = [
         "chief_complaint",
         "encounter__patient__mrn",
@@ -160,11 +160,22 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
 
         Used for decision support and "what-if" scenarios.
         """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         serializer = TriageCategoryCalculationSerializer(data=request.data)
 
         if serializer.is_valid():
-            result = serializer.calculate_category()
-            return Response(result, status=status.HTTP_200_OK)
+            try:
+                result = serializer.calculate_category()
+                return Response(result, status=status.HTTP_200_OK)
+            except Exception as e:
+                logger.exception("Error calculating triage category")
+                return Response(
+                    {"detail": f"Error calculating category: {str(e)}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
