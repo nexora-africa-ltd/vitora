@@ -196,8 +196,8 @@ class TriageVitalThreshold(models.Model):
             },
             "TEMPERATURE": {
                 "critical_high": 40.0,
-                "critical_low": 35.0,
-                "warning_high": 38.5,
+                "critical_low": 32.0,
+                "warning_high": 37.5,
                 "warning_low": 36.0,
             },
             "RESPIRATORY_RATE": {

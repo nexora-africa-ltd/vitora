@@ -451,7 +451,7 @@ class TestPatientTimelineAPI:
             patient=timeline_sample_patient,
             encounter_type="OPD",
             chief_complaint="Mixed vitals",
-            temperature=Decimal("37.5"),  # Warning high
+            temperature=Decimal("37.8"),  # Warning high (low-grade fever)
             pulse=75,  # Normal
             spo2=Decimal("88"),  # Critical low
         )

@@ -84,38 +84,38 @@ class TestGetVitalStatusMethod:
         assert encounter.get_vital_status("temperature") == "warning"
 
     def test_temperature_warning_high_status(self, vital_test_patient):
-        """Test temperature 37.5°C returns 'warning' status."""
+        """Test temperature 37.6°C returns 'warning' status (low-grade fever)."""
         from hmis.apps.encounters.models import Encounter
 
         encounter = Encounter.objects.create(
             patient=vital_test_patient,
             encounter_type="OPD",
             chief_complaint="Low grade fever",
-            temperature=Decimal("37.5"),
+            temperature=Decimal("37.6"),
         )
         assert encounter.get_vital_status("temperature") == "warning"
 
     def test_temperature_critical_low_status(self, vital_test_patient):
-        """Test temperature 35.0°C returns 'critical' status."""
+        """Test temperature 31.5°C returns 'critical' status (severe hypothermia)."""
         from hmis.apps.encounters.models import Encounter
 
         encounter = Encounter.objects.create(
             patient=vital_test_patient,
             encounter_type="EMERGENCY",
-            chief_complaint="Hypothermia",
-            temperature=Decimal("35.0"),
+            chief_complaint="Severe Hypothermia",
+            temperature=Decimal("31.5"),
         )
         assert encounter.get_vital_status("temperature") == "critical"
 
     def test_temperature_critical_high_status(self, vital_test_patient):
-        """Test temperature 39.5°C returns 'critical' status."""
+        """Test temperature ≥40°C returns 'critical' status (high fever/hyperpyrexia)."""
         from hmis.apps.encounters.models import Encounter
 
         encounter = Encounter.objects.create(
             patient=vital_test_patient,
             encounter_type="EMERGENCY",
             chief_complaint="High fever",
-            temperature=Decimal("39.5"),
+            temperature=Decimal("40.5"),  # ≥40°C is critical
         )
         assert encounter.get_vital_status("temperature") == "critical"
 
@@ -351,7 +351,7 @@ class TestGetAllVitalStatusesMethod:
             patient=vital_test_patient,
             encounter_type="EMERGENCY",
             chief_complaint="Multi-system issue",
-            temperature=Decimal("39.5"),  # Critical
+            temperature=Decimal("40.5"),  # Critical (≥40°C)
             pulse=75,  # Normal
             blood_pressure="130/85",  # Warning
             spo2=Decimal("88.0"),  # Critical

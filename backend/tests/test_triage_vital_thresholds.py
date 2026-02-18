@@ -192,13 +192,13 @@ class TestTriageVitalThresholdModel:
         assert spo2_defaults["critical_low"] == 90
 
     def test_temperature_critical_thresholds(self):
-        """Should have critical thresholds at 35°C and 40°C."""
+        """Should have critical thresholds at 32°C (severe hypothermia) and 40°C (high fever)."""
         from hmis.apps.triage.models import TriageVitalThreshold
 
         defaults = TriageVitalThreshold.get_defaults()
         temp_defaults = defaults["TEMPERATURE"]
 
-        assert temp_defaults["critical_low"] == 35.0
+        assert temp_defaults["critical_low"] == 32.0
         assert temp_defaults["critical_high"] == 40.0
 
     def test_heart_rate_critical_thresholds(self):

@@ -434,7 +434,7 @@ function getVitalThresholdStatus(
   const thresholds: Record<string, { critical: [number, number]; warning: [number, number]; unit: string }> = {
     spo2: { critical: [90, Infinity], warning: [95, Infinity], unit: '%' },
     heart_rate: { critical: [40, 150], warning: [50, 100], unit: 'bpm' },
-    temperature: { critical: [35, 40], warning: [36.0, 38.5], unit: '°C' },
+    temperature: { critical: [32, 40], warning: [36.0, 37.5], unit: '°C' },
     respiratory_rate: { critical: [8, 30], warning: [10, 24], unit: '/min' },
   };
 
@@ -462,20 +462,27 @@ function getVitalThresholdStatus(
     }
     // 95-100% is normal, return null
   } else if (vitalType === 'temperature') {
-    // Temperature - use clinical terminology matching the alerts panel
-    // Thresholds: critical_low=35, critical_high=40, warning_low=36.0, warning_high=38.5
-    if (value < critLow) {
-      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Hypothermia`, icon: 'critical' };
+    // Temperature - refined clinical terminology
+    // Critical: <32°C (severe hypothermia), ≥40°C (high fever)
+    // Warning low: 32-35°C (moderate), 35-36°C (mild hypothermia)
+    // Warning high: 37.6-38.4°C (low-grade fever), 38.5-39.9°C (moderate fever)
+    if (value < 32) {
+      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Severe hypothermia`, icon: 'critical' };
     }
-    if (value >= critHigh) {
-      return { severity: 'critical', message: `Critical: ${value}${config.unit} - High fever`, icon: 'critical' };
+    if (value >= 40) {
+      return { severity: 'critical', message: `Critical: ${value}${config.unit} - High fever / Hyperpyrexia`, icon: 'critical' };
     }
-    if (value > warnHigh) {
-      // ≥38.5°C is fever
-      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Fever`, icon: 'warning' };
+    if (value >= 38.5) {
+      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Moderate fever`, icon: 'warning' };
     }
-    if (value < warnLow) {
-      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Low temperature`, icon: 'warning' };
+    if (value > 37.5) {
+      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Low-grade fever`, icon: 'warning' };
+    }
+    if (value < 35) {
+      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Moderate hypothermia`, icon: 'warning' };
+    }
+    if (value < 36) {
+      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Mild hypothermia`, icon: 'warning' };
     }
   } else if (vitalType === 'heart_rate') {
     // Heart rate - use clinical terminology
@@ -712,48 +719,72 @@ function generateTriageAlerts(
     }
   }
 
-  // Check Temperature - thresholds: critical_low=35, critical_high=40, warning_low=36, warning_high=38.5
+  // Check Temperature - refined thresholds:
+  // Critical: <32°C (severe hypothermia), ≥40°C (high fever)
+  // Warning low: 32-35°C (moderate), 35-36°C (mild hypothermia)
+  // Warning high: 37.6-38.4°C (low-grade fever), 38.5-39.9°C (moderate fever)
+  // Normal: 36-37.5°C
   const temperature = typeof formData.temperature === 'number' ? formData.temperature : encounter.temperature;
   if (temperature !== undefined && temperature !== null) {
-    if (temperature < 35) {
+    if (temperature < 32) {
       alerts.push({
-        id: 'temp-critical-low',
+        id: 'temp-critical-severe-hypothermia',
         severity: 'CRITICAL',
         vital_type: 'TEMPERATURE',
-        message: `Hypothermia - ${temperature}°C`,
+        message: `Severe hypothermia - ${temperature}°C`,
         value: temperature,
-        threshold: 35,
-        clinical_note: 'Active warming required',
+        threshold: 32,
+        clinical_note: 'Life-threatening; risk of cardiac arrest',
       });
     } else if (temperature >= 40) {
       alerts.push({
-        id: 'temp-critical-high',
+        id: 'temp-critical-high-fever',
         severity: 'CRITICAL',
         vital_type: 'TEMPERATURE',
-        message: `High fever - ${temperature}°C`,
+        message: `High fever / Hyperpyrexia - ${temperature}°C`,
         value: temperature,
         threshold: 40,
-        clinical_note: 'Consider antipyretics, investigate cause',
+        clinical_note: 'Potentially life-threatening; urgent evaluation needed',
       });
-    } else if (temperature > 38.5) {
+    } else if (temperature >= 38.5) {
       alerts.push({
-        id: 'temp-warning-high',
+        id: 'temp-warning-moderate-fever',
         severity: 'WARNING',
         vital_type: 'TEMPERATURE',
-        message: `Fever - ${temperature}°C`,
+        message: `Moderate fever - ${temperature}°C`,
         value: temperature,
         threshold: 38.5,
-        clinical_note: 'Monitor for infection',
+        clinical_note: 'Clinical attention may be required',
+      });
+    } else if (temperature > 37.5) {
+      alerts.push({
+        id: 'temp-warning-low-grade-fever',
+        severity: 'WARNING',
+        vital_type: 'TEMPERATURE',
+        message: `Low-grade fever - ${temperature}°C`,
+        value: temperature,
+        threshold: 37.5,
+        clinical_note: 'Usually mild, often infection-related',
+      });
+    } else if (temperature < 35) {
+      alerts.push({
+        id: 'temp-warning-moderate-hypothermia',
+        severity: 'WARNING',
+        vital_type: 'TEMPERATURE',
+        message: `Moderate hypothermia - ${temperature}°C`,
+        value: temperature,
+        threshold: 35,
+        clinical_note: 'Symptoms: shivering, confusion, slurred speech',
       });
     } else if (temperature < 36) {
       alerts.push({
-        id: 'temp-warning-low',
+        id: 'temp-warning-mild-hypothermia',
         severity: 'WARNING',
         vital_type: 'TEMPERATURE',
-        message: `Low temperature - ${temperature}°C`,
+        message: `Mild hypothermia - ${temperature}°C`,
         value: temperature,
         threshold: 36,
-        clinical_note: 'Keep warm, monitor',
+        clinical_note: 'Usually mild, monitor closely',
       });
     }
   }
@@ -885,6 +916,9 @@ function calculateSuggestedCategory(
   if (typeof heartRate === 'number' && (heartRate < 40 || heartRate > 150))
     return 'RED';
   if (mapCritical) return 'RED'; // MAP-based critical BP
+  // Temperature critical: <32°C (severe hypothermia), ≥40°C (high fever)
+  if (typeof temperature === 'number' && (temperature < 32 || temperature >= 40))
+    return 'RED';
 
   // High-risk complaints or warning vitals → ORANGE
   const highRiskComplaints: ChiefComplaintCategory[] = [
@@ -907,14 +941,17 @@ function calculateSuggestedCategory(
   }
   if (typeof spo2 === 'number' && spo2 < 95) return 'ORANGE';
   if (formData.mental_status === 'P') return 'ORANGE';
-  if (typeof temperature === 'number' && temperature > 40) return 'ORANGE';
+  // Moderate hypothermia (32-35°C) or moderate fever (38.5-39.9°C) → ORANGE
+  if (typeof temperature === 'number' && ((temperature >= 32 && temperature < 35) || temperature >= 38.5))
+    return 'ORANGE';
 
   // Moderate conditions → YELLOW
   if (formData.pain_score !== null && formData.pain_score !== undefined && formData.pain_score >= 7)
     return 'YELLOW';
   if (formData.mental_status === 'V') return 'YELLOW';
-  // Temperature >= 38.5°C triggers warning (consistent with backend threshold)
-  if (typeof temperature === 'number' && temperature >= 38.5) return 'YELLOW';
+  // Mild hypothermia (35-36°C) or low-grade fever (37.6-38.4°C) → YELLOW
+  if (typeof temperature === 'number' && ((temperature >= 35 && temperature < 36) || temperature > 37.5))
+    return 'YELLOW';
   // Respiratory rate outside warning thresholds (<10 or >24)
   if (
     typeof respiratoryRate === 'number' &&
