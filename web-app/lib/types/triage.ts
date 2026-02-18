@@ -304,7 +304,10 @@ export type VitalType =
   | 'DIASTOLIC_BP'
   | 'HEART_RATE'
   | 'TEMPERATURE'
-  | 'RESPIRATORY_RATE';
+  | 'RESPIRATORY_RATE'
+  | 'MENTAL_STATUS'
+  | 'PAIN_SCORE'
+  | 'GENERAL';
 
 export interface TriageVitalThreshold {
   id: number;

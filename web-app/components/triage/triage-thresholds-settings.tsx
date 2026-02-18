@@ -104,6 +104,10 @@ const VITAL_TYPE_CONFIG: Record<VitalType, { label: string; unit: string; min: n
   HEART_RATE: { label: 'Heart Rate', unit: 'bpm', min: 20, max: 300 },
   TEMPERATURE: { label: 'Temperature', unit: '°C', min: 25, max: 45 },
   RESPIRATORY_RATE: { label: 'Respiratory Rate', unit: '/min', min: 0, max: 60 },
+  // Non-numeric vital types (used for structured alerts, not configurable thresholds)
+  MENTAL_STATUS: { label: 'Mental Status', unit: 'AVPU', min: 0, max: 3 },
+  PAIN_SCORE: { label: 'Pain Score', unit: '/10', min: 0, max: 10 },
+  GENERAL: { label: 'General', unit: '', min: 0, max: 0 },
 };
 
 const DEFAULT_THRESHOLDS: Record<VitalType, EditFormData> = {
@@ -113,6 +117,10 @@ const DEFAULT_THRESHOLDS: Record<VitalType, EditFormData> = {
   HEART_RATE: { critical_low: 40, warning_low: 50, warning_high: 100, critical_high: 150 },
   TEMPERATURE: { critical_low: 35.0, warning_low: 36.5, warning_high: 37.5, critical_high: 40.0 },
   RESPIRATORY_RATE: { critical_low: 8, warning_low: 10, warning_high: 24, critical_high: 30 },
+  // Non-numeric vital types (not configurable via UI)
+  MENTAL_STATUS: { critical_low: null, warning_low: null, warning_high: null, critical_high: null },
+  PAIN_SCORE: { critical_low: null, warning_low: null, warning_high: 7, critical_high: 9 },
+  GENERAL: { critical_low: null, warning_low: null, warning_high: null, critical_high: null },
 };
 
 // =============================================================================

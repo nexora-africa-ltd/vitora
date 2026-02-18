@@ -212,7 +212,7 @@ class TestTriageCategoryVitalsRules:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data["category"] == "RED"
+        assert response.data["suggested_category"] == "RED"
 
     def test_calculate_category_orange_for_breathing_with_spo2_below_95(self, authenticated_client):
         payload = {
@@ -226,4 +226,4 @@ class TestTriageCategoryVitalsRules:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data["category"] == "ORANGE"
+        assert response.data["suggested_category"] == "ORANGE"
