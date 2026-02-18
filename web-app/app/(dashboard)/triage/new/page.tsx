@@ -19,11 +19,12 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { TriageAssessmentForm } from '@/components/triage';
+import { TriageAssessmentForm, AlreadyTriagedWarning } from '@/components/triage';
 import { useCreateTriageAssessment, useWaitingQueue, useCheckInPatient } from '@/lib/hooks/use-triage';
 import { usePatient, usePatients } from '@/lib/hooks/use-patients';
 import { useEncounter, useCreateEncounter } from '@/lib/hooks/use-encounters';
 import { toast } from '@/lib/hooks/use-toast';
+import { useIdempotencyKey } from '@/lib/utils';
 import type { TriageAssessmentCreateData } from '@/lib/types/triage';
 import type { Patient } from '@/lib/types/patient';
 
@@ -57,6 +58,12 @@ export default function NewTriagePage() {
   // Fetch selected patient and encounter data
   const { data: patient, isLoading: isPatientLoading } = usePatient(selectedPatientId || 0);
   const { data: encounter, isLoading: isEncounterLoading } = useEncounter(selectedEncounterId || 0);
+
+  // Idempotency key for duplicate submission prevention
+  // Key is scoped to the encounter to prevent duplicate triage submissions
+  const [idempotencyKey, clearIdempotencyKey] = useIdempotencyKey(
+    selectedEncounterId ? `triage-${selectedEncounterId}` : 'triage-new'
+  );
 
   // Mutations
   const { mutateAsync: createAssessment, isPending: isCreating } = useCreateTriageAssessment();
@@ -123,6 +130,9 @@ export default function NewTriagePage() {
           encounter: selectedEncounterId,
         });
 
+        // Clear idempotency key on successful submission
+        clearIdempotencyKey();
+
         toast({
           title: 'Triage Assessment Created',
           description: `Patient triaged as ${assessment.triage_category}`,
@@ -156,7 +166,7 @@ export default function NewTriagePage() {
         });
       }
     },
-    [createAssessment, selectedEncounterId, router]
+    [createAssessment, selectedEncounterId, router, clearIdempotencyKey]
   );
 
   const handleCancel = useCallback(() => {
@@ -383,6 +393,24 @@ export default function NewTriagePage() {
         <Button variant="outline" onClick={handleClearSelection}>
           Select Different Patient
         </Button>
+      </div>
+    );
+  }
+
+  // Pre-check: Already triaged encounter
+  // If the encounter has already been triaged, show warning instead of form
+  if (encounter.triage_status === 'COMPLETED') {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="New Triage Assessment"
+          helpContent="This encounter has already been triaged. You can view the existing assessment or select a different patient."
+        />
+        <AlreadyTriagedWarning
+          encounterId={encounter.id}
+          patientName={`${patient.first_name} ${patient.last_name}`}
+          onSelectDifferentPatient={handleClearSelection}
+        />
       </div>
     );
   }
