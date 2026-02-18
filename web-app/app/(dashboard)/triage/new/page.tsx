@@ -301,7 +301,7 @@ export default function NewTriagePage() {
                       <User className="h-10 w-10 mx-auto mb-2 opacity-50" />
                       <p>No patients found for "{searchQuery}"</p>
                       <Button
-                        variant="outline"
+                        variant="default"
                         size="sm"
                         className="mt-3"
                         onClick={() => router.push('/patients/new')}
@@ -349,7 +349,7 @@ export default function NewTriagePage() {
 
               <div className="pt-4 border-t">
                 <Button
-                  variant="outline"
+                  variant="default"
                   className="w-full"
                   onClick={() => router.push('/patients/new')}
                 >
