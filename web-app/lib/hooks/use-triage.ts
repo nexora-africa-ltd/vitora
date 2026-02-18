@@ -32,6 +32,8 @@ export const triageKeys = {
   assessments: () => [...triageKeys.all, 'assessments'] as const,
   assessment: (id: number) => [...triageKeys.assessments(), id] as const,
   assessmentByEncounter: (encounterId: number) => [...triageKeys.assessments(), 'encounter', encounterId] as const,
+  history: () => [...triageKeys.all, 'history'] as const,
+  historyFiltered: (filters: TriageHistoryFilters) => [...triageKeys.history(), filters] as const,
   queue: () => [...triageKeys.all, 'queue'] as const,
   queueFiltered: (filters: QueueFilters) => [...triageKeys.queue(), filters] as const,
   waitingQueue: () => [...triageKeys.all, 'waiting'] as const,
@@ -89,6 +91,17 @@ interface ReportFilters {
   customEndDate?: string;
   area?: AssignedArea;
   category?: TriageCategory;
+}
+
+// History filters for completed triages
+export interface TriageHistoryFilters {
+  search?: string;
+  dateRange?: 'today' | 'week' | 'month' | 'quarter' | 'all';
+  startDate?: string;
+  endDate?: string;
+  category?: TriageCategory;
+  page?: number;
+  pageSize?: number;
 }
 
 interface PaginatedResponse<T> {
@@ -194,6 +207,70 @@ export function useTriageAssessmentByEncounter(encounterId: number | undefined) 
     enabled: !!encounterId,
     // Retry once in case of transient network issues
     retry: 1,
+  });
+}
+
+/**
+ * Fetch paginated triage history (completed assessments) with filters.
+ * Supports search by patient name/MRN, date range, and category filtering.
+ */
+export function useTriageHistory(filters: TriageHistoryFilters = {}) {
+  return useQuery({
+    queryKey: triageKeys.historyFiltered(filters),
+    queryFn: async () => {
+      const params: Record<string, string | number | undefined> = {
+        page: filters.page ?? 1,
+        page_size: filters.pageSize ?? 20,
+      };
+
+      // Apply search filter (API should handle patient name/MRN search)
+      if (filters.search) {
+        params.search = filters.search;
+      }
+
+      // Apply category filter
+      if (filters.category) {
+        params.triage_category = filters.category;
+      }
+
+      // Apply date range filter
+      if (filters.dateRange && filters.dateRange !== 'all') {
+        const today = new Date();
+        let startDate: Date;
+
+        switch (filters.dateRange) {
+          case 'today':
+            startDate = today;
+            break;
+          case 'week':
+            startDate = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case 'month':
+            startDate = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+            break;
+          case 'quarter':
+            startDate = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
+            break;
+          default:
+            startDate = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+        }
+
+        params.start_date = startDate.toISOString().split('T')[0];
+        params.end_date = today.toISOString().split('T')[0];
+      }
+
+      // Apply custom date range
+      if (filters.startDate) {
+        params.start_date = filters.startDate;
+      }
+      if (filters.endDate) {
+        params.end_date = filters.endDate;
+      }
+
+      const response = await triageApi.listAssessments(params);
+      return response;
+    },
+    staleTime: 30000, // Data fresh for 30 seconds
   });
 }
 
