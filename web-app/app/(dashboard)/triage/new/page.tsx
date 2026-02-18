@@ -19,8 +19,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { TriageAssessmentForm, AlreadyTriagedWarning } from '@/components/triage';
-import { useCreateTriageAssessment, useWaitingQueue, useCheckInPatient } from '@/lib/hooks/use-triage';
+import { TriageAssessmentForm, AlreadyTriagedWarning, TriageInProgressWarning } from '@/components/triage';
+import { useCreateTriageAssessment, useWaitingQueue, useCheckInPatient, useTriageAssessmentByEncounter } from '@/lib/hooks/use-triage';
 import { usePatient, usePatients } from '@/lib/hooks/use-patients';
 import { useEncounter, useCreateEncounter } from '@/lib/hooks/use-encounters';
 import { toast } from '@/lib/hooks/use-toast';
@@ -45,6 +45,8 @@ export default function NewTriagePage() {
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreatingEncounter, setIsCreatingEncounter] = useState(false);
+  // Track if user has explicitly chosen to take over an in-progress triage
+  const [hasOverriddenInProgress, setHasOverriddenInProgress] = useState(false);
 
   // Fetch waiting queue for quick selection
   const { data: waitingQueue, isLoading: isWaitingLoading } = useWaitingQueue({});
@@ -58,6 +60,14 @@ export default function NewTriagePage() {
   // Fetch selected patient and encounter data
   const { data: patient, isLoading: isPatientLoading } = usePatient(selectedPatientId || 0);
   const { data: encounter, isLoading: isEncounterLoading } = useEncounter(selectedEncounterId || 0);
+
+  // Check if triage assessment already exists for this encounter
+  // This is a direct check that doesn't rely on encounter.triage_status (which can be out of sync)
+  const {
+    data: existingAssessment,
+    isLoading: isCheckingExisting,
+    isError: existingCheckError,
+  } = useTriageAssessmentByEncounter(selectedEncounterId || undefined);
 
   // Idempotency key for duplicate submission prevention
   // Key is scoped to the encounter to prevent duplicate triage submissions
@@ -176,11 +186,12 @@ export default function NewTriagePage() {
   const handleClearSelection = useCallback(() => {
     setSelectedPatientId(null);
     setSelectedEncounterId(null);
+    setHasOverriddenInProgress(false); // Reset override when changing patient
     router.replace('/triage/new');
   }, [router]);
 
   // Loading state
-  const isLoading = isPatientLoading || isEncounterLoading || isCreatingEncounter;
+  const isLoading = isPatientLoading || isEncounterLoading || isCreatingEncounter || isCheckingExisting;
 
   // Show patient selection if no patient selected
   if (!selectedPatientId || !selectedEncounterId) {
@@ -397,9 +408,86 @@ export default function NewTriagePage() {
     );
   }
 
-  // Pre-check: Already triaged encounter
-  // If the encounter has already been triaged, show warning instead of form
-  if (encounter.triage_status === 'COMPLETED') {
+  // Error checking for existing assessment - couldn't verify if triage exists
+  // Show warning but still allow proceeding if user is confident
+  if (existingCheckError) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="New Triage Assessment"
+          helpContent="Unable to verify if this encounter already has a triage assessment."
+        />
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Verification Failed</AlertTitle>
+          <AlertDescription>
+            Could not verify if this encounter already has a triage assessment.
+            This may be due to a network error or data issue.
+            Please try again or select a different patient.
+          </AlertDescription>
+        </Alert>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleClearSelection}>
+            Select Different Patient
+          </Button>
+          <Button variant="outline" onClick={() => router.push('/triage')}>
+            Back to Queue
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Pre-check: Triage assessment already exists for this encounter
+  // This is the PRIMARY check - directly queries for existing assessment
+  // Handles data inconsistency where triage_status is PENDING but assessment exists
+  if (existingAssessment) {
+    // Determine if it's completed or in-progress based on completed_at
+    const isCompleted = !!existingAssessment.triage_end_time; // Use triage_end_time to determine completion
+
+    if (isCompleted) {
+      return (
+        <div className="space-y-6">
+          <PageHeader
+            title="New Triage Assessment"
+            helpContent="This encounter has already been triaged. You can view the existing assessment or select a different patient."
+          />
+          <AlreadyTriagedWarning
+            encounterId={encounter.id}
+            patientName={`${patient.first_name} ${patient.last_name}`}
+            onSelectDifferentPatient={handleClearSelection}
+          />
+        </div>
+      );
+    }
+
+    // In-progress (started but not completed) - show warning unless user chose to take over
+    if (!hasOverriddenInProgress) {
+      return (
+        <div className="space-y-6">
+          <PageHeader
+            title="New Triage Assessment"
+            helpContent="This encounter is currently being triaged by another user. You can wait or take over."
+          />
+          <TriageInProgressWarning
+            encounterId={encounter.id}
+            patientName={`${patient.first_name} ${patient.last_name}`}
+            onSelectDifferentPatient={handleClearSelection}
+            onTakeOver={() => {
+              // User explicitly chooses to take over
+              setHasOverriddenInProgress(true);
+            }}
+          />
+        </div>
+      );
+    }
+  }
+
+  // Secondary check: Use encounter.triage_status for cases where assessment record
+  // doesn't exist yet but status indicates triage state
+  if (encounter.triage_status === 'COMPLETED' && !existingAssessment) {
+    // Edge case: status is COMPLETED but no assessment found
+    // This shouldn't happen, but handle gracefully
     return (
       <div className="space-y-6">
         <PageHeader
@@ -410,6 +498,26 @@ export default function NewTriagePage() {
           encounterId={encounter.id}
           patientName={`${patient.first_name} ${patient.last_name}`}
           onSelectDifferentPatient={handleClearSelection}
+        />
+      </div>
+    );
+  }
+
+  // Secondary check: triage_status IN_PROGRESS but no assessment record yet
+  if (encounter.triage_status === 'IN_PROGRESS' && !existingAssessment && !hasOverriddenInProgress) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="New Triage Assessment"
+          helpContent="This encounter is currently being triaged by another user. You can wait or take over."
+        />
+        <TriageInProgressWarning
+          encounterId={encounter.id}
+          patientName={`${patient.first_name} ${patient.last_name}`}
+          onSelectDifferentPatient={handleClearSelection}
+          onTakeOver={() => {
+            setHasOverriddenInProgress(true);
+          }}
         />
       </div>
     );

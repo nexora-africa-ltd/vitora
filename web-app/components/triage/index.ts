@@ -27,3 +27,6 @@ export { RouteToClinicDialog } from './route-to-clinic-dialog';
 
 export { AlreadyTriagedWarning } from './already-triaged-warning';
 export type { AlreadyTriagedWarningProps } from './already-triaged-warning';
+
+export { TriageInProgressWarning } from './triage-in-progress-warning';
+export type { TriageInProgressWarningProps } from './triage-in-progress-warning';
