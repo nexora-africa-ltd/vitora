@@ -31,6 +31,7 @@ export const triageKeys = {
   all: ['triage'] as const,
   assessments: () => [...triageKeys.all, 'assessments'] as const,
   assessment: (id: number) => [...triageKeys.assessments(), id] as const,
+  assessmentByEncounter: (encounterId: number) => [...triageKeys.assessments(), 'encounter', encounterId] as const,
   queue: () => [...triageKeys.all, 'queue'] as const,
   queueFiltered: (filters: QueueFilters) => [...triageKeys.queue(), filters] as const,
   waitingQueue: () => [...triageKeys.all, 'waiting'] as const,
@@ -165,6 +166,23 @@ export function useTriageAssessment(id: number | undefined) {
       return response.data;
     },
     enabled: !!id,
+  });
+}
+
+/**
+ * Fetch triage assessment by encounter ID.
+ * Returns the first (and should be only) assessment for a given encounter.
+ * Useful for checking if an encounter has already been triaged.
+ */
+export function useTriageAssessmentByEncounter(encounterId: number | undefined) {
+  return useQuery({
+    queryKey: triageKeys.assessmentByEncounter(encounterId!),
+    queryFn: async () => {
+      const response = await triageApi.listAssessments({ encounter_id: encounterId });
+      // OneToOne relationship means at most 1 result
+      return response.results?.[0] ?? null;
+    },
+    enabled: !!encounterId,
   });
 }
 
