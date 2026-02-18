@@ -58,8 +58,8 @@ export const DEFAULT_THRESHOLDS: Record<VitalType, Omit<TriageVitalThreshold, 'i
   TEMPERATURE: {
     vital_type: 'TEMPERATURE',
     critical_low: 35.0,   // Hypothermia
-    warning_low: 36.5,    // Below normal (normal starts at 36.5)
-    warning_high: 37.5,   // Fever threshold
+    warning_low: 36.0,    // Below normal (matches backend)
+    warning_high: 38.5,   // Fever threshold (matches backend)
     critical_high: 40.0,  // Hyperpyrexia
     is_active: true,
   },
@@ -208,11 +208,11 @@ function getAlertMessage(
     },
     TEMPERATURE: {
       low: {
-        message: `Temperature ${value}°C - ${status === 'critical' ? 'Hypothermia' : 'Below normal'}`,
+        message: `Temperature ${value}°C - ${status === 'critical' ? 'Hypothermia' : 'Low'}`,
         note: status === 'critical' ? 'Active warming required' : 'Keep warm, monitor',
       },
       high: {
-        message: `Temperature ${value}°C - ${status === 'critical' ? 'High fever' : 'Elevated'}`,
+        message: `Temperature ${value}°C - ${status === 'critical' ? 'High fever' : 'Fever'}`,
         note: status === 'critical' ? 'Consider antipyretics, investigate cause' : 'Monitor for infection',
       },
     },
