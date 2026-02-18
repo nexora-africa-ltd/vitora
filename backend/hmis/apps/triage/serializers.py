@@ -142,19 +142,29 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
     patient_name = serializers.CharField(source="encounter.patient.full_name", read_only=True)
     patient_mrn = serializers.CharField(source="encounter.patient.mrn", read_only=True)
     patient_age = serializers.IntegerField(source="encounter.patient.age", read_only=True)
+    patient_gender = serializers.CharField(source="encounter.patient.gender", read_only=True)
+    encounter_mrn = serializers.CharField(source="encounter.patient.mrn", read_only=True)
+    assigned_clinician_name = serializers.SerializerMethodField()
+    alerts = serializers.SerializerMethodField()  # Handle legacy string format conversion
     vitals = serializers.SerializerMethodField()
     wait_time_minutes = serializers.SerializerMethodField()
     is_wait_time_exceeded = serializers.SerializerMethodField()
     triaged_by_name = serializers.CharField(source="triaged_by.get_full_name", read_only=True)
+
+    # Vital sign fields - output as numbers instead of strings
+    spo2 = serializers.FloatField(allow_null=True, required=False)
+    temperature = serializers.FloatField(allow_null=True, required=False)
 
     class Meta:
         model = TriageAssessment
         fields = [
             "id",
             "encounter",
+            "encounter_mrn",
             "patient_name",
             "patient_mrn",
             "patient_age",
+            "patient_gender",
             "chief_complaint",
             "chief_complaint_category",
             "pain_score",
@@ -173,6 +183,7 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             "category_override_reason",
             "assigned_area",
             "assigned_clinician",
+            "assigned_clinician_name",
             "arrival_time",
             "triage_start_time",
             "triage_end_time",
@@ -232,6 +243,81 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
     def get_is_wait_time_exceeded(self, obj) -> bool:
         """Check if wait time exceeded target."""
         return obj.is_wait_time_exceeded()
+
+    def get_assigned_clinician_name(self, obj) -> str | None:
+        """Get the full name of the assigned clinician."""
+        if obj.assigned_clinician:
+            return obj.assigned_clinician.get_full_name() or obj.assigned_clinician.username
+        return None
+
+    def get_alerts(self, obj) -> list:
+        """
+        Get alerts in structured format, converting legacy string alerts if needed.
+
+        Legacy format: ['CRITICAL: Message here', 'WARNING: Another message']
+        New format: [{'id': 'uuid', 'severity': 'CRITICAL', 'vital_type': 'GENERAL', ...}]
+        """
+        import uuid
+
+        alerts = obj.alerts or []
+
+        if not alerts:
+            return []
+
+        # Check if already in new structured format
+        if isinstance(alerts[0], dict) and "id" in alerts[0]:
+            return alerts
+
+        # Convert legacy string alerts to structured format
+        converted = []
+        for alert_str in alerts:
+            if not isinstance(alert_str, str):
+                # Already a dict but missing 'id' - add it
+                if isinstance(alert_str, dict):
+                    if "id" not in alert_str:
+                        alert_str["id"] = str(uuid.uuid4())
+                    converted.append(alert_str)
+                continue
+
+            # Parse legacy string format: "SEVERITY: Message"
+            severity = "WARNING"
+            vital_type = "GENERAL"
+            message = alert_str
+
+            if alert_str.startswith("CRITICAL:"):
+                severity = "CRITICAL"
+                message = alert_str[len("CRITICAL:") :].strip()
+            elif alert_str.startswith("WARNING:"):
+                severity = "WARNING"
+                message = alert_str[len("WARNING:") :].strip()
+
+            # Try to infer vital_type from message
+            message_lower = message.lower()
+            if "spo2" in message_lower or "oxygen" in message_lower or "hypoxemia" in message_lower:
+                vital_type = "SPO2"
+            elif "blood pressure" in message_lower or "hypertension" in message_lower or "hypotension" in message_lower or "map" in message_lower:
+                vital_type = "SYSTOLIC_BP"
+            elif "heart rate" in message_lower or "bradycardia" in message_lower or "tachycardia" in message_lower:
+                vital_type = "HEART_RATE"
+            elif "temperature" in message_lower or "fever" in message_lower or "hypothermia" in message_lower:
+                vital_type = "TEMPERATURE"
+            elif "respiratory" in message_lower or "breathing" in message_lower:
+                vital_type = "RESPIRATORY_RATE"
+            elif "mental" in message_lower or "avpu" in message_lower or "unresponsive" in message_lower or "responds" in message_lower:
+                vital_type = "MENTAL_STATUS"
+            elif "pain" in message_lower:
+                vital_type = "PAIN_SCORE"
+
+            converted.append({
+                "id": str(uuid.uuid4()),
+                "severity": severity,
+                "vital_type": vital_type,
+                "message": message,
+                "value": 0,  # Cannot be recovered from string, use 0 as placeholder
+                "threshold": 0,  # Cannot be recovered from string, use 0 as placeholder
+            })
+
+        return converted
 
 
 class TriageAssessmentCreateSerializer(serializers.ModelSerializer):

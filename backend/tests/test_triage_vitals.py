@@ -53,11 +53,12 @@ class TestTriageAssessmentVitalsCapture:
 
         assert response.status_code == status.HTTP_201_CREATED
         # Phase 1 expectation: vitals are included as explicit fields in response
-        assert response.data["spo2"] == "94.00"
+        # spo2 and temperature are returned as floats, others as integers
+        assert response.data["spo2"] == 94.0
         assert response.data["heart_rate"] == 110
         assert response.data["systolic_bp"] == 160
         assert response.data["diastolic_bp"] == 95
-        assert response.data["temperature"] == "37.2"
+        assert response.data["temperature"] == 37.2
         assert response.data["respiratory_rate"] == 22
 
     def test_create_copies_vitals_to_encounter_if_empty(

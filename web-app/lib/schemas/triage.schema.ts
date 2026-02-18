@@ -87,8 +87,8 @@ export const TriageAlertSchema = z.object({
   severity: AlertSeveritySchema,
   vital_type: VitalTypeSchema,
   message: z.string(),
-  value: z.number(),
-  threshold: z.number(),
+  value: z.number().nullable(),
+  threshold: z.number().nullable(),
   clinical_note: z.string().optional().nullable(),
   actions: z.array(z.string()).optional().nullable(),
 });

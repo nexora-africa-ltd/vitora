@@ -62,7 +62,7 @@ export interface TriageAssessmentListParams {
   start_date?: string;
   end_date?: string;
   patient_id?: number;
-  encounter_id?: number;
+  encounter?: number; // Filter by encounter FK
 }
 
 export interface TriageQueueListParams {

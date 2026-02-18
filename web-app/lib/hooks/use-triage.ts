@@ -178,11 +178,22 @@ export function useTriageAssessmentByEncounter(encounterId: number | undefined) 
   return useQuery({
     queryKey: triageKeys.assessmentByEncounter(encounterId!),
     queryFn: async () => {
-      const response = await triageApi.listAssessments({ encounter_id: encounterId });
-      // OneToOne relationship means at most 1 result
-      return response.results?.[0] ?? null;
+      try {
+        const response = await triageApi.listAssessments({ encounter: encounterId });
+        // OneToOne relationship means at most 1 result
+        return response.results?.[0] ?? null;
+      } catch (error) {
+        // Log detailed error for debugging
+        console.error('[useTriageAssessmentByEncounter] Failed to check for existing assessment:', {
+          encounterId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
     },
     enabled: !!encounterId,
+    // Retry once in case of transient network issues
+    retry: 1,
   });
 }
 

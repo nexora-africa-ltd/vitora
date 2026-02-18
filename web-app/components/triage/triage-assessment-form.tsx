@@ -1081,6 +1081,9 @@ export function TriageAssessmentForm({
     : null;
 
   // Critical flags for input border styling
+  // Emergency flags (higher than critical)
+  const spo2Emergency = spo2Status?.severity === 'emergency';
+
   const spo2Critical = spo2Status?.severity === 'critical';
   const heartRateCritical = heartRateStatus?.severity === 'critical';
   const bpCritical = mapStatus?.severity === 'critical';
@@ -1101,6 +1104,13 @@ export function TriageAssessmentForm({
   const bpWarning = mapStatus?.severity === 'warning';
   const temperatureWarning = temperatureStatus?.severity === 'warning';
   const respiratoryRateWarning = respiratoryRateStatus?.severity === 'warning';
+
+  // Normal/success flags - value is present AND within normal range (no alert)
+  const spo2Normal = spo2 != null && !spo2Status;
+  const heartRateNormal = heartRate != null && !heartRateStatus;
+  const bpNormal = systolicBp != null && diastolicBp != null && !mapStatus;
+  const temperatureNormal = temperature != null && !temperatureStatus;
+  const respiratoryRateNormal = respiratoryRate != null && !respiratoryRateStatus;
 
   // Recalculate suggested category when relevant fields change
   // Skip recalculation if the category was provided via initialData (backend is source of truth)
@@ -1421,8 +1431,10 @@ export function TriageAssessmentForm({
               <div className="space-y-2">
                 <Label htmlFor="spo2">SpO2</Label>
                 <InputGroup className={cn(
-                  spo2Critical && 'border-destructive ring-1 ring-destructive',
-                  spo2Warning && !spo2Critical && 'border-amber-500 ring-1 ring-amber-500'
+                  spo2Emergency && 'border-rose-600 ring-2 ring-rose-500 bg-rose-50 dark:bg-rose-950/30',
+                  spo2Critical && !spo2Emergency && 'border-destructive ring-1 ring-destructive',
+                  spo2Warning && !spo2Critical && !spo2Emergency && 'border-amber-500 ring-1 ring-amber-500',
+                  spo2Normal && 'border-green-500 ring-1 ring-green-500'
                 )}>
                   <InputGroupInput
                     id="spo2"
@@ -1449,7 +1461,8 @@ export function TriageAssessmentForm({
                 <Label htmlFor="heart_rate">Heart Rate</Label>
                 <InputGroup className={cn(
                   heartRateCritical && 'border-destructive ring-1 ring-destructive',
-                  heartRateWarning && !heartRateCritical && 'border-amber-500 ring-1 ring-amber-500'
+                  heartRateWarning && !heartRateCritical && 'border-amber-500 ring-1 ring-amber-500',
+                  heartRateNormal && 'border-green-500 ring-1 ring-green-500'
                 )}>
                   <InputGroupInput
                     id="heart_rate"
@@ -1492,7 +1505,8 @@ export function TriageAssessmentForm({
                   <InputGroup className={cn(
                     'flex-1',
                     bpCritical && 'border-destructive ring-1 ring-destructive',
-                    bpWarning && !bpCritical && 'border-amber-500 ring-1 ring-amber-500'
+                    bpWarning && !bpCritical && 'border-amber-500 ring-1 ring-amber-500',
+                    bpNormal && 'border-green-500 ring-1 ring-green-500'
                   )}>
                     <InputGroupInput
                       id="systolic_bp"
@@ -1514,7 +1528,8 @@ export function TriageAssessmentForm({
                   <InputGroup className={cn(
                     'flex-1',
                     bpCritical && 'border-destructive ring-1 ring-destructive',
-                    bpWarning && !bpCritical && 'border-amber-500 ring-1 ring-amber-500'
+                    bpWarning && !bpCritical && 'border-amber-500 ring-1 ring-amber-500',
+                    bpNormal && 'border-green-500 ring-1 ring-green-500'
                   )}>
                     <InputGroupInput
                       id="diastolic_bp"
@@ -1548,7 +1563,8 @@ export function TriageAssessmentForm({
                 <Label htmlFor="temperature">Temperature</Label>
                 <InputGroup className={cn(
                   temperatureCritical && 'border-destructive ring-1 ring-destructive',
-                  temperatureWarning && !temperatureCritical && 'border-amber-500 ring-1 ring-amber-500'
+                  temperatureWarning && !temperatureCritical && 'border-amber-500 ring-1 ring-amber-500',
+                  temperatureNormal && 'border-green-500 ring-1 ring-green-500'
                 )}>
                   <InputGroupInput
                     id="temperature"
@@ -1579,7 +1595,8 @@ export function TriageAssessmentForm({
                 <Label htmlFor="respiratory_rate">Respiratory Rate</Label>
                 <InputGroup className={cn(
                   respiratoryRateCritical && 'border-destructive ring-1 ring-destructive',
-                  respiratoryRateWarning && !respiratoryRateCritical && 'border-amber-500 ring-1 ring-amber-500'
+                  respiratoryRateWarning && !respiratoryRateCritical && 'border-amber-500 ring-1 ring-amber-500',
+                  respiratoryRateNormal && 'border-green-500 ring-1 ring-green-500'
                 )}>
                   <InputGroupInput
                     id="respiratory_rate"

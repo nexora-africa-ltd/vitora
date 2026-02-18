@@ -612,8 +612,8 @@ class EncounterSerializer(serializers.ModelSerializer):
         """Get triage completion timestamp from linked TriageAssessment."""
         try:
             if hasattr(obj, "triage_assessment") and obj.triage_assessment:
-                if obj.triage_assessment.completed_at:
-                    return obj.triage_assessment.completed_at.isoformat()
+                if obj.triage_assessment.triage_end_time:
+                    return obj.triage_assessment.triage_end_time.isoformat()
         except Exception:
             pass
         return None
