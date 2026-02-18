@@ -148,32 +148,32 @@ class TestEnhancedVitalsValidation:
         encounter.full_clean()  # Should not raise
 
     def test_temperature_hypothermia_alert(self, sample_patient):
-        """Test hypothermia alert for temperature < 36°C."""
+        """Test severe hypothermia alert for temperature < 32°C."""
         from hmis.apps.encounters.models import Encounter
 
         encounter = Encounter.objects.create(
             patient=sample_patient,
             encounter_type="EMERGENCY",
             chief_complaint="Found unresponsive",
-            temperature=Decimal("35.0"),
+            temperature=Decimal("31.5"),  # <32°C = severe hypothermia (critical)
         )
 
         assert encounter.has_critical_vitals() is True
         assert "hypothermia" in encounter.get_alerts().lower()
 
     def test_temperature_high_fever_alert(self, sample_patient):
-        """Test high fever alert for temperature > 39°C."""
+        """Test high fever alert for temperature >= 40°C."""
         from hmis.apps.encounters.models import Encounter
 
         encounter = Encounter.objects.create(
             patient=sample_patient,
             encounter_type="OPD",
             chief_complaint="High fever",
-            temperature=Decimal("40.5"),
+            temperature=Decimal("40.5"),  # >=40°C = high fever / hyperpyrexia (critical)
         )
 
         assert encounter.has_critical_vitals() is True
-        assert "fever" in encounter.get_alerts().lower()
+        assert "fever" in encounter.get_alerts().lower() or "hyperpyrexia" in encounter.get_alerts().lower()
 
     def test_pulse_bradycardia_alert(self, sample_patient):
         """Test bradycardia alert for pulse < 50 bpm."""

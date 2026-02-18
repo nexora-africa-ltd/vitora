@@ -637,9 +637,10 @@ class Encounter(models.Model):
         """Validate the model fields."""
         super().clean()
 
-        # Validate temperature range (35-45°C)
-        if self.temperature is not None and (self.temperature < 35.0 or self.temperature > 45.0):
-            raise ValidationError({"temperature": "Temperature must be between 35°C and 45°C."})
+        # Validate temperature range (30-45°C)
+        # Lower bound allows recording severe hypothermia (<32°C)
+        if self.temperature is not None and (self.temperature < 30.0 or self.temperature > 45.0):
+            raise ValidationError({"temperature": "Temperature must be between 30°C and 45°C."})
 
         # Validate pulse range (30-200 bpm)
         if self.pulse is not None and (self.pulse < 30 or self.pulse > 200):
@@ -793,14 +794,14 @@ class Encounter(models.Model):
         alerts = []
         age_suffix = " (pediatric)" if self.is_pediatric_patient() else ""
 
-        # Temperature alerts (same for all ages)
+        # Temperature alerts (aligned with triage thresholds)
         if self.temperature is not None:
             temp_status = self.get_vital_status("temperature")
             if temp_status == "critical":
-                if self.temperature > 38.0:
-                    alerts.append(f"High temperature (fever){age_suffix}")
+                if float(self.temperature) >= 40.0:
+                    alerts.append(f"High fever / Hyperpyrexia{age_suffix}")
                 else:
-                    alerts.append(f"Low temperature (hypothermia){age_suffix}")
+                    alerts.append(f"Severe hypothermia{age_suffix}")
 
         # Pulse alerts
         if self.pulse is not None:
@@ -1185,14 +1186,20 @@ class Encounter(models.Model):
         }
 
     # Vital sign ranges for status classification (Adult defaults)
+    # Temperature aligned with triage thresholds:
+    # - Normal: 36-37.5°C
+    # - Warning low: 32-36°C (mild 35-36, moderate 32-35)
+    # - Warning high: 37.6-39.9°C (low-grade 37.6-38.4, moderate 38.5-39.9)
+    # - Critical low: <32°C (severe hypothermia)
+    # - Critical high: ≥40°C (high fever / hyperpyrexia)
     VITAL_RANGES = {
         "temperature": {
             "unit": "°C",
-            "normal": (36.1, 37.2),
-            "warning_low": (35.5, 36.0),
-            "warning_high": (37.3, 38.0),
-            "critical_low": 35.5,
-            "critical_high": 38.0,
+            "normal": (36.0, 37.5),
+            "warning_low": (32.0, 35.9),
+            "warning_high": (37.6, 39.9),
+            "critical_low": 32.0,
+            "critical_high": 40.0,
         },
         "pulse": {
             "unit": "bpm",
@@ -1606,7 +1613,7 @@ class Encounter(models.Model):
         # Check critical first
         if ranges.get("critical_low") and value < ranges["critical_low"]:
             return "critical"
-        if ranges.get("critical_high") and value > ranges["critical_high"]:
+        if ranges.get("critical_high") and value >= ranges["critical_high"]:
             return "critical"
 
         # Check warning

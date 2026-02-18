@@ -533,7 +533,7 @@ class TestEncounterModel:
         assert "respiratory" in alerts.lower()
 
     def test_low_temperature_alert(self):
-        """Test alert for hypothermia."""
+        """Test alert for severe hypothermia (<32°C is critical)."""
         from hmis.apps.encounters.models import Encounter
         from hmis.apps.patients.models import Patient
 
@@ -548,7 +548,7 @@ class TestEncounterModel:
             patient=patient,
             encounter_type="EMERGENCY",
             chief_complaint="Exposure",
-            temperature=35.0,
+            temperature=31.5,  # <32°C is severe hypothermia (critical)
         )
         assert encounter.has_critical_vitals() is True
         alerts = encounter.get_alerts()

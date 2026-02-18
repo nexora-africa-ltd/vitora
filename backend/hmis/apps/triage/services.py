@@ -439,6 +439,36 @@ class TriageCategoryCalculator:
                 )
                 has_red_criteria = True
 
+        # Temperature critical (severe hypothermia or high fever)
+        temp = vitals.get("temperature")
+        if temp is not None:
+            if temp < 32:
+                alerts.append(
+                    create_alert(
+                        severity="CRITICAL",
+                        vital_type="TEMPERATURE",
+                        message=f"Severe hypothermia ({temp}°C)",
+                        value=float(temp),
+                        threshold=32,
+                        clinical_note="Life-threatening; risk of cardiac arrest",
+                        actions=["Active warming", "Warm IV fluids", "Cardiac monitoring"],
+                    )
+                )
+                has_red_criteria = True
+            elif temp >= 40:
+                alerts.append(
+                    create_alert(
+                        severity="CRITICAL",
+                        vital_type="TEMPERATURE",
+                        message=f"High fever / Hyperpyrexia ({temp}°C)",
+                        value=float(temp),
+                        threshold=40,
+                        clinical_note="Potentially life-threatening; urgent evaluation needed",
+                        actions=["Antipyretics", "Cooling measures", "Investigate source"],
+                    )
+                )
+                has_red_criteria = True
+
         # Altered consciousness with responds to voice
         if chief_complaint == "ALTERED_CONSCIOUSNESS" and mental_status == "V":
             alerts.append(
@@ -671,29 +701,57 @@ class TriageCategoryCalculator:
                 )
             )
 
-        # Temperature warnings
+        # Temperature warnings (critical cases already handled in RED)
         temp = vitals.get("temperature")
         if temp:
-            if temp >= 38.5:
-                alerts.append(
-                    create_alert(
-                        severity="WARNING",
-                        vital_type="TEMPERATURE",
-                        message=f"Elevated temperature ({temp}°C)",
-                        value=float(temp),
-                        threshold=38.5,
+            # Warning high: 37.6-39.9°C (sub-classified as low-grade or moderate fever)
+            if 37.5 < temp < 40:
+                if temp < 38.5:
+                    alerts.append(
+                        create_alert(
+                            severity="WARNING",
+                            vital_type="TEMPERATURE",
+                            message=f"Low-grade fever ({temp}°C)",
+                            value=float(temp),
+                            threshold=37.5,
+                            clinical_note="Usually mild, often infection-related",
+                        )
                     )
-                )
-            elif temp < 36.0:
-                alerts.append(
-                    create_alert(
-                        severity="WARNING",
-                        vital_type="TEMPERATURE",
-                        message=f"Low temperature ({temp}°C)",
-                        value=float(temp),
-                        threshold=36.0,
+                else:
+                    alerts.append(
+                        create_alert(
+                            severity="WARNING",
+                            vital_type="TEMPERATURE",
+                            message=f"Moderate fever ({temp}°C)",
+                            value=float(temp),
+                            threshold=38.5,
+                            clinical_note="Clinical attention may be required",
+                        )
                     )
-                )
+            # Warning low: 32-36°C (sub-classified as mild or moderate hypothermia)
+            elif 32 <= temp < 36:
+                if temp >= 35:
+                    alerts.append(
+                        create_alert(
+                            severity="WARNING",
+                            vital_type="TEMPERATURE",
+                            message=f"Mild hypothermia ({temp}°C)",
+                            value=float(temp),
+                            threshold=36.0,
+                            clinical_note="Usually mild, monitor closely",
+                        )
+                    )
+                else:
+                    alerts.append(
+                        create_alert(
+                            severity="WARNING",
+                            vital_type="TEMPERATURE",
+                            message=f"Moderate hypothermia ({temp}°C)",
+                            value=float(temp),
+                            threshold=35.0,
+                            clinical_note="Symptoms: shivering, confusion, slurred speech",
+                        )
+                    )
 
         # Respiratory rate warnings
         rr = vitals.get("respiratory_rate")

@@ -57,10 +57,10 @@ export const DEFAULT_THRESHOLDS: Record<VitalType, Omit<TriageVitalThreshold, 'i
   },
   TEMPERATURE: {
     vital_type: 'TEMPERATURE',
-    critical_low: 35.0,   // Hypothermia
-    warning_low: 36.0,    // Below normal (matches backend)
-    warning_high: 38.5,   // Fever threshold (matches backend)
-    critical_high: 40.0,  // Hyperpyrexia
+    critical_low: 32.0,   // Severe hypothermia (<32°C)
+    warning_low: 36.0,    // Mild hypothermia (35-36°C), Moderate (32-35°C)
+    warning_high: 37.5,   // Low-grade fever (37.6-38.4°C), Moderate (38.5-39.9°C)
+    critical_high: 40.0,  // High fever / Hyperpyrexia (≥40°C)
     is_active: true,
   },
   RESPIRATORY_RATE: {
@@ -208,12 +208,12 @@ function getAlertMessage(
     },
     TEMPERATURE: {
       low: {
-        message: `Temperature ${value}°C - ${status === 'critical' ? 'Hypothermia' : 'Low'}`,
-        note: status === 'critical' ? 'Active warming required' : 'Keep warm, monitor',
+        message: `Temperature ${value}°C - ${status === 'critical' ? 'Severe hypothermia' : value >= 35 ? 'Mild hypothermia' : 'Moderate hypothermia'}`,
+        note: status === 'critical' ? 'Life-threatening; risk of cardiac arrest' : value >= 35 ? 'Usually mild, monitor closely' : 'Symptoms: shivering, confusion, slurred speech',
       },
       high: {
-        message: `Temperature ${value}°C - ${status === 'critical' ? 'High fever' : 'Fever'}`,
-        note: status === 'critical' ? 'Consider antipyretics, investigate cause' : 'Monitor for infection',
+        message: `Temperature ${value}°C - ${status === 'critical' ? 'High fever / Hyperpyrexia' : value >= 38.5 ? 'Moderate fever' : 'Low-grade fever'}`,
+        note: status === 'critical' ? 'Potentially life-threatening; urgent evaluation needed' : value >= 38.5 ? 'Clinical attention may be required' : 'Usually mild, often infection-related',
       },
     },
     RESPIRATORY_RATE: {

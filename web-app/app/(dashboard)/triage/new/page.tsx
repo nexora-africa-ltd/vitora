@@ -10,7 +10,7 @@
 
 import { useCallback, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, AlertCircle, Search, UserPlus, Clock, User, Stethoscope, Plus } from 'lucide-react';
+import { AlertCircle, Search, UserPlus, Clock, User, Stethoscope, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -160,7 +160,7 @@ export default function NewTriagePage() {
   );
 
   const handleCancel = useCallback(() => {
-    router.back();
+    router.push('/triage');
   }, [router]);
 
   const handleClearSelection = useCallback(() => {
@@ -178,13 +178,7 @@ export default function NewTriagePage() {
       <div className="space-y-6">
         <PageHeader
           title="New Triage Assessment"
-          description="Select a patient to begin triage assessment"
-          actions={
-            <Button variant="ghost" onClick={handleCancel}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-          }
+          helpContent="Select a patient to begin triage assessment. You can search for patients or pick from the waiting queue."
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -355,13 +349,6 @@ export default function NewTriagePage() {
       <div className="space-y-6">
         <PageHeader
           title="New Triage Assessment"
-          description="Loading patient information..."
-          actions={
-            <Button variant="ghost" onClick={handleCancel}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-          }
         />
         <Card>
           <CardHeader>
@@ -384,13 +371,6 @@ export default function NewTriagePage() {
       <div className="space-y-6">
         <PageHeader
           title="New Triage Assessment"
-          description="Create a new triage assessment"
-          actions={
-            <Button variant="ghost" onClick={handleCancel}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-          }
         />
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -435,17 +415,11 @@ export default function NewTriagePage() {
     <div className="space-y-6">
       <PageHeader
         title="New Triage Assessment"
-        description={`Triaging: ${patient.first_name} ${patient.last_name} (${patient.mrn})`}
+        helpContent={`Triaging: ${patient.first_name} ${patient.last_name} (${patient.mrn}). Complete the assessment and assign a triage category.`}
         actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={handleClearSelection}>
-              Change Patient
-            </Button>
-            <Button variant="ghost" onClick={handleCancel}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-          </div>
+          <Button variant="outline" onClick={handleClearSelection}>
+            Change Patient
+          </Button>
         }
       />
 
