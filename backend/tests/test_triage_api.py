@@ -210,7 +210,7 @@ class TestCalculateCategoryEndpoint:
             "/api/triage/assessments/calculate-category/", data, format="json"
         )
         assert response.status_code == status.HTTP_200_OK
-        assert "category" in response.data
+        assert "suggested_category" in response.data
         assert "alerts" in response.data
 
     def test_calculate_category_red_for_critical_vitals(self, authenticated_client):
@@ -226,7 +226,7 @@ class TestCalculateCategoryEndpoint:
             "/api/triage/assessments/calculate-category/", data, format="json"
         )
         assert response.status_code == status.HTTP_200_OK
-        assert response.data["category"] == "RED"
+        assert response.data["suggested_category"] == "RED"
         assert len(response.data["alerts"]) > 0
 
 

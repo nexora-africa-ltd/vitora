@@ -59,8 +59,10 @@ function sortAlerts(alerts: TriageAlert[]): TriageAlert[] {
     // Critical alerts first
     if (a.severity === 'CRITICAL' && b.severity !== 'CRITICAL') return -1;
     if (a.severity !== 'CRITICAL' && b.severity === 'CRITICAL') return 1;
-    // Then by vital type alphabetically
-    return a.vital_type.localeCompare(b.vital_type);
+    // Then by vital type alphabetically (handle undefined)
+    const aType = a.vital_type ?? 'GENERAL';
+    const bType = b.vital_type ?? 'GENERAL';
+    return aType.localeCompare(bType);
   });
 }
 

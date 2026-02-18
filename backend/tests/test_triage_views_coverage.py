@@ -55,7 +55,7 @@ class TestTriageAssessmentViewSetActions:
         )
 
         assert response.status_code == status.HTTP_200_OK
-        assert "category" in response.data
+        assert "suggested_category" in response.data
 
     def test_calculate_category_invalid_data(self, authenticated_client):
         """calculate-category with invalid data should return 400."""

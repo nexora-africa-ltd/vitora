@@ -71,6 +71,31 @@ export const DEFAULT_THRESHOLDS: Record<VitalType, Omit<TriageVitalThreshold, 'i
     critical_high: 30,
     is_active: true,
   },
+  // Non-numeric vital types used for structured alerts
+  MENTAL_STATUS: {
+    vital_type: 'MENTAL_STATUS',
+    critical_low: null,
+    warning_low: null,
+    warning_high: null,
+    critical_high: null,
+    is_active: false,
+  },
+  PAIN_SCORE: {
+    vital_type: 'PAIN_SCORE',
+    critical_low: null,
+    warning_low: null,
+    warning_high: 7,  // Significant pain threshold
+    critical_high: 9, // Severe pain threshold
+    is_active: true,
+  },
+  GENERAL: {
+    vital_type: 'GENERAL',
+    critical_low: null,
+    warning_low: null,
+    warning_high: null,
+    critical_high: null,
+    is_active: false,
+  },
 };
 
 // =============================================================================
@@ -200,6 +225,19 @@ function getAlertMessage(
         message: `Respiratory rate ${value}/min - ${status === 'critical' ? 'Respiratory distress' : 'Elevated'}`,
         note: status === 'critical' ? 'Assess for hypoxia, consider oxygen' : 'Investigate cause',
       },
+    },
+    // Non-numeric alert types (used for structured alerts from backend)
+    MENTAL_STATUS: {
+      low: { message: 'Altered mental status', note: 'Assess neurological status' },
+      high: { message: 'Altered mental status', note: undefined },
+    },
+    PAIN_SCORE: {
+      low: { message: 'Pain assessment', note: undefined },
+      high: { message: `Pain score ${value}/10 - ${status === 'critical' ? 'Severe pain' : 'Significant pain'}`, note: status === 'critical' ? 'Consider immediate analgesia' : 'Pain management needed' },
+    },
+    GENERAL: {
+      low: { message: 'Clinical alert', note: undefined },
+      high: { message: 'Clinical alert', note: undefined },
     },
   };
 

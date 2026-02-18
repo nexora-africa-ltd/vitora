@@ -274,6 +274,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         allow_null=True,
         min_value=Decimal("0"),
         max_value=Decimal("100"),
+        coerce_to_string=False,
     )
     heart_rate = serializers.IntegerField(
         required=False, allow_null=True, min_value=0, max_value=300
@@ -291,6 +292,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         allow_null=True,
         min_value=Decimal("30"),
         max_value=Decimal("45"),
+        coerce_to_string=False,
     )
     respiratory_rate = serializers.IntegerField(
         required=False, allow_null=True, min_value=0, max_value=60
@@ -302,6 +304,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         allow_null=True,
         min_value=Decimal("0"),
         max_value=Decimal("500"),
+        coerce_to_string=False,
     )
 
     class Meta:
@@ -617,12 +620,14 @@ class TriageQueueSerializer(serializers.ModelSerializer):
 class TriageCategoryCalculationSerializer(serializers.Serializer):
     """Serializer for category calculation request."""
 
-    spo2 = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, allow_null=True)
+    spo2 = serializers.DecimalField(
+        max_digits=5, decimal_places=2, required=False, allow_null=True, coerce_to_string=False
+    )
     systolic_bp = serializers.IntegerField(required=False, allow_null=True)
     diastolic_bp = serializers.IntegerField(required=False, allow_null=True)
     heart_rate = serializers.IntegerField(required=False, allow_null=True)
     temperature = serializers.DecimalField(
-        max_digits=4, decimal_places=1, required=False, allow_null=True
+        max_digits=4, decimal_places=1, required=False, allow_null=True, coerce_to_string=False
     )
     respiratory_rate = serializers.IntegerField(required=False, allow_null=True)
     mental_status = serializers.ChoiceField(choices=["A", "V", "P", "U"])
@@ -659,7 +664,7 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
         )
 
         return {
-            "category": category,
+            "suggested_category": category,
             "alerts": alerts,
             "vitals": vitals,
         }

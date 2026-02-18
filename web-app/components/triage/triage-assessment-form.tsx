@@ -24,6 +24,7 @@ import {
   AlertTriangle,
   MapPin,
   Stethoscope,
+  Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
@@ -63,6 +64,7 @@ import {
   ASSIGNED_AREA_CONFIG,
   VitalType,
 } from '@/lib/types/triage';
+import { calculateBMI, getBMIColorClass } from '@/lib/utils/bmi';
 
 // =============================================================================
 // VALIDATION SCHEMA
@@ -460,14 +462,23 @@ function getVitalThresholdStatus(
     }
     // 95-100% is normal, return null
   } else if (vitalType === 'temperature') {
+    // Critical thresholds
     if (value < critLow) {
       return { severity: 'critical', message: `Critical: ${value}${config.unit} - Hypothermia`, icon: 'critical' };
     }
-    if (value > critHigh) {
-      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Hyperthermia`, icon: 'critical' };
+    if (value >= 40) {
+      return { severity: 'critical', message: `Critical: ${value}${config.unit} - High fever`, icon: 'critical' };
     }
-    if (value < warnLow || value > warnHigh) {
-      return { severity: 'warning', message: `Abnormal: ${value}${config.unit}`, icon: 'warning' };
+    // Warning thresholds - use clinical terminology consistent with alerts panel
+    if (value >= 38) {
+      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Fever`, icon: 'warning' };
+    }
+    if (value > warnHigh) {
+      // 37.5-38°C range
+      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Low-grade fever`, icon: 'warning' };
+    }
+    if (value < warnLow) {
+      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Low temperature`, icon: 'warning' };
     }
   } else {
     // Heart rate, RR - both low and high are concerning
@@ -524,6 +535,7 @@ function VitalThresholdBadge({ status }: { status: VitalThresholdStatus }) {
 
 /**
  * Generate triage alerts from assessment data and vitals
+ * This is a frontend fallback when backend calculate-category API fails or is slow
  */
 function generateTriageAlerts(
   formData: Partial<TriageFormData>,
@@ -536,7 +548,7 @@ function generateTriageAlerts(
     alerts.push({
       id: 'avpu-unresponsive',
       severity: 'CRITICAL',
-      vital_type: 'SPO2', // Using SPO2 as placeholder, ideally would have AVPU type
+      vital_type: 'MENTAL_STATUS',
       message: 'CRITICAL: Unresponsive patient - Immediate attention required',
       value: 0,
       threshold: 0,
@@ -544,29 +556,185 @@ function generateTriageAlerts(
     });
   }
 
-  // Check SpO2
-  if (encounter.spo2 !== undefined) {
-    if (encounter.spo2 < 90) {
+  // Check for AVPU = P (Responds to Pain)
+  if (formData.mental_status === 'P') {
+    alerts.push({
+      id: 'avpu-pain',
+      severity: 'CRITICAL',
+      vital_type: 'MENTAL_STATUS',
+      message: 'CRITICAL: Patient only responds to pain',
+      value: 0,
+      threshold: 0,
+      clinical_note: 'Patient responds only to pain (AVPU = P). Urgent assessment required.',
+    });
+  }
+
+  // Check SpO2 - prefer form value, fallback to encounter
+  const spo2Value = typeof formData.spo2 === 'number' ? formData.spo2 : encounter.spo2;
+  if (spo2Value !== undefined && spo2Value !== null) {
+    if (spo2Value < 90) {
       alerts.push({
         id: 'spo2-critical',
         severity: 'CRITICAL',
         vital_type: 'SPO2',
-        message: `Severe hypoxemia - SpO2 ${encounter.spo2}%`,
-        value: encounter.spo2,
+        message: `Severe hypoxemia - SpO2 ${spo2Value}%`,
+        value: spo2Value,
         threshold: 90,
         clinical_note: 'Immediate intervention required',
       });
-    } else if (encounter.spo2 < 95) {
+    } else if (spo2Value < 95) {
       alerts.push({
         id: 'spo2-warning',
         severity: 'WARNING',
         vital_type: 'SPO2',
-        message: `Low oxygen saturation - SpO2 ${encounter.spo2}%`,
-        value: encounter.spo2,
+        message: `Low oxygen saturation - SpO2 ${spo2Value}%`,
+        value: spo2Value,
         threshold: 95,
         clinical_note: 'Monitor closely, consider supplemental oxygen',
       });
     }
+  }
+
+  // Check Heart Rate
+  const heartRate = typeof formData.heart_rate === 'number' ? formData.heart_rate : encounter.pulse;
+  if (heartRate !== undefined && heartRate !== null) {
+    if (heartRate < 40) {
+      alerts.push({
+        id: 'hr-critical-low',
+        severity: 'CRITICAL',
+        vital_type: 'HEART_RATE',
+        message: `Severe bradycardia - ${heartRate} bpm`,
+        value: heartRate,
+        threshold: 40,
+        clinical_note: 'Check cardiac rhythm, consider atropine',
+      });
+    } else if (heartRate > 150) {
+      alerts.push({
+        id: 'hr-critical-high',
+        severity: 'CRITICAL',
+        vital_type: 'HEART_RATE',
+        message: `Severe tachycardia - ${heartRate} bpm`,
+        value: heartRate,
+        threshold: 150,
+        clinical_note: 'Assess for underlying cause',
+      });
+    } else if (heartRate < 50) {
+      alerts.push({
+        id: 'hr-warning-low',
+        severity: 'WARNING',
+        vital_type: 'HEART_RATE',
+        message: `Bradycardia - ${heartRate} bpm`,
+        value: heartRate,
+        threshold: 50,
+        clinical_note: 'Monitor for symptoms',
+      });
+    } else if (heartRate > 100) {
+      alerts.push({
+        id: 'hr-warning-high',
+        severity: 'WARNING',
+        vital_type: 'HEART_RATE',
+        message: `Tachycardia - ${heartRate} bpm`,
+        value: heartRate,
+        threshold: 100,
+        clinical_note: 'Monitor closely',
+      });
+    }
+  }
+
+  // Check Systolic BP
+  const systolicBp = formData.systolic_bp;
+  if (typeof systolicBp === 'number') {
+    if (systolicBp < 90) {
+      alerts.push({
+        id: 'bp-critical-low',
+        severity: 'CRITICAL',
+        vital_type: 'SYSTOLIC_BP',
+        message: `Severe hypotension - systolic ${systolicBp} mmHg`,
+        value: systolicBp,
+        threshold: 90,
+        clinical_note: 'Check for shock, sepsis, or bleeding',
+      });
+    } else if (systolicBp > 180) {
+      alerts.push({
+        id: 'bp-critical-high',
+        severity: 'CRITICAL',
+        vital_type: 'SYSTOLIC_BP',
+        message: `Hypertensive crisis - systolic ${systolicBp} mmHg`,
+        value: systolicBp,
+        threshold: 180,
+        clinical_note: 'Immediate intervention required',
+      });
+    } else if (systolicBp < 100) {
+      alerts.push({
+        id: 'bp-warning-low',
+        severity: 'WARNING',
+        vital_type: 'SYSTOLIC_BP',
+        message: `Low blood pressure - systolic ${systolicBp} mmHg`,
+        value: systolicBp,
+        threshold: 100,
+        clinical_note: 'Monitor closely',
+      });
+    } else if (systolicBp > 140) {
+      alerts.push({
+        id: 'bp-warning-high',
+        severity: 'WARNING',
+        vital_type: 'SYSTOLIC_BP',
+        message: `Elevated blood pressure - systolic ${systolicBp} mmHg`,
+        value: systolicBp,
+        threshold: 140,
+        clinical_note: 'Monitor and reassess',
+      });
+    }
+  }
+
+  // Check Temperature
+  const temperature = typeof formData.temperature === 'number' ? formData.temperature : encounter.temperature;
+  if (temperature !== undefined && temperature !== null) {
+    if (temperature < 35) {
+      alerts.push({
+        id: 'temp-critical-low',
+        severity: 'CRITICAL',
+        vital_type: 'TEMPERATURE',
+        message: `Hypothermia - ${temperature}°C`,
+        value: temperature,
+        threshold: 35,
+        clinical_note: 'Active warming required',
+      });
+    } else if (temperature >= 40) {
+      alerts.push({
+        id: 'temp-critical-high',
+        severity: 'CRITICAL',
+        vital_type: 'TEMPERATURE',
+        message: `High fever - ${temperature}°C`,
+        value: temperature,
+        threshold: 40,
+        clinical_note: 'Consider antipyretics, investigate cause',
+      });
+    } else if (temperature >= 38) {
+      alerts.push({
+        id: 'temp-warning-high',
+        severity: 'WARNING',
+        vital_type: 'TEMPERATURE',
+        message: `Fever - ${temperature}°C`,
+        value: temperature,
+        threshold: 38,
+        clinical_note: 'Monitor for infection',
+      });
+    }
+  }
+
+  // Check Pain Score
+  const painScore = formData.pain_score;
+  if (typeof painScore === 'number' && painScore >= 7) {
+    alerts.push({
+      id: painScore >= 9 ? 'pain-critical' : 'pain-warning',
+      severity: painScore >= 9 ? 'CRITICAL' : 'WARNING',
+      vital_type: 'PAIN_SCORE',
+      message: `${painScore >= 9 ? 'Severe' : 'Significant'} pain - ${painScore}/10`,
+      value: painScore,
+      threshold: painScore >= 9 ? 9 : 7,
+      clinical_note: painScore >= 9 ? 'Immediate analgesia needed' : 'Pain management needed',
+    });
   }
 
   return alerts;
@@ -749,6 +917,7 @@ export function TriageAssessmentForm({
   const temperature = watchedValues.temperature;
   const respiratoryRate = watchedValues.respiratory_rate;
   const weight = watchedValues.weight;
+  const height = watchedValues.height;
 
   // Calculate patient age for MAP thresholds
   const patientAge = calculateAge(patient.date_of_birth);
@@ -771,6 +940,14 @@ export function TriageAssessmentForm({
   const bpCritical = mapStatus?.severity === 'critical';
   const temperatureCritical = temperatureStatus?.severity === 'critical';
   const respiratoryRateCritical = respiratoryRateStatus?.severity === 'critical';
+
+  // Calculate BMI when weight and height are available
+  const bmiResult = calculateBMI(
+    weight ?? null,
+    height ?? null,
+    patient.date_of_birth,
+    patient.gender
+  );
 
   // Warning flags for amber border
   const spo2Warning = spo2Status?.severity === 'warning';
@@ -915,8 +1092,11 @@ export function TriageAssessmentForm({
     backendAlerts,
   ]);
 
-  // Generate alerts (prefer backend calculation when available)
-  const alerts = backendAlerts ?? generateTriageAlerts(watchedValues, encounter);
+  // Generate alerts: prefer backend alerts if available, otherwise use local fallback
+  // Always compute local alerts for immediate feedback while backend loads
+  const localAlerts = generateTriageAlerts(watchedValues, encounter);
+  // Use backend alerts when available (even if empty), otherwise use local
+  const alerts = backendAlerts !== null ? backendAlerts : localAlerts;
 
   // Check if category differs from suggested
   const categoryOverridden =
@@ -1330,6 +1510,43 @@ export function TriageAssessmentForm({
                   <p className="text-sm text-destructive">{errors.height.message}</p>
                 )}
               </div>
+
+              {/* BMI (Calculated - Only show when we have values) */}
+              {bmiResult.bmi !== null && bmiResult.isAgeAppropriate && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-muted-foreground">
+                    <Info className="h-4 w-4" />
+                    BMI
+                  </Label>
+                  <div className="flex items-center gap-2 h-10">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'text-base font-semibold px-3 py-1.5',
+                        getBMIColorClass(bmiResult.classification)
+                      )}
+                    >
+                      {bmiResult.bmi}
+                    </Badge>
+                    <div className="flex flex-col">
+                      <span className={cn(
+                        'text-sm font-medium',
+                        getBMIColorClass(bmiResult.classification)
+                      )}>
+                        {bmiResult.classification}
+                      </span>
+                      {bmiResult.percentile && (
+                        <span className="text-xs text-muted-foreground">
+                          {bmiResult.percentile}th percentile
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {bmiResult.message && (
+                    <p className="text-xs text-muted-foreground">{bmiResult.message}</p>
+                  )}
+                </div>
+              )}
             </div>
           </CardContent>
         )}

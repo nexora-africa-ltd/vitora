@@ -69,6 +69,9 @@ export const VitalTypeSchema = z.enum([
   'HEART_RATE',
   'TEMPERATURE',
   'RESPIRATORY_RATE',
+  'MENTAL_STATUS',
+  'PAIN_SCORE',
+  'GENERAL',
 ]);
 
 export const AlertSeveritySchema = z.enum(['CRITICAL', 'WARNING']);
@@ -236,6 +239,7 @@ export const CalculateCategoryResponseSchema = z.object({
   suggested_category: TriageCategorySchema,
   alerts: z.array(TriageAlertSchema),
   reasoning: z.string().optional().nullable(),
+  vitals: z.record(z.unknown()).optional(),
 });
 
 export type CalculateCategoryResponseSchemaType = z.infer<typeof CalculateCategoryResponseSchema>;
