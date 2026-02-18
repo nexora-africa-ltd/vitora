@@ -433,9 +433,9 @@ function getVitalThresholdStatus(
 
   const thresholds: Record<string, { critical: [number, number]; warning: [number, number]; unit: string }> = {
     spo2: { critical: [90, Infinity], warning: [95, Infinity], unit: '%' },
-    heart_rate: { critical: [40, 150], warning: [50, 120], unit: 'bpm' },
-    temperature: { critical: [35, 40], warning: [36.5, 37.5], unit: '°C' },
-    respiratory_rate: { critical: [10, 30], warning: [12, 24], unit: '/min' },
+    heart_rate: { critical: [40, 150], warning: [50, 100], unit: 'bpm' },
+    temperature: { critical: [35, 40], warning: [36.0, 38.5], unit: '°C' },
+    respiratory_rate: { critical: [8, 30], warning: [10, 24], unit: '/min' },
   };
 
   const config = thresholds[vitalType];
@@ -462,33 +462,48 @@ function getVitalThresholdStatus(
     }
     // 95-100% is normal, return null
   } else if (vitalType === 'temperature') {
-    // Critical thresholds
+    // Temperature - use clinical terminology matching the alerts panel
+    // Thresholds: critical_low=35, critical_high=40, warning_low=36.0, warning_high=38.5
     if (value < critLow) {
       return { severity: 'critical', message: `Critical: ${value}${config.unit} - Hypothermia`, icon: 'critical' };
     }
-    if (value >= 40) {
+    if (value >= critHigh) {
       return { severity: 'critical', message: `Critical: ${value}${config.unit} - High fever`, icon: 'critical' };
     }
-    // Warning thresholds - use clinical terminology consistent with alerts panel
-    if (value >= 38) {
-      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Fever`, icon: 'warning' };
-    }
     if (value > warnHigh) {
-      // 37.5-38°C range
-      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Low-grade fever`, icon: 'warning' };
+      // ≥38.5°C is fever
+      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Fever`, icon: 'warning' };
     }
     if (value < warnLow) {
       return { severity: 'warning', message: `Warning: ${value}${config.unit} - Low temperature`, icon: 'warning' };
     }
-  } else {
-    // Heart rate, RR - both low and high are concerning
-    if (value < critLow || value > critHigh) {
-      const direction = value < critLow ? 'Low' : 'High';
-      return { severity: 'critical', message: `Critical: ${value}${config.unit} - ${direction}`, icon: 'critical' };
+  } else if (vitalType === 'heart_rate') {
+    // Heart rate - use clinical terminology
+    if (value < critLow) {
+      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Severe bradycardia`, icon: 'critical' };
     }
-    if (value < warnLow || value > warnHigh) {
-      const direction = value < warnLow ? 'Low' : 'High';
-      return { severity: 'warning', message: `Abnormal: ${value}${config.unit} - ${direction}`, icon: 'warning' };
+    if (value > critHigh) {
+      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Severe tachycardia`, icon: 'critical' };
+    }
+    if (value < warnLow) {
+      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Bradycardia`, icon: 'warning' };
+    }
+    if (value > warnHigh) {
+      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Tachycardia`, icon: 'warning' };
+    }
+  } else if (vitalType === 'respiratory_rate') {
+    // Respiratory rate - use clinical terminology
+    if (value < critLow) {
+      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Respiratory depression`, icon: 'critical' };
+    }
+    if (value > critHigh) {
+      return { severity: 'critical', message: `Critical: ${value}${config.unit} - Respiratory distress`, icon: 'critical' };
+    }
+    if (value < warnLow) {
+      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Bradypnea`, icon: 'warning' };
+    }
+    if (value > warnHigh) {
+      return { severity: 'warning', message: `Warning: ${value}${config.unit} - Tachypnea`, icon: 'warning' };
     }
   }
 
@@ -569,18 +584,28 @@ function generateTriageAlerts(
     });
   }
 
-  // Check SpO2 - prefer form value, fallback to encounter
+  // Check SpO2 - backend tiers: ≤85% severe critical, 86-90% moderate critical, 91-94% warning
   const spo2Value = typeof formData.spo2 === 'number' ? formData.spo2 : encounter.spo2;
   if (spo2Value !== undefined && spo2Value !== null) {
-    if (spo2Value < 90) {
+    if (spo2Value <= 85) {
       alerts.push({
-        id: 'spo2-critical',
+        id: 'spo2-critical-severe',
         severity: 'CRITICAL',
         vital_type: 'SPO2',
         message: `Severe hypoxemia - SpO2 ${spo2Value}%`,
         value: spo2Value,
+        threshold: 85,
+        clinical_note: 'Life-threatening hypoxia - high-flow oxygen, prepare intubation',
+      });
+    } else if (spo2Value <= 90) {
+      alerts.push({
+        id: 'spo2-critical-moderate',
+        severity: 'CRITICAL',
+        vital_type: 'SPO2',
+        message: `Moderate hypoxemia - SpO2 ${spo2Value}%`,
+        value: spo2Value,
         threshold: 90,
-        clinical_note: 'Immediate intervention required',
+        clinical_note: 'Significant hypoxia - supplemental oxygen required',
       });
     } else if (spo2Value < 95) {
       alerts.push({
@@ -687,7 +712,7 @@ function generateTriageAlerts(
     }
   }
 
-  // Check Temperature
+  // Check Temperature - thresholds: critical_low=35, critical_high=40, warning_low=36, warning_high=38.5
   const temperature = typeof formData.temperature === 'number' ? formData.temperature : encounter.temperature;
   if (temperature !== undefined && temperature !== null) {
     if (temperature < 35) {
@@ -710,15 +735,25 @@ function generateTriageAlerts(
         threshold: 40,
         clinical_note: 'Consider antipyretics, investigate cause',
       });
-    } else if (temperature >= 38) {
+    } else if (temperature > 38.5) {
       alerts.push({
         id: 'temp-warning-high',
         severity: 'WARNING',
         vital_type: 'TEMPERATURE',
         message: `Fever - ${temperature}°C`,
         value: temperature,
-        threshold: 38,
+        threshold: 38.5,
         clinical_note: 'Monitor for infection',
+      });
+    } else if (temperature < 36) {
+      alerts.push({
+        id: 'temp-warning-low',
+        severity: 'WARNING',
+        vital_type: 'TEMPERATURE',
+        message: `Low temperature - ${temperature}°C`,
+        value: temperature,
+        threshold: 36,
+        clinical_note: 'Keep warm, monitor',
       });
     }
   }
@@ -735,6 +770,78 @@ function generateTriageAlerts(
       threshold: painScore >= 9 ? 9 : 7,
       clinical_note: painScore >= 9 ? 'Immediate analgesia needed' : 'Pain management needed',
     });
+  }
+
+  // Check Respiratory Rate - thresholds: critical_low=8, critical_high=30, warning_low=10, warning_high=24
+  const respiratoryRate = formData.respiratory_rate;
+  if (typeof respiratoryRate === 'number') {
+    if (respiratoryRate < 8) {
+      alerts.push({
+        id: 'rr-critical-low',
+        severity: 'CRITICAL',
+        vital_type: 'RESPIRATORY_RATE',
+        message: `Respiratory depression - ${respiratoryRate}/min`,
+        value: respiratoryRate,
+        threshold: 8,
+        clinical_note: 'Assess airway, consider reversal agents',
+      });
+    } else if (respiratoryRate > 30) {
+      alerts.push({
+        id: 'rr-critical-high',
+        severity: 'CRITICAL',
+        vital_type: 'RESPIRATORY_RATE',
+        message: `Respiratory distress - ${respiratoryRate}/min`,
+        value: respiratoryRate,
+        threshold: 30,
+        clinical_note: 'Assess for hypoxia, consider oxygen',
+      });
+    } else if (respiratoryRate < 10) {
+      alerts.push({
+        id: 'rr-warning-low',
+        severity: 'WARNING',
+        vital_type: 'RESPIRATORY_RATE',
+        message: `Bradypnea - ${respiratoryRate}/min`,
+        value: respiratoryRate,
+        threshold: 10,
+        clinical_note: 'Monitor closely',
+      });
+    } else if (respiratoryRate > 24) {
+      alerts.push({
+        id: 'rr-warning-high',
+        severity: 'WARNING',
+        vital_type: 'RESPIRATORY_RATE',
+        message: `Tachypnea - ${respiratoryRate}/min`,
+        value: respiratoryRate,
+        threshold: 24,
+        clinical_note: 'Investigate cause',
+      });
+    }
+  }
+
+  // Check Diastolic BP - thresholds: critical_high=120, warning_high=90
+  const diastolicBp = formData.diastolic_bp;
+  if (typeof diastolicBp === 'number') {
+    if (diastolicBp > 120) {
+      alerts.push({
+        id: 'dbp-critical-high',
+        severity: 'CRITICAL',
+        vital_type: 'DIASTOLIC_BP',
+        message: `Diastolic hypertensive crisis - ${diastolicBp} mmHg`,
+        value: diastolicBp,
+        threshold: 120,
+        clinical_note: 'Risk of end-organ damage',
+      });
+    } else if (diastolicBp > 90) {
+      alerts.push({
+        id: 'dbp-warning-high',
+        severity: 'WARNING',
+        vital_type: 'DIASTOLIC_BP',
+        message: `Elevated diastolic BP - ${diastolicBp} mmHg`,
+        value: diastolicBp,
+        threshold: 90,
+        clinical_note: 'Monitor and reassess',
+      });
+    }
   }
 
   return alerts;
@@ -806,10 +913,12 @@ function calculateSuggestedCategory(
   if (formData.pain_score !== null && formData.pain_score !== undefined && formData.pain_score >= 7)
     return 'YELLOW';
   if (formData.mental_status === 'V') return 'YELLOW';
-  if (typeof temperature === 'number' && temperature >= 37.5) return 'YELLOW';
+  // Temperature >= 38.5°C triggers warning (consistent with backend threshold)
+  if (typeof temperature === 'number' && temperature >= 38.5) return 'YELLOW';
+  // Respiratory rate outside warning thresholds (<10 or >24)
   if (
     typeof respiratoryRate === 'number' &&
-    (respiratoryRate < 10 || respiratoryRate > 30)
+    (respiratoryRate < 10 || respiratoryRate > 24)
   ) {
     return 'YELLOW';
   }

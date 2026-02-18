@@ -331,9 +331,9 @@ export function VitalAlertsPanel({
       >
         <div className={cn('p-3 pt-0 space-y-2', compact && 'p-2 pt-0')}>
           {total > 0 ? (
-            sortedAlerts.map((alert) => (
+            sortedAlerts.map((alert, index) => (
               <AlertItem
-                key={alert.id}
+                key={alert.id || `alert-fallback-${index}`}
                 alert={alert}
                 showClinicalNote={showClinicalNotes}
                 onAcknowledge={onAcknowledge}
