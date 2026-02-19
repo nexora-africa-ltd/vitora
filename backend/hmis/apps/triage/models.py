@@ -407,6 +407,14 @@ class TriageAssessment(models.Model):
         validators=[MinValueValidator(0), MaxValueValidator(500)],
         help_text="Body weight in kilograms (kg)",
     )
+    height = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(300)],
+        help_text="Body height in centimeters (cm)",
+    )
 
     # Triage Decision
     triage_category = models.CharField(
