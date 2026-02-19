@@ -84,8 +84,13 @@ class PatientLookupView(views.APIView):
         # Build search query
         patient = None
 
+        # Try primary key (numeric ID) first
+        if query.isdigit():
+            patient = Patient.objects.filter(pk=int(query)).first()
+
         # Try exact MRN match first
-        patient = Patient.objects.filter(mrn__iexact=query).first()
+        if not patient:
+            patient = Patient.objects.filter(mrn__iexact=query).first()
 
         if not patient:
             # Try MRN prefix match

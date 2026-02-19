@@ -64,6 +64,10 @@ interface IdentificationInputProps {
   isSearching?: boolean;
   /** Minimum length before search is enabled */
   minSearchLength?: number;
+  /** Called when input loses focus */
+  onBlur?: () => void;
+  /** Called on keydown - typically for Enter/Tab triggers */
+  onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
 }
 
 export function IdentificationInput({
@@ -78,6 +82,8 @@ export function IdentificationInput({
   onSearch,
   isSearching = false,
   minSearchLength = 5,
+  onBlur,
+  onKeyDown,
 }: IdentificationInputProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -136,6 +142,8 @@ export function IdentificationInput({
           type="text"
           value={identificationNumber}
           onChange={(e) => onNumberChange(e.target.value)}
+          onBlur={onBlur}
+          onKeyDown={onKeyDown}
           placeholder={currentPlaceholder}
           disabled={disabled}
           className={cn(

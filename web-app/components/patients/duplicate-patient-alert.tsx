@@ -38,8 +38,8 @@ interface DuplicatePatientAlertProps {
   matches: DuplicateMatch[];
   /** Type of match found */
   matchType: 'exact_id' | 'demographic' | 'partial' | null;
-  /** Callback when user selects existing patient */
-  onSelectPatient?: (patientId: number) => void;
+  /** Callback when user selects existing patient (passes MRN) */
+  onSelectPatient?: (mrn: string) => void;
   /** Callback when user confirms to continue with new registration */
   onContinueAsNew?: () => void;
   /** Whether the "Continue as New" option is visible */
@@ -181,7 +181,7 @@ export function DuplicatePatientAlert({
         <PatientMatchCard
           match={primaryMatch}
           isExactMatch={isExactIdMatch}
-          onSelect={() => onSelectPatient?.(primaryMatch.id)}
+          onSelect={() => onSelectPatient?.(primaryMatch.mrn)}
         />
 
         {/* Additional Matches (collapsible) */}
@@ -208,7 +208,7 @@ export function DuplicatePatientAlert({
                   key={match.id}
                   match={match}
                   isExactMatch={false}
-                  onSelect={() => onSelectPatient?.(match.id)}
+                  onSelect={() => onSelectPatient?.(match.mrn)}
                 />
               ))}
             </CollapsibleContent>

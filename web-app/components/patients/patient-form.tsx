@@ -98,9 +98,9 @@ import { LocationCombobox } from '@/components/ui/location-combobox';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { IdentificationInput } from './identification-input';
 import { ConsentConfirmationDialog, type ConsentDecision } from './consent-confirmation-dialog';
-import { SHAPrincipalConfirmationDialog, type SHAPrincipalDecision } from './sha-principal-confirmation-dialog';
 import { DuplicatePatientAlert } from './duplicate-patient-alert';
 import { DuplicatePatientModal } from './duplicate-patient-modal';
+import { PatientVerificationDialog, type VerificationDecision } from './patient-verification-dialog';
 import { cn } from '@/lib/utils';
 import { useCounties, useSubCounties, useWards } from '@/lib/hooks/use-locations';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -272,8 +272,8 @@ export function PatientForm({
   // SHA Details dialog state
   const [showShaDetailsDialog, setShowShaDetailsDialog] = useState(false);
 
-  // SHA Principal Confirmation dialog state
-  const [showShaPrincipalDialog, setShowShaPrincipalDialog] = useState(false);
+  // Unified verification dialog state (combines duplicates + SHA eligibility)
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [pendingShaDetails, setPendingShaDetails] = useState<DirectEligibilityCheckResponse | null>(null);
 
   // Nationality combobox state
@@ -286,8 +286,9 @@ export function PatientForm({
 
   // Duplicate check state - for detecting existing patients
   const [duplicateCheckResult, setDuplicateCheckResult] = useState<DuplicateCheckResult | null>(null);
-  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [duplicateAcknowledged, setDuplicateAcknowledged] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [registeringName, setRegisteringName] = useState<string>('');
 
   const form = useForm<PatientFormValues>({
     resolver: zodResolver(patientFormSchemaRefined),
@@ -401,69 +402,194 @@ export function PatientForm({
     }
   }, [form]);
 
-  // Handle SHA principal confirmation decision
-  const handleShaPrincipalDecision = useCallback((decision: SHAPrincipalDecision, selectedDependent?: { name: string; sha_number?: string; date_of_birth?: string }) => {
-    setShowShaPrincipalDialog(false);
-
-    if (decision === 'cancelled') {
-      // User wants to enter manually, just set SHA number if available
-      if (pendingShaDetails?.sha_number) {
-        form.setValue('sha_number', pendingShaDetails.sha_number);
-      }
-      setPendingShaDetails(null);
-      return;
+  // Run duplicate check after user selects a person from verification dialog
+  // This checks if the SELECTED person (principal/dependent) already exists locally
+  const runPostSelectionDuplicateCheck = useCallback(async (
+    options: {
+      idNumber?: string;
+      idType?: IdentificationType;
+      firstName?: string;
+      lastName?: string;
+      dateOfBirth?: string;
+      gender?: 'M' | 'F' | 'O';
+      fullName?: string;
     }
+  ) => {
+    try {
+      let result: DuplicateCheckResult | null = null;
 
-    if (pendingShaDetails) {
-      if (decision === 'confirmed') {
-        // Principal is the patient - populate from SHA details
-        populateFromShaDetails(pendingShaDetails);
-        toast({
-          title: 'Form Auto-Populated',
-          description: pendingShaDetails.is_eligible
-            ? 'Patient details filled from SHA records. Please verify and complete remaining fields.'
-            : 'Patient details filled from SHA records (coverage not active). Please verify and complete remaining fields.',
-        });
-      } else if (decision === 'is_dependent' && selectedDependent) {
-        // Selected a dependent - populate with dependent info
-        if (selectedDependent.sha_number) {
-          form.setValue('sha_number', selectedDependent.sha_number);
-        }
-        if (selectedDependent.name) {
-          const nameParts = selectedDependent.name.trim().split(/\s+/);
-          if (nameParts.length >= 1 && nameParts[0]) {
-            form.setValue('first_name', nameParts[0]);
-          }
-          if (nameParts.length >= 3) {
-            const middleName = nameParts.slice(1, -1).join(' ');
-            const lastName = nameParts[nameParts.length - 1];
-            if (middleName) form.setValue('middle_name', middleName);
-            if (lastName) form.setValue('last_name', lastName);
-          } else if (nameParts.length === 2 && nameParts[1]) {
-            form.setValue('last_name', nameParts[1]);
-          }
-        }
-        if (selectedDependent.date_of_birth) {
-          const dob = new Date(selectedDependent.date_of_birth);
-          if (!isNaN(dob.getTime())) {
-            form.setValue('date_of_birth', dob);
-          }
-        }
-        // Only auto-select SHA payment mode if eligible
-        if (pendingShaDetails.is_eligible) {
-          form.setValue('payment_mode', 'sha');
-        }
-        toast({
-          title: 'Dependent Selected',
-          description: pendingShaDetails.is_eligible
-            ? `Patient details filled for ${selectedDependent.name}. Please verify and complete remaining fields.`
-            : `Patient details filled for ${selectedDependent.name} (coverage not active). Please verify and complete remaining fields.`,
+      // If we have ID number, check by ID first (more precise)
+      if (options.idNumber && options.idType) {
+        result = await patientsApi.checkDuplicate({
+          identification_number: options.idNumber,
+          identification_type: options.idType,
         });
       }
+
+      // If no ID match and we have name + DOB, check by demographics
+      if ((!result || !result.has_duplicate) && options.firstName && options.lastName && options.dateOfBirth) {
+        result = await patientsApi.checkDuplicate({
+          first_name: options.firstName,
+          last_name: options.lastName,
+          date_of_birth: options.dateOfBirth,
+          ...(options.gender && { gender: options.gender }),
+        });
+      }
+
+      if (result?.has_duplicate && result.matches.length > 0) {
+        setDuplicateCheckResult(result);
+        // Store registering name for modal context
+        const name = options.fullName || 
+          (options.firstName && options.lastName ? `${options.firstName} ${options.lastName}` : '');
+        setRegisteringName(name);
+        // Show modal for exact match or if matches found
+        setShowDuplicateModal(true);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Post-selection duplicate check failed:', error);
+      return null;
+    }
+  }, []);
+
+  // Handle unified verification dialog decision
+  const handleVerificationDecision = useCallback(async (decision: VerificationDecision) => {
+    setShowVerificationDialog(false);
+
+    switch (decision.type) {
+      case 'select_existing':
+        // Navigate to check-in for existing patient using MRN (SSOT)
+        window.location.href = `/patients/checkin?select=${encodeURIComponent(decision.mrn)}`;
+        break;
+
+      case 'continue_new':
+        // Continue with new registration (duplicates acknowledged)
+        setDuplicateAcknowledged(true);
+        // If SHA details are available, populate them
+        if (pendingShaDetails) {
+          populateFromShaDetails(pendingShaDetails);
+          toast({
+            title: 'Form Auto-Populated',
+            description: pendingShaDetails.is_eligible
+              ? 'Patient details filled from SHA records. Please verify and complete remaining fields.'
+              : 'Patient details filled from SHA records (coverage not active). Please verify and complete remaining fields.',
+          });
+        }
+        break;
+
+      case 'use_sha_principal':
+        // Use SHA principal details
+        if (pendingShaDetails) {
+          populateFromShaDetails(pendingShaDetails);
+
+          // Run duplicate check for the principal using name + DOB
+          // (ID-based check already happened, this catches demographic matches)
+          const principalName = pendingShaDetails.full_name;
+          if (principalName) {
+            const nameParts = principalName.trim().split(/\s+/);
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.length >= 2 ? nameParts[nameParts.length - 1] : '';
+            if (firstName && lastName) {
+              // Also get the ID number from the form for a more precise check
+              const idNumber = form.getValues('identification_number');
+              const idType = form.getValues('identification_type');
+              await runPostSelectionDuplicateCheck({
+                idNumber: idNumber || undefined,
+                idType: idNumber ? idType : undefined,
+                firstName,
+                lastName,
+                fullName: principalName,
+              });
+            }
+          }
+
+          toast({
+            title: 'Form Auto-Populated',
+            description: pendingShaDetails.is_eligible
+              ? 'Patient details filled from SHA records. Please verify and complete remaining fields.'
+              : 'Patient details filled from SHA records (coverage not active). Please verify and complete remaining fields.',
+          });
+        }
+        break;
+
+      case 'use_sha_dependent':
+        // Use dependent details
+        if (decision.dependent) {
+          const dep = decision.dependent;
+          let depFirstName = '';
+          let depLastName = '';
+
+          if (dep.sha_number) {
+            form.setValue('sha_number', dep.sha_number);
+          }
+          if (dep.name) {
+            const nameParts = dep.name.trim().split(/\s+/);
+            if (nameParts.length >= 1 && nameParts[0]) {
+              depFirstName = nameParts[0];
+              form.setValue('first_name', nameParts[0]);
+            }
+            if (nameParts.length >= 3) {
+              const middleName = nameParts.slice(1, -1).join(' ');
+              const lastName = nameParts[nameParts.length - 1];
+              if (middleName) form.setValue('middle_name', middleName);
+              if (lastName) {
+                depLastName = lastName;
+                form.setValue('last_name', lastName);
+              }
+            } else if (nameParts.length === 2 && nameParts[1]) {
+              depLastName = nameParts[1];
+              form.setValue('last_name', nameParts[1]);
+            }
+          }
+          if (dep.date_of_birth) {
+            const dob = new Date(dep.date_of_birth);
+            if (!isNaN(dob.getTime())) {
+              form.setValue('date_of_birth', dob);
+            }
+          }
+          // Only auto-select SHA payment mode if eligible
+          if (pendingShaDetails?.is_eligible) {
+            form.setValue('payment_mode', 'sha');
+          }
+
+          // Run duplicate check for the dependent using name + DOB
+          if (depFirstName && depLastName && dep.date_of_birth) {
+            await runPostSelectionDuplicateCheck({
+              firstName: depFirstName,
+              lastName: depLastName,
+              dateOfBirth: dep.date_of_birth,
+              fullName: dep.name,
+            });
+          }
+
+          toast({
+            title: 'Dependent Selected',
+            description: pendingShaDetails?.is_eligible
+              ? `Patient details filled for ${dep.name}. Please verify and complete remaining fields.`
+              : `Patient details filled for ${dep.name} (coverage not active). Please verify and complete remaining fields.`,
+          });
+        }
+        break;
+
+      case 'enter_manually':
+        // Just set SHA number if available, user enters rest
+        if (pendingShaDetails?.sha_number) {
+          form.setValue('sha_number', pendingShaDetails.sha_number);
+        }
+        break;
+
+      case 'cancelled':
+        // User cancelled, just set SHA number if available
+        if (pendingShaDetails?.sha_number) {
+          form.setValue('sha_number', pendingShaDetails.sha_number);
+        }
+        break;
     }
 
+    // Clear pending SHA details after decision
     setPendingShaDetails(null);
-  }, [form, pendingShaDetails, populateFromShaDetails, toast]);
+  }, [form, pendingShaDetails, populateFromShaDetails, toast, runPostSelectionDuplicateCheck]);
 
   // Define performCRLookup with useCallback
   // Returns { found: boolean, idType, idNumber } to allow caller to check eligibility
@@ -512,23 +638,7 @@ export function PatientForm({
         const duplicateData = duplicateResult.value;
         if (duplicateData.has_duplicate && duplicateData.matches.length > 0) {
           setDuplicateCheckResult(duplicateData);
-
-          // If exact ID match, show modal immediately
-          if (duplicateData.match_type === 'exact_id') {
-            setShowDuplicateModal(true);
-            toast({
-              title: 'Patient Already Exists',
-              description: `Found existing patient: ${duplicateData.matches[0]?.full_name ?? 'Unknown'}`,
-              variant: 'destructive',
-            });
-          } else {
-            // For demographic matches, just show inline alert
-            toast({
-              title: 'Potential Duplicate Found',
-              description: `Found ${duplicateData.matches.length} patient(s) with similar details.`,
-              variant: 'default',
-            });
-          }
+          // Don't show modal here - unified dialog will be shown after SHA check completes
         }
       } else {
         // Duplicate check failed - log but don't block the flow
@@ -625,14 +735,21 @@ export function PatientForm({
         form.setValue('sha_number', response.sha_number);
       }
 
-      // If CR record was NOT found but SHA details are available, prompt user to confirm identity
-      // Show dialog regardless of eligibility - user may want to populate form with member details
-      if (!crFound && (response.full_name || response.sha_number)) {
+      // Store SHA details for the unified verification dialog
+      const hasShaDetailsToShow = !crFound && (response.full_name || response.sha_number);
+      if (hasShaDetailsToShow) {
         setPendingShaDetails(response);
-        setShowShaPrincipalDialog(true);
-        // Don't show the toast yet - wait for user confirmation
+      }
+
+      // Show unified verification dialog if:
+      // 1. We have duplicate matches that need user attention, OR
+      // 2. We have SHA details to confirm (when CR not found)
+      // Access duplicateCheckResult from closure - it was set in performCRLookup
+      const hasDuplicates = duplicateCheckResult?.has_duplicate && duplicateCheckResult.matches.length > 0;
+      if (hasDuplicates || hasShaDetailsToShow) {
+        setShowVerificationDialog(true);
       } else if (crFound && response.is_eligible) {
-        // CR record was found AND eligible - just show success toast
+        // CR record was found AND eligible, no duplicates - just show success toast
         toast({
           title: 'SHA Coverage Active',
           description: `Patient ${response.full_name || ''} has active SHA coverage.`,
@@ -663,9 +780,13 @@ export function PatientForm({
     } finally {
       setIsCheckingEligibility(false);
     }
-  }, [form, toast]);
+  }, [form, toast, duplicateCheckResult]);
 
-  // Auto-search CR when ID number changes (debounced)
+  // NOTE: Auto-search on debounced ID input is DISABLED in favor of explicit triggers
+  // (Enter, Tab, blur, or clicking the search button). This prevents accidental
+  // searches while the user is still typing and ensures they can review before searching.
+  // The old auto-search behavior is commented out below for reference.
+  /*
   useEffect(() => {
     if (
       debouncedIdNumber &&
@@ -674,15 +795,10 @@ export function PatientForm({
       !crSearched &&
       !isEditing
     ) {
-      performCRLookup(identificationType, debouncedIdNumber).then((result) => {
-        // Always check SHA eligibility after CR lookup (regardless of whether CR found a record)
-        // SHA eligibility is independent of Client Registry status
-        if (result) {
-          checkShaEligibility(result.idType, result.idNumber, result.found);
-        }
-      });
+      triggerIdSearch();
     }
-  }, [debouncedIdNumber, identificationType, crClient, crSearched, isEditing, performCRLookup, checkShaEligibility]);
+  }, [debouncedIdNumber, identificationType, crClient, crSearched, isEditing, triggerIdSearch]);
+  */
 
   // Pre-populate from external CR client
   useEffect(() => {
@@ -767,26 +883,164 @@ export function PatientForm({
     toast,
   ]);
 
-  const handleManualCRSearch = () => {
+  // SHA-first verification flow:
+  // 1. Run SHA eligibility check (+ CR lookup in parallel)
+  // 2. Show verification dialog immediately with SHA results
+  // 3. User selects who they're registering (principal/dependent/manual)
+  // 4. Duplicate check runs on the populated form data (via demographic check useEffect)
+  const triggerIdSearch = useCallback(() => {
     const idNumber = form.getValues('identification_number');
     const idType = form.getValues('identification_type');
 
-    if (idNumber && idNumber.length >= 5) {
-      // Only reset crClient, NOT crSearched (to avoid triggering the auto-search useEffect)
-      setCrClient(null);
-      performCRLookup(idType, idNumber).then((result) => {
-        // Always check SHA eligibility after CR lookup (regardless of whether CR found a record)
-        if (result) {
-          checkShaEligibility(result.idType, result.idNumber, result.found);
-        }
-      });
-    } else {
+    if (!idNumber || idNumber.length < 5) {
       toast({
         title: 'Invalid ID',
         description: 'Please enter at least 5 characters for the ID number.',
         variant: 'destructive',
       });
+      return;
     }
+
+    // Reset states
+    setCrClient(null);
+    setDuplicateCheckResult(null);
+    setDuplicateAcknowledged(false);
+    setPendingShaDetails(null);
+
+    // Start searches
+    setIsSearchingCR(true);
+    setIsCheckingEligibility(true);
+
+    // Run CR lookup and SHA eligibility in parallel
+    Promise.allSettled([
+      shaApi.fetchFromClientRegistry({
+        identification_type: {
+          national_id: 'National ID',
+          passport: 'Passport',
+          cr_number: 'SHA Number',
+          alien_id: 'Alien ID',
+          kra_pin: 'KRA PIN',
+          mandate_number: 'Mandate Number',
+          temporary_id: 'Temporary ID',
+        }[idType] || idType,
+        identification_number: idNumber,
+      }),
+      shaApi.checkDirectEligibility(
+        idType === 'national_id' ? { national_id: idNumber } :
+        idType === 'cr_number' ? { sha_number: idNumber } :
+        { identification_type: idType, identification_number: idNumber }
+      ),
+    ]).then(([crResult, shaResult]) => {
+      setCrSearched(true);
+
+      // Handle CR lookup result
+      let crFound = false;
+      if (crResult.status === 'fulfilled') {
+        const crResponse = crResult.value;
+        if (crResponse.found && crResponse.client) {
+          setCrClient(crResponse.client);
+          crFound = true;
+          // Don't auto-populate here - let user confirm in dialog first
+        }
+      }
+
+      // Handle SHA eligibility result
+      if (shaResult.status === 'fulfilled') {
+        const response = shaResult.value;
+        setShaEligibility({
+          checked: true,
+          isEligible: response.is_eligible,
+          reason: response.is_eligible
+            ? undefined
+            : response.reason || 'Patient is not eligible for SHA coverage',
+          details: response,
+        });
+
+        // Set SHA number in form
+        if (response.sha_number) {
+          form.setValue('sha_number', response.sha_number);
+        }
+
+        // If SHA details found, show verification dialog for user to select who they're registering
+        const hasShaDetails = response.full_name || response.sha_number;
+        if (hasShaDetails) {
+          setPendingShaDetails(response);
+          setShowVerificationDialog(true);
+        } else if (crFound && crClient) {
+          // No SHA details but CR found - auto-populate
+          populateFromCRClient(crClient);
+          toast({
+            title: 'Client Registry Record Found',
+            description: 'Patient details auto-populated from registry.',
+          });
+        } else {
+          // No SHA, no CR
+          toast({
+            title: 'No Records Found',
+            description: 'No existing registry records. Please enter patient details manually.',
+            variant: 'default',
+          });
+        }
+
+        // Handle ineligible SHA
+        if (!response.is_eligible) {
+          const currentPaymentMode = form.getValues('payment_mode');
+          if (currentPaymentMode === 'sha') {
+            form.setValue('payment_mode', 'cash');
+          }
+        }
+      } else {
+        // SHA check failed
+        console.error('SHA eligibility check failed:', shaResult.reason);
+        setShaEligibility({
+          checked: true,
+          isEligible: true, // Allow selection, verification at claim time
+          reason: undefined,
+          details: undefined,
+        });
+
+        // If only CR found, populate from it
+        if (crFound && crClient) {
+          populateFromCRClient(crClient);
+          toast({
+            title: 'Client Registry Record Found',
+            description: 'Patient details auto-populated from registry.',
+          });
+        }
+      }
+    }).finally(() => {
+      setIsSearchingCR(false);
+      setIsCheckingEligibility(false);
+      setFormLocked(false);
+    });
+  }, [form, toast, populateFromCRClient, crClient]);
+
+  // Handle Enter/Tab key on ID input field
+  const handleIdInputKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter' || event.key === 'Tab') {
+      const idNumber = form.getValues('identification_number');
+      if (idNumber && idNumber.length >= 5 && !isSearchingCR && !crSearched) {
+        // Prevent form submission on Enter
+        if (event.key === 'Enter') {
+          event.preventDefault();
+        }
+        triggerIdSearch();
+      }
+    }
+  }, [form, isSearchingCR, crSearched, triggerIdSearch]);
+
+  // Handle blur on ID input field
+  const handleIdInputBlur = useCallback(() => {
+    const idNumber = form.getValues('identification_number');
+    if (idNumber && idNumber.length >= 5 && !isSearchingCR && !crSearched) {
+      triggerIdSearch();
+    }
+  }, [form, isSearchingCR, crSearched, triggerIdSearch]);
+
+  const handleManualCRSearch = () => {
+    // Reset search state to allow re-trigger
+    setCrSearched(false);
+    triggerIdSearch();
   };
 
   const handleFormSubmit = async (values: PatientFormValues) => {
@@ -945,13 +1199,12 @@ export function PatientForm({
               <DuplicatePatientAlert
                 matches={duplicateCheckResult.matches}
                 matchType={duplicateCheckResult.match_type}
-                onSelectPatient={(patientId) => {
-                  // Navigate to check-in page for the existing patient
-                  window.location.href = `/patients/checkin?select=${patientId}`;
+                onSelectPatient={(mrn) => {
+                  // Navigate to check-in page for the existing patient using MRN (SSOT)
+                  window.location.href = `/patients/checkin?select=${encodeURIComponent(mrn)}`;
                 }}
                 onContinueAsNew={() => {
                   setDuplicateAcknowledged(true);
-                  setShowDuplicateModal(false);
                 }}
                 showContinueOption={duplicateCheckResult.match_type !== 'exact_id'}
               />
@@ -1104,6 +1357,8 @@ export function PatientForm({
                           field.onChange(value);
                           if (crClient) resetCRSearch();
                         }}
+                        onBlur={handleIdInputBlur}
+                        onKeyDown={handleIdInputKeyDown}
                         disabled={formLocked || isFormLoading}
                         required
                         error={form.formState.errors.identification_number?.message}
@@ -1112,7 +1367,7 @@ export function PatientForm({
                         minSearchLength={5}
                       />
                       <FormDescription>
-                        Click the label to change ID type
+                        Press Enter or Tab to search
                       </FormDescription>
                     </FormItem>
                   )}
@@ -1978,12 +2233,36 @@ export function PatientForm({
         isNewCRRecord={crSearched && !crClient}
       />
 
-      {/* SHA Principal Confirmation Dialog */}
-      <SHAPrincipalConfirmationDialog
-        open={showShaPrincipalDialog}
-        onOpenChange={setShowShaPrincipalDialog}
-        onDecision={handleShaPrincipalDecision}
+      {/* Unified Patient Verification Dialog */}
+      <PatientVerificationDialog
+        open={showVerificationDialog}
+        onOpenChange={setShowVerificationDialog}
+        onDecision={handleVerificationDecision}
+        duplicateResult={duplicateCheckResult}
         shaDetails={pendingShaDetails}
+        isCheckingSha={isCheckingEligibility}
+        crRecordFound={!!crClient}
+      />
+
+      {/* Post-Selection Duplicate Check Modal */}
+      <DuplicatePatientModal
+        open={showDuplicateModal}
+        onOpenChange={setShowDuplicateModal}
+        result={duplicateCheckResult}
+        registeringName={registeringName}
+        onSelectExistingPatient={(mrn) => {
+          setShowDuplicateModal(false);
+          // Navigate to check-in for the existing patient using MRN (SSOT)
+          window.location.href = `/patients/checkin?select=${encodeURIComponent(mrn)}`;
+        }}
+        onContinueAsNew={() => {
+          setShowDuplicateModal(false);
+          setDuplicateAcknowledged(true);
+          toast({
+            title: 'Continuing Registration',
+            description: 'Please complete the remaining fields for the new patient.',
+          });
+        }}
       />
 
       {/* SHA Details Dialog */}
@@ -2161,20 +2440,7 @@ export function PatientForm({
         </DialogContent>
       </Dialog>
 
-      {/* Duplicate Patient Modal */}
-      <DuplicatePatientModal
-        open={showDuplicateModal}
-        onOpenChange={setShowDuplicateModal}
-        result={duplicateCheckResult}
-        onSelectExistingPatient={(patientId) => {
-          // Navigate to check-in page for the existing patient
-          window.location.href = `/patients/checkin?select=${patientId}`;
-        }}
-        onContinueAsNew={() => {
-          setDuplicateAcknowledged(true);
-          setShowDuplicateModal(false);
-        }}
-      />
+
     </>
   );
 }

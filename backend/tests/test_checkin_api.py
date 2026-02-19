@@ -47,6 +47,23 @@ class TestPatientLookupAPI:
         # Clinical snapshot should be present
         assert "clinical_snapshot" in response.data
 
+    def test_lookup_patient_by_primary_key(self, authenticated_client, sample_patient):
+        """
+        GIVEN a patient exists in the system
+        WHEN looking up by numeric patient ID (primary key)
+        THEN should return the patient with clinical snapshot
+        """
+        response = authenticated_client.get(
+            "/api/checkin/lookup/",
+            {"q": str(sample_patient.id)},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == sample_patient.id
+        assert response.data["mrn"] == sample_patient.mrn
+        # Clinical snapshot should be present
+        assert "clinical_snapshot" in response.data
+
     def test_lookup_patient_by_phone(self, authenticated_client, sample_patient_with_phone):
         """
         GIVEN a patient exists with phone number
