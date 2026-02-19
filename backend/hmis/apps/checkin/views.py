@@ -183,6 +183,130 @@ class PatientLookupView(views.APIView):
         return Response(response_data)
 
 
+class PatientSearchView(views.APIView):
+    """
+    API endpoint for searching patients (returns multiple matches).
+
+    GET /api/checkin/search/?q={query}
+
+    Searches by:
+    - MRN (exact or prefix match)
+    - Phone number
+    - National ID / identification number
+    - Name (partial match)
+
+    Returns a list of matching patients for selection.
+    Clinical snapshot is loaded separately after selection via /lookup/.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "q",
+                OpenApiTypes.STR,
+                description="Search query (MRN, ID, phone, or name)",
+                required=True,
+            ),
+            OpenApiParameter(
+                "limit",
+                OpenApiTypes.INT,
+                description="Maximum number of results (default: 10, max: 50)",
+                required=False,
+            ),
+        ],
+        responses={200: "PatientSearchResultSerializer(many=True)"},
+    )
+    def get(self, request):
+        """Search patients by MRN, ID, phone, or name. Returns multiple matches."""
+        from .serializers import PatientSearchResultSerializer
+
+        query = request.query_params.get("q", "").strip()
+        limit = min(int(request.query_params.get("limit", 10)), 50)
+
+        if not query:
+            return Response(
+                {"detail": "Query parameter 'q' is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if len(query) < 2:
+            return Response(
+                {"detail": "Search query must be at least 2 characters."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Build search query - union of all possible matches
+        patients = Patient.objects.none()
+
+        # Try primary key (numeric ID) first
+        if query.isdigit():
+            pk_matches = Patient.objects.filter(pk=int(query))
+            patients = patients | pk_matches
+
+        # Try exact MRN match
+        mrn_exact = Patient.objects.filter(mrn__iexact=query)
+        patients = patients | mrn_exact
+
+        # MRN prefix match
+        mrn_prefix = Patient.objects.filter(mrn__istartswith=query)
+        patients = patients | mrn_prefix
+
+        # Phone number (strip leading zeros for flexibility)
+        normalized_phone = query.lstrip("0").replace("+254", "")
+        if len(normalized_phone) >= 6:
+            phone_matches = Patient.objects.filter(
+                Q(phone_number__icontains=normalized_phone) | Q(phone_number=query)
+            )
+            patients = patients | phone_matches
+
+        # Identification number
+        id_matches = Patient.objects.filter(identification_number__iexact=query)
+        patients = patients | id_matches
+
+        # Name search (first + last)
+        name_parts = query.split()
+        if len(name_parts) >= 2:
+            name_matches = Patient.objects.filter(
+                Q(first_name__icontains=name_parts[0]) & Q(last_name__icontains=name_parts[-1])
+            )
+            patients = patients | name_matches
+        else:
+            name_matches = Patient.objects.filter(
+                Q(first_name__icontains=query) | Q(last_name__icontains=query)
+            )
+            patients = patients | name_matches
+
+        # Deduplicate and order by relevance (MRN exact match first)
+        patients = (
+            patients.distinct()
+            .select_related("county", "sub_county")
+            .prefetch_related("encounters")
+            .order_by("-mrn")[:limit]
+        )
+
+        # Log the search
+        AuditLog.log(
+            action="patient_search",
+            user=request.user,
+            resource_type="Patient",
+            resource_id=0,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "query": query,
+                "results_count": patients.count(),
+            },
+        )
+
+        serializer = PatientSearchResultSerializer(patients, many=True)
+        return Response({
+            "count": len(serializer.data),
+            "results": serializer.data,
+        })
+
+
 class PatientCheckinView(views.APIView):
     """
     API endpoint for checking in a patient.

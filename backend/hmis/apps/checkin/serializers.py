@@ -33,6 +33,63 @@ class ClinicalSnapshotSerializer(serializers.Serializer):
     alerts = serializers.ListField(child=serializers.CharField(), read_only=True)
 
 
+class PatientSearchResultSerializer(serializers.ModelSerializer):
+    """
+    Lightweight serializer for patient search results.
+
+    Used for listing multiple patients matching a search query.
+    Does NOT include clinical snapshot (that's loaded after selection).
+    """
+
+    full_name = serializers.SerializerMethodField()
+    age = serializers.SerializerMethodField()
+    last_visit_date = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Patient
+        fields = [
+            "id",
+            "mrn",
+            "first_name",
+            "middle_name",
+            "last_name",
+            "full_name",
+            "date_of_birth",
+            "age",
+            "gender",
+            "phone_number",
+            "identification_type",
+            "identification_number",
+            "county",
+            "sub_county",
+            "last_visit_date",
+        ]
+        read_only_fields = fields
+
+    def get_full_name(self, obj) -> str:
+        """Get patient's full name."""
+        parts = [obj.first_name]
+        if obj.middle_name:
+            parts.append(obj.middle_name)
+        parts.append(obj.last_name)
+        return " ".join(parts)
+
+    def get_age(self, obj) -> int:
+        """Get patient's age in years."""
+        from datetime import date
+
+        today = date.today()
+        born = obj.date_of_birth
+        return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+
+    def get_last_visit_date(self, obj) -> str | None:
+        """Get date of most recent encounter."""
+        last_encounter = obj.encounters.order_by("-encounter_date").first()
+        if last_encounter:
+            return str(last_encounter.encounter_date)
+        return None
+
+
 class PatientLookupSerializer(serializers.ModelSerializer):
     """
     Serializer for patient lookup response.

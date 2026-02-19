@@ -79,6 +79,35 @@ export const PatientLookupResponseSchema = z.object({
 });
 
 /**
+ * Schema for patient search result (lightweight, no clinical snapshot)
+ */
+export const PatientSearchResultSchema = z.object({
+  id: z.number(),
+  mrn: z.string(),
+  first_name: z.string(),
+  middle_name: z.string().optional().nullable(),
+  last_name: z.string(),
+  full_name: z.string(),
+  date_of_birth: z.string(),
+  age: z.number(),
+  gender: z.string(),
+  phone_number: z.string().optional().nullable(),
+  identification_type: z.string().optional().nullable(),
+  identification_number: z.string().optional().nullable(),
+  county: z.number().optional().nullable(),
+  sub_county: z.number().optional().nullable(),
+  last_visit_date: z.string().nullable(),
+});
+
+/**
+ * Schema for patient search response
+ */
+export const PatientSearchResponseSchema = z.object({
+  count: z.number(),
+  results: z.array(PatientSearchResultSchema),
+});
+
+/**
  * Schema for check-in response
  */
 export const CheckInResponseSchema = z.object({

@@ -36,10 +36,10 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { useToast } from '@/lib/hooks/use-toast';
-import { usePatientLookup, useTodayCheckins, useCheckinPatient } from '@/lib/hooks/use-checkin';
+import { usePatientSearch, usePatientLookup, useTodayCheckins, useCheckinPatient } from '@/lib/hooks/use-checkin';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { useDebounce } from '@/lib/hooks/use-debounce';
-import { VISIT_REASON_OPTIONS, type VisitReason, type PatientLookupResponse } from '@/lib/types/checkin';
+import { VISIT_REASON_OPTIONS, type VisitReason, type PatientLookupResponse, type PatientSearchResult } from '@/lib/types/checkin';
 import { cn } from '@/lib/utils';
 
 // =============================================================================
@@ -331,6 +331,81 @@ function PatientCheckinCard({
 }
 
 // =============================================================================
+// PatientSearchResultsList - Shows multiple matching patients for selection
+// =============================================================================
+
+function PatientSearchResultsList({
+  patients,
+  onSelect,
+  selectedId,
+  isLoadingDetails,
+}: {
+  patients: PatientSearchResult[];
+  onSelect: (patient: PatientSearchResult) => void;
+  selectedId?: number;
+  isLoadingDetails?: boolean;
+}) {
+  if (patients.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-muted-foreground px-1">
+        {patients.length} patient{patients.length !== 1 ? 's' : ''} found. Select one to check in.
+      </p>
+      <div className="space-y-2 max-h-[400px] overflow-y-auto">
+        {patients.map((patient) => (
+          <Card
+            key={patient.id}
+            className={cn(
+              'cursor-pointer transition-colors hover:bg-muted/50',
+              selectedId === patient.id && 'ring-2 ring-primary bg-muted/50'
+            )}
+            onClick={() => onSelect(patient)}
+          >
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span className="font-medium truncate">{patient.full_name}</span>
+                    {selectedId === patient.id && isLoadingDetails && (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent shrink-0" />
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
+                    <span className="font-mono">{patient.mrn}</span>
+                    {patient.phone_number && <span>{patient.phone_number}</span>}
+                    {patient.identification_number && (
+                      <span>{patient.identification_type}: {patient.identification_number}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <Badge variant="outline" className="mb-1">
+                    {patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other'}
+                  </Badge>
+                  <div className="text-sm text-muted-foreground">
+                    {patient.age} yrs
+                  </div>
+                </div>
+              </div>
+              {patient.last_visit_date && (
+                <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Last visit: {patient.last_visit_date}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
 // RecentCheckinsCard - Shows today's check-ins
 // =============================================================================
 
@@ -424,6 +499,7 @@ export default function PatientCheckinPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPatient, setSelectedPatient] = useState<PatientSearchResult | null>(null);
   const debouncedQuery = useDebounce(searchQuery, 400);
 
   // Handle pre-selected patient from query param (e.g., from duplicate modal)
@@ -440,27 +516,52 @@ export default function PatientCheckinPage() {
     }
   }, [preSelectedPatientId, searchQuery, router]);
 
+  // Search for patients (returns multiple matches)
   const {
-    data: patientData,
+    data: searchResults,
     isLoading: isSearching,
     error: searchError,
-    isFetched,
-  } = usePatientLookup(debouncedQuery, {
-    enabled: debouncedQuery.length >= 1, // Allow single digit for IDs
+  } = usePatientSearch(debouncedQuery, {
+    enabled: debouncedQuery.length >= 2,
+    limit: 20,
   });
 
+  // Load clinical snapshot for selected patient
+  const {
+    data: patientDetails,
+    isLoading: isLoadingDetails,
+  } = usePatientLookup(selectedPatient?.mrn || '', {
+    enabled: !!selectedPatient,
+  });
+
+  // Reset selection when search query changes
+  useEffect(() => {
+    setSelectedPatient(null);
+  }, [debouncedQuery]);
+
+  // Auto-select if only one result
+  useEffect(() => {
+    if (searchResults?.count === 1 && searchResults.results[0]) {
+      setSelectedPatient(searchResults.results[0]);
+    }
+  }, [searchResults]);
+
   const checkinMutation = useCheckinPatient();
+
+  const handlePatientSelect = (patient: PatientSearchResult) => {
+    setSelectedPatient(patient);
+  };
 
   const handleCheckin = async (
     destination: 'TRIAGE' | number,
     visitReason: VisitReason,
     skipTriage: boolean
   ) => {
-    if (!patientData) return;
+    if (!patientDetails) return;
 
     try {
       const result = await checkinMutation.mutateAsync({
-        patientId: patientData.id,
+        patientId: patientDetails.id,
         data: {
           destination,
           visit_reason: visitReason,
@@ -470,11 +571,12 @@ export default function PatientCheckinPage() {
 
       toast({
         title: 'Patient Checked In',
-        description: `${patientData.full_name} is now in queue at ${result.destination}. Position: ${result.queue_position}`,
+        description: `${patientDetails.full_name} is now in queue at ${result.destination}. Position: ${result.queue_position}`,
       });
 
       // Clear search and reset for next patient
       setSearchQuery('');
+      setSelectedPatient(null);
 
       // Optionally navigate to queue view
       if (destination === 'TRIAGE') {
@@ -533,7 +635,7 @@ export default function PatientCheckinPage() {
             <Card>
               <CardContent className="py-6 sm:py-8 text-center">
                 <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground mb-2">Patient not found</p>
+                <p className="text-muted-foreground mb-2">No patients found</p>
                 <Button
                   variant="outline"
                   onClick={() => router.push('/patients/new')}
@@ -545,21 +647,57 @@ export default function PatientCheckinPage() {
             </Card>
           )}
 
-          {patientData && !isSearching && (
-            <PatientCheckinCard
-              patient={patientData}
-              onCheckin={handleCheckin}
-              isLoading={checkinMutation.isPending}
+          {/* Show search results list (multiple patients) */}
+          {searchResults && searchResults.count > 0 && !isSearching && !selectedPatient && (
+            <PatientSearchResultsList
+              patients={searchResults.results}
+              onSelect={handlePatientSelect}
+              isLoadingDetails={false}
             />
           )}
 
-          {!debouncedQuery && !patientData && (
+          {/* Show selected patient with check-in options */}
+          {selectedPatient && !isSearching && (
+            <>
+              {/* Back to results button */}
+              {searchResults && searchResults.count > 1 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedPatient(null)}
+                  className="mb-2"
+                >
+                  ← Back to results ({searchResults.count} patients)
+                </Button>
+              )}
+
+              {isLoadingDetails ? (
+                <Card>
+                  <CardContent className="py-6 sm:py-8">
+                    <div className="flex items-center justify-center gap-3">
+                      <div className="h-5 w-5 sm:h-6 sm:w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      <span className="text-sm sm:text-base text-muted-foreground">Loading patient details...</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : patientDetails ? (
+                <PatientCheckinCard
+                  patient={patientDetails}
+                  onCheckin={handleCheckin}
+                  isLoading={checkinMutation.isPending}
+                />
+              ) : null}
+            </>
+          )}
+
+          {/* Empty state */}
+          {!debouncedQuery && !selectedPatient && (
             <Card>
               <CardContent className="py-8 sm:py-12 text-center">
                 <User className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-3 sm:mb-4" />
                 <h3 className="font-medium text-base sm:text-lg mb-1 sm:mb-2">Ready to Check-in</h3>
                 <p className="text-sm sm:text-base text-muted-foreground">
-                  Enter a patient's MRN, National ID, or phone number to begin.
+                  Enter a patient's MRN, National ID, name, or phone number to begin.
                 </p>
               </CardContent>
             </Card>

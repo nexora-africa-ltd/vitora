@@ -260,6 +260,163 @@ class TestPatientLookupAPI:
 
 
 # ============================================================================
+# Patient Search Tests (Multi-result)
+# ============================================================================
+
+
+class TestPatientSearchAPI:
+    """Tests for patient search endpoint (returns multiple matches)."""
+
+    def test_search_returns_multiple_matches(
+        self, authenticated_client, sample_patient, db
+    ):
+        """
+        GIVEN multiple patients with similar names
+        WHEN searching by name
+        THEN should return all matching patients
+        """
+        from hmis.apps.patients.models import Patient
+
+        # Create additional patients with similar names
+        Patient.objects.create(
+            first_name="Jane",
+            last_name="Doe",
+            date_of_birth=date.today() - timedelta(days=10000),
+            gender="F",
+            county=sample_patient.county,
+            sub_county=sample_patient.sub_county,
+        )
+        Patient.objects.create(
+            first_name="Janet",
+            last_name="Smith",
+            date_of_birth=date.today() - timedelta(days=8000),
+            gender="F",
+            county=sample_patient.county,
+            sub_county=sample_patient.sub_county,
+        )
+
+        response = authenticated_client.get(
+            "/api/checkin/search/",
+            {"q": "Jane"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "count" in response.data
+        assert "results" in response.data
+        # Should have at least 2 matches (Jane Doe and Janet)
+        assert response.data["count"] >= 2
+
+    def test_search_by_mrn_prefix(self, authenticated_client, sample_patient):
+        """
+        GIVEN a patient with MRN
+        WHEN searching by MRN prefix
+        THEN should return matching patients
+        """
+        mrn_prefix = sample_patient.mrn[:8]  # First 8 chars
+
+        response = authenticated_client.get(
+            "/api/checkin/search/",
+            {"q": mrn_prefix},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] >= 1
+        # The sample patient should be in results
+        mrns = [p["mrn"] for p in response.data["results"]]
+        assert sample_patient.mrn in mrns
+
+    def test_search_requires_min_length(self, authenticated_client):
+        """
+        GIVEN a short query
+        WHEN searching
+        THEN should return validation error
+        """
+        response = authenticated_client.get(
+            "/api/checkin/search/",
+            {"q": "J"},  # Only 1 character
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "detail" in response.data
+
+    def test_search_requires_query(self, authenticated_client):
+        """
+        GIVEN no query parameter
+        WHEN searching
+        THEN should return validation error
+        """
+        response = authenticated_client.get("/api/checkin/search/")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "detail" in response.data
+
+    def test_search_includes_lightweight_data(self, authenticated_client, sample_patient):
+        """
+        GIVEN a matching patient
+        WHEN searching
+        THEN should return lightweight patient data without clinical snapshot
+        """
+        response = authenticated_client.get(
+            "/api/checkin/search/",
+            {"q": sample_patient.mrn},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] >= 1
+
+        patient = response.data["results"][0]
+        # Should have basic info
+        assert "id" in patient
+        assert "mrn" in patient
+        assert "full_name" in patient
+        assert "date_of_birth" in patient
+        assert "age" in patient
+        assert "gender" in patient
+        # Should NOT have clinical snapshot (that's loaded separately)
+        assert "clinical_snapshot" not in patient
+
+    def test_search_respects_limit(self, authenticated_client, sample_patient, db):
+        """
+        GIVEN many matching patients
+        WHEN searching with limit
+        THEN should return at most limit results
+        """
+        from hmis.apps.patients.models import Patient
+
+        # Create many patients with "Test" name
+        for i in range(10):
+            Patient.objects.create(
+                first_name=f"Test{i}",
+                last_name="Patient",
+                date_of_birth=date.today() - timedelta(days=10000 + i * 100),
+                gender="M",
+                county=sample_patient.county,
+                sub_county=sample_patient.sub_county,
+            )
+
+        response = authenticated_client.get(
+            "/api/checkin/search/",
+            {"q": "Test", "limit": 5},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) <= 5
+
+    def test_search_requires_authentication(self, api_client, sample_patient):
+        """
+        GIVEN an unauthenticated request
+        WHEN searching
+        THEN should return 401
+        """
+        response = api_client.get(
+            "/api/checkin/search/",
+            {"q": sample_patient.mrn},
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+# ============================================================================
 # Patient Check-in Tests
 # ============================================================================
 
