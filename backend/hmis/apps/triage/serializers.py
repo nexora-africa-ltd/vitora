@@ -145,6 +145,8 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
     patient_gender = serializers.CharField(source="encounter.patient.gender", read_only=True)
     encounter_mrn = serializers.CharField(source="encounter.patient.mrn", read_only=True)
     assigned_clinician_name = serializers.SerializerMethodField()
+    assigned_clinic_name = serializers.CharField(source="assigned_clinic.name", read_only=True, allow_null=True)
+    routing_destination = serializers.CharField(read_only=True)
     alerts = serializers.SerializerMethodField()  # Handle legacy string format conversion
     vitals = serializers.SerializerMethodField()
     wait_time_minutes = serializers.SerializerMethodField()
@@ -182,6 +184,9 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             "auto_calculated_category",
             "category_override_reason",
             "assigned_area",
+            "assigned_clinic",
+            "assigned_clinic_name",
+            "routing_destination",
             "assigned_clinician",
             "assigned_clinician_name",
             "arrival_time",
@@ -197,7 +202,7 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["auto_calculated_category", "alerts", "triaged_by"]
+        read_only_fields = ["auto_calculated_category", "alerts", "triaged_by", "assigned_clinic_name", "routing_destination"]
 
     def get_vitals(self, obj) -> dict:
         """Get vitals captured at triage (fallback to encounter vitals if needed)."""
@@ -393,6 +398,14 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         coerce_to_string=False,
     )
 
+    # Make assigned_area optional (blank allowed for clinic routing)
+    assigned_area = serializers.ChoiceField(
+        choices=TriageAssessment.ASSIGNED_AREA_CHOICES,
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+    )
+
     class Meta:
         model = TriageAssessment
         fields = [
@@ -415,11 +428,15 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
             "auto_calculated_category",
             "category_override_reason",
             "assigned_area",
+            "assigned_clinic",
             "assigned_clinician",
             "arrival_time",
             "triage_start_time",
             "triage_end_time",
         ]
+        extra_kwargs = {
+            "assigned_clinic": {"required": False, "allow_null": True},
+        }
 
     def _extract_vitals(self, data, encounter: Encounter | None) -> dict:
         """Extract vitals from incoming triage payload; fallback to encounter vitals."""
@@ -466,16 +483,45 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         return vitals
 
     def validate(self, data):
-        """Ensure override reason provided if category differs from auto-calculated.
+        """Validate triage assessment data.
 
-        The frontend sends auto_calculated_category to indicate what was shown
-        to the user as the "suggested" category. We use this for comparison
-        to determine if the user overrode the suggestion (requires reason) or
-        accepted it (no reason needed).
-
-        If frontend doesn't send auto_calculated_category, we fall back to
-        calculating it server-side.
+        - Ensure override reason provided if category differs from auto-calculated
+        - Ensure either assigned_area OR assigned_clinic is provided (not both)
         """
+        # ========================================================================
+        # Routing Validation: Either assigned_area OR assigned_clinic required
+        # ========================================================================
+        assigned_area = data.get("assigned_area")
+        assigned_clinic = data.get("assigned_clinic")
+
+        has_area = bool(assigned_area) and assigned_area.strip() if isinstance(assigned_area, str) else bool(assigned_area)
+        has_clinic = assigned_clinic is not None
+
+        if not has_area and not has_clinic:
+            raise serializers.ValidationError(
+                {
+                    "assigned_area": "Either 'assigned_area' (for ER zones) or 'assigned_clinic' (for clinics) must be provided.",
+                    "assigned_clinic": "Either 'assigned_area' (for ER zones) or 'assigned_clinic' (for clinics) must be provided.",
+                }
+            )
+
+        if has_area and has_clinic:
+            raise serializers.ValidationError(
+                {
+                    "assigned_area": "Cannot set both 'assigned_area' and 'assigned_clinic'. Choose one routing option.",
+                    "assigned_clinic": "Cannot set both 'assigned_area' and 'assigned_clinic'. Choose one routing option.",
+                }
+            )
+
+        # Clear the other field if one is set
+        if has_clinic:
+            data["assigned_area"] = ""
+        if has_area:
+            data["assigned_clinic"] = None
+
+        # ========================================================================
+        # Category Override Validation
+        # ========================================================================
         # Get user's selected category
         user_category = data.get("triage_category")
         if not user_category:
@@ -523,7 +569,10 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         """Auto-calculate category, generate alerts, add to queue.
 
         Auto-sets triage_start_time to now (when triage assessment begins).
+        If assigned_clinic is provided, auto-creates a ClinicVisit in the clinic queue.
         """
+        from datetime import date
+
         from django.utils import timezone
 
         # Get the encounter
@@ -558,20 +607,57 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
 
         # Set triaged_by from request
         request = self.context.get("request")
+        user = None
         if request and hasattr(request, "user"):
-            validated_data["triaged_by"] = request.user
+            user = request.user
+            validated_data["triaged_by"] = user
 
         # Create the assessment
         assessment = TriageAssessment.objects.create(**validated_data)
 
-        # Add to queue
-        from .models import TriageQueue
+        # If assigned_clinic is provided, auto-create ClinicVisit
+        assigned_clinic = validated_data.get("assigned_clinic")
+        if assigned_clinic:
+            from hmis.apps.clinics.models import ClinicSession, ClinicVisit
 
-        TriageQueue.objects.create(
-            triage_assessment=assessment,
-            position=0,  # Will be recalculated by queue ordering
-            status="WAITING",
-        )
+            # Map triage category to clinic priority
+            triage_to_priority = {
+                "RED": "EMERGENCY",
+                "ORANGE": "URGENT",
+                "YELLOW": "PRIORITY",
+                "GREEN": "STANDARD",
+                "BLUE": "NON_URGENT",
+            }
+            priority = triage_to_priority.get(assessment.triage_category, "STANDARD")
+
+            # Get or create today's session for the clinic
+            session, _ = ClinicSession.objects.get_or_create(
+                clinic=assigned_clinic,
+                session_date=date.today(),
+                defaults={"status": "OPEN"},
+            )
+
+            # Create clinic visit
+            ClinicVisit.objects.create(
+                session=session,
+                patient=encounter.patient,
+                triage_assessment=assessment,
+                visit_type="NEW",
+                source="TRIAGE",
+                chief_complaint=assessment.chief_complaint,
+                priority=priority,
+                notes="",
+                registered_by=user,
+            )
+        else:
+            # Add to triage queue (for ER areas)
+            from .models import TriageQueue
+
+            TriageQueue.objects.create(
+                triage_assessment=assessment,
+                position=0,  # Will be recalculated by queue ordering
+                status="WAITING",
+            )
 
         return assessment
 
@@ -604,6 +690,9 @@ class TriageQueueSerializer(serializers.ModelSerializer):
     )
     assigned_area = serializers.CharField(source="triage_assessment.assigned_area", read_only=True)
     assigned_area_display = serializers.SerializerMethodField()
+    assigned_clinic = serializers.IntegerField(source="triage_assessment.assigned_clinic_id", read_only=True, allow_null=True)
+    assigned_clinic_name = serializers.CharField(source="triage_assessment.assigned_clinic.name", read_only=True, allow_null=True)
+    routing_destination = serializers.CharField(source="triage_assessment.routing_destination", read_only=True)
     arrival_time = serializers.DateTimeField(
         source="triage_assessment.arrival_time", read_only=True
     )
@@ -632,6 +721,9 @@ class TriageQueueSerializer(serializers.ModelSerializer):
             "chief_complaint",
             "assigned_area",
             "assigned_area_display",
+            "assigned_clinic",
+            "assigned_clinic_name",
+            "routing_destination",
             "arrival_time",
             "triage_time",
             "wait_time_minutes",
@@ -671,7 +763,12 @@ class TriageQueueSerializer(serializers.ModelSerializer):
         return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
     def get_assigned_area_display(self, obj) -> str:
-        """Get human-readable area name."""
+        """Get human-readable area name or clinic name."""
+        # If assigned to a clinic, return clinic name
+        if obj.triage_assessment.assigned_clinic:
+            return obj.triage_assessment.assigned_clinic.name
+
+        # Otherwise return the ER area display name
         area = obj.triage_assessment.assigned_area
         area_labels = {
             "OPD": "Outpatient Department",
@@ -684,7 +781,7 @@ class TriageQueueSerializer(serializers.ModelSerializer):
             "MATERNITY": "Maternity",
             "SPECIALTY": "Specialty",
         }
-        return area_labels.get(area, area)
+        return area_labels.get(area, area or "Not assigned")
 
     def get_wait_time_minutes(self, obj) -> int:
         """Calculate wait time in minutes since arrival."""

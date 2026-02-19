@@ -119,8 +119,10 @@ export default function TriageAssessmentDetailPage() {
     );
   }
 
-  // Helper to get area label
-  const areaLabel = ASSIGNED_AREA_CONFIG[assessment.assigned_area]?.label ?? assessment.assigned_area;
+  // Helper to get area label - handle empty/null assigned_area
+  const areaLabel = assessment.assigned_area && assessment.assigned_area in ASSIGNED_AREA_CONFIG
+    ? ASSIGNED_AREA_CONFIG[assessment.assigned_area as keyof typeof ASSIGNED_AREA_CONFIG].label
+    : assessment.assigned_clinic_name ?? assessment.assigned_area ?? 'Not assigned';
 
   return (
     <div className="space-y-6">

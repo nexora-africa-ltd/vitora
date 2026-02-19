@@ -62,8 +62,10 @@ import {
   MOBILITY_CONFIG,
   TRIAGE_CATEGORY_CONFIG,
   ASSIGNED_AREA_CONFIG,
+  EMERGENCY_AREA_OPTIONS,
   VitalType,
 } from '@/lib/types/triage';
+import { useClinics } from '@/lib/hooks/use-clinics';
 import { calculateBMI, getBMIColorClass } from '@/lib/utils/bmi';
 
 // =============================================================================
@@ -144,6 +146,7 @@ const triageFormSchema = z
       .enum(['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'])
       .optional(),
     category_override_reason: z.string().optional(),
+    // Routing: Either assigned_area (ER zones) OR assigned_clinic (clinics)
     assigned_area: z.enum(
       [
         'ER_RESUS',
@@ -155,11 +158,28 @@ const triageFormSchema = z
         'PEDIATRIC_ER',
         'MATERNITY',
         'SPECIALTY',
-      ],
-      { required_error: 'Assigned care area is required' }
-    ),
+        '', // Empty when clinic is assigned
+      ]
+    ).optional(),
+    assigned_clinic: z.number().nullable().optional(),
     assigned_clinician: z.number().nullable().optional(),
   })
+  .refine(
+    (data) => {
+      // Routing validation: require either assigned_area OR assigned_clinic
+      const hasArea = data.assigned_area && data.assigned_area.trim() !== '';
+      const hasClinic = data.assigned_clinic != null;
+
+      if (!hasArea && !hasClinic) {
+        return false;
+      }
+      return true;
+    },
+    {
+      message: 'Select either an emergency area or a clinic for routing',
+      path: ['assigned_area'],
+    }
+  )
   .refine(
     (data) => {
       // If category differs from auto-calculated, require override reason
@@ -1000,6 +1020,32 @@ export function TriageAssessmentForm({
   const [showVitals, setShowVitals] = React.useState(true);
   const [backendAlerts, setBackendAlerts] = React.useState<TriageAlert[] | null>(null);
 
+  // Routing mode: 'emergency' for ER zones, 'clinic' for clinic routing
+  const [routingMode, setRoutingMode] = React.useState<'emergency' | 'clinic'>(
+    initialData?.assigned_clinic ? 'clinic' : 'emergency'
+  );
+  const [clinicSearch, setClinicSearch] = React.useState('');
+  const [clinicListExpanded, setClinicListExpanded] = React.useState(
+    !initialData?.assigned_clinic // Collapse if a clinic is already selected
+  );
+
+  // Fetch active clinics for routing
+  const { data: clinicsData, isLoading: clinicsLoading } = useClinics({
+    status: 'ACTIVE',
+  });
+  const clinics = React.useMemo(() => clinicsData?.results ?? [], [clinicsData?.results]);
+
+  // Filter clinics by search
+  const filteredClinics = React.useMemo(() => {
+    if (!clinicSearch.trim()) return clinics;
+    const query = clinicSearch.toLowerCase();
+    return clinics.filter(
+      (clinic) =>
+        clinic.name.toLowerCase().includes(query) ||
+        clinic.clinic_type_display.toLowerCase().includes(query)
+    );
+  }, [clinics, clinicSearch]);
+
   const calculateCategoryMutation = useCalculateTriageCategory();
 
   // Use initialData's category if provided, otherwise calculate locally as fallback
@@ -1043,7 +1089,8 @@ export function TriageAssessmentForm({
         initialData?.triage_category ||
         initialSuggested,
       category_override_reason: initialData?.category_override_reason || '',
-      assigned_area: initialData?.assigned_area,
+      assigned_area: initialData?.assigned_area || '',
+      assigned_clinic: initialData?.assigned_clinic ?? null,
       assigned_clinician: initialData?.assigned_clinician || null,
     },
   });
@@ -1231,6 +1278,7 @@ export function TriageAssessmentForm({
       cancelled = true;
       window.clearTimeout(timer);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- calculateCategoryMutation, autoCalculatedCategory, backendAlerts, setValue intentionally excluded to prevent infinite re-render loop
   }, [
     spo2,
     heartRate,
@@ -1242,10 +1290,6 @@ export function TriageAssessmentForm({
     chiefComplaintCategory,
     painScore,
     watchedValues.mobility,
-    calculateCategoryMutation,
-    autoCalculatedCategory,
-    setValue,
-    backendAlerts,
   ]);
 
   // Generate alerts: prefer backend alerts if available, otherwise use local fallback
@@ -1286,7 +1330,11 @@ export function TriageAssessmentForm({
         triage_category: data.triage_category,
         auto_calculated_category: data.auto_calculated_category,
         category_override_reason: data.category_override_reason,
-        assigned_area: data.assigned_area,
+        // Routing: use routingMode state to determine which field to send
+        // Clinic mode: send assigned_clinic, clear assigned_area
+        // Emergency mode: send assigned_area, clear assigned_clinic
+        assigned_area: routingMode === 'clinic' ? undefined : data.assigned_area,
+        assigned_clinic: routingMode === 'emergency' ? undefined : data.assigned_clinic,
         assigned_clinician: data.assigned_clinician,
       });
     } finally {
@@ -2034,43 +2082,177 @@ export function TriageAssessmentForm({
             Care Area Assignment
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <Label htmlFor="assigned_area">
-              Assigned Area <span className="text-destructive">*</span>
-            </Label>
-            <Controller
-              name="assigned_area"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={disabled}
-                >
-                  <SelectTrigger
-                    id="assigned_area"
-                    aria-required="true"
-                    aria-invalid={!!errors.assigned_area}
-                  >
-                    <SelectValue placeholder="Select care area" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(
-                      Object.entries(ASSIGNED_AREA_CONFIG) as [AssignedArea, { label: string }][]
-                    ).map(([value, config]) => (
-                      <SelectItem key={value} value={value}>
-                        {config.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.assigned_area && (
-              <p className="text-sm text-destructive">{errors.assigned_area.message}</p>
-            )}
+        <CardContent className="space-y-4">
+          {/* Routing Mode Toggle */}
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant={routingMode === 'emergency' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setRoutingMode('emergency');
+                setValue('assigned_clinic', null);
+              }}
+              disabled={disabled}
+              className="flex-1"
+            >
+              🚨 Emergency Area
+            </Button>
+            <Button
+              type="button"
+              variant={routingMode === 'clinic' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setRoutingMode('clinic');
+                setValue('assigned_area', '');
+              }}
+              disabled={disabled}
+              className="flex-1"
+            >
+              🏥 Route to Clinic
+            </Button>
           </div>
+
+          {/* Emergency Area Selection */}
+          {routingMode === 'emergency' && (
+            <div className="space-y-2">
+              <Label>
+                Emergency Area <span className="text-destructive">*</span>
+              </Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {EMERGENCY_AREA_OPTIONS.map((option) => {
+                  const isSelected = watchedValues.assigned_area === option.value;
+                  const categoryColor = {
+                    RED: 'border-red-500 bg-red-50 dark:bg-red-950/30',
+                    ORANGE: 'border-orange-500 bg-orange-50 dark:bg-orange-950/30',
+                    YELLOW: 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/30',
+                    GREEN: 'border-green-500 bg-green-50 dark:bg-green-950/30',
+                    BLUE: 'border-blue-500 bg-blue-50 dark:bg-blue-950/30',
+                  }[option.category as string] || '';
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        setValue('assigned_area', option.value);
+                        setValue('assigned_clinic', null);
+                      }}
+                      disabled={disabled}
+                      className={cn(
+                        'p-3 text-left rounded-lg border-2 transition-all',
+                        'hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary',
+                        isSelected
+                          ? `${categoryColor} border-primary ring-2 ring-primary`
+                          : 'border-border hover:border-muted-foreground'
+                      )}
+                    >
+                      <div className="font-medium text-sm">{option.label}</div>
+                    </button>
+                  );
+                })}
+              </div>
+              {errors.assigned_area && (
+                <p className="text-sm text-destructive">{errors.assigned_area.message}</p>
+              )}
+            </div>
+          )}
+
+          {/* Clinic Selection */}
+          {routingMode === 'clinic' && (
+            <div className="space-y-3">
+              <Label>
+                Select Clinic <span className="text-destructive">*</span>
+              </Label>
+
+              {/* Selected Clinic Display (collapsed state) */}
+              {watchedValues.assigned_clinic ? (
+                <div className="p-3 bg-accent rounded-lg border border-border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-primary font-bold">✓</span>
+                      <div>
+                        <div className="text-sm font-medium text-accent-foreground">
+                          {clinics.find(c => c.id === watchedValues.assigned_clinic)?.name}
+                        </div>
+                        <div className="text-xs text-primary-foreground">
+                          {clinics.find(c => c.id === watchedValues.assigned_clinic)?.clinic_type_display}
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      onClick={() => setValue('assigned_clinic', null)}
+                      disabled={disabled}
+                      className="text-accent-foreground hover:text-foreground"
+                    >
+                      Change
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Clinic Search */}
+                  <div className="relative">
+                    <Input
+                      placeholder="Search clinics..."
+                      value={clinicSearch}
+                      onChange={(e) => setClinicSearch(e.target.value)}
+                      disabled={disabled}
+                      className="pl-8"
+                    />
+                    <Stethoscope className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  </div>
+
+                  {/* Clinic List */}
+                  <div className="max-h-48 overflow-y-auto border border-border rounded-lg bg-card">
+                    {clinicsLoading ? (
+                      <div className="p-4 text-center text-muted-foreground">
+                        Loading clinics...
+                      </div>
+                    ) : filteredClinics.length === 0 ? (
+                      <div className="p-4 text-center text-muted-foreground">
+                        {clinicSearch ? 'No clinics match your search' : 'No active clinics available'}
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-border">
+                        {filteredClinics.map((clinic) => (
+                          <button
+                            key={clinic.id}
+                            type="button"
+                            onClick={() => {
+                              setValue('assigned_clinic', clinic.id);
+                              setValue('assigned_area', '');
+                              setClinicSearch(''); // Clear search on selection
+                            }}
+                            disabled={disabled}
+                            className={cn(
+                              'w-full p-3 text-left transition-colors',
+                              'hover:bg-accent hover:text-accent-foreground focus:outline-none focus:bg-accent focus:text-accent-foreground'
+                            )}
+                          >
+                            <div className="font-medium text-sm">{clinic.name}</div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-2">
+                              <span>{clinic.clinic_type_display}</span>
+                              {clinic.is_open_today && (
+                                <Badge variant="outline" className="text-[10px] py-0 px-1">Open</Badge>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {errors.assigned_area && (
+                <p className="text-sm text-destructive">{errors.assigned_area.message}</p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
