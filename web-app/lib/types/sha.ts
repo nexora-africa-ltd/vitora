@@ -203,10 +203,10 @@ export interface DirectEligibilityCheckResponse {
   reason?: string;
   possible_solution?: string;
   is_employed?: boolean;
-  employment_type?: string;
+  employment_type?: string | null;
   employer_name?: string | null;
-  nhif_transition_status?: string;
-  means_testing?: MeansTestingDetails;
+  nhif_transition_status?: string | null;
+  means_testing?: MeansTestingDetails | null;
   dependents?: SHADependent[];
   dependents_covered?: number;
   raw_response?: Record<string, unknown>;

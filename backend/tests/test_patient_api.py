@@ -350,3 +350,120 @@ class TestPatientAPIEndpoints:
         assert response.status_code == status.HTTP_200_OK
         assert "full_name" in response.data
         assert response.data["full_name"] == "John Doe"
+
+
+@pytest.mark.integration
+class TestPatientDuplicateCheck:
+    """Test Patient duplicate check endpoint."""
+
+    def test_check_duplicate_with_exact_id_match(
+        self, auth_client, sample_county, sample_sub_county
+    ):
+        """Test finding a duplicate by exact identification number."""
+        from hmis.apps.patients.models import Patient
+
+        # Create existing patient with ID
+        Patient.objects.create(
+            first_name="Jane",
+            last_name="Smith",
+            date_of_birth=date(1985, 5, 20),
+            gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
+            identification_type="national_id",
+            identification_number="12345678",
+        )
+
+        response = auth_client.get(
+            "/api/patients/check-duplicate/",
+            {"identification_number": "12345678", "identification_type": "national_id"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["has_duplicate"] is True
+        assert response.data["match_type"] == "exact_id"
+        assert len(response.data["matches"]) == 1
+        assert response.data["matches"][0]["full_name"] == "Jane Smith"
+        assert response.data["matches"][0]["match_confidence"] == 100
+
+    def test_check_duplicate_no_match(self, auth_client):
+        """Test no duplicate found for unknown ID."""
+        response = auth_client.get(
+            "/api/patients/check-duplicate/",
+            {"identification_number": "99999999", "identification_type": "national_id"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["has_duplicate"] is False
+        assert response.data["match_type"] is None
+        assert len(response.data["matches"]) == 0
+
+    def test_check_duplicate_demographic_match(
+        self, auth_client, sample_county, sample_sub_county
+    ):
+        """Test finding a duplicate by name + DOB + gender."""
+        from hmis.apps.patients.models import Patient
+
+        # Create existing patient
+        Patient.objects.create(
+            first_name="John",
+            last_name="Kamau",
+            date_of_birth=date(1990, 3, 15),
+            gender="M",
+            county=sample_county,
+            sub_county=sample_sub_county,
+        )
+
+        response = auth_client.get(
+            "/api/patients/check-duplicate/",
+            {
+                "first_name": "John",
+                "last_name": "Kamau",
+                "date_of_birth": "1990-03-15",
+                "gender": "M",
+            },
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["has_duplicate"] is True
+        assert response.data["match_type"] == "demographic"
+        assert len(response.data["matches"]) >= 1
+        assert response.data["matches"][0]["full_name"] == "John Kamau"
+        assert response.data["matches"][0]["match_confidence"] >= 85
+
+    def test_check_duplicate_case_insensitive(
+        self, auth_client, sample_county, sample_sub_county
+    ):
+        """Test that name matching is case-insensitive."""
+        from hmis.apps.patients.models import Patient
+
+        Patient.objects.create(
+            first_name="Mary",
+            last_name="Wanjiku",
+            date_of_birth=date(1988, 7, 10),
+            gender="F",
+            county=sample_county,
+            sub_county=sample_sub_county,
+        )
+
+        response = auth_client.get(
+            "/api/patients/check-duplicate/",
+            {
+                "first_name": "MARY",
+                "last_name": "wanjiku",
+                "date_of_birth": "1988-07-10",
+            },
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["has_duplicate"] is True
+        assert response.data["matches"][0]["full_name"] == "Mary Wanjiku"
+
+    def test_check_duplicate_requires_auth(self, api_client):
+        """Test that endpoint requires authentication."""
+        response = api_client.get(
+            "/api/patients/check-duplicate/",
+            {"identification_number": "12345678"},
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

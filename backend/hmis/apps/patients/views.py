@@ -556,6 +556,123 @@ class PatientViewSet(IdempotentCreateMixin, viewsets.ModelViewSet):
         serializer = LabResultSerializer(results, many=True)
         return Response(serializer.data)
 
+    @action(detail=False, methods=["get"], url_path="check-duplicate")
+    def check_duplicate(self, request):
+        """
+        Check for potential duplicate patients before registration.
+
+        Query Parameters:
+            - identification_number: Check for exact ID match
+            - identification_type: Type of ID (default: national_id)
+            - first_name: For demographic matching
+            - last_name: For demographic matching
+            - date_of_birth: For demographic matching (YYYY-MM-DD)
+            - gender: For demographic matching (M/F/O)
+
+        Returns:
+            - has_duplicate: Boolean indicating if potential duplicate found
+            - match_type: "exact_id" | "demographic" | null
+            - matches: List of matching patients (limited info for privacy)
+        """
+        from django.db.models import Q
+
+        identification_number = request.query_params.get("identification_number")
+        identification_type = request.query_params.get("identification_type", "national_id")
+        first_name = request.query_params.get("first_name", "").strip()
+        last_name = request.query_params.get("last_name", "").strip()
+        date_of_birth = request.query_params.get("date_of_birth")
+        gender = request.query_params.get("gender")
+
+        matches = []
+        match_type = None
+
+        # Priority 1: Exact identification match
+        if identification_number:
+            exact_match = Patient.objects.filter(
+                identification_type=identification_type,
+                identification_number=identification_number,
+            ).first()
+
+            if exact_match:
+                matches.append({
+                    "id": exact_match.id,
+                    "mrn": exact_match.mrn,
+                    "full_name": exact_match.full_name,
+                    "date_of_birth": exact_match.date_of_birth,
+                    "gender": exact_match.gender,
+                    "match_confidence": 100,
+                    "match_reason": "Exact ID match",
+                })
+                match_type = "exact_id"
+
+        # Priority 2: Demographic matching (if no exact ID match)
+        if not matches and first_name and last_name and date_of_birth:
+            try:
+                dob = datetime.strptime(date_of_birth, "%Y-%m-%d").date()
+                demographic_qs = Patient.objects.filter(
+                    first_name__iexact=first_name,
+                    last_name__iexact=last_name,
+                    date_of_birth=dob,
+                )
+
+                if gender:
+                    demographic_qs = demographic_qs.filter(gender=gender)
+
+                for patient in demographic_qs[:5]:  # Limit to 5 matches
+                    matches.append({
+                        "id": patient.id,
+                        "mrn": patient.mrn,
+                        "full_name": patient.full_name,
+                        "date_of_birth": patient.date_of_birth,
+                        "gender": patient.gender,
+                        "match_confidence": 95 if gender else 85,
+                        "match_reason": "Name + DOB match" + (" + Gender" if gender else ""),
+                    })
+                    match_type = "demographic"
+            except ValueError:
+                pass  # Invalid date format
+
+        # Priority 3: Partial name match (fuzzy)
+        if not matches and first_name and last_name:
+            # Look for similar names (case-insensitive contains)
+            partial_qs = Patient.objects.filter(
+                Q(first_name__icontains=first_name) | Q(last_name__icontains=last_name)
+            )
+
+            if date_of_birth:
+                try:
+                    dob = datetime.strptime(date_of_birth, "%Y-%m-%d").date()
+                    partial_qs = partial_qs.filter(date_of_birth=dob)
+                except ValueError:
+                    pass
+
+            for patient in partial_qs[:3]:  # Limit to 3 partial matches
+                # Calculate simple match confidence
+                confidence = 50
+                if patient.first_name.lower() == first_name.lower():
+                    confidence += 20
+                if patient.last_name.lower() == last_name.lower():
+                    confidence += 20
+                if date_of_birth and str(patient.date_of_birth) == date_of_birth:
+                    confidence += 10
+
+                matches.append({
+                    "id": patient.id,
+                    "mrn": patient.mrn,
+                    "full_name": patient.full_name,
+                    "date_of_birth": patient.date_of_birth,
+                    "gender": patient.gender,
+                    "match_confidence": confidence,
+                    "match_reason": "Partial name match",
+                })
+                match_type = "partial"
+
+        return Response({
+            "has_duplicate": len(matches) > 0,
+            "match_type": match_type,
+            "matches": matches,
+        })
+
 
 class EmergencyContactViewSet(viewsets.ModelViewSet):
     """

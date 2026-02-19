@@ -14,7 +14,7 @@ import {
   EmergencyContactArrayResponseSchema,
   PatientEncounterArrayResponseSchema,
 } from '@/lib/schemas/patient.schema';
-import type { Patient, PatientCreateData, PatientUpdateData, PatientListParams, EmergencyContact, PatientEncounter } from '@/lib/types/patient';
+import type { Patient, PatientCreateData, PatientUpdateData, PatientListParams, EmergencyContact, PatientEncounter, DuplicateCheckResult, DuplicateCheckParams } from '@/lib/types/patient';
 import type { PaginatedResponse } from '@/lib/types';
 
 export const patientsApi = {
@@ -119,5 +119,43 @@ export const patientsApi = {
       context: 'patientsApi.getEncounters',
     });
     return validated.results;
+  },
+
+  /**
+   * Check for potential duplicate patients before registration.
+   *
+   * This endpoint checks both exact ID matches and demographic matches
+   * to help prevent duplicate patient records.
+   *
+   * @param params - Search criteria (ID number, name, DOB, gender)
+   * @returns Duplicate check result with matching patients
+   */
+  async checkDuplicate(params: DuplicateCheckParams): Promise<DuplicateCheckResult> {
+    const searchParams = new URLSearchParams();
+
+    if (params.identification_number) {
+      searchParams.set('identification_number', params.identification_number);
+    }
+    if (params.identification_type) {
+      searchParams.set('identification_type', params.identification_type);
+    }
+    if (params.first_name) {
+      searchParams.set('first_name', params.first_name);
+    }
+    if (params.last_name) {
+      searchParams.set('last_name', params.last_name);
+    }
+    if (params.date_of_birth) {
+      searchParams.set('date_of_birth', params.date_of_birth);
+    }
+    if (params.gender) {
+      searchParams.set('gender', params.gender);
+    }
+
+    const response = await apiClient.get<DuplicateCheckResult>(
+      `/api/patients/check-duplicate/?${searchParams.toString()}`
+    );
+
+    return response.data;
   },
 };

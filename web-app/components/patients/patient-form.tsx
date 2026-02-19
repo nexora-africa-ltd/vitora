@@ -99,10 +99,13 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { IdentificationInput } from './identification-input';
 import { ConsentConfirmationDialog, type ConsentDecision } from './consent-confirmation-dialog';
 import { SHAPrincipalConfirmationDialog, type SHAPrincipalDecision } from './sha-principal-confirmation-dialog';
+import { DuplicatePatientAlert } from './duplicate-patient-alert';
+import { DuplicatePatientModal } from './duplicate-patient-modal';
 import { cn } from '@/lib/utils';
 import { useCounties, useSubCounties, useWards } from '@/lib/hooks/use-locations';
 import { useToast } from '@/lib/hooks/use-toast';
 import { shaApi } from '@/lib/api/sha';
+import { patientsApi } from '@/lib/api/patients';
 import { GENDER_OPTIONS, REFERRAL_SOURCE_OPTIONS, RELATIONSHIP_OPTIONS } from '@/lib/utils/constants';
 import { NATIONALITIES, NATIONALITY_OPTIONS } from '@/lib/utils/nationalities';
 import {
@@ -110,6 +113,8 @@ import {
   type IdentificationType,
   type PatientTitle,
   type PaymentMode,
+  type DuplicateCheckResult,
+  type DuplicateMatch,
   IDENTIFICATION_TYPE_OPTIONS,
   TITLE_OPTIONS,
   PAYMENT_MODE_OPTIONS,
@@ -279,6 +284,11 @@ export function PatientForm({
   const [showCustomRelationship, setShowCustomRelationship] = useState(false);
   const [customRelationship, setCustomRelationship] = useState('');
 
+  // Duplicate check state - for detecting existing patients
+  const [duplicateCheckResult, setDuplicateCheckResult] = useState<DuplicateCheckResult | null>(null);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateAcknowledged, setDuplicateAcknowledged] = useState(false);
+
   const form = useForm<PatientFormValues>({
     resolver: zodResolver(patientFormSchemaRefined),
     defaultValues: {
@@ -320,8 +330,18 @@ export function PatientForm({
   const paymentMode = form.watch('payment_mode');
   const referralSource = form.watch('referral_source');
 
+  // Watch demographic fields for duplicate checking
+  const watchedFirstName = form.watch('first_name');
+  const watchedLastName = form.watch('last_name');
+  const watchedDob = form.watch('date_of_birth');
+  const watchedGender = form.watch('gender');
+
   // Debounced identification number for auto-search
   const debouncedIdNumber = useDebounce(identificationNumber, 800);
+
+  // Debounced name values for demographic duplicate check
+  const debouncedFirstName = useDebounce(watchedFirstName, 600);
+  const debouncedLastName = useDebounce(watchedLastName, 600);
 
   const { data: counties, isLoading: isLoadingCounties } = useCounties();
   const { data: subCounties, isLoading: isLoadingSubCounties } = useSubCounties(selectedCounty);
@@ -447,11 +467,15 @@ export function PatientForm({
 
   // Define performCRLookup with useCallback
   // Returns { found: boolean, idType, idNumber } to allow caller to check eligibility
+  // Enhanced: Also checks local patients for duplicates
   const performCRLookup = useCallback(async (idType: IdentificationType, idNumber: string): Promise<{ found: boolean; idType: IdentificationType; idNumber: string } | null> => {
     if (!idNumber || idNumber.length < 5) return null;
 
     setIsSearchingCR(true);
     setFormLocked(true);
+    // Reset duplicate state when starting new lookup
+    setDuplicateCheckResult(null);
+    setDuplicateAcknowledged(false);
 
     try {
       // Build the request based on ID type - always use identification_type/identification_number
@@ -471,29 +495,87 @@ export function PatientForm({
       request.identification_type = idTypeMap[idType] || idType;
       request.identification_number = idNumber;
 
-      const response = await shaApi.fetchFromClientRegistry(request);
+      // Run CR lookup and local duplicate check in parallel
+      // Use Promise.allSettled so failures in one don't block the other
+      const [crResult, duplicateResult] = await Promise.allSettled([
+        shaApi.fetchFromClientRegistry(request),
+        patientsApi.checkDuplicate({
+          identification_number: idNumber,
+          identification_type: idType,
+        }),
+      ]);
 
       setCrSearched(true);
 
-      if (response.found && response.client) {
-        setCrClient(response.client);
+      // Handle local duplicate check result (if successful)
+      if (duplicateResult.status === 'fulfilled') {
+        const duplicateData = duplicateResult.value;
+        if (duplicateData.has_duplicate && duplicateData.matches.length > 0) {
+          setDuplicateCheckResult(duplicateData);
 
-        toast({
-          title: 'Client Registry Record Found',
-          description: `Found record for ${response.client.first_name} ${response.client.last_name}. Fields will be auto-populated.`,
-        });
-
-        populateFromCRClient(response.client);
-
-        return { found: true, idType, idNumber };
+          // If exact ID match, show modal immediately
+          if (duplicateData.match_type === 'exact_id') {
+            setShowDuplicateModal(true);
+            toast({
+              title: 'Patient Already Exists',
+              description: `Found existing patient: ${duplicateData.matches[0]?.full_name ?? 'Unknown'}`,
+              variant: 'destructive',
+            });
+          } else {
+            // For demographic matches, just show inline alert
+            toast({
+              title: 'Potential Duplicate Found',
+              description: `Found ${duplicateData.matches.length} patient(s) with similar details.`,
+              variant: 'default',
+            });
+          }
+        }
       } else {
+        // Duplicate check failed - log but don't block the flow
+        console.warn('Duplicate check failed:', duplicateResult.reason);
+      }
+
+      // Handle CR lookup result
+      if (crResult.status === 'fulfilled') {
+        const crResponse = crResult.value;
+        if (crResponse.found && crResponse.client) {
+          setCrClient(crResponse.client);
+
+          // Only show CR toast if no exact local duplicate
+          const hasDuplicate = duplicateResult.status === 'fulfilled' && duplicateResult.value.has_duplicate;
+          const isExactMatch = duplicateResult.status === 'fulfilled' && duplicateResult.value.match_type === 'exact_id';
+          if (!hasDuplicate || !isExactMatch) {
+            toast({
+              title: 'Client Registry Record Found',
+              description: `Found record for ${crResponse.client.first_name} ${crResponse.client.last_name}. Fields will be auto-populated.`,
+            });
+          }
+
+          populateFromCRClient(crResponse.client);
+
+          return { found: true, idType, idNumber };
+        } else {
+          // Only show "no CR record" toast if no duplicates found
+          const hasDuplicate = duplicateResult.status === 'fulfilled' && duplicateResult.value.has_duplicate;
+          if (!hasDuplicate) {
+            toast({
+              title: 'No Record Found',
+              description: 'No existing Client Registry record. A new record will be created upon registration.',
+              variant: 'default',
+            });
+          }
+          // Don't set eligibility here - we'll check directly with SHA API
+          return { found: false, idType, idNumber };
+        }
+      } else {
+        // CR lookup failed
+        console.error('CR lookup failed:', crResult.reason);
         toast({
-          title: 'No Record Found',
-          description: 'No existing Client Registry record. A new record will be created upon registration.',
-          variant: 'default',
+          title: 'Lookup Failed',
+          description: 'Unable to search Client Registry. You can continue with manual entry.',
+          variant: 'destructive',
         });
-        // Don't set eligibility here - we'll check directly with SHA API
-        return { found: false, idType, idNumber };
+        return null;
       }
     } catch (error) {
       console.error('CR lookup failed:', error);
@@ -609,6 +691,81 @@ export function PatientForm({
       populateFromCRClient(prePopulatedClient);
     }
   }, [prePopulatedClient, crClient, populateFromCRClient]);
+
+  // Demographic duplicate check when name + DOB are filled (and no ID check was done)
+  useEffect(() => {
+    // Skip if:
+    // - We already have an ID-based duplicate check result
+    // - User acknowledged a previous duplicate
+    // - Not enough data for search
+    // - Editing existing patient
+    if (
+      isEditing ||
+      duplicateAcknowledged ||
+      (duplicateCheckResult && duplicateCheckResult.match_type === 'exact_id') ||
+      !debouncedFirstName ||
+      !debouncedLastName ||
+      !watchedDob ||
+      debouncedFirstName.length < 2 ||
+      debouncedLastName.length < 2
+    ) {
+      return;
+    }
+
+    // If we already searched by ID and found results, skip demographic search
+    if (duplicateCheckResult?.matches.length) {
+      return;
+    }
+
+    // Format DOB for API
+    let dobString: string | null = null;
+    if (watchedDob instanceof Date) {
+      dobString = format(watchedDob, 'yyyy-MM-dd');
+    } else if (watchedDob) {
+      // Handle case where watchedDob might be serialized as string (edge case)
+      const dobValue = watchedDob as unknown;
+      if (typeof dobValue === 'string' && dobValue.length >= 10) {
+        dobString = dobValue.substring(0, 10);
+      }
+    }
+
+    if (!dobString) return;
+
+    // Run demographic duplicate check
+    const checkDemographicDuplicates = async () => {
+      try {
+        const result = await patientsApi.checkDuplicate({
+          first_name: debouncedFirstName,
+          last_name: debouncedLastName,
+          date_of_birth: dobString,
+          gender: watchedGender || undefined,
+        });
+
+        if (result.has_duplicate && result.matches.length > 0) {
+          setDuplicateCheckResult(result);
+          toast({
+            title: 'Similar Patient Found',
+            description: `Found ${result.matches.length} patient(s) with similar name and date of birth.`,
+            variant: 'default',
+          });
+        }
+      } catch (error) {
+        // Silently fail - demographic check is non-critical
+        console.error('Demographic duplicate check failed:', error);
+      }
+    };
+
+    checkDemographicDuplicates();
+  }, [
+    debouncedFirstName,
+    debouncedLastName,
+    watchedDob,
+    watchedGender,
+    isEditing,
+    duplicateAcknowledged,
+    duplicateCheckResult,
+    toast,
+  ]);
 
   const handleManualCRSearch = () => {
     const idNumber = form.getValues('identification_number');
@@ -781,6 +938,23 @@ export function PatientForm({
                   A new Client Registry record will be created upon registration.
                 </AlertDescription>
               </Alert>
+            )}
+
+            {/* Local Duplicate Patient Alert */}
+            {duplicateCheckResult?.has_duplicate && !duplicateAcknowledged && (
+              <DuplicatePatientAlert
+                matches={duplicateCheckResult.matches}
+                matchType={duplicateCheckResult.match_type}
+                onSelectPatient={(patientId) => {
+                  // Navigate to check-in page for the existing patient
+                  window.location.href = `/patients/checkin?select=${patientId}`;
+                }}
+                onContinueAsNew={() => {
+                  setDuplicateAcknowledged(true);
+                  setShowDuplicateModal(false);
+                }}
+                showContinueOption={duplicateCheckResult.match_type !== 'exact_id'}
+              />
             )}
 
             {/* SHA Eligibility Status Banner */}
@@ -1986,6 +2160,21 @@ export function PatientForm({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Duplicate Patient Modal */}
+      <DuplicatePatientModal
+        open={showDuplicateModal}
+        onOpenChange={setShowDuplicateModal}
+        result={duplicateCheckResult}
+        onSelectExistingPatient={(patientId) => {
+          // Navigate to check-in page for the existing patient
+          window.location.href = `/patients/checkin?select=${patientId}`;
+        }}
+        onContinueAsNew={() => {
+          setDuplicateAcknowledged(true);
+          setShowDuplicateModal(false);
+        }}
+      />
     </>
   );
 }

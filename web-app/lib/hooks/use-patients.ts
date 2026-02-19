@@ -9,7 +9,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { patientsApi } from '@/lib/api/patients';
-import type { PatientListParams, PatientCreateData, PatientUpdateData } from '@/lib/types/patient';
+import type { PatientListParams, PatientCreateData, PatientUpdateData, DuplicateCheckParams } from '@/lib/types/patient';
 
 // =============================================================================
 // QUERY KEYS
@@ -27,6 +27,7 @@ export const patientKeys = {
   detail: (id: number) => [...patientKeys.details(), id] as const,
   emergencyContacts: (id: number) => [...patientKeys.detail(id), 'emergency-contacts'] as const,
   encounters: (id: number) => [...patientKeys.detail(id), 'encounters'] as const,
+  duplicateCheck: (params: DuplicateCheckParams) => [...patientKeys.all, 'duplicate-check', params] as const,
 };
 
 // =============================================================================
@@ -130,5 +131,43 @@ export function useDeletePatient() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: patientKeys.lists() });
     },
+  });
+}
+
+/**
+ * Hook for checking duplicate patients before registration.
+ *
+ * This hook performs a debounced check for potential duplicate patients
+ * based on identification number and/or demographic information.
+ *
+ * @param params - Search criteria (ID, name, DOB, gender)
+ * @param options - Query options including enabled flag
+ * @returns Query result with duplicate matches
+ *
+ * @example
+ * const { data: duplicates } = useDuplicateCheck({
+ *   identification_number: '12345678',
+ *   identification_type: 'national_id',
+ * }, { enabled: idNumber.length >= 5 });
+ */
+export function useDuplicateCheck(
+  params: DuplicateCheckParams,
+  options?: { enabled?: boolean }
+) {
+  // Only enable if we have meaningful search criteria
+  const hasIdCriteria = Boolean(
+    params.identification_number && params.identification_number.length >= 5
+  );
+  const hasDemographicCriteria = Boolean(
+    params.first_name && params.last_name && params.date_of_birth
+  );
+  const hasSearchCriteria = hasIdCriteria || hasDemographicCriteria;
+
+  return useQuery({
+    queryKey: patientKeys.duplicateCheck(params),
+    queryFn: () => patientsApi.checkDuplicate(params),
+    enabled: options?.enabled !== false && hasSearchCriteria,
+    staleTime: 60000, // 1 minute - duplicates don't change often
+    gcTime: 300000, // 5 minutes cache
   });
 }
