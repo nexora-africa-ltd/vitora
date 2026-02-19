@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { useRouteToClinic } from '@/lib/hooks/use-triage';
 import { toast } from '@/lib/hooks/use-toast';
+import { CheckinSuccessModal, type CheckinSuccessData } from '@/components/patients/checkin-success-modal';
 import type { TriageAssessment } from '@/lib/types/triage';
 import type { ClinicListItem } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
@@ -65,6 +66,8 @@ export function RouteToClinicDialog({
   const [selectedClinic, setSelectedClinic] = useState<ClinicListItem | null>(null);
   const [notes, setNotes] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successData, setSuccessData] = useState<CheckinSuccessData | null>(null);
 
   // Fetch active clinics
   const { data: clinicsData, isLoading: clinicsLoading } = useClinics({
@@ -109,22 +112,24 @@ export function RouteToClinicDialog({
         notes: notes.trim() || undefined,
       });
 
-      toast({
-        title: 'Patient Routed',
-        description: `${assessment.patient_name} has been added to ${selectedClinic.name} queue. Queue #${result.queue_number}`,
+      // Store result and show success modal
+      setSuccessData({
+        patientName: result.patient_name,
+        patientMrn: result.patient_mrn,
+        destination: 'clinic',
+        destinationName: result.clinic_name,
+        destinationUrl: `/clinics/${selectedClinic.id}/queue`,
+        queuePosition: result.queue_number,
       });
 
-      // Reset state
+      // Reset route dialog state
       setSelectedClinic(null);
       setNotes('');
       setSearchQuery('');
       onOpenChange(false);
 
-      // Call success callback
-      onSuccess?.();
-
-      // Optionally navigate to the clinic
-      // router.push(`/clinics/${selectedClinic.id}`);
+      // Show success modal
+      setShowSuccessModal(true);
     } catch (error) {
       console.error('Failed to route to clinic:', error);
       toast({
@@ -142,9 +147,15 @@ export function RouteToClinicDialog({
     onOpenChange(false);
   };
 
+  const handleSuccessModalDismiss = () => {
+    setSuccessData(null);
+    onSuccess?.();
+  };
+
   if (!assessment) return null;
 
   return (
+  <>
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
@@ -293,5 +304,14 @@ export function RouteToClinicDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Success Modal with navigation options */}
+    <CheckinSuccessModal
+      open={showSuccessModal}
+      onOpenChange={setShowSuccessModal}
+      checkInResult={successData}
+      onDismiss={handleSuccessModalDismiss}
+    />
+  </>
   );
 }

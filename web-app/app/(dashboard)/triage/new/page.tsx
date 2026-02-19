@@ -20,6 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TriageAssessmentForm, AlreadyTriagedWarning, TriageInProgressWarning } from '@/components/triage';
+import { CheckinSuccessModal, type CheckinSuccessData } from '@/components/patients/checkin-success-modal';
 import { useCreateTriageAssessment, useWaitingQueue, useCheckInPatient, useTriageAssessmentByEncounter } from '@/lib/hooks/use-triage';
 import { usePatient, usePatients } from '@/lib/hooks/use-patients';
 import { useEncounter, useCreateEncounter } from '@/lib/hooks/use-encounters';
@@ -47,6 +48,9 @@ export default function NewTriagePage() {
   const [isCreatingEncounter, setIsCreatingEncounter] = useState(false);
   // Track if user has explicitly chosen to take over an in-progress triage
   const [hasOverriddenInProgress, setHasOverriddenInProgress] = useState(false);
+  // Success modal state for clinic routing
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successData, setSuccessData] = useState<CheckinSuccessData | null>(null);
 
   // Fetch waiting queue for quick selection
   const { data: waitingQueue, isLoading: isWaitingLoading } = useWaitingQueue({});
@@ -143,13 +147,25 @@ export default function NewTriagePage() {
         // Clear idempotency key on successful submission
         clearIdempotencyKey();
 
-        toast({
-          title: 'Triage Assessment Created',
-          description: `Patient triaged as ${assessment.triage_category}`,
-        });
-
-        // Navigate back to queue
-        router.push('/triage');
+        // Check if patient was routed to a clinic
+        if (assessment.assigned_clinic && assessment.assigned_clinic_name) {
+          // Show success modal with navigation options
+          setSuccessData({
+            patientName: patient?.first_name + ' ' + patient?.last_name || 'Patient',
+            patientMrn: patient?.mrn || '',
+            destination: 'clinic',
+            destinationName: assessment.assigned_clinic_name,
+            destinationUrl: `/clinics/${assessment.assigned_clinic}/queue`,
+          });
+          setShowSuccessModal(true);
+        } else {
+          // No clinic routing - show toast and navigate to triage queue
+          toast({
+            title: 'Triage Assessment Created',
+            description: `Patient triaged as ${assessment.triage_category}`,
+          });
+          router.push('/triage');
+        }
       } catch (error: unknown) {
         // Extract error message from API response
         let errorMessage = 'Failed to create triage assessment. Please try again.';
@@ -565,6 +581,17 @@ export default function NewTriagePage() {
         onSubmit={handleSubmit}
         onCancel={handleCancel}
         isLoading={isCreating}
+      />
+
+      {/* Success Modal for clinic routing */}
+      <CheckinSuccessModal
+        open={showSuccessModal}
+        onOpenChange={setShowSuccessModal}
+        checkInResult={successData}
+        onDismiss={() => {
+          setSuccessData(null);
+          router.push('/triage');
+        }}
       />
     </div>
   );
