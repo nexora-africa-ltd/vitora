@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus, Search, Filter, ArrowLeft } from 'lucide-react';
+import { Plus, Search, Filter } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -18,11 +19,13 @@ import { ViewToggle, type ViewMode } from '@/components/ui/view-toggle';
 import { PatientTable } from '@/components/patients/patient-table';
 import { usePatients } from '@/lib/hooks/use-patients';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { GENDER_OPTIONS } from '@/lib/utils/constants';
 
 export default function PatientsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { refresh, isRefreshing } = usePageRefresh();
 
   // Check if we're in select mode (coming from another page that needs a patient)
   const selectMode = searchParams.get('select') === 'true';
@@ -58,36 +61,32 @@ export default function PatientsPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Select mode header */}
-      {selectMode && (
-        <div className="flex items-center gap-2 mb-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <Alert className="flex-1">
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
+      <div className="container mx-auto py-6 space-y-6">
+        {/* Select mode banner */}
+        {selectMode && (
+          <Alert>
             <AlertDescription>
               Select a patient to continue. Click on a patient row to select them.
             </AlertDescription>
           </Alert>
-        </div>
-      )}
+        )}
 
-      <PageHeader
-        title={selectMode ? "Select Patient" : "Patients"}
-        description={selectMode
-          ? "Choose a patient for the admission"
-          : `${data?.count ?? 0} patients registered`
-        }
-        actions={
-          !selectMode && (
-            <Button onClick={() => router.push('/patients/new')}>
-              <Plus className="h-4 w-4 mr-2" />
-              Register Patient
-            </Button>
-          )
-        }
-      />
+        <PageHeader
+          title={selectMode ? "Select Patient" : "Patients"}
+          helpContent={selectMode
+            ? "Choose a patient for the admission. Click on any patient row to select them."
+            : `${data?.count ?? 0} patients registered. Search and manage patient records.`
+          }
+          actions={
+            !selectMode && (
+              <Button onClick={() => router.push('/patients/new')}>
+                <Plus className="h-4 w-4 mr-2" />
+                Register Patient
+              </Button>
+            )
+          }
+        />
 
       {/* Filters */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center">
@@ -141,6 +140,7 @@ export default function PatientsPage() {
         onSelect={handlePatientSelect}
         viewMode={viewMode}
       />
-    </div>
+      </div>
+    </PullToRefresh>
   );
 }

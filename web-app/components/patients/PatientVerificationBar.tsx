@@ -18,7 +18,6 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  User,
   Database,
   X,
 } from 'lucide-react';
@@ -60,27 +59,31 @@ interface CRResultProps {
 
 function CRResult({ client, onUse, onClear }: CRResultProps) {
   return (
-    <div className="flex items-center gap-3 p-2 rounded-md bg-muted/50 text-sm">
-      <Database className="h-4 w-4 text-blue-600 shrink-0" />
-      <div className="flex-1 min-w-0">
-        <span className="font-medium">
-          {client.first_name} {client.last_name}
-        </span>
-        <span className="text-muted-foreground ml-2">
-          {client.date_of_birth} • {client.gender === 'M' ? 'Male' : client.gender === 'F' ? 'Female' : 'Other'}
-        </span>
-        {client.client_number && (
-          <Badge variant="outline" className="ml-2 text-xs">
-            {client.client_number}
-          </Badge>
-        )}
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 p-2 rounded-md bg-muted/50 text-sm">
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <Database className="h-4 w-4 text-blue-600 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <span className="font-medium">
+            {client.first_name} {client.last_name}
+          </span>
+          <span className="text-muted-foreground ml-2 hidden sm:inline">
+            {client.date_of_birth} • {client.gender === 'M' ? 'Male' : client.gender === 'F' ? 'Female' : 'Other'}
+          </span>
+          {client.client_number && (
+            <Badge variant="outline" className="ml-2 text-xs">
+              {client.client_number}
+            </Badge>
+          )}
+        </div>
       </div>
-      <Button size="sm" variant="ghost" onClick={onUse} className="h-7 text-xs">
-        Use
-      </Button>
-      <Button size="sm" variant="ghost" onClick={onClear} className="h-7 w-7 p-0">
-        <X className="h-3 w-3" />
-      </Button>
+      <div className="flex items-center gap-1 justify-end">
+        <Button size="sm" variant="ghost" onClick={onUse} className="h-7 text-xs">
+          Use
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onClear} className="h-7 w-7 p-0">
+          <X className="h-3 w-3" />
+        </Button>
+      </div>
     </div>
   );
 }
@@ -258,8 +261,8 @@ export function PatientVerificationBar({
   return (
     <div className={cn("space-y-2", className)}>
       {/* Input and action buttons */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-xs">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="relative flex-1 sm:max-w-xs">
           <Input
             value={nationalId}
             onChange={(e) => setNationalId(e.target.value)}
@@ -291,35 +294,39 @@ export function PatientVerificationBar({
           )}
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleCRLookup}
-          disabled={isLoading || !nationalId.trim()}
-          className="shrink-0"
-        >
-          {activeAction === 'cr' && isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-1" />
-          ) : (
-            <Database className="h-4 w-4 mr-1" />
-          )}
-          Lookup CR
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCRLookup}
+            disabled={isLoading || !nationalId.trim()}
+            className="flex-1 sm:flex-none"
+          >
+            {activeAction === 'cr' && isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : (
+              <Database className="h-4 w-4 mr-1" />
+            )}
+            <span className="sm:hidden">CR</span>
+            <span className="hidden sm:inline">Lookup CR</span>
+          </Button>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleEligibilityCheck}
-          disabled={isLoading || !nationalId.trim()}
-          className="shrink-0"
-        >
-          {activeAction === 'eligibility' && isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-1" />
-          ) : (
-            <SHALogo size="sm" className="mr-1" />
-          )}
-          Check Eligibility
-        </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleEligibilityCheck}
+            disabled={isLoading || !nationalId.trim()}
+            className="flex-1 sm:flex-none"
+          >
+            {activeAction === 'eligibility' && isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+            ) : (
+              <SHALogo size="sm" className="mr-1" />
+            )}
+            <span className="sm:hidden">Eligibility</span>
+            <span className="hidden sm:inline">Check Eligibility</span>
+          </Button>
+        </div>
       </div>
 
       {/* Error message */}

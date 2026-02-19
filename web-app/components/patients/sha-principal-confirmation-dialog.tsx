@@ -26,6 +26,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Users, UserCheck, AlertTriangle } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { cn } from '@/lib/utils';
 import type { DirectEligibilityCheckResponse, SHADependent } from '@/lib/types/sha';
 
@@ -79,10 +80,13 @@ export function SHAPrincipalConfirmationDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2">
-            <SHALogo size="md" />
-            SHA Record Found - Confirm Identity
-          </AlertDialogTitle>
+          <div className="flex items-center gap-2">
+            <AlertDialogTitle className="flex items-center gap-2">
+              <SHALogo size="md" />
+              SHA Record Found
+            </AlertDialogTitle>
+            <HelpPopover content="Confirm if this SHA member is the patient being registered, or select a dependent if applicable." />
+          </div>
           <AlertDialogDescription asChild>
             <div className="space-y-4">
               {/* SHA Member Info */}
@@ -121,16 +125,11 @@ export function SHAPrincipalConfirmationDialog({
               </Alert>
 
               {/* Question */}
-              <div className="text-sm text-muted-foreground">
-                <p className="font-medium text-foreground mb-2">
-                  Is this the patient you are registering?
-                </p>
-                <p>
-                  {shaDetails.is_eligible
-                    ? "SHA details were found. Please confirm if the principal member shown above is the patient being registered, or select a dependent if applicable."
-                    : "SHA record found but coverage is not currently active. You can still use these details to populate the registration form."}
-                </p>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                {shaDetails.is_eligible
+                  ? "Confirm if the principal member shown above is the patient, or select a dependent."
+                  : "Coverage is not active, but you can still use these details to populate the form."}
+              </p>
 
               {/* Dependents Section */}
               {hasDependents && (
