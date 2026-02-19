@@ -3,15 +3,15 @@
  *
  * Displays the clinic queue with patient information, priority badges,
  * wait times, and action buttons for calling/starting consultation.
+ * Uses ResponsiveTable for automatic mobile card layouts.
  */
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Phone,
   Play,
-  CheckCircle,
   MoreHorizontal,
   Clock,
   User,
@@ -19,16 +19,7 @@ import {
   XCircle,
   ArrowRight,
 } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,18 +37,27 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { ClinicPriorityBadge } from './clinic-priority-badge';
+import { ClinicVisitStatusBadge } from './clinic-visit-status-badge';
+import { ClinicQueueMobileCard } from './clinic-queue-mobile-card';
 import { ReferPatientDialog } from './refer-patient-dialog';
 import {
-  useCallPatient,
-  useStartConsultation,
-  useCompleteVisit,
-  useMarkNoShow,
-  useCancelVisit,
-} from '@/lib/hooks/use-clinics';
-import { toast } from '@/lib/hooks/use-toast';
+  useClinicQueueActions,
+  type QueueDialogType,
+} from '@/lib/hooks/use-clinic-queue-actions';
 import type { ClinicVisit } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
+
+// =============================================================================
+// TYPES
+// =============================================================================
 
 interface ClinicQueueTableProps {
   visits: ClinicVisit[];
@@ -65,6 +65,10 @@ interface ClinicQueueTableProps {
   onRefresh: () => void;
   showActions?: boolean;
 }
+
+// =============================================================================
+// UTILS
+// =============================================================================
 
 function formatWaitTime(minutes: number | undefined): string {
   if (!minutes || minutes < 1) return 'Just arrived';
@@ -74,247 +78,115 @@ function formatWaitTime(minutes: number | undefined): string {
   return `${hours}h ${mins}m`;
 }
 
-export function ClinicQueueTable({
-  visits,
-  clinicId,
-  onRefresh,
-  showActions = true,
-}: ClinicQueueTableProps) {
-  const router = useRouter();
-  const [selectedVisit, setSelectedVisit] = useState<ClinicVisit | null>(null);
-  const [noShowDialogOpen, setNoShowDialogOpen] = useState(false);
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [referDialogOpen, setReferDialogOpen] = useState(false);
+// =============================================================================
+// SUB-COMPONENTS
+// =============================================================================
 
-  // Mutations
-  const { mutateAsync: callPatient, isPending: callingPatient } = useCallPatient();
-  const { mutateAsync: startConsultation, isPending: startingConsultation } = useStartConsultation();
-  const { mutateAsync: completeVisit, isPending: completingVisit } = useCompleteVisit();
-  const { mutateAsync: markNoShow, isPending: markingNoShow } = useMarkNoShow();
-  const { mutateAsync: cancelVisit, isPending: cancellingVisit } = useCancelVisit();
+interface QueueRowActionsProps {
+  visit: ClinicVisit;
+  isPending: boolean;
+  onCall: (visit: ClinicVisit) => void;
+  onStart: (visit: ClinicVisit) => void;
+  onViewPatient: (visit: ClinicVisit) => void;
+  onRefer: (visit: ClinicVisit) => void;
+  onNoShow: (visit: ClinicVisit) => void;
+  onCancel: (visit: ClinicVisit) => void;
+}
 
-  const handleCallPatient = useCallback(
-    async (visit: ClinicVisit) => {
-      try {
-        await callPatient(visit.id);
-        toast({ title: 'Patient Called', description: `${visit.patient.full_name} has been called.` });
-        onRefresh();
-      } catch (error) {
-        toast({
-          title: 'Error',
-          description: 'Failed to call patient. Please try again.',
-          variant: 'destructive',
-        });
-      }
-    },
-    [callPatient, onRefresh]
-  );
-
-  const handleStartConsultation = useCallback(
-    async (visit: ClinicVisit) => {
-      try {
-        const result = await startConsultation(visit.id);
-        toast({
-          title: 'Consultation Started',
-          description: `Starting consultation for ${visit.patient.full_name}.`,
-        });
-        onRefresh();
-        // Navigate to encounter if created
-        if (result.encounter) {
-          router.push(`/encounters/${result.encounter}`);
-        }
-      } catch (error) {
-        toast({
-          title: 'Error',
-          description: 'Failed to start consultation. Please try again.',
-          variant: 'destructive',
-        });
-      }
-    },
-    [startConsultation, onRefresh, router]
-  );
-
-  const handleNoShow = useCallback(async () => {
-    if (!selectedVisit) return;
-    try {
-      await markNoShow(selectedVisit.id);
-      toast({
-        title: 'Marked as No-Show',
-        description: `${selectedVisit.patient.full_name} has been marked as a no-show.`,
-      });
-      onRefresh();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to mark as no-show. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setNoShowDialogOpen(false);
-      setSelectedVisit(null);
-    }
-  }, [selectedVisit, markNoShow, onRefresh]);
-
-  const handleCancel = useCallback(async () => {
-    if (!selectedVisit) return;
-    try {
-      await cancelVisit({ visitId: selectedVisit.id });
-      toast({
-        title: 'Visit Cancelled',
-        description: `Visit for ${selectedVisit.patient.full_name} has been cancelled.`,
-      });
-      onRefresh();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to cancel visit. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setCancelDialogOpen(false);
-      setSelectedVisit(null);
-    }
-  }, [selectedVisit, cancelVisit, onRefresh]);
-
-  const isPending = callingPatient || startingConsultation || completingVisit || markingNoShow || cancellingVisit;
+function QueueRowActions({
+  visit,
+  isPending,
+  onCall,
+  onStart,
+  onViewPatient,
+  onRefer,
+  onNoShow,
+  onCancel,
+}: QueueRowActionsProps) {
+  const canCall = visit.status === 'REGISTERED' || visit.status === 'WAITING';
+  const canStart = visit.status === 'CALLED';
 
   return (
-    <>
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[60px]">#</TableHead>
-              <TableHead>Patient</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Wait Time</TableHead>
-              <TableHead>Chief Complaint</TableHead>
-              <TableHead>Status</TableHead>
-              {showActions && <TableHead className="text-right">Actions</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {visits.map((visit) => (
-              <TableRow
-                key={visit.id}
-                className={cn(
-                  visit.status === 'CALLED' && 'bg-blue-50 dark:bg-blue-950/20',
-                  visit.priority === 'EMERGENCY' && 'bg-red-50 dark:bg-red-950/20'
-                )}
-              >
-                <TableCell className="font-medium">{visit.queue_number}</TableCell>
-                <TableCell>
-                  <div className="flex flex-col">
-                    <span className="font-medium">{visit.patient.full_name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {visit.patient.mrn} • {visit.patient.age ? `${visit.patient.age}y` : ''}{' '}
-                      {visit.patient.gender}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <ClinicPriorityBadge priority={visit.priority} />
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    <span>{formatWaitTime(visit.wait_time_minutes)}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <span className="max-w-[200px] truncate block">
-                    {visit.chief_complaint || visit.notes || '--'}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={visit.status === 'CALLED' ? 'default' : 'secondary'}
-                    className={cn(visit.status === 'CALLED' && 'bg-blue-500')}
-                  >
-                    {visit.status_display}
-                  </Badge>
-                </TableCell>
-                {showActions && (
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {(visit.status === 'REGISTERED' || visit.status === 'WAITING') && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleCallPatient(visit)}
-                          disabled={isPending}
-                        >
-                          <Phone className="h-3 w-3 mr-1" />
-                          Call
-                        </Button>
-                      )}
-                      {visit.status === 'CALLED' && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleStartConsultation(visit)}
-                          disabled={isPending}
-                        >
-                          <Play className="h-3 w-3 mr-1" />
-                          Start
-                        </Button>
-                      )}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => router.push(`/patients/${visit.patient.id}`)}
-                          >
-                            <User className="h-4 w-4 mr-2" />
-                            View Patient
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedVisit(visit);
-                              setReferDialogOpen(true);
-                            }}
-                          >
-                            <ArrowRight className="h-4 w-4 mr-2" />
-                            Refer to Clinic
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedVisit(visit);
-                              setNoShowDialogOpen(true);
-                            }}
-                            className="text-orange-600"
-                          >
-                            <AlertCircle className="h-4 w-4 mr-2" />
-                            Mark No-Show
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedVisit(visit);
-                              setCancelDialogOpen(true);
-                            }}
-                            className="text-destructive"
-                          >
-                            <XCircle className="h-4 w-4 mr-2" />
-                            Cancel Visit
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableCell>
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+    <div className="flex items-center justify-end gap-2">
+      {canCall && (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => onCall(visit)}
+          disabled={isPending}
+        >
+          <Phone className="h-3 w-3 mr-1" />
+          Call
+        </Button>
+      )}
+      {canStart && (
+        <Button
+          size="sm"
+          onClick={() => onStart(visit)}
+          disabled={isPending}
+        >
+          <Play className="h-3 w-3 mr-1" />
+          Start
+        </Button>
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => onViewPatient(visit)}>
+            <User className="h-4 w-4 mr-2" />
+            View Patient
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => onRefer(visit)}>
+            <ArrowRight className="h-4 w-4 mr-2" />
+            Refer to Clinic
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => onNoShow(visit)} className="text-orange-600">
+            <AlertCircle className="h-4 w-4 mr-2" />
+            Mark No-Show
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => onCancel(visit)} className="text-destructive">
+            <XCircle className="h-4 w-4 mr-2" />
+            Cancel Visit
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
 
+// =============================================================================
+// DIALOGS
+// =============================================================================
+
+interface ConfirmationDialogsProps {
+  activeDialog: QueueDialogType;
+  selectedVisit: ClinicVisit | null;
+  isMarkingNoShow: boolean;
+  isCancellingVisit: boolean;
+  onNoShowConfirm: () => void;
+  onCancelConfirm: () => void;
+  onClose: () => void;
+}
+
+function ConfirmationDialogs({
+  activeDialog,
+  selectedVisit,
+  isMarkingNoShow,
+  isCancellingVisit,
+  onNoShowConfirm,
+  onCancelConfirm,
+  onClose,
+}: ConfirmationDialogsProps) {
+  return (
+    <>
       {/* No-Show Confirmation Dialog */}
-      <AlertDialog open={noShowDialogOpen} onOpenChange={setNoShowDialogOpen}>
+      <AlertDialog open={activeDialog === 'no-show'} onOpenChange={(open) => !open && onClose()}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Mark as No-Show?</AlertDialogTitle>
@@ -325,7 +197,7 @@ export function ClinicQueueTable({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleNoShow} disabled={markingNoShow}>
+            <AlertDialogAction onClick={onNoShowConfirm} disabled={isMarkingNoShow}>
               Mark No-Show
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -333,7 +205,7 @@ export function ClinicQueueTable({
       </AlertDialog>
 
       {/* Cancel Confirmation Dialog */}
-      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+      <AlertDialog open={activeDialog === 'cancel'} onOpenChange={(open) => !open && onClose()}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel Visit?</AlertDialogTitle>
@@ -345,8 +217,8 @@ export function ClinicQueueTable({
           <AlertDialogFooter>
             <AlertDialogCancel>Keep Visit</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleCancel}
-              disabled={cancellingVisit}
+              onClick={onCancelConfirm}
+              disabled={isCancellingVisit}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Cancel Visit
@@ -354,17 +226,275 @@ export function ClinicQueueTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </>
+  );
+}
+
+// =============================================================================
+// MAIN COMPONENT
+// =============================================================================
+
+export function ClinicQueueTable({
+  visits,
+  clinicId,
+  onRefresh,
+  showActions = true,
+}: ClinicQueueTableProps) {
+  const router = useRouter();
+
+  // Mobile actions sheet state
+  const [mobileActionsVisit, setMobileActionsVisit] = useState<ClinicVisit | null>(null);
+
+  // Queue actions hook
+  const {
+    selectedVisit,
+    setSelectedVisit,
+    activeDialog,
+    openDialog,
+    closeDialog,
+    handleCallPatient,
+    handleStartConsultation,
+    handleNoShow,
+    handleCancel,
+    isMarkingNoShow,
+    isCancellingVisit,
+    isPending,
+  } = useClinicQueueActions({ onSuccess: onRefresh });
+
+  // Navigation handlers
+  const handleViewPatient = useCallback(
+    (visit: ClinicVisit) => router.push(`/patients/${visit.patient.id}`),
+    [router]
+  );
+
+  const handleOpenRefer = useCallback(
+    (visit: ClinicVisit) => openDialog('refer', visit),
+    [openDialog]
+  );
+
+  const handleOpenNoShow = useCallback(
+    (visit: ClinicVisit) => openDialog('no-show', visit),
+    [openDialog]
+  );
+
+  const handleOpenCancel = useCallback(
+    (visit: ClinicVisit) => openDialog('cancel', visit),
+    [openDialog]
+  );
+
+  // Table columns configuration
+  const columns = useMemo(
+    () => [
+      {
+        key: 'queue_number',
+        header: '#',
+        className: 'w-[60px]',
+        cell: (visit: ClinicVisit) => (
+          <span className="font-medium">{visit.queue_number}</span>
+        ),
+      },
+      {
+        key: 'patient',
+        header: 'Patient',
+        cell: (visit: ClinicVisit) => (
+          <div className="flex flex-col">
+            <span className="font-medium">{visit.patient.full_name}</span>
+            <span className="text-xs text-muted-foreground">
+              {visit.patient.mrn} • {visit.patient.age ? `${visit.patient.age}y` : ''}{' '}
+              {visit.patient.gender}
+            </span>
+          </div>
+        ),
+      },
+      {
+        key: 'priority',
+        header: 'Priority',
+        hideOnMobile: true,
+        cell: (visit: ClinicVisit) => <ClinicPriorityBadge priority={visit.priority} />,
+      },
+      {
+        key: 'wait_time',
+        header: 'Wait Time',
+        hideOnMobile: true,
+        cell: (visit: ClinicVisit) => (
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            <span>{formatWaitTime(visit.wait_time_minutes)}</span>
+          </div>
+        ),
+      },
+      {
+        key: 'chief_complaint',
+        header: 'Chief Complaint',
+        hideOnMobile: true,
+        cell: (visit: ClinicVisit) => (
+          <span className="max-w-[200px] truncate block">
+            {visit.chief_complaint || visit.notes || '--'}
+          </span>
+        ),
+      },
+      {
+        key: 'status',
+        header: 'Status',
+        hideOnMobile: true,
+        cell: (visit: ClinicVisit) => (
+          <ClinicVisitStatusBadge status={visit.status} statusDisplay={visit.status_display} />
+        ),
+      },
+      ...(showActions
+        ? [
+            {
+              key: 'actions',
+              header: 'Actions',
+              className: 'text-right',
+              hideOnMobile: true,
+              cell: (visit: ClinicVisit) => (
+                <QueueRowActions
+                  visit={visit}
+                  isPending={isPending}
+                  onCall={handleCallPatient}
+                  onStart={handleStartConsultation}
+                  onViewPatient={handleViewPatient}
+                  onRefer={handleOpenRefer}
+                  onNoShow={handleOpenNoShow}
+                  onCancel={handleOpenCancel}
+                />
+              ),
+            },
+          ]
+        : []),
+    ],
+    [
+      showActions,
+      isPending,
+      handleCallPatient,
+      handleStartConsultation,
+      handleViewPatient,
+      handleOpenRefer,
+      handleOpenNoShow,
+      handleOpenCancel,
+    ]
+  );
+
+  // Row styling based on status/priority
+  const getRowClassName = useCallback(
+    (visit: ClinicVisit) =>
+      cn(
+        visit.status === 'CALLED' && 'bg-blue-50 dark:bg-blue-950/20',
+        visit.priority === 'EMERGENCY' && 'bg-red-50 dark:bg-red-950/20'
+      ),
+    []
+  );
+
+  // Mobile card renderer
+  const renderMobileCard = useCallback(
+    (visit: ClinicVisit) => (
+      <ClinicQueueMobileCard
+        visit={visit}
+        waitTime={formatWaitTime(visit.wait_time_minutes)}
+        showActions={showActions}
+        isPending={isPending}
+        onCall={handleCallPatient}
+        onStart={handleStartConsultation}
+        onMenuOpen={setMobileActionsVisit}
+      />
+    ),
+    [showActions, isPending, handleCallPatient, handleStartConsultation]
+  );
+
+  return (
+    <>
+      <div className="rounded-md border">
+        <ResponsiveTable<ClinicVisit>
+          data={visits}
+          columns={columns}
+          keyExtractor={(visit) => visit.id}
+          rowClassName={getRowClassName}
+          mobileCard={renderMobileCard}
+          emptyMessage="No patients in queue"
+        />
+      </div>
+
+      {/* Mobile Actions Sheet */}
+      <Sheet
+        open={!!mobileActionsVisit}
+        onOpenChange={(open) => !open && setMobileActionsVisit(null)}
+      >
+        <SheetContent side="bottom" className="pb-safe">
+          <SheetHeader>
+            <SheetTitle>
+              {mobileActionsVisit?.patient.full_name}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="grid gap-2 py-4">
+            <Button
+              variant="outline"
+              className="justify-start"
+              onClick={() => {
+                if (mobileActionsVisit) handleViewPatient(mobileActionsVisit);
+                setMobileActionsVisit(null);
+              }}
+            >
+              <User className="h-4 w-4 mr-2" />
+              View Patient
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start"
+              onClick={() => {
+                if (mobileActionsVisit) handleOpenRefer(mobileActionsVisit);
+                setMobileActionsVisit(null);
+              }}
+            >
+              <ArrowRight className="h-4 w-4 mr-2" />
+              Refer to Clinic
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start text-orange-600"
+              onClick={() => {
+                if (mobileActionsVisit) handleOpenNoShow(mobileActionsVisit);
+                setMobileActionsVisit(null);
+              }}
+            >
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Mark No-Show
+            </Button>
+            <Button
+              variant="outline"
+              className="justify-start text-destructive"
+              onClick={() => {
+                if (mobileActionsVisit) handleOpenCancel(mobileActionsVisit);
+                setMobileActionsVisit(null);
+              }}
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Cancel Visit
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Confirmation Dialogs */}
+      <ConfirmationDialogs
+        activeDialog={activeDialog}
+        selectedVisit={selectedVisit}
+        isMarkingNoShow={isMarkingNoShow}
+        isCancellingVisit={isCancellingVisit}
+        onNoShowConfirm={handleNoShow}
+        onCancelConfirm={handleCancel}
+        onClose={closeDialog}
+      />
 
       {/* Refer Patient Dialog */}
-      {selectedVisit && (
+      {selectedVisit && activeDialog === 'refer' && (
         <ReferPatientDialog
-          open={referDialogOpen}
-          onOpenChange={setReferDialogOpen}
+          open={true}
+          onOpenChange={(open) => !open && closeDialog()}
           visit={selectedVisit}
           onSuccess={() => {
             onRefresh();
-            setReferDialogOpen(false);
-            setSelectedVisit(null);
+            closeDialog();
           }}
         />
       )}

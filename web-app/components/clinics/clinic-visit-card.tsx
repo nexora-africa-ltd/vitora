@@ -166,15 +166,17 @@ export function ClinicVisitCard({ visit, clinicId, onRefresh }: ClinicVisitCardP
               View Patient
             </Button>
           )}
-          <Button
-            size="sm"
-            className="flex-1"
-            onClick={handleComplete}
-            disabled={completing}
-          >
-            <CheckCircle className="h-4 w-4 mr-1" />
-            Complete
-          </Button>
+          {visit.status === 'IN_CONSULTATION' && (
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={handleComplete}
+              disabled={completing}
+            >
+              <CheckCircle className="h-4 w-4 mr-1" />
+              Complete
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

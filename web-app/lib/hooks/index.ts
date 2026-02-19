@@ -230,6 +230,12 @@ export {
   useDefaulters,
 } from './use-clinics';
 
+// Clinic Queue Actions hook (unified queue action handlers)
+export {
+  useClinicQueueActions,
+  type QueueDialogType,
+} from './use-clinic-queue-actions';
+
 // WebSocket hooks for real-time updates
 export {
   useWebSocket,
