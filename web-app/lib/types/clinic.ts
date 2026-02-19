@@ -70,21 +70,43 @@ export type ClinicVisitStatus =
   | 'CANCELLED';
 
 /**
- * Visit priority levels
- * Includes both clinical priorities and triage category colors (when patient comes from triage)
+ * Clinical priority levels (used in queue statistics)
  */
-export type ClinicVisitPriority =
+export type ClinicalPriority =
   | 'EMERGENCY'
   | 'URGENT'
   | 'PRIORITY'
   | 'STANDARD'
-  | 'NON_URGENT'
+  | 'NON_URGENT';
+
+/**
+ * Visit priority levels
+ * Includes both clinical priorities and triage category colors (when patient comes from triage)
+ */
+export type ClinicVisitPriority =
+  | ClinicalPriority
   // Triage category colors (when patient comes from triage)
   | 'RED'
   | 'ORANGE'
   | 'YELLOW'
   | 'GREEN'
   | 'BLUE';
+
+/**
+ * Maps triage colors to their clinical priority equivalents
+ */
+export const TRIAGE_TO_CLINICAL_PRIORITY: Record<ClinicVisitPriority, ClinicalPriority> = {
+  EMERGENCY: 'EMERGENCY',
+  URGENT: 'URGENT',
+  PRIORITY: 'PRIORITY',
+  STANDARD: 'STANDARD',
+  NON_URGENT: 'NON_URGENT',
+  RED: 'EMERGENCY',
+  ORANGE: 'URGENT',
+  YELLOW: 'PRIORITY',
+  GREEN: 'STANDARD',
+  BLUE: 'NON_URGENT',
+};
 
 /**
  * Visit type
@@ -152,7 +174,7 @@ export type ClinicStaffRole = 'LEAD' | 'DOCTOR' | 'NURSE' | 'COUNSELOR' | 'NUTRI
 // =============================================================================
 
 export interface ClinicPriorityConfig {
-  priority: ClinicVisitPriority;
+  priority: ClinicalPriority;
   label: string;
   description: string;
   bgColor: string;
@@ -163,7 +185,7 @@ export interface ClinicPriorityConfig {
   sortOrder: number;
 }
 
-export const CLINIC_PRIORITY_CONFIG: Record<ClinicVisitPriority, ClinicPriorityConfig> = {
+const CLINICAL_PRIORITY_CONFIG: Record<ClinicalPriority, ClinicPriorityConfig> = {
   EMERGENCY: {
     priority: 'EMERGENCY',
     label: 'Emergency (RED)',
@@ -219,6 +241,20 @@ export const CLINIC_PRIORITY_CONFIG: Record<ClinicVisitPriority, ClinicPriorityC
     icon: 'info',
     sortOrder: 5,
   },
+};
+
+/**
+ * Priority config that handles both clinical priorities and triage colors.
+ * Triage colors map to their clinical priority equivalents.
+ */
+export const CLINIC_PRIORITY_CONFIG: Record<ClinicVisitPriority, ClinicPriorityConfig> = {
+  ...CLINICAL_PRIORITY_CONFIG,
+  // Triage colors map to clinical priority equivalents
+  RED: CLINICAL_PRIORITY_CONFIG.EMERGENCY,
+  ORANGE: CLINICAL_PRIORITY_CONFIG.URGENT,
+  YELLOW: CLINICAL_PRIORITY_CONFIG.PRIORITY,
+  GREEN: CLINICAL_PRIORITY_CONFIG.STANDARD,
+  BLUE: CLINICAL_PRIORITY_CONFIG.NON_URGENT,
 };
 
 // =============================================================================
@@ -586,7 +622,7 @@ export interface ClinicQueueStats {
   total_registered?: number;
   cancelled?: number;
   avg_wait_time_minutes?: number;
-  by_priority?: Record<ClinicVisitPriority, number>;
+  by_priority?: Record<ClinicalPriority, number>;
 }
 
 // =============================================================================

@@ -44,7 +44,10 @@ import { CLINIC_PRIORITY_CONFIG } from '@/lib/types/clinic';
 const formSchema = z.object({
   target_clinic_id: z.number({ required_error: 'Please select a clinic' }),
   reason: z.string().min(5, 'Please provide a reason for the referral'),
-  priority: z.enum(['EMERGENCY', 'URGENT', 'PRIORITY', 'STANDARD', 'NON_URGENT']).optional(),
+  priority: z.enum([
+    'EMERGENCY', 'URGENT', 'PRIORITY', 'STANDARD', 'NON_URGENT',
+    'RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE',
+  ]).optional(),
   notes: z.string().optional(),
 });
 

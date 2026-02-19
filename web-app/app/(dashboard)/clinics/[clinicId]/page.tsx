@@ -85,7 +85,10 @@ export default function ClinicDashboardPage() {
         .filter((v) => v.status === 'REGISTERED' || v.status === 'WAITING' || v.status === 'CALLED')
         .sort((a, b) => {
           // Sort by priority first, then by registered_at
-          const priorityOrder = { EMERGENCY: 1, URGENT: 2, PRIORITY: 3, STANDARD: 4, NON_URGENT: 5 };
+          const priorityOrder: Record<string, number> = {
+            EMERGENCY: 1, URGENT: 2, PRIORITY: 3, STANDARD: 4, NON_URGENT: 5,
+            RED: 1, ORANGE: 2, YELLOW: 3, GREEN: 4, BLUE: 5,
+          };
           const aPriority = priorityOrder[a.priority] || 5;
           const bPriority = priorityOrder[b.priority] || 5;
           if (aPriority !== bPriority) return aPriority - bPriority;
