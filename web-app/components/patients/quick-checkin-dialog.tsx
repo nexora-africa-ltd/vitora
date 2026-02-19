@@ -25,7 +25,8 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCheckinPatient, usePatientLookup } from '@/lib/hooks/use-checkin';
 import { useClinics } from '@/lib/hooks/use-clinics';
-import { VISIT_REASON_OPTIONS, type VisitReason } from '@/lib/types/checkin';
+import { VISIT_REASON_OPTIONS, type VisitReason, type CheckInResponse } from '@/lib/types/checkin';
+import { CheckinSuccessModal } from './checkin-success-modal';
 
 interface QuickCheckinDialogProps {
   patientId: number;
@@ -43,6 +44,8 @@ export function QuickCheckinDialog({
   const [open, setOpen] = useState(false);
   const [destination, setDestination] = useState<'TRIAGE' | number>('TRIAGE');
   const [visitReason, setVisitReason] = useState<VisitReason>('NEW_COMPLAINT');
+  const [checkInResult, setCheckInResult] = useState<CheckInResponse | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const { toast } = useToast();
   const checkinMutation = useCheckinPatient();
@@ -69,13 +72,10 @@ export function QuickCheckinDialog({
         },
       });
 
-      toast({
-        title: 'Patient Checked In',
-        description: `${patientName} is now in queue at ${result.destination}. Position: ${result.queue_position}`,
-      });
-
+      // Store the result and show success modal
+      setCheckInResult(result);
       setOpen(false);
-      onSuccess?.();
+      setShowSuccessModal(true);
     } catch (error) {
       toast({
         title: 'Check-in Failed',
@@ -85,7 +85,13 @@ export function QuickCheckinDialog({
     }
   };
 
+  const handleSuccessModalDismiss = () => {
+    setCheckInResult(null);
+    onSuccess?.();
+  };
+
   return (
+  <>
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="default">
@@ -199,5 +205,14 @@ export function QuickCheckinDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Success Modal with navigation options */}
+    <CheckinSuccessModal
+      open={showSuccessModal}
+      onOpenChange={setShowSuccessModal}
+      checkInResult={checkInResult}
+      onDismiss={handleSuccessModalDismiss}
+    />
+  </>
   );
 }
