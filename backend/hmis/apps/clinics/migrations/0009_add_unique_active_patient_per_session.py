@@ -4,6 +4,44 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def resolve_duplicate_active_visits(apps, _schema_editor):
+    """
+    Before adding the unique constraint, resolve any existing duplicate
+    active visits by marking older duplicates as NO_SHOW.
+
+    This handles cases where a patient was accidentally registered twice
+    in the same session while active (REGISTERED/WAITING/CALLED/IN_CONSULTATION).
+    """
+    ClinicVisit = apps.get_model("clinics", "ClinicVisit")
+    active_statuses = ["REGISTERED", "WAITING", "CALLED", "IN_CONSULTATION"]
+
+    # Find all session/patient combinations with more than one active visit
+    from django.db.models import Count, Max
+
+    duplicates = (
+        ClinicVisit.objects
+        .filter(status__in=active_statuses)
+        .values("session_id", "patient_id")
+        .annotate(count=Count("id"), max_id=Max("id"))
+        .filter(count__gt=1)
+    )
+
+    for dup in duplicates:
+        # Keep the most recent (highest ID), mark others as NO_SHOW
+        ClinicVisit.objects.filter(
+            session_id=dup["session_id"],
+            patient_id=dup["patient_id"],
+            status__in=active_statuses,
+        ).exclude(
+            id=dup["max_id"]
+        ).update(status="NO_SHOW")
+
+
+def noop(_apps, _schema_editor):
+    """No-op for reverse migration - data cleanup is not reversible."""
+    pass
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("billing", "0021_change_imaging_order_on_delete"),
@@ -15,6 +53,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # First, clean up any duplicate active visits
+        migrations.RunPython(resolve_duplicate_active_visits, noop),
+        # Then add the unique constraint
         migrations.AddConstraint(
             model_name="clinicvisit",
             constraint=models.UniqueConstraint(
