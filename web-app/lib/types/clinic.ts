@@ -71,13 +71,20 @@ export type ClinicVisitStatus =
 
 /**
  * Visit priority levels
+ * Includes both clinical priorities and triage category colors (when patient comes from triage)
  */
 export type ClinicVisitPriority =
   | 'EMERGENCY'
   | 'URGENT'
   | 'PRIORITY'
   | 'STANDARD'
-  | 'NON_URGENT';
+  | 'NON_URGENT'
+  // Triage category colors (when patient comes from triage)
+  | 'RED'
+  | 'ORANGE'
+  | 'YELLOW'
+  | 'GREEN'
+  | 'BLUE';
 
 /**
  * Visit type
