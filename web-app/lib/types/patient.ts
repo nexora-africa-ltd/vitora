@@ -175,3 +175,32 @@ export interface PatientEncounter {
   chief_complaint: string;
   created_at: string;
 }
+
+/**
+ * Duplicate check result from /api/patients/check-duplicate/
+ */
+export interface DuplicateCheckResult {
+  has_duplicate: boolean;
+  match_type: 'exact_id' | 'demographic' | 'partial' | null;
+  matches: DuplicateMatch[];
+}
+
+export interface DuplicateMatch {
+  id: number;
+  mrn: string;
+  full_name: string;
+  date_of_birth: string;
+  gender: 'M' | 'F' | 'O';
+  match_confidence: number;
+  match_reason: string;
+}
+
+export interface DuplicateCheckParams {
+  identification_number?: string;
+  identification_type?: IdentificationType;
+  first_name?: string;
+  last_name?: string;
+  date_of_birth?: string;
+  gender?: 'M' | 'F' | 'O';
+}
+
