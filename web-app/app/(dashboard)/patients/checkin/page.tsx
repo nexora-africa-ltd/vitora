@@ -39,8 +39,9 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { usePatientSearch, usePatientLookup, useTodayCheckins, useCheckinPatient } from '@/lib/hooks/use-checkin';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { useDebounce } from '@/lib/hooks/use-debounce';
-import { VISIT_REASON_OPTIONS, type VisitReason, type PatientLookupResponse, type PatientSearchResult } from '@/lib/types/checkin';
+import { VISIT_REASON_OPTIONS, type VisitReason, type PatientLookupResponse, type PatientSearchResult, type CheckInResponse } from '@/lib/types/checkin';
 import { cn } from '@/lib/utils';
+import { CheckinSuccessModal } from '@/components/patients/checkin-success-modal';
 
 // =============================================================================
 // Help Popover Component
@@ -500,6 +501,8 @@ export default function PatientCheckinPage() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<PatientSearchResult | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [checkInResult, setCheckInResult] = useState<CheckInResponse | null>(null);
   const debouncedQuery = useDebounce(searchQuery, 400);
 
   // Handle pre-selected patient from query param (e.g., from duplicate modal)
@@ -569,19 +572,13 @@ export default function PatientCheckinPage() {
         },
       });
 
-      toast({
-        title: 'Patient Checked In',
-        description: `${patientDetails.full_name} is now in queue at ${result.destination}. Position: ${result.queue_position}`,
-      });
+      // Store result and show success modal
+      setCheckInResult(result);
+      setShowSuccessModal(true);
 
       // Clear search and reset for next patient
       setSearchQuery('');
       setSelectedPatient(null);
-
-      // Optionally navigate to queue view
-      if (destination === 'TRIAGE') {
-        // Could navigate to triage queue
-      }
     } catch (error) {
       toast({
         title: 'Check-in Failed',
@@ -709,6 +706,14 @@ export default function PatientCheckinPage() {
           <RecentCheckinsCard />
         </div>
       </div>
+
+      {/* Check-in Success Modal */}
+      <CheckinSuccessModal
+        open={showSuccessModal}
+        onOpenChange={setShowSuccessModal}
+        checkInResult={checkInResult}
+        onDismiss={() => setCheckInResult(null)}
+      />
     </div>
   );
 }
