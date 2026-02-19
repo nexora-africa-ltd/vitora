@@ -12,15 +12,12 @@ import { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft,
   BarChart3,
   TrendingUp,
   TrendingDown,
   Users,
-  Clock,
   Calendar,
   Download,
-  RefreshCw,
   AlertCircle,
   FileText,
   CalendarRange,
@@ -30,6 +27,8 @@ import {
   Minus,
 } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -59,7 +58,6 @@ import {
 } from '@/components/ui/table';
 import { useClinic, useClinicSessions } from '@/lib/hooks/use-clinics';
 import { ClinicNavigation } from '@/components/clinics/clinic-navigation';
-import type { ClinicSession } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
 
 type DateRange = 'week' | 'month' | 'quarter' | 'year' | 'custom';
@@ -200,78 +198,58 @@ export default function ClinicReportsPage() {
 
   if (clinicLoading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-1/3" />
-        <div className="grid gap-4 md:grid-cols-4">
+      <div className="space-y-4 sm:space-y-6">
+        <Skeleton className="h-8 w-1/3" />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24" />
+            <Skeleton key={i} className="h-20 sm:h-24" />
           ))}
         </div>
-        <Skeleton className="h-96" />
+        <Skeleton className="h-64 sm:h-96" />
       </div>
     );
   }
 
   if (!clinic) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Clinic not found</h3>
-        <Button asChild>
-          <Link href="/clinics">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Clinics
-          </Link>
+      <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+        <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
+        <h3 className="text-base sm:text-lg font-semibold mb-2">Clinic not found</h3>
+        <Button asChild size="sm">
+          <Link href="/clinics">Back to Clinics</Link>
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/clinics/${clinicId}`}>
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
+    <PullToRefresh onRefresh={async () => { await refetch(); }} isRefreshing={false}>
+    <div className="space-y-4 sm:space-y-6">
+      <PageHeader
+        title={`${clinic.name} - Reports`}
+        helpContent="Performance analytics, trends, and DHIS2 reporting."
+        actions={
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Export</span>
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-              {clinic.name} - Reports
-            </h1>
-            <p className="text-muted-foreground">
-              Performance analytics, trends, and DHIS2 reporting
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center">
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export Report
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Navigation */}
       <ClinicNavigation clinicId={clinicId} />
 
       {/* Date Range Filter */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <CardContent className="p-3 sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="flex items-center gap-2">
               <CalendarRange className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Report Period:</span>
+              <span className="text-xs sm:text-sm font-medium">Period:</span>
             </div>
 
             <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[140px]">
                 <SelectValue placeholder="Select range" />
               </SelectTrigger>
               <SelectContent>
@@ -279,17 +257,17 @@ export default function ClinicReportsPage() {
                 <SelectItem value="month">This Month</SelectItem>
                 <SelectItem value="quarter">Last 90 Days</SelectItem>
                 <SelectItem value="year">Last Year</SelectItem>
-                <SelectItem value="custom">Custom Range</SelectItem>
+                <SelectItem value="custom">Custom</SelectItem>
               </SelectContent>
             </Select>
 
             {dateRange === 'custom' && (
-              <>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-[160px] justify-start text-left font-normal">
+                    <Button variant="outline" size="sm" className="w-full sm:w-[140px] justify-start text-left font-normal">
                       <Calendar className="mr-2 h-4 w-4" />
-                      {customStartDate ? format(customStartDate, 'MMM d, yyyy') : 'Start Date'}
+                      {customStartDate ? format(customStartDate, 'MMM d') : 'Start'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
@@ -302,13 +280,13 @@ export default function ClinicReportsPage() {
                   </PopoverContent>
                 </Popover>
 
-                <span className="text-muted-foreground">to</span>
+                <span className="text-muted-foreground text-sm hidden sm:inline">to</span>
 
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-[160px] justify-start text-left font-normal">
+                    <Button variant="outline" size="sm" className="w-full sm:w-[140px] justify-start text-left font-normal">
                       <Calendar className="mr-2 h-4 w-4" />
-                      {customEndDate ? format(customEndDate, 'MMM d, yyyy') : 'End Date'}
+                      {customEndDate ? format(customEndDate, 'MMM d') : 'End'}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
@@ -320,7 +298,7 @@ export default function ClinicReportsPage() {
                     />
                   </PopoverContent>
                 </Popover>
-              </>
+              </div>
             )}
           </div>
         </CardContent>
@@ -328,24 +306,27 @@ export default function ClinicReportsPage() {
 
       {/* Report Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ReportTab)}>
-        <TabsList className="grid w-full grid-cols-4 md:w-auto md:grid-cols-none">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="trends">Trends</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="dhis2">DHIS2 Export</TabsTrigger>
+        <TabsList className="w-full sm:w-auto justify-start overflow-x-auto">
+          <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+          <TabsTrigger value="trends" className="text-xs sm:text-sm">Trends</TabsTrigger>
+          <TabsTrigger value="performance" className="text-xs sm:text-sm">
+            <span className="sm:hidden">Perf</span>
+            <span className="hidden sm:inline">Performance</span>
+          </TabsTrigger>
+          <TabsTrigger value="dhis2" className="text-xs sm:text-sm">DHIS2</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
+        <TabsContent value="overview" className="space-y-4 sm:space-y-6">
           {/* KPI Cards */}
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">Patients</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground hidden sm:block" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatNumber(stats.totalPatientsSeen)}</div>
+              <CardContent className="p-3 sm:p-6 pt-0">
+                <div className="text-xl sm:text-2xl font-bold">{formatNumber(stats.totalPatientsSeen)}</div>
                 <div className="flex items-center text-xs">
                   {trends.patientVolume.direction === 'up' ? (
                     <TrendingUp className="h-3 w-3 text-green-500 mr-1" />
@@ -362,60 +343,58 @@ export default function ClinicReportsPage() {
                   >
                     {formatPercentage(trends.patientVolume.direction === 'up' ? trends.patientVolume.value : -trends.patientVolume.value)}
                   </span>
-                  <span className="text-muted-foreground ml-1">vs previous period</span>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Avg. Per Session</CardTitle>
-                <BarChart3 className="h-4 w-4 text-blue-500" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">Avg/Session</CardTitle>
+                <BarChart3 className="h-4 w-4 text-blue-500 hidden sm:block" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{stats.avgPatientsPerSession}</div>
-                <p className="text-xs text-muted-foreground">Patients per session</p>
+              <CardContent className="p-3 sm:p-6 pt-0">
+                <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.avgPatientsPerSession}</div>
+                <p className="text-xs text-muted-foreground hidden sm:block">Patients/session</p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
-                <CheckCircle className="h-4 w-4 text-green-500" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">Completion</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-500 hidden sm:block" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{stats.completionRate}%</div>
-                <Progress value={stats.completionRate} className="mt-2" />
+              <CardContent className="p-3 sm:p-6 pt-0">
+                <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.completionRate}%</div>
+                <Progress value={stats.completionRate} className="mt-1 sm:mt-2" />
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">No-Show Rate</CardTitle>
-                <XCircle className="h-4 w-4 text-orange-500" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">No-Show</CardTitle>
+                <XCircle className="h-4 w-4 text-orange-500 hidden sm:block" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600">{stats.noShowRate}%</div>
-                <p className="text-xs text-muted-foreground">Missed appointments</p>
+              <CardContent className="p-3 sm:p-6 pt-0">
+                <div className="text-xl sm:text-2xl font-bold text-orange-600">{stats.noShowRate}%</div>
+                <p className="text-xs text-muted-foreground hidden sm:block">Missed</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Insights Cards */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Busiest Days</CardTitle>
-                <CardDescription>Days with highest patient volume</CardDescription>
+              <CardHeader className="p-3 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Busiest Days</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
+              <CardContent className="p-3 sm:p-6 pt-0">
+                <div className="space-y-3">
                   {stats.busyDays.map((day, index) => (
                     <div key={day} className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3">
                         <div
                           className={cn(
-                            'w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold',
+                            'w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white font-semibold text-xs sm:text-sm',
                             index === 0 ? 'bg-red-500' : 'bg-orange-500'
                           )}
                         >
@@ -427,33 +406,32 @@ export default function ClinicReportsPage() {
                     </div>
                   ))}
                   {stats.busyDays.length === 0 && (
-                    <p className="text-muted-foreground">Insufficient data for analysis</p>
+                    <p className="text-sm text-muted-foreground">No data</p>
                   )}
                 </div>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Session Summary</CardTitle>
-                <CardDescription>Breakdown by status for the period</CardDescription>
+              <CardHeader className="p-3 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Session Summary</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Total Sessions</span>
+              <CardContent className="p-3 sm:p-6 pt-0">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Total Sessions</span>
                     <span className="font-semibold">{stats.totalSessions}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Patients Registered</span>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Registered</span>
                     <span className="font-semibold">{formatNumber(stats.totalPatientsRegistered)}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Patients Seen</span>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Seen</span>
                     <span className="font-semibold text-green-600">{formatNumber(stats.totalPatientsSeen)}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">No Shows / Missed</span>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>No Shows</span>
                     <span className="font-semibold text-orange-600">
                       {formatNumber(stats.totalPatientsRegistered - stats.totalPatientsSeen)}
                     </span>
@@ -465,10 +443,10 @@ export default function ClinicReportsPage() {
         </TabsContent>
 
         {/* Trends Tab */}
-        <TabsContent value="trends" className="space-y-6">
+        <TabsContent value="trends" className="space-y-4 sm:space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Patient Volume Trends</CardTitle>
+            <CardHeader className="p-3 sm:p-6">
+              <CardTitle className="text-base sm:text-lg">Patient Volume Trends</CardTitle>
               <CardDescription>Daily patient visits over the selected period</CardDescription>
             </CardHeader>
             <CardContent>
@@ -483,127 +461,149 @@ export default function ClinicReportsPage() {
                   </p>
                 </div>
               ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Registered</TableHead>
-                        <TableHead className="text-right">Seen</TableHead>
-                        <TableHead className="text-right">Completion %</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sessions.slice(0, 10).map((session) => {
-                        const completionPct = session.patients_registered > 0
-                          ? Math.round((session.patients_seen / session.patients_registered) * 100)
-                          : 0;
-                        return (
-                          <TableRow key={session.id}>
-                            <TableCell className="font-medium">
-                              {format(parseISO(session.session_date), 'MMM d, yyyy (EEE)')}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  session.status === 'CLOSED' && 'text-green-600 border-green-600',
-                                  session.status === 'OPEN' && 'text-blue-600 border-blue-600',
-                                  session.status === 'CANCELLED' && 'text-red-600 border-red-600'
-                                )}
-                              >
-                                {session.status_display}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">{session.patients_registered}</TableCell>
-                            <TableCell className="text-right font-medium text-green-600">
-                              {session.patients_seen}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <span>{completionPct}%</span>
-                                <Progress value={completionPct} className="w-16" />
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                <>
+                  {/* Mobile Cards */}
+                  <div className="sm:hidden space-y-2">
+                    {sessions.slice(0, 10).map((session) => {
+                      const completionPct = session.patients_registered > 0
+                        ? Math.round((session.patients_seen / session.patients_registered) * 100)
+                        : 0;
+                      return (
+                        <div key={session.id} className="rounded-lg border p-3">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-sm">{format(parseISO(session.session_date), 'MMM d (EEE)')}</span>
+                            <Badge variant="outline" className={cn(
+                              'text-xs',
+                              session.status === 'CLOSED' && 'text-green-600 border-green-600',
+                              session.status === 'OPEN' && 'text-blue-600 border-blue-600',
+                              session.status === 'CANCELLED' && 'text-red-600 border-red-600'
+                            )}>
+                              {session.status_display}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+                            <span>Seen: <span className="text-green-600 font-medium">{session.patients_seen}</span> / {session.patients_registered}</span>
+                            <span>{completionPct}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Desktop Table */}
+                  <div className="hidden sm:block rounded-md border overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Reg</TableHead>
+                          <TableHead className="text-right">Seen</TableHead>
+                          <TableHead className="text-right">%</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sessions.slice(0, 10).map((session) => {
+                          const completionPct = session.patients_registered > 0
+                            ? Math.round((session.patients_seen / session.patients_registered) * 100)
+                            : 0;
+                          return (
+                            <TableRow key={session.id}>
+                              <TableCell className="font-medium">
+                                {format(parseISO(session.session_date), 'MMM d (EEE)')}
+                              </TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    session.status === 'CLOSED' && 'text-green-600 border-green-600',
+                                    session.status === 'OPEN' && 'text-blue-600 border-blue-600',
+                                    session.status === 'CANCELLED' && 'text-red-600 border-red-600'
+                                  )}
+                                >
+                                  {session.status_display}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">{session.patients_registered}</TableCell>
+                              <TableCell className="text-right font-medium text-green-600">
+                                {session.patients_seen}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <span>{completionPct}%</span>
+                                  <Progress value={completionPct} className="w-12" />
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
         {/* Performance Tab */}
-        <TabsContent value="performance" className="space-y-6">
-          <div className="grid gap-4 md:grid-cols-2">
+        <TabsContent value="performance" className="space-y-4 sm:space-y-6">
+          <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
             <Card>
-              <CardHeader>
-                <CardTitle>Utilization Rate</CardTitle>
-                <CardDescription>Percentage of capacity utilized</CardDescription>
+              <CardHeader className="p-3 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Utilization Rate</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-center py-8">
+              <CardContent className="p-3 sm:p-6 pt-0">
+                <div className="flex items-center justify-center py-4 sm:py-8">
                   <div className="relative">
-                    <svg className="w-32 h-32 transform -rotate-90">
+                    <svg className="w-24 h-24 sm:w-32 sm:h-32 transform -rotate-90">
                       <circle
-                        cx="64"
-                        cy="64"
-                        r="56"
+                        cx="50%"
+                        cy="50%"
+                        r="44%"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="8"
                         className="text-muted"
                       />
                       <circle
-                        cx="64"
-                        cy="64"
-                        r="56"
+                        cx="50%"
+                        cy="50%"
+                        r="44%"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="8"
-                        strokeDasharray={`${stats.utilizationRate * 3.52} 352`}
+                        strokeDasharray={`${stats.utilizationRate * 2.76} 276`}
                         className="text-primary"
                       />
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-3xl font-bold">{stats.utilizationRate}%</span>
+                      <span className="text-xl sm:text-3xl font-bold">{stats.utilizationRate}%</span>
                     </div>
                   </div>
                 </div>
-                <p className="text-center text-sm text-muted-foreground">
-                  Based on scheduled capacity
-                </p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle>Key Metrics</CardTitle>
-                <CardDescription>Performance indicators for the period</CardDescription>
+              <CardHeader className="p-3 sm:p-6">
+                <CardTitle className="text-base sm:text-lg">Key Metrics</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Average Wait Time</span>
+              <CardContent className="p-3 sm:p-6 pt-0">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Wait Time</span>
                     <span className="font-semibold">~25 min</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Patient Satisfaction</span>
-                    <div className="flex items-center gap-1">
-                      <span className="font-semibold">4.2</span>
-                      <span className="text-xs text-muted-foreground">/ 5.0</span>
-                    </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Satisfaction</span>
+                    <span className="font-semibold">4.2/5</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Return Visit Rate</span>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Return Rate</span>
                     <span className="font-semibold">32%</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Referral Rate</span>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Referral Rate</span>
                     <span className="font-semibold">8%</span>
                   </div>
                 </div>
@@ -613,66 +613,62 @@ export default function ClinicReportsPage() {
         </TabsContent>
 
         {/* DHIS2 Export Tab */}
-        <TabsContent value="dhis2" className="space-y-6">
+        <TabsContent value="dhis2" className="space-y-4 sm:space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>DHIS2/KHIS Export</CardTitle>
-              <CardDescription>
-                Export clinic data for Ministry of Health reporting
-              </CardDescription>
+            <CardHeader className="p-3 sm:p-6">
+              <CardTitle className="text-base sm:text-lg">DHIS2/KHIS Export</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="rounded-lg border p-4 bg-muted/50">
-                <div className="flex items-start gap-3">
-                  <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div>
-                    <h4 className="font-medium">MOH 705A - Outpatient Summary</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Daily outpatient workload for {clinic.name}
+            <CardContent className="p-3 sm:p-6 pt-0 space-y-4 sm:space-y-6">
+              <div className="rounded-lg border p-3 sm:p-4 bg-muted/50">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <h4 className="font-medium text-sm sm:text-base">MOH 705A</h4>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Outpatient summary for {clinic.name}
                     </p>
-                    <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
                       <div>
                         <span className="text-muted-foreground">Period:</span>
-                        <span className="ml-2 font-medium">{dateParams.date_from} to {dateParams.date_to}</span>
+                        <p className="font-medium truncate">{dateParams.date_from}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Visits:</span>
+                        <p className="font-medium">{formatNumber(stats.totalPatientsSeen)}</p>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Org Unit:</span>
-                        <span className="ml-2 font-medium">{clinic.dhis2_org_unit_id || 'Not configured'}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Total Visits:</span>
-                        <span className="ml-2 font-medium">{formatNumber(stats.totalPatientsSeen)}</span>
+                        <p className="font-medium truncate">{clinic.dhis2_org_unit_id || 'Not set'}</p>
                       </div>
                       <div>
                         <span className="text-muted-foreground">MOH Code:</span>
-                        <span className="ml-2 font-medium">{clinic.moh_code || 'N/A'}</span>
+                        <p className="font-medium">{clinic.moh_code || 'N/A'}</p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button size="sm" className="w-full sm:w-auto">
                   <Download className="h-4 w-4 mr-2" />
-                  Export to DHIS2
+                  Export DHIS2
                 </Button>
-                <Button variant="outline">
+                <Button variant="outline" size="sm" className="w-full sm:w-auto">
                   <FileText className="h-4 w-4 mr-2" />
-                  Download CSV
+                  CSV
                 </Button>
               </div>
 
-              <div className="rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20 p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="h-5 w-5 text-yellow-600" />
+              <div className="rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20 p-3 sm:p-4">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 shrink-0" />
                   <div>
-                    <h4 className="font-medium text-yellow-800 dark:text-yellow-200">
-                      DHIS2 Integration Note
+                    <h4 className="font-medium text-yellow-800 dark:text-yellow-200 text-sm">
+                      DHIS2 Integration
                     </h4>
-                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                      DHIS2 integration requires the organizational unit ID to be configured in clinic
-                      settings. Contact your system administrator to set up the integration.
+                    <p className="text-xs sm:text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                      Requires org unit ID in clinic settings.
                     </p>
                   </div>
                 </div>
@@ -682,5 +678,6 @@ export default function ClinicReportsPage() {
         </TabsContent>
       </Tabs>
     </div>
+    </PullToRefresh>
   );
 }

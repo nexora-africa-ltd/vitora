@@ -232,9 +232,9 @@ export const ClinicStaffSchema = z.object({
   is_active: z.boolean(),
   start_date: z.string(),
   end_date: z.string().nullable(),
-  notes: z.string(),
-  created_at: z.string(),
-  updated_at: z.string(),
+  notes: z.string().optional().default(''),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
 });
 
 // =============================================================================
@@ -246,13 +246,13 @@ export const ClinicScheduleSchema = z.object({
   clinic: z.number(),
   clinic_name: z.string(),
   day_of_week: z.number(),
-  day_of_week_display: z.string(),
-  day_display: z.string().optional(),
+  day_of_week_display: z.string().optional(),
+  day_display: z.string(),
   start_time: z.string(),
   end_time: z.string(),
   max_patients: z.number(),
   is_active: z.boolean(),
-  notes: z.string(),
+  notes: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -288,7 +288,7 @@ export const ClinicEnrollmentSchema = z.object({
 
   // Status
   status: EnrollmentStatusSchema,
-  status_display: z.string(),
+  status_display: z.string().optional().default(''),
 
   // Program data - backend uses enrollment_data, frontend alias program_data
   enrollment_data: z.record(z.unknown()).nullable().optional(),
@@ -305,8 +305,8 @@ export const ClinicEnrollmentSchema = z.object({
   visit_count: z.number().optional(), // Backward compatibility alias
 
   // Enrollment metadata
-  enrolled_by: z.number(),
-  enrolled_by_name: z.string(),
+  enrolled_by: z.number().optional().nullable(),
+  enrolled_by_name: z.string().optional().default(''),
   notes: z.string().optional(),
 
   // Outcome
@@ -387,8 +387,8 @@ export const ClinicEnrollmentSchema = z.object({
   missed_appointment_alerts: z.number().nullable().optional(),
 
   // Timestamps
-  created_at: z.string(),
-  updated_at: z.string(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
 });
 
 // =============================================================================

@@ -375,9 +375,9 @@ export interface ClinicStaff {
   is_active: boolean;
   start_date: string;
   end_date: string | null;
-  notes: string;
-  created_at: string;
-  updated_at: string;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ClinicStaffCreateData {
@@ -397,12 +397,13 @@ export interface ClinicSchedule {
   clinic: number;
   clinic_name: string;
   day_of_week: number;
-  day_of_week_display: string;
+  day_of_week_display?: string;
+  day_display: string;
   start_time: string;
   end_time: string;
   max_patients: number;
   is_active: boolean;
-  notes: string;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -447,7 +448,7 @@ export interface ClinicEnrollment {
 
   // Status
   status: EnrollmentStatus;
-  status_display: string;
+  status_display?: string;
 
   // Program data - backend uses enrollment_data, frontend alias program_data
   enrollment_data?: Record<string, unknown> | null;
@@ -464,8 +465,8 @@ export interface ClinicEnrollment {
   visit_count?: number; // Backward compatibility alias
 
   // Enrollment metadata
-  enrolled_by: number;
-  enrolled_by_name: string;
+  enrolled_by?: number | null;
+  enrolled_by_name?: string;
   notes?: string;
 
   // Outcome
@@ -546,8 +547,8 @@ export interface ClinicEnrollment {
   missed_appointment_alerts?: number | null;
 
   // Timestamps
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ClinicEnrollmentCreateData {

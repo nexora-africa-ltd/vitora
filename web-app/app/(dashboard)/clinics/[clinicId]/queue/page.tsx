@@ -12,25 +12,22 @@ import { useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft,
   Clock,
   Users,
-  UserCheck,
   CheckCircle,
-  RefreshCw,
   Plus,
   Search,
   Filter,
   Play,
   Pause,
   AlertCircle,
-  Phone,
   LayoutGrid,
   List,
-  Download,
 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -56,7 +53,6 @@ import {
 import { ClinicQueueTable } from '@/components/clinics/clinic-queue-table';
 import { ClinicVisitCard } from '@/components/clinics/clinic-visit-card';
 import { AddToQueueDialog } from '@/components/clinics/add-to-queue-dialog';
-import { ClinicPriorityBadge } from '@/components/clinics/clinic-priority-badge';
 import { ClinicNavigation } from '@/components/clinics/clinic-navigation';
 import {
   useClinic,
@@ -69,7 +65,7 @@ import {
 import { useClinicQueueSocket } from '@/lib/hooks/use-websocket';
 import { WebSocketStatus } from '@/components/ui/websocket-status';
 import { toast } from '@/lib/hooks/use-toast';
-import type { ClinicVisit, ClinicVisitPriority, ClinicVisitStatus } from '@/lib/types/clinic';
+import type { ClinicVisitPriority, ClinicVisitStatus } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
 
 type ViewMode = 'table' | 'cards';
@@ -194,28 +190,25 @@ export default function ClinicQueuePage() {
 
   if (clinicLoading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-1/3" />
-        <div className="grid gap-4 md:grid-cols-4">
+      <div className="space-y-4 sm:space-y-6">
+        <Skeleton className="h-8 w-1/3" />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24" />
+            <Skeleton key={i} className="h-20 sm:h-24" />
           ))}
         </div>
-        <Skeleton className="h-96" />
+        <Skeleton className="h-64 sm:h-96" />
       </div>
     );
   }
 
   if (!clinic) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Clinic not found</h3>
-        <Button asChild>
-          <Link href="/clinics">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Clinics
-          </Link>
+      <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+        <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
+        <h3 className="text-base sm:text-lg font-semibold mb-2">Clinic not found</h3>
+        <Button asChild size="sm">
+          <Link href="/clinics">Back to Clinics</Link>
         </Button>
       </div>
     );
@@ -225,73 +218,56 @@ export default function ClinicQueuePage() {
   const hasActiveFilters = searchQuery || priorityFilter !== 'ALL' || statusFilter !== 'ALL';
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/clinics/${clinicId}`}>
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-              {clinic.name} - Queue Management
-            </h1>
-            <p className="text-muted-foreground">
-              Manage patient queue, call patients, and track consultations
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center">
-          {/* WebSocket Status */}
-          <WebSocketStatus
-            connectionState={connectionState}
-            reconnectAttempts={reconnectAttempts}
-            showLabel
-            size="sm"
-          />
+    <PullToRefresh onRefresh={handleRefresh} isRefreshing={false}>
+    <div className="space-y-4 sm:space-y-6">
+      <PageHeader
+        title={`${clinic.name} - Queue`}
+        helpContent="Manage patient queue, call patients, and track consultations in real-time."
+        actions={
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <WebSocketStatus
+              connectionState={connectionState}
+              reconnectAttempts={reconnectAttempts}
+              showLabel
+              size="sm"
+            />
 
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
+            {isSessionOpen ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={closingSession}>
+                    <Pause className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Close</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Close Today&apos;s Session?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will close the clinic session for today. Patients still in queue will remain
+                      but no new patients can be added.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleCloseSession}>Close Session</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <Button size="sm" onClick={handleOpenSession} disabled={openingSession}>
+                <Play className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Open</span>
+              </Button>
+            )}
 
-          {isSessionOpen ? (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" disabled={closingSession}>
-                  <Pause className="h-4 w-4 mr-2" />
-                  Close Session
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Close Today&apos;s Session?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will close the clinic session for today. Patients still in queue will remain
-                    but no new patients can be added.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleCloseSession}>Close Session</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          ) : (
-            <Button onClick={handleOpenSession} disabled={openingSession}>
-              <Play className="h-4 w-4 mr-2" />
-              Open Session
+            <Button size="sm" onClick={() => setAddToQueueOpen(true)} disabled={!isSessionOpen}>
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add</span>
             </Button>
-          )}
-
-          <Button onClick={() => setAddToQueueOpen(true)} disabled={!isSessionOpen}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Patient
-          </Button>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {/* Navigation */}
       <ClinicNavigation clinicId={clinicId} />
@@ -299,17 +275,17 @@ export default function ClinicQueuePage() {
       {/* Session Status Banner */}
       {!isSessionOpen && (
         <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
-          <CardContent className="flex items-center gap-4 py-4">
-            <AlertCircle className="h-5 w-5 text-yellow-600" />
-            <div className="flex-1">
-              <p className="font-medium text-yellow-800 dark:text-yellow-200">
+          <CardContent className="flex flex-col gap-3 p-3 sm:p-4 sm:flex-row sm:items-center">
+            <AlertCircle className="h-5 w-5 text-yellow-600 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm text-yellow-800 dark:text-yellow-200">
                 Session Not Open
               </p>
-              <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                Open the session to start accepting patients for today&apos;s clinic.
+              <p className="text-xs sm:text-sm text-yellow-700 dark:text-yellow-300">
+                Open to start accepting patients.
               </p>
             </div>
-            <Button onClick={handleOpenSession} disabled={openingSession}>
+            <Button size="sm" onClick={handleOpenSession} disabled={openingSession} className="w-full sm:w-auto">
               Open Session
             </Button>
           </CardContent>
@@ -317,123 +293,125 @@ export default function ClinicQueuePage() {
       )}
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Waiting</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Waiting</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{waitingQueue.length}</div>
-            <p className="text-xs text-muted-foreground">Patients in queue</p>
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="text-xl sm:text-2xl font-bold">{waitingQueue.length}</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">In queue</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Consultation</CardTitle>
-            <Users className="h-4 w-4 text-blue-500" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Consult</CardTitle>
+            <Users className="h-4 w-4 text-blue-500 hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{inConsultation.length}</div>
-            <p className="text-xs text-muted-foreground">Currently being seen</p>
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="text-xl sm:text-2xl font-bold text-blue-600">{inConsultation.length}</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">Active</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Done</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-500 hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{completedToday.length}</div>
-            <p className="text-xs text-muted-foreground">Seen today</p>
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="text-xl sm:text-2xl font-bold text-green-600">{completedToday.length}</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">Today</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Wait Time</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Wait Time</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {stats?.avg_wait_time_minutes ? `${Math.round(stats.avg_wait_time_minutes)} min` : '--'}
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="text-xl sm:text-2xl font-bold">
+              {stats?.avg_wait_time_minutes ? `${Math.round(stats.avg_wait_time_minutes)}m` : '--'}
             </div>
-            <p className="text-xs text-muted-foreground">Average wait</p>
+            <p className="text-xs text-muted-foreground hidden sm:block">Avg</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Filters and Search */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <CardContent className="p-3 sm:p-6">
+          <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name, MRN, or queue number..."
+                placeholder="Search queue..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
 
-            <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as ClinicVisitPriority | 'ALL')}>
-              <SelectTrigger className="w-[160px]">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Priorities</SelectItem>
-                <SelectItem value="EMERGENCY">Emergency</SelectItem>
-                <SelectItem value="URGENT">Urgent</SelectItem>
-                <SelectItem value="PRIORITY">Priority</SelectItem>
-                <SelectItem value="STANDARD">Standard</SelectItem>
-                <SelectItem value="NON_URGENT">Non-Urgent</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-2">
+              <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v as ClinicVisitPriority | 'ALL')}>
+                <SelectTrigger className="w-[130px] sm:w-[140px]">
+                  <Filter className="h-4 w-4 mr-2 hidden sm:block" />
+                  <SelectValue placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All</SelectItem>
+                  <SelectItem value="EMERGENCY">Emergency</SelectItem>
+                  <SelectItem value="URGENT">Urgent</SelectItem>
+                  <SelectItem value="PRIORITY">Priority</SelectItem>
+                  <SelectItem value="STANDARD">Standard</SelectItem>
+                  <SelectItem value="NON_URGENT">Non-Urgent</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ClinicVisitStatus | 'ALL')}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All Statuses</SelectItem>
-                <SelectItem value="WAITING">Waiting</SelectItem>
-                <SelectItem value="CALLED">Called</SelectItem>
-                <SelectItem value="IN_CONSULTATION">In Consultation</SelectItem>
-                <SelectItem value="COMPLETED">Completed</SelectItem>
-                <SelectItem value="NO_SHOW">No Show</SelectItem>
-                <SelectItem value="CANCELLED">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as ClinicVisitStatus | 'ALL')}>
+                <SelectTrigger className="w-[130px] sm:w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All</SelectItem>
+                  <SelectItem value="WAITING">Waiting</SelectItem>
+                  <SelectItem value="CALLED">Called</SelectItem>
+                  <SelectItem value="IN_CONSULTATION">In Consult</SelectItem>
+                  <SelectItem value="COMPLETED">Done</SelectItem>
+                  <SelectItem value="NO_SHOW">No Show</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
 
-            {hasActiveFilters && (
-              <Button variant="ghost" onClick={clearFilters}>
-                Clear Filters
-              </Button>
-            )}
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  Clear
+                </Button>
+              )}
 
-            <div className="flex items-center gap-1 border rounded-md">
-              <Button
-                variant={viewMode === 'table' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('table')}
-                className="rounded-r-none"
-                aria-label="Table view"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('cards')}
-                className="rounded-l-none"
-                aria-label="Cards view"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-1 border rounded-md">
+                <Button
+                  variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('table')}
+                  className="rounded-r-none h-8 px-2"
+                  aria-label="Table view"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('cards')}
+                  className="rounded-l-none h-8 px-2"
+                  aria-label="Cards view"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -441,34 +419,37 @@ export default function ClinicQueuePage() {
 
       {/* Queue Content */}
       <Tabs defaultValue="waiting" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="waiting">
-            Waiting
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="waiting" className="gap-1">
+            <span className="sm:hidden">Wait</span>
+            <span className="hidden sm:inline">Waiting</span>
             {waitingQueue.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
+              <Badge variant="secondary" className="ml-1 text-xs">
                 {waitingQueue.length}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="consultation">
-            In Consultation
+          <TabsTrigger value="consultation" className="gap-1">
+            <span className="sm:hidden">Active</span>
+            <span className="hidden sm:inline">In Consultation</span>
             {inConsultation.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
+              <Badge variant="secondary" className="ml-1 text-xs">
                 {inConsultation.length}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="completed">
-            Completed
+          <TabsTrigger value="completed" className="gap-1">
+            <span className="sm:hidden">Done</span>
+            <span className="hidden sm:inline">Completed</span>
             {completedToday.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
+              <Badge variant="secondary" className="ml-1 text-xs">
                 {completedToday.length}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="all">
+          <TabsTrigger value="all" className="gap-1">
             All
-            <Badge variant="secondary" className="ml-2">
+            <Badge variant="secondary" className="ml-1 text-xs">
               {filteredQueue.length}
             </Badge>
           </TabsTrigger>
@@ -476,23 +457,21 @@ export default function ClinicQueuePage() {
 
         <TabsContent value="waiting" className="space-y-4">
           {queueLoading ? (
-            <Skeleton className="h-96" />
+            <Skeleton className="h-64 sm:h-96" />
           ) : waitingQueue.length === 0 ? (
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Clock className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No patients waiting</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  {hasActiveFilters
-                    ? 'No patients match your filters.'
-                    : 'Add a patient to the queue to get started.'}
+              <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12">
+                <Clock className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
+                <h3 className="text-base sm:text-lg font-semibold mb-2">No patients waiting</h3>
+                <p className="text-sm text-muted-foreground text-center mb-4">
+                  {hasActiveFilters ? 'No patients match filters.' : 'Add a patient to start.'}
                 </p>
                 {hasActiveFilters ? (
-                  <Button variant="outline" onClick={clearFilters}>
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
                     Clear Filters
                   </Button>
                 ) : (
-                  <Button onClick={() => setAddToQueueOpen(true)} disabled={!isSessionOpen}>
+                  <Button size="sm" onClick={() => setAddToQueueOpen(true)} disabled={!isSessionOpen}>
                     <Plus className="h-4 w-4 mr-2" />
                     Add Patient
                   </Button>
@@ -502,7 +481,7 @@ export default function ClinicQueuePage() {
           ) : viewMode === 'table' ? (
             <ClinicQueueTable visits={waitingQueue} clinicId={clinicId} onRefresh={handleRefresh} />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {waitingQueue.map((visit) => (
                 <ClinicVisitCard key={visit.id} visit={visit} clinicId={clinicId} onRefresh={handleRefresh} />
               ))}
@@ -513,18 +492,18 @@ export default function ClinicQueuePage() {
         <TabsContent value="consultation" className="space-y-4">
           {inConsultation.length === 0 ? (
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No active consultations</h3>
-                <p className="text-muted-foreground text-center">
-                  Call a patient from the queue to start a consultation.
+              <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12">
+                <Users className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
+                <h3 className="text-base sm:text-lg font-semibold mb-2">No active consultations</h3>
+                <p className="text-sm text-muted-foreground text-center">
+                  Call a patient from the queue to start.
                 </p>
               </CardContent>
             </Card>
           ) : viewMode === 'table' ? (
             <ClinicQueueTable visits={inConsultation} clinicId={clinicId} onRefresh={handleRefresh} />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
               {inConsultation.map((visit) => (
                 <ClinicVisitCard key={visit.id} visit={visit} clinicId={clinicId} onRefresh={handleRefresh} />
               ))}
@@ -535,10 +514,10 @@ export default function ClinicQueuePage() {
         <TabsContent value="completed" className="space-y-4">
           {completedToday.length === 0 ? (
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <CheckCircle className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No completed visits today</h3>
-                <p className="text-muted-foreground text-center">
+              <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12">
+                <CheckCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
+                <h3 className="text-base sm:text-lg font-semibold mb-2">No completed visits today</h3>
+                <p className="text-sm text-muted-foreground text-center">
                   Completed consultations will appear here.
                 </p>
               </CardContent>
@@ -556,18 +535,18 @@ export default function ClinicQueuePage() {
         <TabsContent value="all" className="space-y-4">
           {filteredQueue.length === 0 ? (
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Users className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No visits found</h3>
-                <p className="text-muted-foreground text-center">
-                  {hasActiveFilters ? 'No visits match your filters.' : 'No visits recorded today.'}
+              <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12">
+                <Users className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
+                <h3 className="text-base sm:text-lg font-semibold mb-2">No visits found</h3>
+                <p className="text-sm text-muted-foreground text-center">
+                  {hasActiveFilters ? 'No visits match filters.' : 'No visits recorded today.'}
                 </p>
               </CardContent>
             </Card>
           ) : viewMode === 'table' ? (
             <ClinicQueueTable visits={filteredQueue} clinicId={clinicId} onRefresh={handleRefresh} />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filteredQueue.map((visit) => (
                 <ClinicVisitCard key={visit.id} visit={visit} clinicId={clinicId} onRefresh={handleRefresh} />
               ))}
@@ -587,5 +566,6 @@ export default function ClinicQueuePage() {
         }}
       />
     </div>
+    </PullToRefresh>
   );
 }

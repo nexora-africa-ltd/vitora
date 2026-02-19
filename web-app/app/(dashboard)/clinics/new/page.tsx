@@ -13,7 +13,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
-import { ArrowLeft, Building2, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -146,30 +148,24 @@ export default function NewClinicPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/clinics">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">New Clinic</h1>
-          <p className="text-muted-foreground">Create a new clinic or service delivery point</p>
-        </div>
-      </div>
+    <div className="space-y-4 sm:space-y-6">
+      <PageHeader
+        title="New Clinic"
+        helpContent="Create a new clinic or service delivery point. Configure operational settings, location, and billing integration."
+      />
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 sm:space-y-6">
           {/* Basic Information */}
           <Card>
-            <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
-              <CardDescription>Enter the clinic details</CardDescription>
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base sm:text-lg">Basic Information</CardTitle>
+                <HelpPopover content="Enter the clinic name, code, type, and capacity. The code will be auto-generated from the name if left empty." />
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+            <CardContent className="p-4 sm:p-6 pt-0 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="name"
@@ -277,11 +273,13 @@ export default function NewClinicPage() {
 
           {/* Location */}
           <Card>
-            <CardHeader>
-              <CardTitle>Location</CardTitle>
-              <CardDescription>Physical location of the clinic</CardDescription>
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base sm:text-lg">Location</CardTitle>
+                <HelpPopover content="Physical location of the clinic within the facility (building, floor, room number)." />
+              </div>
             </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
+            <CardContent className="p-4 sm:p-6 pt-0 grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="location"
@@ -314,20 +312,22 @@ export default function NewClinicPage() {
 
           {/* Operational Settings */}
           <Card>
-            <CardHeader>
-              <CardTitle>Operational Settings</CardTitle>
-              <CardDescription>Configure how the clinic operates</CardDescription>
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base sm:text-lg">Operational Settings</CardTitle>
+                <HelpPopover content="Configure patient flow requirements: appointments, walk-ins, referrals, and triage." />
+              </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+            <CardContent className="p-4 sm:p-6 pt-0 space-y-4">
+              <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="requires_appointment"
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <FormItem className="flex items-center justify-between rounded-lg border p-3 sm:p-4">
                       <div className="space-y-0.5">
-                        <FormLabel>Requires Appointment</FormLabel>
-                        <FormDescription>
+                        <FormLabel className="text-sm">Requires Appointment</FormLabel>
+                        <FormDescription className="text-xs sm:text-sm">
                           Patients need prior appointment
                         </FormDescription>
                       </div>
@@ -342,10 +342,10 @@ export default function NewClinicPage() {
                   control={form.control}
                   name="accepts_walk_ins"
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <FormItem className="flex items-center justify-between rounded-lg border p-3 sm:p-4">
                       <div className="space-y-0.5">
-                        <FormLabel>Accepts Walk-ins</FormLabel>
-                        <FormDescription>
+                        <FormLabel className="text-sm">Accepts Walk-ins</FormLabel>
+                        <FormDescription className="text-xs sm:text-sm">
                           Walk-in patients accepted
                         </FormDescription>
                       </div>
@@ -360,10 +360,10 @@ export default function NewClinicPage() {
                   control={form.control}
                   name="requires_referral"
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <FormItem className="flex items-center justify-between rounded-lg border p-3 sm:p-4">
                       <div className="space-y-0.5">
-                        <FormLabel>Requires Referral</FormLabel>
-                        <FormDescription>
+                        <FormLabel className="text-sm">Requires Referral</FormLabel>
+                        <FormDescription className="text-xs sm:text-sm">
                           Patients need referral from another clinic
                         </FormDescription>
                       </div>
@@ -378,10 +378,10 @@ export default function NewClinicPage() {
                   control={form.control}
                   name="triage_required"
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                    <FormItem className="flex items-center justify-between rounded-lg border p-3 sm:p-4">
                       <div className="space-y-0.5">
-                        <FormLabel>Triage Required</FormLabel>
-                        <FormDescription>
+                        <FormLabel className="text-sm">Triage Required</FormLabel>
+                        <FormDescription className="text-xs sm:text-sm">
                           Patients must go through triage first
                         </FormDescription>
                       </div>
@@ -397,10 +397,10 @@ export default function NewClinicPage() {
                 control={form.control}
                 name="is_sensitive"
                 render={({ field }) => (
-                  <FormItem className="flex items-center justify-between rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20 p-4">
+                  <FormItem className="flex items-center justify-between rounded-lg border border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20 p-3 sm:p-4">
                     <div className="space-y-0.5">
-                      <FormLabel>Sensitive Clinic</FormLabel>
-                      <FormDescription>
+                      <FormLabel className="text-sm">Sensitive Clinic</FormLabel>
+                      <FormDescription className="text-xs sm:text-sm">
                         Handles sensitive data (HIV, GBV, Mental Health) - restricted access
                       </FormDescription>
                     </div>
@@ -415,11 +415,13 @@ export default function NewClinicPage() {
 
           {/* Billing & Integration */}
           <Card>
-            <CardHeader>
-              <CardTitle>Billing & Integration</CardTitle>
-              <CardDescription>Billing and SHA integration settings</CardDescription>
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base sm:text-lg">Billing & Integration</CardTitle>
+                <HelpPopover content="Set default consultation fees and SHA service codes for claims integration." />
+              </div>
             </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
+            <CardContent className="p-4 sm:p-6 pt-0 grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="default_service_fee"
@@ -452,11 +454,11 @@ export default function NewClinicPage() {
           </Card>
 
           {/* Submit */}
-          <div className="flex items-center justify-end gap-4">
-            <Button type="button" variant="outline" asChild>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end sm:gap-4">
+            <Button type="button" variant="outline" className="w-full sm:w-auto" asChild>
               <Link href="/clinics">Cancel</Link>
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
               <Save className="h-4 w-4 mr-2" />
               {isPending ? 'Creating...' : 'Create Clinic'}
             </Button>
