@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
   AlertCircle,
@@ -421,9 +421,24 @@ function RecentCheckinsCard() {
 
 export default function PatientCheckinPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedQuery = useDebounce(searchQuery, 400);
+
+  // Handle pre-selected patient from query param (e.g., from duplicate modal)
+  const preSelectedPatientId = searchParams.get('select');
+
+  // Auto-populate search with pre-selected patient ID
+  useEffect(() => {
+    if (preSelectedPatientId && !searchQuery) {
+      setSearchQuery(preSelectedPatientId);
+      // Clear the query param from URL after populating (clean URL)
+      const url = new URL(window.location.href);
+      url.searchParams.delete('select');
+      router.replace(url.pathname, { scroll: false });
+    }
+  }, [preSelectedPatientId, searchQuery, router]);
 
   const {
     data: patientData,
@@ -431,7 +446,7 @@ export default function PatientCheckinPage() {
     error: searchError,
     isFetched,
   } = usePatientLookup(debouncedQuery, {
-    enabled: debouncedQuery.length >= 2,
+    enabled: debouncedQuery.length >= 1, // Allow single digit for IDs
   });
 
   const checkinMutation = useCheckinPatient();
