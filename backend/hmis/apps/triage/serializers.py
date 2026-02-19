@@ -180,6 +180,8 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             "diastolic_bp",
             "temperature",
             "respiratory_rate",
+            "weight",
+            "height",
             "triage_category",
             "auto_calculated_category",
             "category_override_reason",
@@ -220,6 +222,8 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             vitals["respiratory_rate"] = obj.respiratory_rate
         if obj.weight is not None:
             vitals["weight"] = str(obj.weight)
+        if obj.height is not None:
+            vitals["height"] = str(obj.height)
 
         if vitals:
             return vitals
@@ -397,6 +401,15 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         max_value=Decimal("500"),
         coerce_to_string=False,
     )
+    height = serializers.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+        min_value=Decimal("0"),
+        max_value=Decimal("300"),
+        coerce_to_string=False,
+    )
 
     # Make assigned_area optional (blank allowed for clinic routing)
     assigned_area = serializers.ChoiceField(
@@ -424,6 +437,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
             "temperature",
             "respiratory_rate",
             "weight",
+            "height",
             "triage_category",
             "auto_calculated_category",
             "category_override_reason",

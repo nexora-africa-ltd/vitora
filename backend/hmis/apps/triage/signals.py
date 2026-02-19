@@ -92,6 +92,12 @@ def update_encounter_triage_status(sender, instance, created, **kwargs):
             updated_fields.add("weight")
             vitals_copied = True
 
+        # Copy height if captured at triage
+        if getattr(encounter, "height", None) is None and instance.height is not None:
+            encounter.height = instance.height
+            updated_fields.add("height")
+            vitals_copied = True
+
         # Copy chief complaint from triage to encounter if encounter's is empty/generic
         encounter_chief = getattr(encounter, "chief_complaint", "") or ""
         triage_chief = getattr(instance, "chief_complaint", "") or ""
