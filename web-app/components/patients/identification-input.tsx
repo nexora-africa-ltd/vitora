@@ -6,7 +6,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { ChevronDown, Check, CreditCard, Hash, Fingerprint, Globe, Building2, Clock, FileText } from 'lucide-react';
+import { ChevronDown, Check, CreditCard, Hash, Fingerprint, Globe, Building2, Clock, FileText, Search, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -58,6 +58,12 @@ interface IdentificationInputProps {
   className?: string;
   /** Error message */
   error?: string;
+  /** Search handler - if provided, shows search icon inside input */
+  onSearch?: () => void;
+  /** Whether search is in progress */
+  isSearching?: boolean;
+  /** Minimum length before search is enabled */
+  minSearchLength?: number;
 }
 
 export function IdentificationInput({
@@ -69,6 +75,9 @@ export function IdentificationInput({
   required = false,
   className,
   error,
+  onSearch,
+  isSearching = false,
+  minSearchLength = 5,
 }: IdentificationInputProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -121,15 +130,45 @@ export function IdentificationInput({
         </DropdownMenu>
       </div>
 
-      {/* Input Field */}
-      <Input
-        type="text"
-        value={identificationNumber}
-        onChange={(e) => onNumberChange(e.target.value)}
-        placeholder={currentPlaceholder}
-        disabled={disabled}
-        className={cn(error && 'border-destructive')}
-      />
+      {/* Input Field with optional search icon */}
+      <div className="relative">
+        <Input
+          type="text"
+          value={identificationNumber}
+          onChange={(e) => onNumberChange(e.target.value)}
+          placeholder={currentPlaceholder}
+          disabled={disabled}
+          className={cn(
+            error && 'border-destructive',
+            onSearch && 'pr-10' // Make room for search icon
+          )}
+        />
+        {/* Search button inside input */}
+        {onSearch && (
+          <button
+            type="button"
+            onClick={onSearch}
+            disabled={disabled || isSearching || identificationNumber.length < minSearchLength}
+            className={cn(
+              'absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md transition-colors',
+              'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
+              identificationNumber.length >= minSearchLength && !isSearching && !disabled
+                ? 'text-teal-600 hover:bg-teal-600/10 cursor-pointer'
+                : 'text-muted-foreground/40 cursor-not-allowed'
+            )}
+            title={identificationNumber.length < minSearchLength
+              ? `Enter at least ${minSearchLength} characters to search`
+              : 'Search CR/SHA'
+            }
+          >
+            {isSearching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4" />
+            )}
+          </button>
+        )}
+      </div>
 
       {/* Error Message */}
       {error && (
