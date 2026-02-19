@@ -107,25 +107,42 @@ export interface WaitTimeStatsResponse {
 
 export interface RouteToClinicResponse {
   id: number;
-  queue_number: string;
+  session: number;
   patient: {
     id: number;
-    full_name: string;
     mrn: string;
+    first_name: string;
+    last_name: string;
+    full_name: string;
+    date_of_birth: string;
+    age: number;
+    gender: string;
+    phone_number?: string | null;
   };
-  session: {
-    id: number;
-    clinic: {
-      id: number;
-      name: string;
-    };
-    session_date: string;
-  };
+  patient_name: string;
+  patient_mrn: string;
+  clinic_name: string;
+  queue_number: number;
   status: string;
+  status_display: string;
   priority: string;
-  chief_complaint: string;
-  notes: string;
+  priority_display: string;
+  visit_type: string;
+  visit_type_display: string;
+  source: string;
+  source_display: string;
   registered_at: string;
+  called_at: string | null;
+  consultation_started_at: string | null;
+  completed_at: string | null;
+  encounter: number | null;
+  triage_assessment: number | null;
+  referred_from: number | null;
+  referred_to_clinic: number | null;
+  referral_reason: string;
+  assigned_clinician: number | null;
+  registered_by: number;
+  registered_by_name: string;
 }
 
 // =============================================================================

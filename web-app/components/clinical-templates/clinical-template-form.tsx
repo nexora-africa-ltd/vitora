@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils/cn';
 import { coreApi } from '@/lib/api/core';
+import { ObstetricCalculator } from '@/components/clinical-templates/obstetric-calculator';
 import type {
   ClinicalTemplate,
   TemplateField,
@@ -60,6 +61,44 @@ export function ClinicalTemplateForm({
 
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(sections.map((s) => s.name))
+  );
+
+  // Check if this is an obstetric template (ANC)
+  const isObstetricTemplate =
+    template.name?.toLowerCase().includes('antenatal') ||
+    template.name?.toLowerCase().includes('anc') ||
+    template.specialty?.toLowerCase() === 'obstetrics' ||
+    template.specialty?.toLowerCase().includes('mch');
+
+  // Find the section containing LMP/EDD fields (usually "Visit Information")
+  const visitInfoSection = sections.find(
+    (s) =>
+      s.name.toLowerCase().includes('visit') ||
+      s.fields.some((f) => f.name === 'lmp' || f.name === 'edd')
+  );
+
+  // Handle obstetric calculator auto-populate
+  const handleObstetricApply = useCallback(
+    (values: {
+      lmp: string;
+      edd: string;
+      gestational_age_weeks: number;
+      trimester: number;
+    }) => {
+      if (!visitInfoSection) return;
+
+      const sectionName = visitInfoSection.name;
+      onChange({
+        ...value,
+        [sectionName]: {
+          ...(value[sectionName] || {}),
+          lmp: values.lmp,
+          edd: values.edd,
+          gestational_age_weeks: values.gestational_age_weeks,
+        },
+      });
+    },
+    [visitInfoSection, value, onChange]
   );
 
   const toggleSection = (sectionName: string) => {
@@ -129,6 +168,26 @@ export function ClinicalTemplateForm({
         )}
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Obstetric Calculator for ANC templates */}
+        {isObstetricTemplate && visitInfoSection && (
+          <ObstetricCalculator
+            lmpValue={value[visitInfoSection.name]?.['lmp'] as string | undefined}
+            eddValue={value[visitInfoSection.name]?.['edd'] as string | undefined}
+            onLMPChange={(lmp) =>
+              handleFieldChange(visitInfoSection.name, 'lmp', lmp)
+            }
+            onEDDChange={(edd) =>
+              handleFieldChange(visitInfoSection.name, 'edd', edd)
+            }
+            onGestationalAgeChange={(weeks) =>
+              handleFieldChange(visitInfoSection.name, 'gestational_age_weeks', weeks)
+            }
+            onApplyAll={handleObstetricApply}
+            disabled={disabled}
+            compact
+          />
+        )}
+
         {template.content.sections
           .sort((a, b) => a.order - b.order)
           .map((section) => {
@@ -324,6 +383,18 @@ function TemplateFieldRenderer({
       );
 
     case 'date':
+      // Determine if this field should allow future dates
+      // First check explicit field config, then fall back to name/label heuristics
+      const isFutureDateField = field.allow_future ?? [
+        'edd', 'expected_delivery', 'expected_date', 'expiry', 'expiry_date',
+        'next_appointment', 'follow_up', 'follow_up_date', 'due_date',
+        'scheduled_date', 'appointment_date',
+      ].some(
+        (keyword) =>
+          field.name.toLowerCase().includes(keyword) ||
+          field.label?.toLowerCase().includes(keyword)
+      );
+      const isPastDateField = field.allow_past ?? true;
       return (
         <div className="space-y-2">
           <Label htmlFor={id}>
@@ -335,6 +406,8 @@ function TemplateFieldRenderer({
             onChange={(date) => onChange(date ? format(date, 'yyyy-MM-dd') : '')}
             disabled={disabled}
             placeholder="Select date"
+            allowFuture={isFutureDateField}
+            allowPast={isPastDateField}
           />
           {field.help_text && (
             <p className="text-xs text-muted-foreground">{field.help_text}</p>

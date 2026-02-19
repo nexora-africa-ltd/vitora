@@ -32,7 +32,7 @@
         "fields": [
           {"name": "service_provided", "type": "textarea", "required": false, "label": "Service Provided"},
           {"name": "side_effects_discussed", "type": "boolean", "required": false, "label": "Side Effects Discussed"},
-          {"name": "follow_up_date", "type": "date", "required": false, "label": "Follow-up Date"}
+          {"name": "follow_up_date", "type": "date", "allow_future": true, "required": false, "label": "Follow-up Date"}
         ]
       },
       {

@@ -27,6 +27,10 @@ export interface TemplateField {
   placeholder?: string;
   help_text?: string;
   auto_generate?: AutoGenerateType;
+  /** Allow selecting future dates (for date fields like EDD, next appointment) */
+  allow_future?: boolean;
+  /** Allow selecting past dates (for date fields, default true) */
+  allow_past?: boolean;
 }
 
 export interface TemplateSection {

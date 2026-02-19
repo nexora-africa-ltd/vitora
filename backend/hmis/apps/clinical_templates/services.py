@@ -63,6 +63,21 @@ class TemplateFieldMapper:
         # Chief Complaint
         "chief_complaint": ("encounter", "chief_complaint"),
         "presenting_complaint": ("encounter", "chief_complaint"),  # Alias
+        # ANC/MCH fields from enrollment
+        "lmp": ("enrollment", "lmp"),
+        "edd": ("enrollment", "edd"),
+        "gravida": ("enrollment", "gravida"),
+        "parity": ("enrollment", "parity"),
+    }
+
+    # Computed fields that require special logic (not simple mappings)
+    # These need calculation based on encounter/enrollment state
+    COMPUTED_FIELDS = {
+        "visit_number",
+        "gestational_age_weeks",
+        "gestational_age",
+        "gestation_weeks",
+        "trimester",
     }
 
     # Fields that can be synced back to encounter (writable)
@@ -121,6 +136,10 @@ class TemplateFieldMapper:
         """Check if a field can be synced back to encounter."""
         return template_field.lower() in self.SYNCABLE_FIELDS
 
+    def is_computed_field(self, template_field: str) -> bool:
+        """Check if a field requires computed logic."""
+        return template_field.lower() in self.COMPUTED_FIELDS
+
     def convert_value(self, field_name: str, value: Any) -> Any:
         """Convert value to appropriate type for database storage."""
         converter = self.TYPE_CONVERTERS.get(field_name.lower())
@@ -155,6 +174,7 @@ class TemplateDataSynchronizer:
         encounter: Encounter,
         existing_data: dict | None = None,
         structure_by_section: bool = False,
+        enrollment: Any | None = None,
     ) -> dict[str, Any]:
         """
         Populate template fields from existing encounter/patient data.
@@ -164,12 +184,17 @@ class TemplateDataSynchronizer:
             encounter: The encounter to get data from
             existing_data: Existing template data to preserve
             structure_by_section: If True, structure by section names
+            enrollment: Optional ClinicEnrollment for clinic-specific data
 
         Returns:
             Dict of populated template data
         """
         populated = existing_data.copy() if existing_data else {}
         patient = encounter.patient
+
+        # Try to find enrollment if not provided
+        if enrollment is None:
+            enrollment = self._get_enrollment_for_encounter(encounter)
 
         # Get all fields from template
         sections = template.content.get("sections", [])
@@ -195,13 +220,19 @@ class TemplateDataSynchronizer:
                     if populated.get(field_name):
                         continue
 
-                # Get mapping
-                mapping = self.mapper.get_source_field(field_name)
-                if not mapping:
-                    continue
+                value = None
 
-                source, source_field = mapping
-                value = self._get_value_from_source(source, source_field, encounter, patient)
+                # Check if it's a computed field first
+                if self.mapper.is_computed_field(field_name):
+                    value = self._get_computed_value(field_name, encounter, patient, enrollment)
+                else:
+                    # Get mapping
+                    mapping = self.mapper.get_source_field(field_name)
+                    if mapping:
+                        source, source_field = mapping
+                        value = self._get_value_from_source(
+                            source, source_field, encounter, patient, enrollment
+                        )
 
                 if value is not None:
                     if structure_by_section:
@@ -211,14 +242,72 @@ class TemplateDataSynchronizer:
 
         return populated
 
+    def _get_computed_value(
+        self,
+        field_name: str,
+        encounter: Encounter,
+        patient: "Patient",
+        enrollment: Any | None,
+    ) -> Any:
+        """
+        Calculate computed field values.
+
+        These fields require logic beyond simple attribute access.
+        """
+        field_lower = field_name.lower()
+
+        if field_lower in ("visit_number", "visit"):
+            # Calculate visit number based on enrollment or encounter count
+            return self._calculate_visit_number(encounter, patient, enrollment)
+
+        elif field_lower in ("gestational_age_weeks", "gestational_age", "gestation_weeks"):
+            if enrollment and hasattr(enrollment, "gestation_weeks"):
+                weeks = enrollment.gestation_weeks()
+                return weeks if weeks else None
+            return None
+
+        elif field_lower == "trimester":
+            if enrollment and hasattr(enrollment, "trimester"):
+                return enrollment.trimester()
+            return None
+
+        return None
+
+    def _calculate_visit_number(
+        self,
+        encounter: Encounter,
+        patient: "Patient",
+        enrollment: Any | None,
+    ) -> int:
+        """
+        Calculate the visit number for this encounter.
+
+        Logic:
+        1. If enrollment exists, use total_visits + 1
+        2. Otherwise, count previous encounters of same type for this patient + 1
+        """
+        if enrollment and hasattr(enrollment, "total_visits"):
+            return enrollment.total_visits + 1
+
+        # Fallback: count encounters of same type
+        encounter_type = encounter.encounter_type
+        count = Encounter.objects.filter(
+            patient=patient,
+            encounter_type=encounter_type,
+            status__in=["CREATED", "FINALIZED"],
+        ).exclude(pk=encounter.pk).count()
+
+        return count + 1
+
     def _get_value_from_source(
         self,
         source: str,
         field_name: str,
         encounter: Encounter,
         patient: "Patient",
+        enrollment: Any | None = None,
     ) -> Any:
-        """Get value from encounter or patient."""
+        """Get value from encounter, patient, or enrollment."""
         if source == "encounter":
             return getattr(encounter, field_name, None)
         elif source == "patient":
@@ -228,6 +317,67 @@ class TemplateDataSynchronizer:
             elif field_name == "age":
                 return patient.age if hasattr(patient, "age") else None
             return getattr(patient, field_name, None)
+        elif source == "enrollment" and enrollment:
+            # Get from enrollment_data JSON or direct attribute
+            if hasattr(enrollment, "enrollment_data") and enrollment.enrollment_data:
+                value = enrollment.enrollment_data.get(field_name)
+                if value is not None:
+                    return value
+            # Fallback to direct attribute (e.g., for computed properties like edd)
+            if hasattr(enrollment, field_name):
+                attr = getattr(enrollment, field_name)
+                # If it's a method, call it
+                if callable(attr):
+                    try:
+                        return attr()
+                    except Exception:
+                        return None
+                return attr
+        return None
+
+    def _get_enrollment_for_encounter(self, encounter: Encounter) -> Any | None:
+        """
+        Find the relevant ClinicEnrollment for an encounter.
+
+        Looks up based on:
+        1. ClinicVisit linked to encounter → clinic → patient's active enrollment
+        2. Clinic template specialty (ANC, CCC, etc.)
+        """
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        patient = encounter.patient
+
+        # If encounter has a clinic_visit, find enrollment for that clinic
+        clinic_visit = getattr(encounter, "clinic_visit", None)
+        if clinic_visit and clinic_visit.session:
+            clinic = clinic_visit.session.clinic
+            enrollment = (
+                ClinicEnrollment.objects.filter(
+                    patient=patient,
+                    clinic=clinic,
+                    status="ACTIVE",
+                )
+                .order_by("-enrollment_date")
+                .first()
+            )
+            if enrollment:
+                return enrollment
+
+        # Fallback: find any active enrollment for the patient
+        # Prefer ANC/MCH for applicable encounter types
+        if encounter.encounter_type == "ANC":
+            enrollment = (
+                ClinicEnrollment.objects.filter(
+                    patient=patient,
+                    clinic__clinic_type__in=["ANC", "MCH"],
+                    status="ACTIVE",
+                )
+                .order_by("-enrollment_date")
+                .first()
+            )
+            if enrollment:
+                return enrollment
+
         return None
 
     def sync_to_encounter(

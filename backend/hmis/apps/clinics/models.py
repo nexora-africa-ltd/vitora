@@ -745,6 +745,14 @@ class ClinicVisit(TimeStampedModel):
                 fields=["session", "queue_number"],
                 name="unique_queue_number_per_session",
             ),
+            # Prevent duplicate active visits for same patient in same session
+            models.UniqueConstraint(
+                fields=["session", "patient"],
+                condition=models.Q(
+                    status__in=["REGISTERED", "WAITING", "CALLED", "IN_CONSULTATION"]
+                ),
+                name="unique_active_patient_per_session",
+            ),
         ]
 
     def __str__(self):
@@ -789,8 +797,9 @@ class ClinicVisit(TimeStampedModel):
 
         This method:
         1. Creates an Encounter if one doesn't exist
-        2. Generates an Invoice for the consultation fee if not already charged
-        3. Links the billing to the clinic visit
+        2. Copies vitals from triage assessment if available
+        3. Generates an Invoice for the consultation fee if not already charged
+        4. Links the billing to the clinic visit
         """
         from hmis.apps.encounters.models import Encounter
 
@@ -803,14 +812,37 @@ class ClinicVisit(TimeStampedModel):
 
         # Create encounter if not exists
         if not self.encounter:
-            self.encounter = Encounter.objects.create(
-                patient=self.patient,
-                encounter_type=self._map_clinic_to_encounter_type(),
-                chief_complaint=self.chief_complaint or "See clinic notes",
-                triage_status=("COMPLETED" if self.triage_assessment else "NOT_APPLICABLE"),
-                clinic_visit=self,
-                clinical_template=resolved_template,
-            )
+            encounter_data = {
+                "patient": self.patient,
+                "encounter_type": self._map_clinic_to_encounter_type(),
+                "chief_complaint": self.chief_complaint or "See clinic notes",
+                "triage_status": ("COMPLETED" if self.triage_assessment else "NOT_APPLICABLE"),
+                "clinic_visit": self,
+                "clinical_template": resolved_template,
+            }
+
+            # Copy vitals from triage assessment if available
+            if self.triage_assessment:
+                ta = self.triage_assessment
+                if ta.temperature is not None:
+                    encounter_data["temperature"] = ta.temperature
+                if ta.heart_rate is not None:
+                    encounter_data["pulse"] = ta.heart_rate
+                if ta.respiratory_rate is not None:
+                    encounter_data["respiratory_rate"] = ta.respiratory_rate
+                if ta.spo2 is not None:
+                    encounter_data["spo2"] = ta.spo2
+                if ta.weight is not None:
+                    encounter_data["weight"] = ta.weight
+                if ta.systolic_bp is not None and ta.diastolic_bp is not None:
+                    encounter_data["blood_pressure"] = f"{ta.systolic_bp}/{ta.diastolic_bp}"
+                # Track vitals source
+                encounter_data["vitals_source"] = "TRIAGE"
+                encounter_data["vitals_recorded_at"] = ta.triage_end_time or ta.created_at
+                if ta.triaged_by:
+                    encounter_data["vitals_recorded_by"] = ta.triaged_by
+
+            self.encounter = Encounter.objects.create(**encounter_data)
         else:
             # Ensure forward link exists for reporting/traceability
             if self.encounter.clinic_visit_id != self.id:
@@ -1247,6 +1279,68 @@ class ClinicEnrollment(TimeStampedModel):
     def __str__(self):
         """Return string representation."""
         return f"{self.patient} - {self.clinic.name} " f"({self.enrollment_number or 'No ID'})"
+
+    def save(self, *args, **kwargs):
+        """Override save to auto-generate enrollment number if not set."""
+        if not self.enrollment_number:
+            self.enrollment_number = self._generate_enrollment_number()
+        super().save(*args, **kwargs)
+
+    def _generate_enrollment_number(self) -> str:
+        """
+        Generate a unique enrollment number based on clinic type.
+
+        Format: {PREFIX}-{YYYYMMDD}-{SEQUENCE}
+        Examples: ANC-20260219-0001, CCC-20260219-0001, DM-20260219-0001
+
+        The prefix is derived from the clinic code or type:
+        - ANC clinics → "ANC"
+        - CCC/HIV clinics → "CCC"
+        - Diabetic clinics → "DM"
+        - Other → First 3 chars of clinic code uppercase
+        """
+        from datetime import date
+
+        # Determine prefix based on clinic type/code
+        clinic_code = (self.clinic.code or "").upper()
+        clinic_type = (self.clinic.clinic_type or "").upper()
+
+        if "ANC" in clinic_code or "ANTENATAL" in clinic_type or clinic_type == "MCH":
+            prefix = "ANC"
+        elif "CCC" in clinic_code or "HIV" in clinic_type:
+            prefix = "CCC"
+        elif "DIAB" in clinic_code or "DIAB" in clinic_type:
+            prefix = "DM"
+        elif "TB" in clinic_code or "TB" in clinic_type:
+            prefix = "TB"
+        elif "HYP" in clinic_code or "HYPERTENSION" in clinic_type:
+            prefix = "HTN"
+        else:
+            # Use first 3 characters of clinic code, or "ENR" as fallback
+            prefix = clinic_code[:3] if len(clinic_code) >= 3 else "ENR"
+
+        # Date component
+        today = date.today()
+        date_str = today.strftime("%Y%m%d")
+
+        # Get sequence number for this prefix and date
+        today_prefix = f"{prefix}-{date_str}-"
+        last_enrollment = (
+            ClinicEnrollment.objects.filter(enrollment_number__startswith=today_prefix)
+            .order_by("-enrollment_number")
+            .first()
+        )
+
+        if last_enrollment:
+            try:
+                last_seq = int(last_enrollment.enrollment_number.split("-")[-1])
+                next_seq = last_seq + 1
+            except (ValueError, IndexError):
+                next_seq = 1
+        else:
+            next_seq = 1
+
+        return f"{prefix}-{date_str}-{next_seq:04d}"
 
     def is_overdue(self):
         """Check if patient is overdue for appointment."""

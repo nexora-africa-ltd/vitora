@@ -13,7 +13,7 @@
                 "fields": [
                     {"name": "visit_number", "type": "number", "required": true, "label": "ANC Visit Number", "min": 1},
                     {"name": "lmp", "type": "date", "required": false, "label": "Last Menstrual Period (LMP)"},
-                    {"name": "edd", "type": "date", "required": false, "label": "Expected Date of Delivery (EDD)"},
+                    {"name": "edd", "type": "date", "required": false, "label": "Expected Date of Delivery (EDD)", "allow_future": true},
                     {"name": "gestational_age_weeks", "type": "number", "required": true, "label": "Gestational Age (Weeks)", "min": 0, "max": 45}
                 ]
             },
@@ -73,7 +73,7 @@
                 "order": 7,
                 "fields": [
                     {"name": "birth_plan", "type": "textarea", "required": false, "label": "Birth Plan Discussion"},
-                    {"name": "next_appointment", "type": "date", "required": false, "label": "Next Appointment"},
+                    {"name": "next_appointment", "type": "date", "required": false, "label": "Next Appointment", "allow_future": true},
                     {"name": "referral_needed", "type": "boolean", "required": false, "label": "Referral Needed"},
                     {"name": "referral_reason", "type": "textarea", "required": false, "label": "Referral Reason"}
                 ]
