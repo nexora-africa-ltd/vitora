@@ -2,25 +2,17 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { CheckCircle2, Stethoscope, User, Plus, UserPlus, ArrowRight, Clock, Activity, FileText } from 'lucide-react';
+import { CheckCircle2, User } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { PatientForm } from '@/components/patients/patient-form';
+import { PatientRegistrationSuccess } from '@/components/patients/patient-registration-success';
 import { SHAVerificationModal } from '@/components/billing/sha';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { useCreatePatient } from '@/lib/hooks/use-patients';
-import { useCheckInPatient } from '@/lib/hooks/use-triage';
 import { useRegisterInCR } from '@/lib/hooks/use-sha';
 import { useToast } from '@/lib/hooks/use-toast';
 import { getOrCreateIdempotencyKey, clearIdempotencyKey } from '@/lib/utils/idempotency';
@@ -33,10 +25,8 @@ export default function NewPatientPage() {
   const router = useRouter();
   const { toast } = useToast();
   const createPatient = useCreatePatient();
-  const checkInPatient = useCheckInPatient();
   const registerInCR = useRegisterInCR();
   const [registeredPatient, setRegisteredPatient] = useState<Patient | null>(null);
-  const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [crClient, setCrClient] = useState<ClientRegistryClient | null>(null);
   const [eligibility, setEligibility] = useState<DirectEligibilityCheckResponse | null>(null);
 
@@ -104,31 +94,11 @@ export default function NewPatientPage() {
     }
   };
 
-  const handleCheckInToQueue = async () => {
-    if (!registeredPatient) return;
-
-    setIsCheckingIn(true);
-    try {
-      await checkInPatient.mutateAsync({
-        patient_id: registeredPatient.id,
-        reason_for_visit: '',
-        create_encounter: true,
-      });
-      toast({
-        title: 'Patient Checked In',
-        description: 'Patient has been added to the triage waiting queue.',
-      });
-      router.push('/triage');
-    } catch (error) {
-      toast({
-        title: 'Check-in Failed',
-        description: error instanceof Error ? error.message : 'Failed to check in patient',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsCheckingIn(false);
-    }
-  };
+  const handleRegisterAnother = useCallback(() => {
+    setRegisteredPatient(null);
+    setCrClient(null);
+    setEligibility(null);
+  }, []);
 
   const handleCancel = () => {
     router.back();
@@ -137,194 +107,10 @@ export default function NewPatientPage() {
   // Show success screen after registration
   if (registeredPatient) {
     return (
-      <div className="container mx-auto py-6 space-y-6">
-        {/* Header */}
-        <PageHeader
-          title="Patient Registered"
-          helpContent="Registration completed successfully. Choose your next step: check in to triage, start an encounter, or register another patient."
-        />
-
-        {/* Success Card */}
-        <Card className="border-green-200 dark:border-green-900">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <CheckCircle2 className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <CardTitle className="text-green-600">Registration Successful</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Patient has been registered in the system
-                </p>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Patient summary */}
-            <div className="rounded-lg bg-muted/50 p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Name</span>
-                <span className="font-medium">
-                  {registeredPatient.first_name} {registeredPatient.last_name}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">MRN</span>
-                <span className="font-mono font-medium">{registeredPatient.mrn}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Date of Birth</span>
-                <span className="font-medium">{registeredPatient.date_of_birth}</span>
-              </div>
-            </div>
-
-            {/* Patient Flow Indicator */}
-            <div className="rounded-lg border p-4">
-              <p className="text-sm font-medium mb-3">Recommended Patient Flow</p>
-              {/* Mobile: simplified view showing current + next step */}
-              <div className="flex sm:hidden items-center justify-center gap-3">
-                <div className="flex flex-col items-center text-center">
-                  <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-1">
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  </div>
-                  <span className="text-xs font-medium">Registered</span>
-                  <Badge variant="default" className="mt-1 text-[10px]">Done</Badge>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                <div className="flex flex-col items-center text-center">
-                  <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-1">
-                    <Clock className="h-5 w-5 text-amber-600" />
-                  </div>
-                  <span className="text-xs font-medium">Triage</span>
-                  <Badge variant="outline" className="mt-1 text-[10px]">Next</Badge>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground/50" />
-                <span className="text-xs text-muted-foreground">+2 more</span>
-              </div>
-              {/* Desktop: full flow */}
-              <div className="hidden sm:flex items-center justify-between">
-                <div className="flex flex-col items-center text-center">
-                  <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-1">
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  </div>
-                  <span className="text-xs font-medium">Registered</span>
-                  <Badge variant="default" className="mt-1 text-[10px]">Complete</Badge>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                <div className="flex flex-col items-center text-center">
-                  <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-1">
-                    <Clock className="h-5 w-5 text-amber-600" />
-                  </div>
-                  <span className="text-xs font-medium">Awaiting Triage</span>
-                  <Badge variant="outline" className="mt-1 text-[10px]">Next Step</Badge>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                <div className="flex flex-col items-center text-center">
-                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-1">
-                    <Activity className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <span className="text-xs font-medium text-muted-foreground">Vitals Recorded</span>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                <div className="flex flex-col items-center text-center">
-                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-1">
-                    <FileText className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <span className="text-xs font-medium text-muted-foreground">Consultation</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            <TooltipProvider delayDuration={200}>
-              <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      className="w-full"
-                      size="lg"
-                      onClick={handleCheckInToQueue}
-                      disabled={isCheckingIn}
-                      title="Adds the patient to the triage waiting queue so vitals/triage can begin."
-                    >
-                      <UserPlus className="h-5 w-5 sm:mr-2" />
-                      <span className="ml-2 sm:ml-0">
-                        {isCheckingIn ? 'Checking In...' : (
-                          <>
-                            <span className="sm:hidden">Check In</span>
-                            <span className="hidden sm:inline">Check In to Triage Queue</span>
-                          </>
-                        )}
-                      </span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Adds the patient to the triage waiting queue so vitals/triage can begin.
-                  </TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      asChild
-                      variant="outline"
-                      className="w-full"
-                      size="lg"
-                      title="Skip the triage queue and start clinical documentation now."
-                    >
-                      <Link href={`/encounters/new?patient=${registeredPatient.id}`}>
-                        <Stethoscope className="h-5 w-5 sm:mr-2" />
-                        <span className="ml-2 sm:ml-0">
-                          <span className="sm:hidden">Start Encounter</span>
-                          <span className="hidden sm:inline">Start Encounter Directly</span>
-                        </span>
-                      </Link>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    Skip the triage queue and start clinical documentation now.
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            </TooltipProvider>
-
-            <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3">
-              <Link href={`/patients/${registeredPatient.id}`}>
-                <Button variant="outline" className="w-full" size="lg">
-                  <User className="h-5 w-5 sm:mr-2" />
-                  <span className="ml-2 sm:ml-0">
-                    <span className="sm:hidden">Profile</span>
-                    <span className="hidden sm:inline">View Profile</span>
-                  </span>
-                </Button>
-              </Link>
-
-              <Button
-                variant="outline"
-                className="w-full"
-                size="lg"
-                onClick={() => {
-                  setRegisteredPatient(null);
-                  setCrClient(null);
-                }}
-              >
-                <Plus className="h-5 w-5 sm:mr-2" />
-                <span className="ml-2 sm:ml-0">
-                  <span className="sm:hidden">Add New</span>
-                  <span className="hidden sm:inline">Register Another</span>
-                </span>
-              </Button>
-
-              <Link href="/patients" className="col-span-2 sm:col-span-1">
-                <Button variant="secondary" className="w-full" size="lg">
-                  <span className="sm:hidden">Back</span>
-                  <span className="hidden sm:inline">Back to Patients</span>
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <PatientRegistrationSuccess
+        patient={registeredPatient}
+        onRegisterAnother={handleRegisterAnother}
+      />
     );
   }
 
