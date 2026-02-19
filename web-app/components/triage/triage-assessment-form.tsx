@@ -1307,6 +1307,18 @@ export function TriageAssessmentForm({
 
   // Form submission
   const onFormSubmit = async (data: TriageFormData) => {
+    // Debug: Log vitals being submitted
+    console.log('[TriageAssessmentForm] Submitting form with vitals:', {
+      spo2: data.spo2,
+      heart_rate: data.heart_rate,
+      systolic_bp: data.systolic_bp,
+      diastolic_bp: data.diastolic_bp,
+      temperature: data.temperature,
+      respiratory_rate: data.respiratory_rate,
+      weight: data.weight,
+      height: data.height,
+    });
+    
     setIsSubmitting(true);
     try {
       await onSubmit({
