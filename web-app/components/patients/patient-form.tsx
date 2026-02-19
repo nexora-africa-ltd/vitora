@@ -188,11 +188,27 @@ const patientFormSchema = z.object({
 
   // Referral
   referral_source: z.enum(['self', 'clinic', 'other_facility']).optional(),
+  referred_from_facility: z.string().optional(),
 
   // Consent
   consent_given: z.boolean().default(false),
   consent_deferred: z.boolean().default(false),
 });
+
+// Add refinement for conditional validation
+const patientFormSchemaRefined = patientFormSchema.refine(
+  (data) => {
+    // If referral_source is 'other_facility', referred_from_facility is required
+    if (data.referral_source === 'other_facility') {
+      return !!data.referred_from_facility && data.referred_from_facility.trim().length > 0;
+    }
+    return true;
+  },
+  {
+    message: "Facility name is required when referral source is 'Other Facility'.",
+    path: ['referred_from_facility'],
+  }
+);
 
 type PatientFormValues = z.infer<typeof patientFormSchema>;
 
@@ -263,7 +279,7 @@ export function PatientForm({
   const [customRelationship, setCustomRelationship] = useState('');
 
   const form = useForm<PatientFormValues>({
-    resolver: zodResolver(patientFormSchema),
+    resolver: zodResolver(patientFormSchemaRefined),
     defaultValues: {
       identification_type: 'national_id',
       identification_number: '',
@@ -285,6 +301,7 @@ export function PatientForm({
       insurance_provider: '',
       insurance_member_number: '',
       referral_source: 'self',
+      referred_from_facility: '',
       emergency_contact_name: '',
       emergency_contact_phone: '',
       emergency_contact_relationship: '',
@@ -300,6 +317,7 @@ export function PatientForm({
   const identificationType = form.watch('identification_type');
   const identificationNumber = form.watch('identification_number');
   const paymentMode = form.watch('payment_mode');
+  const referralSource = form.watch('referral_source');
 
   // Debounced identification number for auto-search
   const debouncedIdNumber = useDebounce(identificationNumber, 800);
@@ -356,7 +374,7 @@ export function PatientForm({
       }
     }
 
-    // If SHA is eligible, auto-select SHA payment mode
+    // Only auto-select SHA payment mode if eligible
     if (details.is_eligible) {
       form.setValue('payment_mode', 'sha');
     }
@@ -381,7 +399,9 @@ export function PatientForm({
         populateFromShaDetails(pendingShaDetails);
         toast({
           title: 'Form Auto-Populated',
-          description: 'Patient details filled from SHA records. Please verify and complete remaining fields.',
+          description: pendingShaDetails.is_eligible
+            ? 'Patient details filled from SHA records. Please verify and complete remaining fields.'
+            : 'Patient details filled from SHA records (coverage not active). Please verify and complete remaining fields.',
         });
       } else if (decision === 'is_dependent' && selectedDependent) {
         // Selected a dependent - populate with dependent info
@@ -408,13 +428,15 @@ export function PatientForm({
             form.setValue('date_of_birth', dob);
           }
         }
-        // If SHA is eligible, auto-select SHA payment mode
+        // Only auto-select SHA payment mode if eligible
         if (pendingShaDetails.is_eligible) {
           form.setValue('payment_mode', 'sha');
         }
         toast({
           title: 'Dependent Selected',
-          description: `Patient details filled for ${selectedDependent.name}. Please verify and complete remaining fields.`,
+          description: pendingShaDetails.is_eligible
+            ? `Patient details filled for ${selectedDependent.name}. Please verify and complete remaining fields.`
+            : `Patient details filled for ${selectedDependent.name} (coverage not active). Please verify and complete remaining fields.`,
         });
       }
     }
@@ -521,12 +543,13 @@ export function PatientForm({
       }
 
       // If CR record was NOT found but SHA details are available, prompt user to confirm identity
-      if (!crFound && response.is_eligible && (response.full_name || response.sha_number)) {
+      // Show dialog regardless of eligibility - user may want to populate form with member details
+      if (!crFound && (response.full_name || response.sha_number)) {
         setPendingShaDetails(response);
         setShowShaPrincipalDialog(true);
-        // Don't show the success toast yet - wait for user confirmation
-      } else if (response.is_eligible) {
-        // CR record was found OR no SHA details to populate - just show success toast
+        // Don't show the toast yet - wait for user confirmation
+      } else if (crFound && response.is_eligible) {
+        // CR record was found AND eligible - just show success toast
         toast({
           title: 'SHA Coverage Active',
           description: `Patient ${response.full_name || ''} has active SHA coverage.`,
@@ -1613,12 +1636,33 @@ export function PatientForm({
                           {option.label}
                         </Label>
                       </div>
-                    ))}
+                    ))}  
                   </RadioGroup>
                 </FormControl>
               </FormItem>
             )}
           />
+
+          {/* Referred From Facility - shown when 'other_facility' selected */}
+          {referralSource === 'other_facility' && (
+            <FormField
+              control={form.control}
+              name="referred_from_facility"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Referring Facility Name <span className="text-destructive">*</span></FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter the name of the referring facility"
+                      {...field}
+                      disabled={formLocked || isFormLoading}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
 
           <Separator />
 

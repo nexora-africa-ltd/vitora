@@ -86,10 +86,27 @@ export function SHAPrincipalConfirmationDialog({
           <AlertDialogDescription asChild>
             <div className="space-y-4">
               {/* SHA Member Info */}
-              <Alert className="border-secondary/30 bg-secondary/5">
-                <UserCheck className="h-4 w-4 text-secondary" />
-                <AlertTitle className="text-secondary">SHA Principal Member</AlertTitle>
-                <AlertDescription className="text-secondary/80">
+              <Alert className={cn(
+                shaDetails.is_eligible
+                  ? "border-secondary/30 bg-secondary/5"
+                  : "border-muted-foreground/30 bg-muted/50"
+              )}>
+                <UserCheck className={cn(
+                  "h-4 w-4",
+                  shaDetails.is_eligible ? "text-secondary" : "text-muted-foreground"
+                )} />
+                <AlertTitle className={cn(
+                  "flex items-center gap-2",
+                  shaDetails.is_eligible ? "text-secondary" : "text-muted-foreground"
+                )}>
+                  SHA Principal Member
+                  {!shaDetails.is_eligible && (
+                    <Badge variant="outline" className="text-warning-foreground border-warning/50 text-xs">
+                      Not Eligible
+                    </Badge>
+                  )}
+                </AlertTitle>
+                <AlertDescription className={shaDetails.is_eligible ? "text-secondary/80" : "text-muted-foreground"}>
                   <div className="mt-2 space-y-1">
                     <p><strong>Name:</strong> {shaDetails.full_name || 'Not available'}</p>
                     <p><strong>SHA Number:</strong> {shaDetails.sha_number || 'Not available'}</p>
@@ -109,8 +126,9 @@ export function SHAPrincipalConfirmationDialog({
                   Is this the patient you are registering?
                 </p>
                 <p>
-                  SHA details were found. Please confirm if the principal member shown above
-                  is the patient being registered, or select a dependent if applicable.
+                  {shaDetails.is_eligible
+                    ? "SHA details were found. Please confirm if the principal member shown above is the patient being registered, or select a dependent if applicable."
+                    : "SHA record found but coverage is not currently active. You can still use these details to populate the registration form."}
                 </p>
               </div>
 
