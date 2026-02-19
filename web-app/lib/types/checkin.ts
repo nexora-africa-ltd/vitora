@@ -57,6 +57,36 @@ export interface PatientLookupResponse {
 }
 
 /**
+ * Patient search result (lightweight, no clinical snapshot)
+ * Used for listing multiple matches before selection
+ */
+export interface PatientSearchResult {
+  id: number;
+  mrn: string;
+  first_name: string;
+  middle_name?: string;
+  last_name: string;
+  full_name: string;
+  date_of_birth: string;
+  age: number;
+  gender: string;
+  phone_number?: string;
+  identification_type?: string;
+  identification_number?: string;
+  county?: number;
+  sub_county?: number;
+  last_visit_date: string | null;
+}
+
+/**
+ * Patient search response (paginated list)
+ */
+export interface PatientSearchResponse {
+  count: number;
+  results: PatientSearchResult[];
+}
+
+/**
  * Visit type options
  */
 export type VisitType = 'NEW' | 'RETURN' | 'FOLLOW_UP' | 'EMERGENCY' | 'SCHEDULED';

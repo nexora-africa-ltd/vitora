@@ -21,6 +21,7 @@ import type { CheckInRequest, TodayCheckinsResponse } from '@/lib/types/checkin'
 
 export const checkinKeys = {
   all: ['checkin'] as const,
+  search: (query: string) => [...checkinKeys.all, 'search', query] as const,
   lookup: (query: string) => [...checkinKeys.all, 'lookup', query] as const,
   today: () => [...checkinKeys.all, 'today'] as const,
   todayFiltered: (params: Record<string, unknown>) => [...checkinKeys.today(), params] as const,
@@ -29,6 +30,28 @@ export const checkinKeys = {
 // =============================================================================
 // QUERY HOOKS
 // =============================================================================
+
+/**
+ * Hook for searching patients (returns multiple matches).
+ *
+ * Use this to get a list of matching patients for selection.
+ * After selection, use usePatientLookup to get clinical snapshot.
+ *
+ * @param query - Search query (MRN, phone, ID, or name)
+ * @param options - Additional options (enabled, limit)
+ */
+export function usePatientSearch(
+  query: string,
+  options?: { enabled?: boolean; limit?: number }
+) {
+  return useQuery({
+    queryKey: checkinKeys.search(query),
+    queryFn: () => checkinApi.searchPatients(query, options?.limit),
+    enabled: (options?.enabled ?? true) && !!query && query.length >= 2,
+    staleTime: 60000, // 1 minute
+    retry: false, // Don't retry on errors
+  });
+}
 
 /**
  * Hook for looking up a patient by MRN, phone, national ID, or name.

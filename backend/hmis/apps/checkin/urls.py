@@ -6,12 +6,18 @@ Sprint: Returning Patient Workflow - Sprint 1
 
 from django.urls import path
 
-from .views import PatientCheckinView, PatientLookupView, TodayCheckinsViewSet
+from .views import PatientCheckinView, PatientLookupView, PatientSearchView, TodayCheckinsViewSet
 
 app_name = "checkin"
 
 urlpatterns = [
-    # Patient lookup with clinical snapshot
+    # Patient search (returns multiple matches)
+    path(
+        "search/",
+        PatientSearchView.as_view(),
+        name="patient-search",
+    ),
+    # Patient lookup with clinical snapshot (single patient)
     path(
         "lookup/",
         PatientLookupView.as_view(),
