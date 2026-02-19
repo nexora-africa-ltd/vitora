@@ -797,13 +797,15 @@ export function PatientForm({
             {shaEligibility.checked && !isCheckingEligibility && shaEligibility.isEligible && shaEligibility.details && (
               <Alert className="border-success/30 bg-success/5">
                 <BadgeCheck className="h-4 w-4 text-success" />
-                <AlertTitle className="text-success flex items-center gap-2">
-                  Active SHA Coverage
-                  <Badge variant="outline" className="border-success/50 text-success bg-success/10">
-                    Eligible
-                  </Badge>
+                <AlertTitle className="text-success">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                    <span>Active SHA Coverage</span>
+                    <Badge variant="outline" className="border-success/50 text-success bg-success/10 w-fit">
+                      Eligible
+                    </Badge>
+                  </div>
                 </AlertTitle>
-                <AlertDescription className="flex items-center justify-between">
+                <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-success/90">
                     {shaEligibility.details.full_name && (
                       <strong>{shaEligibility.details.full_name}</strong>
@@ -819,8 +821,9 @@ export function PatientForm({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="border-success/50 text-success hover:bg-success/10"
+                    className="border-success/50 text-success hover:bg-success/10 w-fit shrink-0"
                     onClick={() => setShowShaDetailsDialog(true)}
+                    title="View SHA Details"
                   >
                     <Eye className="h-3 w-3 mr-1" />
                     View SHA Details
@@ -832,14 +835,16 @@ export function PatientForm({
             {shaEligibility.checked && !isCheckingEligibility && !shaEligibility.isEligible && (
               <Alert className="border-warning/30 bg-warning/5">
                 <XCircle className="h-4 w-4 text-warning-foreground" />
-                <AlertTitle className="text-warning-foreground flex items-center gap-2">
-                  SHA Coverage Not Available
-                  <Badge variant="outline" className="border-warning/50 text-warning-foreground bg-warning/10">
-                    Not Eligible
-                  </Badge>
+                <AlertTitle className="text-warning-foreground">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                    <span>SHA Coverage Not Available</span>
+                    <Badge variant="outline" className="border-warning/50 text-warning-foreground bg-warning/10 w-fit">
+                      Not Eligible
+                    </Badge>
+                  </div>
                 </AlertTitle>
                 <AlertDescription className="text-warning-foreground/80">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       {shaEligibility.reason || 'Patient does not have active SHA coverage.'}
                       {shaEligibility.details?.possible_solution && (
@@ -853,8 +858,9 @@ export function PatientForm({
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="border-warning/50 text-warning-foreground hover:bg-warning/10 ml-2 shrink-0"
+                        className="border-warning/50 text-warning-foreground hover:bg-warning/10 w-fit shrink-0"
                         onClick={() => setShowShaDetailsDialog(true)}
+                        title="View Details"
                       >
                         <Eye className="h-3 w-3 mr-1" />
                         View Details
@@ -887,21 +893,12 @@ export function PatientForm({
                         disabled={formLocked || isFormLoading}
                         required
                         error={form.formState.errors.identification_number?.message}
+                        onSearch={handleManualCRSearch}
+                        isSearching={isSearchingCR}
+                        minSearchLength={5}
                       />
-                      <FormDescription className="flex items-center gap-2">
-                        <span>Click the label to change ID type</span>
-                        {!isSearchingCR && identificationNumber && identificationNumber.length >= 5 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-xs border-teal-400 text-teal-600 hover:bg-teal-600/20"
-                            onClick={handleManualCRSearch}
-                          >
-                            <Search className="h-3 w-3 mr-1" />
-                            Search CR/SHA
-                          </Button>
-                        )}
+                      <FormDescription>
+                        Click the label to change ID type
                       </FormDescription>
                     </FormItem>
                   )}
