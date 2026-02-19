@@ -43,6 +43,7 @@ import { cn } from '@/lib/utils/cn';
 import { useCheckInPatient } from '@/lib/hooks/use-triage';
 import { useClinics, useAddToQueue } from '@/lib/hooks/use-clinics';
 import { useToast } from '@/lib/hooks/use-toast';
+import { CheckinSuccessModal, type CheckinSuccessData } from './checkin-success-modal';
 import type { Patient } from '@/lib/types/patient';
 import type { ClinicListItem, ClinicVisitSource } from '@/lib/types/clinic';
 
@@ -65,6 +66,10 @@ export function PatientRegistrationSuccess({
   const [clinicSearch, setClinicSearch] = useState('');
   const [isRoutingToClinic, setIsRoutingToClinic] = useState(false);
 
+  // Success modal state
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successData, setSuccessData] = useState<CheckinSuccessData | null>(null);
+
   // Fetch active clinics
   const { data: clinicsData, isLoading: clinicsLoading } = useClinics({
     is_open_today: true,
@@ -85,16 +90,22 @@ export function PatientRegistrationSuccess({
   const handleCheckInToQueue = async () => {
     setIsCheckingIn(true);
     try {
-      await checkInPatient.mutateAsync({
+      const result = await checkInPatient.mutateAsync({
         patient_id: patient.id,
         reason_for_visit: '',
         create_encounter: true,
       });
-      toast({
-        title: 'Patient Checked In',
-        description: 'Patient has been added to the triage waiting queue.',
+
+      // Show success modal with navigation option
+      setSuccessData({
+        patientName: `${patient.first_name} ${patient.last_name}`,
+        patientMrn: patient.mrn,
+        destination: 'triage',
+        destinationName: 'Triage Queue',
+        destinationUrl: '/triage',
+        // WaitingQueueEntry doesn't have queue_position, so we omit it
       });
-      router.push('/triage');
+      setShowSuccessModal(true);
     } catch (error) {
       toast({
         title: 'Check-in Failed',
@@ -109,7 +120,7 @@ export function PatientRegistrationSuccess({
   const handleRouteToClinic = async (clinic: ClinicListItem) => {
     setIsRoutingToClinic(true);
     try {
-      await addToQueue.mutateAsync({
+      const visit = await addToQueue.mutateAsync({
         clinicId: clinic.id,
         data: {
           patient_id: patient.id,
@@ -120,11 +131,19 @@ export function PatientRegistrationSuccess({
           notes: `Direct registration - routed to ${clinic.name}`,
         },
       });
-      toast({
-        title: 'Patient Added to Clinic Queue',
-        description: `${patient.first_name} ${patient.last_name} has been added to ${clinic.name} queue.`,
+
+      // Show success modal with navigation option
+      setSuccessData({
+        patientName: `${patient.first_name} ${patient.last_name}`,
+        patientMrn: patient.mrn,
+        destination: 'clinic',
+        destinationName: clinic.name,
+        destinationUrl: `/clinics/${clinic.id}/queue`,
+        queuePosition: visit.queue_number,
+        skippedTriage: true,
       });
-      router.push(`/clinics/${clinic.id}/queue`);
+      setShowSuccessModal(true);
+      setShowClinicSelector(false);
     } catch (error) {
       toast({
         title: 'Failed to Route Patient',
@@ -397,6 +416,14 @@ export function PatientRegistrationSuccess({
           </div>
         </CardContent>
       </Card>
+
+      {/* Check-in Success Modal with navigation options */}
+      <CheckinSuccessModal
+        open={showSuccessModal}
+        onOpenChange={setShowSuccessModal}
+        checkInResult={successData}
+        onDismiss={() => setSuccessData(null)}
+      />
     </div>
   );
 }
