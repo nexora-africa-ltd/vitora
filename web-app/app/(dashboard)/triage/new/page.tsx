@@ -192,7 +192,7 @@ export default function NewTriagePage() {
         });
       }
     },
-    [createAssessment, selectedEncounterId, router, clearIdempotencyKey]
+    [createAssessment, selectedEncounterId, router, clearIdempotencyKey, patient]
   );
 
   const handleCancel = useCallback(() => {
