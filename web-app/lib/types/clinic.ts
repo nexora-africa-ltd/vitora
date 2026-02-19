@@ -313,24 +313,30 @@ export interface ClinicVisit {
   visit_type_display: string;
   source: ClinicVisitSource;
   source_display: string;
-  chief_complaint: string;
-  notes: string;
+  chief_complaint?: string;
+  notes?: string;
   registered_at: string;
   called_at: string | null;
   consultation_started_at: string | null;
   completed_at: string | null;
-  wait_time_minutes: number;
+  wait_time_minutes?: number;
   encounter: number | null;
   triage_assessment: number | null;
-  assigned_clinician: number | null;
-  assigned_clinician_name: string | null;
-  referred_from: number | null;
-  referred_to_clinic: number | null;
-  referral_reason: string;
-  registered_by: number;
-  registered_by_name: string;
-  created_at: string;
-  updated_at: string;
+  assigned_clinician?: number | null;
+  assigned_clinician_name?: string | null;
+  referred_from?: number | null;
+  referred_to_clinic?: number | null;
+  referral_reason?: string;
+  registered_by?: number;
+  registered_by_name?: string;
+  created_at?: string;
+  updated_at?: string;
+  // Optional fields that may be returned by some endpoints
+  patient_name?: string | null;
+  patient_mrn?: string | null;
+  clinic_name?: string | null;
+  consultation_fee_charged?: boolean;
+  billing_line_item?: number | null;
 }
 
 export interface ClinicVisitCreateData {
