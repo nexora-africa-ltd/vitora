@@ -12,7 +12,6 @@ import { useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft,
   Calendar,
   Clock,
   Plus,
@@ -20,14 +19,15 @@ import {
   Trash2,
   MoreHorizontal,
   AlertCircle,
-  RefreshCw,
   CheckCircle,
   XCircle,
   Users,
   Save,
 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -252,7 +252,7 @@ export default function ClinicSchedulePage() {
       end_time: scheduleItem.end_time,
       max_patients: scheduleItem.max_patients,
       is_active: scheduleItem.is_active,
-      notes: scheduleItem.notes,
+      notes: scheduleItem.notes ?? undefined,
     });
   };
 
@@ -264,28 +264,25 @@ export default function ClinicSchedulePage() {
 
   if (clinicLoading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-1/3" />
-        <div className="grid gap-4 md:grid-cols-4">
+      <div className="space-y-4 sm:space-y-6">
+        <Skeleton className="h-8 w-1/3" />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24" />
+            <Skeleton key={i} className="h-20 sm:h-24" />
           ))}
         </div>
-        <Skeleton className="h-96" />
+        <Skeleton className="h-64 sm:h-96" />
       </div>
     );
   }
 
   if (!clinic) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Clinic not found</h3>
-        <Button asChild>
-          <Link href="/clinics">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Clinics
-          </Link>
+      <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+        <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
+        <h3 className="text-base sm:text-lg font-semibold mb-2">Clinic not found</h3>
+        <Button asChild size="sm">
+          <Link href="/clinics">Back to Clinics</Link>
         </Button>
       </div>
     );
@@ -294,98 +291,78 @@ export default function ClinicSchedulePage() {
   const isDialogOpen = addScheduleOpen || !!editSchedule;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/clinics/${clinicId}`}>
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
+    <PullToRefresh onRefresh={async () => { await refetchSchedule(); }} isRefreshing={false}>
+    <div className="space-y-4 sm:space-y-6">
+      <PageHeader
+        title={`${clinic.name} - Schedule`}
+        helpContent="Manage operating hours and session capacity for each day."
+        actions={
+          <Button size="sm" onClick={() => setAddScheduleOpen(true)}>
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Add Schedule</span>
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-              {clinic.name} - Schedule
-            </h1>
-            <p className="text-muted-foreground">
-              Manage operating hours and session capacity for each day
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center">
-          <Button variant="outline" size="sm" onClick={() => refetchSchedule()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-          <Button onClick={() => setAddScheduleOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Schedule
-          </Button>
-        </div>
-      </div>
+        }
+      />
       {/* Navigation */}
       <ClinicNavigation clinicId={clinicId} />
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Days</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Active Days</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{weeklyStats.activeDays}</div>
-            <p className="text-xs text-muted-foreground">Days per week</p>
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="text-xl sm:text-2xl font-bold">{weeklyStats.activeDays}</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">Days per week</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Weekly Hours</CardTitle>
-            <Clock className="h-4 w-4 text-blue-500" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Weekly Hrs</CardTitle>
+            <Clock className="h-4 w-4 text-blue-500 hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="text-xl sm:text-2xl font-bold text-blue-600">
               {weeklyStats.totalHours.toFixed(1)}h
             </div>
-            <p className="text-xs text-muted-foreground">Total operating hours</p>
+            <p className="text-xs text-muted-foreground hidden sm:block">Operating hours</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Weekly Capacity</CardTitle>
-            <Users className="h-4 w-4 text-green-500" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Capacity</CardTitle>
+            <Users className="h-4 w-4 text-green-500 hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{weeklyStats.totalCapacity}</div>
-            <p className="text-xs text-muted-foreground">Max patients per week</p>
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="text-xl sm:text-2xl font-bold text-green-600">{weeklyStats.totalCapacity}</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">Max/week</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Per Day</CardTitle>
-            <Users className="h-4 w-4 text-purple-500" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Avg/Day</CardTitle>
+            <Users className="h-4 w-4 text-purple-500 hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {weeklyStats.activeDays > 0
-                ? Math.round(weeklyStats.totalCapacity / weeklyStats.activeDays)
-                : 0}
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="text-xl sm:text-2xl font-bold text-purple-600">
+              {weeklyStats.activeDays > 0 ? Math.round(weeklyStats.totalCapacity / weeklyStats.activeDays) : 0}
             </div>
-            <p className="text-xs text-muted-foreground">Patients per active day</p>
+            <p className="text-xs text-muted-foreground hidden sm:block">Patients/day</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Weekly Schedule Overview */}
       <Card>
-        <CardHeader>
-          <CardTitle>Weekly Overview</CardTitle>
-          <CardDescription>Quick view of operating hours for each day</CardDescription>
+        <CardHeader className="p-3 sm:p-6">
+          <CardTitle className="text-base sm:text-lg">Weekly Overview</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-7 gap-2">
+        <CardContent className="p-3 sm:p-6 pt-0">
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">
             {DAYS_OF_WEEK.map((day) => {
               const scheduleItem = sortedSchedule.find((s) => s.day_of_week === day.value);
               const isActive = scheduleItem?.is_active ?? false;
@@ -394,7 +371,7 @@ export default function ClinicSchedulePage() {
                 <div
                   key={day.value}
                   className={cn(
-                    'rounded-lg border p-3 text-center',
+                    'rounded-lg border p-1.5 sm:p-3 text-center',
                     scheduleItem
                       ? isActive
                         ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900'
@@ -402,24 +379,24 @@ export default function ClinicSchedulePage() {
                       : 'bg-muted/50 border-dashed'
                   )}
                 >
-                  <p className="text-xs font-medium text-muted-foreground">{day.short}</p>
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">{day.short}</p>
                   {scheduleItem ? (
                     <>
-                      <p className={cn('text-sm font-semibold', !isActive && 'text-muted-foreground')}>
+                      <p className={cn('text-xs sm:text-sm font-semibold', !isActive && 'text-muted-foreground')}>
                         {formatTime(scheduleItem.start_time).split(' ')[0]}
                       </p>
-                      <p className="text-xs text-muted-foreground">to</p>
-                      <p className={cn('text-sm font-semibold', !isActive && 'text-muted-foreground')}>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">to</p>
+                      <p className={cn('text-xs sm:text-sm font-semibold', !isActive && 'text-muted-foreground')}>
                         {formatTime(scheduleItem.end_time).split(' ')[0]}
                       </p>
                       {!isActive && (
-                        <Badge variant="secondary" className="mt-1 text-xs">
-                          Inactive
+                        <Badge variant="secondary" className="mt-1 text-[10px] sm:text-xs hidden sm:inline-flex">
+                          Off
                         </Badge>
                       )}
                     </>
                   ) : (
-                    <p className="text-sm text-muted-foreground py-3">Closed</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground py-1 sm:py-3">--</p>
                   )}
                 </div>
               );
@@ -430,27 +407,67 @@ export default function ClinicSchedulePage() {
 
       {/* Schedule Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Schedule Details</CardTitle>
-          <CardDescription>Detailed schedule configuration for each operating day</CardDescription>
+        <CardHeader className="p-3 sm:p-6">
+          <CardTitle className="text-base sm:text-lg">Schedule Details</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 sm:p-6 sm:pt-0">
           {scheduleLoading ? (
-            <Skeleton className="h-96" />
+            <Skeleton className="h-64 sm:h-96 mx-3 sm:mx-0" />
           ) : sortedSchedule.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No schedule configured</h3>
-              <p className="text-muted-foreground text-center mb-4">
-                Add operating hours for each day the clinic is open.
+            <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+              <Calendar className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
+              <h3 className="text-base sm:text-lg font-semibold mb-2">No schedule</h3>
+              <p className="text-sm text-muted-foreground text-center mb-4 px-4">
+                Add operating hours for each day.
               </p>
-              <Button onClick={() => setAddScheduleOpen(true)}>
+              <Button size="sm" onClick={() => setAddScheduleOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Schedule
               </Button>
             </div>
           ) : (
-            <div className="rounded-md border">
+            <>
+              {/* Mobile Cards */}
+              <div className="sm:hidden space-y-3 px-3 pb-3">
+                {sortedSchedule.map((scheduleItem) => (
+                  <div key={scheduleItem.id} className="rounded-lg border p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{scheduleItem.day_display}</span>
+                        {scheduleItem.is_active ? (
+                          <Badge variant="outline" className="text-xs text-green-600 border-green-600">Active</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs text-gray-500">Off</Badge>
+                        )}
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditDialog(scheduleItem)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-red-600" onClick={() => setDeleteScheduleId(scheduleItem.id)}>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div className="mt-2 text-sm text-muted-foreground">
+                      {formatTime(scheduleItem.start_time)} - {formatTime(scheduleItem.end_time)} • {scheduleItem.max_patients} max
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table */}
+              <div className="hidden sm:block rounded-md border mx-3 sm:mx-0">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -468,7 +485,7 @@ export default function ClinicSchedulePage() {
                   {sortedSchedule.map((scheduleItem) => (
                     <TableRow key={scheduleItem.id}>
                       <TableCell>
-                        <span className="font-medium">{scheduleItem.day_of_week_display}</span>
+                        <span className="font-medium">{scheduleItem.day_display}</span>
                       </TableCell>
                       <TableCell>
                         {scheduleItem.is_active ? (
@@ -523,7 +540,8 @@ export default function ClinicSchedulePage() {
                   ))}
                 </TableBody>
               </Table>
-            </div>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -535,7 +553,7 @@ export default function ClinicSchedulePage() {
             <DialogTitle>{editSchedule ? 'Edit Schedule' : 'Add Schedule'}</DialogTitle>
             <DialogDescription>
               {editSchedule
-                ? `Update the schedule for ${editSchedule.day_of_week_display}`
+                ? `Update the schedule for ${editSchedule.day_display}`
                 : 'Add operating hours for a day of the week'}
             </DialogDescription>
           </DialogHeader>
@@ -660,8 +678,7 @@ export default function ClinicSchedulePage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Schedule?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this schedule entry. The clinic will be marked as closed
-              for this day.
+              This will permanently delete this schedule entry.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -677,5 +694,6 @@ export default function ClinicSchedulePage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </PullToRefresh>
   );
 }

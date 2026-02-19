@@ -17,12 +17,12 @@ import {
   Filter,
   Building2,
   Clock,
-  Users,
   Activity,
   ChevronRight,
-  RefreshCw,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,6 +66,7 @@ const STATUS_OPTIONS: { value: ClinicStatus | 'ALL'; label: string }[] = [
 
 export default function ClinicsPage() {
   const router = useRouter();
+  const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
   const [clinicType, setClinicType] = useState<ClinicType | 'ALL'>('ALL');
   const [status, setStatus] = useState<ClinicStatus | 'ALL'>('ALL');
@@ -98,73 +99,67 @@ export default function ClinicsPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
+    <div className="space-y-4 sm:space-y-6">
       <PageHeader
         title="Clinics"
-        description="Manage and monitor all clinic operations"
+        helpContent="Manage and monitor all clinic operations. View open/closed status, filter by type, and access individual clinic dashboards."
         actions={
-          <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center">
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-            <Button asChild>
-              <Link href="/clinics/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Clinic
-              </Link>
-            </Button>
-          </div>
+          <Button asChild size="sm">
+            <Link href="/clinics/new">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add Clinic</span>
+            </Link>
+          </Button>
         }
       />
 
       {/* Summary Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Clinics</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Total Clinics</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalCount}</div>
-            <p className="text-xs text-muted-foreground">Registered clinics</p>
+          <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
+            <div className="text-xl sm:text-2xl font-bold">{totalCount}</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">Registered</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Open Today</CardTitle>
-            <Activity className="h-4 w-4 text-green-500" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Open Today</CardTitle>
+            <Activity className="h-4 w-4 text-green-500 hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{openClinicsCount}</div>
-            <p className="text-xs text-muted-foreground">Currently operating</p>
+          <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
+            <div className="text-xl sm:text-2xl font-bold text-green-600">{openClinicsCount}</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">Operating</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Clinic Types</CardTitle>
-            <Filter className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Types</CardTitle>
+            <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{Object.keys(clinicsByType).length}</div>
-            <p className="text-xs text-muted-foreground">Different categories</p>
+          <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
+            <div className="text-xl sm:text-2xl font-bold">{Object.keys(clinicsByType).length}</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">Categories</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+        <Card className="col-span-2 lg:col-span-1">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Quick Actions</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground hidden sm:block" />
           </CardHeader>
-          <CardContent className="space-y-1">
-            <Button variant="link" size="sm" className="h-auto p-0" asChild>
-              <Link href="/clinics/enrollments">View Enrollments</Link>
+          <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0 flex flex-row gap-2 sm:flex-col sm:gap-1">
+            <Button variant="link" size="sm" className="h-auto p-0 text-xs sm:text-sm" asChild>
+              <Link href="/clinics/enrollments">Enrollments</Link>
             </Button>
-            <br />
-            <Button variant="link" size="sm" className="h-auto p-0" asChild>
-              <Link href="/clinics/enrollments/overdue">Overdue Patients</Link>
+            <Button variant="link" size="sm" className="h-auto p-0 text-xs sm:text-sm" asChild>
+              <Link href="/clinics/enrollments/overdue">Overdue</Link>
             </Button>
           </CardContent>
         </Card>
@@ -172,11 +167,11 @@ export default function ClinicsPage() {
 
       {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Filter Clinics</CardTitle>
+        <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-4">
+          <CardTitle className="text-sm sm:text-base">Filter Clinics</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4 md:flex-row">
+        <CardContent className="p-3 sm:p-6 pt-0">
+          <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -186,44 +181,46 @@ export default function ClinicsPage() {
                 className="pl-9"
               />
             </div>
-            <Select value={clinicType} onValueChange={(v) => setClinicType(v as ClinicType | 'ALL')}>
-              <SelectTrigger className="w-full md:w-[200px]">
-                <SelectValue placeholder="Clinic Type" />
-              </SelectTrigger>
-              <SelectContent>
-                {CLINIC_TYPE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={status} onValueChange={(v) => setStatus(v as ClinicStatus | 'ALL')}>
-              <SelectTrigger className="w-full md:w-[180px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="grid grid-cols-2 gap-3 sm:flex sm:gap-4">
+              <Select value={clinicType} onValueChange={(v) => setClinicType(v as ClinicType | 'ALL')}>
+                <SelectTrigger className="w-full sm:w-[180px] lg:w-[200px]">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CLINIC_TYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={status} onValueChange={(v) => setStatus(v as ClinicStatus | 'ALL')}>
+                <SelectTrigger className="w-full sm:w-[150px] lg:w-[180px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Clinics Grid */}
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i}>
-              <CardHeader>
+              <CardHeader className="p-3 sm:p-6">
                 <Skeleton className="h-5 w-3/4" />
                 <Skeleton className="h-4 w-1/2" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-3 sm:p-6 pt-0">
                 <Skeleton className="h-4 w-full mb-2" />
                 <Skeleton className="h-4 w-2/3" />
               </CardContent>
@@ -232,15 +229,15 @@ export default function ClinicsPage() {
         </div>
       ) : clinics.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No clinics found</h3>
-            <p className="text-muted-foreground text-center mb-4">
+          <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12">
+            <Building2 className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
+            <h3 className="text-base sm:text-lg font-semibold mb-2">No clinics found</h3>
+            <p className="text-sm text-muted-foreground text-center mb-4 px-4">
               {search || clinicType !== 'ALL' || status !== 'ALL'
                 ? 'Try adjusting your filters'
                 : 'Get started by adding your first clinic'}
             </p>
-            <Button asChild>
+            <Button asChild size="sm">
               <Link href="/clinics/new">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Clinic
@@ -249,19 +246,20 @@ export default function ClinicsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
           {clinics.map((clinic) => (
             <Link key={clinic.id} href={`/clinics/${clinic.id}`}>
-              <Card className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="text-lg">{clinic.name}</CardTitle>
-                      <CardDescription>{clinic.clinic_type_display}</CardDescription>
+              <Card className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50 active:scale-[0.98]">
+                <CardHeader className="p-3 sm:p-6 pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
+                      <CardTitle className="text-base sm:text-lg truncate">{clinic.name}</CardTitle>
+                      <CardDescription className="text-xs sm:text-sm truncate">{clinic.clinic_type_display}</CardDescription>
                     </div>
                     <Badge
                       variant={clinic.is_open_today ? 'default' : 'secondary'}
                       className={cn(
+                        'shrink-0 w-fit text-xs',
                         clinic.is_open_today && 'bg-green-500 hover:bg-green-600'
                       )}
                     >
@@ -269,15 +267,15 @@ export default function ClinicsPage() {
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Building2 className="h-3 w-3" />
-                      <span>{clinic.location || 'No location set'}</span>
+                <CardContent className="p-3 sm:p-6 pt-0">
+                  <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1 min-w-0 flex-1">
+                      <Building2 className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{clinic.location || 'No location'}</span>
                     </div>
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4 shrink-0" />
                   </div>
-                  <Badge variant="outline" className="mt-2">
+                  <Badge variant="outline" className="mt-2 text-xs">
                     {clinic.code}
                   </Badge>
                 </CardContent>
@@ -287,5 +285,6 @@ export default function ClinicsPage() {
         </div>
       )}
     </div>
+    </PullToRefresh>
   );
 }

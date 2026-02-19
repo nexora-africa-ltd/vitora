@@ -9,10 +9,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft,
   Users,
   Search,
   Filter,
@@ -23,26 +22,20 @@ import {
   AlertCircle,
   UserPlus,
   FileText,
-  Phone,
-  Mail,
   ExternalLink,
   MoreHorizontal,
-  RefreshCw,
 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
   Select,
   SelectContent,
@@ -97,7 +90,9 @@ function isOverdue(nextAppointment: string | null | undefined): boolean {
 
 export default function ClinicPatientsPage() {
   const params = useParams();
+  const router = useRouter();
   const clinicId = Number(params.clinicId);
+  const { refresh, isRefreshing } = usePageRefresh();
 
   // UI State
   const [searchQuery, setSearchQuery] = useState('');
@@ -137,24 +132,25 @@ export default function ClinicPatientsPage() {
 
   if (clinicLoading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-1/3" />
-        <Skeleton className="h-24" />
-        <Skeleton className="h-96" />
+      <div className="space-y-4 sm:space-y-6">
+        <Skeleton className="h-8 w-1/3" />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 sm:h-24" />
+          ))}
+        </div>
+        <Skeleton className="h-64 sm:h-96" />
       </div>
     );
   }
 
   if (!clinic) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Clinic not found</h3>
-        <Button asChild>
-          <Link href="/clinics">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Clinics
-          </Link>
+      <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+        <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
+        <h3 className="text-base sm:text-lg font-semibold mb-2">Clinic not found</h3>
+        <Button asChild size="sm">
+          <Link href="/clinics">Back to Clinics</Link>
         </Button>
       </div>
     );
@@ -166,92 +162,77 @@ export default function ClinicPatientsPage() {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/clinics/${clinicId}`}>
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-              {clinic.name} - {isChronicCareClinic ? 'Enrolled Patients' : 'Patients'}
-            </h1>
-            <p className="text-muted-foreground">
-              {isChronicCareClinic
-                ? 'Manage patient enrollments, track appointments, and identify defaulters'
-                : 'View patients who have visited this clinic'}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center">
-          <Button variant="outline" size="sm" onClick={() => refetchEnrollments()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-          {isChronicCareClinic && (
-            <Button asChild>
-              <Link href={`/clinics/enrollments/new?clinic=${clinicId}`}>
-                <UserPlus className="h-4 w-4 mr-2" />
-                Enroll Patient
-              </Link>
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
+    <div className="space-y-4 sm:space-y-6">
+      <PageHeader
+        title={`${clinic.name} - ${isChronicCareClinic ? 'Enrolled' : 'Patients'}`}
+        helpContent={isChronicCareClinic
+          ? 'Manage patient enrollments, track appointments, and identify defaulters for chronic care.'
+          : 'View patients who have visited this clinic recently.'}
+        actions={
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {isChronicCareClinic && (
+              <Button asChild size="sm">
+                <Link href={`/clinics/enrollments/new?clinic=${clinicId}`}>
+                  <UserPlus className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Enroll</span>
+                </Link>
+              </Button>
+            )}
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Export</span>
             </Button>
-          )}
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {/* Navigation */}
       <ClinicNavigation clinicId={clinicId} />
 
       {/* Stats Cards */}
       {isChronicCareClinic && (
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Enrolled</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Enrolled</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground hidden sm:block" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalCount}</div>
-              <p className="text-xs text-muted-foreground">Active enrollments</p>
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <div className="text-xl sm:text-2xl font-bold">{totalCount}</div>
+              <p className="text-xs text-muted-foreground hidden sm:block">Active</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Overdue</CardTitle>
-              <Clock className="h-4 w-4 text-orange-500" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Overdue</CardTitle>
+              <Clock className="h-4 w-4 text-orange-500 hidden sm:block" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">{overduePatients.length}</div>
-              <p className="text-xs text-muted-foreground">Missed appointment date</p>
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <div className="text-xl sm:text-2xl font-bold text-orange-600">{overduePatients.length}</div>
+              <p className="text-xs text-muted-foreground hidden sm:block">Missed appt</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Defaulters</CardTitle>
-              <AlertCircle className="h-4 w-4 text-red-500" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">Defaulters</CardTitle>
+              <AlertCircle className="h-4 w-4 text-red-500 hidden sm:block" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{defaulters.length}</div>
-              <p className="text-xs text-muted-foreground">Lost to follow-up</p>
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <div className="text-xl sm:text-2xl font-bold text-red-600">{defaulters.length}</div>
+              <p className="text-xs text-muted-foreground hidden sm:block">Lost</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">This Month</CardTitle>
-              <Calendar className="h-4 w-4 text-green-500" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">This Month</CardTitle>
+              <Calendar className="h-4 w-4 text-green-500 hidden sm:block" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+            <CardContent className="p-3 sm:p-6 pt-0">
+              <div className="text-xl sm:text-2xl font-bold text-green-600">
                 {enrollments.filter((e) => {
                   const nextAppt = e.next_appointment_date;
                   if (!nextAppt) return false;
@@ -260,7 +241,7 @@ export default function ClinicPatientsPage() {
                   return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
                 }).length}
               </div>
-              <p className="text-xs text-muted-foreground">Appointments due</p>
+              <p className="text-xs text-muted-foreground hidden sm:block">Due</p>
             </CardContent>
           </Card>
         </div>
@@ -268,41 +249,43 @@ export default function ClinicPatientsPage() {
 
       {/* Filters and Search */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <CardContent className="p-3 sm:p-6">
+          <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name, MRN, or enrollment number..."
+                placeholder="Search by name, MRN..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
               />
             </div>
 
-            {isChronicCareClinic && (
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-                <SelectTrigger className="w-[180px]">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Statuses</SelectItem>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="INACTIVE">Inactive</SelectItem>
-                  <SelectItem value="TRANSFERRED">Transferred</SelectItem>
-                  <SelectItem value="LOST_TO_FOLLOW_UP">Lost to Follow-up</SelectItem>
-                  <SelectItem value="COMPLETED">Completed</SelectItem>
-                  <SelectItem value="DECEASED">Deceased</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
+            <div className="flex gap-2 sm:gap-4">
+              {isChronicCareClinic && (
+                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+                  <SelectTrigger className="w-full sm:w-[160px]">
+                    <Filter className="h-4 w-4 mr-2 hidden sm:block" />
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All</SelectItem>
+                    <SelectItem value="ACTIVE">Active</SelectItem>
+                    <SelectItem value="INACTIVE">Inactive</SelectItem>
+                    <SelectItem value="TRANSFERRED">Transferred</SelectItem>
+                    <SelectItem value="LOST_TO_FOLLOW_UP">Lost</SelectItem>
+                    <SelectItem value="COMPLETED">Completed</SelectItem>
+                    <SelectItem value="DECEASED">Deceased</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
 
-            {hasActiveFilters && (
-              <Button variant="ghost" onClick={clearFilters}>
-                Clear Filters
-              </Button>
-            )}
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  Clear
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -310,25 +293,27 @@ export default function ClinicPatientsPage() {
       {/* Tabs for chronic care clinics */}
       {isChronicCareClinic ? (
         <Tabs defaultValue="all" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="all">
-              All Patients
-              <Badge variant="secondary" className="ml-2">
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="all" className="gap-1">
+              <span className="sm:hidden">All</span>
+              <span className="hidden sm:inline">All Patients</span>
+              <Badge variant="secondary" className="ml-1 text-xs">
                 {totalCount}
               </Badge>
             </TabsTrigger>
-            <TabsTrigger value="overdue">
+            <TabsTrigger value="overdue" className="gap-1">
               Overdue
               {overduePatients.length > 0 && (
-                <Badge variant="destructive" className="ml-2">
+                <Badge variant="destructive" className="ml-1 text-xs">
                   {overduePatients.length}
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="defaulters">
-              Defaulters
+            <TabsTrigger value="defaulters" className="gap-1">
+              <span className="sm:hidden">Lost</span>
+              <span className="hidden sm:inline">Defaulters</span>
               {defaulters.length > 0 && (
-                <Badge variant="destructive" className="ml-2">
+                <Badge variant="destructive" className="ml-1 text-xs">
                   {defaulters.length}
                 </Badge>
               )}
@@ -349,7 +334,7 @@ export default function ClinicPatientsPage() {
               isLoading={false}
               clinicId={clinicId}
               emptyMessage="No overdue patients"
-              emptyDescription="All enrolled patients are up to date with their appointments."
+              emptyDescription="All enrolled patients are up to date."
             />
           </TabsContent>
 
@@ -359,20 +344,20 @@ export default function ClinicPatientsPage() {
               isLoading={false}
               clinicId={clinicId}
               emptyMessage="No defaulters"
-              emptyDescription="No patients have been lost to follow-up."
+              emptyDescription="No patients lost to follow-up."
             />
           </TabsContent>
         </Tabs>
       ) : (
         // For non-chronic care clinics, show a simpler view
         <Card>
-          <CardHeader>
-            <CardTitle>Recent Patients</CardTitle>
-            <CardDescription>
-              Patients who have visited {clinic.name} recently
-            </CardDescription>
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base sm:text-lg">Recent Patients</CardTitle>
+              <HelpPopover content={`Patients who have visited ${clinic.name} recently.`} />
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6 pt-0">
             <EnrollmentsTable
               enrollments={enrollments}
               isLoading={enrollmentsLoading}
@@ -384,6 +369,7 @@ export default function ClinicPatientsPage() {
         </Card>
       )}
     </div>
+    </PullToRefresh>
   );
 }
 
@@ -406,122 +392,165 @@ function EnrollmentsTable({
   emptyMessage = 'No patients found',
   emptyDescription = 'No patients match your search criteria.',
 }: EnrollmentsTableProps) {
-  if (isLoading) {
-    return <Skeleton className="h-96" />;
-  }
-
-  if (enrollments.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <Users className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">{emptyMessage}</h3>
-        <p className="text-muted-foreground text-center">{emptyDescription}</p>
-      </div>
-    );
-  }
+  const router = useRouter();
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Patient</TableHead>
-            <TableHead>Enrollment #</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Enrolled Date</TableHead>
-            <TableHead>Last Visit</TableHead>
-            <TableHead>Next Appointment</TableHead>
-            <TableHead>Visits</TableHead>
-            <TableHead className="w-[50px]"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {enrollments.map((enrollment) => (
-            <TableRow key={enrollment.id}>
-              <TableCell>
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-9 w-9">
-                    <AvatarFallback>
-                      {enrollment.patient_name
-                        .split(' ')
-                        .map((n) => n[0])
-                        .join('')
-                        .toUpperCase()
-                        .slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <Link
-                      href={`/patients/${enrollment.patient}`}
-                      className="font-medium hover:underline"
-                    >
-                      {enrollment.patient_name}
-                    </Link>
-                    <p className="text-sm text-muted-foreground">{enrollment.patient_mrn}</p>
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <span className="font-mono text-sm">{enrollment.enrollment_number}</span>
-              </TableCell>
-              <TableCell>
-                <Badge className={cn('font-normal', STATUS_COLORS[enrollment.status])}>
-                  {enrollment.status_display}
-                </Badge>
-              </TableCell>
-              <TableCell>{formatDate(enrollment.enrollment_date)}</TableCell>
-              <TableCell>{formatDate(enrollment.last_visit_date)}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      isOverdue(enrollment.next_appointment_date) && 'text-red-600 font-medium'
-                    )}
-                  >
-                    {formatDate(enrollment.next_appointment_date)}
-                  </span>
-                  {isOverdue(enrollment.next_appointment_date) && (
-                    <Badge variant="destructive" className="text-xs">
-                      Overdue
-                    </Badge>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell>{enrollment.visit_count}</TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem asChild>
-                      <Link href={`/patients/${enrollment.patient}`}>
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        View Patient
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href={`/clinics/enrollments/${enrollment.id}`}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        View Enrollment
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href={`/clinics/${clinicId}/queue?patient=${enrollment.patient}`}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add to Queue
-                      </Link>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <ResponsiveTable<ClinicEnrollment>
+      data={enrollments}
+      keyExtractor={(e) => e.id}
+      isLoading={isLoading}
+      emptyMessage={`${emptyMessage}. ${emptyDescription}`}
+      onRowClick={(enrollment) => router.push(`/clinics/enrollments/${enrollment.id}`)}
+      columns={[
+        {
+          key: 'patient',
+          header: 'Patient',
+          cell: (enrollment) => (
+            <div className="flex items-center gap-3">
+              <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
+                <AvatarFallback className="text-xs">
+                  {enrollment.patient_name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="font-medium truncate">{enrollment.patient_name}</p>
+                <p className="text-xs text-muted-foreground">{enrollment.patient_mrn}</p>
+              </div>
+            </div>
+          ),
+        },
+        {
+          key: 'enrollment_number',
+          header: 'Enroll #',
+          cell: (enrollment) => (
+            <span className="font-mono text-xs">{enrollment.enrollment_number || '—'}</span>
+          ),
+          hideOnMobile: true,
+        },
+        {
+          key: 'status',
+          header: 'Status',
+          cell: (enrollment) => (
+            <Badge className={cn('font-normal shrink-0 w-fit text-xs', STATUS_COLORS[enrollment.status])}>
+              {enrollment.status_display || enrollment.status}
+            </Badge>
+          ),
+        },
+        {
+          key: 'enrollment_date',
+          header: 'Enrolled',
+          cell: (enrollment) => formatDate(enrollment.enrollment_date),
+          hideOnMobile: true,
+        },
+        {
+          key: 'last_visit_date',
+          header: 'Last Visit',
+          cell: (enrollment) => formatDate(enrollment.last_visit_date),
+          hideOnMobile: true,
+        },
+        {
+          key: 'next_appointment_date',
+          header: 'Next Appt',
+          cell: (enrollment) => (
+            <div className="flex items-center gap-1">
+              <span className={cn(
+                'text-xs sm:text-sm',
+                isOverdue(enrollment.next_appointment_date) && 'text-red-600 font-medium'
+              )}>
+                {formatDate(enrollment.next_appointment_date)}
+              </span>
+              {isOverdue(enrollment.next_appointment_date) && (
+                <Badge variant="destructive" className="text-xs px-1">!</Badge>
+              )}
+            </div>
+          ),
+        },
+        {
+          key: 'visit_count',
+          header: 'Visits',
+          cell: (enrollment) => enrollment.visit_count ?? enrollment.total_visits ?? 0,
+          className: 'text-right',
+          hideOnMobile: true,
+        },
+        {
+          key: 'actions',
+          header: '',
+          cell: (enrollment) => (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link href={`/patients/${enrollment.patient}`}>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    View Patient
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={`/clinics/enrollments/${enrollment.id}`}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    View Enrollment
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href={`/clinics/${clinicId}/queue?patient=${enrollment.patient}`}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add to Queue
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ),
+          className: 'w-[50px]',
+        },
+      ]}
+      mobileCard={(enrollment) => (
+        <div className="rounded-lg border p-3 space-y-2 active:bg-muted/50">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Avatar className="h-8 w-8 shrink-0">
+                <AvatarFallback className="text-xs">
+                  {enrollment.patient_name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="font-medium text-sm truncate">{enrollment.patient_name}</p>
+                <p className="text-xs text-muted-foreground">{enrollment.patient_mrn}</p>
+              </div>
+            </div>
+            <Badge className={cn('font-normal shrink-0 text-xs', STATUS_COLORS[enrollment.status])}>
+              {enrollment.status_display || enrollment.status}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Next:</span>
+            <span className={cn(
+              isOverdue(enrollment.next_appointment_date) && 'text-red-600 font-medium'
+            )}>
+              {formatDate(enrollment.next_appointment_date)}
+              {isOverdue(enrollment.next_appointment_date) && ' (Overdue)'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Visits: {enrollment.visit_count ?? enrollment.total_visits ?? 0}</span>
+            <span>Enrolled: {formatDate(enrollment.enrollment_date)}</span>
+          </div>
+        </div>
+      )}
+    />
   );
 }

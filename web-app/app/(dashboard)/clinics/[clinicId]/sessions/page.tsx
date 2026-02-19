@@ -9,38 +9,27 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeft,
   Calendar,
-  Clock,
   Users,
   CheckCircle,
-  XCircle,
-  TrendingUp,
-  TrendingDown,
-  Filter,
   Download,
-  Eye,
   BarChart3,
   AlertCircle,
-  RefreshCw,
   CalendarRange,
 } from 'lucide-react';
 import { format, subDays, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
   Select,
   SelectContent,
@@ -93,7 +82,9 @@ function calculateSessionDuration(openedAt: string | null, closedAt: string | nu
 
 export default function ClinicSessionsPage() {
   const params = useParams();
+  const router = useRouter();
   const clinicId = Number(params.clinicId);
+  const { refresh, isRefreshing } = usePageRefresh();
 
   // UI State
   const [dateRange, setDateRange] = useState<DateRange>('month');
@@ -167,78 +158,58 @@ export default function ClinicSessionsPage() {
 
   if (clinicLoading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-1/3" />
-        <div className="grid gap-4 md:grid-cols-4">
+      <div className="space-y-4 sm:space-y-6">
+        <Skeleton className="h-8 w-1/3" />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24" />
+            <Skeleton key={i} className="h-20 sm:h-24" />
           ))}
         </div>
-        <Skeleton className="h-96" />
+        <Skeleton className="h-64 sm:h-96" />
       </div>
     );
   }
 
   if (!clinic) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Clinic not found</h3>
-        <Button asChild>
-          <Link href="/clinics">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Clinics
-          </Link>
+      <div className="flex flex-col items-center justify-center py-8 sm:py-12">
+        <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-4" />
+        <h3 className="text-base sm:text-lg font-semibold mb-2">Clinic not found</h3>
+        <Button asChild size="sm">
+          <Link href="/clinics">Back to Clinics</Link>
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/clinics/${clinicId}`}>
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
+    <div className="space-y-4 sm:space-y-6">
+      <PageHeader
+        title={`${clinic.name} - Sessions`}
+        helpContent="View historical session data, patient counts, and performance metrics for this clinic."
+        actions={
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Export</span>
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-              {clinic.name} - Session History
-            </h1>
-            <p className="text-muted-foreground">
-              View historical session data, patient counts, and performance metrics
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center">
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Navigation */}
       <ClinicNavigation clinicId={clinicId} />
 
       {/* Date Range Filter */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <CardContent className="p-3 sm:p-6">
+          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:flex-wrap">
             <div className="flex items-center gap-2">
               <CalendarRange className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Date Range:</span>
+              <span className="text-xs sm:text-sm font-medium">Date Range:</span>
             </div>
 
             <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="Select range" />
               </SelectTrigger>
               <SelectContent>
@@ -251,12 +222,14 @@ export default function ClinicSessionsPage() {
             </Select>
 
             {dateRange === 'custom' && (
-              <>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-[160px] justify-start text-left font-normal">
+                    <Button variant="outline" size="sm" className="w-full sm:w-[140px] justify-start text-left font-normal">
                       <Calendar className="mr-2 h-4 w-4" />
-                      {customStartDate ? format(customStartDate, 'MMM d, yyyy') : 'Start Date'}
+                      <span className="truncate">
+                        {customStartDate ? format(customStartDate, 'MMM d, yy') : 'Start'}
+                      </span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
@@ -269,13 +242,15 @@ export default function ClinicSessionsPage() {
                   </PopoverContent>
                 </Popover>
 
-                <span className="text-muted-foreground">to</span>
+                <span className="text-muted-foreground text-center">to</span>
 
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-[160px] justify-start text-left font-normal">
+                    <Button variant="outline" size="sm" className="w-full sm:w-[140px] justify-start text-left font-normal">
                       <Calendar className="mr-2 h-4 w-4" />
-                      {customEndDate ? format(customEndDate, 'MMM d, yyyy') : 'End Date'}
+                      <span className="truncate">
+                        {customEndDate ? format(customEndDate, 'MMM d, yy') : 'End'}
+                      </span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
@@ -287,136 +262,180 @@ export default function ClinicSessionsPage() {
                     />
                   </PopoverContent>
                 </Popover>
-              </>
+              </div>
             )}
           </div>
         </CardContent>
       </Card>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Sessions</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalSessions}</div>
-            <p className="text-xs text-muted-foreground">In selected period</p>
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="text-xl sm:text-2xl font-bold">{stats.totalSessions}</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">In period</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Patients Seen</CardTitle>
-            <Users className="h-4 w-4 text-blue-500" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Patients</CardTitle>
+            <Users className="h-4 w-4 text-blue-500 hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.totalPatientsSeen}</div>
-            <p className="text-xs text-muted-foreground">Total consultations</p>
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="text-xl sm:text-2xl font-bold text-blue-600">{stats.totalPatientsSeen}</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">Total seen</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Per Session</CardTitle>
-            <BarChart3 className="h-4 w-4 text-green-500" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Avg/Session</CardTitle>
+            <BarChart3 className="h-4 w-4 text-green-500 hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.avgPatientsPerSession}</div>
-            <p className="text-xs text-muted-foreground">Patients per session</p>
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.avgPatientsPerSession}</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">Patients</p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
-            <CheckCircle className="h-4 w-4 text-purple-500" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium">Completion</CardTitle>
+            <CheckCircle className="h-4 w-4 text-purple-500 hidden sm:block" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{stats.completionRate}%</div>
-            <p className="text-xs text-muted-foreground">Sessions completed</p>
+          <CardContent className="p-3 sm:p-6 pt-0">
+            <div className="text-xl sm:text-2xl font-bold text-purple-600">{stats.completionRate}%</div>
+            <p className="text-xs text-muted-foreground hidden sm:block">Rate</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Sessions Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Session History</CardTitle>
-          <CardDescription>
-            Detailed view of all clinic sessions in the selected period
-          </CardDescription>
+        <CardHeader className="p-4 sm:p-6">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base sm:text-lg">Session History</CardTitle>
+            <HelpPopover content="Detailed view of all clinic sessions in the selected period including patient counts and timing." />
+          </div>
         </CardHeader>
-        <CardContent>
-          {sessionsLoading ? (
-            <Skeleton className="h-96" />
-          ) : sessions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No sessions found</h3>
-              <p className="text-muted-foreground text-center">
-                No sessions recorded for the selected date range.
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Opened By</TableHead>
-                    <TableHead>Opened At</TableHead>
-                    <TableHead>Closed At</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead className="text-right">Registered</TableHead>
-                    <TableHead className="text-right">Seen</TableHead>
-                    <TableHead className="text-right">Waiting</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sessions.map((session) => (
-                    <TableRow key={session.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{formatDate(session.session_date)}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={cn('font-normal', STATUS_COLORS[session.status])}>
-                          {session.status_display}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{session.opened_by_name || '--'}</TableCell>
-                      <TableCell>{formatTime(session.opened_at)}</TableCell>
-                      <TableCell>{formatTime(session.closed_at)}</TableCell>
-                      <TableCell>
-                        {calculateSessionDuration(session.opened_at, session.closed_at)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {session.patients_registered}
-                      </TableCell>
-                      <TableCell className="text-right font-medium text-green-600">
-                        {session.patients_seen}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {session.patients_waiting > 0 ? (
-                          <span className="text-orange-600 font-medium">
-                            {session.patients_waiting}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">0</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+        <CardContent className="p-4 sm:p-6 pt-0">
+          <ResponsiveTable<ClinicSession>
+            data={sessions}
+            keyExtractor={(session) => session.id}
+            isLoading={sessionsLoading}
+            emptyMessage="No sessions recorded for the selected date range."
+            columns={[
+              {
+                key: 'session_date',
+                header: 'Date',
+                cell: (session) => (
+                  <span className="font-medium">{formatDate(session.session_date)}</span>
+                ),
+              },
+              {
+                key: 'status',
+                header: 'Status',
+                cell: (session) => (
+                  <Badge className={cn('font-normal shrink-0 w-fit text-xs', STATUS_COLORS[session.status])}>
+                    {session.status_display}
+                  </Badge>
+                ),
+              },
+              {
+                key: 'opened_by_name',
+                header: 'Opened By',
+                cell: (session) => session.opened_by_name || '--',
+                hideOnMobile: true,
+              },
+              {
+                key: 'opened_at',
+                header: 'Opened',
+                cell: (session) => formatTime(session.opened_at),
+                hideOnMobile: true,
+              },
+              {
+                key: 'closed_at',
+                header: 'Closed',
+                cell: (session) => formatTime(session.closed_at),
+                hideOnMobile: true,
+              },
+              {
+                key: 'duration',
+                header: 'Duration',
+                cell: (session) => calculateSessionDuration(session.opened_at, session.closed_at),
+                hideOnMobile: true,
+              },
+              {
+                key: 'patients_registered',
+                header: 'Reg',
+                cell: (session) => <span className="font-medium">{session.patients_registered}</span>,
+                className: 'text-right',
+              },
+              {
+                key: 'patients_seen',
+                header: 'Seen',
+                cell: (session) => (
+                  <span className="font-medium text-green-600">{session.patients_seen}</span>
+                ),
+                className: 'text-right',
+              },
+              {
+                key: 'patients_waiting',
+                header: 'Wait',
+                cell: (session) => (
+                  session.patients_waiting > 0 ? (
+                    <span className="text-orange-600 font-medium">{session.patients_waiting}</span>
+                  ) : (
+                    <span className="text-muted-foreground">0</span>
+                  )
+                ),
+                className: 'text-right',
+              },
+            ]}
+            mobileCard={(session) => (
+              <div className="rounded-lg border p-3 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-sm truncate">
+                    {formatDate(session.session_date)}
+                  </span>
+                  <Badge className={cn('font-normal shrink-0 text-xs', STATUS_COLORS[session.status])}>
+                    {session.status_display}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <span className="text-muted-foreground">Reg:</span>{' '}
+                    <span className="font-medium">{session.patients_registered}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Seen:</span>{' '}
+                    <span className="font-medium text-green-600">{session.patients_seen}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Wait:</span>{' '}
+                    {session.patients_waiting > 0 ? (
+                      <span className="font-medium text-orange-600">{session.patients_waiting}</span>
+                    ) : (
+                      <span className="text-muted-foreground">0</span>
+                    )}
+                  </div>
+                </div>
+                {session.opened_at && (
+                  <p className="text-xs text-muted-foreground">
+                    {formatTime(session.opened_at)} - {formatTime(session.closed_at)} ({calculateSessionDuration(session.opened_at, session.closed_at)})
+                  </p>
+                )}
+              </div>
+            )}
+          />
         </CardContent>
       </Card>
     </div>
+    </PullToRefresh>
   );
 }
