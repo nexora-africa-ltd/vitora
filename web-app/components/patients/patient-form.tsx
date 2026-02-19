@@ -615,7 +615,7 @@ export function PatientForm({
     const idType = form.getValues('identification_type');
 
     if (idNumber && idNumber.length >= 5) {
-      setCrSearched(false);
+      // Only reset crClient, NOT crSearched (to avoid triggering the auto-search useEffect)
       setCrClient(null);
       performCRLookup(idType, idNumber).then((result) => {
         // Always check SHA eligibility after CR lookup (regardless of whether CR found a record)
@@ -798,14 +798,16 @@ export function PatientForm({
               <Alert className="border-success/30 bg-success/5">
                 <BadgeCheck className="h-4 w-4 text-success" />
                 <AlertTitle className="text-success">
-                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+                  <div className="flex items-center gap-2">
                     <span>Active SHA Coverage</span>
-                    <Badge variant="outline" className="border-success/50 text-success bg-success/10 w-fit">
+                    {/* Mobile: emoji only, Desktop: badge with text */}
+                    <span className="sm:hidden text-lg" title="Eligible">👍</span>
+                    <Badge variant="outline" className="hidden sm:inline-flex border-success/50 text-success bg-success/10 w-fit">
                       Eligible
                     </Badge>
                   </div>
                 </AlertTitle>
-                <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <AlertDescription className="flex items-center justify-between gap-2">
                   <span className="text-success/90">
                     {shaEligibility.details.full_name && (
                       <strong>{shaEligibility.details.full_name}</strong>
@@ -825,28 +827,67 @@ export function PatientForm({
                     onClick={() => setShowShaDetailsDialog(true)}
                     title="View SHA Details"
                   >
-                    <Eye className="h-3 w-3 mr-1" />
-                    View SHA Details
+                    <Eye className="h-4 w-4" />
                   </Button>
                 </AlertDescription>
               </Alert>
             )}
 
-            {shaEligibility.checked && !isCheckingEligibility && !shaEligibility.isEligible && (
-              <Alert className="border-warning/30 bg-warning/5">
-                <XCircle className="h-4 w-4 text-warning-foreground" />
-                <AlertTitle className="text-warning-foreground">
-                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-                    <span>SHA Coverage Not Available</span>
-                    <Badge variant="outline" className="border-warning/50 text-warning-foreground bg-warning/10 w-fit">
+            {/* Ineligible: Has SHA number but coverage not active (RED) */}
+            {shaEligibility.checked && !isCheckingEligibility && !shaEligibility.isEligible && shaEligibility.details?.sha_number && (
+              <Alert className="border-destructive/30 bg-destructive/5">
+                <XCircle className="h-4 w-4 text-destructive" />
+                <AlertTitle className="text-destructive">
+                  <div className="flex items-center gap-2">
+                    <span>SHA Coverage Inactive</span>
+                    {/* Mobile: emoji only, Desktop: badge with text */}
+                    <span className="sm:hidden text-lg" title="Not Eligible">👎</span>
+                    <Badge variant="outline" className="hidden sm:inline-flex border-destructive/50 text-destructive bg-destructive/10 w-fit">
                       Not Eligible
                     </Badge>
                   </div>
                 </AlertTitle>
-                <AlertDescription className="text-warning-foreground/80">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <AlertDescription className="text-destructive/80">
+                  <div className="flex items-start justify-between gap-2">
                     <div>
-                      {shaEligibility.reason || 'Patient does not have active SHA coverage.'}
+                      {shaEligibility.reason || 'Patient SHA coverage is not active.'}
+                      {shaEligibility.details?.possible_solution && (
+                        <span className="block mt-1 text-sm">
+                          <strong>Suggestion:</strong> {shaEligibility.details.possible_solution}
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-destructive/50 text-destructive hover:bg-destructive/10 w-fit shrink-0"
+                      onClick={() => setShowShaDetailsDialog(true)}
+                      title="View Details"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Unregistered: No SHA record found (AMBER) */}
+            {shaEligibility.checked && !isCheckingEligibility && !shaEligibility.isEligible && !shaEligibility.details?.sha_number && (
+              <Alert className="border-warning/30 bg-warning/5">
+                <XCircle className="h-4 w-4 text-warning-foreground" />
+                <AlertTitle className="text-warning-foreground">
+                  <div className="flex items-center gap-2">
+                    <span>Not Registered with SHA</span>
+                    <Badge variant="outline" className="hidden sm:inline-flex border-warning/50 text-warning-foreground bg-warning/10 w-fit">
+                      Unregistered
+                    </Badge>
+                  </div>
+                </AlertTitle>
+                <AlertDescription className="text-warning-foreground/80">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      {shaEligibility.reason || 'Patient is not registered with Social Health Authority.'}
                       {shaEligibility.details?.possible_solution && (
                         <span className="block mt-1 text-sm">
                           <strong>Suggestion:</strong> {shaEligibility.details.possible_solution}
@@ -862,8 +903,7 @@ export function PatientForm({
                         onClick={() => setShowShaDetailsDialog(true)}
                         title="View Details"
                       >
-                        <Eye className="h-3 w-3 mr-1" />
-                        View Details
+                        <Eye className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
