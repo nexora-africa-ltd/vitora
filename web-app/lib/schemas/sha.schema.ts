@@ -203,7 +203,7 @@ export const DirectEligibilityCheckResponseSchema = z.object({
   employment_type: z.string().optional(),
   employer_name: z.string().nullable().optional(),
   nhif_transition_status: z.string().optional(),
-  means_testing: MeansTestingDetailsSchema.optional(),
+  means_testing: MeansTestingDetailsSchema.nullable().optional(),
   dependents: z.array(SHADependentSchema).optional(),
   dependents_covered: z.number().optional(),
   raw_response: z.record(z.unknown()).optional(),
