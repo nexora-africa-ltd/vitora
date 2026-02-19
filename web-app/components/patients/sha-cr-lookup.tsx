@@ -7,16 +7,14 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Search, CheckCircle2, AlertCircle, Info, Loader2, UserCheck, UserPlus } from 'lucide-react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { format, parse } from 'date-fns';
+import { Search, CheckCircle2, AlertCircle, Loader2, UserCheck, UserPlus } from 'lucide-react';
+import { parse } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { HelpPopover } from '@/components/shared/help-popover';
 import {
   Alert,
   AlertDescription,
@@ -24,7 +22,6 @@ import {
 } from '@/components/ui/alert';
 import {
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
@@ -109,13 +106,14 @@ export function CRLookupSection({
   return (
     <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
-          <Search className="h-5 w-5" />
-          SHA Client Registry Lookup
-        </CardTitle>
-        <CardDescription>
-          Search the national Client Registry to auto-fill patient information and verify identity
-        </CardDescription>
+        <div className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+            <Search className="h-5 w-5" />
+            <span className="sm:hidden">CR Lookup</span>
+            <span className="hidden sm:inline">SHA Client Registry Lookup</span>
+          </CardTitle>
+          <HelpPopover content="Search the national Client Registry to auto-fill patient information and verify identity." />
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Identifier Type Tabs */}
@@ -124,14 +122,23 @@ export function CRLookupSection({
           onValueChange={(v) => setIdentifierType(v as typeof identifierType)}
         >
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="national_id">National ID</TabsTrigger>
-            <TabsTrigger value="huduma_number">Huduma No.</TabsTrigger>
-            <TabsTrigger value="passport_number">Passport</TabsTrigger>
+            <TabsTrigger value="national_id" className="gap-1">
+              <span className="sm:hidden">ID</span>
+              <span className="hidden sm:inline">National ID</span>
+            </TabsTrigger>
+            <TabsTrigger value="huduma_number" className="gap-1">
+              <span className="sm:hidden">Huduma</span>
+              <span className="hidden sm:inline">Huduma No.</span>
+            </TabsTrigger>
+            <TabsTrigger value="passport_number" className="gap-1">
+              <span className="sm:hidden">Pass.</span>
+              <span className="hidden sm:inline">Passport</span>
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 
         {/* Identifier Input */}
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <div className="flex-1">
             <Input
               value={identifierValue}
@@ -140,7 +147,7 @@ export function CRLookupSection({
               disabled={disabled || crStatus === 'searching'}
               className={cn(
                 crStatus === 'found' && 'border-green-500 focus:ring-green-500',
-                crStatus === 'error' && 'border-red-500 focus:ring-red-500'
+                crStatus === 'error' && 'border-destructive focus:ring-destructive'
               )}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -156,6 +163,7 @@ export function CRLookupSection({
             disabled={disabled || crStatus === 'searching' || !identifierValue || identifierValue.trim().length < 3}
             variant={crStatus === 'found' ? 'outline' : 'default'}
             className={cn(
+              'w-full sm:w-auto',
               crStatus === 'found' && 'border-green-500 text-green-600 hover:text-green-700'
             )}
           >
@@ -237,15 +245,6 @@ export function CRLookupSection({
           </Alert>
         )}
 
-        {crStatus === 'idle' && (
-          <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950">
-            <Info className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-700 dark:text-blue-300">
-              Enter the patient&apos;s identifier and click Verify to search the SHA Client Registry.
-              This will auto-fill verified information and speed up registration.
-            </AlertDescription>
-          </Alert>
-        )}
       </CardContent>
     </Card>
   );

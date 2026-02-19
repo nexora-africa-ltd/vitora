@@ -95,6 +95,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { LocationCombobox } from '@/components/ui/location-combobox';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { IdentificationInput } from './identification-input';
 import { ConsentConfirmationDialog, type ConsentDecision } from './consent-confirmation-dialog';
 import { SHAPrincipalConfirmationDialog, type SHAPrincipalDecision } from './sha-principal-confirmation-dialog';
@@ -734,7 +735,7 @@ export function PatientForm({
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleFormSubmit, handleFormErrors)} className="space-y-8">
+        <form onSubmit={form.handleSubmit(handleFormSubmit, handleFormErrors)} className="space-y-6 sm:space-y-8">
 
           {/* ================================================================== */}
           {/* SECTION 1: Identification & CR Status (Top Priority) */}
@@ -864,14 +865,14 @@ export function PatientForm({
               </Alert>
             )}
 
-            <div className="flex flex-wrap gap-6">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
               {/* ID Type + Number with clickable label */}
-              <div className="space-y-2">
+              <div className="space-y-2 sm:col-span-2 lg:col-span-1">
                 <FormField
                   control={form.control}
                   name="identification_number"
                   render={({ field }) => (
-                    <FormItem className="min-w-[240px]">
+                    <FormItem>
                       <IdentificationInput
                         identificationType={identificationType}
                         identificationNumber={field.value || ''}
@@ -912,7 +913,7 @@ export function PatientForm({
                 control={form.control}
                 name="cr_number"
                 render={({ field }) => (
-                  <FormItem className="w-[180px] shrink-0 mt-1">
+                  <FormItem>
                     <FormLabel className="flex items-center gap-1">
                       <Lock className="h-4 w-4" />
                       CR Number
@@ -938,7 +939,7 @@ export function PatientForm({
                 control={form.control}
                 name="sha_number"
                 render={({ field }) => (
-                  <FormItem className="w-[180px] shrink-0 mt-1">
+                  <FormItem>
                     <FormLabel className="flex items-center gap-1 text-teal-400">
                       <SHALogo size="sm" />
                       SHA Number
@@ -969,7 +970,7 @@ export function PatientForm({
                   const isShaDisabled = shaEligibility.checked && !shaEligibility.isEligible;
 
                   return (
-                    <FormItem className="min-w-[120px] -mt-1">
+                    <FormItem>
                       <FormLabel>Payment Method *</FormLabel>
                       <Dialog>
                         <DialogTrigger asChild>
@@ -990,15 +991,15 @@ export function PatientForm({
                         </DialogTrigger>
                         <DialogContent className="max-w-sm overflow-y-auto">
                           <DialogHeader>
-                            <DialogTitle>Select Payment Method</DialogTitle>
-                            <DialogDescription>
-                              Choose how the patient will pay for services
-                              {isShaDisabled && (
-                                <span className="block mt-1 text-warning-foreground">
-                                  ⚠️ SHA is unavailable: {shaEligibility.reason || 'Patient not eligible'}
-                                </span>
-                              )}
-                            </DialogDescription>
+                            <div className="flex items-center gap-2">
+                              <DialogTitle>Select Payment Method</DialogTitle>
+                              <HelpPopover content="Choose how the patient will pay for services. SHA requires active coverage." />
+                            </div>
+                            {isShaDisabled && (
+                              <p className="text-sm text-warning-foreground mt-1">
+                                ⚠️ SHA is unavailable: {shaEligibility.reason || 'Patient not eligible'}
+                              </p>
+                            )}
                           </DialogHeader>
                           <PaymentMethodCarousel
                             value={field.value}
@@ -1024,12 +1025,12 @@ export function PatientForm({
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Personal Information</h3>
 
-            <div className="flex flex-wrap gap-4 items-start">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
               <FormField
                 control={form.control}
                 name="title"
                 render={({ field }) => (
-                  <FormItem className="w-[100px]">
+                  <FormItem className="sm:col-span-1">
                     <FormLabel>Title</FormLabel>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -1067,7 +1068,7 @@ export function PatientForm({
                 control={form.control}
                 name="first_name"
                 render={({ field }) => (
-                  <FormItem className="min-w-[200px] flex-1">
+                  <FormItem>
                     <FormLabel>First Name *</FormLabel>
                     <FormControl>
                       <Input
@@ -1085,7 +1086,7 @@ export function PatientForm({
                 control={form.control}
                 name="middle_name"
                 render={({ field }) => (
-                  <FormItem className="min-w-[200px] flex-1">
+                  <FormItem>
                     <FormLabel>Middle Name</FormLabel>
                     <FormControl>
                       <Input
@@ -1102,7 +1103,7 @@ export function PatientForm({
                 control={form.control}
                 name="last_name"
                 render={({ field }) => (
-                  <FormItem className="min-w-[200px] flex-1">
+                  <FormItem>
                     <FormLabel>Last Name *</FormLabel>
                     <FormControl>
                       <Input
@@ -1117,12 +1118,12 @@ export function PatientForm({
               />
             </div>
 
-            <div className="flex flex-wrap gap-6 items-start">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 items-start">
               <FormField
                 control={form.control}
                 name="gender"
                 render={({ field }) => (
-                  <FormItem className="w-[140px]">
+                  <FormItem>
                     <FormLabel>Gender *</FormLabel>
                     <FormControl>
                       <DropdownMenu>
@@ -1139,7 +1140,7 @@ export function PatientForm({
                             <ChevronDown className="h-4 w-4 opacity-50" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-[140px]">
+                        <DropdownMenuContent className="w-full min-w-[140px]">
                           <DropdownMenuRadioGroup
                             value={field.value}
                             onValueChange={field.onChange}
@@ -1165,7 +1166,7 @@ export function PatientForm({
                 control={form.control}
                 name="date_of_birth"
                 render={({ field }) => (
-                  <FormItem className="max-w-md">
+                  <FormItem>
                     <FormLabel>Date of Birth *</FormLabel>
                     <DatePicker
                       value={field.value}
@@ -1181,7 +1182,7 @@ export function PatientForm({
                 control={form.control}
                 name="place_of_birth"
                 render={({ field }) => (
-                  <FormItem className="min-w-[160px] flex-1">
+                  <FormItem>
                     <FormLabel>Place of Birth</FormLabel>
                     <FormControl>
                       <Input
@@ -1198,7 +1199,7 @@ export function PatientForm({
                 control={form.control}
                 name="nationality"
                 render={({ field }) => (
-                  <FormItem className="min-w-[160px] flex-1">
+                  <FormItem>
                     <FormLabel>Nationality</FormLabel>
                     <Popover open={nationalityOpen} onOpenChange={setNationalityOpen}>
                       <PopoverTrigger asChild>
@@ -1256,7 +1257,7 @@ export function PatientForm({
                 control={form.control}
                 name="is_person_with_disability"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md p-4 min-w-[120px] translate-y-7">
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 sm:mt-6">
                     <FormControl>
                       <Checkbox
                         checked={field.value}
@@ -1293,12 +1294,12 @@ export function PatientForm({
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Contact Information</h3>
 
-            <div className="flex flex-wrap gap-4 items-start">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               <FormField
                 control={form.control}
                 name="phone_number"
                 render={({ field }) => (
-                  <FormItem className="w-[200px]">
+                  <FormItem>
                     <FormLabel>Phone Number</FormLabel>
                     <FormControl>
                       <Input
@@ -1317,7 +1318,7 @@ export function PatientForm({
                 control={form.control}
                 name="email"
                 render={({ field }) => (
-                  <FormItem className="w-[140px]">
+                  <FormItem>
                     <FormLabel>Email (Optional)</FormLabel>
                     <FormControl>
                       <Input
@@ -1336,15 +1337,15 @@ export function PatientForm({
                 control={form.control}
                 name="address"
                 render={({ field }) => (
-                  <FormItem className="flex-grow min-w-[200px] resize-auto">
+                  <FormItem>
                     <FormLabel>Physical Address (Optional)</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="P.O BOX, Street, Nearest Landmark, School, etc."
                         {...field}
                         disabled={formLocked || isFormLoading}
-                        rows={1}
-                        className="min-h-[40px] resize-auto"
+                        rows={2}
+                        className="min-h-[60px] resize-y"
                       />
                     </FormControl>
                   </FormItem>
@@ -1361,12 +1362,12 @@ export function PatientForm({
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Location</h3>
 
-            <div className="flex flex-wrap gap-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               <FormField
                 control={form.control}
                 name="county"
                 render={({ field }) => (
-                  <FormItem className="min-w-[200px] flex-1">
+                  <FormItem>
                     <FormLabel>County *</FormLabel>
                     <FormControl>
                       <LocationCombobox
@@ -1393,7 +1394,7 @@ export function PatientForm({
                 control={form.control}
                 name="sub_county"
                 render={({ field }) => (
-                  <FormItem className="min-w-[200px] flex-1">
+                  <FormItem>
                     <FormLabel>Sub-County *</FormLabel>
                     <FormControl>
                       <LocationCombobox
@@ -1419,7 +1420,7 @@ export function PatientForm({
                 control={form.control}
                 name="ward"
                 render={({ field }) => (
-                  <FormItem className="min-w-[200px] flex-1">
+                  <FormItem>
                     <FormLabel>Ward (Optional)</FormLabel>
                     <FormControl>
                       <LocationCombobox
@@ -1486,7 +1487,7 @@ export function PatientForm({
                   control={form.control}
                   name="insurance_member_number"
                   render={({ field }) => (
-                    <FormItem className="max-w-[240px]">
+                    <FormItem>
                       <FormLabel>Member/Policy Number</FormLabel>
                       <FormControl>
                         <Input
@@ -1510,12 +1511,12 @@ export function PatientForm({
           <div className="space-y-4">
             <h3 className="text-lg font-medium">Emergency Contact</h3>
 
-            <div className="flex flex-wrap gap-6">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               <FormField
                 control={form.control}
                 name="emergency_contact_name"
                 render={({ field }) => (
-                  <FormItem className="min-w-[240px] flex-1">
+                  <FormItem>
                     <FormLabel>Contact Name</FormLabel>
                     <FormControl>
                       <Input
@@ -1532,7 +1533,7 @@ export function PatientForm({
                 control={form.control}
                 name="emergency_contact_phone"
                 render={({ field }) => (
-                  <FormItem className="min-w-[240px]">
+                  <FormItem>
                     <FormLabel>Contact Phone</FormLabel>
                     <FormControl>
                       <Input
@@ -1549,7 +1550,7 @@ export function PatientForm({
                 control={form.control}
                 name="emergency_contact_relationship"
                 render={({ field }) => (
-                  <FormItem className="min-w-[200px]">
+                  <FormItem>
                     <FormLabel>Relationship</FormLabel>
                     {!showCustomRelationship ? (
                       <Select
@@ -1740,13 +1741,13 @@ export function PatientForm({
           {/* ================================================================== */}
           {/* Actions */}
           {/* ================================================================== */}
-          <div className="flex gap-4 pt-4">
-            <Button type="submit" disabled={isFormLoading || formLocked}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-4 sm:justify-end pt-4">
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isFormLoading} className="order-2 sm:order-1">
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isFormLoading || formLocked} className="order-1 sm:order-2">
               {isFormLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditing ? 'Update Patient' : 'Register Patient'}
-            </Button>
-            <Button type="button" variant="outline" onClick={onCancel} disabled={isFormLoading}>
-              Cancel
             </Button>
           </div>
         </form>
@@ -1778,13 +1779,13 @@ export function PatientForm({
       <Dialog open={showShaDetailsDialog} onOpenChange={setShowShaDetailsDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <SHALogo size="md" />
-              SHA Coverage Details
-            </DialogTitle>
-            <DialogDescription>
-              Social Health Authority membership information
-            </DialogDescription>
+            <div className="flex items-center gap-2">
+              <DialogTitle className="flex items-center gap-2">
+                <SHALogo size="md" />
+                SHA Coverage Details
+              </DialogTitle>
+              <HelpPopover content="Social Health Authority membership information and coverage status." />
+            </div>
           </DialogHeader>
 
           {shaEligibility.details && (

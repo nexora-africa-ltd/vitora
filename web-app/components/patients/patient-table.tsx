@@ -1,19 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import axios from 'axios';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -120,33 +113,43 @@ export function PatientTable({
       {/* Loading state */}
       {isLoading ? (
         viewMode === 'list' ? (
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>MRN</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="hidden sm:table-cell">Age/Gender</TableHead>
-                  <TableHead className="hidden md:table-cell">Phone</TableHead>
-                  <TableHead className="hidden lg:table-cell">County</TableHead>
-                  <TableHead className="hidden sm:table-cell">Registered</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          <div className="space-y-3">
+            {/* Desktop skeleton table */}
+            <div className="hidden md:block animate-pulse">
+              <div className="rounded-md border">
+                <div className="h-12 border-b bg-muted/30" />
                 {[...Array(5)].map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-28" /></TableCell>
-                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
-                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-8 w-8" /></TableCell>
-                  </TableRow>
+                  <div key={i} className="h-16 border-b flex items-center px-4 gap-4">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-32 flex-1" />
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-8 w-8" />
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            </div>
+            {/* Mobile skeleton cards */}
+            <div className="md:hidden space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <Card key={i} className="p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2 flex-1">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                      <Skeleton className="h-8 w-8" />
+                    </div>
+                    <div className="flex gap-2">
+                      <Skeleton className="h-5 w-16" />
+                      <Skeleton className="h-5 w-12" />
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
           </div>
         ) : (
           <EntityGrid>
@@ -234,10 +237,6 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
           description: data.detail || 'This patient already has an active encounter with another clinician.',
           variant: 'destructive',
         });
-        // If there's an encounter_id, optionally navigate to view it
-        if (data.encounter_id) {
-          // Could add a "View Encounter" action here
-        }
       } else {
         toast({
           title: 'Error',
@@ -248,113 +247,223 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
     }
   };
 
+  const renderMobileCard = (patient: Patient) => (
+    <Card className="p-4 hover:bg-muted/50 transition-colors">
+      <div className="space-y-3">
+        {/* Header: Name + Sensitive badge */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="font-medium truncate">
+              {patient.first_name} {patient.last_name}
+            </p>
+            <p className="text-sm text-muted-foreground font-mono">
+              {patient.mrn}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {patient.is_sensitive && (
+              <Badge variant="destructive" className="text-xs shrink-0 w-fit">
+                Sensitive
+              </Badge>
+            )}
+            {!selectMode && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/patients/${patient.id}`);
+                  }}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Details
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/patients/${patient.id}/edit`);
+                  }}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => handleStartConsultation(e, patient.id)}
+                    disabled={quickConsult.isPending}
+                  >
+                    {quickConsult.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Stethoscope className="h-4 w-4 mr-2" />
+                    )}
+                    Start Consultation
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/encounters/new?patient=${patient.id}`);
+                  }}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    New Encounter
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        </div>
+
+        {/* Metadata row */}
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span>{calculateAge(patient.date_of_birth)} yrs</span>
+          <Badge className={`shrink-0 w-fit ${genderColors[patient.gender]}`}>
+            {genderLabels[patient.gender]}
+          </Badge>
+          {patient.phone_number && (
+            <>
+              <span className="text-muted-foreground/50">•</span>
+              <span className="flex items-center gap-1">
+                <Phone className="h-3 w-3" />
+                {patient.phone_number}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+
   return (
-    <div className="rounded-md border overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>MRN</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead className="hidden sm:table-cell">Age/Gender</TableHead>
-            <TableHead className="hidden md:table-cell">Phone</TableHead>
-            <TableHead className="hidden lg:table-cell">County</TableHead>
-            <TableHead className="hidden sm:table-cell">Registered</TableHead>
-            <TableHead className="w-[50px]"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {patients.map((patient) => (
-            <TableRow
-              key={patient.id}
-              className="cursor-pointer hover:bg-muted/50"
-              onClick={() => onRowClick(patient.id)}
-              data-testid={`patient-row-${patient.id}`}
-            >
-              <TableCell className="font-mono text-sm">
-                {patient.mrn}
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {patient.first_name} {patient.last_name}
-                  </span>
-                  {patient.is_sensitive && (
-                    <Badge variant="destructive" className="text-xs">
-                      Sensitive
-                    </Badge>
-                  )}
-                </div>
-              </TableCell>
-              <TableCell className="hidden sm:table-cell">
-                <div className="flex items-center gap-2">
-                  <span>{calculateAge(patient.date_of_birth)} yrs</span>
-                  <Badge className={genderColors[patient.gender]}>
-                    {genderLabels[patient.gender]}
-                  </Badge>
-                </div>
-              </TableCell>
-              <TableCell className="hidden md:table-cell">{patient.phone_number || '—'}</TableCell>
-              <TableCell className="hidden lg:table-cell">{patient.county_name || '—'}</TableCell>
-              <TableCell className="hidden sm:table-cell">{formatDate(patient.created_at)}</TableCell>
-              <TableCell>
-                {!selectMode && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/patients/${patient.id}`);
-                      }}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/patients/${patient.id}/edit`);
-                      }}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={(e) => handleStartConsultation(e, patient.id)}
-                        disabled={quickConsult.isPending}
-                      >
-                        {quickConsult.isPending ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Stethoscope className="h-4 w-4 mr-2" />
-                        )}
-                        Start Consultation
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={(e) => {
-                        e.stopPropagation();
-                        router.push(`/encounters/new?patient=${patient.id}`);
-                      }}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        New Encounter
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <ResponsiveTable
+      data={patients}
+      keyExtractor={(patient) => patient.id}
+      onRowClick={(patient) => onRowClick(patient.id)}
+      emptyMessage="No patients found"
+      mobileCard={renderMobileCard}
+      columns={[
+        {
+          key: 'mrn',
+          header: 'MRN',
+          cell: (patient) => (
+            <span className="font-mono text-sm">{patient.mrn}</span>
+          ),
+        },
+        {
+          key: 'name',
+          header: 'Name',
+          cell: (patient) => (
+            <div className="flex items-center gap-2">
+              <span className="font-medium">
+                {patient.first_name} {patient.last_name}
+              </span>
+              {patient.is_sensitive && (
+                <Badge variant="destructive" className="text-xs">
+                  Sensitive
+                </Badge>
+              )}
+            </div>
+          ),
+        },
+        {
+          key: 'age_gender',
+          header: 'Age/Gender',
+          hideOnMobile: true,
+          cell: (patient) => (
+            <div className="flex items-center gap-2">
+              <span>{calculateAge(patient.date_of_birth)} yrs</span>
+              <Badge className={genderColors[patient.gender]}>
+                {genderLabels[patient.gender]}
+              </Badge>
+            </div>
+          ),
+        },
+        {
+          key: 'phone_number',
+          header: 'Phone',
+          hideOnMobile: true,
+          cell: (patient) => patient.phone_number || '—',
+        },
+        {
+          key: 'county_name',
+          header: 'County',
+          hideOnMobile: true,
+          cell: (patient) => patient.county_name || '—',
+        },
+        {
+          key: 'created_at',
+          header: 'Registered',
+          hideOnMobile: true,
+          cell: (patient) => formatDate(patient.created_at),
+        },
+        {
+          key: 'actions',
+          header: '',
+          className: 'w-[50px]',
+          cell: (patient) => (
+            !selectMode ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/patients/${patient.id}`);
+                  }}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Details
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/patients/${patient.id}/edit`);
+                  }}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(e) => handleStartConsultation(e, patient.id)}
+                    disabled={quickConsult.isPending}
+                  >
+                    {quickConsult.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Stethoscope className="h-4 w-4 mr-2" />
+                    )}
+                    Start Consultation
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/encounters/new?patient=${patient.id}`);
+                  }}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    New Encounter
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null
+          ),
+        },
+      ]}
+    />
   );
 }
 

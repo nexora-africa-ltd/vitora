@@ -3,14 +3,16 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Stethoscope, User, Plus, UserPlus, ArrowRight, Clock, Activity, FileText } from 'lucide-react';
+import { CheckCircle2, Stethoscope, User, Plus, UserPlus, ArrowRight, Clock, Activity, FileText } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PatientForm } from '@/components/patients/patient-form';
 import { SHAVerificationModal } from '@/components/billing/sha';
+import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 import {
   Tooltip,
   TooltipContent,
@@ -137,17 +139,10 @@ export default function NewPatientPage() {
     return (
       <div className="container mx-auto py-6 space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/patients')}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Patient Registered</h1>
-            <p className="text-muted-foreground">
-              Registration completed successfully
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title="Patient Registered"
+          helpContent="Registration completed successfully. Choose your next step: check in to triage, start an encounter, or register another patient."
+        />
 
         {/* Success Card */}
         <Card className="border-green-200 dark:border-green-900">
@@ -158,9 +153,9 @@ export default function NewPatientPage() {
               </div>
               <div>
                 <CardTitle className="text-green-600">Registration Successful</CardTitle>
-                <CardDescription>
+                <p className="text-sm text-muted-foreground">
                   Patient has been registered in the system
-                </CardDescription>
+                </p>
               </div>
             </div>
           </CardHeader>
@@ -186,7 +181,28 @@ export default function NewPatientPage() {
             {/* Patient Flow Indicator */}
             <div className="rounded-lg border p-4">
               <p className="text-sm font-medium mb-3">Recommended Patient Flow</p>
-              <div className="flex items-center justify-between">
+              {/* Mobile: simplified view showing current + next step */}
+              <div className="flex sm:hidden items-center justify-center gap-3">
+                <div className="flex flex-col items-center text-center">
+                  <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-1">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  </div>
+                  <span className="text-xs font-medium">Registered</span>
+                  <Badge variant="default" className="mt-1 text-[10px]">Done</Badge>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                <div className="flex flex-col items-center text-center">
+                  <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center mb-1">
+                    <Clock className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <span className="text-xs font-medium">Triage</span>
+                  <Badge variant="outline" className="mt-1 text-[10px]">Next</Badge>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground/50" />
+                <span className="text-xs text-muted-foreground">+2 more</span>
+              </div>
+              {/* Desktop: full flow */}
+              <div className="hidden sm:flex items-center justify-between">
                 <div className="flex flex-col items-center text-center">
                   <div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-1">
                     <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -221,7 +237,7 @@ export default function NewPatientPage() {
 
             {/* Action buttons */}
             <TooltipProvider delayDuration={200}>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -231,8 +247,15 @@ export default function NewPatientPage() {
                       disabled={isCheckingIn}
                       title="Adds the patient to the triage waiting queue so vitals/triage can begin."
                     >
-                      <UserPlus className="mr-2 h-5 w-5" />
-                      {isCheckingIn ? 'Checking In...' : 'Check In to Triage Queue'}
+                      <UserPlus className="h-5 w-5 sm:mr-2" />
+                      <span className="ml-2 sm:ml-0">
+                        {isCheckingIn ? 'Checking In...' : (
+                          <>
+                            <span className="sm:hidden">Check In</span>
+                            <span className="hidden sm:inline">Check In to Triage Queue</span>
+                          </>
+                        )}
+                      </span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -250,8 +273,11 @@ export default function NewPatientPage() {
                       title="Skip the triage queue and start clinical documentation now."
                     >
                       <Link href={`/encounters/new?patient=${registeredPatient.id}`}>
-                        <Stethoscope className="mr-2 h-5 w-5" />
-                        Start Encounter Directly
+                        <Stethoscope className="h-5 w-5 sm:mr-2" />
+                        <span className="ml-2 sm:ml-0">
+                          <span className="sm:hidden">Start Encounter</span>
+                          <span className="hidden sm:inline">Start Encounter Directly</span>
+                        </span>
                       </Link>
                     </Button>
                   </TooltipTrigger>
@@ -262,11 +288,14 @@ export default function NewPatientPage() {
               </div>
             </TooltipProvider>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3">
               <Link href={`/patients/${registeredPatient.id}`}>
                 <Button variant="outline" className="w-full" size="lg">
-                  <User className="mr-2 h-5 w-5" />
-                  View Profile
+                  <User className="h-5 w-5 sm:mr-2" />
+                  <span className="ml-2 sm:ml-0">
+                    <span className="sm:hidden">Profile</span>
+                    <span className="hidden sm:inline">View Profile</span>
+                  </span>
                 </Button>
               </Link>
 
@@ -279,13 +308,17 @@ export default function NewPatientPage() {
                   setCrClient(null);
                 }}
               >
-                <Plus className="mr-2 h-5 w-5" />
-                Register Another
+                <Plus className="h-5 w-5 sm:mr-2" />
+                <span className="ml-2 sm:ml-0">
+                  <span className="sm:hidden">Add New</span>
+                  <span className="hidden sm:inline">Register Another</span>
+                </span>
               </Button>
 
-              <Link href="/patients">
-                <Button variant="ghost" className="w-full" size="lg">
-                  Back to Patients
+              <Link href="/patients" className="col-span-2 sm:col-span-1">
+                <Button variant="secondary" className="w-full" size="lg">
+                  <span className="sm:hidden">Back</span>
+                  <span className="hidden sm:inline">Back to Patients</span>
                 </Button>
               </Link>
             </div>
@@ -298,30 +331,27 @@ export default function NewPatientPage() {
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Register New Patient</h1>
-          <p className="text-muted-foreground">
-            Enter patient information to create a new record
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Register New Patient"
+        helpContent="Enter patient information to create a new record. Verify patient in Kenya Digital Health services before registration for faster processing."
+      />
 
       {/* Kenya Digital Health Verification */}
       <Card className="border-muted">
-        <CardContent className="py-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+        <CardContent className="py-3 sm:py-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             {/* Left side - info */}
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                <KenyaCoatOfArms size={24} />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                <KenyaCoatOfArms size={20} className="sm:hidden" />
+                <KenyaCoatOfArms size={24} className="hidden sm:block" />
               </div>
-              <div>
-                <p className="font-medium">Kenya Digital Health Services</p>
-                <p className="text-sm text-muted-foreground">
+              <div className="min-w-0">
+                <p className="text-sm sm:text-base font-medium truncate">
+                  <span className="sm:hidden">Digital Health</span>
+                  <span className="hidden sm:inline">Kenya Digital Health Services</span>
+                </p>
+                <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
                   Verify patient information before registration
                 </p>
               </div>
@@ -331,9 +361,10 @@ export default function NewPatientPage() {
             <div className="flex items-center gap-2">
               <SHAVerificationModal
                 trigger={
-                  <Button variant="outline" size="sm">
-                    <User className="h-4 w-4 mr-2" />
-                    Client Registry
+                  <Button variant="outline" size="sm" className="flex-1 sm:flex-none h-8 text-xs sm:text-sm">
+                    <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Client Registry</span>
+                    <span className="sm:hidden ml-1">CR</span>
                   </Button>
                 }
                 defaultTab="cr"
@@ -342,9 +373,10 @@ export default function NewPatientPage() {
               />
               <SHAVerificationModal
                 trigger={
-                  <Button variant="outline" size="sm">
-                    <SHALogo size="sm" className="mr-2" />
-                    SHA Eligibility
+                  <Button variant="outline" size="sm" className="flex-1 sm:flex-none h-8 text-xs sm:text-sm">
+                    <SHALogo size="sm" className="sm:mr-2" />
+                    <span className="hidden sm:inline">SHA Eligibility</span>
+                    <span className="sm:hidden ml-1">SHA</span>
                   </Button>
                 }
                 defaultTab="eligibility"
@@ -356,50 +388,52 @@ export default function NewPatientPage() {
 
           {/* Verification results - only show if we have data */}
           {(eligibility || crClient) && (
-            <div className="mt-4 pt-4 border-t space-y-3">
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t space-y-2 sm:space-y-3">
               {eligibility && (
-                <div className={`p-3 rounded-md ${
+                <div className={`p-2 sm:p-3 rounded-md ${
                   eligibility.is_eligible
                     ? 'bg-success/10 border border-success/30'
                     : 'bg-warning/10 border border-warning/30'
                 }`}>
-                  <div className={`flex items-center gap-2 text-sm ${
+                  <div className={`flex items-start gap-1.5 sm:gap-2 text-[11px] sm:text-sm ${
                     eligibility.is_eligible ? 'text-success' : 'text-warning-foreground'
                   }`}>
                     {eligibility.is_eligible ? (
                       <>
-                        <CheckCircle2 className="h-4 w-4" />
-                        <span className="flex-1">
-                          <strong>SHA Eligible</strong>
-                          {eligibility.copay_percentage === 0 ? ' • Full coverage' : ` • ${eligibility.copay_percentage}% copay`}
-                        </span>
+                        <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-xs sm:text-sm">SHA Eligible</p>
+                          <p className="text-[10px] sm:text-xs mt-0.5 opacity-90">
+                            {eligibility.copay_percentage === 0 ? 'Full coverage' : `${eligibility.copay_percentage}% copay`}
+                          </p>
+                        </div>
                       </>
                     ) : (
                       <>
-                        <SHALogo size="sm" />
-                        <span className="flex-1">
-                          <strong>Not SHA Eligible</strong>
-                        </span>
+                        <SHALogo size="sm" className="shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-xs sm:text-sm">Not SHA Eligible</p>
+                        </div>
                       </>
                     )}
                   </div>
 
                   {/* Additional details for ineligible patients */}
                   {!eligibility.is_eligible && (
-                    <div className="mt-2 text-sm space-y-1">
+                    <div className="mt-1.5 sm:mt-2 space-y-0.5 sm:space-y-1 text-[10px] sm:text-xs ml-5 sm:ml-6">
                       {eligibility.sha_number && (
-                        <p className="text-muted-foreground">
-                          <span className="font-medium">SHA Number:</span> {eligibility.sha_number}
+                        <p className="text-muted-foreground break-all">
+                          <span className="font-medium">SHA:</span> {eligibility.sha_number}
                         </p>
                       )}
                       {eligibility.reason && (
                         <p className="text-warning-foreground">
-                          <span className="font-medium">Reason:</span> {eligibility.reason}
+                          {eligibility.reason}
                         </p>
                       )}
                       {eligibility.possible_solution && (
                         <p className="text-blue-600 dark:text-blue-400">
-                          <span className="font-medium">Solution:</span> {eligibility.possible_solution}
+                          💡 {eligibility.possible_solution}
                         </p>
                       )}
                     </div>
@@ -408,11 +442,16 @@ export default function NewPatientPage() {
               )}
 
               {crClient && (
-                <div className="p-2 rounded-md bg-primary/10 text-primary flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4" />
-                  <span className="flex-1">
-                    <strong>CR Verified:</strong> {crClient.first_name} {crClient.last_name} • {crClient.client_number}
-                  </span>
+                <div className="p-2 rounded-md bg-primary/10 text-primary text-[11px] sm:text-sm">
+                  <div className="flex items-start gap-1.5 sm:gap-2">
+                    <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-xs sm:text-sm">CR Verified</p>
+                      <p className="text-[10px] sm:text-xs opacity-90 truncate">
+                        {crClient.first_name} {crClient.last_name} • {crClient.client_number}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -423,13 +462,15 @@ export default function NewPatientPage() {
       {/* Form Card */}
       <Card>
         <CardHeader>
-          <CardTitle>Patient Information</CardTitle>
-          <CardDescription>
-            {crClient
-              ? 'Form pre-populated from SHA Client Registry. Review and update if needed.'
-              : 'Fields marked with * are required. Patient data is encrypted and stored securely.'
-            }
-          </CardDescription>
+          <div className="flex items-center gap-2">
+            <CardTitle>Patient Information</CardTitle>
+            <HelpPopover
+              content={crClient
+                ? 'Form pre-populated from SHA Client Registry. Review and update if needed.'
+                : 'Fields marked with * are required. Patient data is encrypted and stored securely.'
+              }
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <PatientForm
