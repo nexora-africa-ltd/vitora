@@ -64,11 +64,58 @@ function parseFlexibleDate(input: string): Date | null {
   return null;
 }
 
+/**
+ * Format input as the user types to auto-insert date separators
+ * For format "dd/MM/yyyy":
+ * - After 2 digits, insert /
+ * - After 5 chars (dd/MM), insert /
+ */
+function formatDateInput(value: string, format: string): string {
+  // Remove all non-digit characters
+  const digits = value.replace(/\D/g, "");
+  
+  // Determine separator from format (/ or -)
+  const separator = format.includes("/") ? "/" : "-";
+  
+  // Format based on the expected format pattern
+  if (format.startsWith("dd") || format.startsWith("MM")) {
+    // dd/MM/yyyy or MM/dd/yyyy format
+    let formatted = "";
+    for (let i = 0; i < digits.length && i < 8; i++) {
+      if (i === 2 || i === 4) {
+        formatted += separator;
+      }
+      formatted += digits[i];
+    }
+    return formatted;
+  } else if (format.startsWith("yyyy")) {
+    // yyyy-MM-dd format
+    let formatted = "";
+    for (let i = 0; i < digits.length && i < 8; i++) {
+      if (i === 4 || i === 6) {
+        formatted += separator;
+      }
+      formatted += digits[i];
+    }
+    return formatted;
+  }
+  
+  // Fallback: just return digits with dd/MM/yyyy format
+  let formatted = "";
+  for (let i = 0; i < digits.length && i < 8; i++) {
+    if (i === 2 || i === 4) {
+      formatted += separator;
+    }
+    formatted += digits[i];
+  }
+  return formatted;
+}
+
 export function DatePicker({
   value,
   onChange,
   disabled,
-  placeholder = "Select",
+  placeholder,
   className,
   error,
   allowFuture = false,
@@ -78,6 +125,8 @@ export function DatePicker({
   allowInput = true,
   inputFormat = "dd/MM/yyyy",
 }: DatePickerProps) {
+  // Default placeholder shows the expected format (e.g., "DD/MM/YYYY")
+  const displayPlaceholder = placeholder ?? inputFormat.toUpperCase();
   const [open, setOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState("");
   const [inputError, setInputError] = React.useState(false);
@@ -119,11 +168,14 @@ export function DatePicker({
 
   const handleInputChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
-    setInputValue(newValue);
+    
+    // Auto-format the input as user types
+    const formatted = formatDateInput(newValue, inputFormat);
+    setInputValue(formatted);
 
     // Reset error state while typing
     setInputError(false);
-  }, []);
+  }, [inputFormat]);
 
   const handleInputBlur = React.useCallback(() => {
     if (!inputValue.trim()) {
@@ -215,7 +267,7 @@ export function DatePicker({
           >
             <span className="flex items-center gap-2 truncate">
               <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-              {value ? format(value, "PPP") : placeholder}
+              {value ? format(value, "PPP") : displayPlaceholder}
             </span>
 
             <ChevronDownIcon
@@ -259,7 +311,7 @@ export function DatePicker({
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
           disabled={disabled}
-          placeholder={placeholder || inputFormat.toLowerCase()}
+          placeholder={displayPlaceholder}
           aria-invalid={error || inputError}
           className={cn(
             "h-10 pr-16",

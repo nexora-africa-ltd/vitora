@@ -2207,15 +2207,49 @@ export function PatientForm({
           {/* ================================================================== */}
           {/* Actions */}
           {/* ================================================================== */}
-          <div className="flex flex-col gap-2 sm:flex-row sm:gap-4 sm:justify-end pt-4">
-            <Button type="button" variant="outline" onClick={onCancel} disabled={isFormLoading} className="order-2 sm:order-1">
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isFormLoading || formLocked} className="order-1 sm:order-2">
-              {isFormLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEditing ? 'Update Patient' : 'Register Patient'}
-            </Button>
-          </div>
+          {(() => {
+            const hasExactMatch =
+              !duplicateAcknowledged &&
+              duplicateCheckResult?.has_duplicate &&
+              duplicateCheckResult.matches.some((m) => m.match_confidence === 100);
+            const isSubmitDisabled = isFormLoading || formLocked || hasExactMatch;
+
+            const submitButton = (
+              <Button
+                type="submit"
+                disabled={isSubmitDisabled}
+                className="order-1 sm:order-2"
+              >
+                {isFormLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isEditing ? 'Update Patient' : 'Register Patient'}
+              </Button>
+            );
+
+            return (
+              <div className="flex flex-col gap-2 sm:flex-row sm:gap-4 sm:justify-end pt-4">
+                <Button type="button" variant="outline" onClick={onCancel} disabled={isFormLoading} className="order-2 sm:order-1">
+                  Cancel
+                </Button>
+                {hasExactMatch ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        {/* Wrap in span so tooltip works on disabled button */}
+                        <span tabIndex={0} className="order-1 sm:order-2">
+                          {submitButton}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <p>Patient already exists with 100% match. Use the existing record instead.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  submitButton
+                )}
+              </div>
+            );
+          })()}
         </form>
       </Form>
 
