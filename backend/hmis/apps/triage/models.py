@@ -424,15 +424,29 @@ class TriageAssessment(models.Model):
     )
 
     # Routing
+    # Option 1: Emergency area (ER zones - no clinic association)
     assigned_area = models.CharField(
-        max_length=30, choices=ASSIGNED_AREA_CHOICES, help_text="Care area assignment"
+        max_length=30,
+        choices=ASSIGNED_AREA_CHOICES,
+        blank=True,
+        default="",
+        help_text="Emergency care area assignment (ER zones). Use for emergency cases.",
+    )
+    # Option 2: Clinic assignment (for OPD/specialty clinics)
+    assigned_clinic = models.ForeignKey(
+        "clinics.Clinic",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="triage_assignments",
+        help_text="Target clinic for routing. Mutually exclusive with assigned_area.",
     )
     assigned_clinician = models.ForeignKey(
         "auth.User",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="triage_assignments",
+        related_name="triage_clinician_assignments",
         help_text="Clinician assigned to this patient",
     )
 
@@ -470,8 +484,38 @@ class TriageAssessment(models.Model):
             ("override_triage_category", "Can override triage category"),
         ]
 
+    def clean(self):
+        """
+        Validate that either assigned_area OR assigned_clinic is provided, not both.
+        Emergency areas (ER zones) use assigned_area.
+        OPD/specialty routing uses assigned_clinic.
+        """
+        from django.core.exceptions import ValidationError
+
+        has_area = bool(self.assigned_area)
+        has_clinic = self.assigned_clinic_id is not None
+
+        if not has_area and not has_clinic:
+            raise ValidationError(
+                "Either 'assigned_area' (for ER zones) or 'assigned_clinic' (for clinics) must be provided."
+            )
+
+        if has_area and has_clinic:
+            raise ValidationError(
+                "Cannot set both 'assigned_area' and 'assigned_clinic'. Choose one routing option."
+            )
+
     def __str__(self) -> str:
         return f"Triage {self.triage_category} - {self.encounter.patient} - {self.arrival_time}"
+
+    @property
+    def routing_destination(self) -> str:
+        """Get human-readable routing destination."""
+        if self.assigned_clinic:
+            return self.assigned_clinic.name
+        if self.assigned_area:
+            return dict(self.ASSIGNED_AREA_CHOICES).get(self.assigned_area, self.assigned_area)
+        return "Not assigned"
 
     @property
     def category_priority(self) -> int:

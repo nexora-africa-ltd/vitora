@@ -52,6 +52,7 @@ export const AssignedAreaSchema = z.enum([
   'PEDIATRIC_ER',
   'MATERNITY',
   'SPECIALTY',
+  '', // Empty when clinic is assigned instead
 ]);
 
 export const QueueStatusSchema = z.enum([
@@ -149,7 +150,12 @@ export const TriageAssessmentSchema = z.object({
   triage_category: TriageCategorySchema,
   auto_calculated_category: TriageCategorySchema,
   category_override_reason: z.string().nullable(),
-  assigned_area: AssignedAreaSchema,
+
+  // Routing - either assigned_area OR assigned_clinic
+  assigned_area: AssignedAreaSchema.optional().default(''),
+  assigned_clinic: z.number().nullish().default(null),
+  assigned_clinic_name: z.string().nullish().default(null),
+  routing_destination: z.string().nullish().default('Not assigned'),
   assigned_clinician: z.number().nullable(),
   assigned_clinician_name: z.string().optional().nullable(),
 
@@ -190,6 +196,9 @@ export const TriageQueueEntrySchema = z.object({
   assigned_area: AssignedAreaSchema,
   assigned_area_label: z.string(),
   assigned_area_display: z.string(),
+  assigned_clinic: z.number().optional().nullable(),
+  assigned_clinic_name: z.string().optional().nullable(),
+  routing_destination: z.string().optional().nullable(),
   arrival_time: z.string(),
   triage_time: z.string(),
   notes: z.string().optional().nullable(),

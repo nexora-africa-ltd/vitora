@@ -249,6 +249,10 @@ export const CHIEF_COMPLAINT_CONFIG: Record<ChiefComplaintCategory, { label: str
 // ASSIGNED CARE AREAS
 // =============================================================================
 
+/**
+ * Emergency care areas (ER zones) - use for emergencies.
+ * For clinic routing, use assigned_clinic instead.
+ */
 export type AssignedArea =
   | 'ER_RESUS'
   | 'ER_ACUTE'
@@ -258,19 +262,37 @@ export type AssignedArea =
   | 'TRAUMA'
   | 'PEDIATRIC_ER'
   | 'MATERNITY'
-  | 'SPECIALTY';
+  | 'SPECIALTY'
+  | ''; // Empty string when clinic is assigned
 
-export const ASSIGNED_AREA_CONFIG: Record<AssignedArea, { label: string }> = {
-  ER_RESUS: { label: 'ER - Resuscitation' },
-  ER_ACUTE: { label: 'ER - Acute Care' },
-  ER_FAST_TRACK: { label: 'ER - Fast Track' },
-  OBSERVATION: { label: 'Observation Unit' },
-  OPD: { label: 'OPD' },
-  TRAUMA: { label: 'Trauma Bay' },
-  PEDIATRIC_ER: { label: 'Pediatric ER' },
-  MATERNITY: { label: 'Maternity/Labor' },
-  SPECIALTY: { label: 'Specialty Clinic' },
+/**
+ * Emergency area labels (for ER zone routing).
+ * Note: OPD and SPECIALTY are deprecated in favor of clinic routing.
+ */
+export const ASSIGNED_AREA_CONFIG: Record<Exclude<AssignedArea, ''>, { label: string; isEmergency?: boolean }> = {
+  ER_RESUS: { label: 'ER - Resuscitation', isEmergency: true },
+  ER_ACUTE: { label: 'ER - Acute Care', isEmergency: true },
+  ER_FAST_TRACK: { label: 'ER - Fast Track', isEmergency: true },
+  OBSERVATION: { label: 'Observation Unit', isEmergency: true },
+  OPD: { label: 'OPD (use clinic routing instead)' },
+  TRAUMA: { label: 'Trauma Bay', isEmergency: true },
+  PEDIATRIC_ER: { label: 'Pediatric ER', isEmergency: true },
+  MATERNITY: { label: 'Maternity/Labor', isEmergency: true },
+  SPECIALTY: { label: 'Specialty (use clinic routing instead)' },
 };
+
+/**
+ * Emergency-only areas for quick selection in triage form.
+ */
+export const EMERGENCY_AREA_OPTIONS = [
+  { value: 'ER_RESUS', label: 'ER - Resuscitation (RED)', category: 'RED' },
+  { value: 'ER_ACUTE', label: 'ER - Acute Care (ORANGE)', category: 'ORANGE' },
+  { value: 'TRAUMA', label: 'Trauma Bay (RED)', category: 'RED' },
+  { value: 'ER_FAST_TRACK', label: 'ER - Fast Track (GREEN/BLUE)', category: 'GREEN' },
+  { value: 'OBSERVATION', label: 'Observation Unit', category: 'YELLOW' },
+  { value: 'PEDIATRIC_ER', label: 'Pediatric ER', category: 'ORANGE' },
+  { value: 'MATERNITY', label: 'Maternity/Labor', category: 'ORANGE' },
+] as const;
 
 // =============================================================================
 // QUEUE STATUS
@@ -366,7 +388,12 @@ export interface TriageAssessment {
   triage_category: TriageCategory;
   auto_calculated_category: TriageCategory;
   category_override_reason: string | null;
+
+  // Routing - either assigned_area (ER zones) OR assigned_clinic (clinics)
   assigned_area: AssignedArea;
+  assigned_clinic?: number | null;
+  assigned_clinic_name?: string | null;
+  routing_destination?: string | null; // Human-readable destination
   assigned_clinician: number | null;
   assigned_clinician_name?: string | null;
 
@@ -408,7 +435,10 @@ export interface TriageAssessmentCreateData {
   triage_category: TriageCategory;
   auto_calculated_category?: TriageCategory;
   category_override_reason?: string;
-  assigned_area: AssignedArea;
+
+  // Routing - provide EITHER assigned_area (ER) OR assigned_clinic (clinic), not both
+  assigned_area?: AssignedArea;
+  assigned_clinic?: number | null;
   assigned_clinician?: number | null;
 }
 
@@ -430,6 +460,9 @@ export interface TriageQueueEntry {
   assigned_area: AssignedArea;
   assigned_area_label: string;
   assigned_area_display: string;
+  assigned_clinic?: number | null;
+  assigned_clinic_name?: string | null;
+  routing_destination?: string | null;
   arrival_time: string;
   triage_time: string;
   wait_time_minutes: number;
@@ -468,6 +501,9 @@ export interface TriageQueueItem {
   chief_complaint: string;
   assigned_area: AssignedArea;
   assigned_area_display: string;
+  assigned_clinic: number | null;
+  assigned_clinic_name: string | null;
+  routing_destination: string;
   status: QueueStatus;
   arrival_time: string;
   triage_time: string;
