@@ -154,13 +154,13 @@ export const TemplateContentSchema = z.object({
   sections: z.array(TemplateContentSectionSchema),
 });
 
-export const ClinicalTemplateSchema = z.object({
+// List schema - returned by list endpoints (no content/sections)
+export const ClinicalTemplateListSchema = z.object({
   id: z.number(),
   name: z.string(),
   template_type: TemplateTypeSchema,
   specialty: z.string(),
   description: z.string(),
-  content: TemplateContentSchema,
   is_system: z.boolean(),
   is_active: z.boolean(),
   usage_count: z.number(),
@@ -168,9 +168,27 @@ export const ClinicalTemplateSchema = z.object({
   created_by_username: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
-  sections: z.array(TemplateSectionSchema),
 });
 
+// Detail schema - returned by retrieve endpoints (includes content/sections)
+export const ClinicalTemplateSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  template_type: TemplateTypeSchema,
+  specialty: z.string(),
+  description: z.string(),
+  content: TemplateContentSchema.optional(),
+  is_system: z.boolean(),
+  is_active: z.boolean(),
+  usage_count: z.number(),
+  created_by: z.number().nullable(),
+  created_by_username: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  sections: z.array(TemplateSectionSchema).optional(),
+});
+
+export type ClinicalTemplateListSchemaType = z.infer<typeof ClinicalTemplateListSchema>;
 export type ClinicalTemplateSchemaType = z.infer<typeof ClinicalTemplateSchema>;
 
 // =============================================================================
@@ -195,7 +213,7 @@ export const PaginatedClinicalTemplateSchema = z.object({
   count: z.number(),
   next: z.string().nullable(),
   previous: z.string().nullable(),
-  results: z.array(ClinicalTemplateSchema),
+  results: z.array(ClinicalTemplateListSchema),
 });
 
 // =============================================================================

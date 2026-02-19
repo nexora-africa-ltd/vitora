@@ -683,7 +683,7 @@ class TriageAssessment(models.Model):
             ClinicVisit: The created clinic visit
 
         Raises:
-            ValueError: If clinic is not active
+            ValueError: If clinic is not active or patient already in queue
         """
         from datetime import date
 
@@ -699,6 +699,18 @@ class TriageAssessment(models.Model):
             session_date=date.today(),
             defaults={"status": "OPEN"},
         )
+
+        # Check if patient is already in this session's queue (not completed/cancelled)
+        existing_visit = ClinicVisit.objects.filter(
+            session=session,
+            patient=self.encounter.patient,
+            status__in=["REGISTERED", "WAITING", "CALLED", "IN_CONSULTATION"],
+        ).first()
+
+        if existing_visit:
+            raise ValueError(
+                f"Patient is already in {clinic.name} queue (Queue #{existing_visit.queue_number})"
+            )
 
         # Create clinic visit
         visit = ClinicVisit.objects.create(

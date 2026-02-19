@@ -38,8 +38,11 @@ export const ClinicVisitStatusSchema = z.enum([
   'REGISTERED', 'WAITING', 'CALLED', 'IN_CONSULTATION', 'COMPLETED', 'REFERRED', 'NO_SHOW', 'CANCELLED',
 ]);
 
+// Priority can be either clinical priorities OR triage category colors
 export const ClinicVisitPrioritySchema = z.enum([
   'EMERGENCY', 'URGENT', 'PRIORITY', 'STANDARD', 'NON_URGENT',
+  // Triage category colors (when patient comes from triage)
+  'RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE',
 ]);
 
 export const ClinicVisitTypeSchema = z.enum([

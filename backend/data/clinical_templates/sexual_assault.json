@@ -165,7 +165,7 @@
                 "name": "Follow-up Plan",
                 "order": 12,
                 "fields": [
-                    {"name": "follow_up_date", "type": "date", "required": true, "label": "Follow-up Appointment Date"},
+                    {"name": "follow_up_date", "type": "date", "allow_future": true, "required": true, "label": "Follow-up Appointment Date"},
                     {"name": "follow_up_instructions", "type": "textarea", "required": true, "label": "Instructions Given to Survivor"},
                     {"name": "hiv_retest_date", "type": "date", "required": false, "label": "HIV Re-test Date (6 weeks, 3 months)"},
                     {"name": "pep_completion_date", "type": "date", "required": false, "label": "PEP Completion Date (28 days)"},

@@ -111,7 +111,7 @@
                     {"name": "p3_form_completed", "type": "boolean", "required": false, "label": "P3 Form Completed"},
                     {"name": "legal_referral", "type": "boolean", "required": false, "label": "Referred for Legal Services"},
                     {"name": "social_services_referral", "type": "boolean", "required": false, "label": "Social Services Referral"},
-                    {"name": "follow_up_date", "type": "date", "required": true, "label": "Follow-up Appointment Date"},
+                    {"name": "follow_up_date", "type": "date", "allow_future": true, "required": true, "label": "Follow-up Appointment Date"},
                     {"name": "follow_up_plan", "type": "textarea", "required": false, "label": "Follow-up Plan"},
                     {"name": "consent_for_referrals", "type": "boolean", "required": true, "label": "Consent for External Referrals Obtained"},
                     {"name": "additional_notes", "type": "textarea", "required": false, "label": "Additional Notes"}

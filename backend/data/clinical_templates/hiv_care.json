@@ -77,7 +77,7 @@
                 "fields": [
                     {"name": "art_refill_months", "type": "select", "options": ["1 month", "2 months", "3 months", "6 months"], "required": false, "label": "ART Refill Duration"},
                     {"name": "investigations_ordered", "type": "multiselect", "options": ["Viral Load", "CD4", "CBC", "LFT", "RFT", "Lipid Profile", "Chest X-ray", "GeneXpert"], "required": false, "label": "Investigations Ordered"},
-                    {"name": "next_appointment", "type": "date", "required": false, "label": "Next Appointment"},
+                    {"name": "next_appointment", "type": "date", "required": false, "label": "Next Appointment", "allow_future": true},
                     {"name": "referrals", "type": "text", "required": false, "label": "Referrals"}
                 ]
             }
