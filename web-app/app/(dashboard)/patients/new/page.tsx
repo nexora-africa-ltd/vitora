@@ -16,6 +16,7 @@ import { useCreatePatient } from '@/lib/hooks/use-patients';
 import { useRegisterInCR } from '@/lib/hooks/use-sha';
 import { useToast } from '@/lib/hooks/use-toast';
 import { getOrCreateIdempotencyKey, clearIdempotencyKey } from '@/lib/utils/idempotency';
+import { getApiErrorMessage } from '@/lib/api/client';
 import type { PatientCreateData, Patient } from '@/lib/types/patient';
 import type { ClientRegistryClient, DirectEligibilityCheckResponse } from '@/lib/types/sha';
 
@@ -88,7 +89,7 @@ export default function NewPatientPage() {
       // On error, idempotency key persists for retry
       toast({
         title: 'Registration failed',
-        description: error instanceof Error ? error.message : 'Failed to register patient',
+        description: getApiErrorMessage(error),
         variant: 'destructive',
       });
     }
