@@ -284,9 +284,13 @@ export function useCreateTriageAssessment() {
     mutationFn: async (data: TriageAssessmentCreateData) => {
       return triageApi.createAssessment(data);
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: triageKeys.queue() });
       queryClient.invalidateQueries({ queryKey: triageKeys.assessments() });
+      // Invalidate the encounter query so vitals copied from triage are reflected
+      // when the encounter page is loaded
+      queryClient.invalidateQueries({ queryKey: ['encounters', variables.encounter] });
+      queryClient.invalidateQueries({ queryKey: ['encounters'] });
     },
   });
 }
@@ -305,6 +309,10 @@ export function useUpdateTriageAssessment() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: triageKeys.assessment(data.id) });
       queryClient.invalidateQueries({ queryKey: triageKeys.queue() });
+      // Invalidate the encounter query so updated vitals/triage data is reflected
+      if (data.encounter) {
+        queryClient.invalidateQueries({ queryKey: ['encounters', data.encounter] });
+      }
     },
   });
 }
@@ -323,6 +331,11 @@ export function useCompleteTriageAssessment() {
       queryClient.invalidateQueries({ queryKey: triageKeys.assessment(data.id) });
       queryClient.invalidateQueries({ queryKey: triageKeys.assessments() });
       queryClient.invalidateQueries({ queryKey: triageKeys.queue() });
+      // Invalidate the encounter query so the updated triage_status is reflected
+      if (data.encounter) {
+        queryClient.invalidateQueries({ queryKey: ['encounters', data.encounter] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['encounters'] });
     },
   });
 }
