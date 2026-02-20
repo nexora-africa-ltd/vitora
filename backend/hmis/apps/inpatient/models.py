@@ -1190,10 +1190,36 @@ class WardRound(TimeStampedModel):
         ("CRITICAL", "Critical"),
     ]
 
+    REVIEW_TYPE_CHOICES = [
+        ("WARD_ROUND", "Scheduled Ward Round"),
+        ("URGENT_REVIEW", "Urgent Review"),
+        ("CONSULTANT_REVIEW", "Consultant Review"),
+        ("TRANSFER_REVIEW", "Transfer Assessment"),
+        ("PRE_DISCHARGE", "Pre-Discharge Assessment"),
+    ]
+
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name="ward_rounds")
     round_date = models.DateField()
     round_time = models.TimeField()
     conducted_by = models.ForeignKey(User, on_delete=models.PROTECT)
+
+    # Review type - differentiates scheduled rounds from urgent/consultant reviews
+    review_type = models.CharField(
+        max_length=20,
+        choices=REVIEW_TYPE_CHOICES,
+        default="WARD_ROUND",
+        help_text="Type of review being conducted",
+    )
+
+    # Link to review request (if this fulfills a pending request)
+    review_request = models.ForeignKey(
+        "ReviewRequest",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ward_rounds",
+        help_text="Review request this ward round fulfills (if applicable)",
+    )
 
     # SOAP notes
     subjective = models.TextField(help_text="Patient complaints, symptoms")
@@ -1209,7 +1235,6 @@ class WardRound(TimeStampedModel):
     consultant_specialty = models.CharField(max_length=100, blank=True)
 
     class Meta(TimeStampedModel.Meta):
-        unique_together = ["admission", "round_date", "conducted_by"]
         ordering = ["-round_date", "-round_time"]
         verbose_name = "Ward Round"
         verbose_name_plural = "Ward Rounds"
@@ -1226,6 +1251,165 @@ class WardRound(TimeStampedModel):
 
         if self.round_date and self.round_date > date.today():
             raise ValidationError({"round_date": "Round date cannot be in the future"})
+
+
+class ReviewRequest(TimeStampedModel):
+    """
+    Request for patient review (urgent, consultant, or scheduled).
+
+    Tracks pending review requests that need attention. When fulfilled,
+    links to the WardRound that addresses the request.
+    """
+
+    URGENCY_CHOICES = [
+        ("ROUTINE", "Routine"),
+        ("URGENT", "Urgent"),
+        ("STAT", "STAT (Immediate)"),
+    ]
+
+    REVIEW_TYPE_CHOICES = [
+        ("URGENT_REVIEW", "Urgent Review"),
+        ("CONSULTANT_REVIEW", "Consultant Review"),
+        ("TRANSFER_REVIEW", "Transfer Assessment"),
+        ("PRE_DISCHARGE", "Pre-Discharge Assessment"),
+    ]
+
+    STATUS_CHOICES = [
+        ("PENDING", "Pending"),
+        ("IN_PROGRESS", "In Progress"),
+        ("COMPLETED", "Completed"),
+        ("CANCELLED", "Cancelled"),
+    ]
+
+    admission = models.ForeignKey(
+        Admission,
+        on_delete=models.CASCADE,
+        related_name="review_requests",
+        help_text="Admission requiring review",
+    )
+    review_type = models.CharField(
+        max_length=20,
+        choices=REVIEW_TYPE_CHOICES,
+        help_text="Type of review requested",
+    )
+    urgency = models.CharField(
+        max_length=20,
+        choices=URGENCY_CHOICES,
+        default="ROUTINE",
+        help_text="Urgency level of the review",
+    )
+    reason = models.TextField(
+        help_text="Clinical reason for review request",
+    )
+    requested_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="review_requests_made",
+        help_text="User who requested the review",
+    )
+    requested_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the review was requested",
+    )
+
+    # For consultant reviews
+    consultant_specialty = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Specialty required (for consultant reviews)",
+    )
+    assigned_to = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="review_requests_assigned",
+        help_text="Clinician assigned to handle this review",
+    )
+
+    # Status tracking
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="PENDING",
+        help_text="Current status of the review request",
+    )
+    acknowledged_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the request was acknowledged",
+    )
+    acknowledged_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="review_requests_acknowledged",
+        help_text="User who acknowledged the request",
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the review was completed",
+    )
+
+    # Notes
+    clinical_context = models.TextField(
+        blank=True,
+        help_text="Additional clinical context (e.g., latest vitals, observations)",
+    )
+    cancellation_reason = models.TextField(
+        blank=True,
+        help_text="Reason for cancellation (if cancelled)",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-requested_at"]
+        verbose_name = "Review Request"
+        verbose_name_plural = "Review Requests"
+
+    def __str__(self):
+        return f"{self.get_review_type_display()} - {self.admission.patient} ({self.status})"
+
+    def acknowledge(self, user: "AbstractUser") -> None:
+        """Mark the review request as acknowledged/in progress."""
+        self.status = "IN_PROGRESS"
+        self.acknowledged_at = timezone.now()
+        self.acknowledged_by = user
+        if not self.assigned_to:
+            self.assigned_to = user
+        self.save()
+
+    def complete(self) -> None:
+        """Mark the review request as completed."""
+        self.status = "COMPLETED"
+        self.completed_at = timezone.now()
+        self.save()
+
+    def cancel(self, reason: str) -> None:
+        """Cancel the review request with a reason."""
+        self.status = "CANCELLED"
+        self.cancellation_reason = reason
+        self.save()
+
+    @property
+    def is_overdue(self) -> bool:
+        """Check if request is overdue based on urgency."""
+        if self.status != "PENDING":
+            return False
+
+        now = timezone.now()
+        time_since_request = now - self.requested_at
+
+        # STAT: overdue if pending > 30 minutes
+        if self.urgency == "STAT":
+            return time_since_request > timedelta(minutes=30)
+        # URGENT: overdue if pending > 2 hours
+        elif self.urgency == "URGENT":
+            return time_since_request > timedelta(hours=2)
+        # ROUTINE: overdue if pending > 24 hours
+        else:
+            return time_since_request > timedelta(hours=24)
 
 
 class NursingKardex(models.Model):

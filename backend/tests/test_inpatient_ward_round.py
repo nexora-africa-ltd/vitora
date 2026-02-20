@@ -179,33 +179,41 @@ class TestMultipleRoundsPerDay:
             == 2
         )
 
-    def test_duplicate_round_same_doctor_same_day_fails(self, sample_admission, test_user):
-        """Should prevent duplicate round by same doctor on same day."""
-        WardRound.objects.create(
+    def test_multiple_rounds_same_doctor_same_day_allowed(self, sample_admission, test_user):
+        """Should allow multiple rounds by same doctor on same day (e.g., urgent reviews)."""
+        # First round - scheduled morning round
+        round1 = WardRound.objects.create(
             admission=sample_admission,
             round_date=date.today(),
             round_time=time(9, 0),
             conducted_by=test_user,
-            subjective="First round",
+            review_type="WARD_ROUND",
+            subjective="Morning round",
             objective="Test",
             assessment="Test",
             plan="Test",
             condition_status="STABLE",
         )
 
-        # Attempt duplicate
-        with pytest.raises(IntegrityError):
-            WardRound.objects.create(
-                admission=sample_admission,
-                round_date=date.today(),
-                round_time=time(10, 0),  # Different time
-                conducted_by=test_user,  # Same doctor
-                subjective="Duplicate round",
-                objective="Test",
-                assessment="Test",
-                plan="Test",
-                condition_status="STABLE",
-            )
+        # Second round - urgent review later in the day
+        round2 = WardRound.objects.create(
+            admission=sample_admission,
+            round_date=date.today(),
+            round_time=time(14, 0),  # Different time
+            conducted_by=test_user,  # Same doctor
+            review_type="URGENT_REVIEW",
+            subjective="Patient condition deteriorated",
+            objective="Test",
+            assessment="Test",
+            plan="Test",
+            condition_status="DETERIORATING",
+        )
+
+        # Both should exist
+        rounds = WardRound.objects.filter(admission=sample_admission, round_date=date.today())
+        assert rounds.count() == 2
+        assert round1.review_type == "WARD_ROUND"
+        assert round2.review_type == "URGENT_REVIEW"
 
 
 @pytest.mark.django_db

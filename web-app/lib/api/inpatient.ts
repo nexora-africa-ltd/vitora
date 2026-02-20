@@ -12,6 +12,8 @@ import {
   DischargeSchema,
   TransferSchema,
   WardRoundSchema,
+  ReviewRequestSchema,
+  PaginatedReviewRequestSchema,
   NursingKardexSchema,
   KardexShiftNoteSchema,
   KardexHandoverNoteSchema,
@@ -27,6 +29,7 @@ import {
   PaginatedShiftHandoverSchema,
   BedArraySchema,
   BulkCompatibilityResultSchema,
+  CompatibilityCheckResultSchema,
 } from '@/lib/schemas/inpatient.schema';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { ImagingOrder } from '@/lib/types/imaging';
@@ -57,6 +60,10 @@ import type {
   KardexShiftNoteCreateData,
   KardexUpdateData,
   NursingKardex,
+  ReviewRequest,
+  ReviewRequestCreateData,
+  ReviewRequestListParams,
+  ReviewRequestListResponse,
   ShiftHandover,
   ShiftHandoverCreateData,
   ShiftHandoverListParams,
@@ -278,6 +285,43 @@ export const inpatientApi = {
   },
 
   // ============================================================================
+  // Review Requests
+  // ============================================================================
+  async listReviewRequests(params?: ReviewRequestListParams): Promise<ReviewRequestListResponse> {
+    const response = await apiClient.get<ReviewRequestListResponse>('/api/inpatient/review-requests/', {
+      params,
+    });
+    return parseResponse(PaginatedReviewRequestSchema, response.data, { context: 'inpatientApi.listReviewRequests' });
+  },
+
+  async getReviewRequest(requestId: number): Promise<ReviewRequest> {
+    const response = await apiClient.get<ReviewRequest>(`/api/inpatient/review-requests/${requestId}/`);
+    return parseResponse(ReviewRequestSchema, response.data, { context: 'inpatientApi.getReviewRequest' });
+  },
+
+  async createReviewRequest(data: ReviewRequestCreateData): Promise<ReviewRequest> {
+    const response = await apiClient.post<ReviewRequest>('/api/inpatient/review-requests/', data);
+    return parseResponse(ReviewRequestSchema, response.data, { context: 'inpatientApi.createReviewRequest' });
+  },
+
+  async acknowledgeReviewRequest(requestId: number): Promise<ReviewRequest> {
+    const response = await apiClient.post<ReviewRequest>(`/api/inpatient/review-requests/${requestId}/acknowledge/`);
+    return parseResponse(ReviewRequestSchema, response.data, { context: 'inpatientApi.acknowledgeReviewRequest' });
+  },
+
+  async completeReviewRequest(requestId: number): Promise<ReviewRequest> {
+    const response = await apiClient.post<ReviewRequest>(`/api/inpatient/review-requests/${requestId}/complete/`);
+    return parseResponse(ReviewRequestSchema, response.data, { context: 'inpatientApi.completeReviewRequest' });
+  },
+
+  async cancelReviewRequest(requestId: number, reason: string): Promise<ReviewRequest> {
+    const response = await apiClient.post<ReviewRequest>(`/api/inpatient/review-requests/${requestId}/cancel/`, {
+      reason,
+    });
+    return parseResponse(ReviewRequestSchema, response.data, { context: 'inpatientApi.cancelReviewRequest' });
+  },
+
+  // ============================================================================
   // Nursing Kardex
   // ============================================================================
   async listKardex(params?: KardexListParams): Promise<KardexListResponse> {
@@ -373,7 +417,7 @@ export const inpatientApi = {
       `/api/inpatient/wards/${wardId}/check_compatibility/`,
       { patient_id: patientId, requires_isolation: requiresIsolation ?? false }
     );
-    return response.data;
+    return parseResponse(CompatibilityCheckResultSchema, response.data, { context: 'inpatientApi.checkWardCompatibility' });
   },
 
   /**

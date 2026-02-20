@@ -23,6 +23,7 @@ from .models import (
     KardexHandoverNote,
     KardexShiftNote,
     NursingKardex,
+    ReviewRequest,
     ShiftHandover,
     Transfer,
     Ward,
@@ -38,6 +39,8 @@ from .serializers import (
     KardexHandoverNoteSerializer,
     KardexShiftNoteSerializer,
     NursingKardexSerializer,
+    ReviewRequestCreateSerializer,
+    ReviewRequestSerializer,
     ShiftHandoverSerializer,
     SupervisorAlertsResponseSerializer,
     TransferSerializer,
@@ -1272,6 +1275,188 @@ class WardRoundViewSet(viewsets.ModelViewSet):
             },
             ip_address=get_client_ip(self.request),
         )
+
+
+class ReviewRequestViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for ReviewRequest model.
+
+    Manages pending review requests (urgent, consultant, pre-discharge).
+
+    Endpoints:
+    - GET /api/inpatient/review-requests/ - List all review requests
+    - GET /api/inpatient/review-requests/{id}/ - Review request detail
+    - POST /api/inpatient/review-requests/ - Create review request
+    - PATCH /api/inpatient/review-requests/{id}/ - Update review request
+    - POST /api/inpatient/review-requests/{id}/acknowledge/ - Acknowledge request
+    - POST /api/inpatient/review-requests/{id}/complete/ - Mark as completed
+    - POST /api/inpatient/review-requests/{id}/cancel/ - Cancel request
+    """
+
+    queryset = ReviewRequest.objects.all()
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = [
+        "admission",
+        "review_type",
+        "urgency",
+        "status",
+        "requested_by",
+        "assigned_to",
+    ]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+        "reason",
+        "consultant_specialty",
+    ]
+    ordering_fields = ["requested_at", "urgency", "status", "created_at"]
+    ordering = ["-requested_at"]
+
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action."""
+        if self.action == "create":
+            return ReviewRequestCreateSerializer
+        return ReviewRequestSerializer
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create a review request.
+
+        Uses ReviewRequestCreateSerializer for validation but returns
+        full ReviewRequestSerializer data.
+        """
+        create_serializer = ReviewRequestCreateSerializer(data=request.data)
+        create_serializer.is_valid(raise_exception=True)
+
+        # Auto-set requested_by to current user
+        review_request = create_serializer.save(requested_by=request.user)
+
+        # Log the action
+        AuditLog.log(
+            action="review_request_create",
+            user=request.user,
+            resource_type="ReviewRequest",
+            resource_id=review_request.id,
+            details={
+                "admission_number": review_request.admission.admission_number,
+                "review_type": review_request.review_type,
+                "urgency": review_request.urgency,
+                "reason": review_request.reason,
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        # Return full serializer data
+        output_serializer = ReviewRequestSerializer(review_request)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["post"])
+    def acknowledge(self, request, pk=None):
+        """
+        Acknowledge a review request and mark as in-progress.
+
+        The current user will be assigned to the request if not already assigned.
+        """
+        review_request = self.get_object()
+
+        if review_request.status not in ["PENDING"]:
+            return Response(
+                {"error": "Only pending requests can be acknowledged"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        review_request.acknowledge(request.user)
+
+        # Log action
+        AuditLog.log(
+            action="review_request_acknowledge",
+            user=request.user,
+            resource_type="ReviewRequest",
+            resource_id=review_request.id,
+            details={
+                "admission_number": review_request.admission.admission_number,
+                "review_type": review_request.review_type,
+                "urgency": review_request.urgency,
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        return Response(ReviewRequestSerializer(review_request).data)
+
+    @action(detail=True, methods=["post"])
+    def complete(self, request, pk=None):
+        """
+        Mark a review request as completed.
+
+        Should be called after creating a ward round that fulfills the request.
+        """
+        review_request = self.get_object()
+
+        if review_request.status not in ["PENDING", "IN_PROGRESS"]:
+            return Response(
+                {"error": "Only pending or in-progress requests can be completed"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        review_request.complete()
+
+        # Log action
+        AuditLog.log(
+            action="review_request_complete",
+            user=request.user,
+            resource_type="ReviewRequest",
+            resource_id=review_request.id,
+            details={
+                "admission_number": review_request.admission.admission_number,
+                "review_type": review_request.review_type,
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        return Response(ReviewRequestSerializer(review_request).data)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """
+        Cancel a review request.
+
+        Request body:
+        - reason: Reason for cancellation (required)
+        """
+        review_request = self.get_object()
+        reason = request.data.get("reason", "").strip()
+
+        if not reason:
+            return Response(
+                {"error": "Cancellation reason is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if review_request.status not in ["PENDING", "IN_PROGRESS"]:
+            return Response(
+                {"error": "Only pending or in-progress requests can be cancelled"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        review_request.cancel(reason)
+
+        # Log action
+        AuditLog.log(
+            action="review_request_cancel",
+            user=request.user,
+            resource_type="ReviewRequest",
+            resource_id=review_request.id,
+            details={
+                "admission_number": review_request.admission.admission_number,
+                "review_type": review_request.review_type,
+                "reason": reason,
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        return Response(ReviewRequestSerializer(review_request).data)
 
 
 class NursingKardexViewSet(viewsets.ModelViewSet):

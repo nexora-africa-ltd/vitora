@@ -11,6 +11,7 @@ from .views import (
     BedViewSet,
     DischargeViewSet,
     NursingKardexViewSet,
+    ReviewRequestViewSet,
     ShiftHandoverViewSet,
     SupervisorAlertViewSet,
     TransferViewSet,
@@ -33,6 +34,7 @@ router.register(r"admissions", AdmissionViewSet, basename="admission")
 router.register(r"discharges", DischargeViewSet, basename="discharge")
 router.register(r"transfers", TransferViewSet, basename="transfer")
 router.register(r"ward-rounds", WardRoundViewSet, basename="ward-round")
+router.register(r"review-requests", ReviewRequestViewSet, basename="review-request")
 router.register(r"kardex", NursingKardexViewSet, basename="kardex")
 router.register(r"shift-handovers", ShiftHandoverViewSet, basename="shift-handover")
 

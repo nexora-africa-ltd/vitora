@@ -14,6 +14,7 @@ from .models import (
     KardexHandoverNote,
     KardexShiftNote,
     NursingKardex,
+    ReviewRequest,
     ShiftHandover,
     SupervisorAlertAcknowledgment,
     Transfer,
@@ -361,6 +362,9 @@ class WardRoundSerializer(serializers.ModelSerializer):
     condition_status_display = serializers.CharField(
         source="get_condition_status_display", read_only=True
     )
+    review_type_display = serializers.CharField(
+        source="get_review_type_display", read_only=True
+    )
 
     class Meta:
         model = WardRound
@@ -373,6 +377,9 @@ class WardRoundSerializer(serializers.ModelSerializer):
             "round_time",
             "conducted_by",
             "conducted_by_username",
+            "review_type",
+            "review_type_display",
+            "review_request",
             "subjective",
             "objective",
             "assessment",
@@ -390,6 +397,92 @@ class WardRoundSerializer(serializers.ModelSerializer):
         """Get patient full name."""
         patient = obj.admission.patient
         return f"{patient.first_name} {patient.last_name}"
+
+
+class ReviewRequestSerializer(serializers.ModelSerializer):
+    """Serializer for ReviewRequest model."""
+
+    admission_number = serializers.CharField(source="admission.admission_number", read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    ward_name = serializers.CharField(source="admission.ward.name", read_only=True)
+    bed_number = serializers.CharField(source="admission.bed.bed_number", read_only=True)
+    requested_by_username = serializers.CharField(source="requested_by.username", read_only=True)
+    assigned_to_username = serializers.CharField(
+        source="assigned_to.username", read_only=True, allow_null=True
+    )
+    acknowledged_by_username = serializers.CharField(
+        source="acknowledged_by.username", read_only=True, allow_null=True
+    )
+    review_type_display = serializers.CharField(source="get_review_type_display", read_only=True)
+    urgency_display = serializers.CharField(source="get_urgency_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    is_overdue = serializers.ReadOnlyField()
+
+    class Meta:
+        model = ReviewRequest
+        fields = [
+            "id",
+            "admission",
+            "admission_number",
+            "patient_name",
+            "ward_name",
+            "bed_number",
+            "review_type",
+            "review_type_display",
+            "urgency",
+            "urgency_display",
+            "reason",
+            "requested_by",
+            "requested_by_username",
+            "requested_at",
+            "consultant_specialty",
+            "assigned_to",
+            "assigned_to_username",
+            "status",
+            "status_display",
+            "acknowledged_at",
+            "acknowledged_by",
+            "acknowledged_by_username",
+            "completed_at",
+            "clinical_context",
+            "cancellation_reason",
+            "is_overdue",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "requested_at",
+            "acknowledged_at",
+            "acknowledged_by",
+            "completed_at",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_patient_name(self, obj) -> str:
+        """Get patient full name."""
+        patient = obj.admission.patient
+        return f"{patient.first_name} {patient.last_name}"
+
+
+class ReviewRequestCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating ReviewRequest.
+    
+    Note: requested_by is set by the ViewSet, not in the serializer,
+    to allow flexibility in both view-based and serializer-based usage.
+    """
+
+    class Meta:
+        model = ReviewRequest
+        fields = [
+            "admission",
+            "review_type",
+            "urgency",
+            "reason",
+            "consultant_specialty",
+            "clinical_context",
+        ]
 
 
 class KardexShiftNoteSerializer(serializers.ModelSerializer):
