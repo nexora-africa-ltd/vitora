@@ -147,8 +147,9 @@ export default function WardRoundHistoryPage() {
               const conductedByName = wardRound.conducted_by_name || wardRound.conducted_by_username || 'Unknown';
 
               return (
-                <Card key={wardRound.id} data-testid="ward-round-card">
-                  <CardHeader>
+                <Link key={wardRound.id} href={`/admissions/${admissionId}/ward-round/${wardRound.id}`}>
+                  <Card data-testid="ward-round-card" className="cursor-pointer hover:bg-muted/50 transition-colors">
+                    <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="space-y-1">
                         <CardTitle className="text-base flex items-center gap-2">
@@ -270,6 +271,7 @@ export default function WardRoundHistoryPage() {
                     )}
                   </CardContent>
                 </Card>
+                </Link>
               );
             })}
           </div>
