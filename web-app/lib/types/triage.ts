@@ -437,6 +437,14 @@ export interface TriageAssessment {
   mobility: MobilityStatus;
   allergies_noted: string;
 
+  // Vital signs (captured at triage)
+  spo2?: number | null;
+  heart_rate?: number | null;
+  systolic_bp?: number | null;
+  diastolic_bp?: number | null;
+  temperature?: number | null;
+  respiratory_rate?: number | null;
+
   // Triage decision
   triage_category: TriageCategory;
   auto_calculated_category: TriageCategory;

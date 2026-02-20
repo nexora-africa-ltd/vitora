@@ -759,7 +759,10 @@ export type EmergencyEventType =
  * Critical patient data from WebSocket
  */
 export interface EmergencyCriticalPatient {
-  id: number;
+  id: number;  // Triage assessment ID
+  queue_id?: number;  // Queue entry ID
+  encounter_id?: number;
+  encounter_status?: string;  // CREATED, IN_PROGRESS, CLOSED, CANCELLED
   patient_name: string;
   mrn: string;
   chief_complaint: string;
@@ -767,7 +770,7 @@ export interface EmergencyCriticalPatient {
   assigned_area_display: string;
   wait_minutes: number;
   arrival_time: string;
-  status: string;
+  status: string;  // Queue status
 }
 
 /**
