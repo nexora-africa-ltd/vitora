@@ -756,6 +756,38 @@ class Encounter(models.Model):
         """
         return self.triage_status in ("COMPLETED", "BYPASSED", "NOT_APPLICABLE")
 
+    def begin_consultation(self) -> "Encounter":
+        """
+        Start consultation for this encounter.
+
+        Sets consultation_status to IN_PROGRESS and records the start time.
+        This is the single source of truth for starting consultations,
+        called by both the Encounter API and ClinicVisit workflows.
+
+        Raises:
+            ValueError: If encounter cannot enter consultation (triage required)
+                or consultation is already in progress/completed.
+
+        Returns:
+            Encounter: Self, for method chaining.
+        """
+        from django.utils import timezone
+
+        if not self.can_enter_consultation():
+            raise ValueError("Encounter cannot enter consultation. Triage may be required.")
+
+        if self.consultation_status == "IN_PROGRESS":
+            raise ValueError("Consultation is already in progress.")
+
+        if self.consultation_status == "COMPLETED":
+            raise ValueError("Consultation is already completed.")
+
+        self.consultation_status = "IN_PROGRESS"
+        self.consultation_started_at = timezone.now()
+        self.save(update_fields=["consultation_status", "consultation_started_at"])
+
+        return self
+
     def has_critical_vitals(self) -> bool:
         """
         Check if any vital signs are in critical ranges.

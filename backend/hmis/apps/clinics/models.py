@@ -849,10 +849,23 @@ class ClinicVisit(TimeStampedModel):
                 self.encounter.clinic_visit = self
                 self.encounter.save(update_fields=["clinic_visit"])
 
+            # Sync triage status from clinic visit's triage assessment
+            # This handles cases where an existing encounter has PENDING triage
+            # but the clinic visit workflow has completed its own triage.
+            if self.encounter.triage_status not in ("COMPLETED", "BYPASSED", "NOT_APPLICABLE"):
+                new_triage_status = "COMPLETED" if self.triage_assessment else "NOT_APPLICABLE"
+                self.encounter.triage_status = new_triage_status
+                self.encounter.save(update_fields=["triage_status"])
+
             # If encounter exists but has no template, set a default (do not override)
             if self.encounter.clinical_template_id is None and resolved_template is not None:
                 self.encounter.clinical_template = resolved_template
                 self.encounter.save(update_fields=["clinical_template"])
+
+        # Sync encounter consultation status (single source of truth)
+        # This ensures the encounter is removed from the consultation queue
+        if self.encounter.consultation_status not in ("IN_PROGRESS", "COMPLETED"):
+            self.encounter.begin_consultation()
 
         # Generate billing if consultation fee not already charged
         if not self.consultation_fee_charged:
