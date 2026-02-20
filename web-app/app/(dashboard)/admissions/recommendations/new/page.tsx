@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Save } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -17,14 +17,16 @@ import {
 } from '@/components/ui/select';
 import { useUser } from '@/lib/auth';
 import { useCreateAdmissionRecommendation } from '@/lib/hooks/use-inpatient';
+import { AdmissionSuccessModal, type AdmissionSuccessData } from '@/components/inpatient';
 
 export default function NewAdmissionRecommendationPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const user = useUser();
 
   const encounterIdParam = searchParams.get('encounter');
   const encounterId = encounterIdParam ? Number(encounterIdParam) : null;
+  const patientName = searchParams.get('patient_name') || 'Patient';
+  const patientMrn = searchParams.get('patient_mrn') || '';
 
   const [reason, setReason] = useState('');
   const [provisionalDiagnosis, setProvisionalDiagnosis] = useState('');
@@ -33,6 +35,8 @@ export default function NewAdmissionRecommendationPage() {
   const [preferredWardType, setPreferredWardType] = useState<
     'MEDICAL' | 'SURGICAL' | 'PEDIATRIC' | 'MATERNITY' | 'ICU' | 'ISOLATION'
   >('MEDICAL');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successData, setSuccessData] = useState<AdmissionSuccessData | null>(null);
 
   const createRecommendation = useCreateAdmissionRecommendation();
   const canSubmit = !!encounterId && !!reason && !!provisionalDiagnosis && !!provisionalDiagnosisText && !!user;
@@ -50,8 +54,8 @@ export default function NewAdmissionRecommendationPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Encounter ID</Label>
-            <Input value={encounterId ?? ''} readOnly placeholder="Select an encounter" />
+            <Label>Patient</Label>
+            <Input value={patientName ? `${patientName} (${patientMrn})` : `Encounter #${encounterId}`} readOnly />
           </div>
 
           <div className="space-y-2">
@@ -120,7 +124,7 @@ export default function NewAdmissionRecommendationPage() {
               disabled={!canSubmit || createRecommendation.isPending}
               onClick={async () => {
                 if (!encounterId || !user) return;
-                await createRecommendation.mutateAsync({
+                const result = await createRecommendation.mutateAsync({
                   encounter: encounterId,
                   recommended_by: user.id,
                   reason,
@@ -129,7 +133,16 @@ export default function NewAdmissionRecommendationPage() {
                   urgency,
                   preferred_ward_type: preferredWardType,
                 });
-                router.push('/admissions');
+                // Show success modal with recommendation data
+                setSuccessData({
+                  patientName,
+                  patientMrn,
+                  urgency: result.urgency,
+                  preferredWardType: result.preferred_ward_type,
+                  provisionalDiagnosis: result.provisional_diagnosis_text,
+                  expiresAt: result.expires_at,
+                });
+                setShowSuccessModal(true);
               }}
             >
               <Save className="h-4 w-4 mr-2" />
@@ -141,6 +154,12 @@ export default function NewAdmissionRecommendationPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AdmissionSuccessModal
+        open={showSuccessModal}
+        onOpenChange={setShowSuccessModal}
+        admissionData={successData}
+      />
     </div>
   );
 }
