@@ -60,7 +60,8 @@ interface PatientAssignment {
   patientName: string;
   patientMrn: string;
   recommendationId?: number;
-  diagnosis?: string;
+  diagnosisCode?: string;   // ICD-10 code (max 10 chars)
+  diagnosisText?: string;   // Text description
   urgency: string;
   wardId?: number;
   bedId?: number;
@@ -165,7 +166,8 @@ export default function BulkAssignmentPage() {
           patientName: patientResult.patient_name || 'Unknown',
           patientMrn: patientResult.patient_mrn || '',
           recommendationId: rec?.id,
-          diagnosis: rec?.provisional_diagnosis_text || rec?.provisional_diagnosis,
+          diagnosisCode: rec?.provisional_diagnosis,  // ICD-10 code
+          diagnosisText: rec?.provisional_diagnosis_text || rec?.provisional_diagnosis,
           urgency: rec?.urgency || 'ROUTINE',
           status: 'pending',
           compatibleWards: patientResult.compatible_wards,
@@ -231,8 +233,8 @@ export default function BulkAssignmentPage() {
           bed: assignment.bedId!,
           payer_type: 'CASH',
           admission_date: new Date().toISOString(),
-          admitting_diagnosis: assignment.diagnosis || 'Pending',
-          admitting_diagnosis_text: assignment.diagnosis || 'Pending assessment',
+          admitting_diagnosis: assignment.diagnosisCode || 'R69',  // R69 = "Illness, unspecified" as fallback
+          admitting_diagnosis_text: assignment.diagnosisText || 'Pending assessment',
           admitting_officer: user.id,
         });
 
@@ -474,9 +476,10 @@ export default function BulkAssignmentPage() {
                           <p className="text-sm text-muted-foreground truncate">
                             {assignment.patientMrn}
                           </p>
-                          {assignment.diagnosis && (
+                          {assignment.diagnosisText && (
                             <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                              {assignment.diagnosis}
+                              {assignment.diagnosisCode && <span className="font-mono">{assignment.diagnosisCode}: </span>}
+                              {assignment.diagnosisText}
                             </p>
                           )}
                         </div>

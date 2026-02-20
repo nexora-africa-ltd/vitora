@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Check, Clock, AlertTriangle, User, Bed, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Check, Clock, AlertTriangle, User, X } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,21 +17,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/lib/hooks/use-toast';
 import {
   useAdmissionRecommendations,
-  useInpatientWards,
-  useWardBeds,
-  useAcceptAdmissionRecommendation,
   useDeclineAdmissionRecommendation,
 } from '@/lib/hooks/use-inpatient';
 
@@ -48,33 +39,22 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function AdmissionRecommendationsPage() {
+  const router = useRouter();
   const { toast } = useToast();
   const [selectedRecommendation, setSelectedRecommendation] = useState<any>(null);
-  const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
   const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
-  const [selectedWard, setSelectedWard] = useState<string>('');
-  const [selectedBed, setSelectedBed] = useState<string>('');
 
   const { data: recommendations, isLoading, refetch } = useAdmissionRecommendations({
     status: 'PENDING',
     ordering: '-created_at',
   });
 
-  const { data: wards } = useInpatientWards();
-  const { data: beds } = useWardBeds(selectedWard ? Number(selectedWard) : undefined);
-  const acceptRecommendation = useAcceptAdmissionRecommendation();
   const declineRecommendation = useDeclineAdmissionRecommendation();
 
-  const wardsList = wards?.results ?? [];
-  const bedsList = Array.isArray(beds) ? beds : beds?.results ?? [];
-  const availableBeds = bedsList.filter((b: any) => b.status === 'AVAILABLE');
-
   const handleApproveClick = (rec: any) => {
-    setSelectedRecommendation(rec);
-    setSelectedWard('');
-    setSelectedBed('');
-    setAcceptDialogOpen(true);
+    // Navigate to detail page for full compatibility check + ward/bed selection
+    router.push(`/admissions/recommendations/${rec.id}`);
   };
 
   const handleDeclineClick = (rec: any) => {
@@ -104,33 +84,6 @@ export default function AdmissionRecommendationsPage() {
       toast({
         title: 'Error',
         description: 'Failed to decline recommendation. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleApproveConfirm = async () => {
-    if (!selectedRecommendation || !selectedWard || !selectedBed) return;
-
-    try {
-      // TODO: Ward/bed assignment should be handled by the backend
-      // or through a separate admission creation API call
-      await acceptRecommendation.mutateAsync({
-        id: selectedRecommendation.id,
-        userId: 1, // TODO: Get from auth context
-      });
-
-      toast({
-        title: 'Admission Created',
-        description: 'Patient has been successfully admitted.',
-      });
-
-      setAcceptDialogOpen(false);
-      refetch();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to create admission. Please try again.',
         variant: 'destructive',
       });
     }
@@ -234,8 +187,10 @@ export default function AdmissionRecommendationsPage() {
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2 border-t">
-                  <Button variant="outline" size="sm">
-                    View Details
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/admissions/recommendations/${rec.id}`}>
+                      View Details
+                    </Link>
                   </Button>
                   <Button
                     variant="outline"
@@ -260,70 +215,6 @@ export default function AdmissionRecommendationsPage() {
           ))
         )}
       </div>
-
-      {/* Approve Dialog */}
-      <Dialog open={acceptDialogOpen} onOpenChange={setAcceptDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Approve Admission</DialogTitle>
-            <DialogDescription>
-              Select a ward and bed to admit {selectedRecommendation?.patient_name || 'the patient'}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="ward">Ward</Label>
-              <Select value={selectedWard} onValueChange={(v) => { setSelectedWard(v); setSelectedBed(''); }}>
-                <SelectTrigger id="ward" aria-label="Ward">
-                  <SelectValue placeholder="Select ward" />
-                </SelectTrigger>
-                <SelectContent>
-                  {wardsList.map((ward: any) => (
-                    <SelectItem key={ward.id} value={String(ward.id)}>
-                      {ward.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bed">Bed</Label>
-              <Select value={selectedBed} onValueChange={setSelectedBed} disabled={!selectedWard}>
-                <SelectTrigger id="bed" aria-label="Bed">
-                  <SelectValue placeholder={selectedWard ? 'Select bed' : 'Select a ward first'} />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableBeds.length === 0 && selectedWard ? (
-                    <div className="py-2 px-2 text-sm text-muted-foreground">
-                      No available beds in this ward
-                    </div>
-                  ) : (
-                    availableBeds.map((bed: any) => (
-                      <SelectItem key={bed.id} value={String(bed.id)}>
-                        {bed.bed_number} - Available
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAcceptDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleApproveConfirm}
-              disabled={!selectedWard || !selectedBed || acceptRecommendation.isPending}
-            >
-              {acceptRecommendation.isPending ? 'Creating...' : 'Confirm Admission'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Decline Dialog */}
       <Dialog open={declineDialogOpen} onOpenChange={setDeclineDialogOpen}>
