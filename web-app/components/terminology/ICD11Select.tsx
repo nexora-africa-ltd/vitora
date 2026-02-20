@@ -140,12 +140,10 @@ export function ICD11Select({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] min-w-[280px] max-w-[min(450px,calc(100vw-1rem))] p-0"
+        className="w-[--radix-popover-trigger-width] min-w-[200px] p-0"
         align="start"
         side="bottom"
         sideOffset={4}
-        collisionPadding={8}
-        avoidCollisions={true}
       >
         <Command shouldFilter={false}>
           <div className="flex items-center border-b border-border px-3 bg-background">
@@ -158,7 +156,7 @@ export function ICD11Select({
             />
             {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
           </div>
-          <CommandList className="max-h-[50vh] sm:max-h-[300px]">
+          <CommandList className="max-h-[min(50vh,300px)]">
             {searchQuery.length < minSearchLength ? (
               <div className="py-6 text-center text-sm text-muted-foreground">
                 Type at least {minSearchLength} characters to search...
@@ -173,7 +171,7 @@ export function ICD11Select({
               <CommandEmpty className="text-muted-foreground">No ICD-11 codes found.</CommandEmpty>
             ) : (
               <CommandGroup>
-                <ScrollArea className="h-[45vh] sm:h-[280px]">
+                <ScrollArea className="max-h-[min(45vh,280px)]">
                   {results.map((code, idx) => (
                     <CommandItem
                       key={code.code || code.id || idx}
