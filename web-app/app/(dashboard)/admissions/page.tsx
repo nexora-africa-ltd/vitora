@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, BedDouble, Building2, Calendar, Hash, User, ClipboardList, Users, AlertTriangle, Clock } from 'lucide-react';
+import { Plus, Search, BedDouble, Building2, Calendar, Hash, User, ClipboardList, Users, AlertTriangle, Clock, Activity, TrendingUp } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { StatsCard } from '@/components/dashboard/stats-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -53,6 +54,30 @@ export default function AdmissionsPage() {
     search: debouncedSearch || undefined,
   });
 
+  // Compute stats from loaded data
+  const stats = useMemo(() => {
+    const activeAdmissions = admissions?.results?.filter((a) => a.admission_status === 'ACTIVE') || [];
+    const pendingRecommendations = recommendations?.count || 0;
+    const emergencyRecommendations = recommendations?.results?.filter((r) => r.urgency === 'EMERGENCY').length || 0;
+    
+    // Calculate average LOS for active admissions
+    const totalLos = activeAdmissions.reduce((sum, adm) => {
+      if (!adm.admission_date) return sum;
+      const admDate = new Date(adm.admission_date);
+      const today = new Date();
+      const days = Math.ceil((today.getTime() - admDate.getTime()) / (1000 * 60 * 60 * 24));
+      return sum + days;
+    }, 0);
+    const avgLos = activeAdmissions.length > 0 ? Math.round(totalLos / activeAdmissions.length) : 0;
+    
+    return {
+      activeAdmissions: activeAdmissions.length,
+      pendingRecommendations,
+      emergencyRecommendations,
+      avgLos,
+    };
+  }, [admissions?.results, recommendations?.count, recommendations?.results]);
+
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
       <div className="container mx-auto py-6 space-y-6">
@@ -79,51 +104,40 @@ export default function AdmissionsPage() {
           }
         />
 
-        {/* Pending Recommendations Section */}
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <ClipboardList className="h-5 w-5" />
-                Pending Recommendations
-                {recommendations?.count !== undefined && (
-                  <Badge variant="warning" className="ml-2 shrink-0 w-fit self-start sm:self-auto">
-                    {recommendations.count}
-                  </Badge>
-                )}
-              </CardTitle>
-              <ViewToggle value={recommendationsViewMode} onChange={setRecommendationsViewMode} />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {recommendationsLoading ? (
-              recommendationsViewMode === 'list' ? (
-                <div className="space-y-3">
-                  {[...Array(3)].map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
-                  ))}
-                </div>
-              ) : (
-                <EntityGrid>
-                  {[...Array(4)].map((_, i) => (
-                    <Skeleton key={i} className="h-40 w-full rounded-lg" />
-                  ))}
-                </EntityGrid>
-              )
-            ) : recommendationsError ? (
-              <div className="text-center py-8 text-destructive">
-                Failed to load recommendations. Please try again.
-              </div>
-            ) : recommendationsViewMode === 'list' ? (
-              <RecommendationsTableView
-                recommendations={recommendations?.results || []}
-                onSelect={(id) => router.push(`/admissions/recommendations/${id}`)}
-              />
-            ) : (
-              <RecommendationsGridView recommendations={recommendations?.results || []} />
-            )}
-          </CardContent>
-        </Card>
+        {/* Stats Section */}
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <StatsCard
+            title="Active Admissions"
+            value={admissionsLoading ? '-' : stats.activeAdmissions}
+            icon={BedDouble}
+            variant="default"
+            loading={admissionsLoading}
+            href="#admissions"
+          />
+          <StatsCard
+            title="Pending Recommendations"
+            value={recommendationsLoading ? '-' : stats.pendingRecommendations}
+            icon={ClipboardList}
+            variant={stats.pendingRecommendations > 0 ? 'warning' : 'default'}
+            loading={recommendationsLoading}
+            description={stats.emergencyRecommendations > 0 ? `${stats.emergencyRecommendations} emergency` : undefined}
+          />
+          <StatsCard
+            title="Avg. Length of Stay"
+            value={admissionsLoading ? '-' : `${stats.avgLos} days`}
+            icon={TrendingUp}
+            variant="default"
+            loading={admissionsLoading}
+          />
+          <StatsCard
+            title="Occupancy"
+            value={admissionsLoading ? '-' : stats.activeAdmissions}
+            icon={Activity}
+            variant="success"
+            loading={admissionsLoading}
+            description="active patients"
+          />
+        </div>
 
       {/* Filters */}
       <Card>
@@ -157,6 +171,54 @@ export default function AdmissionsPage() {
           </div>
         </CardContent>
       </Card>
+
+        {/* Pending Recommendations Section */}
+        {(recommendationsLoading || (recommendations?.results?.length ?? 0) > 0 || recommendationsError) && (
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardList className="h-5 w-5" />
+                  Pending Recommendations
+                  {recommendations?.count !== undefined && (
+                    <Badge variant="warning" className="ml-2 shrink-0 w-fit self-start sm:self-auto">
+                      {recommendations.count}
+                    </Badge>
+                  )}
+                </CardTitle>
+                <ViewToggle value={recommendationsViewMode} onChange={setRecommendationsViewMode} />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {recommendationsLoading ? (
+                recommendationsViewMode === 'list' ? (
+                  <div className="space-y-3">
+                    {[...Array(3)].map((_, i) => (
+                      <Skeleton key={i} className="h-12 w-full" />
+                    ))}
+                  </div>
+                ) : (
+                  <EntityGrid>
+                    {[...Array(4)].map((_, i) => (
+                      <Skeleton key={i} className="h-40 w-full rounded-lg" />
+                    ))}
+                  </EntityGrid>
+                )
+              ) : recommendationsError ? (
+                <div className="text-center py-8 text-destructive">
+                  Failed to load recommendations. Please try again.
+                </div>
+              ) : recommendationsViewMode === 'list' ? (
+                <RecommendationsTableView
+                  recommendations={recommendations?.results || []}
+                  onSelect={(id) => router.push(`/admissions/recommendations/${id}`)}
+                />
+              ) : (
+                <RecommendationsGridView recommendations={recommendations?.results || []} />
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Admissions List/Grid */}
         <Card>
@@ -437,9 +499,20 @@ function RecommendationsTableView({
       onRowClick={(rec) => onSelect(rec.id)}
       columns={[
         {
+          key: 'patient',
+          header: 'Patient',
+          cell: (rec) => (
+            <div className="min-w-0">
+              <p className="font-medium truncate">{rec.patient_name || 'Unknown'}</p>
+              <p className="text-xs text-muted-foreground">{rec.patient_mrn}</p>
+            </div>
+          ),
+        },
+        {
           key: 'reason',
           header: 'Reason',
-          cell: (rec) => <span className="font-medium truncate max-w-[200px]">{rec.reason}</span>,
+          hideOnMobile: true,
+          cell: (rec) => <span className="text-sm truncate max-w-[200px]">{rec.reason}</span>,
         },
         {
           key: 'diagnosis',
@@ -475,21 +548,13 @@ function RecommendationsTableView({
             </div>
           ),
         },
-        {
-          key: 'recommended_by',
-          header: 'Recommended By',
-          hideOnMobile: true,
-          cell: (rec) => (
-            <span className="text-sm text-muted-foreground">{rec.recommended_by_username}</span>
-          ),
-        },
       ]}
       mobileCard={(rec) => (
         <Card className="p-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate">{rec.reason}</p>
-              <p className="text-xs text-muted-foreground truncate">{rec.provisional_diagnosis_text}</p>
+              <p className="text-sm font-medium truncate">{rec.patient_name || 'Unknown'}</p>
+              <p className="text-xs text-muted-foreground truncate">{rec.patient_mrn}</p>
             </div>
             <Badge
               variant={getUrgencyVariant(rec.urgency)}
@@ -499,12 +564,14 @@ function RecommendationsTableView({
               {rec.urgency}
             </Badge>
           </div>
+          <div className="mt-2 text-xs text-muted-foreground">
+            <p className="truncate">{rec.reason}</p>
+          </div>
           <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
             <Building2 className="h-3 w-3" />
             <span>{rec.preferred_ward_type}</span>
             <span>•</span>
-            <User className="h-3 w-3" />
-            <span className="truncate">{rec.recommended_by_username}</span>
+            <span className="truncate">{rec.provisional_diagnosis_text}</span>
           </div>
         </Card>
       )}
@@ -529,28 +596,28 @@ function RecommendationsGridView({ recommendations }: { recommendations: Admissi
       {recommendations.map((rec) => (
         <EntityCard
           key={rec.id}
-          title={rec.reason}
-          subtitle={rec.provisional_diagnosis_text}
-          initials={rec.preferred_ward_type.substring(0, 2)}
+          title={rec.patient_name || 'Unknown Patient'}
+          subtitle={rec.patient_mrn}
+          initials={getInitials(rec.patient_name)}
           href={`/admissions/recommendations/${rec.id}`}
           status={{
             label: rec.urgency,
             variant: getUrgencyVariant(rec.urgency),
           }}
           badges={[{
-            label: rec.status,
+            label: rec.preferred_ward_type,
             variant: 'outline'
           }]}
           metadata={[
             {
               icon: <ClipboardList className="h-3 w-3" />,
-              label: 'Diagnosis',
-              value: rec.provisional_diagnosis || rec.provisional_diagnosis_text,
+              label: 'Reason',
+              value: rec.reason,
             },
             {
               icon: <Building2 className="h-3 w-3" />,
-              label: 'Ward Type',
-              value: rec.preferred_ward_type,
+              label: 'Diagnosis',
+              value: rec.provisional_diagnosis_text || rec.provisional_diagnosis,
             },
             {
               icon: <User className="h-3 w-3" />,

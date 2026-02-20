@@ -97,6 +97,12 @@ class AdmissionRecommendationSerializer(serializers.ModelSerializer):
     resolved_by_username = serializers.CharField(
         source="resolved_by.username", read_only=True, allow_null=True
     )
+    patient_name = serializers.CharField(
+        source="encounter.patient.full_name", read_only=True
+    )
+    patient_mrn = serializers.CharField(
+        source="encounter.patient.mrn", read_only=True
+    )
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     urgency_display = serializers.CharField(source="get_urgency_display", read_only=True)
     is_expired = serializers.SerializerMethodField()
@@ -108,6 +114,8 @@ class AdmissionRecommendationSerializer(serializers.ModelSerializer):
             "encounter",
             "recommended_by",
             "recommended_by_username",
+            "patient_name",
+            "patient_mrn",
             "reason",
             "provisional_diagnosis",
             "provisional_diagnosis_text",

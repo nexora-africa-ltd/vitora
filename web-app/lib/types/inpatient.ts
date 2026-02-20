@@ -57,6 +57,8 @@ export interface AdmissionRecommendation {
   encounter: number;
   recommended_by: number;
   recommended_by_username?: string;
+  patient_name?: string;
+  patient_mrn?: string;
   reason: string;
   provisional_diagnosis: string;
   provisional_diagnosis_text: string;
