@@ -56,7 +56,7 @@ import { PatientSelector } from '@/components/encounters/patient-selector';
 import { MedicalHistoryForm } from '@/components/encounters/medical-history-form';
 import { ClinicalNotesForm } from '@/components/encounters/clinical-notes-form';
 import { DiagnosisForm } from '@/components/encounters/diagnosis-form';
-import { ENCOUNTER_TYPES, ENCOUNTER_TYPE_GROUPS, getEncounterTypesByGroup } from '@/lib/utils/constants';
+import { ENCOUNTER_TYPES, ENCOUNTER_TYPE_GROUPS, getEncounterTypesByGroup, LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
 import type {
   EncounterFormData,
   DiagnosisFormData,
@@ -316,7 +316,12 @@ export default function NewEncounterPage() {
   // Handle triage modal response
   const handleGoToTriage = useCallback(() => {
     if (createdEncounterId && selectedPatient) {
-      router.push(`/triage/new?patientId=${selectedPatient.id}&encounterId=${createdEncounterId}`);
+      // Route based on feature flag
+      if (LEGACY_TRIAGE_FLOW) {
+        router.push(`/triage/new?patientId=${selectedPatient.id}&encounterId=${createdEncounterId}`);
+      } else {
+        router.push(`/triage/assess/${selectedPatient.id}/${createdEncounterId}/vitals`);
+      }
     }
   }, [createdEncounterId, selectedPatient, router]);
 

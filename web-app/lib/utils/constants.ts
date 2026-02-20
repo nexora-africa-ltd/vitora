@@ -5,6 +5,14 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1
 export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'Vitora HMIS';
 export const APP_ENV = process.env.NEXT_PUBLIC_ENV || 'development';
 
+// Feature flags
+/**
+ * Legacy triage flow flag.
+ * Set NEXT_PUBLIC_LEGACY_TRIAGE_FLOW=1 to use the legacy single-page triage form.
+ * Default: false (use the new tabbed triage flow)
+ */
+export const LEGACY_TRIAGE_FLOW = process.env.NEXT_PUBLIC_LEGACY_TRIAGE_FLOW === '1';
+
 // Gender options
 export const GENDER_OPTIONS = [
   { value: 'M', label: 'Male' },
