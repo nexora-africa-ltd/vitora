@@ -8,3 +8,4 @@ export { HelpPopover } from './help-popover';
 export { ErrorBoundary } from './error-boundary';
 export { PatientStageBadge } from './patient-stage-badge';
 export { DiagnosisCodeInput, emptyDiagnosisCodeValue, type DiagnosisCodeValue } from './diagnosis-code-input';
+export { VisibilityToggle } from './visibility-toggle';

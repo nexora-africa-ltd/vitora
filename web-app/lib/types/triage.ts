@@ -191,11 +191,63 @@ export const PATIENT_STAGE_CONFIG: Record<PatientStage, PatientStageConfig> = {
 
 export type MobilityStatus = 'AMBULATORY' | 'WHEELCHAIR' | 'STRETCHER' | 'IMMOBILE';
 
-export const MOBILITY_CONFIG: Record<MobilityStatus, { label: string; description: string }> = {
-  AMBULATORY: { label: 'Ambulatory', description: 'Can walk independently' },
-  WHEELCHAIR: { label: 'Wheelchair', description: 'Requires wheelchair' },
-  STRETCHER: { label: 'Stretcher', description: 'Requires stretcher' },
-  IMMOBILE: { label: 'Immobile/Carried', description: 'Cannot move, must be carried' },
+export interface MobilityConfig {
+  label: string;
+  description: string;
+  severity: 'normal' | 'moderate' | 'high' | 'critical';
+  colors: {
+    bg: string;
+    border: string;
+    text: string;
+    icon: string;
+  };
+}
+
+export const MOBILITY_CONFIG: Record<MobilityStatus, MobilityConfig> = {
+  AMBULATORY: {
+    label: 'Ambulatory',
+    description: 'Can walk independently',
+    severity: 'normal',
+    colors: {
+      bg: 'bg-green-50 dark:bg-green-950/30',
+      border: 'border-green-200 dark:border-green-800',
+      text: 'text-green-700 dark:text-green-300',
+      icon: 'text-green-600 dark:text-green-400',
+    },
+  },
+  WHEELCHAIR: {
+    label: 'Wheelchair',
+    description: 'Requires wheelchair',
+    severity: 'moderate',
+    colors: {
+      bg: 'bg-yellow-50 dark:bg-yellow-950/30',
+      border: 'border-yellow-200 dark:border-yellow-800',
+      text: 'text-yellow-700 dark:text-yellow-300',
+      icon: 'text-yellow-600 dark:text-yellow-400',
+    },
+  },
+  STRETCHER: {
+    label: 'Stretcher',
+    description: 'Requires stretcher',
+    severity: 'high',
+    colors: {
+      bg: 'bg-orange-50 dark:bg-orange-950/30',
+      border: 'border-orange-200 dark:border-orange-800',
+      text: 'text-orange-700 dark:text-orange-300',
+      icon: 'text-orange-600 dark:text-orange-400',
+    },
+  },
+  IMMOBILE: {
+    label: 'Immobile/Carried',
+    description: 'Cannot move, must be carried',
+    severity: 'critical',
+    colors: {
+      bg: 'bg-red-50 dark:bg-red-950/30',
+      border: 'border-red-200 dark:border-red-800',
+      text: 'text-red-700 dark:text-red-300',
+      icon: 'text-red-600 dark:text-red-400',
+    },
+  },
 };
 
 // =============================================================================

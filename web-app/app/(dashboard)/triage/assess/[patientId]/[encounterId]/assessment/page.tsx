@@ -55,6 +55,7 @@ import {
   type TriageCategory,
   type TriageAlert,
   type AVPUStatus,
+  type MobilityStatus,
 } from '@/lib/types/triage';
 
 // =============================================================================
@@ -395,20 +396,47 @@ export default function TriageAssessmentPage() {
               <Controller
                 name="mobility"
                 control={control}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select mobility status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(MOBILITY_CONFIG).map(([key, config]) => (
-                        <SelectItem key={key} value={key}>
-                          {config.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                render={({ field }) => {
+                  const ringColorMap: Record<MobilityStatus, string> = {
+                    AMBULATORY: 'ring-green-500',
+                    WHEELCHAIR: 'ring-yellow-500',
+                    STRETCHER: 'ring-orange-500',
+                    IMMOBILE: 'ring-red-500',
+                  };
+
+                  return (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {(Object.entries(MOBILITY_CONFIG) as [MobilityStatus, typeof MOBILITY_CONFIG[MobilityStatus]][]).map(
+                        ([key, config]) => {
+                          const isSelected = field.value === key;
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => field.onChange(key)}
+                              className={`flex flex-col items-center justify-center rounded-xl border-2 p-3 cursor-pointer transition-all duration-200 min-h-[80px] ${
+                                isSelected
+                                  ? `${config.colors.bg} ${config.colors.border} ring-2 ring-offset-1 ${ringColorMap[key]} scale-[1.02] shadow-md`
+                                  : 'bg-card border-border hover:border-primary/30'
+                              }`}
+                            >
+                              <span
+                                className={`text-sm font-medium ${
+                                  isSelected ? config.colors.text : 'text-foreground'
+                                }`}
+                              >
+                                {config.label}
+                              </span>
+                              <span className="text-xs text-muted-foreground text-center mt-1 hidden sm:block">
+                                {config.description}
+                              </span>
+                            </button>
+                          );
+                        }
+                      )}
+                    </div>
+                  );
+                }}
               />
               {errors.mobility && (
                 <p className="text-sm text-destructive">{errors.mobility.message}</p>
@@ -421,7 +449,10 @@ export default function TriageAssessmentPage() {
         <Card>
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Triage Category</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-lg">Triage Category</CardTitle>
+                <HelpPopover content="Uses the Kenya Emergency Triage Assessment (KETA) scale. Categories range from RED (immediate life-threatening) to BLUE (non-urgent). The system auto-calculates based on vitals and clinical assessment, but clinicians can override with documented reasoning." />
+              </div>
               <Button
                 type="button"
                 variant="outline"
@@ -433,17 +464,19 @@ export default function TriageAssessmentPage() {
                 Recalculate
               </Button>
             </div>
-            <CardDescription>
-              Category is auto-calculated based on vitals and assessment. Override if clinically indicated.
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Calculated Category Display */}
             {calculatedCategory && (
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <Calculator className="h-5 w-5 text-muted-foreground" />
-                <span className="text-sm">Calculated:</span>
-                <TriageCategoryBadge category={calculatedCategory} />
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-lg bg-muted/50 border">
+                <div className="flex items-center gap-3">
+                  <Calculator className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <span className="text-sm font-medium">Calculated:</span>
+                  <TriageCategoryBadge category={calculatedCategory} />
+                </div>
+                <p className="text-sm text-muted-foreground sm:ml-auto">
+                  {TRIAGE_CATEGORY_CONFIG[calculatedCategory].description}
+                </p>
               </div>
             )}
 

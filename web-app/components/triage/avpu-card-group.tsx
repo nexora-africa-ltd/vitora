@@ -62,9 +62,9 @@ const AVPU_CARD_CONFIG: AVPUConfig[] = [
     icon: Eye,
     severity: 'normal',
     colors: {
-      base: 'bg-white dark:bg-gray-950 hover:bg-green-50 dark:hover:bg-green-950/30',
-      selected: 'bg-green-50 dark:bg-green-950/50 ring-2 ring-green-500',
-      border: 'border-gray-200 dark:border-gray-800',
+      base: 'bg-card hover:bg-muted/50',
+      selected: 'bg-green-50 dark:bg-green-950/50 ring-2 ring-green-500 scale-[1.03] shadow-lg shadow-green-500/20',
+      border: 'border-border',
       icon: 'text-green-600 dark:text-green-400',
       text: 'text-green-700 dark:text-green-300',
     },
@@ -76,9 +76,9 @@ const AVPU_CARD_CONFIG: AVPUConfig[] = [
     icon: Ear,
     severity: 'warning',
     colors: {
-      base: 'bg-white dark:bg-gray-950 hover:bg-yellow-50 dark:hover:bg-yellow-950/30',
-      selected: 'bg-yellow-50 dark:bg-yellow-950/50 ring-2 ring-yellow-500',
-      border: 'border-gray-200 dark:border-gray-800',
+      base: 'bg-card hover:bg-muted/50',
+      selected: 'bg-yellow-50 dark:bg-yellow-950/50 ring-2 ring-yellow-500 scale-[1.03] shadow-lg shadow-yellow-500/20',
+      border: 'border-border',
       icon: 'text-yellow-600 dark:text-yellow-400',
       text: 'text-yellow-700 dark:text-yellow-300',
     },
@@ -90,9 +90,9 @@ const AVPU_CARD_CONFIG: AVPUConfig[] = [
     icon: Hand,
     severity: 'warning',
     colors: {
-      base: 'bg-orange-50/50 dark:bg-orange-950/20 hover:bg-orange-100 dark:hover:bg-orange-950/40',
-      selected: 'bg-orange-100 dark:bg-orange-950/60 ring-2 ring-orange-500',
-      border: 'border-orange-200 dark:border-orange-800',
+      base: 'bg-card hover:bg-muted/50',
+      selected: 'bg-orange-50 dark:bg-orange-950/50 ring-2 ring-orange-500 scale-[1.03] shadow-lg shadow-orange-500/20',
+      border: 'border-border',
       icon: 'text-orange-600 dark:text-orange-400',
       text: 'text-orange-700 dark:text-orange-300',
     },
@@ -104,9 +104,9 @@ const AVPU_CARD_CONFIG: AVPUConfig[] = [
     icon: BrainCog,
     severity: 'critical',
     colors: {
-      base: 'bg-red-50/50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/40',
-      selected: 'bg-red-100 dark:bg-red-950/60 ring-2 ring-red-500',
-      border: 'border-red-200 dark:border-red-700',
+      base: 'bg-card hover:bg-muted/50',
+      selected: 'bg-red-50 dark:bg-red-950/50 ring-2 ring-red-500 scale-[1.03] shadow-lg shadow-red-500/20',
+      border: 'border-border',
       icon: 'text-red-600 dark:text-red-400',
       text: 'text-red-700 dark:text-red-300',
     },
@@ -173,12 +173,11 @@ export function AVPUCardGroup({
               <Label
                 htmlFor={`avpu-${config.code}`}
                 className={cn(
-                  'flex flex-col items-center justify-center rounded-xl border-2 p-4 cursor-pointer transition-all duration-200',
-                  'hover:scale-[1.02] active:scale-[0.98]',
-                  config.colors.base,
-                  config.colors.border,
-                  isSelected && config.colors.selected,
-                  disabled && 'opacity-50 cursor-not-allowed hover:scale-100'
+                  'flex flex-col items-center justify-center rounded-xl border-2 p-4 cursor-pointer transition-all duration-200 min-h-[140px] sm:min-h-[160px]',
+                  isSelected
+                    ? config.colors.selected
+                    : cn(config.colors.base, config.colors.border, 'hover:border-primary/30'),
+                  disabled && 'opacity-50 cursor-not-allowed'
                 )}
               >
                 {/* Icon */}
@@ -209,13 +208,8 @@ export function AVPUCardGroup({
                   {config.label}
                 </span>
 
-                {/* Description (visible on larger screens) */}
-                <span className="text-xs text-muted-foreground text-center mt-1 hidden sm:block">
-                  {config.description}
-                </span>
-
-                {/* Critical indicator for P and U */}
-                {(config.code === 'P' || config.code === 'U') && (
+                {/* Severity indicator - only show when selected for P and U */}
+                {isSelected && (config.code === 'P' || config.code === 'U') && (
                   <div className="mt-2">
                     {config.code === 'U' ? (
                       <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 dark:text-red-400">
