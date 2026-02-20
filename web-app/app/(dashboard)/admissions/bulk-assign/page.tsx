@@ -4,12 +4,16 @@ import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
+  BedDouble,
+  Building2,
   Check,
   CheckCircle2,
+  ChevronDown,
   Loader2,
   Search,
   Users,
   X,
+  XCircle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -98,8 +102,8 @@ export default function BulkAssignmentPage() {
     if (!searchQuery) return recommendations;
     const q = searchQuery.toLowerCase();
     return recommendations.filter((r: AdmissionRecommendation) => {
-      const patientName = (r as any).patient_name?.toLowerCase() || '';
-      const patientMrn = (r as any).patient_mrn?.toLowerCase() || '';
+      const patientName = r.patient_name?.toLowerCase() || '';
+      const patientMrn = r.patient_mrn?.toLowerCase() || '';
       return patientName.includes(q) || patientMrn.includes(q);
     });
   }, [recommendations, searchQuery]);
@@ -126,7 +130,11 @@ export default function BulkAssignmentPage() {
 
   // Select all patients
   const selectAll = useCallback(() => {
-    const allIds = new Set(filteredRecommendations.map((r: any) => r.patient || r.patient_id));
+    const allIds = new Set(
+      filteredRecommendations
+        .map((r: AdmissionRecommendation) => r.patient_id)
+        .filter((id): id is number => id !== undefined)
+    );
     setSelectedPatients(allIds);
   }, [filteredRecommendations]);
 
@@ -150,7 +158,7 @@ export default function BulkAssignmentPage() {
       const newAssignments = new Map<number, PatientAssignment>();
       for (const patientResult of result.results) {
         const rec = filteredRecommendations.find(
-          (r: any) => (r.patient || r.patient_id) === patientResult.patient_id
+          (r: AdmissionRecommendation) => r.patient_id === patientResult.patient_id
         );
         newAssignments.set(patientResult.patient_id, {
           patientId: patientResult.patient_id,
@@ -338,8 +346,9 @@ export default function BulkAssignmentPage() {
             </div>
           ) : (
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {filteredRecommendations.map((rec: any) => {
-                const patientId = rec.patient || rec.patient_id;
+              {filteredRecommendations.map((rec: AdmissionRecommendation) => {
+                const patientId = rec.patient_id;
+                if (!patientId) return null;
                 const isSelected = selectedPatients.has(patientId);
                 return (
                   <div
@@ -393,102 +402,236 @@ export default function BulkAssignmentPage() {
       {compatibilityResults.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-lg">2. Assign Wards & Beds</CardTitle>
-                <HelpPopover content="Select a compatible ward and available bed for each patient. Wards are sorted by availability." />
-              </div>
-              <Badge variant="outline">
-                {assignedCount} of {assignments.size} assigned
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {Array.from(assignments.values()).map((assignment) => (
-              <div
-                key={assignment.patientId}
-                className="flex flex-col gap-3 p-3 rounded-lg border sm:flex-row sm:items-center"
-              >
-                {/* Patient Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium truncate">{assignment.patientName}</p>
-                    {assignment.status === 'assigned' && (
-                      <Check className="h-4 w-4 text-green-600 shrink-0" />
-                    )}
-                    {assignment.status === 'admitted' && (
-                      <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
-                    )}
-                    {assignment.status === 'error' && (
-                      <X className="h-4 w-4 text-destructive shrink-0" />
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground truncate">
-                    {assignment.patientMrn} • {assignment.compatibleWards?.length || 0} compatible wards
-                  </p>
-                  {assignment.error && (
-                    <p className="text-sm text-destructive">{assignment.error}</p>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-lg">2. Assign Wards & Beds</CardTitle>
+                  <HelpPopover content="Select a compatible ward and available bed for each patient. Wards are sorted by availability." />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="shrink-0">
+                    {assignedCount} of {assignments.size} assigned
+                  </Badge>
+                  {assignedCount > 0 && (
+                    <Badge variant="default" className="shrink-0 bg-green-600">
+                      {Math.round((assignedCount / assignments.size) * 100)}% Ready
+                    </Badge>
                   )}
                 </div>
+              </div>
+              {/* Progress Bar */}
+              <div className="w-full bg-muted rounded-full h-2">
+                <div
+                  className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(assignedCount / assignments.size) * 100}%` }}
+                />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* Assignment Cards Grid */}
+            <div className="grid gap-3 sm:gap-4">
+              {Array.from(assignments.values()).map((assignment) => {
+                const hasCompatibleWards = (assignment.compatibleWards?.length || 0) > 0;
+                const statusColors = {
+                  pending: 'border-muted-foreground/20',
+                  assigned: 'border-green-500/50 bg-green-50/50 dark:bg-green-950/20',
+                  admitted: 'border-green-600 bg-green-100/50 dark:bg-green-900/30',
+                  error: 'border-destructive/50 bg-destructive/5',
+                };
+                const urgencyColors = {
+                  EMERGENCY: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+                  URGENT: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
+                  ROUTINE: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+                };
 
-                {/* Ward Selection */}
-                <Select
-                  value={assignment.wardId?.toString() || ''}
-                  onValueChange={(v) => assignWard(assignment.patientId, Number(v))}
-                  disabled={assignment.status === 'admitted'}
-                >
-                  <SelectTrigger className="w-full sm:w-48">
-                    <SelectValue placeholder="Select ward" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assignment.compatibleWards?.map((w) => (
-                      <SelectItem key={w.ward_id} value={w.ward_id.toString()}>
-                        {w.ward_name} ({w.available_beds} beds)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                return (
+                  <div
+                    key={assignment.patientId}
+                    className={`rounded-lg border-2 p-3 sm:p-4 transition-colors ${statusColors[assignment.status]}`}
+                  >
+                    {/* Patient Header Row */}
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-3">
+                      <div className="flex items-start gap-2 min-w-0 flex-1">
+                        {/* Status Icon */}
+                        <div className="shrink-0 mt-0.5">
+                          {assignment.status === 'pending' && (
+                            <div className="h-5 w-5 rounded-full border-2 border-muted-foreground/30" />
+                          )}
+                          {assignment.status === 'assigned' && (
+                            <Check className="h-5 w-5 text-green-600" />
+                          )}
+                          {assignment.status === 'admitted' && (
+                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                          )}
+                          {assignment.status === 'error' && (
+                            <XCircle className="h-5 w-5 text-destructive" />
+                          )}
+                        </div>
+                        {/* Patient Info */}
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold truncate">{assignment.patientName}</p>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {assignment.patientMrn}
+                          </p>
+                          {assignment.diagnosis && (
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                              {assignment.diagnosis}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {/* Badges */}
+                      <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                        <Badge className={`text-xs ${urgencyColors[assignment.urgency as keyof typeof urgencyColors] || urgencyColors.ROUTINE}`}>
+                          {assignment.urgency === 'EMERGENCY' && <AlertTriangle className="h-3 w-3 mr-1" />}
+                          {assignment.urgency}
+                        </Badge>
+                        {hasCompatibleWards ? (
+                          <Badge variant="outline" className="text-xs shrink-0">
+                            <Building2 className="h-3 w-3 mr-1" />
+                            {assignment.compatibleWards?.length} ward{(assignment.compatibleWards?.length || 0) > 1 ? 's' : ''}
+                          </Badge>
+                        ) : (
+                          <Badge variant="destructive" className="text-xs shrink-0">
+                            No wards
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
 
-                {/* Bed Selection */}
-                <Select
-                  value={assignment.bedId?.toString() || ''}
-                  onValueChange={(v) => assignBed(assignment.patientId, Number(v))}
-                  disabled={!assignment.wardId || assignment.status === 'admitted'}
-                >
-                  <SelectTrigger className="w-full sm:w-36">
-                    <SelectValue placeholder={
-                      assignment.wardId && assignment.wardId !== activeWardId
-                        ? 'Click to load...'
-                        : 'Select bed'
-                    } />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assignment.wardId === activeWardId &&
-                      availableBeds.map((b: Bed) => (
-                        <SelectItem key={b.id} value={b.id.toString()}>
-                          {b.bed_number}
-                        </SelectItem>
-                      ))}
-                    {assignment.wardId !== activeWardId && assignment.wardId && (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                        Click ward dropdown to load beds
+                    {/* Error Message */}
+                    {assignment.error && (
+                      <Alert variant="destructive" className="mb-3 py-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="text-sm">{assignment.error}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Ward & Bed Selection Row */}
+                    {hasCompatibleWards && (
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                        {/* Ward Selection */}
+                        <div className="flex-1 min-w-0">
+                          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                            Ward
+                          </label>
+                          <Select
+                            value={assignment.wardId?.toString() || ''}
+                            onValueChange={(v) => assignWard(assignment.patientId, Number(v))}
+                            disabled={assignment.status === 'admitted'}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select ward..." />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60">
+                              {assignment.compatibleWards?.map((w) => (
+                                <SelectItem key={w.ward_id} value={w.ward_id.toString()}>
+                                  <div className="flex items-center gap-2">
+                                    <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span className="truncate">{w.ward_name}</span>
+                                    <Badge variant="secondary" className="text-xs ml-auto shrink-0">
+                                      <BedDouble className="h-3 w-3 mr-1" />
+                                      {w.available_beds}
+                                    </Badge>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Bed Selection */}
+                        <div className="w-full sm:w-40">
+                          <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                            Bed
+                          </label>
+                          <Select
+                            value={assignment.bedId?.toString() || ''}
+                            onValueChange={(v) => assignBed(assignment.patientId, Number(v))}
+                            disabled={!assignment.wardId || assignment.status === 'admitted'}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder={
+                                !assignment.wardId
+                                  ? 'Select ward first'
+                                  : assignment.wardId !== activeWardId
+                                    ? 'Loading...'
+                                    : 'Select bed...'
+                              } />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60">
+                              {assignment.wardId === activeWardId && availableBeds.length > 0 ? (
+                                availableBeds.map((b: Bed) => (
+                                  <SelectItem key={b.id} value={b.id.toString()}>
+                                    <div className="flex items-center gap-2">
+                                      <BedDouble className="h-3.5 w-3.5 text-muted-foreground" />
+                                      <span>{b.bed_number}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))
+                              ) : assignment.wardId === activeWardId ? (
+                                <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                  No beds available
+                                </div>
+                              ) : assignment.wardId ? (
+                                <div className="px-2 py-1.5 text-sm text-muted-foreground flex items-center gap-2">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  Loading beds...
+                                </div>
+                              ) : null}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Status indicator on larger screens */}
+                        <div className="hidden sm:flex items-center justify-center w-10 shrink-0">
+                          {assignment.status === 'assigned' && (
+                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                          )}
+                          {assignment.status === 'admitted' && (
+                            <CheckCircle2 className="h-5 w-5 text-green-700" />
+                          )}
+                        </div>
                       </div>
                     )}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
+
+                    {/* No compatible wards message */}
+                    {!hasCompatibleWards && (
+                      <Alert className="py-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="text-sm">
+                          No compatible wards found for this patient. Check ward constraints or override manually.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
 
             {/* Submit Button */}
             {assignedCount > 0 && (
-              <div className="pt-4 border-t">
+              <div className="pt-4 border-t flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">{assignedCount}</span> patient{assignedCount > 1 ? 's' : ''} ready for admission
+                </p>
                 <Button
                   onClick={() => setConfirmDialogOpen(true)}
                   disabled={isSubmitting}
+                  size="lg"
                   className="w-full sm:w-auto"
                 >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
                   Admit {assignedCount} Patient{assignedCount > 1 ? 's' : ''}
                 </Button>
+              </div>
+            )}
+
+            {/* No assignments ready message */}
+            {assignedCount === 0 && assignments.size > 0 && (
+              <div className="text-center py-4 text-muted-foreground">
+                <p className="text-sm">Select a ward and bed for each patient to enable bulk admission.</p>
               </div>
             )}
           </CardContent>
@@ -497,28 +640,66 @@ export default function BulkAssignmentPage() {
 
       {/* Confirmation Dialog */}
       <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <div className="flex items-center gap-2">
               <DialogTitle>Confirm Bulk Admission</DialogTitle>
               <HelpPopover content="This will create admission records for all assigned patients." />
             </div>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-2 space-y-4">
             <p className="text-muted-foreground">
-              You are about to admit <span className="font-medium text-foreground">{assignedCount}</span> patient
+              You are about to admit <span className="font-semibold text-foreground">{assignedCount}</span> patient
               {assignedCount > 1 ? 's' : ''} to their assigned wards and beds.
             </p>
-            <p className="text-sm text-muted-foreground mt-2">
-              This action will create admission records and update bed availability.
-            </p>
+
+            {/* Summary of assignments */}
+            <div className="max-h-48 overflow-y-auto space-y-2">
+              {Array.from(assignments.values())
+                .filter((a) => a.status === 'assigned')
+                .map((a) => {
+                  const ward = a.compatibleWards?.find((w) => w.ward_id === a.wardId);
+                  const bed = availableBeds.find((b: Bed) => b.id === a.bedId);
+                  return (
+                    <div
+                      key={a.patientId}
+                      className="flex items-center gap-3 p-2 rounded-md bg-muted/50 text-sm"
+                    >
+                      <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium truncate">{a.patientName}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {ward?.ward_name || 'Ward'} → Bed {bed?.bed_number || a.bedId}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-sm">
+                This action will create admission records and mark beds as occupied.
+              </AlertDescription>
+            </Alert>
           </div>
           <DialogFooter className="flex flex-col gap-2 sm:flex-row">
-            <Button variant="outline" onClick={() => setConfirmDialogOpen(false)} disabled={isSubmitting}>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDialogOpen(false)}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
-            <Button onClick={submitAssignments} disabled={isSubmitting}>
+            <Button
+              onClick={submitAssignments}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto"
+            >
               {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <CheckCircle2 className="h-4 w-4 mr-2" />
               Confirm & Admit All
             </Button>
           </DialogFooter>

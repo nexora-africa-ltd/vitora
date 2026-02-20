@@ -136,6 +136,9 @@ export const AdmissionRecommendationSchema = z.object({
   encounter: z.number(),
   recommended_by: z.number(),
   recommended_by_username: z.string().optional(),
+  patient_id: z.number().optional(),
+  patient_name: z.string().optional(),
+  patient_mrn: z.string().optional(),
   reason: z.string(),
   provisional_diagnosis: z.string(),
   provisional_diagnosis_text: z.string(),
@@ -603,3 +606,52 @@ export const SupervisorAlertsResponseSchema = z.object({
 });
 
 export type SupervisorAlertsResponseSchemaType = z.infer<typeof SupervisorAlertsResponseSchema>;
+
+// =============================================================================
+// BULK COMPATIBILITY CHECK SCHEMAS
+// =============================================================================
+
+/**
+ * Ward info returned in compatibility check results
+ */
+export const CompatibleWardInfoSchema = z.object({
+  ward_id: z.number(),
+  ward_name: z.string(),
+  ward_type: InpatientWardTypeSchema,
+  available_beds: z.number(),
+});
+
+export type CompatibleWardInfoSchemaType = z.infer<typeof CompatibleWardInfoSchema>;
+
+/**
+ * Incompatible ward info with violations
+ */
+export const IncompatibleWardInfoSchema = CompatibleWardInfoSchema.extend({
+  violations: z.array(z.string()),
+  has_critical: z.boolean(),
+});
+
+export type IncompatibleWardInfoSchemaType = z.infer<typeof IncompatibleWardInfoSchema>;
+
+/**
+ * Result for a single patient in bulk compatibility check
+ */
+export const PatientCompatibilityResultSchema = z.object({
+  patient_id: z.number(),
+  patient_name: z.string().optional(),
+  patient_mrn: z.string().optional(),
+  error: z.string().optional(),
+  compatible_wards: z.array(CompatibleWardInfoSchema),
+  incompatible_wards: z.array(IncompatibleWardInfoSchema),
+});
+
+export type PatientCompatibilityResultSchemaType = z.infer<typeof PatientCompatibilityResultSchema>;
+
+/**
+ * Bulk compatibility check response
+ */
+export const BulkCompatibilityResultSchema = z.object({
+  results: z.array(PatientCompatibilityResultSchema),
+});
+
+export type BulkCompatibilityResultSchemaType = z.infer<typeof BulkCompatibilityResultSchema>;
