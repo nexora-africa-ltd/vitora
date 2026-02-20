@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Save } from 'lucide-react';
+import { AlertTriangle, Save } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { DiagnosisCodeInput, emptyDiagnosisCodeValue, type DiagnosisCodeValue } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -19,6 +20,35 @@ import {
 import { useUser } from '@/lib/auth';
 import { useCreateAdmissionRecommendation } from '@/lib/hooks/use-inpatient';
 import { AdmissionSuccessModal, type AdmissionSuccessData } from '@/components/inpatient';
+import { getApiErrorMessage } from '@/lib/api/client';
+
+/**
+ * Parse DRF error response to extract user-friendly messages.
+ * Handles specific cases like unique constraint on encounter.
+ */
+function parseRecommendationError(error: unknown): string {
+  const rawMessage = getApiErrorMessage(error);
+  
+  // Check for unique constraint on encounter (OneToOneField)
+  if (rawMessage.toLowerCase().includes('encounter') && 
+      (rawMessage.toLowerCase().includes('unique') || 
+       rawMessage.toLowerCase().includes('already exists') ||
+       rawMessage.toLowerCase().includes('admission recommendation with this encounter already exists'))) {
+    return 'An admission recommendation already exists for this encounter. Please view the existing recommendation or create a new encounter.';
+  }
+  
+  // Check for expired/invalid encounter
+  if (rawMessage.toLowerCase().includes('encounter') && rawMessage.toLowerCase().includes('invalid')) {
+    return 'The encounter is no longer valid. It may have been finalized or deleted.';
+  }
+  
+  // Check for permission errors
+  if (rawMessage.toLowerCase().includes('permission') || rawMessage.toLowerCase().includes('forbidden')) {
+    return 'You do not have permission to create admission recommendations.';
+  }
+  
+  return rawMessage;
+}
 
 export default function NewAdmissionRecommendationPage() {
   const searchParams = useSearchParams();
@@ -37,10 +67,45 @@ export default function NewAdmissionRecommendationPage() {
   >('MEDICAL');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState<AdmissionSuccessData | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const createRecommendation = useCreateAdmissionRecommendation();
   const hasValidDiagnosis = !!(provisionalDiagnosis.icd10Code || provisionalDiagnosis.icd11Code);
   const canSubmit = !!encounterId && !!reason && hasValidDiagnosis && !!user;
+
+  const handleSubmit = async () => {
+    if (!encounterId || !user) return;
+    
+    // Clear previous error
+    setSubmitError(null);
+    
+    try {
+      const result = await createRecommendation.mutateAsync({
+        encounter: encounterId,
+        recommended_by: user.id,
+        reason,
+        provisional_diagnosis: provisionalDiagnosis.icd11Code || provisionalDiagnosis.icd10Display?.split(' - ')[0] || '',
+        provisional_diagnosis_text: provisionalDiagnosis.icd11Display?.split(' - ').slice(1).join(' - ') || provisionalDiagnosis.icd10Display?.split(' - ').slice(1).join(' - ') || '',
+        urgency,
+        preferred_ward_type: preferredWardType,
+      });
+      
+      // Show success modal with recommendation data
+      setSuccessData({
+        patientName,
+        patientMrn,
+        urgency: result.urgency,
+        preferredWardType: result.preferred_ward_type,
+        provisionalDiagnosis: result.provisional_diagnosis_text,
+        expiresAt: result.expires_at,
+      });
+      setShowSuccessModal(true);
+    } catch (error) {
+      // Parse and show user-friendly error
+      const errorMessage = parseRecommendationError(error);
+      setSubmitError(errorMessage);
+    }
+  };
 
   return (
     <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
@@ -108,38 +173,23 @@ export default function NewAdmissionRecommendationPage() {
             </div>
           </div>
 
+          {/* Error Alert */}
+          {submitError && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Failed to Submit Recommendation</AlertTitle>
+              <AlertDescription>{submitError}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="flex items-center gap-2">
             <Button
               disabled={!canSubmit || createRecommendation.isPending}
-              onClick={async () => {
-                if (!encounterId || !user) return;
-                const result = await createRecommendation.mutateAsync({
-                  encounter: encounterId,
-                  recommended_by: user.id,
-                  reason,
-                  provisional_diagnosis: provisionalDiagnosis.icd11Code || provisionalDiagnosis.icd10Display?.split(' - ')[0] || '',
-                  provisional_diagnosis_text: provisionalDiagnosis.icd11Display?.split(' - ').slice(1).join(' - ') || provisionalDiagnosis.icd10Display?.split(' - ').slice(1).join(' - ') || '',
-                  urgency,
-                  preferred_ward_type: preferredWardType,
-                });
-                // Show success modal with recommendation data
-                setSuccessData({
-                  patientName,
-                  patientMrn,
-                  urgency: result.urgency,
-                  preferredWardType: result.preferred_ward_type,
-                  provisionalDiagnosis: result.provisional_diagnosis_text,
-                  expiresAt: result.expires_at,
-                });
-                setShowSuccessModal(true);
-              }}
+              onClick={handleSubmit}
             >
               <Save className="h-4 w-4 mr-2" />
-              Submit Recommendation
+              {createRecommendation.isPending ? 'Submitting...' : 'Submit Recommendation'}
             </Button>
-            {createRecommendation.error && (
-              <p className="text-sm text-destructive">Failed to submit recommendation</p>
-            )}
           </div>
         </CardContent>
       </Card>
