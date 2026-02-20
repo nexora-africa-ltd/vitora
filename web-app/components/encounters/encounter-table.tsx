@@ -1,17 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
 import { ChevronLeft, ChevronRight, AlertTriangle, Clock } from 'lucide-react';
 import { Encounter } from '@/lib/types/encounter';
@@ -77,12 +69,10 @@ export function EncounterTable({
 
     return (
       <Card
-        key={encounter.id}
         className={cn(
-          'p-3 cursor-pointer hover:bg-muted/50 transition-colors',
-          isCritical && 'border-red-300 bg-red-50 dark:bg-red-950/20'
+          'p-3 hover:bg-muted/50 transition-colors',
+          isCritical && 'border-destructive/50 bg-destructive/10'
         )}
-        onClick={() => router.push(`/encounters/${encounter.id}`)}
       >
         <div className="flex flex-col gap-2">
           {/* Top row: Patient name + Status */}
@@ -124,97 +114,91 @@ export function EncounterTable({
     );
   };
 
+  // Column definitions for ResponsiveTable
+  const columns = [
+    {
+      key: 'patient',
+      header: 'Patient',
+      cell: (encounter: Encounter) => (
+        <div>
+          <p className="font-medium">{encounter.patient_name}</p>
+          <p className="text-xs text-muted-foreground font-mono">
+            {encounter.patient_mrn}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: 'type',
+      header: 'Type',
+      cell: (encounter: Encounter) => {
+        const type = ENCOUNTER_TYPES.find((t) => t.value === encounter.encounter_type);
+        return <Badge variant="outline">{type?.label}</Badge>;
+      },
+      hideOnMobile: true,
+    },
+    {
+      key: 'chief_complaint',
+      header: 'Chief Complaint',
+      cell: (encounter: Encounter) => (
+        <span className="block max-w-[200px] truncate">{encounter.chief_complaint}</span>
+      ),
+      hideOnMobile: true,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (encounter: Encounter) => {
+        const status = ENCOUNTER_STATUS.find((s) => s.value === encounter.status);
+        return <Badge className={status?.color}>{status?.label}</Badge>;
+      },
+    },
+    {
+      key: 'encounter_date',
+      header: 'Date',
+      cell: (encounter: Encounter) => (
+        <span className="text-muted-foreground">{formatDate(encounter.encounter_date)}</span>
+      ),
+      hideOnMobile: true,
+    },
+    {
+      key: 'vitals',
+      header: 'Vitals',
+      cell: (encounter: Encounter) => {
+        const isCritical = hasCriticalVitals(encounter);
+        if (isCritical) {
+          return (
+            <Badge variant="destructive" className="gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              SpO2: {encounter.spo2}%
+            </Badge>
+          );
+        }
+        if (encounter.spo2) {
+          return (
+            <span className="text-sm text-muted-foreground">SpO2: {encounter.spo2}%</span>
+          );
+        }
+        return <span className="text-sm text-muted-foreground">—</span>;
+      },
+      hideOnMobile: true,
+    },
+  ];
+
   return (
     <div className="space-y-3 sm:space-y-4">
-      {/* Mobile Card Layout */}
-      <div className="md:hidden space-y-2">
-        {isLoading
-          ? [...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-24 w-full rounded-lg" />
-            ))
-          : encounters.map(renderMobileCard)}
-      </div>
-
-      {/* Desktop Table */}
-      <div className="hidden md:block rounded-md border overflow-x-auto">
-        <Table className="min-w-[700px]">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Patient</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Chief Complaint</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Vitals</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              [...Array(5)].map((_, i) => (
-                <TableRow key={i}>
-                  {[...Array(6)].map((_, j) => (
-                    <TableCell key={j}>
-                      <Skeleton className="h-4 w-24" />
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              encounters.map((encounter) => {
-                const status = ENCOUNTER_STATUS.find((s) => s.value === encounter.status);
-                const type = ENCOUNTER_TYPES.find((t) => t.value === encounter.encounter_type);
-                const isCritical = hasCriticalVitals(encounter);
-
-                return (
-                  <TableRow
-                    key={encounter.id}
-                    className={cn(
-                      'cursor-pointer hover:bg-muted/50',
-                      isCritical && 'bg-red-50 dark:bg-red-950/20'
-                    )}
-                    onClick={() => router.push(`/encounters/${encounter.id}`)}
-                  >
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{encounter.patient_name}</p>
-                        <p className="text-xs text-muted-foreground font-mono">
-                          {encounter.patient_mrn}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{type?.label}</Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate">
-                      {encounter.chief_complaint}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={status?.color}>{status?.label}</Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {formatDate(encounter.encounter_date)}
-                    </TableCell>
-                    <TableCell>
-                      {isCritical ? (
-                        <Badge variant="destructive" className="gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          SpO2: {encounter.spo2}%
-                        </Badge>
-                      ) : encounter.spo2 ? (
-                        <span className="text-sm text-muted-foreground">
-                          SpO2: {encounter.spo2}%
-                        </span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <ResponsiveTable
+        data={encounters}
+        columns={columns}
+        keyExtractor={(encounter) => encounter.id}
+        onRowClick={(encounter) => router.push(`/encounters/${encounter.id}`)}
+        isLoading={isLoading}
+        emptyMessage="No encounters found"
+        mobileCard={renderMobileCard}
+        rowClassName={(encounter) =>
+          hasCriticalVitals(encounter) ? 'bg-destructive/10' : ''
+        }
+      />
 
       {/* Pagination */}
       {totalPages > 1 && (
