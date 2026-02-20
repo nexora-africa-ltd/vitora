@@ -26,6 +26,7 @@ import {
   PaginatedNursingKardexSchema,
   PaginatedShiftHandoverSchema,
   BedArraySchema,
+  BulkCompatibilityResultSchema,
 } from '@/lib/schemas/inpatient.schema';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { ImagingOrder } from '@/lib/types/imaging';
@@ -390,7 +391,7 @@ export const inpatientApi = {
         requires_isolation: requiresIsolation ?? [],
       }
     );
-    return response.data;
+    return parseResponse(BulkCompatibilityResultSchema, response.data, { context: 'inpatientApi.bulkCheckCompatibility' });
   },
 
   /**

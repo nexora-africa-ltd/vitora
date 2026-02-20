@@ -57,16 +57,25 @@ export interface AdmissionRecommendation {
   encounter: number;
   recommended_by: number;
   recommended_by_username?: string;
+  patient_id?: number;
   patient_name?: string;
   patient_mrn?: string;
   reason: string;
   provisional_diagnosis: string;
   provisional_diagnosis_text: string;
   urgency: AdmissionRecommendationUrgency;
+  urgency_display?: string;
   preferred_ward_type: InpatientWardType;
   status: AdmissionRecommendationStatus;
+  status_display?: string;
   expires_at: string;
   is_expired?: boolean;
+  resolved_at?: string | null;
+  resolved_by?: number | null;
+  resolved_by_username?: string | null;
+  decline_reason?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export type AdmissionStatus =

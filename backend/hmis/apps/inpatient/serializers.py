@@ -97,6 +97,7 @@ class AdmissionRecommendationSerializer(serializers.ModelSerializer):
     resolved_by_username = serializers.CharField(
         source="resolved_by.username", read_only=True, allow_null=True
     )
+    patient_id = serializers.IntegerField(source="encounter.patient_id", read_only=True)
     patient_name = serializers.CharField(
         source="encounter.patient.full_name", read_only=True
     )
@@ -114,6 +115,7 @@ class AdmissionRecommendationSerializer(serializers.ModelSerializer):
             "encounter",
             "recommended_by",
             "recommended_by_username",
+            "patient_id",
             "patient_name",
             "patient_mrn",
             "reason",
