@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { format, parseISO } from 'date-fns';
 import { Save, Plus, Trash2, Clock, CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
-import { HelpPopover } from '@/components/shared/help-popover';
+import { DiagnosisCodeInput, emptyDiagnosisCodeValue, type DiagnosisCodeValue } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -46,11 +46,9 @@ export default function DischargePage() {
   const createDischarge = useCreateDischarge();
 
   const [dischargeType, setDischargeType] = useState<DischargeType>('NORMAL');
-  const [dischargeDiagnosis, setDischargeDiagnosis] = useState('');
   const [dischargeSummary, setDischargeSummary] = useState('');
   const [followUpInstructions, setFollowUpInstructions] = useState('');
-  const [finalDiagnosis, setFinalDiagnosis] = useState('');
-  const [finalDiagnosisText, setFinalDiagnosisText] = useState('');
+  const [finalDiagnosis, setFinalDiagnosis] = useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue());
   const [patientInstructions, setPatientInstructions] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
   const [medications, setMedications] = useState<DischargeMedication[]>([]);
@@ -124,8 +122,8 @@ export default function DischargePage() {
         discharge_date: new Date().toISOString(),
         discharged_by: user?.id || 0,
         admission_diagnosis: admission.admitting_diagnosis || '',
-        final_diagnosis: finalDiagnosis || dischargeDiagnosis || admission.admitting_diagnosis || '',
-        final_diagnosis_text: finalDiagnosisText || admission.admitting_diagnosis_text || '',
+        final_diagnosis: finalDiagnosis.icd11Code || finalDiagnosis.icd10Display?.split(' - ')[0] || admission.admitting_diagnosis || '',
+        final_diagnosis_text: finalDiagnosis.icd11Display?.split(' - ').slice(1).join(' - ') || finalDiagnosis.icd10Display?.split(' - ').slice(1).join(' - ') || admission.admitting_diagnosis_text || '',
         treatment_summary: dischargeSummary,
         patient_instructions: patientInstructions,
         follow_up_date: followUpDate || undefined,
@@ -301,38 +299,13 @@ export default function DischargePage() {
             </Select>
           </div>
 
-          {/* Discharge Diagnosis */}
-          <div className="space-y-2">
-            <Label htmlFor="discharge-diagnosis">Discharge Diagnosis</Label>
-            <Input
-              id="discharge-diagnosis"
-              value={dischargeDiagnosis}
-              onChange={(e) => setDischargeDiagnosis(e.target.value)}
-              placeholder="e.g., J18.9 - Pneumonia (Resolved)"
-            />
-          </div>
-
           {/* Final Diagnosis */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="final-diagnosis">Final Diagnosis (ICD-10)</Label>
-              <Input
-                id="final-diagnosis"
-                value={finalDiagnosis}
-                onChange={(e) => setFinalDiagnosis(e.target.value)}
-                placeholder="e.g., B50.0"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="final-diagnosis-text">Final Diagnosis Text</Label>
-              <Input
-                id="final-diagnosis-text"
-                value={finalDiagnosisText}
-                onChange={(e) => setFinalDiagnosisText(e.target.value)}
-                placeholder="e.g., Severe falciparum malaria"
-              />
-            </div>
-          </div>
+          <DiagnosisCodeInput
+            value={finalDiagnosis}
+            onChange={setFinalDiagnosis}
+            label="Final Diagnosis"
+            placeholder="Search for diagnosis..."
+          />
 
           {/* Discharge Summary (Treatment Summary) */}
           <div className="space-y-2">

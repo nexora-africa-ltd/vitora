@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Save } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { DiagnosisCodeInput, emptyDiagnosisCodeValue, type DiagnosisCodeValue } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -29,8 +30,7 @@ export default function NewAdmissionRecommendationPage() {
   const patientMrn = searchParams.get('patient_mrn') || '';
 
   const [reason, setReason] = useState('');
-  const [provisionalDiagnosis, setProvisionalDiagnosis] = useState('');
-  const [provisionalDiagnosisText, setProvisionalDiagnosisText] = useState('');
+  const [provisionalDiagnosis, setProvisionalDiagnosis] = useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue());
   const [urgency, setUrgency] = useState<'ROUTINE' | 'URGENT' | 'EMERGENCY'>('URGENT');
   const [preferredWardType, setPreferredWardType] = useState<
     'MEDICAL' | 'SURGICAL' | 'PEDIATRIC' | 'MATERNITY' | 'ICU' | 'ISOLATION'
@@ -39,7 +39,8 @@ export default function NewAdmissionRecommendationPage() {
   const [successData, setSuccessData] = useState<AdmissionSuccessData | null>(null);
 
   const createRecommendation = useCreateAdmissionRecommendation();
-  const canSubmit = !!encounterId && !!reason && !!provisionalDiagnosis && !!provisionalDiagnosisText && !!user;
+  const hasValidDiagnosis = !!(provisionalDiagnosis.icd10Code || provisionalDiagnosis.icd11Code);
+  const canSubmit = !!encounterId && !!reason && hasValidDiagnosis && !!user;
 
   return (
     <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
@@ -67,24 +68,12 @@ export default function NewAdmissionRecommendationPage() {
             />
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Provisional Diagnosis (ICD-10)</Label>
-              <Input
-                value={provisionalDiagnosis}
-                onChange={(e) => setProvisionalDiagnosis(e.target.value)}
-                placeholder="e.g., B50.0"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Diagnosis Text</Label>
-              <Input
-                value={provisionalDiagnosisText}
-                onChange={(e) => setProvisionalDiagnosisText(e.target.value)}
-                placeholder="e.g., Severe falciparum malaria"
-              />
-            </div>
-          </div>
+          <DiagnosisCodeInput
+            value={provisionalDiagnosis}
+            onChange={setProvisionalDiagnosis}
+            label="Provisional Diagnosis"
+            placeholder="Search for diagnosis..."
+          />
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
@@ -128,8 +117,8 @@ export default function NewAdmissionRecommendationPage() {
                   encounter: encounterId,
                   recommended_by: user.id,
                   reason,
-                  provisional_diagnosis: provisionalDiagnosis,
-                  provisional_diagnosis_text: provisionalDiagnosisText,
+                  provisional_diagnosis: provisionalDiagnosis.icd11Code || provisionalDiagnosis.icd10Display?.split(' - ')[0] || '',
+                  provisional_diagnosis_text: provisionalDiagnosis.icd11Display?.split(' - ').slice(1).join(' - ') || provisionalDiagnosis.icd10Display?.split(' - ').slice(1).join(' - ') || '',
                   urgency,
                   preferred_ward_type: preferredWardType,
                 });
