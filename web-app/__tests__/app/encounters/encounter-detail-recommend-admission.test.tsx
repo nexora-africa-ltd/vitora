@@ -22,6 +22,11 @@ jest.mock('@/lib/hooks/use-encounters', () => ({
   useEncounter: jest.fn(),
   useEncounterDiagnoses: jest.fn(),
   useEncounterTreatmentPlan: jest.fn(),
+  useEncounterClinicalSnapshot: jest.fn(() => ({
+    data: null,
+    isLoading: false,
+    isError: false,
+  })),
 }));
 
 // Mock the encounter context
@@ -96,6 +101,10 @@ describe('EncounterDetailPage -> Admission recommendation integration', () => {
     render(<EncounterDetailPage />);
 
     const link = screen.getByRole('link', { name: /recommend for admission/i });
-    expect(link).toHaveAttribute('href', '/admissions/recommendations/new?encounter=1');
+    // URL includes encoded patient_name and patient_mrn for the success modal
+    expect(link).toHaveAttribute(
+      'href',
+      '/admissions/recommendations/new?encounter=1&patient_name=John%20Doe&patient_mrn=MRN-20260103-0042'
+    );
   });
 });

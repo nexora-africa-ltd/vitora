@@ -148,7 +148,7 @@ export default function EncounterDetailPage() {
 
       {encounter.encounter_type === 'OPD' && (
         <Button variant="secondary" className="w-full sm:w-auto text-sm" asChild>
-          <Link href={`/admissions/recommendations/new?encounter=${encounter.id}`}>
+          <Link href={`/admissions/recommendations/new?encounter=${encounter.id}&patient_name=${encodeURIComponent(encounter.patient_name || '')}&patient_mrn=${encodeURIComponent(encounter.patient_mrn || '')}`}>
             <span className="sm:hidden">Admit</span>
             <span className="hidden sm:inline">Recommend for Admission</span>
           </Link>
