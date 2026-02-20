@@ -8,19 +8,21 @@
  */
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
   AlertCircle,
+  AlertTriangle,
   Clock,
   Ambulance,
   Activity,
   Calculator,
   MessageSquare,
   RefreshCw,
+  Info,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -169,6 +171,33 @@ export default function TriageAssessmentPage() {
   // Check if category has been overridden
   const isOverridden = calculatedCategory && selectedCategory !== calculatedCategory;
 
+  // Determine which fields are missing for triage calculation
+  const missingCalculationFields = useMemo(() => {
+    const missing: string[] = [];
+    const chiefCategory = watch('chief_complaint_category');
+    const mentalStatus = watch('mental_status');
+    const mobility = watch('mobility');
+
+    // Required fields for KETA calculation
+    if (!chiefCategory) missing.push('Chief Complaint Category');
+    if (!mentalStatus) missing.push('Mental Status (AVPU)');
+    if (!mobility) missing.push('Mobility');
+
+    // Check if ANY vitals were captured (at least one is recommended)
+    const hasAnyVitals = currentVitals && (
+      currentVitals.spo2 !== null && currentVitals.spo2 !== undefined ||
+      currentVitals.heart_rate !== null && currentVitals.heart_rate !== undefined ||
+      currentVitals.systolic_bp !== null && currentVitals.systolic_bp !== undefined ||
+      currentVitals.temperature !== null && currentVitals.temperature !== undefined ||
+      currentVitals.respiratory_rate !== null && currentVitals.respiratory_rate !== undefined
+    );
+    if (!hasAnyVitals) missing.push('Vitals (at least one)');
+
+    return missing;
+  }, [watch, currentVitals]);
+
+  const canCalculate = missingCalculationFields.length === 0;
+
   // Calculate triage category
   const handleCalculateCategory = useCallback(async () => {
     const formData = watch();
@@ -202,14 +231,11 @@ export default function TriageAssessmentPage() {
 
   // Auto-calculate on initial load and when relevant fields change
   useEffect(() => {
-    const chiefCategory = watch('chief_complaint_category');
-    const mentalStatus = watch('mental_status');
-
-    if (chiefCategory && mentalStatus) {
+    if (canCalculate) {
       handleCalculateCategory();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedFields[0], watchedFields[1], watchedFields[2]]);
+  }, [watchedFields[0], watchedFields[1], watchedFields[2], canCalculate]);
 
   const onSubmit = useCallback(
     async (data: AssessmentFormData) => {
@@ -446,7 +472,29 @@ export default function TriageAssessmentPage() {
         </Card>
 
         {/* Triage Category */}
-        <Card>
+        <Card className={!canCalculate ? 'relative' : ''}>
+          {/* Overlay for missing fields */}
+          {!canCalculate && (
+            <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] z-10 rounded-lg flex items-center justify-center">
+              <div className="bg-card border shadow-lg rounded-lg p-4 max-w-sm mx-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-sm">Cannot Calculate Triage Category</p>
+                    <p className="text-sm text-muted-foreground mt-1">Complete the following fields first:</p>
+                    <ul className="mt-2 space-y-1">
+                      {missingCalculationFields.map((field) => (
+                        <li key={field} className="text-sm text-destructive flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-destructive" />
+                          {field}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -458,7 +506,7 @@ export default function TriageAssessmentPage() {
                 variant="outline"
                 size="sm"
                 onClick={handleCalculateCategory}
-                disabled={calculateCategoryMutation.isPending}
+                disabled={calculateCategoryMutation.isPending || !canCalculate}
               >
                 <RefreshCw className={`h-4 w-4 mr-1.5 ${calculateCategoryMutation.isPending ? 'animate-spin' : ''}`} />
                 Recalculate
