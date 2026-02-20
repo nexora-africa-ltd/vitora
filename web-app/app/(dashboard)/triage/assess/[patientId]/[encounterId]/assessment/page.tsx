@@ -1,0 +1,585 @@
+/**
+ * Triage Assess - Assessment Tab
+ *
+ * Third step in triage assessment workflow.
+ * Calculates triage category based on vitals and symptoms using KETA scale.
+ *
+ * Route: /triage/assess/[patientId]/[encounterId]/assessment
+ */
+'use client';
+
+import { useState, useCallback, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import {
+  AlertCircle,
+  Clock,
+  Ambulance,
+  Brain,
+  Activity,
+  Calculator,
+  MessageSquare,
+  RefreshCw,
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Slider } from '@/components/ui/slider';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { HelpPopover } from '@/components/shared/help-popover';
+import { TriageCategoryBadge, VitalAlertsPanel } from '@/components/triage';
+import { useEncounterContext } from '@/lib/context/encounter-context';
+import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
+import { useCalculateTriageCategory } from '@/lib/hooks/use-triage';
+import {
+  ARRIVAL_MODE_CONFIG,
+  CHIEF_COMPLAINT_CONFIG,
+  AVPU_CONFIG,
+  MOBILITY_CONFIG,
+  TRIAGE_CATEGORY_CONFIG,
+  type TriageCategory,
+  type TriageAlert,
+} from '@/lib/types/triage';
+
+// =============================================================================
+// Schema
+// =============================================================================
+
+const assessmentSchema = z.object({
+  arrival_mode: z.enum(['WALK_IN', 'AMBULANCE', 'POLICE', 'REFERRAL', 'OTHER'], {
+    required_error: 'Arrival mode is required',
+  }),
+  arrival_time: z.string().min(1, 'Arrival time is required'),
+  chief_complaint_category: z.enum(
+    [
+      'CHEST_PAIN',
+      'DIFFICULTY_BREATHING',
+      'TRAUMA',
+      'FEVER',
+      'ABDOMINAL_PAIN',
+      'HEADACHE',
+      'ALTERED_CONSCIOUSNESS',
+      'BLEEDING',
+      'POISONING',
+      'OBSTETRIC',
+      'PEDIATRIC',
+      'OTHER',
+    ],
+    { required_error: 'Chief complaint category is required' }
+  ),
+  chief_complaint: z.string().min(1, 'Chief complaint details are required'),
+  pain_score: z.number().min(0).max(10).nullable().optional(),
+  mental_status: z.enum(['A', 'V', 'P', 'U'], {
+    required_error: 'Mental status (AVPU) is required',
+  }),
+  mobility: z.enum(['AMBULATORY', 'WHEELCHAIR', 'STRETCHER', 'IMMOBILE'], {
+    required_error: 'Mobility status is required',
+  }),
+  triage_category: z.enum(['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE'], {
+    required_error: 'Triage category is required',
+  }),
+  auto_calculated_category: z.enum(['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE']).optional(),
+  category_override_reason: z.string().optional(),
+});
+
+type AssessmentFormData = z.infer<typeof assessmentSchema>;
+
+// =============================================================================
+// Component
+// =============================================================================
+
+export default function TriageAssessmentPage() {
+  const router = useRouter();
+  const params = useParams();
+  const { encounter } = useEncounterContext();
+
+  const patientId = params.patientId as string;
+  const encounterId = params.encounterId as string;
+
+  // Get triage store data
+  const { getVitals, getAssessment, setAssessment } = useTriageAssessStore();
+  const currentVitals = getVitals(parseInt(encounterId, 10));
+  const currentAssessment = getAssessment(parseInt(encounterId, 10));
+
+  // Triage calculation mutation
+  const calculateCategoryMutation = useCalculateTriageCategory();
+
+  // Local state
+  const [calculatedCategory, setCalculatedCategory] = useState<TriageCategory | null>(
+    currentAssessment?.auto_calculated_category ?? null
+  );
+  const [alerts, setAlerts] = useState<TriageAlert[]>([]);
+  const [hasOverridden, setHasOverridden] = useState(false);
+
+  // Get current timestamp for default arrival time
+  const now = new Date();
+  const defaultArrivalTime = now.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<AssessmentFormData>({
+    resolver: zodResolver(assessmentSchema),
+    defaultValues: {
+      arrival_mode: currentAssessment?.arrival_mode || 'WALK_IN',
+      arrival_time: currentAssessment?.arrival_time || defaultArrivalTime,
+      chief_complaint_category: currentAssessment?.chief_complaint_category || undefined,
+      chief_complaint: currentAssessment?.chief_complaint || encounter?.chief_complaint || '',
+      pain_score: currentAssessment?.pain_score ?? 0,
+      mental_status: currentAssessment?.mental_status || 'A',
+      mobility: currentAssessment?.mobility || 'AMBULATORY',
+      triage_category: currentAssessment?.triage_category || calculatedCategory || 'GREEN',
+      auto_calculated_category: currentAssessment?.auto_calculated_category,
+      category_override_reason: currentAssessment?.category_override_reason || '',
+    },
+  });
+
+  // Watch for changes that affect category calculation
+  const watchedFields = watch([
+    'chief_complaint_category',
+    'mental_status',
+    'mobility',
+    'pain_score',
+    'triage_category',
+  ]);
+  const selectedCategory = watch('triage_category');
+  const overrideReason = watch('category_override_reason');
+
+  // Check if category has been overridden
+  const isOverridden = calculatedCategory && selectedCategory !== calculatedCategory;
+
+  // Calculate triage category
+  const handleCalculateCategory = useCallback(async () => {
+    const formData = watch();
+
+    try {
+      const result = await calculateCategoryMutation.mutateAsync({
+        spo2: currentVitals?.spo2,
+        systolic_bp: currentVitals?.systolic_bp,
+        diastolic_bp: currentVitals?.diastolic_bp,
+        heart_rate: currentVitals?.heart_rate,
+        temperature: currentVitals?.temperature,
+        respiratory_rate: currentVitals?.respiratory_rate,
+        mental_status: formData.mental_status,
+        chief_complaint_category: formData.chief_complaint_category,
+        pain_score: formData.pain_score ?? undefined,
+        mobility: formData.mobility,
+      });
+
+      setCalculatedCategory(result.suggested_category);
+      setAlerts(result.alerts || []);
+      setValue('auto_calculated_category', result.suggested_category);
+
+      // Auto-set category if not overridden
+      if (!hasOverridden) {
+        setValue('triage_category', result.suggested_category);
+      }
+    } catch (error) {
+      console.error('Failed to calculate triage category:', error);
+    }
+  }, [watch, calculateCategoryMutation, currentVitals, setValue, hasOverridden]);
+
+  // Auto-calculate on initial load and when relevant fields change
+  useEffect(() => {
+    const chiefCategory = watch('chief_complaint_category');
+    const mentalStatus = watch('mental_status');
+
+    if (chiefCategory && mentalStatus) {
+      handleCalculateCategory();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedFields[0], watchedFields[1], watchedFields[2]]);
+
+  const onSubmit = useCallback(
+    async (data: AssessmentFormData) => {
+      // Validate override reason if category changed
+      if (isOverridden && !data.category_override_reason?.trim()) {
+        return; // TODO: Show error - handled by zod refinement
+      }
+
+      // Store assessment in triage store
+      setAssessment(parseInt(encounterId, 10), {
+        arrival_mode: data.arrival_mode,
+        arrival_time: data.arrival_time,
+        chief_complaint_category: data.chief_complaint_category,
+        chief_complaint: data.chief_complaint,
+        pain_score: data.pain_score ?? undefined,
+        mental_status: data.mental_status,
+        mobility: data.mobility,
+        triage_category: data.triage_category,
+        auto_calculated_category: data.auto_calculated_category,
+        category_override_reason: data.category_override_reason,
+      });
+
+      // Navigate to next tab
+      router.push(`/triage/assess/${patientId}/${encounterId}/route`);
+    },
+    [router, patientId, encounterId, setAssessment, isOverridden]
+  );
+
+  const handleBack = useCallback(() => {
+    router.push(`/triage/assess/${patientId}/${encounterId}/history`);
+  }, [router, patientId, encounterId]);
+
+  return (
+    <div className="space-y-6">
+      {/* Alerts Panel */}
+      {alerts.length > 0 && <VitalAlertsPanel alerts={alerts} />}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Arrival Information */}
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-lg">Arrival & Presentation</CardTitle>
+                <HelpPopover content="Document how and when the patient arrived and their presenting complaint." />
+              </div>
+              <Badge variant="secondary">Step 3 of 4</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Row 1: Arrival Mode, Arrival Time */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Arrival Mode */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <Ambulance className="h-4 w-4 text-muted-foreground" />
+                  Arrival Mode *
+                </Label>
+                <Controller
+                  name="arrival_mode"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select arrival mode" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(ARRIVAL_MODE_CONFIG).map(([key, config]) => (
+                          <SelectItem key={key} value={key}>
+                            {config.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.arrival_mode && (
+                  <p className="text-sm text-destructive">{errors.arrival_mode.message}</p>
+                )}
+              </div>
+
+              {/* Arrival Time */}
+              <div className="space-y-2">
+                <Label htmlFor="arrival_time" className="flex items-center gap-1.5">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  Arrival Time *
+                </Label>
+                <Input
+                  id="arrival_time"
+                  type="datetime-local"
+                  {...register('arrival_time')}
+                />
+                {errors.arrival_time && (
+                  <p className="text-sm text-destructive">{errors.arrival_time.message}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Chief Complaint Category */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                Chief Complaint Category *
+              </Label>
+              <Controller
+                name="chief_complaint_category"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(CHIEF_COMPLAINT_CONFIG).map(([key, config]) => (
+                        <SelectItem key={key} value={key}>
+                          {config.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.chief_complaint_category && (
+                <p className="text-sm text-destructive">{errors.chief_complaint_category.message}</p>
+              )}
+            </div>
+
+            {/* Chief Complaint Details */}
+            <div className="space-y-2">
+              <Label htmlFor="chief_complaint">Chief Complaint Details *</Label>
+              <Textarea
+                id="chief_complaint"
+                placeholder="Describe the patient's presenting complaint in detail..."
+                rows={3}
+                {...register('chief_complaint')}
+              />
+              {errors.chief_complaint && (
+                <p className="text-sm text-destructive">{errors.chief_complaint.message}</p>
+              )}
+            </div>
+
+            {/* Pain Score */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-1.5">
+                Pain Score (0-10)
+                <HelpPopover content="0 = No pain, 10 = Worst imaginable pain" />
+              </Label>
+              <Controller
+                name="pain_score"
+                control={control}
+                render={({ field }) => (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-4">
+                      <Slider
+                        min={0}
+                        max={10}
+                        step={1}
+                        value={[field.value ?? 0]}
+                        onValueChange={(value) => field.onChange(value[0])}
+                        className="flex-1"
+                      />
+                      <span className="w-8 text-center font-medium text-lg">
+                        {field.value ?? 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>No pain</span>
+                      <span>Moderate</span>
+                      <span>Severe</span>
+                    </div>
+                  </div>
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Clinical Assessment */}
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg">Clinical Assessment</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Mental Status (AVPU) */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-1.5">
+                <Brain className="h-4 w-4 text-muted-foreground" />
+                Mental Status (AVPU) *
+              </Label>
+              <Controller
+                name="mental_status"
+                control={control}
+                render={({ field }) => (
+                  <RadioGroup
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+                  >
+                    {Object.entries(AVPU_CONFIG).map(([key, config]) => (
+                      <div key={key}>
+                        <RadioGroupItem
+                          value={key}
+                          id={`avpu-${key}`}
+                          className="peer sr-only"
+                        />
+                        <Label
+                          htmlFor={`avpu-${key}`}
+                          className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                        >
+                          <span className="font-bold text-lg">{config.code}</span>
+                          <span className="text-xs text-muted-foreground">{config.label}</span>
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                )}
+              />
+              {errors.mental_status && (
+                <p className="text-sm text-destructive">{errors.mental_status.message}</p>
+              )}
+            </div>
+
+            {/* Mobility */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-1.5">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                Mobility *
+              </Label>
+              <Controller
+                name="mobility"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select mobility status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(MOBILITY_CONFIG).map(([key, config]) => (
+                        <SelectItem key={key} value={key}>
+                          {config.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.mobility && (
+                <p className="text-sm text-destructive">{errors.mobility.message}</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Triage Category */}
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Triage Category</CardTitle>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCalculateCategory}
+                disabled={calculateCategoryMutation.isPending}
+              >
+                <RefreshCw className={`h-4 w-4 mr-1.5 ${calculateCategoryMutation.isPending ? 'animate-spin' : ''}`} />
+                Recalculate
+              </Button>
+            </div>
+            <CardDescription>
+              Category is auto-calculated based on vitals and assessment. Override if clinically indicated.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Calculated Category Display */}
+            {calculatedCategory && (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                <Calculator className="h-5 w-5 text-muted-foreground" />
+                <span className="text-sm">Calculated:</span>
+                <TriageCategoryBadge category={calculatedCategory} />
+              </div>
+            )}
+
+            {/* Category Selection */}
+            <div className="space-y-3">
+              <Label>Selected Category *</Label>
+              <Controller
+                name="triage_category"
+                control={control}
+                render={({ field }) => (
+                  <RadioGroup
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      if (value !== calculatedCategory) {
+                        setHasOverridden(true);
+                      }
+                    }}
+                    value={field.value}
+                    className="grid grid-cols-2 sm:grid-cols-5 gap-3"
+                  >
+                    {Object.entries(TRIAGE_CATEGORY_CONFIG).map(([key, config]) => (
+                      <div key={key}>
+                        <RadioGroupItem
+                          value={key}
+                          id={`category-${key}`}
+                          className="peer sr-only"
+                        />
+                        <Label
+                          htmlFor={`category-${key}`}
+                          className="flex flex-col items-center justify-center rounded-md border-2 border-muted p-3 hover:border-primary/50 peer-data-[state=checked]:border-primary cursor-pointer transition-colors"
+                          style={{
+                            backgroundColor:
+                              field.value === key ? `${config.bgColor}20` : undefined,
+                          }}
+                        >
+                          <TriageCategoryBadge category={key as TriageCategory} size="sm" />
+                          <span className="text-xs text-muted-foreground mt-1">
+                            {config.targetWaitMinutes === 0
+                              ? 'Immediate'
+                              : `≤ ${config.targetWaitMinutes} min`}
+                          </span>
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                )}
+              />
+              {errors.triage_category && (
+                <p className="text-sm text-destructive">{errors.triage_category.message}</p>
+              )}
+            </div>
+
+            {/* Override Reason (shown when category differs from calculated) */}
+            {isOverridden && (
+              <div className="space-y-2">
+                <Label htmlFor="category_override_reason" className="flex items-center gap-1.5">
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  Override Reason *
+                </Label>
+                <Textarea
+                  id="category_override_reason"
+                  placeholder="Explain why you're overriding the calculated category..."
+                  rows={2}
+                  {...register('category_override_reason')}
+                />
+                {errors.category_override_reason && (
+                  <p className="text-sm text-destructive">{errors.category_override_reason.message}</p>
+                )}
+                {isOverridden && !overrideReason?.trim() && (
+                  <Alert variant="destructive" className="bg-destructive/10 border-destructive/20">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Override reason is required when changing the calculated category.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Navigation Buttons */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+          <Button type="button" variant="outline" onClick={handleBack}>
+            Back: History
+          </Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting || Boolean(isOverridden && !overrideReason?.trim())}
+          >
+            Next: Route Patient
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}

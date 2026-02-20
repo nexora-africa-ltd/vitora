@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TriageAssessmentForm, AlreadyTriagedWarning, TriageInProgressWarning } from '@/components/triage';
 import { CheckinSuccessModal, type CheckinSuccessData } from '@/components/patients/checkin-success-modal';
-import { useCreateTriageAssessment, useWaitingQueue, useCheckInPatient, useTriageAssessmentByEncounter } from '@/lib/hooks/use-triage';
+import { useCreateTriageAssessment, useCompleteTriageAssessment, useWaitingQueue, useCheckInPatient, useTriageAssessmentByEncounter } from '@/lib/hooks/use-triage';
 import { usePatient, usePatients } from '@/lib/hooks/use-patients';
 import { useEncounter, useCreateEncounter } from '@/lib/hooks/use-encounters';
 import { toast } from '@/lib/hooks/use-toast';
@@ -81,6 +81,7 @@ export default function NewTriagePage() {
 
   // Mutations
   const { mutateAsync: createAssessment, isPending: isCreating } = useCreateTriageAssessment();
+  const { mutateAsync: completeAssessment, isPending: isCompleting } = useCompleteTriageAssessment();
   const { mutateAsync: createEncounter } = useCreateEncounter();
   const { mutateAsync: checkInPatient } = useCheckInPatient();
 
@@ -139,10 +140,14 @@ export default function NewTriagePage() {
       if (!selectedEncounterId) return;
 
       try {
+        // Create the assessment (sets triage_start_time, status = IN_PROGRESS)
         const assessment = await createAssessment({
           ...data,
           encounter: selectedEncounterId,
         });
+
+        // Complete the assessment (sets triage_end_time, status = COMPLETED)
+        await completeAssessment(assessment.id);
 
         // Clear idempotency key on successful submission
         clearIdempotencyKey();
@@ -192,7 +197,7 @@ export default function NewTriagePage() {
         });
       }
     },
-    [createAssessment, selectedEncounterId, router, clearIdempotencyKey, patient]
+    [createAssessment, completeAssessment, selectedEncounterId, router, clearIdempotencyKey, patient]
   );
 
   const handleCancel = useCallback(() => {

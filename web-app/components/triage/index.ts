@@ -30,3 +30,5 @@ export type { AlreadyTriagedWarningProps } from './already-triaged-warning';
 
 export { TriageInProgressWarning } from './triage-in-progress-warning';
 export type { TriageInProgressWarningProps } from './triage-in-progress-warning';
+
+export { TriageAssessTabs } from './triage-assess-tabs';
