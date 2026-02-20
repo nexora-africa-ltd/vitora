@@ -138,6 +138,13 @@ export const inpatientApi = {
   // ============================================================================
   // Admission Recommendations
   // ============================================================================
+  async getAdmissionRecommendation(id: number): Promise<AdmissionRecommendation> {
+    const response = await apiClient.get<AdmissionRecommendation>(
+      `/api/inpatient/admission-recommendations/${id}/`
+    );
+    return parseResponse(AdmissionRecommendationSchema, response.data, { context: 'inpatientApi.getAdmissionRecommendation' });
+  },
+
   async listAdmissionRecommendations(
     params?: AdmissionRecommendationListParams
   ): Promise<AdmissionRecommendationListResponse> {

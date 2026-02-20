@@ -45,6 +45,8 @@ export const inpatientQueryKeys = {
   beds: (params?: BedListParams) => [...inpatientQueryKeys.all, 'beds', params] as const,
   recommendations: (params?: AdmissionRecommendationListParams) =>
     [...inpatientQueryKeys.all, 'admission-recommendations', params] as const,
+  recommendation: (id: number) =>
+    [...inpatientQueryKeys.all, 'admission-recommendations', id] as const,
   admissions: (params?: AdmissionListParams) =>
     [...inpatientQueryKeys.all, 'admissions', params] as const,
   admission: (id: number) => [...inpatientQueryKeys.all, 'admissions', id] as const,
@@ -190,6 +192,14 @@ export function useAdmissionRecommendations(params?: AdmissionRecommendationList
   return useQuery({
     queryKey: inpatientQueryKeys.recommendations(params),
     queryFn: () => inpatientApi.listAdmissionRecommendations(params),
+  });
+}
+
+export function useAdmissionRecommendation(id: number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.recommendation(id!),
+    queryFn: () => inpatientApi.getAdmissionRecommendation(id!),
+    enabled: !!id,
   });
 }
 
