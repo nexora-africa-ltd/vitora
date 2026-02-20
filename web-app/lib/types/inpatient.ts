@@ -270,6 +270,7 @@ export interface TransferCreateData {
   destination_bed: number;
   reason: TransferReason;
   clinical_handover_notes: string;
+  transfer_date: string;
   transferred_by?: number;
 }
 

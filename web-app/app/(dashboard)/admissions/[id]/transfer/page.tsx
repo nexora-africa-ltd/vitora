@@ -159,6 +159,7 @@ export default function TransferPage() {
         destination_bed: Number(targetBedId),
         reason: transferReason,
         clinical_handover_notes: clinicalJustification,
+        transfer_date: new Date().toISOString(),
         transferred_by: user?.id,
       });
       toast({
