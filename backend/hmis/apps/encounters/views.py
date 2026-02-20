@@ -901,34 +901,15 @@ class EncounterViewSet(viewsets.ModelViewSet):
 
         POST /api/encounters/{id}/start_consultation/
         """
-        from django.utils import timezone
-
         encounter = self.get_object()
 
-        # Check if encounter can enter consultation
-        if not encounter.can_enter_consultation():
+        try:
+            encounter.begin_consultation()
+        except ValueError as e:
             return Response(
-                {"detail": "Encounter cannot enter consultation. Triage may be required."},
+                {"detail": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        # Check if consultation is not already in progress or completed
-        if encounter.consultation_status == "IN_PROGRESS":
-            return Response(
-                {"detail": "Consultation is already in progress."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        if encounter.consultation_status == "COMPLETED":
-            return Response(
-                {"detail": "Consultation is already completed."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # Start consultation
-        encounter.consultation_status = "IN_PROGRESS"
-        encounter.consultation_started_at = timezone.now()
-        encounter.save()
 
         serializer = self.get_serializer(encounter)
         return Response(serializer.data)

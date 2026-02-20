@@ -575,3 +575,177 @@ class TestEncounterModel:
         assert encounter.has_critical_vitals() is True
         alerts = encounter.get_alerts()
         assert "bradycardia" in alerts.lower() or "low pulse" in alerts.lower()
+
+
+@pytest.mark.unit
+class TestBeginConsultation:
+    """Test Encounter.begin_consultation() method."""
+
+    def test_begin_consultation_sets_status_to_in_progress(self):
+        """Should set consultation_status to IN_PROGRESS."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="John",
+            last_name="Doe",
+            date_of_birth=date(1990, 1, 1),
+            gender="M",
+        )
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Test",
+            triage_status="COMPLETED",
+            consultation_status="WAITING",
+        )
+
+        result = encounter.begin_consultation()
+
+        assert result == encounter  # Returns self for chaining
+        assert encounter.consultation_status == "IN_PROGRESS"
+
+    def test_begin_consultation_sets_started_at_timestamp(self):
+        """Should record consultation_started_at timestamp."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="Jane",
+            last_name="Doe",
+            date_of_birth=date(1985, 5, 15),
+            gender="F",
+        )
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Check-up",
+            triage_status="NOT_APPLICABLE",
+            consultation_status="CALLED",
+        )
+
+        assert encounter.consultation_started_at is None
+        encounter.begin_consultation()
+
+        assert encounter.consultation_started_at is not None
+
+    def test_begin_consultation_raises_error_when_triage_pending(self):
+        """Should raise ValueError if triage is still pending."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="Test",
+            last_name="Patient",
+            date_of_birth=date(2000, 1, 1),
+            gender="M",
+        )
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Fever",
+            triage_status="PENDING",
+            consultation_status="WAITING",
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            encounter.begin_consultation()
+
+        assert "triage" in str(exc_info.value).lower()
+
+    def test_begin_consultation_raises_error_when_already_in_progress(self):
+        """Should raise ValueError if consultation is already in progress."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="Test",
+            last_name="Patient",
+            date_of_birth=date(1995, 6, 15),
+            gender="F",
+        )
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Follow-up",
+            triage_status="COMPLETED",
+            consultation_status="IN_PROGRESS",
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            encounter.begin_consultation()
+
+        assert "already in progress" in str(exc_info.value).lower()
+
+    def test_begin_consultation_raises_error_when_completed(self):
+        """Should raise ValueError if consultation is already completed."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="Test",
+            last_name="Patient",
+            date_of_birth=date(1988, 12, 1),
+            gender="M",
+        )
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Review",
+            triage_status="COMPLETED",
+            consultation_status="COMPLETED",
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            encounter.begin_consultation()
+
+        assert "already completed" in str(exc_info.value).lower()
+
+    def test_begin_consultation_works_with_bypassed_triage(self):
+        """Should work when triage is BYPASSED."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="Test",
+            last_name="Patient",
+            date_of_birth=date(1975, 3, 20),
+            gender="F",
+        )
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="SCHEDULED_OPD",
+            chief_complaint="Routine check",
+            triage_status="BYPASSED",
+            consultation_status="WAITING",
+        )
+
+        encounter.begin_consultation()
+
+        assert encounter.consultation_status == "IN_PROGRESS"
+
+    def test_begin_consultation_persists_changes(self):
+        """Should persist changes to database."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="Test",
+            last_name="Patient",
+            date_of_birth=date(1990, 7, 10),
+            gender="M",
+        )
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Checkup",
+            triage_status="COMPLETED",
+            consultation_status="WAITING",
+        )
+
+        encounter.begin_consultation()
+
+        # Refresh from database to verify persistence
+        encounter.refresh_from_db()
+        assert encounter.consultation_status == "IN_PROGRESS"
+        assert encounter.consultation_started_at is not None

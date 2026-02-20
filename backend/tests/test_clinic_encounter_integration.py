@@ -614,3 +614,58 @@ class TestBackwardCompatibility:
         # New FK should be set for traceability
         encounter.refresh_from_db()
         assert encounter.clinic_visit == eye_clinic_visit
+
+
+# =============================================================================
+# Test Class: ClinicVisit.start_consultation() Consultation Status Sync
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestStartConsultationStatusSync:
+    """Tests for ClinicVisit.start_consultation() syncing Encounter.consultation_status."""
+
+    def test_start_consultation_sets_encounter_consultation_status_to_in_progress(
+        self, integration_user, eye_clinic_visit
+    ):
+        """start_consultation() should set encounter.consultation_status = IN_PROGRESS."""
+        # Act: start consultation
+        encounter = eye_clinic_visit.start_consultation(user=integration_user)
+
+        # Assert: encounter status synced
+        assert encounter.consultation_status == "IN_PROGRESS"
+        assert encounter.consultation_started_at is not None
+
+    def test_start_consultation_removes_encounter_from_consultation_queue(
+        self, integration_user, eye_clinic_visit
+    ):
+        """
+        After start_consultation(), encounter should NOT appear in consultation_queue.
+
+        The consultation_queue filters on consultation_status__in=['WAITING', 'CALLED'].
+        After start_consultation(), status should be IN_PROGRESS, so excluded.
+        """
+        # Arrange: ensure triage is complete so it would be in queue
+        encounter = eye_clinic_visit.start_consultation(user=integration_user)
+
+        # Assert: status excludes from queue
+        assert encounter.consultation_status == "IN_PROGRESS"
+        # Queue filters: consultation_status__in=["WAITING", "CALLED"]
+        assert encounter.consultation_status not in ["WAITING", "CALLED"]
+
+    def test_start_consultation_idempotent_for_already_in_progress(
+        self, integration_user, eye_clinic_visit
+    ):
+        """
+        Calling start_consultation() multiple times should be safe.
+
+        If encounter is already IN_PROGRESS, should not raise error.
+        """
+        # First call
+        encounter1 = eye_clinic_visit.start_consultation(user=integration_user)
+        assert encounter1.consultation_status == "IN_PROGRESS"
+
+        # Second call should succeed (idempotent)
+        encounter2 = eye_clinic_visit.start_consultation(user=integration_user)
+        assert encounter2.consultation_status == "IN_PROGRESS"
+        assert encounter1.id == encounter2.id
