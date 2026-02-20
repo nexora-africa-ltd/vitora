@@ -351,6 +351,12 @@ class TriageAssessment(models.Model):
         default="WALK_IN",
         help_text="How patient arrived",
     )
+    referring_facility_name = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Name of referring facility (required when arrival_mode is REFERRAL)",
+    )
     allergies_noted = models.TextField(
         blank=True,
         default="",

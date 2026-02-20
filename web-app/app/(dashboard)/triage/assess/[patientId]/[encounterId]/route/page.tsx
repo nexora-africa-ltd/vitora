@@ -167,12 +167,26 @@ export default function TriageRoutePage() {
 
       try {
         // Build assessment payload
+        // Filter out placeholder chief complaints
+        const PLACEHOLDER_COMPLAINTS = ['Triage assessment', 'Check-in', 'check-in', 'Checkin'];
+        const getChiefComplaint = () => {
+          if (currentAssessment.chief_complaint) return currentAssessment.chief_complaint;
+          if (
+            encounter?.chief_complaint &&
+            !PLACEHOLDER_COMPLAINTS.includes(encounter.chief_complaint)
+          ) {
+            return encounter.chief_complaint;
+          }
+          return 'Patient presenting for evaluation';
+        };
+
         const payload = {
           encounter: parseInt(encounterId, 10),
           arrival_mode: currentAssessment.arrival_mode || 'WALK_IN',
+          referring_facility_name: currentAssessment.referring_facility_name || '',
           arrival_time: currentAssessment.arrival_time || new Date().toISOString(),
           chief_complaint_category: currentAssessment.chief_complaint_category || 'OTHER',
-          chief_complaint: currentAssessment.chief_complaint || encounter?.chief_complaint || 'Triage assessment',
+          chief_complaint: getChiefComplaint(),
           pain_score: currentAssessment.pain_score ?? 0,
           mental_status: currentAssessment.mental_status || 'A',
           mobility: currentAssessment.mobility || 'AMBULATORY',

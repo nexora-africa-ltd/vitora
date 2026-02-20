@@ -173,6 +173,7 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             "mental_status",
             "mobility",
             "arrival_mode",
+            "referring_facility_name",
             "allergies_noted",
             "spo2",
             "heart_rate",
@@ -429,6 +430,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
             "mental_status",
             "mobility",
             "arrival_mode",
+            "referring_facility_name",
             "allergies_noted",
             "spo2",
             "heart_rate",
@@ -499,9 +501,23 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
     def validate(self, data):
         """Validate triage assessment data.
 
+        - Ensure referral facility name provided when arrival_mode is REFERRAL
         - Ensure override reason provided if category differs from auto-calculated
         - Ensure either assigned_area OR assigned_clinic is provided (not both)
         """
+        # ========================================================================
+        # Referral Validation: referring_facility_name required if arrival_mode is REFERRAL
+        # ========================================================================
+        arrival_mode = data.get("arrival_mode", "WALK_IN")
+        referring_facility_name = data.get("referring_facility_name", "")
+
+        if arrival_mode == "REFERRAL" and not referring_facility_name.strip():
+            raise serializers.ValidationError(
+                {
+                    "referring_facility_name": "Referring facility name is required when arrival mode is 'Referral from another facility'.",
+                }
+            )
+
         # ========================================================================
         # Routing Validation: Either assigned_area OR assigned_clinic required
         # ========================================================================
