@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, BedDouble, Building2, Calendar, Hash, User, ClipboardList, Users } from 'lucide-react';
+import { Plus, Search, BedDouble, Building2, Calendar, Hash, User, ClipboardList, Users, AlertTriangle, Clock } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,7 @@ import { useAdmissionRecommendations, useAdmissions } from '@/lib/hooks/use-inpa
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { formatDate } from '@/lib/utils/format';
-import type { Admission } from '@/lib/types/inpatient';
+import type { Admission, AdmissionRecommendation, AdmissionRecommendationUrgency } from '@/lib/types/inpatient';
 
 export default function AdmissionsPage() {
   const router = useRouter();
@@ -33,6 +33,7 @@ export default function AdmissionsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ACTIVE');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [recommendationsViewMode, setRecommendationsViewMode] = useState<ViewMode>('list');
 
   const debouncedSearch = useDebounce(search, 300);
 
@@ -78,42 +79,51 @@ export default function AdmissionsPage() {
           }
         />
 
-        {/* Pending Recommendations */}
-        {!recommendationsLoading && !recommendationsError && (recommendations?.results?.length ?? 0) > 0 && (
-          <Card className="bg-muted/30">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <ClipboardList className="h-5 w-5 text-muted-foreground" />
-                Pending Admission Recommendations
-                <Badge variant="warning" className="ml-2 shrink-0 w-fit self-start sm:self-auto">
-                  {recommendations?.results?.length}
-                </Badge>
+        {/* Pending Recommendations Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                Pending Recommendations
+                {recommendations?.count !== undefined && (
+                  <Badge variant="warning" className="ml-2 shrink-0 w-fit self-start sm:self-auto">
+                    {recommendations.count}
+                  </Badge>
+                )}
               </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-            {recommendations?.results.slice(0, 3).map((rec) => (
-              <div key={rec.id} className="rounded-md border bg-background p-3">
-                <div className="flex flex-col gap-1">
-                  <p className="font-medium">{rec.reason}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {rec.provisional_diagnosis_text}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Recommended by {rec.recommended_by_username}
-                  </p>
+              <ViewToggle value={recommendationsViewMode} onChange={setRecommendationsViewMode} />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {recommendationsLoading ? (
+              recommendationsViewMode === 'list' ? (
+                <div className="space-y-3">
+                  {[...Array(3)].map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
                 </div>
+              ) : (
+                <EntityGrid>
+                  {[...Array(4)].map((_, i) => (
+                    <Skeleton key={i} className="h-40 w-full rounded-lg" />
+                  ))}
+                </EntityGrid>
+              )
+            ) : recommendationsError ? (
+              <div className="text-center py-8 text-destructive">
+                Failed to load recommendations. Please try again.
               </div>
-            ))}
-            {(recommendations?.results?.length ?? 0) > 3 && (
-              <Button variant="link" asChild className="px-0">
-                <Link href="/admissions/recommendations">
-                  View all {recommendations?.results?.length} recommendations →
-                </Link>
-              </Button>
+            ) : recommendationsViewMode === 'list' ? (
+              <RecommendationsTableView
+                recommendations={recommendations?.results || []}
+                onSelect={(id) => router.push(`/admissions/recommendations/${id}`)}
+              />
+            ) : (
+              <RecommendationsGridView recommendations={recommendations?.results || []} />
             )}
-            </CardContent>
-          </Card>
-        )}
+          </CardContent>
+        </Card>
 
       {/* Filters */}
       <Card>
@@ -384,4 +394,181 @@ function getStatusVariant(status: string): 'default' | 'secondary' | 'destructiv
     default:
       return 'secondary';
   }
+}
+
+/**
+ * Get badge variant based on recommendation urgency
+ */
+function getUrgencyVariant(urgency: AdmissionRecommendationUrgency): 'default' | 'secondary' | 'destructive' | 'outline' {
+  switch (urgency) {
+    case 'EMERGENCY':
+      return 'destructive';
+    case 'URGENT':
+      return 'default';
+    case 'ROUTINE':
+      return 'secondary';
+    default:
+      return 'secondary';
+  }
+}
+
+/**
+ * Recommendations Table View Component
+ */
+function RecommendationsTableView({
+  recommendations,
+  onSelect,
+}: {
+  recommendations: AdmissionRecommendation[];
+  onSelect: (id: number) => void;
+}) {
+  if (recommendations.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No pending recommendations.
+      </div>
+    );
+  }
+
+  return (
+    <ResponsiveTable
+      data={recommendations}
+      keyExtractor={(rec) => rec.id}
+      onRowClick={(rec) => onSelect(rec.id)}
+      columns={[
+        {
+          key: 'reason',
+          header: 'Reason',
+          cell: (rec) => <span className="font-medium truncate max-w-[200px]">{rec.reason}</span>,
+        },
+        {
+          key: 'diagnosis',
+          header: 'Diagnosis',
+          hideOnMobile: true,
+          cell: (rec) => (
+            <span className="text-sm text-muted-foreground truncate max-w-[200px]">
+              {rec.provisional_diagnosis_text}
+            </span>
+          ),
+        },
+        {
+          key: 'urgency',
+          header: 'Urgency',
+          cell: (rec) => (
+            <Badge
+              variant={getUrgencyVariant(rec.urgency)}
+              className="shrink-0 w-fit"
+            >
+              {rec.urgency === 'EMERGENCY' && <AlertTriangle className="h-3 w-3 mr-1" />}
+              {rec.urgency}
+            </Badge>
+          ),
+        },
+        {
+          key: 'ward_type',
+          header: 'Ward Type',
+          hideOnMobile: true,
+          cell: (rec) => (
+            <div className="flex items-center gap-1">
+              <Building2 className="h-3 w-3 text-muted-foreground" />
+              <span className="text-sm">{rec.preferred_ward_type}</span>
+            </div>
+          ),
+        },
+        {
+          key: 'recommended_by',
+          header: 'Recommended By',
+          hideOnMobile: true,
+          cell: (rec) => (
+            <span className="text-sm text-muted-foreground">{rec.recommended_by_username}</span>
+          ),
+        },
+      ]}
+      mobileCard={(rec) => (
+        <Card className="p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium truncate">{rec.reason}</p>
+              <p className="text-xs text-muted-foreground truncate">{rec.provisional_diagnosis_text}</p>
+            </div>
+            <Badge
+              variant={getUrgencyVariant(rec.urgency)}
+              className="shrink-0 w-fit"
+            >
+              {rec.urgency === 'EMERGENCY' && <AlertTriangle className="h-3 w-3 mr-1" />}
+              {rec.urgency}
+            </Badge>
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <Building2 className="h-3 w-3" />
+            <span>{rec.preferred_ward_type}</span>
+            <span>•</span>
+            <User className="h-3 w-3" />
+            <span className="truncate">{rec.recommended_by_username}</span>
+          </div>
+        </Card>
+      )}
+    />
+  );
+}
+
+/**
+ * Recommendations Grid View Component
+ */
+function RecommendationsGridView({ recommendations }: { recommendations: AdmissionRecommendation[] }) {
+  if (recommendations.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        No pending recommendations.
+      </div>
+    );
+  }
+
+  return (
+    <EntityGrid>
+      {recommendations.map((rec) => (
+        <EntityCard
+          key={rec.id}
+          title={rec.reason}
+          subtitle={rec.provisional_diagnosis_text}
+          initials={rec.preferred_ward_type.substring(0, 2)}
+          href={`/admissions/recommendations/${rec.id}`}
+          status={{
+            label: rec.urgency,
+            variant: getUrgencyVariant(rec.urgency),
+          }}
+          badges={[{
+            label: rec.status,
+            variant: 'outline'
+          }]}
+          metadata={[
+            {
+              icon: <ClipboardList className="h-3 w-3" />,
+              label: 'Diagnosis',
+              value: rec.provisional_diagnosis || rec.provisional_diagnosis_text,
+            },
+            {
+              icon: <Building2 className="h-3 w-3" />,
+              label: 'Ward Type',
+              value: rec.preferred_ward_type,
+            },
+            {
+              icon: <User className="h-3 w-3" />,
+              label: 'By',
+              value: rec.recommended_by_username || 'Unknown',
+            },
+            {
+              icon: <Clock className="h-3 w-3" />,
+              label: 'Expires',
+              value: formatDate(rec.expires_at),
+            },
+          ]}
+          actions={[
+            { label: 'Review', href: `/admissions/recommendations/${rec.id}` },
+            { label: 'Accept & Admit', href: `/admissions/new?recommendation=${rec.id}` },
+          ]}
+        />
+      ))}
+    </EntityGrid>
+  );
 }
