@@ -14,6 +14,9 @@ export type { VitalAlertsPanelProps, AlertItemProps } from './vital-alerts-panel
 export { TriageAssessmentForm } from './triage-assessment-form';
 export type { TriageAssessmentFormProps } from './triage-assessment-form';
 
+export { TriageAssessmentEditForm } from './triage-assessment-edit-form';
+export type { TriageEditPermissions } from './triage-assessment-edit-form';
+
 export { TriageQueueDashboard } from './triage-queue-dashboard';
 export type { TriageQueueDashboardProps } from './triage-queue-dashboard';
 

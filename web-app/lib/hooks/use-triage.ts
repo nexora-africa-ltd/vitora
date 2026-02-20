@@ -10,7 +10,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
-import { triageApi } from '@/lib/api/triage';
+import { triageApi, type TriageAssessmentUpdateData } from '@/lib/api/triage';
 import type {
   TriageAssessment,
   TriageAssessmentCreateData,
@@ -305,7 +305,7 @@ export function useUpdateTriageAssessment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<TriageAssessment> }) => {
+    mutationFn: async ({ id, data }: { id: number; data: TriageAssessmentUpdateData }) => {
       const response = await apiClient.patch<TriageAssessment>(`/api/triage/assessments/${id}/`, data);
       return response.data;
     },

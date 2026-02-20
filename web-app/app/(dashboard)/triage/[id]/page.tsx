@@ -38,13 +38,19 @@ import {
   VitalAlertsPanel,
   RouteToClinicDialog,
   RouteToEmergencyDialog,
+  TriageAssessmentEditForm,
 } from '@/components/triage';
+import type { TriageEditPermissions } from '@/components/triage';
 import {
   useTriageAssessment,
   useUpdateTriageAssessment,
 } from '@/lib/hooks/use-triage';
+import { useEncounter } from '@/lib/hooks/use-encounters';
+import { useAuth } from '@/lib/auth';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { toast } from '@/lib/hooks/use-toast';
 import type { TriageAssessment } from '@/lib/types/triage';
+import type { TriageAssessmentUpdateData } from '@/lib/api/triage';
 import {
   ASSIGNED_AREA_CONFIG,
   ARRIVAL_MODE_CONFIG,
@@ -116,6 +122,10 @@ export default function TriageAssessmentDetailPage() {
   const [routeDialogOpen, setRouteDialogOpen] = useState(false);
   const [emergencyDialogOpen, setEmergencyDialogOpen] = useState(false);
 
+  // Auth and permissions
+  const { user } = useAuth();
+  const { hasPermission, isSuperuser } = usePermissions();
+
   // Fetch assessment data
   const {
     data: assessment,
@@ -123,6 +133,64 @@ export default function TriageAssessmentDetailPage() {
     error,
     refetch,
   } = useTriageAssessment(parseInt(assessmentId, 10));
+
+  // Fetch encounter data for ownership check
+  const { data: encounter } = useEncounter(assessment?.encounter ?? 0);
+
+  // Calculate edit permissions
+  const editPermissions = useMemo((): TriageEditPermissions => {
+    // Default: no permissions
+    if (!user || !assessment) {
+      return {
+        canEditAssessment: false,
+        canEditVitals: false,
+        canEditCategory: false,
+        vitalsDisabledReason: 'Loading...',
+      };
+    }
+
+    // Check base triage permission
+    const hasTriagePermission = hasPermission('change_triageassessment') ||
+                                hasPermission('triage.change_triageassessment');
+    const canEditAssessment = isSuperuser || hasTriagePermission;
+    const canEditCategory = canEditAssessment;
+
+    // For vitals editing, require ownership + permission
+    // Encounter must not be CLOSED or CANCELLED
+    const encounterStatus = encounter?.status;
+    const isEncounterEditable = !encounterStatus ||
+                                encounterStatus === 'CREATED' ||
+                                encounterStatus === 'IN_PROGRESS';
+
+    // Check ownership: user is the encounter creator or assigned clinician
+    const isEncounterOwner = encounter
+      ? (encounter.created_by === user.id || encounter.assigned_clinician === user.id)
+      : false;
+
+    // Superusers can always edit vitals
+    // Others need: ownership + permission + editable encounter
+    let canEditVitals = false;
+    let vitalsDisabledReason: string | undefined;
+
+    if (isSuperuser) {
+      canEditVitals = true;
+    } else if (!isEncounterEditable) {
+      vitalsDisabledReason = 'Encounter is closed or cancelled';
+    } else if (!isEncounterOwner) {
+      vitalsDisabledReason = 'Only the encounter owner can edit vitals';
+    } else if (!hasTriagePermission) {
+      vitalsDisabledReason = 'Missing triage edit permission';
+    } else {
+      canEditVitals = true;
+    }
+
+    return {
+      canEditAssessment,
+      canEditVitals,
+      canEditCategory,
+      vitalsDisabledReason,
+    };
+  }, [user, assessment, encounter, hasPermission, isSuperuser]);
 
   // Update mutation
   const { mutateAsync: updateAssessment, isPending: isUpdating } = useUpdateTriageAssessment();
@@ -136,7 +204,7 @@ export default function TriageAssessmentDetailPage() {
   }, []);
 
   const handleSubmit = useCallback(
-    async (data: Partial<TriageAssessment>) => {
+    async (data: TriageAssessmentUpdateData) => {
       try {
         await updateAssessment({
           id: parseInt(assessmentId, 10),
@@ -335,22 +403,13 @@ export default function TriageAssessmentDetailPage() {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           {isEditing ? (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <CardTitle>Edit Assessment</CardTitle>
-                  <HelpPopover content="Update triage assessment details including vitals, routing, and category." />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">
-                  Inline editing is under development. For now, please re-triage the patient if assessment needs significant changes.
-                </p>
-                <Button variant="outline" onClick={handleCancelEdit}>
-                  Cancel
-                </Button>
-              </CardContent>
-            </Card>
+            <TriageAssessmentEditForm
+              assessment={assessment}
+              permissions={editPermissions}
+              onSubmit={handleSubmit}
+              onCancel={handleCancelEdit}
+              isSubmitting={isUpdating}
+            />
           ) : (
             <Tabs defaultValue="vitals" className="space-y-4">
               <TabsList className="flex flex-wrap h-auto gap-1 p-1 justify-start">
