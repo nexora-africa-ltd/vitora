@@ -46,9 +46,9 @@ class TestAsgiConfiguration:
         assert len(inpatient_patterns) >= 1, "Inpatient WebSocket patterns should be included"
 
     def test_websocket_urlpatterns_count(self):
-        """Should have 6 total WebSocket URL patterns (1 clinic + 3 lab + 2 inpatient)."""
-        # 1 clinic queue + 3 lab (encounter, order, clinician) + 2 inpatient (wards, supervisor)
-        assert len(websocket_urlpatterns) == 6
+        """Should have 7 total WebSocket URL patterns (1 clinic + 3 lab + 2 inpatient + 1 emergency)."""
+        # 1 clinic queue + 3 lab (encounter, order, clinician) + 2 inpatient (wards, supervisor) + 1 emergency
+        assert len(websocket_urlpatterns) == 7
 
     def test_clinic_queue_pattern_exists(self):
         """Clinic queue WebSocket pattern should exist."""
@@ -145,6 +145,6 @@ class TestAsgiWebsocketRouting:
         assert not any("invalid" in p for p in pattern_paths)
         assert not any("unknown" in p for p in pattern_paths)
 
-        # All our patterns should only match clinic, lab, or inpatient routes
+        # All our patterns should only match clinic, lab, inpatient, or emergency routes
         for pattern in pattern_paths:
-            assert "clinics" in pattern or "lab" in pattern or "inpatient" in pattern
+            assert "clinics" in pattern or "lab" in pattern or "inpatient" in pattern or "emergency" in pattern

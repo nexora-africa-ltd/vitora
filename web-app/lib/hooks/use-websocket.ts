@@ -742,6 +742,168 @@ export function useLabQueueSocket(
 }
 
 // =============================================================================
+// Emergency Module WebSocket Hook
+// =============================================================================
+
+/**
+ * Emergency WebSocket event types
+ */
+export type EmergencyEventType =
+  | 'state_update'
+  | 'critical_update'
+  | 'zones_update'
+  | 'patient_added'
+  | 'patient_moved';
+
+/**
+ * Critical patient data from WebSocket
+ */
+export interface EmergencyCriticalPatient {
+  id: number;
+  patient_name: string;
+  mrn: string;
+  chief_complaint: string;
+  assigned_area: string;
+  assigned_area_display: string;
+  wait_minutes: number;
+  arrival_time: string;
+  status: string;
+}
+
+/**
+ * Zone summary data from WebSocket
+ */
+export interface EmergencyZoneSummary {
+  code: string;
+  name: string;
+  capacity: number;
+  total: number;
+  primary_category: string;
+  by_category: Record<string, number>;
+}
+
+/**
+ * Emergency state update data
+ */
+export interface EmergencyStateData {
+  critical: {
+    count: number;
+    patients: EmergencyCriticalPatient[];
+  };
+  zones: {
+    zones: EmergencyZoneSummary[];
+    total_patients: number;
+  };
+  timestamp: string;
+}
+
+/**
+ * Emergency WebSocket message
+ */
+export interface EmergencyWebSocketMessage {
+  type: EmergencyEventType;
+  data: EmergencyStateData | unknown;
+}
+
+/**
+ * Emergency socket options
+ */
+export interface UseEmergencySocketOptions extends Omit<UseWebSocketOptions, 'onMessage'> {
+  /** Callback when state update is received */
+  onStateUpdate?: (data: EmergencyStateData) => void;
+  /** Callback for critical patient updates */
+  onCriticalUpdate?: (data: { count: number; patients: EmergencyCriticalPatient[] }) => void;
+  /** Callback for zone updates */
+  onZonesUpdate?: (data: { zones: EmergencyZoneSummary[]; total_patients: number }) => void;
+}
+
+/**
+ * Emergency socket return type with additional data
+ */
+export interface UseEmergencySocketReturn extends UseWebSocketReturn {
+  /** Latest critical patients data */
+  criticalData: { count: number; patients: EmergencyCriticalPatient[] } | null;
+  /** Latest zones summary data */
+  zonesData: { zones: EmergencyZoneSummary[]; total_patients: number } | null;
+  /** Last update timestamp */
+  lastUpdate: Date | null;
+}
+
+/**
+ * WebSocket hook for emergency department dashboard.
+ *
+ * Provides real-time updates for critical patients and zone statistics.
+ * Automatically broadcasts state updates every 5 seconds from the server.
+ *
+ * Falls back to polling if WebSocket connection fails.
+ *
+ * @param options - Emergency socket options
+ */
+export function useEmergencySocket(
+  options: UseEmergencySocketOptions = {}
+): UseEmergencySocketReturn {
+  const queryClient = useQueryClient();
+  const [criticalData, setCriticalData] = useState<{ count: number; patients: EmergencyCriticalPatient[] } | null>(null);
+  const [zonesData, setZonesData] = useState<{ zones: EmergencyZoneSummary[]; total_patients: number } | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+
+  const url = getWebSocketUrl('/ws/emergency/queue/');
+
+  const handleMessage = useCallback(
+    (message: WebSocketMessage) => {
+      const emergencyMessage = message as unknown as EmergencyWebSocketMessage;
+
+      console.log('[WebSocket] Emergency event:', emergencyMessage.type);
+
+      switch (emergencyMessage.type) {
+        case 'state_update': {
+          const data = emergencyMessage.data as EmergencyStateData;
+          setCriticalData(data.critical);
+          setZonesData(data.zones);
+          setLastUpdate(new Date(data.timestamp));
+          options.onStateUpdate?.(data);
+          // Invalidate React Query cache
+          queryClient.invalidateQueries({ queryKey: ['triage', 'critical'] });
+          queryClient.invalidateQueries({ queryKey: ['triage', 'zones'] });
+          break;
+        }
+        case 'critical_update': {
+          const data = emergencyMessage.data as { count: number; patients: EmergencyCriticalPatient[] };
+          setCriticalData(data);
+          setLastUpdate(new Date());
+          options.onCriticalUpdate?.(data);
+          queryClient.invalidateQueries({ queryKey: ['triage', 'critical'] });
+          break;
+        }
+        case 'zones_update': {
+          const data = emergencyMessage.data as { zones: EmergencyZoneSummary[]; total_patients: number };
+          setZonesData(data);
+          setLastUpdate(new Date());
+          options.onZonesUpdate?.(data);
+          queryClient.invalidateQueries({ queryKey: ['triage', 'zones'] });
+          break;
+        }
+        default:
+          console.log('[WebSocket] Unhandled emergency event:', emergencyMessage.type);
+      }
+    },
+    [queryClient, options]
+  );
+
+  const wsResult = useWebSocket(url, {
+    ...options,
+    onMessage: handleMessage,
+  });
+
+  return {
+    ...wsResult,
+    criticalData,
+    zonesData,
+    lastUpdate,
+  };
+}
+
+// =============================================================================
 // Connection Status Component Helper
 // =============================================================================
 

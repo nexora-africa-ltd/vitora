@@ -485,3 +485,136 @@ class TestErrorHandling:
 
         response = authenticated_client.post("/api/triage/assessments/", data, format="json")
         assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+class TestEmergencyModuleEndpoints:
+    """Tests for emergency module endpoints (critical patients and zones summary)."""
+
+    def test_critical_patients_requires_authentication(self, api_client):
+        """Should require authentication for critical patients endpoint."""
+        response = api_client.get("/api/triage/queue/critical/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_critical_patients_returns_empty_when_none(
+        self, authenticated_client, test_user
+    ):
+        """Should return empty list when no critical patients."""
+        permission = Permission.objects.get(codename="view_triage_queue")
+        test_user.user_permissions.add(permission)
+
+        response = authenticated_client.get("/api/triage/queue/critical/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] == 0
+        assert response.data["patients"] == []
+
+    def test_critical_patients_returns_red_patients_in_er(
+        self, authenticated_client, test_user, sample_patient
+    ):
+        """Should return RED category patients in ER areas."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.triage.models import TriageAssessment, TriageQueue
+
+        permission = Permission.objects.get(codename="view_triage_queue")
+        test_user.user_permissions.add(permission)
+
+        # Create an encounter and RED triage assessment in ER_RESUS
+        encounter = Encounter.objects.create(
+            patient=sample_patient, encounter_type="EMERGENCY", chief_complaint="Chest Pain"
+        )
+        assessment = TriageAssessment.objects.create(
+            encounter=encounter,
+            chief_complaint="Chest Pain",
+            chief_complaint_category="CHEST_PAIN",
+            mental_status="A",
+            mobility="STRETCHER",
+            triage_category="RED",
+            auto_calculated_category="RED",
+            assigned_area="ER_RESUS",
+            arrival_time=timezone.now(),
+            triage_start_time=timezone.now(),
+            triaged_by=test_user,
+        )
+        TriageQueue.objects.create(
+            triage_assessment=assessment,
+            status="WAITING",
+            position=1,  # Required field
+        )
+
+        response = authenticated_client.get("/api/triage/queue/critical/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["count"] == 1
+        assert len(response.data["patients"]) == 1
+        assert response.data["patients"][0]["assigned_area"] == "ER_RESUS"
+        assert response.data["patients"][0]["patient_name"] == f"{sample_patient.first_name} {sample_patient.last_name}"
+
+    def test_zones_summary_requires_authentication(self, api_client):
+        """Should require authentication for zones summary endpoint."""
+        response = api_client.get("/api/triage/queue/zones-summary/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_zones_summary_returns_all_zones(self, authenticated_client, test_user):
+        """Should return summary for all ER zones."""
+        permission = Permission.objects.get(codename="view_triage_queue")
+        test_user.user_permissions.add(permission)
+
+        response = authenticated_client.get("/api/triage/queue/zones-summary/")
+        assert response.status_code == status.HTTP_200_OK
+        assert "zones" in response.data
+        assert "total_patients" in response.data
+        assert len(response.data["zones"]) == 7  # 7 ER zones
+
+        # Verify zone structure
+        zone = response.data["zones"][0]
+        assert "code" in zone
+        assert "name" in zone
+        assert "capacity" in zone
+        assert "total" in zone
+        assert "primary_category" in zone
+        assert "by_category" in zone
+
+    def test_zones_summary_counts_patients_correctly(
+        self, authenticated_client, test_user, sample_patient
+    ):
+        """Should correctly count patients per zone and category."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.triage.models import TriageAssessment, TriageQueue
+
+        permission = Permission.objects.get(codename="view_triage_queue")
+        test_user.user_permissions.add(permission)
+
+        # Create 2 patients in ER_ACUTE with ORANGE category
+        for i in range(2):
+            encounter = Encounter.objects.create(
+                patient=sample_patient,
+                encounter_type="EMERGENCY",
+                chief_complaint=f"Pain {i}",
+            )
+            assessment = TriageAssessment.objects.create(
+                encounter=encounter,
+                chief_complaint=f"Pain {i}",
+                chief_complaint_category="OTHER",
+                mental_status="A",
+                mobility="AMBULATORY",
+                triage_category="ORANGE",
+                auto_calculated_category="ORANGE",
+                assigned_area="ER_ACUTE",
+                arrival_time=timezone.now(),
+                triage_start_time=timezone.now(),
+                triaged_by=test_user,
+            )
+            TriageQueue.objects.create(
+                triage_assessment=assessment,
+                status="WAITING",
+                position=i + 1,  # Required field
+            )
+
+        response = authenticated_client.get("/api/triage/queue/zones-summary/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["total_patients"] == 2
+
+        # Find ER_ACUTE zone
+        acute_zone = next(z for z in response.data["zones"] if z["code"] == "ER_ACUTE")
+        assert acute_zone["total"] == 2
+        assert acute_zone["by_category"]["ORANGE"] == 2
+        assert acute_zone["primary_category"] == "ORANGE"

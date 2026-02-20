@@ -2,7 +2,8 @@
 
 > **Purpose**: Plan for implementing a dedicated Emergency Department module in Vitora HMIS
 > **Created**: February 20, 2026
-> **Status**: Draft
+> **Updated**: February 21, 2026
+> **Status**: Phase 1 Complete ✅
 
 ---
 
@@ -41,15 +42,15 @@ EMERGENCY_AREA_OPTIONS = [
 
 ### What's Missing ❌
 
-| Gap | Impact | Priority |
-|-----|--------|----------|
-| No dedicated ER dashboard | Staff must navigate to triage and filter | HIGH |
-| No zone-specific views | Cannot focus on single ER zone | MEDIUM |
-| No critical alert banner | RED patients not immediately visible | HIGH |
-| No ER bed board | No visual bed/bay status | MEDIUM |
-| No door-to-doctor metrics | Cannot measure ER efficiency | LOW |
-| No EMS handoff workflow | No ambulance pre-arrival alerts | LOW |
-| No auto-escalation | No alerts when wait times breached | MEDIUM |
+| Gap | Impact | Priority | Status |
+|-----|--------|----------|--------|
+| No dedicated ER dashboard | Staff must navigate to triage and filter | HIGH | ✅ **Done** |
+| No zone-specific views | Cannot focus on single ER zone | MEDIUM | 📋 Planned |
+| No critical alert banner | RED patients not immediately visible | HIGH | ✅ **Done** |
+| No ER bed board | No visual bed/bay status | MEDIUM | 📋 Planned |
+| No door-to-doctor metrics | Cannot measure ER efficiency | LOW | 📋 Planned |
+| No EMS handoff workflow | No ambulance pre-arrival alerts | LOW | 📋 Future |
+| No auto-escalation | No alerts when wait times breached | MEDIUM | 📋 Planned |
 
 ---
 
@@ -88,19 +89,23 @@ app/(dashboard)/emergency/
 
 ## Implementation Phases
 
-### Phase 1: ER Dashboard & Critical Alerts (HIGH PRIORITY)
+### Phase 1: ER Dashboard & Critical Alerts (HIGH PRIORITY) ✅ COMPLETE
 
-**Estimated Effort**: 2-3 days
+**Estimated Effort**: 2-3 days | **Actual**: 1 day
 
-#### 1.1 ER Dashboard Landing Page
+#### 1.1 ER Dashboard Landing Page ✅
 
 **Route**: `/emergency`
 
+**Implementation**: `app/(dashboard)/emergency/page.tsx`
+
 **Features**:
-- [ ] Zone summary cards with patient counts by category
-- [ ] Critical patient ticker (RED patients with wait time)
-- [ ] Quick navigation to zone views
-- [ ] Real-time refresh (WebSocket or polling)
+- [x] Zone summary cards with patient counts by category
+- [x] Critical patient ticker (RED patients with wait time)
+- [x] Quick navigation to zone views
+- [x] Real-time updates via WebSocket with polling fallback
+- [x] Live status indicator (shows "Live" when WebSocket connected)
+- [x] Pull-to-refresh on mobile
 
 **Wireframe**:
 ```
@@ -131,18 +136,19 @@ app/(dashboard)/emergency/
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### 1.2 Critical Alert Banner (Global Component)
+#### 1.2 Critical Alert Banner (Global Component) ✅
 
 **Location**: `components/emergency/critical-alert-banner.tsx`
 
 **Features**:
-- [ ] Shows when any RED patient is in ER queue
-- [ ] Displays on all ER pages (sticky top)
-- [ ] Links directly to patient in queue
-- [ ] Visual + audio alert (configurable)
-- [ ] Auto-dismiss when no RED patients
+- [x] Shows when any RED patient is in ER queue
+- [x] Displays on ER dashboard (sticky top)
+- [x] Links directly to patient in triage queue
+- [x] Visual pulsing alert animation (CSS `animate-pulse-slow`)
+- [x] Auto-dismiss when no RED patients
+- [ ] Audio alert (configurable) - *deferred to Phase 4*
 
-**API Endpoint** (new):
+**API Endpoint** (implemented):
 ```
 GET /api/triage/queue/critical/
 Response: {
@@ -150,24 +156,39 @@ Response: {
   patients: [
     { id: 1, patient_name: "John Doe", mrn: "MRN-001", 
       chief_complaint: "Chest Pain", assigned_area: "ER_RESUS",
-      wait_minutes: 3 },
+      assigned_area_display: "ER - Resuscitation",
+      wait_minutes: 3, arrival_time: "2026-02-21T10:00:00Z",
+      status: "WAITING" },
     ...
   ]
 }
 ```
 
-#### 1.3 Sidebar Navigation Update
+**WebSocket Endpoint** (implemented):
+```
+ws://localhost/ws/emergency/queue/
 
-Add to sidebar:
-```tsx
+// Sends state_update events every 5 seconds with:
 {
-  title: 'Emergency',
-  icon: Siren,
-  href: '/emergency',
-  badge: criticalCount > 0 ? criticalCount : undefined,
-  badgeVariant: 'destructive',
+  type: "state_update",
+  data: {
+    critical: { count: 2, patients: [...] },
+    zones: { zones: [...], total_patients: 15 },
+    timestamp: "2026-02-21T10:00:05Z"
+  }
 }
 ```
+
+#### 1.3 Sidebar Navigation Update ✅
+
+**Implementation**: `lib/config/navigation.ts`
+
+Added to sidebar:
+```tsx
+{ label: 'Emergency', href: '/emergency', icon: Siren },
+```
+
+*Note: Dynamic badge count deferred - requires global WebSocket context.*
 
 ---
 
@@ -316,15 +337,16 @@ const ZONE_ROUTES: Record<string, AssignedArea> = {
 
 ### New Endpoints
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/api/triage/queue/critical/` | Get RED patients in ER zones |
-| GET | `/api/triage/queue/by-zone/` | Get queue grouped by zone |
-| GET | `/api/triage/zones/summary/` | Zone counts and capacity |
-| GET | `/api/emergency/beds/` | ER bed status (if bed board implemented) |
-| PATCH | `/api/emergency/beds/{id}/` | Update bed status |
-| POST | `/api/triage/assessments/{id}/escalate/` | Escalate patient |
-| GET | `/api/triage/metrics/` | ER performance metrics |
+| Method | Endpoint | Purpose | Status |
+|--------|----------|---------|--------|
+| GET | `/api/triage/queue/critical/` | Get RED patients in ER zones | ✅ Done |
+| GET | `/api/triage/queue/zones-summary/` | Zone counts and capacity | ✅ Done |
+| WS | `ws://host/ws/emergency/queue/` | Real-time ER updates | ✅ Done |
+| GET | `/api/triage/queue/by-zone/` | Get queue grouped by zone | 📋 Planned |
+| GET | `/api/emergency/beds/` | ER bed status (if bed board implemented) | 📋 Phase 3 |
+| PATCH | `/api/emergency/beds/{id}/` | Update bed status | 📋 Phase 3 |
+| POST | `/api/triage/assessments/{id}/escalate/` | Escalate patient | 📋 Phase 4 |
+| GET | `/api/triage/metrics/` | ER performance metrics | 📋 Phase 5 |
 
 ### Example: Zone Summary Response
 
@@ -404,8 +426,10 @@ class ERBed(models.Model):
 
 ### Unit Tests
 
-- [ ] Zone summary endpoint returns correct counts
-- [ ] Critical patients endpoint filters RED only
+- [x] Zone summary endpoint returns correct counts (`TestEmergencyModuleEndpoints`)
+- [x] Critical patients endpoint filters RED only (`TestEmergencyModuleEndpoints`)
+- [x] Critical patients endpoint requires authentication
+- [x] Zones summary includes all 7 ER zones
 - [ ] Escalation creates audit log entry
 - [ ] Wait time breach detection logic
 
@@ -447,15 +471,15 @@ Feature: Emergency Department Dashboard
 
 ## Implementation Order
 
-| Order | Phase | Priority | Effort | Dependencies |
-|-------|-------|----------|--------|--------------|
-| 1 | ER Dashboard Landing | HIGH | 2 days | None |
-| 2 | Critical Alert Banner | HIGH | 1 day | Zone summary endpoint |
-| 3 | Sidebar Navigation | HIGH | 0.5 days | None |
-| 4 | Zone-Specific Views | MEDIUM | 2 days | Phase 1 |
-| 5 | Zone Tabs Layout | MEDIUM | 0.5 days | Phase 4 |
-| 6 | Auto-Escalation | MEDIUM | 2 days | Celery setup |
-| 7 | ER Bed Board | MEDIUM | 3 days | ERBed model |
+| Order | Phase | Priority | Effort | Dependencies | Status |
+|-------|-------|----------|--------|--------------|--------|
+| 1 | ER Dashboard Landing | HIGH | 2 days | None | ✅ Complete |
+| 2 | Critical Alert Banner | HIGH | 1 day | Zone summary endpoint | ✅ Complete |
+| 3 | Sidebar Navigation | HIGH | 0.5 days | None | ✅ Complete |
+| 4 | Zone-Specific Views | MEDIUM | 2 days | Phase 1 | 📋 Next |
+| 5 | Zone Tabs Layout | MEDIUM | 0.5 days | Phase 4 | 📋 Planned |
+| 6 | Auto-Escalation | MEDIUM | 2 days | Celery setup | 📋 Planned |
+| 7 | ER Bed Board | MEDIUM | 3 days | ERBed model | 📋 Planned |
 | 8 | Metrics Dashboard | LOW | 2 days | Historical data |
 | 9 | EMS Handoff | LOW | 4 days | External integration |
 
@@ -487,13 +511,48 @@ Feature: Emergency Department Dashboard
 
 ## Next Steps
 
-1. [ ] Review and approve this plan
-2. [ ] Create GitHub issues for Phase 1 tasks
-3. [ ] Design Figma mockups for ER dashboard
-4. [ ] Implement Zone Summary API endpoint
-5. [ ] Build ER Dashboard landing page
+1. [x] ~~Review and approve this plan~~
+2. [x] ~~Implement Zone Summary API endpoint~~
+3. [x] ~~Implement Critical Patients API endpoint~~
+4. [x] ~~Build ER Dashboard landing page~~
+5. [x] ~~Add WebSocket support with polling fallback~~
+6. [ ] Implement Zone-Specific Views (Phase 2)
+7. [ ] Add Zone Tabs Layout
+8. [ ] Create E2E tests for emergency dashboard
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: February 20, 2026
+## Implementation Notes (February 21, 2026)
+
+### Files Created/Modified
+
+**Backend:**
+- `hmis/apps/triage/views.py` - Added `critical` and `zones_summary` actions to TriageQueueViewSet
+- `hmis/apps/triage/consumers.py` - **NEW** - WebSocket consumer for real-time ER updates
+- `hmis/apps/triage/routing.py` - **NEW** - WebSocket routing for `/ws/emergency/queue/`
+- `hmis/asgi.py` - Added triage WebSocket patterns
+- `tests/test_triage_api.py` - Added `TestEmergencyModuleEndpoints` test class (6 tests)
+- `tests/test_asgi.py` - Updated to include emergency WebSocket pattern
+
+**Frontend:**
+- `app/(dashboard)/emergency/page.tsx` - **NEW** - ER Dashboard with zone cards
+- `components/emergency/critical-alert-banner.tsx` - **NEW** - Critical patient alert banner
+- `components/emergency/index.ts` - **NEW** - Module exports
+- `lib/hooks/use-websocket.ts` - Added `useEmergencySocket` hook
+- `lib/hooks/use-triage.ts` - Added `useCriticalPatients` and `useZonesSummary` hooks
+- `lib/api/triage.ts` - Added `getCriticalPatients` and `getZonesSummary` API methods
+- `lib/config/navigation.ts` - Added Emergency nav item with Siren icon
+- `app/globals.css` - Added `animate-pulse-slow` keyframes for alert animation
+
+### Architecture Decisions
+
+1. **WebSocket with Polling Fallback**: The ER dashboard uses WebSocket as primary data source with 5-second server-push updates. When WebSocket is unavailable (connection error, server down), it automatically falls back to React Query polling (10-15 second intervals).
+
+2. **Unified Data Model**: Both WebSocket and REST API return the same data structure for critical patients and zone summaries, allowing seamless switching between data sources.
+
+3. **No Refresh Button**: Per wireframe spec, the "Live" status indicator replaces the refresh button. Pull-to-refresh is still available on mobile. The live indicator shows connection state and last update time.
+
+---
+
+**Document Version**: 1.1
+**Last Updated**: February 21, 2026

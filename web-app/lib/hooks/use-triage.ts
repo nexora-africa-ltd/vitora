@@ -42,6 +42,9 @@ export const triageKeys = {
   reports: () => [...triageKeys.all, 'reports'] as const,
   reportsFiltered: (filters: ReportFilters) => [...triageKeys.reports(), filters] as const,
   waitTimeStats: (dateRange: string) => [...triageKeys.all, 'waitTimeStats', dateRange] as const,
+  // Emergency module keys
+  criticalPatients: () => [...triageKeys.all, 'critical'] as const,
+  zonesSummary: () => [...triageKeys.all, 'zones'] as const,
 };
 
 // =============================================================================
@@ -753,5 +756,37 @@ export function useCancelWaitingEntry() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: triageKeys.waitingQueue() });
     },
+  });
+}
+
+// =============================================================================
+// EMERGENCY MODULE HOOKS
+// =============================================================================
+
+/**
+ * Get critical (RED) patients in ER zones.
+ * Used for emergency department critical alerts banner.
+ * Auto-refreshes every 10 seconds for real-time alerts.
+ */
+export function useCriticalPatients(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: triageKeys.criticalPatients(),
+    queryFn: () => triageApi.getCriticalPatients(),
+    refetchInterval: 10000, // Refresh every 10 seconds for real-time alerts
+    enabled: options?.enabled ?? true,
+  });
+}
+
+/**
+ * Get summary stats for all ER zones.
+ * Used for emergency department dashboard cards.
+ * Auto-refreshes every 15 seconds.
+ */
+export function useZonesSummary(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: triageKeys.zonesSummary(),
+    queryFn: () => triageApi.getZonesSummary(),
+    refetchInterval: 15000, // Refresh every 15 seconds
+    enabled: options?.enabled ?? true,
   });
 }

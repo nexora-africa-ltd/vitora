@@ -146,6 +146,41 @@ export interface RouteToClinicResponse {
 }
 
 // =============================================================================
+// EMERGENCY MODULE TYPES
+// =============================================================================
+
+export interface CriticalPatient {
+  id: number;
+  patient_name: string;
+  mrn: string;
+  chief_complaint: string;
+  assigned_area: AssignedArea;
+  assigned_area_display: string;
+  wait_minutes: number;
+  arrival_time: string;
+  status: string;
+}
+
+export interface CriticalPatientsResponse {
+  count: number;
+  patients: CriticalPatient[];
+}
+
+export interface ZoneSummary {
+  code: AssignedArea;
+  name: string;
+  capacity: number;
+  total: number;
+  primary_category: TriageCategory;
+  by_category: Record<TriageCategory, number>;
+}
+
+export interface ZonesSummaryResponse {
+  zones: ZoneSummary[];
+  total_patients: number;
+}
+
+// =============================================================================
 // WAITING QUEUE TYPES
 // =============================================================================
 
@@ -330,6 +365,30 @@ export const triageApi = {
       { reason }
     );
     return parseResponse(TriageQueueEntrySchema, response.data, { context: 'triageApi.markLWBS' });
+  },
+
+  // ============ Emergency Module ============
+
+  /**
+   * Get critical (RED) patients in ER zones.
+   * Used for emergency department critical alerts banner.
+   */
+  async getCriticalPatients(): Promise<CriticalPatientsResponse> {
+    const response = await apiClient.get<CriticalPatientsResponse>(
+      '/api/triage/queue/critical/'
+    );
+    return response.data;
+  },
+
+  /**
+   * Get summary stats for all ER zones.
+   * Used for emergency department dashboard cards.
+   */
+  async getZonesSummary(): Promise<ZonesSummaryResponse> {
+    const response = await apiClient.get<ZonesSummaryResponse>(
+      '/api/triage/queue/zones-summary/'
+    );
+    return response.data;
   },
 
   // ============ Vital Thresholds ============
