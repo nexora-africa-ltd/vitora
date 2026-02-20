@@ -264,12 +264,12 @@ export interface Transfer {
 
 export interface TransferCreateData {
   admission: number;
-  from_ward: number;
-  from_bed: number;
-  to_ward: number;
-  to_bed: number;
-  transfer_reason: TransferReason;
-  clinical_justification: string;
+  source_ward: number;
+  source_bed: number;
+  destination_ward: number;
+  destination_bed: number;
+  reason: TransferReason;
+  clinical_handover_notes: string;
   transferred_by?: number;
 }
 
@@ -278,6 +278,9 @@ export interface TransferCreateData {
 // ============================================================================
 
 export type ConditionStatus = 'STABLE' | 'IMPROVING' | 'DETERIORATING' | 'CRITICAL';
+export type ReviewType = 'WARD_ROUND' | 'URGENT_REVIEW' | 'CONSULTANT_REVIEW' | 'TRANSFER_REVIEW' | 'PRE_DISCHARGE';
+export type ReviewRequestStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type ReviewUrgency = 'ROUTINE' | 'URGENT' | 'STAT';
 
 export interface WardRoundVitalSigns {
   temperature?: number;
@@ -297,6 +300,10 @@ export interface WardRound {
   conducted_by: number;
   conducted_by_username?: string;
   conducted_by_name?: string; // Display name from mock data
+  // Review type - differentiates scheduled rounds from urgent/consultant reviews
+  review_type: ReviewType;
+  review_type_display?: string;
+  review_request?: number | null; // Link to review request if this fulfills one
   // SOAP notes - required per SHA/FHIR
   subjective: string;
   objective: string;
@@ -327,6 +334,8 @@ export interface WardRoundCreateData {
   round_date: string;
   round_time: string;
   conducted_by: number;
+  review_type?: ReviewType;  // Defaults to WARD_ROUND
+  review_request?: number;   // Link to review request if fulfilling one
   subjective: string;       // Required - SOAP 'S' (SHA/FHIR compliance)
   objective: string;        // Required - SOAP 'O' (SHA/FHIR compliance)
   assessment: string;       // Required - SOAP 'A' (SHA/FHIR compliance)
@@ -340,6 +349,50 @@ export interface WardRoundCreateData {
   blood_pressure?: string;
   respiratory_rate?: number;
   spo2?: number;
+}
+
+// ============================================================================
+// Review Request Types
+// ============================================================================
+
+export interface ReviewRequest {
+  id: number;
+  admission: number;
+  admission_number?: string;
+  patient_name?: string;
+  ward_name?: string;
+  bed_number?: string;
+  review_type: Exclude<ReviewType, 'WARD_ROUND'>; // WARD_ROUND is not a request type
+  review_type_display?: string;
+  urgency: ReviewUrgency;
+  urgency_display?: string;
+  reason: string;
+  requested_by: number;
+  requested_by_username?: string;
+  requested_at: string;
+  consultant_specialty?: string;
+  assigned_to?: number | null;
+  assigned_to_username?: string | null;
+  status: ReviewRequestStatus;
+  status_display?: string;
+  acknowledged_at?: string | null;
+  acknowledged_by?: number | null;
+  acknowledged_by_username?: string | null;
+  completed_at?: string | null;
+  clinical_context?: string;
+  cancellation_reason?: string;
+  is_overdue?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ReviewRequestCreateData {
+  admission: number;
+  review_type: Exclude<ReviewType, 'WARD_ROUND'>;
+  urgency: ReviewUrgency;
+  reason: string;
+  consultant_specialty?: string;
+  clinical_context?: string;
 }
 
 // ============================================================================
@@ -532,7 +585,20 @@ export interface TransferListParams {
 export interface WardRoundListParams {
   admission?: number;
   condition_status?: ConditionStatus;
+  review_type?: ReviewType;
   requires_consultant_review?: boolean;
+  ordering?: string;
+  page?: number;
+  page_size?: number;
+}
+
+export interface ReviewRequestListParams {
+  admission?: number;
+  review_type?: Exclude<ReviewType, 'WARD_ROUND'>;
+  urgency?: ReviewUrgency;
+  status?: ReviewRequestStatus;
+  requested_by?: number;
+  assigned_to?: number;
   ordering?: string;
   page?: number;
   page_size?: number;
@@ -565,6 +631,7 @@ export type AdmissionListResponse = PaginatedResponse<Admission>;
 export type DischargeListResponse = PaginatedResponse<Discharge>;
 export type TransferListResponse = PaginatedResponse<Transfer>;
 export type WardRoundListResponse = PaginatedResponse<WardRound>;
+export type ReviewRequestListResponse = PaginatedResponse<ReviewRequest>;
 export type KardexListResponse = PaginatedResponse<NursingKardex>;
 export type ShiftHandoverListResponse = PaginatedResponse<ShiftHandover>;
 

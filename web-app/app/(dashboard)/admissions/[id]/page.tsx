@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
+  AlertTriangle,
   Bed,
   Building2,
   Calendar,
@@ -22,22 +24,111 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   useAdmission,
   useAdmissionWardRounds,
-  useKardexByAdmission
+  useKardexByAdmission,
+  useCreateReviewRequest,
+  useAdmissionReviewRequests,
 } from '@/lib/hooks/use-inpatient';
 import { AdmissionOrdersTab } from '@/components/inpatient';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
+import { useToast } from '@/lib/hooks/use-toast';
+import type { ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
+
+const REVIEW_REQUEST_TYPES: { value: Exclude<ReviewType, 'WARD_ROUND'>; label: string }[] = [
+  { value: 'URGENT_REVIEW', label: 'Urgent Review' },
+  { value: 'CONSULTANT_REVIEW', label: 'Consultant Review' },
+  { value: 'TRANSFER_REVIEW', label: 'Transfer Assessment' },
+  { value: 'PRE_DISCHARGE', label: 'Pre-Discharge Assessment' },
+];
+
+const URGENCY_LEVELS: { value: ReviewUrgency; label: string; description: string }[] = [
+  { value: 'STAT', label: 'STAT (Immediate)', description: 'Requires immediate attention' },
+  { value: 'URGENT', label: 'Urgent', description: 'Within 2 hours' },
+  { value: 'ROUTINE', label: 'Routine', description: 'Within 24 hours' },
+];
 
 export default function AdmissionDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const admissionId = Number(params.id);
 
   const { data: admission, isLoading, error } = useAdmission(admissionId);
   const { data: wardRounds, isLoading: wardRoundsLoading } = useAdmissionWardRounds(admissionId);
   const { data: kardex, isLoading: kardexLoading } = useKardexByAdmission(admissionId);
+  const { data: reviewRequests, isLoading: reviewRequestsLoading } = useAdmissionReviewRequests(admissionId);
+  const createReviewRequest = useCreateReviewRequest();
+
+  // Filter pending review requests
+  const pendingReviews = reviewRequests?.results?.filter(
+    (r) => r.status === 'PENDING' || r.status === 'IN_PROGRESS'
+  ) || [];
+
+  // Review request dialog state
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [reviewType, setReviewType] = useState<Exclude<ReviewType, 'WARD_ROUND'>>('URGENT_REVIEW');
+  const [reviewUrgency, setReviewUrgency] = useState<ReviewUrgency>('URGENT');
+  const [reviewReason, setReviewReason] = useState('');
+  const [consultantSpecialty, setConsultantSpecialty] = useState('');
+  const [clinicalContext, setClinicalContext] = useState('');
+
+  const handleRequestReview = async () => {
+    if (!reviewReason.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please provide a reason for the review request',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await createReviewRequest.mutateAsync({
+        admission: admissionId,
+        review_type: reviewType,
+        urgency: reviewUrgency,
+        reason: reviewReason.trim(),
+        consultant_specialty: reviewType === 'CONSULTANT_REVIEW' ? consultantSpecialty : undefined,
+        clinical_context: clinicalContext || undefined,
+      });
+      toast({
+        title: 'Review Requested',
+        description: `${reviewType === 'URGENT_REVIEW' ? 'Urgent' : reviewType.replace('_', ' ')} review has been requested`,
+      });
+      setReviewDialogOpen(false);
+      // Reset form
+      setReviewReason('');
+      setConsultantSpecialty('');
+      setClinicalContext('');
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to request review',
+        variant: 'destructive',
+      });
+      console.error(error);
+    }
+  };
 
   if (isLoading) {
     return <AdmissionDetailSkeleton />;
@@ -90,6 +181,116 @@ export default function AdmissionDetailPage() {
               Ward Round
             </Link>
           </Button>
+
+          {/* Request Review Dialog */}
+          <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                <span className="sm:hidden">Review</span>
+                <span className="hidden sm:inline">Request Review</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Request Patient Review</DialogTitle>
+                <DialogDescription>
+                  Submit a review request for this patient. Urgent and STAT requests will be prioritized.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="review-type">Review Type</Label>
+                  <Select value={reviewType} onValueChange={(v) => setReviewType(v as Exclude<ReviewType, 'WARD_ROUND'>)}>
+                    <SelectTrigger id="review-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {REVIEW_REQUEST_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="urgency">Urgency</Label>
+                  <Select value={reviewUrgency} onValueChange={(v) => setReviewUrgency(v as ReviewUrgency)}>
+                    <SelectTrigger id="urgency">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {URGENCY_LEVELS.map((level) => (
+                        <SelectItem key={level.value} value={level.value} title={level.description}>
+                          {level.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {reviewType === 'CONSULTANT_REVIEW' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="specialty">Consultant Specialty</Label>
+                    <Select value={consultantSpecialty} onValueChange={setConsultantSpecialty}>
+                      <SelectTrigger id="specialty">
+                        <SelectValue placeholder="Select specialty" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Cardiology">Cardiology</SelectItem>
+                        <SelectItem value="Neurology">Neurology</SelectItem>
+                        <SelectItem value="Surgery">Surgery</SelectItem>
+                        <SelectItem value="Internal Medicine">Internal Medicine</SelectItem>
+                        <SelectItem value="Pediatrics">Pediatrics</SelectItem>
+                        <SelectItem value="Oncology">Oncology</SelectItem>
+                        <SelectItem value="Orthopedics">Orthopedics</SelectItem>
+                        <SelectItem value="Pulmonology">Pulmonology</SelectItem>
+                        <SelectItem value="Nephrology">Nephrology</SelectItem>
+                        <SelectItem value="Psychiatry">Psychiatry</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="reason">Reason for Review *</Label>
+                  <Textarea
+                    id="reason"
+                    value={reviewReason}
+                    onChange={(e) => setReviewReason(e.target.value)}
+                    placeholder="Describe why this patient needs a review..."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="context">Clinical Context (Optional)</Label>
+                  <Textarea
+                    id="context"
+                    value={clinicalContext}
+                    onChange={(e) => setClinicalContext(e.target.value)}
+                    placeholder="Latest vitals, recent changes, relevant history..."
+                    rows={2}
+                  />
+                </div>
+              </div>
+              <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
+                <Button variant="outline" onClick={() => setReviewDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleRequestReview}
+                  disabled={createReviewRequest.isPending || !reviewReason.trim()}
+                >
+                  {createReviewRequest.isPending ? 'Submitting...' : 'Submit Request'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <Button variant="outline" asChild>
             <Link href={`/admissions/${admission.id}/transfer`}>
               <MoveRight className="h-4 w-4 mr-2" />
@@ -184,6 +385,60 @@ export default function AdmissionDetailPage() {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-4">
+          {/* Pending Review Requests Alert */}
+          {pendingReviews.length > 0 && (
+            <Card className="border-warning/50 bg-warning/5">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-warning" />
+                  <CardTitle className="text-lg">Pending Review Requests</CardTitle>
+                  <Badge variant="warning" className="ml-auto">
+                    {pendingReviews.length}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {pendingReviews.map((review) => (
+                    <div
+                      key={review.id}
+                      className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg bg-background border"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={review.urgency === 'STAT' ? 'destructive' : review.urgency === 'URGENT' ? 'warning' : 'secondary'}
+                          >
+                            {review.urgency_display || review.urgency}
+                          </Badge>
+                          <span className="font-medium">
+                            {review.review_type_display || review.review_type.replace('_', ' ')}
+                          </span>
+                          {review.status === 'IN_PROGRESS' && (
+                            <Badge variant="info" className="text-xs">In Progress</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-1">{review.reason}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Requested by {review.requested_by_username} • {formatDateTime(review.requested_at)}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        asChild
+                      >
+                        <Link href={`/admissions/${admission.id}/ward-round/new?review_request=${review.id}&review_type=${review.review_type}`}>
+                          Conduct Review
+                        </Link>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid gap-4 md:grid-cols-2">
             {/* Admission Details */}
             <Card className="overflow-hidden">

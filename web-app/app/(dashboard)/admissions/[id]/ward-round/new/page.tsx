@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Stethoscope, ThermometerSun } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { Stethoscope, ThermometerSun, AlertCircle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -21,7 +22,7 @@ import {
 import { useAdmission, useCreateWardRound } from '@/lib/hooks/use-inpatient';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
-import type { ConditionStatus } from '@/lib/types/inpatient';
+import type { ConditionStatus, ReviewType } from '@/lib/types/inpatient';
 
 const CONDITION_STATUSES: { value: ConditionStatus; label: string; description: string }[] = [
   { value: 'STABLE', label: 'Stable', description: 'Patient condition is stable' },
@@ -30,17 +31,47 @@ const CONDITION_STATUSES: { value: ConditionStatus; label: string; description: 
   { value: 'CRITICAL', label: 'Critical', description: 'Patient requires immediate attention' },
 ];
 
+const REVIEW_TYPES: { value: ReviewType; label: string; description: string }[] = [
+  { value: 'WARD_ROUND', label: 'Scheduled Ward Round', description: 'Routine daily or scheduled round' },
+  { value: 'URGENT_REVIEW', label: 'Urgent Review', description: 'Immediate assessment due to patient condition change' },
+  { value: 'CONSULTANT_REVIEW', label: 'Consultant Review', description: 'Specialist evaluation' },
+  { value: 'TRANSFER_REVIEW', label: 'Transfer Assessment', description: 'Assessment before or after ward transfer' },
+  { value: 'PRE_DISCHARGE', label: 'Pre-Discharge Assessment', description: 'Discharge readiness evaluation' },
+];
+
+/**
+ * RequiredLabel - displays a label with a required indicator
+ */
+function RequiredLabel({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
+  return (
+    <Label htmlFor={htmlFor} className="flex items-center gap-1">
+      {children}
+      <span className="text-destructive">*</span>
+    </Label>
+  );
+}
+
 export default function NewWardRoundPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useUser();
   const { toast } = useToast();
   const admissionId = Number(params.id);
+
+  // Get review request ID and type from URL (when fulfilling a review request)
+  const reviewRequestId = searchParams.get('review_request');
+  const initialReviewType = searchParams.get('review_type') as ReviewType | null;
 
   const { data: admission, isLoading } = useAdmission(admissionId);
   const createWardRound = useCreateWardRound();
 
   const [conditionStatus, setConditionStatus] = useState<ConditionStatus>('STABLE');
+  const [reviewType, setReviewType] = useState<ReviewType>(
+    (initialReviewType && ['WARD_ROUND', 'URGENT_REVIEW', 'CONSULTANT_REVIEW', 'TRANSFER_REVIEW', 'PRE_DISCHARGE'].includes(initialReviewType))
+      ? initialReviewType
+      : 'WARD_ROUND'
+  );
 
   // Clinical Notes (for E2E test compatibility)
   const [clinicalNotes, setClinicalNotes] = useState('');
@@ -58,20 +89,35 @@ export default function NewWardRoundPage() {
   const [respiratoryRate, setRespiratoryRate] = useState('');
   const [spo2, setSpo2] = useState('');
 
-  // Validate: Either clinical notes OR all SOAP fields must be filled (SHA/FHIR compliance)
+  // Track if form was submitted (to show validation errors)
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+
+  // Validation: Either clinical notes OR all SOAP fields must be filled (SHA/FHIR compliance)
   const hasSOAPNotes = subjective.trim() && objective.trim() && assessment.trim() && plan.trim();
   const hasClinicalNotes = clinicalNotes.trim();
-  const isFormValid = Boolean(
-    admission &&
-    (hasSOAPNotes || hasClinicalNotes) &&
-    user?.id != null
-  );
+  const hasNotes = hasSOAPNotes || hasClinicalNotes;
+  
+  // Compute validation errors
+  const validationErrors = useMemo(() => {
+    const errors: string[] = [];
+    if (!hasNotes) {
+      errors.push('Clinical Notes OR all SOAP fields (Subjective, Objective, Assessment, Plan) are required');
+    }
+    if (!user?.id) {
+      errors.push('User not authenticated');
+    }
+    return errors;
+  }, [hasNotes, user?.id]);
+
+  const isFormValid = validationErrors.length === 0;
 
   const handleSubmit = async () => {
+    setHasAttemptedSubmit(true);
+    
     if (!isFormValid || !user?.id) {
       toast({
         title: 'Validation Error',
-        description: 'Please fill in Clinical Notes or all SOAP fields (Subjective, Objective, Assessment, Plan)',
+        description: validationErrors.join('. '),
         variant: 'destructive',
       });
       return;
@@ -87,6 +133,8 @@ export default function NewWardRoundPage() {
         round_date: roundDate,
         round_time: roundTime,
         conducted_by: user.id,
+        review_type: reviewType,
+        review_request: reviewRequestId ? parseInt(reviewRequestId) : undefined,
         condition_status: conditionStatus,
         // Use clinical notes as fallback for SOAP if not provided
         subjective: subjective.trim() || clinicalNotes.trim(),
@@ -104,10 +152,27 @@ export default function NewWardRoundPage() {
         description: 'Ward round saved successfully',
       });
       router.push(`/admissions/${admissionId}/ward-round`);
-    } catch (error) {
+    } catch (error: unknown) {
+      // Try to extract backend validation errors
+      let errorMessage = 'Failed to save ward round';
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: Record<string, unknown> } };
+        if (axiosError.response?.data) {
+          const data = axiosError.response.data;
+          const fieldErrors = Object.entries(data)
+            .filter(([key]) => key !== 'detail')
+            .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+            .join('; ');
+          if (fieldErrors) {
+            errorMessage = fieldErrors;
+          } else if (typeof data.detail === 'string') {
+            errorMessage = data.detail;
+          }
+        }
+      }
       toast({
         title: 'Error',
-        description: 'Failed to save ward round',
+        description: errorMessage,
         variant: 'destructive',
       });
       console.error(error);
@@ -153,6 +218,18 @@ export default function NewWardRoundPage() {
         helpContent={`Document ward round for ${admission.patient_name}. Record vitals, clinical notes in SOAP format, and update patient condition status.`}
       />
 
+      {/* Review Request Context */}
+      {reviewRequestId && (
+        <Alert className="border-warning/50 bg-warning/5">
+          <AlertCircle className="h-4 w-4 text-warning" />
+          <AlertDescription>
+            <strong>Fulfilling Review Request:</strong> This ward round is being recorded in response to a{' '}
+            <span className="font-medium">{initialReviewType?.replace('_', ' ').toLowerCase()}</span> request.
+            The review will be marked as completed once saved.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Patient Info */}
       <Card>
         <CardHeader>
@@ -181,6 +258,31 @@ export default function NewWardRoundPage() {
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Review Type */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-lg">Review Type</CardTitle>
+            <span className="text-destructive">*</span>
+            <HelpPopover content="Select the type of review being conducted. WARD_ROUND is for scheduled daily rounds. Use URGENT_REVIEW when patient condition has changed and needs immediate assessment." />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Select value={reviewType} onValueChange={(v) => setReviewType(v as ReviewType)}>
+            <SelectTrigger id="review-type" className="w-full md:w-[300px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {REVIEW_TYPES.map((type) => (
+                <SelectItem key={type.value} value={type.value} title={type.description}>
+                  {type.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
@@ -253,31 +355,38 @@ export default function NewWardRoundPage() {
       </Card>
 
       {/* Clinical Notes (Quick Entry) */}
-      <Card>
+      <Card className={hasAttemptedSubmit && !hasNotes ? 'border-destructive' : ''}>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Stethoscope className="h-5 w-5" />
             <CardTitle className="text-lg">Clinical Notes</CardTitle>
+            <span className="text-destructive">*</span>
           </div>
           <CardDescription>
-            Quick notes entry. For detailed documentation, use SOAP format below.
+            Quick notes entry. <strong>Required</strong> if SOAP fields below are not filled.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="clinicalNotes">Clinical Notes</Label>
+            <RequiredLabel htmlFor="clinicalNotes">Clinical Notes</RequiredLabel>
             <Textarea
               id="clinicalNotes"
               value={clinicalNotes}
               onChange={(e) => setClinicalNotes(e.target.value)}
               placeholder="Enter clinical observations, progress notes, and findings..."
               rows={4}
+              className={hasAttemptedSubmit && !hasNotes ? 'border-destructive' : ''}
             />
+            {hasAttemptedSubmit && !hasNotes && (
+              <p className="text-sm text-destructive">
+                Either Clinical Notes OR all SOAP fields are required
+              </p>
+            )}
           </div>
 
           {/* Condition Status */}
           <div className="space-y-2">
-            <Label htmlFor="condition-status">Patient Condition</Label>
+            <RequiredLabel htmlFor="condition-status">Patient Condition</RequiredLabel>
             <Select value={conditionStatus} onValueChange={(v) => setConditionStatus(v as ConditionStatus)}>
               <SelectTrigger id="condition-status">
                 <SelectValue />
@@ -295,66 +404,87 @@ export default function NewWardRoundPage() {
       </Card>
 
       {/* SOAP Format (Detailed) */}
-      <Card>
+      <Card className={hasAttemptedSubmit && !hasNotes ? 'border-destructive' : ''}>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Stethoscope className="h-5 w-5" />
-            <CardTitle className="text-lg">SOAP Documentation (Optional)</CardTitle>
+            <CardTitle className="text-lg">SOAP Documentation</CardTitle>
+            <span className="text-destructive">*</span>
           </div>
           <CardDescription>
             Structured clinical documentation following SHA/FHIR compliance standards.
+            <strong> Required</strong> if Clinical Notes above is not filled.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Subjective */}
           <div className="space-y-2">
-            <Label htmlFor="subjective">Subjective (S)</Label>
+            <RequiredLabel htmlFor="subjective">Subjective (S)</RequiredLabel>
             <Textarea
               id="subjective"
               value={subjective}
               onChange={(e) => setSubjective(e.target.value)}
               placeholder="Patient's symptoms, complaints, and history..."
               rows={3}
+              className={hasAttemptedSubmit && !hasNotes && !subjective.trim() ? 'border-destructive' : ''}
             />
           </div>
 
           {/* Objective */}
           <div className="space-y-2">
-            <Label htmlFor="objective">Objective (O)</Label>
+            <RequiredLabel htmlFor="objective">Objective (O)</RequiredLabel>
             <Textarea
               id="objective"
               value={objective}
               onChange={(e) => setObjective(e.target.value)}
               placeholder="Physical examination findings, vital signs, lab results..."
               rows={3}
+              className={hasAttemptedSubmit && !hasNotes && !objective.trim() ? 'border-destructive' : ''}
             />
           </div>
 
           {/* Assessment */}
           <div className="space-y-2">
-            <Label htmlFor="assessment">Assessment (A)</Label>
+            <RequiredLabel htmlFor="assessment">Assessment (A)</RequiredLabel>
             <Textarea
               id="assessment"
               value={assessment}
               onChange={(e) => setAssessment(e.target.value)}
               placeholder="Clinical assessment and diagnosis..."
               rows={3}
+              className={hasAttemptedSubmit && !hasNotes && !assessment.trim() ? 'border-destructive' : ''}
             />
           </div>
 
           {/* Plan */}
           <div className="space-y-2">
-            <Label htmlFor="plan">Plan (P)</Label>
+            <RequiredLabel htmlFor="plan">Plan (P)</RequiredLabel>
             <Textarea
               id="plan"
               value={plan}
               onChange={(e) => setPlan(e.target.value)}
               placeholder="Treatment plan, orders, and follow-up actions..."
               rows={4}
+              className={hasAttemptedSubmit && !hasNotes && !plan.trim() ? 'border-destructive' : ''}
             />
           </div>
         </CardContent>
       </Card>
+
+      {/* Validation Summary */}
+      {hasAttemptedSubmit && validationErrors.length > 0 && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Please fix the following errors:</strong>
+            <ul className="list-disc list-inside mt-2">
+              {validationErrors.map((error, idx) => (
+                <li key={idx}>{error}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Submit Buttons */}
       <div className="flex justify-end gap-2">

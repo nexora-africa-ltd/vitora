@@ -64,6 +64,25 @@ export const TransferReasonSchema = z.enum([
 
 export const ConditionStatusSchema = z.enum(['STABLE', 'IMPROVING', 'DETERIORATING', 'CRITICAL']);
 
+export const ReviewTypeSchema = z.enum([
+  'WARD_ROUND',
+  'URGENT_REVIEW',
+  'CONSULTANT_REVIEW',
+  'TRANSFER_REVIEW',
+  'PRE_DISCHARGE',
+]);
+
+export const ReviewRequestTypeSchema = z.enum([
+  'URGENT_REVIEW',
+  'CONSULTANT_REVIEW',
+  'TRANSFER_REVIEW',
+  'PRE_DISCHARGE',
+]);
+
+export const ReviewUrgencySchema = z.enum(['ROUTINE', 'URGENT', 'STAT']);
+
+export const ReviewRequestStatusSchema = z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']);
+
 export const RiskLevelSchema = z.enum(['LOW', 'MODERATE', 'HIGH']);
 
 export const ShiftTypeSchema = z.enum(['DAY', 'NIGHT']);
@@ -299,6 +318,10 @@ export const WardRoundSchema = z.object({
   conducted_by: z.number(),
   conducted_by_username: z.string().optional(),
   conducted_by_name: z.string().optional(),
+  // Review type - differentiates scheduled rounds from urgent/consultant reviews
+  review_type: ReviewTypeSchema.optional().default('WARD_ROUND'),
+  review_type_display: z.string().optional(),
+  review_request: z.number().nullable().optional(),
   // SOAP notes - required per SHA/FHIR
   subjective: z.string(),
   objective: z.string(),
@@ -325,6 +348,50 @@ export const WardRoundSchema = z.object({
 });
 
 export type WardRoundSchemaType = z.infer<typeof WardRoundSchema>;
+
+// =============================================================================
+// REVIEW REQUEST SCHEMAS
+// =============================================================================
+
+export const ReviewRequestSchema = z.object({
+  id: z.number(),
+  admission: z.number(),
+  admission_number: z.string().optional(),
+  patient_name: z.string().optional(),
+  ward_name: z.string().optional(),
+  bed_number: z.string().optional(),
+  review_type: ReviewRequestTypeSchema,
+  review_type_display: z.string().optional(),
+  urgency: ReviewUrgencySchema,
+  urgency_display: z.string().optional(),
+  reason: z.string(),
+  requested_by: z.number(),
+  requested_by_username: z.string().optional(),
+  requested_at: z.string(),
+  consultant_specialty: z.string().optional(),
+  assigned_to: z.number().nullable().optional(),
+  assigned_to_username: z.string().nullable().optional(),
+  status: ReviewRequestStatusSchema,
+  status_display: z.string().optional(),
+  acknowledged_at: z.string().nullable().optional(),
+  acknowledged_by: z.number().nullable().optional(),
+  acknowledged_by_username: z.string().nullable().optional(),
+  completed_at: z.string().nullable().optional(),
+  clinical_context: z.string().optional(),
+  cancellation_reason: z.string().optional(),
+  is_overdue: z.boolean().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export type ReviewRequestSchemaType = z.infer<typeof ReviewRequestSchema>;
+
+export const PaginatedReviewRequestSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(ReviewRequestSchema),
+});
 
 // =============================================================================
 // NURSING KARDEX SCHEMAS
@@ -606,6 +673,35 @@ export const SupervisorAlertsResponseSchema = z.object({
 });
 
 export type SupervisorAlertsResponseSchemaType = z.infer<typeof SupervisorAlertsResponseSchema>;
+
+// =============================================================================
+// SINGLE WARD COMPATIBILITY CHECK SCHEMAS
+// =============================================================================
+
+export const ConstraintViolationSeveritySchema = z.enum(['WARNING', 'CRITICAL']);
+
+/**
+ * Single compatibility violation from ward check
+ */
+export const CompatibilityViolationSchema = z.object({
+  code: z.string(),
+  message: z.string(),
+  severity: ConstraintViolationSeveritySchema,
+  override_allowed: z.boolean(),
+});
+
+export type CompatibilityViolationSchemaType = z.infer<typeof CompatibilityViolationSchema>;
+
+/**
+ * Result of single-ward compatibility check
+ */
+export const CompatibilityCheckResultSchema = z.object({
+  compatible: z.boolean(),
+  has_critical_violations: z.boolean(),
+  violations: z.array(CompatibilityViolationSchema),
+});
+
+export type CompatibilityCheckResultSchemaType = z.infer<typeof CompatibilityCheckResultSchema>;
 
 // =============================================================================
 // BULK COMPATIBILITY CHECK SCHEMAS

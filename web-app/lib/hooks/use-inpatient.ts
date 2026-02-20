@@ -21,6 +21,9 @@ import type {
   KardexShiftNoteCreateData,
   KardexUpdateData,
   NursingKardex,
+  ReviewRequest,
+  ReviewRequestCreateData,
+  ReviewRequestListParams,
   ShiftHandover,
   ShiftHandoverCreateData,
   ShiftHandoverListParams,
@@ -59,6 +62,9 @@ export const inpatientQueryKeys = {
   wardRounds: (params?: WardRoundListParams) =>
     [...inpatientQueryKeys.all, 'ward-rounds', params] as const,
   wardRound: (id: number) => [...inpatientQueryKeys.all, 'ward-rounds', id] as const,
+  reviewRequests: (params?: ReviewRequestListParams) =>
+    [...inpatientQueryKeys.all, 'review-requests', params] as const,
+  reviewRequest: (id: number) => [...inpatientQueryKeys.all, 'review-requests', id] as const,
   kardex: (params?: KardexListParams) =>
     [...inpatientQueryKeys.all, 'kardex', params] as const,
   kardexById: (id: number) => [...inpatientQueryKeys.all, 'kardex', id] as const,
@@ -399,6 +405,85 @@ export function useUpdateWardRound() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wardRound(variables.id) });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wardRounds() });
+    },
+  });
+}
+
+// ============================================================================
+// Review Request Hooks
+// ============================================================================
+
+export function useReviewRequests(params?: ReviewRequestListParams) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.reviewRequests(params),
+    queryFn: () => inpatientApi.listReviewRequests(params),
+  });
+}
+
+export function useReviewRequest(requestId: number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.reviewRequest(requestId!),
+    enabled: typeof requestId === 'number',
+    queryFn: () => inpatientApi.getReviewRequest(requestId!),
+  });
+}
+
+export function useAdmissionReviewRequests(admissionId: number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.reviewRequests({ admission: admissionId }),
+    enabled: typeof admissionId === 'number',
+    queryFn: () => inpatientApi.listReviewRequests({ admission: admissionId }),
+  });
+}
+
+export function usePendingReviewRequests() {
+  return useQuery({
+    queryKey: inpatientQueryKeys.reviewRequests({ status: 'PENDING' }),
+    queryFn: () => inpatientApi.listReviewRequests({ status: 'PENDING' }),
+  });
+}
+
+export function useCreateReviewRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ReviewRequestCreateData) => inpatientApi.createReviewRequest(data),
+    onSuccess: (reviewRequest) => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequests() });
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequests({ admission: reviewRequest.admission }) });
+    },
+  });
+}
+
+export function useAcknowledgeReviewRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId: number) => inpatientApi.acknowledgeReviewRequest(requestId),
+    onSuccess: (reviewRequest) => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequest(reviewRequest.id) });
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequests() });
+    },
+  });
+}
+
+export function useCompleteReviewRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId: number) => inpatientApi.completeReviewRequest(requestId),
+    onSuccess: (reviewRequest) => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequest(reviewRequest.id) });
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequests() });
+    },
+  });
+}
+
+export function useCancelReviewRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, reason }: { requestId: number; reason: string }) =>
+      inpatientApi.cancelReviewRequest(requestId, reason),
+    onSuccess: (reviewRequest) => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequest(reviewRequest.id) });
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.reviewRequests() });
     },
   });
 }
