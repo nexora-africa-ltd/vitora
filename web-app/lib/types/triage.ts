@@ -426,6 +426,7 @@ export interface TriageAssessment {
 
   // Arrival information
   arrival_mode: ArrivalMode;
+  referring_facility_name?: string | null;
   arrival_time: string;
 
   // Clinical assessment
@@ -467,6 +468,7 @@ export interface TriageAssessment {
 export interface TriageAssessmentCreateData {
   encounter: number;
   arrival_mode: ArrivalMode;
+  referring_facility_name?: string;
   arrival_time: string;
   chief_complaint_category: ChiefComplaintCategory;
   chief_complaint: string;

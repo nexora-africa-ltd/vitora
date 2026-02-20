@@ -68,6 +68,7 @@ const assessmentSchema = z.object({
   arrival_mode: z.enum(['WALK_IN', 'AMBULANCE', 'POLICE', 'REFERRAL', 'OTHER'], {
     required_error: 'Arrival mode is required',
   }),
+  referring_facility_name: z.string().optional(),
   arrival_time: z.string().min(1, 'Arrival time is required'),
   chief_complaint_category: z.enum(
     [
@@ -99,7 +100,19 @@ const assessmentSchema = z.object({
   }),
   auto_calculated_category: z.enum(['RED', 'ORANGE', 'YELLOW', 'GREEN', 'BLUE']).optional(),
   category_override_reason: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    // Referring facility name is required when arrival_mode is REFERRAL
+    if (data.arrival_mode === 'REFERRAL') {
+      return data.referring_facility_name && data.referring_facility_name.trim().length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'Referring facility name is required when arrival mode is "Referral from another facility"',
+    path: ['referring_facility_name'],
+  }
+);
 
 type AssessmentFormData = z.infer<typeof assessmentSchema>;
 
@@ -134,6 +147,19 @@ export default function TriageAssessmentPage() {
   const now = new Date();
   const defaultArrivalTime = now.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
 
+  // Filter out placeholder chief complaints that aren't meaningful
+  const PLACEHOLDER_COMPLAINTS = ['Triage assessment', 'Check-in', 'check-in', 'Checkin'];
+  const getInitialChiefComplaint = () => {
+    if (currentAssessment?.chief_complaint) return currentAssessment.chief_complaint;
+    if (
+      encounter?.chief_complaint &&
+      !PLACEHOLDER_COMPLAINTS.includes(encounter.chief_complaint)
+    ) {
+      return encounter.chief_complaint;
+    }
+    return '';
+  };
+
   const {
     register,
     handleSubmit,
@@ -145,9 +171,10 @@ export default function TriageAssessmentPage() {
     resolver: zodResolver(assessmentSchema),
     defaultValues: {
       arrival_mode: currentAssessment?.arrival_mode || 'WALK_IN',
+      referring_facility_name: currentAssessment?.referring_facility_name || '',
       arrival_time: currentAssessment?.arrival_time || defaultArrivalTime,
       chief_complaint_category: currentAssessment?.chief_complaint_category || undefined,
-      chief_complaint: currentAssessment?.chief_complaint || encounter?.chief_complaint || '',
+      chief_complaint: getInitialChiefComplaint(),
       pain_score: currentAssessment?.pain_score ?? 0,
       mental_status: currentAssessment?.mental_status || 'A',
       mobility: currentAssessment?.mobility || 'AMBULATORY',
@@ -165,8 +192,11 @@ export default function TriageAssessmentPage() {
     'pain_score',
     'triage_category',
   ]);
+  const [watchedChiefCategory, watchedMentalStatus, watchedMobility] = watchedFields;
   const selectedCategory = watch('triage_category');
   const overrideReason = watch('category_override_reason');
+  const arrivalMode = watch('arrival_mode');
+  const isReferral = arrivalMode === 'REFERRAL';
 
   // Check if category has been overridden
   const isOverridden = calculatedCategory && selectedCategory !== calculatedCategory;
@@ -174,14 +204,11 @@ export default function TriageAssessmentPage() {
   // Determine which fields are missing for triage calculation
   const missingCalculationFields = useMemo(() => {
     const missing: string[] = [];
-    const chiefCategory = watch('chief_complaint_category');
-    const mentalStatus = watch('mental_status');
-    const mobility = watch('mobility');
 
     // Required fields for KETA calculation
-    if (!chiefCategory) missing.push('Chief Complaint Category');
-    if (!mentalStatus) missing.push('Mental Status (AVPU)');
-    if (!mobility) missing.push('Mobility');
+    if (!watchedChiefCategory) missing.push('Chief Complaint Category');
+    if (!watchedMentalStatus) missing.push('Mental Status (AVPU)');
+    if (!watchedMobility) missing.push('Mobility');
 
     // Check if ANY vitals were captured (at least one is recommended)
     const hasAnyVitals = currentVitals && (
@@ -194,7 +221,7 @@ export default function TriageAssessmentPage() {
     if (!hasAnyVitals) missing.push('Vitals (at least one)');
 
     return missing;
-  }, [watch, currentVitals]);
+  }, [watchedChiefCategory, watchedMentalStatus, watchedMobility, currentVitals]);
 
   const canCalculate = missingCalculationFields.length === 0;
 
@@ -247,6 +274,7 @@ export default function TriageAssessmentPage() {
       // Store assessment in triage store
       setAssessment(parseInt(encounterId, 10), {
         arrival_mode: data.arrival_mode,
+        referring_facility_name: data.referring_facility_name,
         arrival_time: data.arrival_time,
         chief_complaint_category: data.chief_complaint_category,
         chief_complaint: data.chief_complaint,
@@ -333,6 +361,28 @@ export default function TriageAssessmentPage() {
                 )}
               </div>
             </div>
+
+            {/* Referring Facility - Conditional */}
+            {isReferral && (
+              <div className="space-y-2 p-4 rounded-lg border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+                <Label htmlFor="referring_facility_name" className="flex items-center gap-1.5 text-blue-700 dark:text-blue-300">
+                  <Ambulance className="h-4 w-4" />
+                  Referring Facility Name *
+                </Label>
+                <Input
+                  id="referring_facility_name"
+                  placeholder="Enter the name of the referring facility"
+                  className="bg-white dark:bg-blue-950/30 border-blue-300 dark:border-blue-700"
+                  {...register('referring_facility_name')}
+                />
+                {errors.referring_facility_name && (
+                  <p className="text-sm text-destructive">{errors.referring_facility_name.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  This information is required for SHA claims and continuity of care documentation.
+                </p>
+              </div>
+            )}
 
             {/* Chief Complaint Category */}
             <div className="space-y-2">

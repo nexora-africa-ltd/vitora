@@ -38,6 +38,7 @@ export interface TriageHistory {
 
 export interface TriageAssessmentData {
   arrival_mode?: ArrivalMode;
+  referring_facility_name?: string;
   arrival_time?: string;
   chief_complaint_category?: ChiefComplaintCategory;
   chief_complaint?: string;
