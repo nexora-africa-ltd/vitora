@@ -85,7 +85,7 @@ export default function AdmissionDetailPage() {
       {admission.admission_status === 'ACTIVE' && (
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
           <Button variant="outline" asChild>
-            <Link href={`/admissions/${admission.id}/ward-round`}>
+            <Link href={`/admissions/${admission.id}/ward-round/new`}>
               <Stethoscope className="h-4 w-4 mr-2" />
               Ward Round
             </Link>
@@ -265,7 +265,7 @@ export default function AdmissionDetailPage() {
             <h3 className="text-lg font-semibold">Ward Round History</h3>
             {admission.admission_status === 'ACTIVE' && (
               <Button asChild className="w-full sm:w-auto">
-                <Link href={`/admissions/${admission.id}/ward-round`}>
+                <Link href={`/admissions/${admission.id}/ward-round/new`}>
                   <Plus className="h-4 w-4 mr-2" />
                   <span className="sm:hidden">New Round</span>
                   <span className="hidden sm:inline">New Ward Round</span>
@@ -286,31 +286,33 @@ export default function AdmissionDetailPage() {
           ) : (
             <div className="space-y-4">
               {wardRounds?.results?.map((round) => (
-                <Card key={round.id}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">
-                        {formatDateTime(round.round_date)}
-                      </CardTitle>
-                      <Badge variant="outline">{round.condition_status_display || round.condition_status}</Badge>
-                    </div>
-                    <CardDescription>
-                      Conducted by {round.conducted_by_username}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div>
-                      <p className="text-sm font-medium">Clinical Notes</p>
-                      <p className="text-sm text-accent-foreground">{round.clinical_notes}</p>
-                    </div>
-                    {round.plan && (
-                      <div>
-                        <p className="text-sm font-medium">Plan</p>
-                        <p className="text-sm text-accent-foreground">{round.plan}</p>
+                <Link key={round.id} href={`/admissions/${admission.id}/ward-round/${round.id}`}>
+                  <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base">
+                          {formatDateTime(round.round_date)}
+                        </CardTitle>
+                        <Badge variant="outline">{round.condition_status_display || round.condition_status}</Badge>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                      <CardDescription>
+                        Conducted by {round.conducted_by_username}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div>
+                        <p className="text-sm font-medium">Clinical Notes</p>
+                        <p className="text-sm text-accent-foreground line-clamp-2">{round.clinical_notes}</p>
+                      </div>
+                      {round.plan && (
+                        <div>
+                          <p className="text-sm font-medium">Plan</p>
+                          <p className="text-sm text-accent-foreground line-clamp-2">{round.plan}</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
           )}
@@ -353,44 +355,46 @@ export default function AdmissionDetailPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Care Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <p className="text-sm font-medium">Mobility Status</p>
-                    <p className="text-sm text-accent-foreground">{kardex.mobility_status || 'Not specified'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Diet</p>
-                    <p className="text-sm text-accent-foreground">{kardex.diet || 'Regular'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Allergies</p>
-                    <p className="text-sm text-accent-foreground">{kardex.allergies || 'None known'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Fall Risk</p>
-                    <Badge variant={kardex.fall_risk ? 'destructive' : 'secondary'}>
-                      {kardex.fall_risk ? 'Yes' : 'No'}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
+            <Link href={`/admissions/${admission.id}/kardex`}>
+              <div className="grid gap-4 md:grid-cols-2 cursor-pointer">
+                <Card className="hover:bg-muted/50 transition-colors">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Care Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <p className="text-sm font-medium">Mobility Status</p>
+                      <p className="text-sm text-accent-foreground">{kardex.mobility_status || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Diet</p>
+                      <p className="text-sm text-accent-foreground">{kardex.diet || 'Regular'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Allergies</p>
+                      <p className="text-sm text-accent-foreground">{kardex.allergies || 'None known'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Fall Risk</p>
+                      <Badge variant={kardex.fall_risk ? 'destructive' : 'secondary'}>
+                        {kardex.fall_risk ? 'Yes' : 'No'}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Nursing Notes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-accent-foreground whitespace-pre-wrap">
-                    {kardex.nursing_notes || 'No nursing notes recorded.'}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                <Card className="hover:bg-muted/50 transition-colors">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Nursing Notes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-accent-foreground whitespace-pre-wrap line-clamp-6">
+                      {kardex.nursing_notes || 'No nursing notes recorded.'}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </Link>
           )}
         </TabsContent>
 
