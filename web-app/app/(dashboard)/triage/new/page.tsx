@@ -86,24 +86,6 @@ export default function NewTriagePage() {
   const { mutateAsync: createEncounter } = useCreateEncounter();
   const { mutateAsync: checkInPatient } = useCheckInPatient();
 
-  // Redirect to new tabbed triage flow when feature flag is off
-  useEffect(() => {
-    if (!LEGACY_TRIAGE_FLOW && selectedPatientId && selectedEncounterId && !isCheckingExisting) {
-      // Only redirect if there's no existing completed assessment
-      // (let the new flow handle showing appropriate warnings)
-      router.replace(`/triage/assess/${selectedPatientId}/${selectedEncounterId}/vitals`);
-    }
-  }, [selectedPatientId, selectedEncounterId, isCheckingExisting, router]);
-
-  // If using new flow, don't render legacy page content while redirecting
-  if (!LEGACY_TRIAGE_FLOW && selectedPatientId && selectedEncounterId) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Skeleton className="h-8 w-48" />
-      </div>
-    );
-  }
-
   // Handle selecting a patient from search
   const handleSelectPatient = useCallback(async (patientToSelect: Patient) => {
     setSelectedPatientId(patientToSelect.id);
@@ -120,12 +102,11 @@ export default function NewTriagePage() {
       });
       setSelectedEncounterId(newEncounter.id);
 
-      // Update URL params - new flow redirect will happen via effect
+      // For legacy flow, navigate directly; for new flow, useEffect handles redirect
       if (LEGACY_TRIAGE_FLOW) {
         router.replace(`/triage/new?patientId=${patientToSelect.id}&encounterId=${newEncounter.id}`);
-      } else {
-        router.replace(`/triage/assess/${patientToSelect.id}/${newEncounter.id}/vitals`);
       }
+      // New flow navigation is handled by useEffect to avoid race conditions
     } catch (error) {
       toast({
         title: 'Error',
@@ -147,12 +128,11 @@ export default function NewTriagePage() {
     if (waitingEntry.encounter) {
       setSelectedPatientId(waitingEntry.patient);
       setSelectedEncounterId(waitingEntry.encounter);
-      // Route based on feature flag
+      // For legacy flow, navigate directly; for new flow, useEffect handles redirect
       if (LEGACY_TRIAGE_FLOW) {
         router.replace(`/triage/new?patientId=${waitingEntry.patient}&encounterId=${waitingEntry.encounter}`);
-      } else {
-        router.replace(`/triage/assess/${waitingEntry.patient}/${waitingEntry.encounter}/vitals`);
       }
+      // New flow navigation is handled by useEffect to avoid race conditions
     } else {
       toast({
         title: 'No Encounter',
@@ -238,6 +218,24 @@ export default function NewTriagePage() {
     setHasOverriddenInProgress(false); // Reset override when changing patient
     router.replace('/triage/new');
   }, [router]);
+
+  // Redirect to new tabbed triage flow when feature flag is off
+  useEffect(() => {
+    if (!LEGACY_TRIAGE_FLOW && selectedPatientId && selectedEncounterId && !isCheckingExisting) {
+      // Only redirect if there's no existing completed assessment
+      // (let the new flow handle showing appropriate warnings)
+      router.replace(`/triage/assess/${selectedPatientId}/${selectedEncounterId}/vitals`);
+    }
+  }, [selectedPatientId, selectedEncounterId, isCheckingExisting, router]);
+
+  // If using new flow, don't render legacy page content while redirecting
+  if (!LEGACY_TRIAGE_FLOW && selectedPatientId && selectedEncounterId) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Skeleton className="h-8 w-48" />
+      </div>
+    );
+  }
 
   // Loading state
   const isLoading = isPatientLoading || isEncounterLoading || isCreatingEncounter || isCheckingExisting;
