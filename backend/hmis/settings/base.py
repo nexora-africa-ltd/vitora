@@ -690,6 +690,7 @@ OAUTH2_PROVIDER = {
 # FHIR server base URL (used in SMART configuration)
 FHIR_BASE_URL = os.getenv("FHIR_BASE_URL", "http://localhost:9088")
 
+# AFRICA'S TALKING SMS API Configuration (Sprint 1.5-1.6 Track B)
 AT_USERNAME = os.getenv("AT_USERNAME", "")
 AT_API_KEY = os.getenv("AT_API_KEY", "")
 SMS_SENDER_ID = os.getenv("SMS_SENDER_ID", "VitoraHMIS")

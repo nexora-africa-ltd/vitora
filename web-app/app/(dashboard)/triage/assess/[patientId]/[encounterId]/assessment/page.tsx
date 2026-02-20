@@ -17,7 +17,6 @@ import {
   AlertCircle,
   Clock,
   Ambulance,
-  Brain,
   Activity,
   Calculator,
   MessageSquare,
@@ -30,7 +29,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
@@ -40,18 +38,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { HelpPopover } from '@/components/shared/help-popover';
-import { TriageCategoryBadge, VitalAlertsPanel } from '@/components/triage';
+import {
+  TriageCategoryBadge,
+  VitalAlertsPanel,
+  PainScoreSlider,
+  AVPUCardGroup,
+} from '@/components/triage';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
 import { useCalculateTriageCategory } from '@/lib/hooks/use-triage';
 import {
   ARRIVAL_MODE_CONFIG,
   CHIEF_COMPLAINT_CONFIG,
-  AVPU_CONFIG,
   MOBILITY_CONFIG,
   TRIAGE_CATEGORY_CONFIG,
   type TriageCategory,
   type TriageAlert,
+  type AVPUStatus,
 } from '@/lib/types/triage';
 
 // =============================================================================
@@ -347,39 +350,17 @@ export default function TriageAssessmentPage() {
               )}
             </div>
 
-            {/* Pain Score */}
-            <div className="space-y-3">
-              <Label className="flex items-center gap-1.5">
-                Pain Score (0-10)
-                <HelpPopover content="0 = No pain, 10 = Worst imaginable pain" />
-              </Label>
-              <Controller
-                name="pain_score"
-                control={control}
-                render={({ field }) => (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-4">
-                      <Slider
-                        min={0}
-                        max={10}
-                        step={1}
-                        value={[field.value ?? 0]}
-                        onValueChange={(value) => field.onChange(value[0])}
-                        className="flex-1"
-                      />
-                      <span className="w-8 text-center font-medium text-lg">
-                        {field.value ?? 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>No pain</span>
-                      <span>Moderate</span>
-                      <span>Severe</span>
-                    </div>
-                  </div>
-                )}
-              />
-            </div>
+            {/* Pain Score - Enhanced color-coded slider */}
+            <Controller
+              name="pain_score"
+              control={control}
+              render={({ field }) => (
+                <PainScoreSlider
+                  value={field.value ?? null}
+                  onChange={field.onChange}
+                />
+              )}
+            />
           </CardContent>
         </Card>
 
@@ -389,44 +370,21 @@ export default function TriageAssessmentPage() {
             <CardTitle className="text-lg">Clinical Assessment</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Mental Status (AVPU) */}
-            <div className="space-y-3">
-              <Label className="flex items-center gap-1.5">
-                <Brain className="h-4 w-4 text-muted-foreground" />
-                Mental Status (AVPU) *
-              </Label>
-              <Controller
-                name="mental_status"
-                control={control}
-                render={({ field }) => (
-                  <RadioGroup
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    className="grid grid-cols-2 sm:grid-cols-4 gap-3"
-                  >
-                    {Object.entries(AVPU_CONFIG).map(([key, config]) => (
-                      <div key={key}>
-                        <RadioGroupItem
-                          value={key}
-                          id={`avpu-${key}`}
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor={`avpu-${key}`}
-                          className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                        >
-                          <span className="font-bold text-lg">{config.code}</span>
-                          <span className="text-xs text-muted-foreground">{config.label}</span>
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                )}
-              />
-              {errors.mental_status && (
-                <p className="text-sm text-destructive">{errors.mental_status.message}</p>
+            {/* Mental Status (AVPU) - Enhanced card group */}
+            <Controller
+              name="mental_status"
+              control={control}
+              render={({ field }) => (
+                <AVPUCardGroup
+                  value={field.value as AVPUStatus | undefined}
+                  onChange={field.onChange}
+                  showInlineAlert
+                />
               )}
-            </div>
+            />
+            {errors.mental_status && (
+              <p className="text-sm text-destructive">{errors.mental_status.message}</p>
+            )}
 
             {/* Mobility */}
             <div className="space-y-3">

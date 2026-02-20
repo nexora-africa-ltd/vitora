@@ -32,3 +32,21 @@ export { TriageInProgressWarning } from './triage-in-progress-warning';
 export type { TriageInProgressWarningProps } from './triage-in-progress-warning';
 
 export { TriageAssessTabs } from './triage-assess-tabs';
+
+// Enhanced triage UI components (Sprint 1.6)
+export { PainScoreSlider, getPainSeverity } from './pain-score-slider';
+export type { PainScoreSliderProps } from './pain-score-slider';
+
+export { AVPUCardGroup } from './avpu-card-group';
+export type { AVPUCardGroupProps } from './avpu-card-group';
+
+export {
+  VitalInputWithAlert,
+  evaluateVitalSeverity,
+  DEFAULT_THRESHOLDS,
+} from './vital-input-with-alert';
+export type {
+  VitalInputWithAlertProps,
+  VitalThresholds,
+  AlertSeverity,
+} from './vital-input-with-alert';
