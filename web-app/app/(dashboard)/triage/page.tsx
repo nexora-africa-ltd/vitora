@@ -51,6 +51,7 @@ import {
 } from '@/lib/hooks/use-triage';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { toast } from '@/lib/hooks/use-toast';
+import { LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
 import type { TriageCategory, TriageAssessment } from '@/lib/types/triage';
 
 type DateRangeOption = 'today' | 'week' | 'month' | 'quarter' | 'all';
@@ -137,7 +138,13 @@ export default function TriageQueuePage() {
         await startTriage(waitingId);
         // Navigate to triage form
         if (encounterId) {
-          router.push(`/triage/new?patientId=${patientId}&encounterId=${encounterId}`);
+          // Route based on feature flag
+          if (LEGACY_TRIAGE_FLOW) {
+            router.push(`/triage/new?patientId=${patientId}&encounterId=${encounterId}`);
+          } else {
+            // New tabbed triage flow
+            router.push(`/triage/assess/${patientId}/${encounterId}/vitals`);
+          }
         } else {
           toast({
             title: 'Error',
