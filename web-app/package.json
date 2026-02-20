@@ -80,7 +80,7 @@
     "date-fns": "^3.6.0",
     "dicom-parser": "^1.8.21",
     "embla-carousel-react": "^8.6.0",
-    "jspdf": "^4.0.0",
+    "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.562.0",
     "motion": "^12.26.2",
