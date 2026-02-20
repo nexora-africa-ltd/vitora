@@ -43,14 +43,31 @@ import type { PaginatedResponse } from '@/lib/types';
 // =============================================================================
 
 export interface TriageAssessmentUpdateData {
+  // Clinical assessment
   mental_status?: 'A' | 'V' | 'P' | 'U';
   chief_complaint_category?: string;
-  chief_complaint_text?: string;
-  pain_score?: number;
+  chief_complaint?: string;
+  pain_score?: number | null;
   mobility?: string;
-  assigned_area?: AssignedArea;
+  allergies_noted?: string;
+
+  // Vital signs (requires vitals editing permission)
+  spo2?: number | null;
+  heart_rate?: number | null;
+  systolic_bp?: number | null;
+  diastolic_bp?: number | null;
+  temperature?: number | null;
+  respiratory_rate?: number | null;
+
+  // Triage decision
   triage_category?: TriageCategory;
+  auto_calculated_category?: TriageCategory;
   category_override_reason?: string;
+
+  // Routing
+  assigned_area?: AssignedArea;
+  assigned_clinic?: number | null;
+
   notes?: string;
 }
 
