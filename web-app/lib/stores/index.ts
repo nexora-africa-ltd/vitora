@@ -29,3 +29,13 @@ export {
   type AdmissionInfo,
   type OrderStatus,
 } from './patient-journey';
+
+// Triage Assessment Store - persists triage data across multi-tab workflow
+export {
+  useTriageAssessStore,
+  type TriageVitals,
+  type TriageHistory,
+  type TriageAssessmentData,
+  type TriageRouting,
+  type TriageAssessSession,
+} from './triage-assess-store';
