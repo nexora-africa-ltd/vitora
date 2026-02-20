@@ -481,6 +481,121 @@ class TriageQueueViewSet(viewsets.ReadOnlyModelViewSet):
 
         return Response({"status": "left_without_being_seen", "reason": reason})
 
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT},
+        description="Get critical (RED) patients in the ER queue for emergency alerts.",
+    )
+    @action(detail=False, methods=["get"], url_path="critical")
+    def critical(self, request):
+        """
+        Get critical (RED category) patients in the ER queue.
+
+        Returns patients with RED triage category in ER areas for
+        critical alert banner display on the emergency dashboard.
+        """
+        from django.utils import timezone
+
+        # Get RED patients in ER areas
+        er_areas = ["ER_RESUS", "ER_ACUTE", "TRAUMA", "ER_FAST_TRACK", "OBSERVATION", "PEDIATRIC_ER", "MATERNITY"]
+
+        queryset = TriageQueue.objects.filter(
+            triage_assessment__triage_category="RED",
+            triage_assessment__assigned_area__in=er_areas,
+            status__in=["WAITING", "CALLED"],
+        ).select_related(
+            "triage_assessment__encounter__patient",
+        ).order_by("triage_assessment__arrival_time")
+
+        patients = []
+        now = timezone.now()
+
+        for entry in queryset:
+            assessment = entry.triage_assessment
+            patient = assessment.encounter.patient
+            wait_delta = now - assessment.arrival_time
+            wait_minutes = int(wait_delta.total_seconds() / 60)
+
+            patients.append({
+                "id": entry.id,
+                "patient_name": f"{patient.first_name} {patient.last_name}",
+                "mrn": patient.mrn,
+                "chief_complaint": assessment.chief_complaint or "",
+                "assigned_area": assessment.assigned_area,
+                "assigned_area_display": assessment.get_assigned_area_display(),
+                "wait_minutes": wait_minutes,
+                "arrival_time": assessment.arrival_time.isoformat(),
+                "status": entry.status,
+            })
+
+        return Response({
+            "count": len(patients),
+            "patients": patients,
+        })
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT},
+        description="Get summary stats for all ER zones.",
+    )
+    @action(detail=False, methods=["get"], url_path="zones-summary")
+    def zones_summary(self, request):
+        """
+        Get summary statistics for each ER zone.
+
+        Returns patient counts by category for each ER zone,
+        used for the emergency department dashboard cards.
+        """
+        # ER zones with their configuration
+        er_zones = [
+            {"code": "ER_RESUS", "name": "Resuscitation", "capacity": 4, "default_category": "RED"},
+            {"code": "ER_ACUTE", "name": "Acute Care", "capacity": 10, "default_category": "ORANGE"},
+            {"code": "TRAUMA", "name": "Trauma Bay", "capacity": 2, "default_category": "RED"},
+            {"code": "ER_FAST_TRACK", "name": "Fast Track", "capacity": 12, "default_category": "GREEN"},
+            {"code": "OBSERVATION", "name": "Observation", "capacity": 8, "default_category": "YELLOW"},
+            {"code": "PEDIATRIC_ER", "name": "Pediatric ER", "capacity": 6, "default_category": "ORANGE"},
+            {"code": "MATERNITY", "name": "Maternity", "capacity": 4, "default_category": "ORANGE"},
+        ]
+
+        # Get counts by zone and category
+        active_statuses = ["WAITING", "CALLED", "WITH_CLINICIAN"]
+
+        zone_stats = []
+        for zone in er_zones:
+            # Get all patients in this zone
+            zone_queryset = TriageQueue.objects.filter(
+                triage_assessment__assigned_area=zone["code"],
+                status__in=active_statuses,
+            ).select_related("triage_assessment")
+
+            # Count by category
+            category_counts = {"RED": 0, "ORANGE": 0, "YELLOW": 0, "GREEN": 0, "BLUE": 0}
+            for entry in zone_queryset:
+                category = entry.triage_assessment.triage_category
+                if category in category_counts:
+                    category_counts[category] += 1
+
+            total = sum(category_counts.values())
+
+            # Determine primary category (highest severity with patients)
+            primary_category = zone["default_category"]
+            for cat in ["RED", "ORANGE", "YELLOW", "GREEN", "BLUE"]:
+                if category_counts[cat] > 0:
+                    primary_category = cat
+                    break
+
+            zone_stats.append({
+                "code": zone["code"],
+                "name": zone["name"],
+                "capacity": zone["capacity"],
+                "total": total,
+                "primary_category": primary_category,
+                "by_category": category_counts,
+            })
+
+        return Response({
+            "zones": zone_stats,
+            "total_patients": sum(z["total"] for z in zone_stats),
+        })
+
 
 class WaitTimesReportView(APIView):
     """

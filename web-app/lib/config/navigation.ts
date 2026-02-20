@@ -40,6 +40,7 @@ import {
   Stethoscope as StethoscopeIcon,
   UserCheck,
   Image as ImageIcon,
+  Siren,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -69,6 +70,7 @@ export const mainNavItems: NavItemType[] = [
   { label: 'Check-in', href: '/patients/checkin', icon: UserCheck },
   { label: 'Patients', href: '/patients', icon: Users },
   { label: 'Triage', href: '/triage', icon: AlertTriangle },
+  { label: 'Emergency', href: '/emergency', icon: Siren },
   {
     label: 'Clinics',
     icon: Activity,
