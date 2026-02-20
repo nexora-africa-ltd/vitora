@@ -24,7 +24,14 @@ import { cn } from '@/lib/utils/cn';
  * Compatible with both API response and WebSocket data.
  */
 export interface CriticalPatientInfo {
+  /** Triage assessment ID - used for routing to /triage/[id] */
   id: number;
+  /** Queue entry ID */
+  queue_id?: number;
+  /** Encounter ID for routing to /encounters/[id] */
+  encounter_id?: number;
+  /** Encounter status: CREATED, IN_PROGRESS, CLOSED, CANCELLED */
+  encounter_status?: string;
   patient_name: string;
   mrn: string;
   chief_complaint: string;
@@ -37,7 +44,7 @@ export interface CriticalPatientInfo {
 
 interface CriticalAlertBannerProps {
   patients: CriticalPatientInfo[];
-  onViewPatient?: (patientId: number) => void;
+  onViewPatient?: (patient: CriticalPatientInfo) => void;
   dismissible?: boolean;
   className?: string;
 }
@@ -117,7 +124,7 @@ export function CriticalAlertBanner({
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => onViewPatient(patient.id)}
+                        onClick={() => onViewPatient(patient)}
                         className="shrink-0"
                       >
                         <Eye className="h-4 w-4 mr-1" />

@@ -25,6 +25,8 @@ export type { TriageThresholdsSettingsProps } from './triage-thresholds-settings
 
 export { RouteToClinicDialog } from './route-to-clinic-dialog';
 
+export { RouteToEmergencyDialog } from './route-to-emergency-dialog';
+
 export { AlreadyTriagedWarning } from './already-triaged-warning';
 export type { AlreadyTriagedWarningProps } from './already-triaged-warning';
 

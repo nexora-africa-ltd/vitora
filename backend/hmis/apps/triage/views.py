@@ -512,11 +512,15 @@ class TriageQueueViewSet(viewsets.ReadOnlyModelViewSet):
         for entry in queryset:
             assessment = entry.triage_assessment
             patient = assessment.encounter.patient
+            encounter = assessment.encounter
             wait_delta = now - assessment.arrival_time
             wait_minutes = int(wait_delta.total_seconds() / 60)
 
             patients.append({
-                "id": entry.id,
+                "id": assessment.id,  # Triage assessment ID for routing
+                "queue_id": entry.id,  # Queue entry ID
+                "encounter_id": encounter.id,
+                "encounter_status": encounter.status,
                 "patient_name": f"{patient.first_name} {patient.last_name}",
                 "mrn": patient.mrn,
                 "chief_complaint": assessment.chief_complaint or "",

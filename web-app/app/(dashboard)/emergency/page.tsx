@@ -138,9 +138,18 @@ export default function EmergencyDashboardPage() {
     refresh();
   };
 
-  const handleViewPatient = (patientId: number) => {
-    // Navigate to triage queue with the patient highlighted
-    router.push(`/triage?highlight=${patientId}`);
+  const handleViewPatient = (patient: {
+    id: number;
+    encounter_id?: number;
+    encounter_status?: string;
+  }) => {
+    // Route to encounter if it exists (all triaged patients have an encounter)
+    // Fall back to triage assessment if encounter_id is missing (shouldn't happen)
+    if (patient.encounter_id) {
+      router.push(`/encounters/${patient.encounter_id}`);
+    } else {
+      router.push(`/triage/${patient.id}`);
+    }
   };
 
   // Format last update time
