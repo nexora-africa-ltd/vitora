@@ -279,7 +279,7 @@ export function ConsultationQueue({
             <p className="text-destructive font-medium mb-2 text-sm sm:text-base">Failed to load queue</p>
             <p className="text-xs sm:text-sm text-muted-foreground mb-4 px-4">{error}</p>
             {onRefresh && (
-              <Button variant="outline" onClick={onRefresh} size="sm" className="sm:size-default">
+              <Button variant="outline" onClick={onRefresh} size="sm">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Retry
               </Button>

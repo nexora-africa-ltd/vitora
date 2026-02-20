@@ -186,13 +186,6 @@ export function ConsultationQueueContainer({
     [bypassTriageMutation, toast]
   );
 
-  /**
-   * Handle refresh
-   */
-  const handleRefresh = useCallback(() => {
-    refetch();
-  }, [refetch]);
-
   // ===========================================================================
   // Claim/Release Handlers (Data Integrity - Sprint 1.7)
   // ===========================================================================
@@ -290,7 +283,7 @@ export function ConsultationQueueContainer({
           <Button
             variant="outline"
             size="sm"
-            onClick={handleRefresh}
+            onClick={() => refetch()}
           >
             Try again
           </Button>
@@ -310,7 +303,7 @@ export function ConsultationQueueContainer({
             Patients will appear here once they complete triage or are registered
             for encounters that don&apos;t require triage.
           </p>
-          <Button asChild size="sm" className="sm:size-default">
+          <Button asChild size="sm">
             <Link href="/patients">
               <UserPlus className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Select from Patient List</span>
@@ -335,7 +328,6 @@ export function ConsultationQueueContainer({
         onStartConsultation={handleStartConsultationClick}
         onClaimEncounter={handleClaimEncounter}
         onReleaseEncounter={handleReleaseEncounter}
-        onRefresh={handleRefresh}
         isLoading={isFetching}
         error={null}
         autoRefreshInterval={autoRefreshInterval}
