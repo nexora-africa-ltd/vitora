@@ -197,6 +197,8 @@ urlpatterns = [
     path("api/checkin/", include("hmis.apps.checkin.urls", namespace="checkin")),
     # Core utilities API (PRC number generation, etc.)
     path("api/core/", include("hmis.apps.core.urls")),
+    # MFA (Multi-Factor Authentication) API
+    path("api/mfa/", include("hmis.apps.core.mfa.urls", namespace="mfa")),
     path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
     # JWT Authentication endpoints (using custom view with audit logging)
     path("api/token/", AuditedTokenObtainPairView.as_view(), name="token_obtain_pair"),

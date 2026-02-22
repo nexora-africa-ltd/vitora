@@ -16,6 +16,7 @@ def update_encounter_triage_status(sender, instance, created, **kwargs):
     """
     Update encounter triage_status when a TriageAssessment is created or updated.
 
+    - For NOT_REQUIRED encounters: any triage assessment → COMPLETED (consistency)
     - When assessment is created with triage_end_time=null → IN_PROGRESS
     - When assessment has triage_end_time set → COMPLETED
 
@@ -33,9 +34,12 @@ def update_encounter_triage_status(sender, instance, created, **kwargs):
 
     encounter = instance.encounter
 
-    # Determine the correct triage status based on triage_end_time
-    # If triage_end_time is set, triage is completed; otherwise in progress
-    if instance.triage_end_time:
+    # Determine the correct triage status.
+    # NOTE: For NOT_REQUIRED encounters, a triage assessment is an edge case but
+    # we still mark triage as COMPLETED for downstream workflow consistency.
+    if getattr(encounter, "triage_requirement", None) == "NOT_REQUIRED":
+        new_status = "COMPLETED"
+    elif instance.triage_end_time:
         new_status = "COMPLETED"
     else:
         new_status = "IN_PROGRESS"

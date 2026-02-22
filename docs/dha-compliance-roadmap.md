@@ -57,14 +57,15 @@ Gaps are categorized into four tiers:
 #### 2. MFA Implementation `P0` `REQUIRED`
 - **Gap**: No multi-factor authentication
 - **Action**:
-  - [ ] Add `django-otp` + `django-two-factor-auth` backend
-  - [ ] Implement TOTP enrollment flow (QR code + backup codes)
-  - [ ] Add MFA requirement for sensitive roles (ADMIN, CLINICAL_SENIOR, MANAGEMENT)
+  - [x] Add `django-otp` + `django-two-factor-auth` backend dependencies
+  - [x] Implement TOTP enrollment flow (QR code + backup codes)
+  - [x] Add MFA requirement for sensitive roles (ADMIN, CLINICAL_SENIOR, MANAGEMENT)
   - [ ] Frontend MFA setup wizard in settings
-  - [ ] Tests: 25+ unit tests, 5 E2E tests
+  - [x] Tests: backend unit tests (see `backend/tests/test_mfa.py`)
+  - [ ] Tests: MFA E2E tests
 - **Owner**: Backend Team
 - **Effort**: 2 sprints (4 weeks)
-- **Deliverables**: `core/mfa/`, MFA settings UI
+- **Deliverables**: `core/mfa/`, `docs/mfa-implementation.md`, MFA settings UI
 
 #### 3. Backup & Disaster Recovery `P0` `REQUIRED`
 - **Gap**: No backup strategy, no DR plan
