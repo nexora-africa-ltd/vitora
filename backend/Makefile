@@ -80,7 +80,10 @@ test:
 	poetry run pytest --cov=hmis --cov-report=term-missing --cov-report=html --cov-report=xml --cov-fail-under=80
 
 test-fast:
-	poetry run pytest -x
+	poetry run pytest --no-cov --tb=short -q
+
+test-fast-fail:
+	poetry run pytest tests/ --no-cov --tb=short -x 
 
 test-unit:
 	poetry run pytest -m unit
