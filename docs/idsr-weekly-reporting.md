@@ -234,7 +234,114 @@ IDSR_{DISEASE_NAME}_U5_DEATHS  - Deaths under 5
 IDSR_{DISEASE_NAME}_O5_DEATHS  - Deaths 5 and above
 ```
 
-**TODO**: Map to actual Kenya KHIS data element IDs before production deployment.
+### Mapping to Kenya KHIS Data Element IDs
+
+Before production deployment, placeholder IDs must be replaced with actual KHIS UIDs.
+
+#### Step 1: Obtain Data Element UIDs from KHIS
+
+**Option A: KHIS API Query**
+```bash
+# Query data elements containing "IDSR" in name
+curl -u "$KHIS_USERNAME:$KHIS_PASSWORD" \
+  "https://hiskenya.org/api/dataElements.json?filter=name:ilike:IDSR&fields=id,name,shortName&paging=false"
+```
+
+**Option B: KHIS Maintenance UI**
+1. Login to https://hiskenya.org
+2. Navigate to **Maintenance → Data Elements**
+3. Search for "MOH 505" or "IDSR" indicators
+4. Export to CSV with UIDs
+
+#### Step 2: Create Mapping Configuration
+
+Create `backend/hmis/apps/surveillance/dhis2_mappings.py`:
+
+```python
+KHIS_IDSR_DATA_ELEMENTS = {
+    # Format: "disease_name": {"u5_cases": "UID", "o5_cases": "UID", ...}
+    
+    "Cholera": {
+        "u5_cases": "abc123DEF45",      # MOH 505: Cholera <5
+        "o5_cases": "ghi678JKL90",      # MOH 505: Cholera ≥5
+        "u5_deaths": "mno345PQR67",
+        "o5_deaths": "stu901VWX23",
+    },
+    "Measles": {
+        "u5_cases": "yza456BCD78",
+        # ...
+    },
+    # ... all 40 MOH 502 diseases
+}
+
+def get_data_element_id(disease_name: str, indicator: str) -> str | None:
+    """Get KHIS data element UID for a disease indicator."""
+    disease_mapping = KHIS_IDSR_DATA_ELEMENTS.get(disease_name)
+    if disease_mapping:
+        return disease_mapping.get(indicator)
+    return None
+```
+
+#### Step 3: Update IDSRReportingService
+
+Modify `prepare_dhis2_payload()` to use actual UIDs:
+
+```python
+from .dhis2_mappings import get_data_element_id
+
+# In prepare_dhis2_payload():
+for summary in report.disease_summaries.all():
+    disease_name = summary.disease.name
+    
+    u5_cases_uid = get_data_element_id(disease_name, "u5_cases")
+    if u5_cases_uid and summary.cases_under_5 > 0:
+        data_values.append({
+            "dataElement": u5_cases_uid,
+            "period": period,
+            "orgUnit": org_unit,
+            "value": str(summary.cases_under_5),
+        })
+```
+
+#### Step 4: Environment-Based Configuration
+
+For different environments (staging vs production KHIS):
+
+```python
+# settings/production.py
+DHIS2_ENV = "production"  # Uses hiskenya.org UIDs
+
+# settings/staging.py  
+DHIS2_ENV = "staging"  # Uses test instance UIDs
+```
+
+#### Validation Before Go-Live
+
+| Step | Action |
+|------|--------|
+| 1 | Export all MOH 505/506 data elements from KHIS |
+| 2 | Map each MOH 502 disease to its KHIS UID |
+| 3 | Test with KHIS staging instance first |
+| 4 | Verify import summaries return `imported > 0` |
+| 5 | Document mappings in deployment runbook |
+
+#### Key KHIS Resources
+
+- **MOH 505**: Weekly IDSR reporting dataset
+- **MOH 506**: Monthly surveillance summary
+- **Organisation Unit**: Your facility's MFL code mapped to KHIS UID
+
+#### Responsible Parties
+
+This mapping is a **deployment configuration task**, typically done by:
+
+| Role | Responsibility |
+|------|----------------|
+| **M&E Officer** | Has KHIS admin access, knows data element UIDs |
+| **Health Records Officer** | Understands MOH 502 disease mapping |
+| **DevOps** | Implements environment configuration |
+
+The mapping file should be reviewed by the county/sub-county HRIO before production deployment.
 
 ---
 
