@@ -1,6 +1,6 @@
 {
   "_metadata": {
-    "version": "2.1.0",
+    "version": "2.2.0",
     "source": "Kenya MOH 502 Notifiable Diseases List",
     "reference_documents": [
       {
@@ -10,12 +10,20 @@
         "status": "integrated",
         "diseases_covered": 18,
         "notes": "Case definitions and thresholds extracted from official IDSR booklet"
+      },
+      {
+        "title": "IDSR Clinicians Handbook - Standard Case Definitions for IDSR Priority Diseases, Conditions and Events",
+        "publisher": "Ministry of Health Kenya / Division of Disease Surveillance and Response (DDSR)",
+        "type": "Official Document",
+        "status": "integrated",
+        "diseases_covered": 42,
+        "notes": "Enhanced handbook with NCDs (diabetes, hypertension, cancers), AEFI, SARI, road traffic injuries, and updated thresholds"
       }
     ],
     "last_updated": "2026-02-22",
     "maintainer": "Vitora HMIS Team",
-    "schema_version": "2.1",
-    "notes": "v2.1: Added IDSR case definitions and outbreak thresholds from official MOH document"
+    "schema_version": "2.2",
+    "notes": "v2.2: Integrated IDSR Clinicians Handbook with 42+ priority diseases including NCDs, AEFI, SARI, and road traffic injuries"
   },
   "outbreak_thresholds": {
     "_description": "Alert and action thresholds for epidemic detection per IDSR guidelines",
@@ -111,6 +119,51 @@
         "disease": "Yellow Fever",
         "alert_threshold": "Single case suspected",
         "action_threshold": "Single case confirmed"
+      },
+      {
+        "disease": "Acute Jaundice",
+        "alert_threshold": "Observed increase in number of cases or deaths over a period of time in weekly summary reporting",
+        "action_threshold": "Two-fold increase in cases or deaths compared to similar period in past"
+      },
+      {
+        "disease": "Brucellosis",
+        "alert_threshold": "Observed increase in number of cases or deaths over a period of time in monthly summary reporting",
+        "action_threshold": "Two-fold increase in cases or deaths compared to similar period in past"
+      },
+      {
+        "disease": "Leishmaniasis",
+        "alert_threshold": "Low Endemicity: 1 confirmed case; Established Endemicity: 5 confirmed cases",
+        "action_threshold": "Low Endemicity: 5 confirmed cases per week; Established Endemicity: >15 confirmed cases per week"
+      },
+      {
+        "disease": "Rabies",
+        "alert_threshold": "Single case suspected",
+        "action_threshold": "Single case confirmed"
+      },
+      {
+        "disease": "Schistosomiasis",
+        "alert_threshold": "Observed increase in number of cases over a period of time in monthly summary reporting",
+        "action_threshold": "Two-fold increase in number of cases compared to similar period in past"
+      },
+      {
+        "disease": "Influenza",
+        "alert_threshold": "Observed increase in number of cases or deaths over a period of time in weekly summary reporting",
+        "action_threshold": "Two-fold increase in cases or deaths compared to similar period in past"
+      },
+      {
+        "disease": "Influenza (Novel Subtype)",
+        "alert_threshold": "Single case suspected",
+        "action_threshold": "Single case confirmed"
+      },
+      {
+        "disease": "MDR/XDR TB",
+        "alert_threshold": "Observed increase in number of cases or deaths over a period of time",
+        "action_threshold": "Two-fold increase in cases or deaths compared to similar period in past"
+      },
+      {
+        "disease": "Rift Valley Fever",
+        "alert_threshold": "Single case suspected (especially with animal outbreak)",
+        "action_threshold": "Single case confirmed by anti-RVF IgM ELISA or RT-PCR"
       }
     ]
   },
@@ -256,15 +309,15 @@
       "reporting_hours": 24,
       "description": "Viral disease transmitted through bites from infected animals",
       "case_definition": {
-        "suspected": "Acute encephalomyelitis (encephalitis) with history of animal bite or scratch, or exposure to saliva of suspected rabid animal",
-        "confirmed": "Suspected case with laboratory confirmation (direct fluorescent antibody test, PCR, or virus isolation)",
-        "source": "MOH Standard Case Definitions"
+        "suspected": "A person who has an animal bite or scratch or contact with saliva from a suspected rabid animal with or without the following: headache, neck pain, nausea, fever, fear of water (hydrophobia), anxiety, agitation, abnormal tingling sensations or pain at the wound site",
+        "confirmed": "A suspected case that is laboratory confirmed by isolation of rabies virus",
+        "source": "IDSR Clinicians Handbook, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Saliva, CSF, skin biopsy (nuchal), brain tissue (post-mortem)",
         "test": "Direct fluorescent antibody (DFA), RT-PCR, virus isolation",
         "turnaround": "24-72 hours",
-        "source": "MOH Guidelines"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -659,16 +712,16 @@
       "reporting_hours": 168,
       "description": "Viral zoonotic disease affecting humans and livestock",
       "case_definition": {
-        "suspected": "Acute onset of fever with hemorrhagic manifestations, jaundice, or encephalitis AND history of contact with sick/dead animals or residence in area with animal disease outbreak",
-        "confirmed": "Suspected case with positive PCR, virus isolation, or seroconversion (4-fold IgG rise or IgM positive)",
-        "source": "MOH Standard Case Definitions"
+        "suspected": "A person with an acute febrile illness (axillary temperature >37.5°C or oral/anal temperature >38°C) of more than 48 hours duration that does not respond to antibiotic or antimalarial therapy, and is associated with abrupt onset of any one or more of: Exhaustion, backache, muscle pains, headache (often severe), discomfort in eyes when exposed to light, and nausea/vomiting WITH: Direct contact with sick or dead animal or its products AND/OR Recent travel (during last week) to, or living in an area where, after heavy rains, livestock die or abort, and where RVF virus activity is suspected/confirmed. AND/OR: Nausea/vomiting, diarrhea or abdominal pain with one or more of: Severe pallor (or Hb <8 gm/dL), Low platelets (thrombocytopenia) as evidenced by petechiae or platelet count <100x10^9/dL, Evidence of kidney failure (edema, reduced urine output or creatinine >150 μmol/L), Evidence of bleeding into skin, from puncture wounds, mucous membranes, nose, GI tract, or unnatural vaginal bleeding, Clinical jaundice (3-fold increase above normal of transaminases)",
+        "confirmed": "Any patient who, after clinical screening, is positive for anti-RVF IgM ELISA antibodies or tests positive on Reverse Transcriptase Polymerase Chain Reaction (RT-PCR)",
+        "source": "IDSR Clinicians Handbook, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Serum, whole blood (EDTA)",
         "test": "RT-PCR, IgM ELISA, virus isolation",
         "turnaround": "24-72 hours",
         "biosafety": "BSL-3 required for culture",
-        "source": "MOH Guidelines"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": true
     },
@@ -930,15 +983,246 @@
       "reporting_hours": 24,
       "description": "Parasitic disease caused by Dracunculus medinensis, targeted for eradication",
       "case_definition": {
-        "suspected": "Any person with a history of skin lesion and emergence of guinea worm within one year of the skin lesion",
-        "confirmed": "Suspected case with visual confirmation of guinea worm emergence from skin lesion",
-        "source": "IDSR Clinicians Booklet, MOH Kenya"
+        "suspected": "A person presenting with a skin lesion or lesions (blister or boil) living in a high risk area for Guinea Worm Disease or having history of travel to a Guinea Worm Disease endemic area",
+        "confirmed": "A person presenting with a skin lesion or lesions (blister or boil) with emergence of one or more guinea worms from the blister or boil. Each individual should be counted only once in a calendar year. Keep the worm for confirmation by experienced staff.",
+        "source": "IDSR Clinicians Handbook, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Worm specimen (if available)",
-        "test": "Visual identification of Dracunculus medinensis",
+        "test": "Visual identification of Dracunculus medinensis by experienced health worker",
         "turnaround": "Immediate",
-        "source": "WHO Guinea Worm Eradication Programme"
+        "source": "IDSR Clinicians Handbook"
+      },
+      "is_ihr_notifiable": true
+    },
+    {
+      "name": "Adverse Events Following Immunization (AEFI)",
+      "icd10_codes": "T88.1,Y58,Y59",
+      "category": "IMMEDIATE",
+      "reporting_hours": 24,
+      "description": "Any medical incident taking place after vaccination which causes concern and is believed to be caused by vaccination",
+      "case_definition": {
+        "suspected": "A medical incident taking place after vaccination which causes concern and is believed to be caused by the vaccination",
+        "confirmed": "Suspected case with causality assessment establishing causal relationship to vaccination",
+        "source": "IDSR Clinicians Handbook, MOH Kenya"
+      },
+      "laboratory_criteria": {
+        "specimen": "Varies by adverse event type",
+        "test": "Causality assessment per WHO AEFI classification",
+        "turnaround": "Variable",
+        "source": "WHO AEFI Guidelines"
+      },
+      "is_ihr_notifiable": false
+    },
+    {
+      "name": "SARI (Severe Acute Respiratory Infections)",
+      "icd10_codes": "J06.9,J18.9,J22",
+      "category": "IMMEDIATE",
+      "reporting_hours": 24,
+      "description": "Severe acute respiratory infection requiring hospitalization, monitored for pandemic potential",
+      "case_definition": {
+        "suspected": "Any severely ill person aged 5 years or more presenting with acute (within 7 days) lower respiratory infection with: Sudden onset of fever (>38°C) AND Cough or sore throat AND Shortness of breath or difficulty breathing. With or without clinical or radiographic findings of pneumonia. OR Any person who died of an unexplained respiratory illness.",
+        "confirmed": "Suspected case with laboratory confirmation (positive for influenza or other respiratory pathogen)",
+        "cluster_definition": "An aggregation of cases of severe acute respiratory illness which are closely grouped in time and place in amounts believed to be greater than expected by chance. Clusters in families, workplaces, or social networks should trigger investigations.",
+        "source": "IDSR Clinicians Handbook, MOH Kenya"
+      },
+      "laboratory_criteria": {
+        "specimen": "Nasopharyngeal/oropharyngeal swab, sputum, BAL",
+        "test": "RT-PCR for influenza and other respiratory pathogens",
+        "turnaround": "24-48 hours",
+        "source": "IDSR Guidelines"
+      },
+      "is_ihr_notifiable": true
+    },
+    {
+      "name": "Acute Jaundice",
+      "icd10_codes": "R17",
+      "category": "WEEKLY",
+      "reporting_hours": 168,
+      "description": "Acute onset of yellowness of eyes/skin, may indicate viral hepatitis, aflatoxicosis, or other conditions",
+      "case_definition": {
+        "suspected": "Any person presenting with acute onset (within 14 days) of yellowness of the eyes/skin with or without fever",
+        "confirmed": "A suspected case that has an etiological laboratory confirmation e.g. viral hepatitis, aflatoxicosis",
+        "source": "IDSR Clinicians Handbook, MOH Kenya"
+      },
+      "laboratory_criteria": {
+        "specimen": "Serum",
+        "test": "LFTs, HAV IgM, HBsAg, HCV Ab, HEV IgM, aflatoxin testing",
+        "turnaround": "24-48 hours",
+        "source": "IDSR Clinicians Handbook"
+      },
+      "is_ihr_notifiable": false
+    },
+    {
+      "name": "Diabetes Mellitus",
+      "icd10_codes": "E10,E11,E12,E13,E14",
+      "category": "MONTHLY",
+      "reporting_hours": 720,
+      "description": "Chronic metabolic disease characterized by elevated blood glucose levels",
+      "case_definition": {
+        "suspected": "Any person presenting with any two of the following symptoms: Increased thirst (polydipsia), Polyuria (frequent urination), Increased hunger (polyphagia)",
+        "confirmed": "Any person with a non-fasting venous blood or plasma glucose measurement of ≥11.1mmol/L (200 mg/dl) OR Any person with a fasting venous blood or plasma glucose measurement of ≥7 mmol/L (126 mg/dl) or capillary glucose ≥6.1 mmol/L (110 mg/dl). Report only the first lab-confirmed diagnosis of the patient.",
+        "source": "IDSR Clinicians Handbook, MOH Kenya"
+      },
+      "laboratory_criteria": {
+        "specimen": "Venous blood (fasting or non-fasting)",
+        "test": "Blood glucose, HbA1c",
+        "turnaround": "Same day",
+        "source": "IDSR Clinicians Handbook"
+      },
+      "is_ihr_notifiable": false
+    },
+    {
+      "name": "Hypertension",
+      "icd10_codes": "I10,I11,I12,I13,I15",
+      "category": "MONTHLY",
+      "reporting_hours": 720,
+      "description": "Chronic condition of persistently elevated blood pressure",
+      "case_definition": {
+        "suspected": "Any individual presenting with a resting blood pressure measurement (based on average of 3 readings) at or above 140 mm Hg for systolic pressure, or at or above 90 mm Hg for diastolic pressure at first visit",
+        "confirmed": "Any individual presenting on at least two occasions with a resting blood pressure measurement (based on average of 3 readings) at or above 140 mm Hg for systolic pressure, or at or above 90 mm Hg for diastolic pressure",
+        "source": "IDSR Clinicians Handbook, MOH Kenya"
+      },
+      "laboratory_criteria": {
+        "specimen": "N/A - clinical measurement",
+        "test": "Blood pressure measurement using calibrated sphygmomanometer",
+        "turnaround": "Immediate",
+        "source": "IDSR Clinicians Handbook"
+      },
+      "is_ihr_notifiable": false
+    },
+    {
+      "name": "Cancer (Breast)",
+      "icd10_codes": "C50,C50.0,C50.1,C50.2,C50.3,C50.4,C50.5,C50.6,C50.8,C50.9",
+      "category": "MONTHLY",
+      "reporting_hours": 720,
+      "description": "Malignant neoplasm of the breast",
+      "case_definition": {
+        "suspected": "Any person presenting with one or more of the following: A palpable mass in the breast, Pain in the breast, Blood or pus discharge from the nipples",
+        "confirmed": "Suspected case confirmed by histological methods",
+        "source": "IDSR Clinicians Handbook, MOH Kenya"
+      },
+      "laboratory_criteria": {
+        "specimen": "Biopsy tissue",
+        "test": "Histopathology, immunohistochemistry",
+        "turnaround": "3-7 days",
+        "source": "IDSR Clinicians Handbook"
+      },
+      "is_ihr_notifiable": false
+    },
+    {
+      "name": "Cancer (Cervical)",
+      "icd10_codes": "C53,C53.0,C53.1,C53.8,C53.9",
+      "category": "MONTHLY",
+      "reporting_hours": 720,
+      "description": "Malignant neoplasm of the cervix uteri",
+      "case_definition": {
+        "suspected": "Any woman with abnormal result on: Visual Inspection with Acetic Acid (VIA) OR Cytology using Conventional Pap smear OR Visual Inspection with Lugol's Iodine (VILI)",
+        "confirmed": "Suspected case confirmed by histological methods",
+        "source": "IDSR Clinicians Handbook, MOH Kenya"
+      },
+      "laboratory_criteria": {
+        "specimen": "Cervical biopsy tissue",
+        "test": "Histopathology, HPV testing",
+        "turnaround": "3-7 days",
+        "source": "IDSR Clinicians Handbook"
+      },
+      "is_ihr_notifiable": false
+    },
+    {
+      "name": "Cancer (Esophageal)",
+      "icd10_codes": "C15,C15.0,C15.1,C15.2,C15.3,C15.4,C15.5,C15.8,C15.9",
+      "category": "MONTHLY",
+      "reporting_hours": 720,
+      "description": "Malignant neoplasm of the esophagus",
+      "case_definition": {
+        "suspected": "Any person presenting with: Gradual difficulty in swallowing with or without pain, Weight loss, Excessive salivation, Vomiting or regurgitation of feeds",
+        "confirmed": "Suspected case confirmed by histological methods",
+        "source": "IDSR Clinicians Handbook, MOH Kenya"
+      },
+      "laboratory_criteria": {
+        "specimen": "Endoscopic biopsy tissue",
+        "test": "Histopathology",
+        "turnaround": "3-7 days",
+        "source": "IDSR Clinicians Handbook"
+      },
+      "is_ihr_notifiable": false
+    },
+    {
+      "name": "Cancer (Prostate)",
+      "icd10_codes": "C61",
+      "category": "MONTHLY",
+      "reporting_hours": 720,
+      "description": "Malignant neoplasm of the prostate",
+      "case_definition": {
+        "suspected": "Any male aged 40 and above presenting with any of the following: Decrease in force of urine stream, intermittency, frequency, urgency, dysuria, pain on ejaculation, haematuria, dribbling of urine, difficulty in achieving an erection, distended bladder with urinary retention",
+        "confirmed": "Suspected case confirmed by histopathological methods",
+        "source": "IDSR Clinicians Handbook, MOH Kenya"
+      },
+      "laboratory_criteria": {
+        "specimen": "Prostate biopsy tissue",
+        "test": "Histopathology, PSA",
+        "turnaround": "3-7 days",
+        "source": "IDSR Clinicians Handbook"
+      },
+      "is_ihr_notifiable": false
+    },
+    {
+      "name": "Road Traffic Injuries",
+      "icd10_codes": "V01-V99,Y85",
+      "category": "MONTHLY",
+      "reporting_hours": 720,
+      "description": "Trauma sustained as a result of road traffic accident",
+      "case_definition": {
+        "injury": "Any person who has sustained trauma as a result of road traffic accident presenting for the first time at a health facility alive or dead",
+        "fatality": "Any person killed immediately or dying within 30 days as a result of a road traffic accident",
+        "source": "IDSR Clinicians Handbook, MOH Kenya"
+      },
+      "laboratory_criteria": {
+        "specimen": "N/A",
+        "test": "Clinical assessment, imaging as appropriate",
+        "turnaround": "N/A",
+        "source": "IDSR Clinicians Handbook"
+      },
+      "is_ihr_notifiable": false
+    },
+    {
+      "name": "Methanol Poisoning",
+      "icd10_codes": "T51.1",
+      "category": "IMMEDIATE",
+      "reporting_hours": 24,
+      "description": "Poisoning from adulterated alcohol containing methanol",
+      "case_definition": {
+        "suspected": "Any person with alcohol intoxication with related symptoms of visual blurring, with or without blindness OR Any person dead or alive known to have taken an adulterated beverage together with other known persons",
+        "confirmed": "A suspected case with laboratory confirmation of methanol in blood",
+        "source": "IDSR Clinicians Handbook, MOH Kenya"
+      },
+      "laboratory_criteria": {
+        "specimen": "Blood",
+        "test": "Methanol level, arterial blood gas, anion gap",
+        "turnaround": "Varies by lab capability",
+        "source": "IDSR Clinicians Handbook"
+      },
+      "is_ihr_notifiable": false
+    },
+    {
+      "name": "Smallpox (Variola)",
+      "icd10_codes": "B03",
+      "category": "IMMEDIATE",
+      "reporting_hours": 24,
+      "description": "Eradicated disease under IHR 2005 surveillance - any suspected case requires immediate notification",
+      "case_definition": {
+        "suspected": "An illness with acute onset of fever >38.3°C followed by a rash characterized by vesicles or firm pustules in the same stage of development without other apparent cause",
+        "probable": "A case that meets the clinical case definition, is not laboratory confirmed, but has an epidemiological link to a confirmed or probable case",
+        "confirmed": "A clinically compatible case that is laboratory confirmed",
+        "source": "IDSR Clinicians Handbook, MOH Kenya / IHR 2005"
+      },
+      "laboratory_criteria": {
+        "specimen": "Vesicle fluid, scabs - handle with extreme caution",
+        "test": "PCR, electron microscopy - WHO reference laboratory only",
+        "turnaround": "Immediate escalation required",
+        "biosafety": "BSL-4 required, immediate WHO notification",
+        "source": "WHO IHR 2005"
       },
       "is_ihr_notifiable": true
     }
