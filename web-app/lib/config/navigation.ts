@@ -12,7 +12,7 @@ import {
   Pill,
   FlaskConical,
   CreditCard,
-  PiggyBank,
+  BadgeCent,
   ChartNoAxesGantt,
   Settings,
   AlertTriangle,
@@ -41,6 +41,7 @@ import {
   UserCheck,
   Image as ImageIcon,
   Siren,
+  Flag,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -71,6 +72,14 @@ export const mainNavItems: NavItemType[] = [
   { label: 'Patients', href: '/patients', icon: Users },
   { label: 'Triage', href: '/triage', icon: AlertTriangle },
   { label: 'Emergency', href: '/emergency', icon: Siren },
+  {
+    label: 'Surveillance',
+    icon: Flag,
+    children: [
+      { label: 'Notifiable Cases', href: '/surveillance/cases', icon: AlertTriangle },
+      { label: 'IDSR Reports', href: '/surveillance/idsr', icon: BarChart3 },
+    ],
+  },
   {
     label: 'Clinics',
     icon: Activity,
@@ -117,7 +126,7 @@ export const mainNavItems: NavItemType[] = [
   },
   {
     label: 'Finance',
-    icon: PiggyBank,
+    icon: BadgeCent,
     children: [
       { label: 'Dashboard', href: '/finance/overview', icon: ChartNoAxesGantt },
       { label: 'Invoices', href: '/transactions/invoices', icon: FileText },

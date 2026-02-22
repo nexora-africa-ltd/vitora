@@ -17,6 +17,7 @@
  * ✅ laboratory.schema.ts - Fully implemented with parseResponse validation
  * ✅ billing.schema.ts - Fully implemented with parseResponse validation
  * ✅ imaging.schema.ts - Fully implemented with parseResponse validation
+ * ✅ surveillance.schema.ts - Fully implemented with parseResponse validation
  *
  * Note: Some schemas define the same enum (e.g., GenderSchema, QueueStatusSchema).
  * We export from the "primary" schema to avoid conflicts:
@@ -195,6 +196,9 @@ export {
 } from './sha.schema';
 
 export * from './core.schema';
+
+// Surveillance schemas
+export * from './surveillance.schema';
 
 // MFA schemas
 export {
