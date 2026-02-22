@@ -2,8 +2,9 @@
 
 > **MOH 502 Notifiable Disease Reporting for Kenya**
 >
-> Version: 1.0
+> Version: 2.0
 > Created: February 22, 2026
+> Updated: February 22, 2026
 > Sprint: Phase 1, Sprint 1.B
 
 ---
@@ -17,8 +18,10 @@ The Disease Surveillance module implements Kenya's Ministry of Health (MOH) 502 
 - **Automatic Case Detection**: Diagnoses with ICD-10 codes matching notifiable diseases trigger automatic case creation
 - **Real-time WebSocket Alerts**: Immediate notification to surveillance dashboard for critical diseases
 - **MOH 502 Disease List**: Pre-seeded with 40 notifiable diseases (15 immediate, 20 weekly, 5 monthly)
+- **Structured Case Definitions**: JSON-based with suspected/confirmed criteria per MOH Standard Case Definitions
 - **Outbreak Detection**: Configurable thresholds for automatic outbreak alerts
 - **County Reporting**: Reports endpoint for county health offices
+- **Extensible JSON Data**: Easy maintenance and expansion via `data/notifiable_diseases.json`
 
 ---
 
@@ -294,20 +297,99 @@ DEFAULT_FROM_EMAIL = "noreply@facility.health.go.ke"
 
 ---
 
-## Management Commands
+## Data Management
 
-### Seed Notifiable Diseases
+### JSON Data File
+
+Disease data is stored in `backend/data/notifiable_diseases.json` with schema version 2.0:
+
+```json
+{
+  "_metadata": {
+    "version": "2.0.0",
+    "source": "Kenya MOH 502 Notifiable Diseases List",
+    "schema_version": "2.0"
+  },
+  "diseases": [
+    {
+      "name": "Cholera",
+      "icd10_codes": "A00,A00.0,A00.1,A00.9",
+      "category": "IMMEDIATE",
+      "reporting_hours": 24,
+      "case_definition": {
+        "suspected": "Patient aged 2+ with acute watery diarrhea...",
+        "confirmed": "Suspected case with lab confirmation...",
+        "source": "MOH Standard Case Definitions"
+      },
+      "laboratory_criteria": {
+        "specimen": "Stool sample",
+        "test": "Culture for Vibrio cholerae O1/O139",
+        "turnaround": "24-48 hours"
+      },
+      "is_ihr_notifiable": true
+    }
+  ]
+}
+```
+
+### Management Commands
 
 ```bash
 # Seed MOH 502 diseases (first time)
 python manage.py seed_notifiable_diseases
 
-# Update existing diseases
+# Preview what would be done (dry run)
+python manage.py seed_notifiable_diseases --dry-run
+
+# Update existing diseases from JSON
 python manage.py seed_notifiable_diseases --update
 
 # Clear and reseed
 python manage.py seed_notifiable_diseases --clear
+
+# Use custom JSON file
+python manage.py seed_notifiable_diseases --file /path/to/custom.json
 ```
+
+### Makefile Targets
+
+```bash
+make seed-diseases         # Fresh seed from JSON
+make seed-diseases-update  # Update existing from JSON
+```
+
+---
+
+## PDF Case Definition Extraction
+
+The extraction helper script assists with extracting case definitions from the scanned MOH PDF:
+
+```bash
+cd backend/scripts
+
+# Generate extraction template
+python extract_case_definitions.py --template > template.json
+
+# Generate AI prompt for a specific disease
+python extract_case_definitions.py --ai-prompt "Cholera"
+
+# Validate extracted JSON
+python extract_case_definitions.py --validate extracted.json
+
+# Process OCR output (best effort)
+python extract_case_definitions.py --ocr ocr_output.txt
+
+# Merge extracted data into main JSON
+python extract_case_definitions.py --merge extracted.json
+```
+
+### Extraction Workflow
+
+1. **Generate template**: Creates JSON with all 40 diseases for manual filling
+2. **AI-assisted**: Use `--ai-prompt` to generate prompts for Claude/GPT to extract from PDF images
+3. **OCR processing**: Parse OCR text output (low confidence, needs review)
+4. **Validate**: Check extracted JSON for completeness
+5. **Merge**: Combine extracted data into main `notifiable_diseases.json`
 
 ---
 
@@ -342,6 +424,27 @@ poetry run pytest tests/test_surveillance.py --cov=hmis.apps.surveillance
 - [ ] Outbreak investigation module
 - [ ] IHR notification workflow for international diseases
 - [ ] Mobile app push notifications
+- [ ] Web app surveillance dashboard
+- [ ] Automated outbreak clustering detection
+
+---
+
+## Changelog
+
+### Version 2.0 (February 22, 2026)
+- Enhanced JSON schema with structured case definitions
+- Added suspected/confirmed case definition fields
+- Added laboratory criteria with specimen, test, turnaround details
+- Created PDF extraction helper script (`scripts/extract_case_definitions.py`)
+- Added `--dry-run` flag to seed command
+- Added Makefile targets (`seed-diseases`, `seed-diseases-update`)
+- Integrated into `render.yaml` deployment
+
+### Version 1.0 (February 22, 2026)
+- Initial implementation of surveillance module
+- 40 MOH 502 diseases seeded
+- WebSocket real-time alerts
+- Auto-detection via Django signals
 
 ---
 
