@@ -25,7 +25,6 @@ from .models import (
     SurveillanceAlert,
 )
 from .serializers import (
-    CountyReportSerializer,
     NotifiableCaseCreateSerializer,
     NotifiableCaseListSerializer,
     NotifiableCaseSerializer,
@@ -540,3 +539,326 @@ class CountyReportView(APIView):
         )
 
         return Response(data)
+
+
+# ============================================================================
+# IDSR Weekly Reporting Views
+# ============================================================================
+
+
+class IDSRWeeklyReportFilter(filters.FilterSet):
+    """Filter for IDSRWeeklyReport list endpoint."""
+
+    epi_year = filters.NumberFilter()
+    epi_week = filters.NumberFilter()
+    status = filters.ChoiceFilter(choices=[
+        ("DRAFT", "Draft"),
+        ("PENDING_REVIEW", "Pending Review"),
+        ("APPROVED", "Approved"),
+        ("SUBMITTED", "Submitted"),
+        ("FAILED", "Failed"),
+    ])
+    county = filters.NumberFilter(field_name="county__id")
+    outbreak = filters.BooleanFilter(field_name="outbreak_declared")
+    start_date = filters.DateFilter(field_name="week_start_date", lookup_expr="gte")
+    end_date = filters.DateFilter(field_name="week_end_date", lookup_expr="lte")
+
+    class Meta:
+        from .models import IDSRWeeklyReport
+
+        model = IDSRWeeklyReport
+        fields = ["epi_year", "epi_week", "status", "county", "outbreak", "start_date", "end_date"]
+
+
+class IDSRWeeklyReportViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for IDSR Weekly Reports.
+
+    Provides CRUD operations and workflow actions for IDSR reports.
+
+    Actions:
+    - generate: Create a new weekly report (or regenerate existing)
+    - approve: Approve a report for submission
+    - submit_to_dhis2: Submit approved report to DHIS2
+    - dashboard: Get IDSR summary statistics
+    """
+
+    queryset = None  # Set in get_queryset
+    serializer_class = None  # Set dynamically
+    permission_classes = [permissions.IsAuthenticated]
+    filterset_class = IDSRWeeklyReportFilter
+    search_fields = ["facility_name", "facility_code"]
+    ordering_fields = ["epi_year", "epi_week", "generated_at", "total_cases"]
+    ordering = ["-epi_year", "-epi_week"]
+
+    def get_queryset(self):
+        """Return queryset with related objects."""
+        from .models import IDSRWeeklyReport
+
+        return IDSRWeeklyReport.objects.select_related(
+            "county", "sub_county", "generated_by", "reviewed_by", "approved_by"
+        ).prefetch_related("disease_summaries", "disease_summaries__disease")
+
+    def get_serializer_class(self):
+        """Use appropriate serializer based on action."""
+        from .serializers import (
+            IDSRReportApproveSerializer,
+            IDSRReportGenerateSerializer,
+            IDSRWeeklyReportListSerializer,
+            IDSRWeeklyReportSerializer,
+        )
+
+        if self.action == "list":
+            return IDSRWeeklyReportListSerializer
+        if self.action == "generate":
+            return IDSRReportGenerateSerializer
+        if self.action == "approve":
+            return IDSRReportApproveSerializer
+        return IDSRWeeklyReportSerializer
+
+    def perform_create(self, serializer):
+        """Set generated_by to current user."""
+        serializer.save(generated_by=self.request.user)
+
+    @action(detail=False, methods=["post"])
+    def generate(self, request):
+        """
+        Generate a new IDSR weekly report.
+
+        POST /api/surveillance/idsr/generate/
+
+        Body (optional):
+        {
+            "epi_year": 2026,
+            "epi_week": 8
+        }
+
+        If not provided, generates for previous week.
+        """
+        from .serializers import IDSRReportGenerateSerializer, IDSRWeeklyReportSerializer
+        from .services import IDSRReportingService
+
+        serializer = IDSRReportGenerateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        epi_year = serializer.validated_data.get("epi_year")
+        epi_week = serializer.validated_data.get("epi_week")
+
+        if epi_year and epi_week:
+            # Calculate week dates for the specified week
+            # This is a simplified calculation - for production, use a proper
+            # ISO week date calculation
+            from datetime import date as date_type
+
+            # Find the Monday of the specified week
+            jan_4 = date_type(epi_year, 1, 4)  # Jan 4 is always in week 1
+            days_to_monday = jan_4.weekday()  # 0=Monday
+            week_1_monday = jan_4 - timedelta(days=days_to_monday)
+            week_start = week_1_monday + timedelta(weeks=epi_week - 1)
+            week_end = week_start + timedelta(days=6)
+
+            report = IDSRReportingService.generate_weekly_report(
+                epi_year=epi_year,
+                epi_week=epi_week,
+                week_start=week_start,
+                week_end=week_end,
+                generated_by=request.user,
+            )
+        else:
+            report = IDSRReportingService.generate_previous_week_report(
+                generated_by=request.user
+            )
+
+        AuditLog.log(
+            action="idsr_report_generate",
+            user=request.user,
+            resource_type="IDSRWeeklyReport",
+            resource_id=report.id,
+            details={
+                "epi_year": report.epi_year,
+                "epi_week": report.epi_week,
+                "total_cases": report.total_cases,
+            },
+        )
+
+        return Response(
+            IDSRWeeklyReportSerializer(report).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["post"])
+    def approve(self, request, pk=None):
+        """
+        Approve an IDSR report for submission.
+
+        POST /api/surveillance/idsr/{id}/approve/
+        """
+        from .models import IDSRReportStatus
+        from .serializers import IDSRReportApproveSerializer, IDSRWeeklyReportSerializer
+
+        report = self.get_object()
+
+        if report.status not in [IDSRReportStatus.DRAFT, IDSRReportStatus.PENDING_REVIEW]:
+            return Response(
+                {"error": f"Cannot approve report with status: {report.get_status_display()}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = IDSRReportApproveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        notes = serializer.validated_data.get("notes", "")
+        if notes:
+            report.notes = f"{report.notes}\n[Approval] {notes}".strip()
+
+        report.approve(request.user)
+
+        AuditLog.log(
+            action="idsr_report_approve",
+            user=request.user,
+            resource_type="IDSRWeeklyReport",
+            resource_id=report.id,
+            details={
+                "epi_year": report.epi_year,
+                "epi_week": report.epi_week,
+            },
+        )
+
+        return Response(IDSRWeeklyReportSerializer(report).data)
+
+    @action(detail=True, methods=["post"])
+    def submit_to_dhis2(self, request, pk=None):
+        """
+        Submit approved IDSR report to DHIS2.
+
+        POST /api/surveillance/idsr/{id}/submit_to_dhis2/
+        """
+        from .models import IDSRReportStatus
+        from .serializers import IDSRWeeklyReportSerializer
+        from .services import IDSRReportingService
+
+        report = self.get_object()
+
+        if report.status != IDSRReportStatus.APPROVED:
+            return Response(
+                {"error": f"Report must be approved before submission (current: {report.get_status_display()})"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        result = IDSRReportingService.submit_to_dhis2(report)
+
+        AuditLog.log(
+            action="idsr_report_submit_dhis2",
+            user=request.user,
+            resource_type="IDSRWeeklyReport",
+            resource_id=report.id,
+            details={
+                "epi_year": report.epi_year,
+                "epi_week": report.epi_week,
+                "success": report.status == IDSRReportStatus.SUBMITTED,
+            },
+        )
+
+        # Refresh from DB to get updated status
+        report.refresh_from_db()
+
+        return Response({
+            "report": IDSRWeeklyReportSerializer(report).data,
+            "dhis2_response": result,
+        })
+
+    @action(detail=False, methods=["get"])
+    def dashboard(self, request):
+        """
+        Get IDSR dashboard statistics.
+
+        GET /api/surveillance/idsr/dashboard/
+        """
+        from .models import IDSRReportStatus, IDSRWeeklyReport
+        from .services import IDSRReportingService
+
+        # Current week info
+        epi_year, epi_week, week_start, week_end = IDSRReportingService.get_epi_week()
+
+        # Get current week's report if exists
+        current_report = IDSRWeeklyReport.objects.filter(
+            epi_year=epi_year, epi_week=epi_week
+        ).first()
+
+        current_week_data = {
+            "epi_year": epi_year,
+            "epi_week": epi_week,
+            "week_start": week_start.isoformat(),
+            "week_end": week_end.isoformat(),
+            "has_report": current_report is not None,
+            "report_id": current_report.id if current_report else None,
+            "total_cases": current_report.total_cases if current_report else 0,
+            "status": current_report.status if current_report else None,
+        }
+
+        # Previous 4 weeks
+        previous_weeks = []
+        for i in range(1, 5):
+            prev_year, prev_week, prev_start, prev_end = IDSRReportingService.get_epi_week(
+                week_start - timedelta(weeks=i)
+            )
+            prev_report = IDSRWeeklyReport.objects.filter(
+                epi_year=prev_year, epi_week=prev_week
+            ).first()
+            previous_weeks.append({
+                "epi_year": prev_year,
+                "epi_week": prev_week,
+                "week_start": prev_start.isoformat(),
+                "has_report": prev_report is not None,
+                "total_cases": prev_report.total_cases if prev_report else 0,
+                "status": prev_report.status if prev_report else None,
+            })
+
+        # Statistics
+        total_this_year = IDSRWeeklyReport.objects.filter(epi_year=epi_year).count()
+        pending = IDSRWeeklyReport.objects.filter(
+            status__in=[IDSRReportStatus.DRAFT, IDSRReportStatus.PENDING_REVIEW, IDSRReportStatus.APPROVED]
+        ).count()
+
+        # Submitted this month
+        from datetime import date as date_type
+
+        today = timezone.localdate()
+        month_start = date_type(today.year, today.month, 1)
+        submitted_this_month = IDSRWeeklyReport.objects.filter(
+            status=IDSRReportStatus.SUBMITTED,
+            dhis2_submitted_at__date__gte=month_start,
+        ).count()
+
+        # Outbreak weeks this year
+        outbreak_weeks = IDSRWeeklyReport.objects.filter(
+            epi_year=epi_year, outbreak_declared=True
+        ).count()
+
+        return Response({
+            "current_week": current_week_data,
+            "previous_weeks": previous_weeks,
+            "total_reports_this_year": total_this_year,
+            "pending_submission": pending,
+            "submitted_this_month": submitted_this_month,
+            "outbreak_weeks": outbreak_weeks,
+        })
+
+    @action(detail=True, methods=["get"])
+    def dhis2_preview(self, request, pk=None):
+        """
+        Preview DHIS2 payload without submitting.
+
+        GET /api/surveillance/idsr/{id}/dhis2_preview/
+        """
+        from .services import IDSRReportingService
+
+        report = self.get_object()
+        payload = IDSRReportingService.prepare_dhis2_payload(report)
+
+        return Response({
+            "report_id": report.id,
+            "week_label": report.week_label,
+            "payload": payload,
+        })
+

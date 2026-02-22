@@ -6,12 +6,13 @@ notification to county health offices, and outbreak detection.
 """
 
 import logging
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
+from django.db import models
 from django.utils import timezone
 
 if TYPE_CHECKING:
@@ -19,9 +20,10 @@ if TYPE_CHECKING:
 
     from hmis.apps.encounters.models import Diagnosis
 
-    from .models import NotifiableCase, NotifiableDisease
+    from .models import IDSRWeeklyReport, NotifiableCase, NotifiableDisease, SurveillanceAlert
 
 logger = logging.getLogger(__name__)
+
 
 
 class SurveillanceService:
@@ -444,3 +446,413 @@ Please log in to Vitora HMIS to review and process this case.
             logger.warning(f"Case overdue: {case.disease.name} - {case.patient.mrn}")
 
         return newly_overdue
+
+
+class IDSRReportingService:
+    """
+    Service class for IDSR Weekly Report generation.
+
+    Provides methods for:
+    - Calculating epidemiological weeks (ISO 8601)
+    - Generating weekly reports from NotifiableCase data
+    - Aggregating disease summaries by age group
+    - Preparing DHIS2 payloads for submission
+    """
+
+    @staticmethod
+    def get_epi_week(reference_date=None) -> tuple[int, int, "date", "date"]:
+        """
+        Calculate epidemiological week for a given date.
+
+        Uses ISO 8601 week numbering:
+        - Week 1 is the week containing the first Thursday
+        - Weeks run Monday to Sunday
+
+        Args:
+            reference_date: Date to calculate week for (default: today)
+
+        Returns:
+            Tuple of (epi_year, epi_week, week_start, week_end)
+        """
+
+        if reference_date is None:
+            reference_date = timezone.localdate()
+        elif isinstance(reference_date, str):
+            from datetime import datetime
+
+            reference_date = datetime.strptime(reference_date, "%Y-%m-%d").date()
+
+        # ISO calendar: (year, week, weekday)
+        iso_cal = reference_date.isocalendar()
+        epi_year = iso_cal[0]
+        epi_week = iso_cal[1]
+
+        # Calculate week start (Monday) and end (Sunday)
+        # weekday() returns 0=Monday, 6=Sunday
+        days_since_monday = reference_date.weekday()
+        week_start = reference_date - timedelta(days=days_since_monday)
+        week_end = week_start + timedelta(days=6)
+
+        return (epi_year, epi_week, week_start, week_end)
+
+    @staticmethod
+    def get_previous_epi_week(reference_date=None) -> tuple[int, int, "date", "date"]:
+        """
+        Get the previous epidemiological week.
+
+        Used for generating reports at end of week (Sunday midnight).
+
+        Args:
+            reference_date: Reference date (default: today)
+
+        Returns:
+            Tuple of (epi_year, epi_week, week_start, week_end)
+        """
+        if reference_date is None:
+            reference_date = timezone.localdate()
+
+        # Go back 7 days to get previous week
+        previous_date = reference_date - timedelta(days=7)
+        return IDSRReportingService.get_epi_week(previous_date)
+
+    @classmethod
+    def generate_weekly_report(
+        cls,
+        epi_year: int,
+        epi_week: int,
+        week_start: "date",
+        week_end: "date",
+        facility_code: str | None = None,
+        facility_name: str | None = None,
+        county=None,
+        generated_by=None,
+    ) -> "IDSRWeeklyReport":
+        """
+        Generate or update an IDSR weekly report.
+
+        Aggregates all NotifiableCase records within the week period
+        and creates per-disease summaries.
+
+        Args:
+            epi_year: Epidemiological year
+            epi_week: Epidemiological week number
+            week_start: Monday of the week
+            week_end: Sunday of the week
+            facility_code: MFL code (optional, from settings)
+            facility_name: Facility name
+            county: County for filtering/routing
+            generated_by: User generating the report
+
+        Returns:
+            Created or updated IDSRWeeklyReport instance
+        """
+        from datetime import datetime
+
+        from django.conf import settings
+        from django.db import transaction
+
+        from .models import (
+            IDSRDiseaseSummary,
+            IDSRReportStatus,
+            IDSRWeeklyReport,
+            NotifiableCase,
+            NotifiableCategory,
+        )
+
+        # Get facility info from settings if not provided
+        if not facility_code:
+            facility_code = getattr(settings, "FACILITY_CODE", "")
+        if not facility_name:
+            facility_name = getattr(settings, "FACILITY_NAME", "")
+
+        # Convert week_end to datetime for comparison with detected_at
+        week_start_dt = datetime.combine(week_start, datetime.min.time())
+        week_end_dt = datetime.combine(week_end, datetime.max.time())
+
+        # Make timezone-aware
+        if settings.USE_TZ:
+            from django.utils import timezone as tz
+
+            week_start_dt = tz.make_aware(week_start_dt)
+            week_end_dt = tz.make_aware(week_end_dt)
+
+        # Query cases for this week
+        cases_queryset = NotifiableCase.objects.select_related(
+            "disease", "patient", "county"
+        ).filter(
+            detected_at__gte=week_start_dt,
+            detected_at__lte=week_end_dt,
+        )
+
+        if county:
+            cases_queryset = cases_queryset.filter(county=county)
+
+        cases = list(cases_queryset)
+
+        with transaction.atomic():
+            # Create or update the weekly report
+            report, created = IDSRWeeklyReport.objects.update_or_create(
+                epi_year=epi_year,
+                epi_week=epi_week,
+                facility_code=facility_code,
+                defaults={
+                    "facility_name": facility_name,
+                    "week_start_date": week_start,
+                    "week_end_date": week_end,
+                    "county": county,
+                    "generated_by": generated_by,
+                    "status": IDSRReportStatus.DRAFT,
+                },
+            )
+
+            # Clear existing summaries if regenerating
+            if not created:
+                report.disease_summaries.all().delete()
+
+            # Aggregate by disease
+            disease_data = {}
+            total_deaths = 0
+            immediate_cases = 0
+            lab_confirmed_cases = 0
+
+            for case in cases:
+                disease_id = case.disease_id
+                if disease_id not in disease_data:
+                    disease_data[disease_id] = {
+                        "disease": case.disease,
+                        "cases_under_5": 0,
+                        "cases_5_and_above": 0,
+                        "deaths_under_5": 0,
+                        "deaths_5_and_above": 0,
+                        "lab_confirmed": 0,
+                        "is_outbreak": False,
+                    }
+
+                # Calculate age at detection
+                patient_age = cls._calculate_age(
+                    case.patient.date_of_birth, case.detected_at.date()
+                )
+
+                if patient_age < 5:
+                    disease_data[disease_id]["cases_under_5"] += 1
+                    if case.outcome == "DECEASED":
+                        disease_data[disease_id]["deaths_under_5"] += 1
+                        total_deaths += 1
+                else:
+                    disease_data[disease_id]["cases_5_and_above"] += 1
+                    if case.outcome == "DECEASED":
+                        disease_data[disease_id]["deaths_5_and_above"] += 1
+                        total_deaths += 1
+
+                if case.laboratory_confirmed:
+                    disease_data[disease_id]["lab_confirmed"] += 1
+                    lab_confirmed_cases += 1
+
+                if case.disease.category == NotifiableCategory.IMMEDIATE:
+                    immediate_cases += 1
+
+            # Check for outbreaks
+            outbreak_diseases = []
+            for disease_id, data in disease_data.items():
+                from .models import OutbreakThreshold
+
+                threshold = OutbreakThreshold.objects.filter(
+                    disease_id=disease_id,
+                    is_active=True,
+                ).first()
+
+                if threshold:
+                    total_cases = data["cases_under_5"] + data["cases_5_and_above"]
+                    if total_cases >= threshold.case_threshold:
+                        data["is_outbreak"] = True
+                        outbreak_diseases.append(data["disease"].name)
+
+            # Create disease summaries
+            for _disease_id, data in disease_data.items():
+                IDSRDiseaseSummary.objects.create(
+                    report=report,
+                    disease=data["disease"],
+                    cases_under_5=data["cases_under_5"],
+                    cases_5_and_above=data["cases_5_and_above"],
+                    deaths_under_5=data["deaths_under_5"],
+                    deaths_5_and_above=data["deaths_5_and_above"],
+                    lab_confirmed=data["lab_confirmed"],
+                    is_outbreak=data["is_outbreak"],
+                )
+
+            # Update report summary
+            report.total_cases = len(cases)
+            report.total_deaths = total_deaths
+            report.immediate_cases = immediate_cases
+            report.lab_confirmed_cases = lab_confirmed_cases
+            report.outbreak_declared = len(outbreak_diseases) > 0
+            report.outbreak_diseases = ",".join(outbreak_diseases)
+            report.save()
+
+            logger.info(
+                f"Generated IDSR report W{epi_week:02d}/{epi_year}: "
+                f"{len(cases)} cases, {len(disease_data)} diseases"
+            )
+
+        return report
+
+    @staticmethod
+    def _calculate_age(date_of_birth, reference_date) -> int:
+        """Calculate age in years from date of birth."""
+        if not date_of_birth:
+            return 0
+        years = reference_date.year - date_of_birth.year
+        if (reference_date.month, reference_date.day) < (
+            date_of_birth.month,
+            date_of_birth.day,
+        ):
+            years -= 1
+        return max(0, years)
+
+    @classmethod
+    def generate_previous_week_report(cls, generated_by=None) -> "IDSRWeeklyReport":
+        """
+        Generate IDSR report for the previous epidemiological week.
+
+        Called by Celery task on Sunday midnight.
+
+        Args:
+            generated_by: User or None for system
+
+        Returns:
+            Generated IDSRWeeklyReport
+        """
+        epi_year, epi_week, week_start, week_end = cls.get_previous_epi_week()
+        return cls.generate_weekly_report(
+            epi_year=epi_year,
+            epi_week=epi_week,
+            week_start=week_start,
+            week_end=week_end,
+            generated_by=generated_by,
+        )
+
+    @classmethod
+    def prepare_dhis2_payload(cls, report: "IDSRWeeklyReport") -> dict:
+        """
+        Prepare DHIS2 DataValueSet payload for submission.
+
+        Formats the IDSR report data according to Kenya KHIS
+        data element structure.
+
+        Args:
+            report: IDSRWeeklyReport to submit
+
+        Returns:
+            DHIS2 API payload dict
+        """
+        from django.conf import settings
+
+        # DHIS2 period format for weekly: YYYY"W"WW (e.g., 2026W08)
+        period = f"{report.epi_year}W{report.epi_week:02d}"
+
+        # Get org unit from settings
+        org_unit = getattr(settings, "DHIS2_ORG_UNIT", report.facility_code)
+
+        data_values = []
+
+        # TODO: Map disease summaries to actual DHIS2 data elements
+        # These data element IDs need to be configured per DHIS2 instance
+        for summary in report.disease_summaries.select_related("disease"):
+            # Placeholder data element mapping
+            disease_code = summary.disease.name.upper().replace(" ", "_")
+
+            # Cases under 5
+            if summary.cases_under_5 > 0:
+                data_values.append({
+                    "dataElement": f"IDSR_{disease_code}_U5_CASES",
+                    "period": period,
+                    "orgUnit": org_unit,
+                    "value": summary.cases_under_5,
+                })
+
+            # Cases 5 and above
+            if summary.cases_5_and_above > 0:
+                data_values.append({
+                    "dataElement": f"IDSR_{disease_code}_O5_CASES",
+                    "period": period,
+                    "orgUnit": org_unit,
+                    "value": summary.cases_5_and_above,
+                })
+
+            # Deaths under 5
+            if summary.deaths_under_5 > 0:
+                data_values.append({
+                    "dataElement": f"IDSR_{disease_code}_U5_DEATHS",
+                    "period": period,
+                    "orgUnit": org_unit,
+                    "value": summary.deaths_under_5,
+                })
+
+            # Deaths 5 and above
+            if summary.deaths_5_and_above > 0:
+                data_values.append({
+                    "dataElement": f"IDSR_{disease_code}_O5_DEATHS",
+                    "period": period,
+                    "orgUnit": org_unit,
+                    "value": summary.deaths_5_and_above,
+                })
+
+        return {
+            "dataValues": data_values,
+            "period": period,
+            "orgUnit": org_unit,
+            "completeDate": timezone.localdate().isoformat(),
+        }
+
+    @classmethod
+    def submit_to_dhis2(cls, report: "IDSRWeeklyReport") -> dict:
+        """
+        Submit IDSR report to DHIS2.
+
+        Args:
+            report: Approved IDSRWeeklyReport to submit
+
+        Returns:
+            DHIS2 API response dict
+        """
+        import requests
+        from django.conf import settings
+
+        if report.status != "APPROVED":
+            raise ValueError("Report must be approved before submission")
+
+        dhis2_url = getattr(settings, "DHIS2_API_URL", None)
+        dhis2_username = getattr(settings, "DHIS2_USERNAME", None)
+        dhis2_password = getattr(settings, "DHIS2_PASSWORD", None)
+
+        if not all([dhis2_url, dhis2_username, dhis2_password]):
+            logger.warning("DHIS2 credentials not configured")
+            return {"status": "error", "message": "DHIS2 not configured"}
+
+        payload = cls.prepare_dhis2_payload(report)
+
+        try:
+            response = requests.post(
+                f"{dhis2_url}/api/dataValueSets",
+                json=payload,
+                auth=(dhis2_username, dhis2_password),
+                headers={"Content-Type": "application/json"},
+                timeout=30,
+            )
+
+            response_data = response.json() if response.text else {}
+
+            if response.ok:
+                report.mark_submitted(response_data)
+                logger.info(f"Submitted IDSR report {report.id} to DHIS2")
+            else:
+                report.mark_failed(response_data)
+                logger.error(f"DHIS2 submission failed: {response.status_code}")
+
+            return response_data
+
+        except requests.RequestException as e:
+            error_response = {"status": "error", "message": str(e)}
+            report.mark_failed(error_response)
+            logger.error(f"DHIS2 request failed: {e}")
+            return error_response

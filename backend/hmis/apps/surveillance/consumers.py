@@ -110,8 +110,6 @@ class SurveillanceAlertConsumer(AsyncJsonWebsocketConsumer):
         """Get current surveillance statistics from database."""
         from datetime import timedelta
 
-        from django.db.models import Count
-
         from .models import (
             NotifiableCase,
             NotificationStatus,

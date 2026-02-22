@@ -65,7 +65,7 @@ class Command(BaseCommand):
         # Load diseases from JSON
         self.stdout.write(f"Loading diseases from: {json_path}")
         try:
-            with open(json_path, "r", encoding="utf-8") as f:
+            with open(json_path, encoding="utf-8") as f:
                 data = json.load(f)
         except json.JSONDecodeError as e:
             raise CommandError(f"Invalid JSON file: {e}")

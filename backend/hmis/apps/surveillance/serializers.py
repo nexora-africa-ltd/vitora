@@ -2,15 +2,16 @@
 Serializers for Disease Surveillance module.
 
 Provides serialization for NotifiableDisease, NotifiableCase,
-SurveillanceAlert, and reporting endpoints.
+SurveillanceAlert, IDSRWeeklyReport, and reporting endpoints.
 """
 
 from rest_framework import serializers
 
 from .models import (
+    IDSRDiseaseSummary,
+    IDSRWeeklyReport,
     NotifiableCase,
     NotifiableDisease,
-    NotificationStatus,
     OutbreakThreshold,
     SurveillanceAlert,
 )
@@ -322,3 +323,187 @@ class SurveillanceDashboardSerializer(serializers.Serializer):
     outbreak_alerts = serializers.IntegerField()
     top_diseases = serializers.ListField(child=serializers.DictField())
     cases_by_county = serializers.ListField(child=serializers.DictField())
+
+
+# ============================================================================
+# IDSR Weekly Reporting Serializers
+# ============================================================================
+
+
+class IDSRDiseaseSummarySerializer(serializers.ModelSerializer):
+    """Serializer for IDSRDiseaseSummary within a weekly report."""
+
+    disease_name = serializers.CharField(source="disease.name", read_only=True)
+    disease_category = serializers.CharField(source="disease.category", read_only=True)
+
+    class Meta:
+        # from .models import IDSRDiseaseSummary
+
+        model = IDSRDiseaseSummary
+        fields = [
+            "id",
+            "disease",
+            "disease_name",
+            "disease_category",
+            "cases_under_5",
+            "cases_5_and_above",
+            "total_cases",
+            "deaths_under_5",
+            "deaths_5_and_above",
+            "total_deaths",
+            "lab_confirmed",
+            "case_fatality_rate",
+            "is_outbreak",
+            "notes",
+        ]
+        read_only_fields = ["id", "total_cases", "total_deaths", "case_fatality_rate"]
+
+
+class IDSRWeeklyReportSerializer(serializers.ModelSerializer):
+    """Full serializer for IDSRWeeklyReport."""
+
+    disease_summaries = IDSRDiseaseSummarySerializer(many=True, read_only=True)
+    county_name = serializers.CharField(source="county.name", read_only=True, allow_null=True)
+    sub_county_name = serializers.CharField(
+        source="sub_county.name", read_only=True, allow_null=True
+    )
+    generated_by_name = serializers.CharField(
+        source="generated_by.username", read_only=True, allow_null=True
+    )
+    reviewed_by_name = serializers.CharField(
+        source="reviewed_by.username", read_only=True, allow_null=True
+    )
+    approved_by_name = serializers.CharField(
+        source="approved_by.username", read_only=True, allow_null=True
+    )
+    week_label = serializers.CharField(read_only=True)
+    is_submitted = serializers.BooleanField(read_only=True)
+    can_edit = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        # from .models import IDSRWeeklyReport
+
+        model = IDSRWeeklyReport
+        fields = [
+            "id",
+            "epi_year",
+            "epi_week",
+            "week_label",
+            "week_start_date",
+            "week_end_date",
+            "facility_code",
+            "facility_name",
+            "county",
+            "county_name",
+            "sub_county",
+            "sub_county_name",
+            "total_cases",
+            "total_deaths",
+            "immediate_cases",
+            "lab_confirmed_cases",
+            "outbreak_declared",
+            "outbreak_diseases",
+            "status",
+            "is_submitted",
+            "can_edit",
+            "generated_at",
+            "generated_by",
+            "generated_by_name",
+            "reviewed_at",
+            "reviewed_by",
+            "reviewed_by_name",
+            "approved_at",
+            "approved_by",
+            "approved_by_name",
+            "dhis2_submitted_at",
+            "dhis2_import_summary",
+            "notes",
+            "disease_summaries",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "week_label",
+            "is_submitted",
+            "can_edit",
+            "generated_at",
+            "generated_by",
+            "approved_at",
+            "approved_by",
+            "dhis2_submitted_at",
+            "dhis2_response",
+            "dhis2_import_summary",
+            "disease_summaries",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class IDSRWeeklyReportListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for IDSR report list views."""
+
+    county_name = serializers.CharField(source="county.name", read_only=True, allow_null=True)
+    week_label = serializers.CharField(read_only=True)
+    disease_count = serializers.SerializerMethodField()
+
+    class Meta:
+        from .models import IDSRWeeklyReport
+
+        model = IDSRWeeklyReport
+        fields = [
+            "id",
+            "epi_year",
+            "epi_week",
+            "week_label",
+            "week_start_date",
+            "week_end_date",
+            "facility_name",
+            "county_name",
+            "total_cases",
+            "total_deaths",
+            "outbreak_declared",
+            "status",
+            "disease_count",
+            "generated_at",
+        ]
+
+    def get_disease_count(self, obj) -> int:
+        """Return count of diseases in report."""
+        return obj.disease_summaries.count()
+
+
+class IDSRReportGenerateSerializer(serializers.Serializer):
+    """Serializer for triggering IDSR report generation."""
+
+    epi_year = serializers.IntegerField(required=False, min_value=2020, max_value=2100)
+    epi_week = serializers.IntegerField(required=False, min_value=1, max_value=53)
+
+    def validate(self, attrs):
+        """Ensure both year and week are provided together or neither."""
+        epi_year = attrs.get("epi_year")
+        epi_week = attrs.get("epi_week")
+
+        if (epi_year is None) != (epi_week is None):
+            raise serializers.ValidationError(
+                "Both epi_year and epi_week must be provided together, or neither."
+            )
+        return attrs
+
+
+class IDSRReportApproveSerializer(serializers.Serializer):
+    """Serializer for approving an IDSR report."""
+
+    notes = serializers.CharField(required=False, allow_blank=True)
+
+
+class IDSRDashboardSerializer(serializers.Serializer):
+    """Serializer for IDSR dashboard stats."""
+
+    current_week = serializers.DictField()
+    previous_weeks = serializers.ListField(child=serializers.DictField())
+    total_reports_this_year = serializers.IntegerField()
+    pending_submission = serializers.IntegerField()
+    submitted_this_month = serializers.IntegerField()
+    outbreak_weeks = serializers.IntegerField()
+
