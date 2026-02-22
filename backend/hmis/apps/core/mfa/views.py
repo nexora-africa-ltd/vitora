@@ -12,9 +12,11 @@ API endpoints for MFA management:
 
 import base64
 import io
+from datetime import UTC
 
 import qrcode
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -128,7 +130,8 @@ class TOTPConfirmView(APIView):
 
         # Confirm device
         device.confirmed = True
-        device.save(update_fields=["confirmed"])
+        device.confirmed_at = timezone.now()
+        device.save(update_fields=["confirmed", "confirmed_at"])
 
         # Generate backup codes
         backup_codes = BackupCode.generate_codes(user=user)
@@ -336,3 +339,102 @@ class MFAVerifyView(APIView):
                 "refresh": str(refresh),
             }
         )
+
+
+class MFAAwareTokenRefreshView(APIView):
+    """
+    MFA-aware token refresh view.
+
+    Rejects refresh tokens that were issued BEFORE MFA was enabled for the user.
+    This prevents session hijacking where old tokens bypass MFA.
+
+    When MFA is enabled, all previous sessions must re-authenticate through the
+    MFA login flow to obtain new tokens.
+    """
+
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        """Refresh token with MFA validation."""
+        from datetime import datetime
+
+        from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+        from rest_framework_simplejwt.tokens import RefreshToken as JWTRefreshToken
+
+        refresh_token = request.data.get("refresh")
+        if not refresh_token:
+            return Response(
+                {"error": "Refresh token is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            # Decode the refresh token to get user and issued-at time
+            token = JWTRefreshToken(refresh_token)
+            user_id = token.payload.get("user_id")
+            issued_at = token.payload.get("iat")  # Unix timestamp
+
+            if not user_id or not issued_at:
+                raise InvalidToken("Token missing required claims")
+
+            # Get the user
+            from django.contrib.auth import get_user_model
+
+            User = get_user_model()
+            try:
+                user = User.objects.get(id=user_id)
+            except User.DoesNotExist:
+                raise InvalidToken("User not found") from None
+
+            # Check if MFA is enabled for this user
+            mfa_device = UserTOTPDevice.objects.filter(
+                user=user, confirmed=True
+            ).order_by("confirmed_at").first()
+
+            if mfa_device and mfa_device.confirmed_at:
+                # MFA is enabled - check if token was issued before MFA was enabled
+                token_issued_at = datetime.fromtimestamp(issued_at, tz=UTC)
+
+                if token_issued_at < mfa_device.confirmed_at:
+                    # Token was issued before MFA was enabled
+                    # User must re-authenticate through MFA flow
+                    AuditLog.log(
+                        action="token_refresh_blocked_mfa",
+                        user=user,
+                        resource_type="RefreshToken",
+                        resource_id=0,
+                        ip_address=get_client_ip(request),
+                        details={
+                            "reason": "Token issued before MFA was enabled",
+                            "token_issued_at": token_issued_at.isoformat(),
+                            "mfa_enabled_at": mfa_device.confirmed_at.isoformat(),
+                        },
+                    )
+                    return Response(
+                        {
+                            "error": "Session invalidated. MFA has been enabled since this session was created.",
+                            "code": "MFA_ENABLED_RE_AUTH_REQUIRED",
+                            "detail": "Please log in again with MFA verification.",
+                        },
+                        status=status.HTTP_401_UNAUTHORIZED,
+                    )
+
+            # Token is valid and MFA check passed - issue new access token
+            new_access_token = token.access_token
+
+            return Response(
+                {
+                    "access": str(new_access_token),
+                }
+            )
+
+        except TokenError as e:
+            return Response(
+                {"error": str(e), "code": "TOKEN_INVALID"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        except InvalidToken as e:
+            return Response(
+                {"error": str(e), "code": "TOKEN_INVALID"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
