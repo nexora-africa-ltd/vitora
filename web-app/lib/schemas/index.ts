@@ -196,6 +196,30 @@ export {
 
 export * from './core.schema';
 
+// MFA schemas
+export {
+  MFAStatusSchema,
+  TOTPSetupSchema,
+  TOTPConfirmRequestSchema,
+  TOTPConfirmResponseSchema,
+  MFAVerifyRequestSchema,
+  MFAVerifyResponseSchema,
+  BackupCodesRegenerateRequestSchema,
+  BackupCodesResponseSchema,
+  MFADisableRequestSchema,
+  LoginResponseWithMFASchema,
+  type MFAStatusSchemaType,
+  type TOTPSetupSchemaType,
+  type TOTPConfirmRequestSchemaType,
+  type TOTPConfirmResponseSchemaType,
+  type MFAVerifyRequestSchemaType,
+  type MFAVerifyResponseSchemaType,
+  type BackupCodesRegenerateRequestSchemaType,
+  type BackupCodesResponseSchemaType,
+  type MFADisableRequestSchemaType,
+  type LoginResponseWithMFASchemaType,
+} from './mfa.schema';
+
 // Imaging schemas
 export {
   ImagingModalitySchema,

@@ -31,9 +31,19 @@ export interface AuthState {
 
 // Auth context value
 export interface AuthContextValue extends AuthState {
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<LoginResult>;
   logout: () => void;
   refreshToken: () => Promise<void>;
+  verifyMFA: (mfaToken: string, options: { token?: string; backupCode?: string }) => Promise<void>;
+}
+
+// Login result type
+export interface LoginResult {
+  success: boolean;
+  mfaRequired?: boolean;
+  mfaToken?: string;
+  mfaSetupRequired?: boolean;
+  error?: string;
 }
 
 // Create context with undefined default
@@ -90,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Login function
-  const login = useCallback(async (username: string, password: string) => {
+  const login = useCallback(async (username: string, password: string): Promise<LoginResult> => {
     setState((prev) => ({ ...prev, isLoading: true }));
 
     try {
@@ -106,10 +116,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!tokenResponse.ok) {
         const error = await tokenResponse.json();
-        throw new Error(error.detail || 'Login failed');
+        return {
+          success: false,
+          error: error.detail || 'Login failed',
+        };
       }
 
       const data = await tokenResponse.json();
+
+      // Check if MFA is required
+      if (data.mfa_required) {
+        return {
+          success: true,
+          mfaRequired: true,
+          mfaToken: data.mfa_token,
+          mfaSetupRequired: data.mfa_setup_required,
+        };
+      }
+
+      // MFA not required - proceed with normal login
       const tokens: AuthTokens = { access: data.access, refresh: data.refresh };
 
       // User info is now included in the token response
@@ -129,6 +154,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(USER_KEY, JSON.stringify(user));
 
       // Set auth cookie for middleware (httpOnly: false so JS can read, but middleware needs it)
+      document.cookie = `${AUTH_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+
+      setState({
+        user,
+        tokens,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+
+      return { success: true };
+    } catch (error) {
+      setState((prev) => ({ ...prev, isLoading: false }));
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Login failed. Please try again.',
+      };
+    }
+  }, []);
+
+  // MFA verification function
+  const verifyMFA = useCallback(async (
+    mfaToken: string,
+    options: { token?: string; backupCode?: string }
+  ) => {
+    setState((prev) => ({ ...prev, isLoading: true }));
+
+    try {
+      // Import mfaApi dynamically to avoid circular imports
+      const { mfaApi } = await import('@/lib/api/mfa');
+
+      const response = await mfaApi.verifyMFA(mfaToken, options);
+      const tokens: AuthTokens = { access: response.access, refresh: response.refresh };
+
+      // For MFA verification, we need to get user info from the token
+      // This is a simplified approach - in production you might want to decode the JWT
+      const user: User = {
+        id: 0,
+        username: '', // Will be updated when we refresh user data
+        email: '',
+        first_name: '',
+        last_name: '',
+        is_staff: false,
+        permissions: [],
+      };
+
+      // Store in localStorage
+      localStorage.setItem(ACCESS_TOKEN_KEY, tokens.access);
+      localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh);
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+
+      // Set auth cookie for middleware
       document.cookie = `${AUTH_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 
       setState({
@@ -197,6 +273,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         refreshToken,
+        verifyMFA,
       }}
     >
       {children}

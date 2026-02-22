@@ -4,24 +4,39 @@ This document describes the current backend Multi‑Factor Authentication (MFA) 
 
 ## Scope
 
-Implemented (backend):
+### Implemented (Backend)
 - TOTP-based MFA enrollment using an authenticator app (RFC 6238 via `pyotp`)
 - QR provisioning URI + base64 PNG QR code
 - Single-use backup codes (recovery codes)
 - MFA login flow using a short-lived temporary MFA token
 - Role-based MFA requirement enforcement (blocks disabling MFA for required roles)
 - Audit logging for MFA lifecycle events
+- 47 comprehensive unit tests (`backend/tests/test_mfa.py`)
 
-Not implemented yet:
-- Web frontend MFA settings/setup wizard in `web-app/`
-- E2E MFA tests (only backend tests exist today)
+### Implemented (Frontend)
+- MFA setup wizard (`web-app/components/auth/mfa-setup-wizard.tsx`)
+- MFA verification during login (`web-app/components/auth/mfa-verification.tsx`)
+- MFA API client (`web-app/lib/api/mfa.ts`)
+- Zod schemas for type-safe API responses (`web-app/lib/schemas/mfa.schema.ts`)
+- 37 UI component tests
+
+### Not implemented yet
+- E2E MFA tests (Playwright)
+- MFA settings page in user profile
 
 ## Dependencies
 
-Backend dependencies are declared in [backend/pyproject.toml](backend/pyproject.toml):
-- `pyotp` (used for token generation/verification)
-- `qrcode` (QR generation; already present)
-- `django-otp` and `django-two-factor-auth` are added as dependencies but the current implementation uses a custom MFA module (see below). They are available for future integration if we decide to align with their built-in device models.
+### Backend
+Declared in [backend/pyproject.toml](backend/pyproject.toml):
+- `pyotp` — TOTP token generation/verification (RFC 6238)
+- `qrcode` — QR code generation for authenticator apps
+
+**Note**: `django-otp` and `django-two-factor-auth` were evaluated but **not used**. Our custom MFA module provides better control for DHA compliance (audit logging, role-based enforcement) without the overhead of SMS support we don't need.
+
+### Frontend
+- React components using shadcn/ui patterns
+- Sonner for toast notifications
+- Zod for API response validation
 
 ## Data Model
 

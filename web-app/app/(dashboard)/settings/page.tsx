@@ -12,17 +12,19 @@ import {
   User,
   Bell,
   Palette,
+  Shield,
 } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SHASettingsTab } from '@/components/settings/sha-settings';
+import { MFASettingsTab } from '@/components/settings/mfa-settings';
 import { useAuth } from '@/lib/auth';
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('sha');
+  const [activeTab, setActiveTab] = useState('security');
 
   return (
     <div className="space-y-6">
@@ -40,23 +42,32 @@ export default function SettingsPage() {
       {/* Settings Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="bg-muted">
+          <TabsTrigger value="security" className="gap-2">
+            <Shield className="h-4 w-4" />
+            <span className="hidden sm:inline">Security</span>
+          </TabsTrigger>
           <TabsTrigger value="sha" className="gap-2">
             <KenyaCoatOfArms size={16} />
-            SHA Integration
+            <span className="hidden sm:inline">SHA Integration</span>
           </TabsTrigger>
           <TabsTrigger value="facility" className="gap-2">
             <Building2 className="h-4 w-4" />
-            Facility
+            <span className="hidden sm:inline">Facility</span>
           </TabsTrigger>
           <TabsTrigger value="notifications" className="gap-2">
             <Bell className="h-4 w-4" />
-            Notifications
+            <span className="hidden sm:inline">Notifications</span>
           </TabsTrigger>
           <TabsTrigger value="appearance" className="gap-2">
             <Palette className="h-4 w-4" />
-            Appearance
+            <span className="hidden sm:inline">Appearance</span>
           </TabsTrigger>
         </TabsList>
+
+        {/* Security Settings (MFA) */}
+        <TabsContent value="security" className="space-y-4">
+          <MFASettingsTab />
+        </TabsContent>
 
         {/* SHA Integration Settings */}
         <TabsContent value="sha" className="space-y-4">

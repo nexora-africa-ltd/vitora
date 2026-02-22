@@ -16,6 +16,7 @@ export { patientsApi } from './patients';
 export { pharmacyApi } from './pharmacy';
 export { billingApi } from './billing';
 export { triageApi } from './triage';
+export { mfaApi } from './mfa';
 export type {
   TriageAssessmentUpdateData,
   TriageAssessmentListParams,

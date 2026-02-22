@@ -54,18 +54,20 @@ Gaps are categorized into four tiers:
 - **Effort**: 2 weeks (administrative)
 - **Dependency**: DPIA approval
 
-#### 2. MFA Implementation `P0` `REQUIRED`
-- **Gap**: No multi-factor authentication
+#### 2. MFA Implementation `P0` `REQUIRED` ✅ COMPLETE
+- **Gap**: ~~No multi-factor authentication~~ **RESOLVED**
 - **Action**:
-  - [x] Add `django-otp` + `django-two-factor-auth` backend dependencies
+  - [x] Add `pyotp` + `qrcode` backend dependencies
   - [x] Implement TOTP enrollment flow (QR code + backup codes)
   - [x] Add MFA requirement for sensitive roles (ADMIN, CLINICAL_SENIOR, MANAGEMENT)
-  - [ ] Frontend MFA setup wizard in settings
-  - [x] Tests: backend unit tests (see `backend/tests/test_mfa.py`)
-  - [ ] Tests: MFA E2E tests
-- **Owner**: Backend Team
-- **Effort**: 2 sprints (4 weeks)
-- **Deliverables**: `core/mfa/`, `docs/mfa-implementation.md`, MFA settings UI
+  - [x] Frontend MFA setup wizard (`mfa-setup-wizard.tsx`)
+  - [x] Frontend MFA verification during login (`mfa-verification.tsx`)
+  - [x] Tests: backend unit tests (47 tests in `backend/tests/test_mfa.py`)
+  - [x] Tests: frontend component tests (37 tests)
+  - [ ] Tests: MFA E2E tests (Playwright)
+- **Owner**: Backend Team + Frontend Team
+- **Completed**: February 22, 2026
+- **Deliverables**: `core/mfa/`, `docs/mfa-implementation.md`, MFA UI components
 
 #### 3. Backup & Disaster Recovery `P0` `REQUIRED`
 - **Gap**: No backup strategy, no DR plan
