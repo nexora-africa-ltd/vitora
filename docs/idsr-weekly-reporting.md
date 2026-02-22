@@ -2,9 +2,9 @@
 
 > **Integrated Disease Surveillance and Response (IDSR) Weekly Reporting Module**
 >
-> Version: 1.0
+> Version: 1.1
 > Implemented: February 23, 2026
-> Status: ✅ Complete
+> Status: ✅ Complete (Backend + Frontend)
 
 ---
 
@@ -450,6 +450,49 @@ The following UI components are needed to complete the IDSR workflow:
 - Report serialization
 - Disease summary serialization
 - Validation
+
+---
+
+## Frontend Implementation
+
+### Web App IDSR UI
+
+The IDSR interface is available at `/surveillance/idsr`:
+
+**Features:**
+- Report list with epidemiological week display
+- Status filtering (Draft, Pending Review, Approved, Submitted, Failed)
+- Report generation for current/previous week
+- Inline approval workflow
+- DHIS2 submission with preview
+- Report detail view with disease breakdown
+
+**Components:**
+- `app/(dashboard)/surveillance/idsr/page.tsx` - Report list
+- `app/(dashboard)/surveillance/idsr/[id]/page.tsx` - Report detail
+
+### WebSocket Integration
+
+IDSR reports benefit from the surveillance WebSocket connection:
+
+```typescript
+// Report generation triggers surveillance.stats_update event
+// which invalidates the dashboard and IDSR queries
+queryClient.invalidateQueries({ queryKey: ['surveillance-dashboard'] });
+```
+
+When a new report is generated via Celery task (Sunday midnight), connected clients receive an update automatically.
+
+### API Response Validation
+
+All IDSR API responses are validated with Zod schemas:
+
+```typescript
+// lib/schemas/surveillance.schema.ts
+export const IDSRWeeklyReportSchema = z.object({ ... });
+export const IDSRDashboardSchema = z.object({ ... });
+export const PaginatedIDSRWeeklyReportSchema = z.object({ ... });
+```
 
 ---
 

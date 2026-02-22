@@ -11,10 +11,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WebSocketStatus } from '@/components/ui/websocket-status';
 import { surveillanceApi, type AlertListParams } from '@/lib/api/surveillance';
 import { formatDateTime } from '@/lib/utils/format';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { toast } from '@/lib/hooks/use-toast';
+import { useSurveillanceWebSocket } from '@/lib/hooks/surveillance-websocket';
 import type { SurveillanceAlertListItem } from '@/lib/types/surveillance';
 
 const ALERT_TYPE_CONFIG: Record<
@@ -112,6 +114,15 @@ export default function SurveillanceAlertsPage() {
   const [tab, setTab] = useState<'all' | 'unacknowledged'>('unacknowledged');
   const [page, setPage] = useState(1);
 
+  // WebSocket connection with polling fallback - receives real-time alerts
+  const {
+    connectionState,
+    reconnectAttempts,
+    refresh: wsRefresh,
+  } = useSurveillanceWebSocket({
+    showToastNotifications: true,
+  });
+
   const params: AlertListParams = {
     page,
     page_size: 20,
@@ -141,16 +152,30 @@ export default function SurveillanceAlertsPage() {
     setPage(1);
   };
 
+  // Combined refresh
+  const handleRefresh = () => {
+    wsRefresh();
+    refresh();
+  };
+
   const totalPages = data ? Math.ceil(data.count / 20) : 0;
   const hasNext = !!data?.next;
   const hasPrev = page > 1;
 
   return (
-    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
+    <PullToRefresh onRefresh={handleRefresh} isRefreshing={isRefreshing}>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="Surveillance Alerts"
           helpContent="View and acknowledge surveillance alerts for immediate cases, overdue notifications, and outbreak events."
+          actions={
+            <WebSocketStatus
+              connectionState={connectionState}
+              reconnectAttempts={reconnectAttempts}
+              showLabel
+              size="sm"
+            />
+          }
         />
 
         <Tabs value={tab} onValueChange={handleTabChange}>

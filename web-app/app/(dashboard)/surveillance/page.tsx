@@ -17,11 +17,23 @@ import { StatsCard } from '@/components/dashboard/stats-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { WebSocketStatus } from '@/components/ui/websocket-status';
 import { surveillanceApi } from '@/lib/api/surveillance';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useSurveillanceWebSocket } from '@/lib/hooks/surveillance-websocket';
 
 export default function SurveillanceDashboardPage() {
   const { refresh, isRefreshing } = usePageRefresh();
+
+  // WebSocket connection with polling fallback
+  const {
+    isConnected,
+    connectionState,
+    reconnectAttempts,
+    refresh: wsRefresh,
+  } = useSurveillanceWebSocket({
+    showToastNotifications: true,
+  });
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['surveillance-dashboard'],
@@ -35,12 +47,26 @@ export default function SurveillanceDashboardPage() {
     staleTime: 30000,
   });
 
+  // Combined refresh: WebSocket + React Query
+  const handleRefresh = () => {
+    wsRefresh();
+    refresh();
+  };
+
   return (
-    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
+    <PullToRefresh onRefresh={handleRefresh} isRefreshing={isRefreshing}>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="Disease Surveillance"
           helpContent="Monitor notifiable disease cases, alerts, and outbreak status across your facility."
+          actions={
+            <WebSocketStatus
+              connectionState={connectionState}
+              reconnectAttempts={reconnectAttempts}
+              showLabel
+              size="sm"
+            />
+          }
         />
 
         {error ? (
