@@ -1,19 +1,118 @@
 {
   "_metadata": {
-    "version": "2.0.0",
+    "version": "2.1.0",
     "source": "Kenya MOH 502 Notifiable Diseases List",
     "reference_documents": [
       {
-        "title": "Standard Case Definitions for Priority Diseases in Kenya - IDSR",
-        "type": "PDF (scanned)",
+        "title": "Standard Case Definitions for Priority Diseases in Kenya - IDSR Clinicians Booklet",
+        "publisher": "Ministry of Health Kenya / WHO",
+        "type": "Official Document",
         "status": "integrated",
-        "notes": "Case definitions extracted and integrated into this JSON"
+        "diseases_covered": 18,
+        "notes": "Case definitions and thresholds extracted from official IDSR booklet"
       }
     ],
     "last_updated": "2026-02-22",
     "maintainer": "Vitora HMIS Team",
-    "schema_version": "2.0",
-    "notes": "Enhanced schema supports structured case definitions. Update and run: python manage.py seed_notifiable_diseases --update"
+    "schema_version": "2.1",
+    "notes": "v2.1: Added IDSR case definitions and outbreak thresholds from official MOH document"
+  },
+  "outbreak_thresholds": {
+    "_description": "Alert and action thresholds for epidemic detection per IDSR guidelines",
+    "thresholds": [
+      {
+        "disease": "Cholera",
+        "alert_threshold": "Single case suspected",
+        "action_threshold": "Single case confirmed",
+        "notes": "Immediate investigation required"
+      },
+      {
+        "disease": "Typhoid Fever",
+        "alert_threshold": "Observed increase in number of cases or deaths over a period of time",
+        "action_threshold": "Above alert with at least one case confirmed by culture"
+      },
+      {
+        "disease": "Dysentery",
+        "alert_threshold": "Observed increase in number of cases or deaths over a period of time",
+        "action_threshold": "Above alert with at least one case confirmed by culture"
+      },
+      {
+        "disease": "Diarrhea (<5 years)",
+        "alert_threshold": "Observed increase in number of cases or deaths over a period of time",
+        "action_threshold": "Two-fold increase in cases or deaths compared to similar period in past"
+      },
+      {
+        "disease": "Dracunculiasis (Guinea Worm)",
+        "alert_threshold": "Single case suspected",
+        "action_threshold": "Confirmed by emergence of guinea worm from skin lesion"
+      },
+      {
+        "disease": "Leprosy",
+        "alert_threshold": "Single case suspected",
+        "action_threshold": "Suspected case confirmed"
+      },
+      {
+        "disease": "Malaria",
+        "alert_threshold": "Weekly cases cross above THIRD QUARTILE for last 5 years",
+        "action_threshold": "Steady increase above Mean + 1.5 SD for last 5 years (exclude epidemic years)",
+        "notes": "Alert indicates possible upsurge; Action indicates epidemic proportions"
+      },
+      {
+        "disease": "Measles",
+        "alert_threshold": "5 or more suspected cases in a district in a month",
+        "action_threshold": "3 or more cases laboratory confirmed (IgM positive) in a district in a month"
+      },
+      {
+        "disease": "Meningococcal Meningitis",
+        "alert_threshold": "5 cases per 100,000 inhabitants per week (population >30,000) OR 2 cases in 1 week (population <30,000)",
+        "action_threshold": "10 cases per 100,000 inhabitants per week"
+      },
+      {
+        "disease": "Neonatal Tetanus",
+        "alert_threshold": "Single case suspected",
+        "action_threshold": "Case confirmed through investigation"
+      },
+      {
+        "disease": "AIDS",
+        "alert_threshold": "Observed increase in number of new cases over a period of time",
+        "action_threshold": "Observed increase in number of new cases over a period of time"
+      },
+      {
+        "disease": "Plague",
+        "alert_threshold": "Single case suspected",
+        "action_threshold": "Suspected case confirmed"
+      },
+      {
+        "disease": "Pneumonia",
+        "alert_threshold": "Observed increase in number of cases or deaths over a period of time",
+        "action_threshold": "Two-fold increase in cases or deaths compared to similar period in past"
+      },
+      {
+        "disease": "Acute Flaccid Paralysis (Polio)",
+        "alert_threshold": "Single case suspected",
+        "action_threshold": "Case confirmed"
+      },
+      {
+        "disease": "Sexually Transmitted Infections",
+        "alert_threshold": "Observed increase in number of cases over a period of time",
+        "action_threshold": "Two-fold increase in cases compared to similar period in past"
+      },
+      {
+        "disease": "Tuberculosis",
+        "alert_threshold": "Observed increase in number of cases or deaths over a period of time",
+        "action_threshold": "Two-fold increase in cases or deaths compared to similar period in past"
+      },
+      {
+        "disease": "Viral Hemorrhagic Fevers",
+        "alert_threshold": "Single case suspected",
+        "action_threshold": "Single case confirmed"
+      },
+      {
+        "disease": "Yellow Fever",
+        "alert_threshold": "Single case suspected",
+        "action_threshold": "Single case confirmed"
+      }
+    ]
   },
   "diseases": [
     {
@@ -23,15 +122,15 @@
       "reporting_hours": 24,
       "description": "Acute diarrheal disease caused by Vibrio cholerae",
       "case_definition": {
-        "suspected": "A patient aged 2 years or more with acute watery diarrhea with or without vomiting OR any patient with acute watery diarrhea dying within 2 hours of admission",
-        "confirmed": "A suspected case with laboratory confirmation of Vibrio cholerae O1 or O139",
-        "source": "MOH Standard Case Definitions, IDSR Guidelines"
+        "suspected": "Profuse effortless watery diarrhoea (more than 3 motions in 24 hours) of sudden onset with or without vomiting in a person over 5 years old. In an area experiencing an epidemic, all cases with acute watery diarrhoea including the 2-5 year age range are considered as cases. A sudden increase in the number of dehydrated cases (including children aged 2-5 years) resulting from acute watery diarrhoea should raise suspicion of a possible cholera outbreak.",
+        "confirmed": "Suspected case with laboratory isolation of Vibrio cholerae O1 or O139",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Stool sample (rectal swab if stool not available)",
         "test": "Culture for Vibrio cholerae O1 or O139",
         "turnaround": "24-48 hours",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": true
     },
@@ -42,15 +141,15 @@
       "reporting_hours": 24,
       "description": "Viral hemorrhagic fever transmitted by mosquitoes",
       "case_definition": {
-        "suspected": "Acute onset of fever followed by jaundice within 2 weeks of onset",
-        "confirmed": "A suspected case with laboratory confirmation (IgM antibodies, viral isolation, or PCR)",
-        "source": "MOH Standard Case Definitions, IDSR Guidelines"
+        "suspected": "Acute onset of fever, jaundice, and may be associated with bleeding from body orifices, altered consciousness, and renal failure (reduced urine output, proteinuria, haematuria)",
+        "confirmed": "Suspected case with laboratory confirmation (IgM antibodies, viral isolation, or PCR)",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Serum (acute and convalescent)",
         "test": "Yellow Fever IgM ELISA, PRNT, PCR, or viral isolation",
         "turnaround": "3-7 days",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": true
     },
@@ -61,15 +160,15 @@
       "reporting_hours": 24,
       "description": "Bacterial infection caused by Yersinia pestis",
       "case_definition": {
-        "suspected": "Rapid onset of fever, chills, headache, severe malaise with painful lymphadenitis (bubonic) or pneumonia (pneumonic)",
-        "confirmed": "A suspected case with laboratory confirmation (isolation of Y. pestis or F1 antigen detection)",
-        "source": "MOH Standard Case Definitions, IDSR Guidelines"
+        "suspected": "Acute fever, chills, headaches, severe malaise prostration with painful swollen lymph nodes (bubonic type) OR cough with blood stained sputum, chest pain, difficulty in breathing (pneumonic type)",
+        "confirmed": "Suspected case with isolation of Gram Negative bipolar Coccobacilli (Yersinia pestis) in clinical material (bubo aspirate, sputum, tissue and blood)",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
-        "specimen": "Bubo aspirate, blood, sputum, or CSF",
-        "test": "Culture, F1 antigen detection, or PCR",
+        "specimen": "Bubo aspirate, blood, sputum, or tissue",
+        "test": "Culture, Gram stain, F1 antigen detection, or PCR",
         "turnaround": "24-72 hours",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": true
     },
@@ -80,16 +179,16 @@
       "reporting_hours": 24,
       "description": "Group of illnesses caused by several families of viruses (Ebola, Marburg, Lassa, etc.)",
       "case_definition": {
-        "suspected": "Acute onset of fever and hemorrhagic manifestations (bleeding from gums, nose, injection sites, bloody stool/vomit) with no known predisposing host factors",
-        "confirmed": "A suspected case with laboratory confirmation (PCR, viral isolation, or specific IgM)",
-        "source": "MOH Standard Case Definitions, IDSR Guidelines"
+        "suspected": "Acute onset of fever for at least 72 hours, with headaches, nausea, unexplained bleeding tendencies with the following signs: bloody stools, vomiting blood, bleeding from gums, nose, vagina, skin, or eyes, WHILE other causes of haemorrhagic tendencies have been ruled out",
+        "confirmed": "Suspected case with positive ELISA for IgM for viruses known to cause haemorrhagic fever, or PCR, or viral isolation",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Whole blood (EDTA), serum - handle with BSL-4 precautions",
         "test": "RT-PCR, viral isolation, IgM ELISA",
         "turnaround": "24-48 hours (priority)",
         "biosafety": "BSL-4 required for culture",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": true
     },
@@ -100,15 +199,15 @@
       "reporting_hours": 24,
       "description": "Highly contagious viral disease",
       "case_definition": {
-        "suspected": "Any person with fever AND maculopapular (non-vesicular) rash AND cough, coryza (runny nose), or conjunctivitis (red eyes)",
-        "confirmed": "A suspected case with positive measles IgM OR epidemiological link to confirmed case",
-        "source": "MOH Standard Case Definitions, WHO"
+        "suspected": "Person with fever and maculopapular (non-vesicular) generalized rash AND cough, coryza or conjunctivitis (red eyes), OR any person in whom a clinician suspects measles. A measles death is a death occurring within 30 days of onset of rash.",
+        "confirmed": "Suspected case with positive measles IgM OR epidemiological link to confirmed case",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Serum, throat/nasopharyngeal swab, urine",
         "test": "Measles IgM ELISA, RT-PCR for viral RNA",
         "turnaround": "24-72 hours",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -119,15 +218,15 @@
       "reporting_hours": 24,
       "description": "Any case of acute flaccid paralysis in a child under 15 years",
       "case_definition": {
-        "suspected": "Any child under 15 years of age with sudden onset of flaccid paralysis in one or more limbs, OR any person of any age with paralytic illness if polio is suspected",
+        "suspected": "Any case with weakness or floppiness of the limbs of sudden onset, not due to trauma, in a child less than 15 years of age",
         "confirmed": "AFP case with wild poliovirus or vaccine-derived poliovirus isolated from stool",
-        "source": "MOH Standard Case Definitions, WHO GPEI"
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Two stool samples collected 24-48 hours apart within 14 days of paralysis onset",
         "test": "Viral isolation and intratypic differentiation",
         "turnaround": "14-28 days",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": true
     },
@@ -138,15 +237,15 @@
       "reporting_hours": 24,
       "description": "Bacterial meningitis caused by Neisseria meningitidis",
       "case_definition": {
-        "suspected": "Sudden onset of fever (>38.5C rectal or >38C axillary) AND one of: neck stiffness, altered consciousness, other meningeal sign, OR petechial/purpuric rash",
-        "confirmed": "A suspected case with laboratory confirmation (isolation, detection by PCR, or antigen detection)",
-        "source": "MOH Standard Case Definitions, IDSR Guidelines"
+        "suspected": "Rapid onset of fever, headache, vomiting AND either neck stiffness OR altered consciousness OR bulging fontanelle (in less than one-year olds) with or without petechial or purpuric rash",
+        "confirmed": "Suspected case with turbid cerebrospinal fluid (CSF) and isolation of gram-negative intracellular diplococci (Neisseria meningitidis)",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "CSF, blood",
         "test": "Culture, Gram stain, latex agglutination, PCR",
         "turnaround": "24-48 hours",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -158,14 +257,14 @@
       "description": "Viral disease transmitted through bites from infected animals",
       "case_definition": {
         "suspected": "Acute encephalomyelitis (encephalitis) with history of animal bite or scratch, or exposure to saliva of suspected rabid animal",
-        "confirmed": "A suspected case with laboratory confirmation (direct fluorescent antibody test, PCR, or virus isolation)",
-        "source": "MOH Standard Case Definitions, IDSR Guidelines"
+        "confirmed": "Suspected case with laboratory confirmation (direct fluorescent antibody test, PCR, or virus isolation)",
+        "source": "MOH Standard Case Definitions"
       },
       "laboratory_criteria": {
         "specimen": "Saliva, CSF, skin biopsy (nuchal), brain tissue (post-mortem)",
         "test": "Direct fluorescent antibody (DFA), RT-PCR, virus isolation",
         "turnaround": "24-72 hours",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -177,14 +276,14 @@
       "description": "Bacterial infection causing thick membrane in nose and throat",
       "case_definition": {
         "suspected": "Upper respiratory tract illness with grayish-white adherent membrane of pharynx, larynx, tonsils, or nose",
-        "confirmed": "A suspected case with isolation of toxigenic Corynebacterium diphtheriae from clinical specimen",
-        "source": "MOH Standard Case Definitions, IDSR Guidelines"
+        "confirmed": "Suspected case with isolation of toxigenic Corynebacterium diphtheriae from clinical specimen",
+        "source": "MOH Standard Case Definitions"
       },
       "laboratory_criteria": {
         "specimen": "Throat/nasopharyngeal swab (from beneath membrane if possible)",
         "test": "Culture on Loeffler's medium, PCR for toxin gene",
         "turnaround": "24-48 hours",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -195,15 +294,15 @@
       "reporting_hours": 24,
       "description": "Tetanus occurring in neonates",
       "case_definition": {
-        "suspected": "Any neonate with normal ability to suck and cry during the first 2 days of life, AND between 3-28 days of age becomes unable to suck normally AND becomes stiff and/or has spasms",
+        "suspected": "Any newborn with a normal ability to suck or cry during the first two days of life, AND who, between 3 and 28 days of age, cannot suck normally AND has generalized stiffness and/or spasms",
         "confirmed": "Clinical diagnosis (no laboratory confirmation required)",
-        "source": "MOH Standard Case Definitions, WHO"
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "N/A - clinical diagnosis",
         "test": "No laboratory test required; diagnosis is clinical",
         "turnaround": "N/A",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -215,14 +314,14 @@
       "description": "Highly contagious respiratory disease caused by Bordetella pertussis",
       "case_definition": {
         "suspected": "A person with cough lasting 2+ weeks with at least one of: paroxysms (fits) of coughing, inspiratory whoop, post-tussive vomiting, without other apparent cause",
-        "confirmed": "A suspected case with laboratory confirmation (culture or PCR positive for B. pertussis)",
-        "source": "MOH Standard Case Definitions, WHO"
+        "confirmed": "Suspected case with laboratory confirmation (culture or PCR positive for B. pertussis)",
+        "source": "MOH Standard Case Definitions"
       },
       "laboratory_criteria": {
         "specimen": "Nasopharyngeal swab or aspirate",
         "test": "Culture, PCR",
         "turnaround": "3-7 days (culture), 1-2 days (PCR)",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -234,15 +333,15 @@
       "description": "Bacterial disease caused by Bacillus anthracis",
       "case_definition": {
         "suspected": "Cutaneous: Skin lesion evolving from papule to vesicle to depressed black eschar, usually with edema. Inhalation: Acute onset, initial flu-like illness followed by severe respiratory distress. GI: Severe abdominal distress followed by fever and septicemia. All forms with history of exposure to infected animals or animal products.",
-        "confirmed": "A suspected case with laboratory confirmation (isolation of B. anthracis, or positive PCR, or positive serology)",
-        "source": "MOH Standard Case Definitions, IDSR Guidelines"
+        "confirmed": "Suspected case with laboratory confirmation (isolation of B. anthracis, or positive PCR, or positive serology)",
+        "source": "MOH Standard Case Definitions"
       },
       "laboratory_criteria": {
         "specimen": "Vesicle fluid, eschar, blood, CSF, pleural fluid, stool, or sputum",
         "test": "Culture, PCR, direct fluorescent antibody",
         "turnaround": "24-48 hours",
         "biosafety": "BSL-3 required",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": true
     },
@@ -253,15 +352,15 @@
       "reporting_hours": 24,
       "description": "Severe acute respiratory syndrome caused by novel coronaviruses",
       "case_definition": {
-        "suspected": "A person with acute respiratory illness (fever and at least one sign/symptom of respiratory disease, e.g., cough, shortness of breath) AND with history of travel or residence in location reporting community transmission, OR close contact with confirmed case in the 14 days prior to symptom onset",
-        "confirmed": "A suspected case with laboratory confirmation by RT-PCR",
-        "source": "MOH Standard Case Definitions, WHO"
+        "suspected": "Severe acute unexplained respiratory illness with fever >=38C plus cough or sore throat and difficulty in breathing. Severe: moderate-to-severe respiratory illness (temperature >38C, cough, shortness of breath, or difficulty breathing) with or without evidence of pneumonia. All hospitalized cases are considered severe. Unexplained: clinical, epidemiological, or laboratory evaluation does not determine a cause.",
+        "confirmed": "Suspected case with laboratory confirmation by RT-PCR",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Nasopharyngeal/oropharyngeal swab, sputum, BAL",
-        "test": "RT-PCR for SARS-CoV-2",
+        "test": "RT-PCR for SARS-CoV-2 or novel coronavirus",
         "turnaround": "4-24 hours",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": true
     },
@@ -272,15 +371,15 @@
       "reporting_hours": 24,
       "description": "Novel or pandemic influenza strains",
       "case_definition": {
-        "suspected": "Severe acute respiratory illness (SARI): Acute respiratory infection with fever 38C+, cough, onset within last 10 days, and requiring hospitalization",
-        "confirmed": "A suspected case with laboratory confirmation by RT-PCR or viral culture positive for novel influenza virus",
-        "source": "MOH Standard Case Definitions, WHO"
+        "suspected": "Any person requiring hospitalization due to influenza-like illness (ILI). Any individual presenting with fever (>=38C), cough, sore throat and shortness of breath. Other symptoms may include: chills, myalgia, muscle pains and headache.",
+        "confirmed": "Suspected case with laboratory confirmation by RT-PCR or viral culture positive for novel influenza virus",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Nasopharyngeal/oropharyngeal swab, nasal wash, BAL",
         "test": "RT-PCR, viral culture",
         "turnaround": "24-48 hours",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": true
     },
@@ -311,15 +410,15 @@
       "reporting_hours": 168,
       "description": "Parasitic disease transmitted by Anopheles mosquitoes",
       "case_definition": {
-        "suspected": "Any person with fever or history of fever within 48 hours (or presence of anemia in endemic areas)",
-        "confirmed": "A suspected case with laboratory confirmation (positive blood smear or RDT for Plasmodium species)",
-        "source": "MOH Standard Case Definitions, WHO"
+        "suspected": "Above 5 years (excluding pregnancy): Any person with fever or fever with headache, back pains, joint pains, chills, sweats, myalgia, nausea and vomiting with presence of peripheral parasitaemia. Below 5 years: Any child with fever, chills, sweating, diarrhoea, nausea, vomiting, irritability and refusal to feed diagnosed clinically. Malaria in pregnancy: A pregnant woman with signs and symptoms of uncomplicated malaria.",
+        "confirmed": "Suspected case with positive blood smear or RDT for Plasmodium species",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Capillary or venous blood",
         "test": "Blood smear microscopy (thick and thin films), RDT",
         "turnaround": "30 minutes - 2 hours",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -330,15 +429,15 @@
       "reporting_hours": 168,
       "description": "Bacterial infection caused by Salmonella typhi",
       "case_definition": {
-        "suspected": "Gradual onset of steadily increasing and then persistently high fever, chills, malaise, headache, sore throat, cough, and sometimes abdominal pain and constipation or diarrhea",
-        "confirmed": "A suspected case with isolation of Salmonella typhi from blood, stool, urine, or bone marrow",
-        "source": "MOH Standard Case Definitions, IDSR Guidelines"
+        "suspected": "Insidious and sustained fever, severe headache/malaise, nausea and constipation (which is more common than diarrhoea in adults)",
+        "confirmed": "Suspected case with isolation of Salmonella species in blood or stool of patient",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Blood (first week), stool/urine (second week onwards), bone marrow",
         "test": "Culture (gold standard), Widal test (supportive only)",
         "turnaround": "48-72 hours",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -349,15 +448,15 @@
       "reporting_hours": 168,
       "description": "Bloody diarrhea caused by Shigella or Entamoeba histolytica",
       "case_definition": {
-        "suspected": "Acute diarrhea with visible blood in stool",
-        "confirmed": "A suspected case with laboratory confirmation (isolation of Shigella or identification of E. histolytica trophozoites)",
-        "source": "MOH Standard Case Definitions, IDSR Guidelines"
+        "suspected": "Any person with diarrhoea and visible blood in the stool",
+        "confirmed": "Suspected case with laboratory confirmation (isolation of Shigella or identification of E. histolytica trophozoites)",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Fresh stool sample",
         "test": "Stool culture for Shigella, microscopy for E. histolytica",
         "turnaround": "24-48 hours",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -368,15 +467,15 @@
       "reporting_hours": 168,
       "description": "Bacterial infection caused by Mycobacterium tuberculosis",
       "case_definition": {
-        "suspected": "A person with cough for 2+ weeks with or without: weight loss, night sweats, fever, hemoptysis, chest pain, loss of appetite",
-        "confirmed": "Bacteriologically confirmed: positive sputum smear, culture, or GeneXpert MTB/RIF. Clinically diagnosed: diagnosed by clinician but not bacteriologically confirmed.",
-        "source": "MOH Standard Case Definitions, WHO"
+        "suspected": "Chronic cough of more than three weeks",
+        "confirmed": "Sputum smear positive for Mycobacterium tuberculosis, or GeneXpert MTB/RIF positive, or culture positive",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Sputum (2 samples), gastric lavage, BAL, tissue",
         "test": "Sputum smear microscopy (ZN/FM), GeneXpert MTB/RIF, culture",
         "turnaround": "Same day (smear), 2 hours (GeneXpert), 2-8 weeks (culture)",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -395,7 +494,7 @@
         "specimen": "Nasopharyngeal swab (if indicated)",
         "test": "Clinical diagnosis primarily; viral panel if severe",
         "turnaround": "N/A for routine cases",
-        "source": "MOH Standard Case Definitions"
+        "source": "IMCI Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -406,15 +505,16 @@
       "reporting_hours": 168,
       "description": "Lower respiratory tract infection",
       "case_definition": {
-        "suspected": "Cough or difficulty breathing with fast breathing (age-specific cutoffs) with or without chest indrawing, fever, inability to drink",
+        "suspected": "Children <5 years: Any child aged 2 months to 5 years with cough or difficult breathing AND fast breathing (50+ breaths/min for 2-12 months; 40+ breaths/min for 1-5 years). Infants <2 months with fast breathing (60+ breaths/min) are referred for serious bacterial infection.",
         "confirmed": "Clinical diagnosis with or without chest X-ray; culture if severe",
-        "source": "MOH Standard Case Definitions, IMCI Guidelines"
+        "severe": "Any child aged 2 months to 5 years with cough or difficult breathing AND any general danger sign (unable to drink/breastfeed, vomits everything, convulsions, lethargy or unconsciousness) OR chest indrawing OR stridor in a calm child",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Sputum, blood, pleural fluid (if severe)",
         "test": "Chest X-ray, sputum culture, blood culture",
         "turnaround": "24-48 hours",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -426,14 +526,15 @@
       "description": "Acute diarrhea without blood",
       "case_definition": {
         "suspected": "Three or more loose or watery stools in a 24-hour period without visible blood",
-        "confirmed": "Clinical diagnosis; laboratory not routinely required",
-        "source": "MOH Standard Case Definitions, IMCI Guidelines"
+        "some_dehydration": "Any child <5 years with diarrhoea and two or more of: restless or irritable, sunken eyes, drinks eagerly/thirsty, skin pinch goes back slowly",
+        "severe_dehydration": "Any child <5 years with diarrhoea and two or more of: lethargic or unconscious, sunken eyes, not able to drink or drinking poorly, skin pinch goes back very slowly",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Stool (if outbreak investigation needed)",
         "test": "Stool culture, microscopy",
         "turnaround": "24-48 hours",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -444,15 +545,15 @@
       "reporting_hours": 168,
       "description": "Chronic bacterial infection caused by Mycobacterium leprae",
       "case_definition": {
-        "suspected": "Hypopigmented or reddish skin patch(es) with definite loss of sensation AND/OR peripheral nerve damage (thickening with loss of sensation and/or weakness)",
+        "suspected": "Any person with one of the following cardinal signs: skin patch with loss of sensation, one or more enlarged nerves, and presence of leprosy bacilli, with or without bacteriological diagnostic confirmation and requiring chemotherapy (excluding patients released from treatment)",
         "confirmed": "Clinical diagnosis with positive skin smear (if available)",
-        "source": "MOH Standard Case Definitions, WHO"
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
       },
       "laboratory_criteria": {
         "specimen": "Skin slit smear from earlobe, elbow, lesion",
         "test": "Microscopy for acid-fast bacilli",
         "turnaround": "Same day",
-        "source": "MOH Standard Case Definitions"
+        "source": "IDSR Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -464,14 +565,14 @@
       "description": "Bacterial zoonotic disease",
       "case_definition": {
         "suspected": "Acute or insidious onset of intermittent or remittent fever, night sweats, fatigue, anorexia, weight loss, headache, arthralgia, with history of contact with infected animals or consumption of unpasteurized dairy products",
-        "confirmed": "A suspected case with isolation of Brucella species OR positive serology (SAT 1:160+ OR 4-fold rise in titer)",
-        "source": "MOH Standard Case Definitions, IDSR Guidelines"
+        "confirmed": "Suspected case with isolation of Brucella species OR positive serology (SAT 1:160+ OR 4-fold rise in titer)",
+        "source": "MOH Standard Case Definitions"
       },
       "laboratory_criteria": {
         "specimen": "Blood, bone marrow",
         "test": "Blood culture, SAT (Standard Agglutination Test), ELISA",
         "turnaround": "48-72 hours (serology), 1-4 weeks (culture)",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -490,7 +591,7 @@
         "specimen": "N/A - clinical diagnosis",
         "test": "No laboratory test required; diagnosis is clinical. May test wound for C. tetani",
         "turnaround": "N/A",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -502,14 +603,14 @@
       "description": "Inflammation of the liver caused by hepatitis viruses",
       "case_definition": {
         "suspected": "Acute illness with discrete onset of symptoms AND jaundice OR elevated serum aminotransferase levels >2.5x upper limit of normal",
-        "confirmed": "A suspected case with positive serological markers (HAV IgM, HBsAg, HCV Ab, HEV IgM)",
+        "confirmed": "Suspected case with positive serological markers (HAV IgM, HBsAg, HCV Ab, HEV IgM)",
         "source": "MOH Standard Case Definitions"
       },
       "laboratory_criteria": {
         "specimen": "Serum",
         "test": "HAV IgM, HBsAg, Anti-HBc IgM, HCV Ab, HEV IgM, LFTs",
         "turnaround": "24-48 hours",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -521,14 +622,14 @@
       "description": "Viral disease transmitted by Aedes mosquitoes",
       "case_definition": {
         "suspected": "Acute onset of fever >38.5C AND severe arthralgia/arthritis not explained by other medical conditions, in a resident or visitor to endemic areas",
-        "confirmed": "A suspected case with positive PCR, virus isolation, or IgM seroconversion/4-fold rise in IgG",
-        "source": "MOH Standard Case Definitions, WHO"
+        "confirmed": "Suspected case with positive PCR, virus isolation, or IgM seroconversion/4-fold rise in IgG",
+        "source": "MOH Standard Case Definitions"
       },
       "laboratory_criteria": {
         "specimen": "Serum (acute: first 5 days; convalescent: 2-3 weeks)",
         "test": "RT-PCR (acute), IgM ELISA (after day 5), PRNT",
         "turnaround": "24-72 hours",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -540,14 +641,14 @@
       "description": "Viral disease transmitted by Aedes mosquitoes",
       "case_definition": {
         "suspected": "Acute febrile illness with two or more of: headache, retro-orbital pain, myalgia, arthralgia, rash, hemorrhagic manifestations, leukopenia",
-        "confirmed": "A suspected case with laboratory confirmation (NS1, PCR, IgM seroconversion, or virus isolation)",
-        "source": "MOH Standard Case Definitions, WHO"
+        "confirmed": "Suspected case with laboratory confirmation (NS1, PCR, IgM seroconversion, or virus isolation)",
+        "source": "MOH Standard Case Definitions"
       },
       "laboratory_criteria": {
         "specimen": "Serum (acute phase preferably within 5 days)",
         "test": "NS1 antigen, RT-PCR, IgM/IgG ELISA, virus isolation",
         "turnaround": "30 min (NS1 RDT), 24-48 hours (PCR/ELISA)",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -559,15 +660,15 @@
       "description": "Viral zoonotic disease affecting humans and livestock",
       "case_definition": {
         "suspected": "Acute onset of fever with hemorrhagic manifestations, jaundice, or encephalitis AND history of contact with sick/dead animals or residence in area with animal disease outbreak",
-        "confirmed": "A suspected case with positive PCR, virus isolation, or seroconversion (4-fold IgG rise or IgM positive)",
-        "source": "MOH Standard Case Definitions, WHO"
+        "confirmed": "Suspected case with positive PCR, virus isolation, or seroconversion (4-fold IgG rise or IgM positive)",
+        "source": "MOH Standard Case Definitions"
       },
       "laboratory_criteria": {
         "specimen": "Serum, whole blood (EDTA)",
         "test": "RT-PCR, IgM ELISA, virus isolation",
         "turnaround": "24-72 hours",
         "biosafety": "BSL-3 required for culture",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": true
     },
@@ -579,14 +680,14 @@
       "description": "Parasitic disease caused by Trypanosoma species",
       "case_definition": {
         "suspected": "Person with intermittent fever in endemic area AND one or more of: chancre at bite site, lymphadenopathy (especially posterior cervical), headache, sleep disturbance, behavioral changes",
-        "confirmed": "A suspected case with identification of trypanosomes in blood, lymph node aspirate, or CSF",
+        "confirmed": "Suspected case with identification of trypanosomes in blood, lymph node aspirate, or CSF",
         "source": "MOH Standard Case Definitions"
       },
       "laboratory_criteria": {
         "specimen": "Blood (thick smear), lymph node aspirate, CSF (for staging)",
         "test": "CATT (Card Agglutination Test), wet mount microscopy, CSF examination",
         "turnaround": "Same day",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -598,14 +699,14 @@
       "description": "Parasitic disease transmitted by sandflies",
       "case_definition": {
         "suspected": "Person from endemic area with prolonged fever (>2 weeks), weight loss, hepatomegaly and/or splenomegaly, and pancytopenia",
-        "confirmed": "A suspected case with demonstration of parasites in tissue (spleen, bone marrow, lymph node) OR positive serology (rK39) with compatible clinical picture",
+        "confirmed": "Suspected case with demonstration of parasites in tissue (spleen, bone marrow, lymph node) OR positive serology (rK39) with compatible clinical picture",
         "source": "MOH Standard Case Definitions"
       },
       "laboratory_criteria": {
         "specimen": "Splenic aspirate, bone marrow aspirate, lymph node aspirate",
         "test": "rK39 RDT, direct microscopy (Giemsa stain), PCR",
         "turnaround": "15 min (RDT), 1-2 hours (microscopy)",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -617,14 +718,14 @@
       "description": "Parasitic disease caused by blood flukes",
       "case_definition": {
         "suspected": "Person with history of freshwater contact in endemic area with hematuria (urinary) OR bloody diarrhea/abdominal pain (intestinal)",
-        "confirmed": "A suspected case with detection of Schistosoma eggs in urine or stool",
+        "confirmed": "Suspected case with detection of Schistosoma eggs in urine or stool",
         "source": "MOH Standard Case Definitions"
       },
       "laboratory_criteria": {
         "specimen": "Urine (S. haematobium) collected 10am-2pm, stool (S. mansoni)",
         "test": "Urine filtration/microscopy, Kato-Katz thick smear",
         "turnaround": "Same day",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -643,7 +744,7 @@
         "specimen": "Conjunctival swab (for research/confirmation only)",
         "test": "PCR for C. trachomatis (not routine)",
         "turnaround": "N/A for routine surveillance",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -655,14 +756,14 @@
       "description": "Parasitic disease transmitted by blackflies",
       "case_definition": {
         "suspected": "Person in endemic area with chronic itching/dermatitis, subcutaneous nodules (onchocercomata), AND/OR visual impairment not explained by other causes",
-        "confirmed": "A suspected case with identification of microfilariae in skin snips OR adult worms in nodule",
+        "confirmed": "Suspected case with identification of microfilariae in skin snips OR adult worms in nodule",
         "source": "MOH Standard Case Definitions"
       },
       "laboratory_criteria": {
         "specimen": "Skin snip from iliac crest or scapula",
         "test": "Microscopy for microfilariae",
         "turnaround": "Same day",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -674,14 +775,56 @@
       "description": "Parasitic disease transmitted by mosquitoes causing elephantiasis",
       "case_definition": {
         "suspected": "Person in endemic area with lymphedema/elephantiasis of limbs, hydrocele (scrotal swelling), acute dermatolymphangioadenitis (ADLA), or chyluria",
-        "confirmed": "A suspected case with detection of microfilariae in night blood OR positive antigen test (ICT card)",
+        "confirmed": "Suspected case with detection of microfilariae in night blood OR positive antigen test (ICT card)",
         "source": "MOH Standard Case Definitions"
       },
       "laboratory_criteria": {
         "specimen": "Night blood (10pm-2am for nocturnal periodicity)",
         "test": "Thick blood smear microscopy, ICT antigen card test",
         "turnaround": "Same day",
-        "source": "MOH Standard Case Definitions"
+        "source": "MOH Guidelines"
+      },
+      "is_ihr_notifiable": false
+    },
+    {
+      "name": "Sexually Transmitted Infections",
+      "icd10_codes": "A50,A51,A52,A53,A54,A55,A56,A57,A58,A59,A60,A63,A64",
+      "category": "MONTHLY",
+      "reporting_hours": 720,
+      "description": "Sexually transmitted diseases including syphilis, gonorrhea, chlamydia, etc.",
+      "case_definition": {
+        "suspected_ulcer": "Genital ulcer syndrome (non-vesicular): Any male with an ulcer on the penis, scrotum, or rectum, with or without inguinal adenopathy, or any female with ulcer on labia, vagina or rectum, with or without inguinal adenopathy",
+        "suspected_discharge": "Urethral discharge syndrome: Any male/female with urethral discharge with or without dysuria",
+        "confirmed": "Suspected case confirmed by a diagnostic laboratory procedure (e.g., Gram stain showing intracellular Gram-Negative diplococci)",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
+      },
+      "laboratory_criteria": {
+        "specimen": "Urethral/vaginal swab, ulcer swab",
+        "test": "Gram stain, culture, PCR/NAAT",
+        "turnaround": "Same day (Gram stain), 24-48 hours (culture)",
+        "source": "IDSR Guidelines"
+      },
+      "is_ihr_notifiable": false
+    },
+    {
+      "name": "HIV/AIDS",
+      "icd10_codes": "B20,B21,B22,B23,B24,Z21",
+      "category": "MONTHLY",
+      "reporting_hours": 720,
+      "description": "Human Immunodeficiency Virus infection and Acquired Immunodeficiency Syndrome",
+      "case_definition": {
+        "suspected_adult": "Adults: Case definition fulfilled if at least 2 major signs AND at least 1 minor sign are present. The presence of either generalized Kaposi sarcoma or cryptococcal meningitis is sufficient for AIDS case definition.",
+        "suspected_child": "Children <12 years: Case definition fulfilled if at least 2 major signs AND at least 2 minor signs are present (if no other known cause of immunosuppression). Confirmed HIV infection in the mother counts as a minor criterion.",
+        "major_signs": "Weight loss >10% of body weight or abnormally slow growth in children; Chronic diarrhoea for more than 1 month; Prolonged fever for more than 1 month",
+        "minor_signs": "Persistent cough for more than 1 month; Generalized pruritic dermatitis; History of herpes zoster; Oropharyngeal candidiasis; Chronic progressive or disseminated herpes virus infection; Generalized lymphadenopathy; Recurrent common infections (children)",
+        "confirmed": "Positive HIV serology (ELISA, rapid test) confirmed by supplemental test",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
+      },
+      "laboratory_criteria": {
+        "specimen": "Serum, plasma, whole blood, DBS",
+        "test": "HIV rapid test (serial algorithm), ELISA, CD4 count, viral load",
+        "turnaround": "15-30 minutes (rapid test), 24-48 hours (ELISA)",
+        "source": "NASCOP Guidelines"
       },
       "is_ihr_notifiable": false
     },
@@ -779,6 +922,25 @@
         "source": "MOH Guidelines"
       },
       "is_ihr_notifiable": false
+    },
+    {
+      "name": "Dracunculiasis (Guinea Worm)",
+      "icd10_codes": "B72",
+      "category": "IMMEDIATE",
+      "reporting_hours": 24,
+      "description": "Parasitic disease caused by Dracunculus medinensis, targeted for eradication",
+      "case_definition": {
+        "suspected": "Any person with a history of skin lesion and emergence of guinea worm within one year of the skin lesion",
+        "confirmed": "Suspected case with visual confirmation of guinea worm emergence from skin lesion",
+        "source": "IDSR Clinicians Booklet, MOH Kenya"
+      },
+      "laboratory_criteria": {
+        "specimen": "Worm specimen (if available)",
+        "test": "Visual identification of Dracunculus medinensis",
+        "turnaround": "Immediate",
+        "source": "WHO Guinea Worm Eradication Programme"
+      },
+      "is_ihr_notifiable": true
     }
   ]
 }
