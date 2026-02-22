@@ -10,6 +10,7 @@ import { RecentPatients } from '@/components/dashboard/recent-patients';
 import { AlertsWidget } from '@/components/dashboard/alerts-widget';
 import { AllClaimedEncountersWidget } from '@/components/dashboard/all-claimed-widget';
 import { MyClaimedEncountersWidget } from '@/components/dashboard/my-claimed-widget';
+import { IDSRDashboardWidget } from '@/components/surveillance/idsr-dashboard-widget';
 import { useDashboardStats, formatNumber } from '@/lib/hooks/use-dashboard-stats';
 import { useTriageWaitTimeStats } from '@/lib/hooks/use-triage';
 import { useIsSupervisor } from '@/lib/auth';
@@ -188,6 +189,8 @@ export default function DashboardPage() {
             <AlertsWidget />
           </CardContent>
         </Card>
+
+        <IDSRDashboardWidget />
       </div>
 
       {/* Supervisor section - All Claimed Encounters */}

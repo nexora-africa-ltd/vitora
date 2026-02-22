@@ -188,6 +188,26 @@ export {
   QUEUE_STATUS_CONFIG,
 } from './triage';
 
+// Surveillance types
+export type {
+  IDSRReportStatus,
+  NotifiableDiseaseCategory,
+  NotifiableCaseSeverity,
+  NotifiableCaseOutcome,
+  NotifiableCaseStatus,
+  NotifiableCaseListItem,
+  NotifiableCaseListParams,
+  IDSRDiseaseSummary,
+  IDSRWeeklyReport,
+  IDSRWeeklyReportListItem,
+  IDSRListParams,
+  IDSRDashboardWeek,
+  IDSRDashboardPreviousWeek,
+  IDSRDashboard,
+  IDSRDHIS2Preview,
+  IDSRSubmitResponse,
+} from './surveillance';
+
 // User types
 export interface User {
   id: number;
