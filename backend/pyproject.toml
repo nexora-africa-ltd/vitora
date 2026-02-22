@@ -50,7 +50,6 @@ drf-spectacular = "^0.29.0"
 africastalking = "^2.0.2"
 twisted = {extras = ["http2", "tls"], version = "^25.5.0"}
 django-otp = "^1.7.0"
-django-two-factor-auth = "^1.18.1"
 pyotp = "^2.9.0"
 
 [tool.poetry.group.dev.dependencies]

@@ -8,9 +8,10 @@ import { useAuth } from '@/lib/auth/context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { MFAVerification } from '@/components/auth/mfa-verification';
+import { APP_NAME } from '@/lib/utils/constants';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { SHALogo } from '@/components/ui/sha-logo';
-import { APP_NAME } from '@/lib/utils/constants';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -20,7 +21,12 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<{username?: string; password?: string}>({});
   const [mounted, setMounted] = useState(false);
-  const { login } = useAuth();
+  const [mfaState, setMfaState] = useState<{
+    required: boolean;
+    token?: string;
+    setupRequired?: boolean;
+  } | null>(null);
+  const { login, verifyMFA } = useAuth();
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
 
@@ -62,7 +68,22 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      await login(username, password);
+      const result = await login(username, password);
+
+      if (!result.success) {
+        setError(result.error || 'Login failed. Please try again.');
+        return;
+      }
+
+      if (result.mfaRequired) {
+        setMfaState({
+          required: true,
+          token: result.mfaToken,
+          setupRequired: result.mfaSetupRequired,
+        });
+        return;
+      }
+
       router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
@@ -70,6 +91,16 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  // Show MFA verification if required
+  if (mfaState?.required && mfaState.token) {
+    return (
+      <MFAVerification
+        mfaToken={mfaState.token}
+        onCancel={() => setMfaState(null)}
+      />
+    );
+  }
 
   return (
     <div className="relative flex min-h-screen">
