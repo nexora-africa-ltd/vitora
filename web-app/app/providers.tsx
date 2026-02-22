@@ -5,7 +5,7 @@ import { ThemeProvider } from 'next-themes';
 import { useState, ReactNode, Suspense, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { AuthProvider } from '@/lib/auth/context';
-import { Toaster } from '@/components/ui/toaster';
+import { Toaster } from '@/components/ui/sonner';
 import { NavigationProgress } from '@/components/layout/navigation-progress';
 import { DemoBanner, DemoWatermark } from '@/components/shared/demo-banner';
 import { NewVersionToast } from '@/components/shared/new-version-toast';
