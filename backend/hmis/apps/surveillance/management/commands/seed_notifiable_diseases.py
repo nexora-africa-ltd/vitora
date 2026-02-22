@@ -108,15 +108,45 @@ class Command(BaseCommand):
                 error_count += 1
                 continue
 
-            # Prepare data for Django model (convert JSON booleans)
+            # Handle case_definition - can be string or nested object
+            case_def = disease_data.get("case_definition", "")
+            if isinstance(case_def, dict):
+                # Convert nested format to text for database
+                parts = []
+                if case_def.get("suspected"):
+                    parts.append(f"Suspected: {case_def['suspected']}")
+                if case_def.get("confirmed"):
+                    parts.append(f"Confirmed: {case_def['confirmed']}")
+                if case_def.get("source"):
+                    parts.append(f"Source: {case_def['source']}")
+                case_def = "\n".join(parts)
+
+            # Handle laboratory_criteria - can be string or nested object
+            lab_criteria = disease_data.get("laboratory_criteria", "")
+            if isinstance(lab_criteria, dict):
+                # Convert nested format to text for database
+                parts = []
+                if lab_criteria.get("specimen"):
+                    parts.append(f"Specimen: {lab_criteria['specimen']}")
+                if lab_criteria.get("test"):
+                    parts.append(f"Test: {lab_criteria['test']}")
+                if lab_criteria.get("turnaround"):
+                    parts.append(f"Turnaround: {lab_criteria['turnaround']}")
+                if lab_criteria.get("biosafety"):
+                    parts.append(f"Biosafety: {lab_criteria['biosafety']}")
+                if lab_criteria.get("source"):
+                    parts.append(f"Source: {lab_criteria['source']}")
+                lab_criteria = "\n".join(parts)
+
+            # Prepare data for Django model
             model_data = {
                 "name": name,
                 "icd10_codes": disease_data.get("icd10_codes", ""),
                 "category": disease_data.get("category", "WEEKLY"),
                 "reporting_hours": disease_data.get("reporting_hours", 168),
                 "description": disease_data.get("description", ""),
-                "case_definition": disease_data.get("case_definition", ""),
-                "laboratory_criteria": disease_data.get("laboratory_criteria", ""),
+                "case_definition": case_def,
+                "laboratory_criteria": lab_criteria,
                 "is_ihr_notifiable": disease_data.get("is_ihr_notifiable", False),
                 "is_active": disease_data.get("is_active", True),
             }
