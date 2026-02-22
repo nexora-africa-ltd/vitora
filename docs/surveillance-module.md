@@ -2,7 +2,7 @@
 
 > **MOH 502 Notifiable Disease Reporting for Kenya**
 >
-> Version: 2.0
+> Version: 2.1
 > Created: February 22, 2026
 > Updated: February 22, 2026
 > Sprint: Phase 1, Sprint 1.B
@@ -17,9 +17,11 @@ The Disease Surveillance module implements Kenya's Ministry of Health (MOH) 502 
 
 - **Automatic Case Detection**: Diagnoses with ICD-10 codes matching notifiable diseases trigger automatic case creation
 - **Real-time WebSocket Alerts**: Immediate notification to surveillance dashboard for critical diseases
-- **MOH 502 Disease List**: Pre-seeded with 40 notifiable diseases (15 immediate, 20 weekly, 5 monthly)
-- **Structured Case Definitions**: JSON-based with suspected/confirmed criteria per MOH Standard Case Definitions
-- **Outbreak Detection**: Configurable thresholds for automatic outbreak alerts
+- **IDSR Disease List**: Pre-seeded with 43 notifiable diseases (16 immediate, 20 weekly, 7 monthly)
+- **Official IDSR Case Definitions**: Extracted from MOH "Standard Case Definitions for Priority Diseases in Kenya - IDSR Clinicians Booklet"
+- **Outbreak Thresholds**: Alert and action thresholds per IDSR guidelines included in JSON
+- **Structured Data**: JSON schema v2.1 with suspected/confirmed criteria and laboratory requirements
+- **Outbreak Detection**: Configurable numeric thresholds for automatic outbreak alerts
 - **County Reporting**: Reports endpoint for county health offices
 - **Extensible JSON Data**: Easy maintenance and expansion via `data/notifiable_diseases.json`
 
@@ -430,6 +432,19 @@ poetry run pytest tests/test_surveillance.py --cov=hmis.apps.surveillance
 ---
 
 ## Changelog
+
+### Version 2.1 (February 22, 2026)
+- Integrated official IDSR Clinicians Booklet case definitions
+- Added 3 new diseases: Dracunculiasis (Guinea Worm), Sexually Transmitted Infections, HIV/AIDS
+- Total diseases: 43 (16 immediate, 20 weekly, 7 monthly)
+- Added `outbreak_thresholds` section with IDSR alert/action thresholds for 18 priority diseases
+- Updated case definitions with exact IDSR wording for:
+  - Cholera, Yellow Fever, Plague, VHF, Measles, AFP/Polio
+  - Meningococcal Meningitis, Neonatal Tetanus, Dracunculiasis
+  - Malaria (age-specific), Typhoid, Dysentery, TB
+  - Pneumonia (with severe criteria), Diarrhea (dehydration grading)
+  - HIV/AIDS (major/minor signs), STIs (syndromes)
+- Schema bumped to v2.1
 
 ### Version 2.0 (February 22, 2026)
 - Enhanced JSON schema with structured case definitions
