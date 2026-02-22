@@ -2,9 +2,9 @@
 
 > **MOH 502 Notifiable Disease Reporting for Kenya**
 >
-> Version: 2.2
+> Version: 2.3
 > Created: February 22, 2026
-> Updated: February 22, 2026
+> Updated: February 23, 2026
 > Sprint: Phase 1, Sprint 1.B
 
 ---
@@ -17,6 +17,7 @@ The Disease Surveillance module implements Kenya's Ministry of Health (MOH) 502 
 
 - **Automatic Case Detection**: Diagnoses with ICD-10 codes matching notifiable diseases trigger automatic case creation
 - **Real-time WebSocket Alerts**: Immediate notification to surveillance dashboard for critical diseases
+- **Frontend WebSocket Integration**: Real-time updates with automatic polling fallback
 - **IDSR Disease List**: Pre-seeded with 55 notifiable diseases (19 immediate, 21 weekly, 15 monthly)
 - **Official IDSR Case Definitions**: Extracted from MOH "Standard Case Definitions for Priority Diseases in Kenya" and "IDSR Clinicians Handbook"
 - **NCD Surveillance**: Includes non-communicable diseases (diabetes, hypertension, cancers, road traffic injuries)
@@ -421,18 +422,92 @@ poetry run pytest tests/test_surveillance.py --cov=hmis.apps.surveillance
 
 ## Future Enhancements
 
-- [ ] IDSR Weekly Report generation (Phase 1, Sprint 1.B continued)
-- [ ] DHIS2 submission integration
+- [x] IDSR Weekly Report generation ✅ (February 23, 2026)
+- [x] DHIS2 submission integration ✅ (February 23, 2026)
+- [x] Web app surveillance dashboard ✅ (February 23, 2026)
+- [x] Frontend WebSocket real-time updates ✅ (February 23, 2026)
 - [ ] Contact tracing workflow
 - [ ] Outbreak investigation module
 - [ ] IHR notification workflow for international diseases
 - [ ] Mobile app push notifications
-- [ ] Web app surveillance dashboard
 - [ ] Automated outbreak clustering detection
 
 ---
 
+## Frontend Implementation
+
+### Web App Dashboard
+
+The surveillance dashboard is implemented in `web-app/app/(dashboard)/surveillance/`:
+
+| Page | Route | Features |
+|------|-------|----------|
+| Dashboard | `/surveillance` | Stats cards, top diseases, cases by county, quick actions |
+| Cases | `/surveillance/cases` | Case list with filters, pagination |
+| Alerts | `/surveillance/alerts` | Alert list with acknowledge, tabs for all/unacknowledged |
+| Thresholds | `/surveillance/thresholds` | Outbreak threshold configuration |
+| IDSR Reports | `/surveillance/idsr` | Weekly report list, generation, DHIS2 submission |
+
+### WebSocket Integration
+
+The frontend uses a hybrid WebSocket + polling approach:
+
+```typescript
+// lib/hooks/surveillance-websocket/use-surveillance-websocket.ts
+const { stats, isConnected, connectionState } = useSurveillanceWebSocket({
+  showToastNotifications: true,
+});
+```
+
+**Features:**
+- **Primary**: WebSocket connection to `ws://*/ws/surveillance/alerts/`
+- **Fallback**: Automatic polling (30s interval) when WebSocket unavailable  
+- **Toast notifications**: Destructive toasts for immediate/outbreak alerts
+- **Query invalidation**: Auto-invalidates React Query cache on events
+- **Status indicator**: `WebSocketStatus` component in page header
+
+**Events Handled:**
+
+| Event | Action |
+|-------|--------|
+| `surveillance.stats_update` | Updates dashboard stats |
+| `surveillance.new_case` | Toast + invalidates cases query |
+| `surveillance.immediate_alert` | Destructive toast + invalidates alerts |
+| `surveillance.outbreak_alert` | Destructive toast + invalidates thresholds |
+| `surveillance.overdue_alert` | Invalidates dashboard |
+| `surveillance.case_notified` | Invalidates cases |
+
+### API Response Schemas
+
+All API responses are validated with Zod schemas:
+
+```typescript
+// lib/schemas/surveillance.schema.ts
+export const SurveillanceDashboardSchema = z.object({ ... });
+export const PaginatedNotifiableCaseSchema = z.object({ ... });
+export const PaginatedSurveillanceAlertSchema = z.object({ ... });
+export const SurveillanceAlertListArraySchema = z.array(...);
+export const ExceededThresholdListSchema = z.array(...);
+```
+
+**Note**: The `/unacknowledged/` and `/exceeded/` endpoints return plain arrays (not paginated), matching backend implementation.
+
+---
+
 ## Changelog
+
+### Version 2.3 (February 23, 2026)
+- **Frontend WebSocket integration** with polling fallback
+  - Created `useSurveillanceWebSocket` hook in `lib/hooks/surveillance-websocket/`
+  - Integrated WebSocket status indicator in dashboard and alerts pages
+  - Toast notifications for immediate alerts, outbreak alerts
+  - Auto query invalidation on WebSocket events
+- **API schema fixes**:
+  - Fixed `listExceededThresholds` - returns array, not paginated
+  - Fixed `listUnacknowledgedAlerts` - returns array, not paginated
+  - Added `ExceededThresholdSchema` and `SurveillanceAlertListArraySchema`
+- **Dashboard refactor**: Using shared `StatsCard` component
+- Updated test coverage for new schemas
 
 ### Version 2.2 (February 22, 2026)
 - Integrated IDSR Clinicians Handbook (42+ priority diseases)

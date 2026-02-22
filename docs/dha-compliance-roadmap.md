@@ -2,22 +2,23 @@
 
 > **Strategic plan to achieve full DHA compliance for Vitora HMIS.**
 >
-> Version: 1.0
+> Version: 1.1
 > Created: February 22, 2026
+> Updated: February 23, 2026
 > Target: Q4 2027
 
 ---
 
 ## Executive Summary
 
-Vitora HMIS currently achieves **43% full DHA compliance** (40/93 items) with **73% at least partially addressed** (68/93). This roadmap outlines a phased approach to close the 53 remaining gaps over 18 months, prioritized by regulatory criticality and implementation complexity.
+Vitora HMIS currently achieves **45% full DHA compliance** (42/93 items) with **75% at least partially addressed** (70/93). This roadmap outlines a phased approach to close the 51 remaining gaps over 18 months, prioritized by regulatory criticality and implementation complexity.
 
 ### Compliance Trajectory
 
 | Milestone | Target Date | Compliance | Items Closed |
 |-----------|-------------|:----------:|:------------:|
-| **Current State** | Feb 2026 | 43% | — |
-| **Phase 1 Complete** | Jun 2026 | 65% | +20 |
+| **Current State** | Feb 2026 | 45% | — |
+| **Phase 1 Complete** | Jun 2026 | 65% | +18 |
 | **Phase 2 Complete** | Dec 2026 | 82% | +16 |
 | **Phase 3 Complete** | Jun 2027 | 95% | +12 |
 | **Full Compliance** | Dec 2027 | 100% | +5 |
@@ -124,6 +125,21 @@ Gaps are categorized into four tiers:
 - **Owner**: Backend Team
 - **Completed**: February 23, 2026
 - **Deliverables**: `IDSRWeeklyReport`, `IDSRDiseaseSummary` models, Celery tasks, `docs/idsr-weekly-reporting.md`
+
+#### 6b. Surveillance Frontend WebSocket Integration `P1` `REQUIRED` ✅ COMPLETE
+- **Gap**: ~~No real-time surveillance UI~~ **RESOLVED**
+- **Action**:
+  - [x] Create `useSurveillanceWebSocket` hook with polling fallback
+  - [x] Integrate WebSocket in surveillance dashboard page
+  - [x] Integrate WebSocket in surveillance alerts page
+  - [x] Add `WebSocketStatus` indicator in page headers
+  - [x] Toast notifications for immediate/outbreak alerts
+  - [x] Auto query invalidation on WebSocket events
+  - [x] Fix API response schemas (`/exceeded/`, `/unacknowledged/` return arrays)
+  - [x] Tests: TypeScript type-check passing
+- **Owner**: Frontend Team
+- **Completed**: February 23, 2026
+- **Deliverables**: `lib/hooks/surveillance-websocket/`, updated pages, Zod schema fixes
 
 ### Sprint 1.C — Clinical Data Model Enhancements (Weeks 9-12)
 
