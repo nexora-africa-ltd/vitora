@@ -40,6 +40,11 @@ app.conf.task_routes = {
     "hmis.apps.core.tasks.cleanup_synced_entries": {"queue": "maintenance"},
     "hmis.apps.core.tasks.retry_failed_entries": {"queue": "maintenance"},
     "hmis.apps.core.tasks.full_sync": {"queue": "sync"},
+    # Surveillance tasks
+    "hmis.apps.surveillance.tasks.generate_idsr_weekly_report": {"queue": "reporting"},
+    "hmis.apps.surveillance.tasks.check_overdue_notifications": {"queue": "monitoring"},
+    "hmis.apps.surveillance.tasks.check_outbreak_thresholds": {"queue": "monitoring"},
+    "hmis.apps.surveillance.tasks.submit_idsr_to_dhis2": {"queue": "reporting"},
 }
 
 # Configure periodic tasks (Celery Beat)
@@ -64,6 +69,21 @@ app.conf.beat_schedule = {
     "generate-monthly-clinic-reports": {
         "task": "hmis.apps.clinics.tasks.generate_monthly_clinic_reports",
         "schedule": crontab(minute=0, hour=1, day_of_month=1),
+    },
+    # IDSR Weekly Report - runs Sunday at midnight (Kenya time)
+    "generate-idsr-weekly-report": {
+        "task": "hmis.apps.surveillance.tasks.generate_idsr_weekly_report",
+        "schedule": crontab(minute=0, hour=0, day_of_week="sunday"),
+    },
+    # Check for overdue notifications - every 4 hours
+    "check-overdue-notifications": {
+        "task": "hmis.apps.surveillance.tasks.check_overdue_notifications",
+        "schedule": crontab(minute=0, hour="*/4"),
+    },
+    # Check outbreak thresholds - twice daily
+    "check-outbreak-thresholds": {
+        "task": "hmis.apps.surveillance.tasks.check_outbreak_thresholds",
+        "schedule": crontab(minute=0, hour="6,18"),
     },
 }
 

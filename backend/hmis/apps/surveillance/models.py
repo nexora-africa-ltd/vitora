@@ -9,7 +9,6 @@ Phase 1 Sprint 1.B: Disease Surveillance Foundation
 """
 
 from datetime import timedelta
-from enum import Enum
 from typing import TYPE_CHECKING
 
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -514,3 +513,363 @@ class OutbreakThreshold(models.Model):
 
         count = cases.count()
         return (count >= self.case_threshold, count)
+
+
+class IDSRReportStatus(models.TextChoices):
+    """Status of IDSR weekly report."""
+
+    DRAFT = "DRAFT", "Draft"
+    PENDING_REVIEW = "PENDING_REVIEW", "Pending Review"
+    APPROVED = "APPROVED", "Approved"
+    SUBMITTED = "SUBMITTED", "Submitted to DHIS2"
+    FAILED = "FAILED", "Submission Failed"
+
+
+class IDSRWeeklyReport(models.Model):
+    """
+    Integrated Disease Surveillance and Response (IDSR) Weekly Report.
+
+    Aggregates notifiable disease cases by epidemiological week for
+    submission to county health offices and DHIS2/KHIS.
+
+    Epidemiological weeks follow ISO 8601 standard:
+    - Week 1 contains the first Thursday of the year
+    - Weeks run Monday to Sunday
+
+    Attributes:
+        epi_year: Epidemiological year
+        epi_week: Epidemiological week number (1-53)
+        facility: Healthcare facility (facility code from settings)
+        county: County for reporting/routing
+        status: Report workflow status
+        generated_at: When report was auto-generated
+        submitted_at: When submitted to DHIS2
+    """
+
+    # Epidemiological week identification
+    epi_year = models.PositiveIntegerField(
+        help_text="Epidemiological year (ISO 8601)",
+    )
+    epi_week = models.PositiveIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(53)],
+        help_text="Epidemiological week number (1-53)",
+    )
+    week_start_date = models.DateField(
+        help_text="Monday of the epidemiological week",
+    )
+    week_end_date = models.DateField(
+        help_text="Sunday of the epidemiological week",
+    )
+
+    # Facility identification (from Django settings or facility model)
+    facility_code = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="MFL code or facility identifier",
+    )
+    facility_name = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Facility name at time of report generation",
+    )
+
+    # County for reporting
+    county = models.ForeignKey(
+        "core.County",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="idsr_weekly_reports",
+        help_text="County health office for submission",
+    )
+    sub_county = models.ForeignKey(
+        "core.SubCounty",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="idsr_weekly_reports",
+        help_text="Sub-county for detailed reporting",
+    )
+
+    # Summary statistics
+    total_cases = models.PositiveIntegerField(
+        default=0,
+        help_text="Total notifiable cases reported this week",
+    )
+    total_deaths = models.PositiveIntegerField(
+        default=0,
+        help_text="Total deaths from notifiable diseases this week",
+    )
+    immediate_cases = models.PositiveIntegerField(
+        default=0,
+        help_text="Cases of immediate reportable diseases",
+    )
+    lab_confirmed_cases = models.PositiveIntegerField(
+        default=0,
+        help_text="Laboratory confirmed cases",
+    )
+
+    # Outbreak indicators
+    outbreak_declared = models.BooleanField(
+        default=False,
+        help_text="Whether outbreak was declared this week",
+    )
+    outbreak_diseases = models.TextField(
+        blank=True,
+        default="",
+        help_text="Comma-separated list of outbreak diseases",
+    )
+
+    # Report workflow
+    status = models.CharField(
+        max_length=20,
+        choices=IDSRReportStatus.choices,
+        default=IDSRReportStatus.DRAFT,
+        help_text="Report workflow status",
+    )
+    generated_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When report was auto-generated",
+    )
+    generated_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="generated_idsr_reports",
+        help_text="User or system that generated the report",
+    )
+    reviewed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When report was reviewed",
+    )
+    reviewed_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_idsr_reports",
+        help_text="User who reviewed the report",
+    )
+    approved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When report was approved",
+    )
+    approved_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_idsr_reports",
+        help_text="User who approved the report",
+    )
+
+    # DHIS2 submission tracking
+    dhis2_submitted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When submitted to DHIS2",
+    )
+    dhis2_response = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="DHIS2 API response",
+    )
+    dhis2_import_summary = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="DHIS2 import summary (imported, updated, ignored counts)",
+    )
+
+    # Notes and comments
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Additional notes or comments",
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-epi_year", "-epi_week"]
+        verbose_name = "IDSR Weekly Report"
+        verbose_name_plural = "IDSR Weekly Reports"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["epi_year", "epi_week", "facility_code"],
+                name="unique_idsr_week_facility",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["epi_year", "epi_week"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["county"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"IDSR Week {self.epi_week}/{self.epi_year} - {self.facility_name or self.facility_code}"
+
+    @property
+    def is_submitted(self) -> bool:
+        """Return True if report has been submitted to DHIS2."""
+        return self.status == IDSRReportStatus.SUBMITTED
+
+    @property
+    def can_edit(self) -> bool:
+        """Return True if report can still be edited."""
+        return self.status in [IDSRReportStatus.DRAFT, IDSRReportStatus.PENDING_REVIEW]
+
+    @property
+    def week_label(self) -> str:
+        """Return formatted week label (e.g., 'W08 2026')."""
+        return f"W{self.epi_week:02d} {self.epi_year}"
+
+    def approve(self, user) -> None:
+        """Approve the report for submission."""
+        self.status = IDSRReportStatus.APPROVED
+        self.approved_at = timezone.now()
+        self.approved_by = user
+        self.save(update_fields=["status", "approved_at", "approved_by", "updated_at"])
+
+    def mark_submitted(self, dhis2_response: dict | None = None) -> None:
+        """Mark report as submitted to DHIS2."""
+        self.status = IDSRReportStatus.SUBMITTED
+        self.dhis2_submitted_at = timezone.now()
+        if dhis2_response:
+            self.dhis2_response = dhis2_response
+            self.dhis2_import_summary = dhis2_response.get("importSummary")
+        self.save(
+            update_fields=[
+                "status",
+                "dhis2_submitted_at",
+                "dhis2_response",
+                "dhis2_import_summary",
+                "updated_at",
+            ]
+        )
+
+    def mark_failed(self, error_response: dict | None = None) -> None:
+        """Mark report submission as failed."""
+        self.status = IDSRReportStatus.FAILED
+        if error_response:
+            self.dhis2_response = error_response
+        self.save(update_fields=["status", "dhis2_response", "updated_at"])
+
+
+class IDSRDiseaseSummary(models.Model):
+    """
+    Per-disease summary within an IDSR Weekly Report.
+
+    Contains case counts, deaths, and lab confirmation status
+    for each notifiable disease reported in the week.
+
+    Attributes:
+        report: Parent IDSRWeeklyReport
+        disease: NotifiableDisease reference
+        cases: Number of cases reported
+        deaths: Number of deaths
+        lab_confirmed: Number of lab-confirmed cases
+    """
+
+    report = models.ForeignKey(
+        IDSRWeeklyReport,
+        on_delete=models.CASCADE,
+        related_name="disease_summaries",
+        help_text="Parent weekly report",
+    )
+    disease = models.ForeignKey(
+        NotifiableDisease,
+        on_delete=models.PROTECT,
+        related_name="idsr_summaries",
+        help_text="Notifiable disease",
+    )
+
+    # Case counts
+    cases_under_5 = models.PositiveIntegerField(
+        default=0,
+        help_text="Cases in children under 5 years",
+    )
+    cases_5_and_above = models.PositiveIntegerField(
+        default=0,
+        help_text="Cases in patients 5 years and above",
+    )
+    total_cases = models.PositiveIntegerField(
+        default=0,
+        help_text="Total cases (auto-calculated)",
+    )
+
+    # Deaths
+    deaths_under_5 = models.PositiveIntegerField(
+        default=0,
+        help_text="Deaths in children under 5 years",
+    )
+    deaths_5_and_above = models.PositiveIntegerField(
+        default=0,
+        help_text="Deaths in patients 5 years and above",
+    )
+    total_deaths = models.PositiveIntegerField(
+        default=0,
+        help_text="Total deaths (auto-calculated)",
+    )
+
+    # Lab confirmation
+    lab_confirmed = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of laboratory confirmed cases",
+    )
+
+    # Case fatality rate (CFR)
+    case_fatality_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="CFR percentage (deaths/cases * 100)",
+    )
+
+    # Outbreak flag
+    is_outbreak = models.BooleanField(
+        default=False,
+        help_text="Whether this disease is in outbreak status",
+    )
+
+    # Notes
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Disease-specific notes or investigation status",
+    )
+
+    class Meta:
+        ordering = ["disease__name"]
+        verbose_name = "IDSR Disease Summary"
+        verbose_name_plural = "IDSR Disease Summaries"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["report", "disease"],
+                name="unique_report_disease_summary",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.disease.name}: {self.total_cases} cases, {self.total_deaths} deaths"
+
+    def save(self, *args, **kwargs):
+        """Calculate totals and CFR on save."""
+        self.total_cases = self.cases_under_5 + self.cases_5_and_above
+        self.total_deaths = self.deaths_under_5 + self.deaths_5_and_above
+        if self.total_cases > 0 and self.total_deaths > 0:
+            from decimal import Decimal
+
+            self.case_fatality_rate = Decimal(self.total_deaths) / Decimal(
+                self.total_cases
+            ) * Decimal("100")
+        else:
+            self.case_fatality_rate = None
+        super().save(*args, **kwargs)

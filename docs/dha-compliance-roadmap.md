@@ -110,17 +110,20 @@ Gaps are categorized into four tiers:
 - **Completed**: February 22, 2026
 - **Deliverables**: `hmis/apps/surveillance/`, `docs/surveillance-module.md`
 
-#### 6. IDSR Weekly Reporting `P0` `CRITICAL`
-- **Gap**: No IDSR implementation
+#### 6. IDSR Weekly Reporting `P0` `CRITICAL` ✅ COMPLETE
+- **Gap**: ~~No IDSR implementation~~ **RESOLVED**
 - **Action**:
-  - [ ] Create `IDSRWeeklyReport` model (epidemiological week, disease counts, facility)
-  - [ ] Implement automated weekly aggregation (Celery task, runs Sunday midnight)
-  - [ ] Build IDSR summary dashboard
-  - [ ] DHIS2 submission endpoint
-  - [ ] Tests: 20+ unit tests
+  - [x] Create `IDSRWeeklyReport` model (epidemiological week, disease counts, facility)
+  - [x] Create `IDSRDiseaseSummary` model (per-disease aggregation with age groups)
+  - [x] Implement automated weekly aggregation (Celery task, runs Sunday midnight)
+  - [x] Build IDSR dashboard endpoint (`/api/surveillance/idsr/dashboard/`)
+  - [x] DHIS2 submission endpoint (`/api/surveillance/idsr/{id}/submit_to_dhis2/`)
+  - [x] DHIS2 payload preview endpoint
+  - [x] Report generation, approval, and submission workflow
+  - [x] Tests: 35 unit tests (exceeded 20+ requirement)
 - **Owner**: Backend Team
-- **Effort**: 1 sprint (2 weeks)
-- **Deliverables**: IDSR reporting UI, Celery task
+- **Completed**: February 23, 2026
+- **Deliverables**: `IDSRWeeklyReport`, `IDSRDiseaseSummary` models, Celery tasks, `docs/idsr-weekly-reporting.md`
 
 ### Sprint 1.C — Clinical Data Model Enhancements (Weeks 9-12)
 

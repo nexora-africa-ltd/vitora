@@ -9,6 +9,8 @@ from django.contrib import admin
 from django.utils.html import format_html
 
 from .models import (
+    IDSRDiseaseSummary,
+    IDSRWeeklyReport,
     NotifiableCase,
     NotifiableDisease,
     NotificationStatus,
@@ -259,3 +261,138 @@ class OutbreakThresholdAdmin(admin.ModelAdmin):
         )
 
     current_status.short_description = "Status"
+
+
+# ============================================================================
+# IDSR Weekly Reporting Admin
+# ============================================================================
+
+
+class IDSRDiseaseSummaryInline(admin.TabularInline):
+    """Inline admin for IDSRDiseaseSummary within weekly report."""
+
+    model = IDSRDiseaseSummary
+    extra = 0
+    readonly_fields = ["total_cases", "total_deaths", "case_fatality_rate"]
+    fields = [
+        "disease",
+        "cases_under_5",
+        "cases_5_and_above",
+        "total_cases",
+        "deaths_under_5",
+        "deaths_5_and_above",
+        "total_deaths",
+        "lab_confirmed",
+        "is_outbreak",
+    ]
+
+
+@admin.register(IDSRWeeklyReport)
+class IDSRWeeklyReportAdmin(admin.ModelAdmin):
+    """Admin for IDSRWeeklyReport model."""
+
+    list_display = [
+        "week_label",
+        "facility_name",
+        "county_display",
+        "total_cases",
+        "total_deaths",
+        "status_badge",
+        "outbreak_badge",
+        "generated_at",
+    ]
+    list_filter = ["status", "outbreak_declared", "epi_year", "county"]
+    search_fields = ["facility_name", "facility_code"]
+    ordering = ["-epi_year", "-epi_week"]
+    readonly_fields = [
+        "week_label",
+        "is_submitted",
+        "can_edit",
+        "generated_at",
+        "dhis2_submitted_at",
+        "dhis2_response",
+        "dhis2_import_summary",
+        "created_at",
+        "updated_at",
+    ]
+    raw_id_fields = ["county", "sub_county", "generated_by", "reviewed_by", "approved_by"]
+    inlines = [IDSRDiseaseSummaryInline]
+    fieldsets = (
+        (
+            "Week Identification",
+            {"fields": ("epi_year", "epi_week", "week_label", "week_start_date", "week_end_date")},
+        ),
+        ("Facility", {"fields": ("facility_code", "facility_name", "county", "sub_county")}),
+        (
+            "Summary",
+            {
+                "fields": (
+                    "total_cases",
+                    "total_deaths",
+                    "immediate_cases",
+                    "lab_confirmed_cases",
+                    "outbreak_declared",
+                    "outbreak_diseases",
+                )
+            },
+        ),
+        (
+            "Workflow",
+            {
+                "fields": (
+                    "status",
+                    "generated_at",
+                    "generated_by",
+                    "reviewed_at",
+                    "reviewed_by",
+                    "approved_at",
+                    "approved_by",
+                )
+            },
+        ),
+        (
+            "DHIS2 Submission",
+            {
+                "fields": ("dhis2_submitted_at", "dhis2_response", "dhis2_import_summary"),
+                "classes": ("collapse",),
+            },
+        ),
+        ("Notes", {"fields": ("notes",)}),
+        ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+
+    def county_display(self, obj):
+        """Return county name or dash."""
+        return obj.county.name if obj.county else "-"
+
+    county_display.short_description = "County"
+
+    def status_badge(self, obj):
+        """Return status with color badge."""
+        colors = {
+            "DRAFT": "#95a5a6",
+            "PENDING_REVIEW": "#f39c12",
+            "APPROVED": "#3498db",
+            "SUBMITTED": "#27ae60",
+            "FAILED": "#e74c3c",
+        }
+        color = colors.get(obj.status, "#95a5a6")
+        return format_html(
+            '<span style="background-color: {}; color: white; padding: 3px 8px; '
+            'border-radius: 3px; font-size: 11px;">{}</span>',
+            color,
+            obj.get_status_display(),
+        )
+
+    status_badge.short_description = "Status"
+
+    def outbreak_badge(self, obj):
+        """Return outbreak indicator."""
+        if obj.outbreak_declared:
+            return format_html(
+                '<span style="background-color: #e74c3c; color: white; padding: 3px 8px; '
+                'border-radius: 3px; font-size: 11px;">🚨 OUTBREAK</span>'
+            )
+        return "-"
+
+    outbreak_badge.short_description = "Outbreak"
