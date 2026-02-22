@@ -838,3 +838,172 @@ class TestMFAAuditLogging:
         ).first()
 
         assert log is not None
+
+
+# ============================================================================
+# MFA Token Refresh Tests (Sprint 2.0 - Security Fix)
+# ============================================================================
+
+
+class TestMFAAwareTokenRefresh:
+    """
+    Tests for MFA-aware token refresh.
+
+    When MFA is enabled, tokens issued BEFORE MFA was enabled should be
+    rejected on refresh. This prevents session hijacking where old tokens
+    bypass MFA verification.
+    """
+
+    def test_refresh_token_works_when_no_mfa(self, api_client, test_user, db):
+        """Should allow token refresh when MFA is not enabled."""
+        # Login (no MFA)
+        login_response = api_client.post(
+            "/api/token/",
+            {"username": "testuser", "password": "testpassword123"},
+        )
+
+        assert login_response.status_code == status.HTTP_200_OK
+        refresh_token = login_response.data["refresh"]
+
+        # Refresh the token
+        refresh_response = api_client.post(
+            "/api/token/refresh/",
+            {"refresh": refresh_token},
+        )
+
+        assert refresh_response.status_code == status.HTTP_200_OK
+        assert "access" in refresh_response.data
+
+    def test_refresh_token_blocked_after_mfa_enabled(self, api_client, test_user, db):
+        """Should block token refresh when MFA was enabled after token was issued."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from hmis.apps.core.mfa.models import UserTOTPDevice
+
+        # Login BEFORE MFA is enabled
+        login_response = api_client.post(
+            "/api/token/",
+            {"username": "testuser", "password": "testpassword123"},
+        )
+
+        assert login_response.status_code == status.HTTP_200_OK
+        refresh_token = login_response.data["refresh"]
+
+        # Enable MFA AFTER getting the token
+        device = UserTOTPDevice.objects.create(
+            user=test_user,
+            name="Phone",
+            confirmed=True,
+            confirmed_at=timezone.now(),
+        )
+
+        # Attempt to refresh the token - should be blocked
+        refresh_response = api_client.post(
+            "/api/token/refresh/",
+            {"refresh": refresh_token},
+        )
+
+        assert refresh_response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert refresh_response.data["code"] == "MFA_ENABLED_RE_AUTH_REQUIRED"
+
+    def test_refresh_token_works_after_mfa_login(self, api_client, test_user, db):
+        """Should allow token refresh when token was issued AFTER MFA was enabled."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from hmis.apps.core.mfa.models import UserTOTPDevice
+
+        # Enable MFA FIRST
+        device = UserTOTPDevice.objects.create(
+            user=test_user,
+            name="Phone",
+            confirmed=True,
+            confirmed_at=timezone.now() - timedelta(hours=1),  # MFA enabled 1 hour ago
+        )
+
+        # Login through MFA flow
+        login_response = api_client.post(
+            "/api/token/",
+            {"username": "testuser", "password": "testpassword123"},
+        )
+
+        assert login_response.status_code == status.HTTP_200_OK
+        assert login_response.data.get("mfa_required") is True
+        mfa_token = login_response.data["mfa_token"]
+
+        # Verify MFA with TOTP
+        current_totp = device.generate_token()
+        verify_response = api_client.post(
+            "/api/mfa/verify/",
+            {"mfa_token": mfa_token, "token": current_totp},
+        )
+
+        assert verify_response.status_code == status.HTTP_200_OK
+        refresh_token = verify_response.data["refresh"]
+
+        # Refresh the token - should work since we went through MFA
+        refresh_response = api_client.post(
+            "/api/token/refresh/",
+            {"refresh": refresh_token},
+        )
+
+        assert refresh_response.status_code == status.HTTP_200_OK
+        assert "access" in refresh_response.data
+
+    def test_refresh_blocked_logs_audit(self, api_client, test_user, db):
+        """Should log when token refresh is blocked due to MFA enablement."""
+        from django.utils import timezone
+
+        from hmis.apps.core.mfa.models import UserTOTPDevice
+        from hmis.apps.core.models import AuditLog
+
+        # Login BEFORE MFA
+        login_response = api_client.post(
+            "/api/token/",
+            {"username": "testuser", "password": "testpassword123"},
+        )
+        refresh_token = login_response.data["refresh"]
+
+        # Enable MFA
+        UserTOTPDevice.objects.create(
+            user=test_user,
+            name="Phone",
+            confirmed=True,
+            confirmed_at=timezone.now(),
+        )
+
+        # Attempt refresh
+        api_client.post(
+            "/api/token/refresh/",
+            {"refresh": refresh_token},
+        )
+
+        # Check audit log
+        log = AuditLog.objects.filter(
+            user=test_user,
+            action="token_refresh_blocked_mfa",
+        ).first()
+
+        assert log is not None
+        assert "mfa_enabled_at" in log.details
+
+    def test_refresh_with_invalid_token(self, api_client, db):
+        """Should reject refresh with invalid token."""
+        refresh_response = api_client.post(
+            "/api/token/refresh/",
+            {"refresh": "invalid-token"},
+        )
+
+        assert refresh_response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_refresh_without_token(self, api_client, db):
+        """Should reject refresh without token provided."""
+        refresh_response = api_client.post(
+            "/api/token/refresh/",
+            {},
+        )
+
+        assert refresh_response.status_code == status.HTTP_400_BAD_REQUEST

@@ -43,6 +43,11 @@ class UserTOTPDevice(models.Model):
         default=False,
         help_text="Whether device has been verified",
     )
+    confirmed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When device was confirmed (MFA enabled)",
+    )
     created_at = models.DateTimeField(
         auto_now_add=True,
         help_text="When device was created",
