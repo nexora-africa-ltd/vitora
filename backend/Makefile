@@ -47,6 +47,8 @@ help:
 	@echo "  load-lab-ranges - Load laboratory reference ranges"
 	@echo "  create-lab-queues - Create missing laboratory queues"
 	@echo "  create-test-user - Create test user (admin/voXOQkM4Tn6qCNQTy)"
+	@echo "  seed-diseases   - Seed MOH 502 notifiable diseases"
+	@echo "  seed-diseases-update - Update diseases from JSON"
 	@echo "  import-all      - Run all data imports"
 	@echo ""
 	@echo "Setup:"
@@ -240,8 +242,16 @@ create-test-user:
 	@echo "Creating test user..."
 	poetry run python manage.py create_test_user
 
+seed-diseases:
+	@echo "Seeding MOH 502 notifiable diseases..."
+	poetry run python manage.py seed_notifiable_diseases
+
+seed-diseases-update:
+	@echo "Updating MOH 502 notifiable diseases from JSON..."
+	poetry run python manage.py seed_notifiable_diseases --update
+
 # Import all data - run after fresh database setup
-import-all: migrate import-locations import-icd10 import-loinc import-drugs load-roles load-templates load-lab-ranges create-lab-queues
+import-all: migrate import-locations import-icd10 import-loinc import-drugs load-roles load-templates load-lab-ranges create-lab-queues seed-diseases
 	@echo "All data imports complete!"
 
 # Setup fresh database with all data
