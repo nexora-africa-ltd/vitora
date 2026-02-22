@@ -2,7 +2,7 @@
 URL configuration for core app.
 """
 
-from django.urls import path
+from django.urls import include, path
 from rest_framework import routers
 
 from .dashboard_views import (
@@ -42,4 +42,6 @@ urlpatterns = [
     path("generate/case-number/", generate_case_number_view, name="generate-case-number"),
     # Public document verification (no auth required)
     path("verify/", verify_document, name="verify-document"),
+    # Emergency access (break-glass)
+    path("emergency-access/", include("hmis.apps.core.emergency_access.urls")),
 ] + router.urls

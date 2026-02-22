@@ -4,6 +4,7 @@ Admin configuration for core app.
 
 from django.contrib import admin
 
+from .emergency_access.admin import EmergencyAccessAdmin  # noqa: F401
 from .models import (
     AuditLog,
     CodeSystem,

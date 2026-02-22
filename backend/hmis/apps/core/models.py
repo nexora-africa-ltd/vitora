@@ -53,6 +53,10 @@ class AuditLog(models.Model):
         ("encounter_view", "Encounter View"),
         ("encounter_update", "Encounter Update"),
         ("encounter_delete", "Encounter Delete"),
+        # Emergency access (break-glass)
+        ("emergency_access_invoke", "Emergency Access Invoked"),
+        ("emergency_access_approved", "Emergency Access Approved"),
+        ("emergency_access_revoked", "Emergency Access Revoked"),
         # System actions
         ("system_error", "System Error"),
         ("data_export", "Data Export"),
