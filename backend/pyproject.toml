@@ -96,6 +96,8 @@ testpaths = ["tests"]
 # Ignore Django model classes that match Test* pattern (e.g., TestCatalog)
 filterwarnings = [
     "ignore::pytest.PytestCollectionWarning",
+    # Africa's Talking SDK emits this during initialization regardless of usage
+    "ignore:Sandbox is currently not available for the Whatsapp service:UserWarning",
 ]
 addopts = [
     "-v",
@@ -126,6 +128,7 @@ omit = [
     "*/__pycache__/*",
     "*/venv/*",
     "*/env/*",
+    "wsgi.py",
 ]
 branch = true
 
