@@ -181,7 +181,7 @@ export function MFASettingsTab() {
           </div>
 
           {/* Actions */}
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 items-center">
             {!mfaEnabled ? (
               <Button onClick={() => setShowSetupWizard(true)}>
                 <ShieldCheck className="h-4 w-4 mr-2" />
@@ -200,15 +200,19 @@ export function MFASettingsTab() {
                     Disable MFA
                   </Button>
                 )}
-                
-                {mfaRequired && (
-                  <p className="text-sm text-muted-foreground">
-                    MFA cannot be disabled because it's required for your role.
-                  </p>
-                )}
               </>
             )}
           </div>
+          
+          {/* MFA Required Notice */}
+          {mfaEnabled && mfaRequired && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400">
+              <Shield className="h-4 w-4 shrink-0" />
+              <p className="text-sm">
+                MFA cannot be disabled because it's required for your role.
+              </p>
+            </div>
+          )}
 
           {/* How MFA Works */}
           <div className="pt-4 border-t">

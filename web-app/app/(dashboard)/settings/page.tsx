@@ -7,81 +7,77 @@
 
 import { useState } from 'react';
 import {
-  Settings,
   Building2,
-  User,
   Bell,
   Palette,
   Shield,
 } from 'lucide-react';
-import { SHALogo } from '@/components/ui/sha-logo';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SHASettingsTab } from '@/components/settings/sha-settings';
 import { MFASettingsTab } from '@/components/settings/mfa-settings';
-import { useAuth } from '@/lib/auth';
+import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 
 export default function SettingsPage() {
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('security');
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Settings className="h-8 w-8 text-muted-foreground" />
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-          <p className="text-muted-foreground">
-            Manage system configuration and integrations
-          </p>
-        </div>
-      </div>
+    <div className="space-y-4 sm:space-y-6">
+      <PageHeader
+        title="Settings"
+        helpContent="Manage system configuration, security settings, and integrations."
+      />
 
       {/* Settings Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-muted">
-          <TabsTrigger value="security" className="gap-2">
-            <Shield className="h-4 w-4" />
+        <TabsList className="bg-muted h-10 sm:h-11 p-1">
+          <TabsTrigger value="security" className="gap-1.5 text-xs sm:text-sm">
+            <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="sm:hidden">MFA</span>
             <span className="hidden sm:inline">Security</span>
           </TabsTrigger>
-          <TabsTrigger value="sha" className="gap-2">
-            <KenyaCoatOfArms size={16} />
+          <TabsTrigger value="sha" className="gap-1.5 text-xs sm:text-sm">
+            <KenyaCoatOfArms size={14} className="sm:w-4 sm:h-4" />
+            <span className="sm:hidden">SHA</span>
             <span className="hidden sm:inline">SHA Integration</span>
           </TabsTrigger>
-          <TabsTrigger value="facility" className="gap-2">
-            <Building2 className="h-4 w-4" />
+          <TabsTrigger value="facility" className="gap-1.5 text-xs sm:text-sm">
+            <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="sm:hidden">Facility</span>
             <span className="hidden sm:inline">Facility</span>
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="gap-2">
-            <Bell className="h-4 w-4" />
+          <TabsTrigger value="notifications" className="gap-1.5 text-xs sm:text-sm">
+            <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="sm:hidden">Alerts</span>
             <span className="hidden sm:inline">Notifications</span>
           </TabsTrigger>
-          <TabsTrigger value="appearance" className="gap-2">
-            <Palette className="h-4 w-4" />
+          <TabsTrigger value="appearance" className="gap-1.5 text-xs sm:text-sm">
+            <Palette className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="sm:hidden">Theme</span>
             <span className="hidden sm:inline">Appearance</span>
           </TabsTrigger>
         </TabsList>
 
         {/* Security Settings (MFA) */}
-        <TabsContent value="security" className="space-y-4">
+        <TabsContent value="security" className="space-y-4 mt-4">
           <MFASettingsTab />
         </TabsContent>
 
         {/* SHA Integration Settings */}
-        <TabsContent value="sha" className="space-y-4">
+        <TabsContent value="sha" className="space-y-4 mt-4">
           <SHASettingsTab />
         </TabsContent>
 
         {/* Facility Settings */}
-        <TabsContent value="facility" className="space-y-4">
+        <TabsContent value="facility" className="space-y-4 mt-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Facility Information</CardTitle>
-              <CardDescription>
-                Basic information about your healthcare facility
-              </CardDescription>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base sm:text-lg">Facility Information</CardTitle>
+                <HelpPopover content="Configure your healthcare facility details, location, and operating hours." />
+              </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
@@ -92,13 +88,13 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* Notification Settings */}
-        <TabsContent value="notifications" className="space-y-4">
+        <TabsContent value="notifications" className="space-y-4 mt-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-              <CardDescription>
-                Configure how you receive notifications
-              </CardDescription>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base sm:text-lg">Notification Preferences</CardTitle>
+                <HelpPopover content="Configure how you receive alerts for critical events, approvals, and system updates." />
+              </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
@@ -109,13 +105,13 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* Appearance Settings */}
-        <TabsContent value="appearance" className="space-y-4">
+        <TabsContent value="appearance" className="space-y-4 mt-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Appearance</CardTitle>
-              <CardDescription>
-                Customize the look and feel of the application
-              </CardDescription>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base sm:text-lg">Appearance</CardTitle>
+                <HelpPopover content="Customize theme, colors, and display preferences for the application." />
+              </div>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground">
