@@ -51,11 +51,157 @@ export const NotifiableCaseListSchema = z.object({
   laboratory_confirmed: z.boolean(),
 });
 
+export const NotifiableCaseDetailSchema = z.object({
+  id: z.number(),
+  disease: z.number(),
+  disease_name: z.string(),
+  disease_category: NotifiableDiseaseCategorySchema,
+  patient: z.number(),
+  patient_name: z.string(),
+  patient_mrn: z.string(),
+  encounter: z.number().nullable(),
+  diagnosis: z.number().nullable(),
+  onset_date: z.string().nullable(),
+  severity: NotifiableCaseSeveritySchema,
+  outcome: NotifiableCaseOutcomeSchema,
+  laboratory_confirmed: z.boolean(),
+  lab_result_date: z.string().nullable(),
+  notification_status: NotifiableCaseStatusSchema,
+  detected_at: z.string(),
+  notified_at: z.string().nullable(),
+  notification_deadline: z.string().nullable(),
+  is_overdue: z.boolean(),
+  hours_until_deadline: z.number(),
+  is_immediate: z.boolean(),
+  county: z.number().nullable(),
+  county_name: z.string().nullable(),
+  sub_county: z.number().nullable(),
+  sub_county_name: z.string().nullable(),
+  contact_tracing_initiated: z.boolean(),
+  contacts_identified: z.number(),
+  investigation_notes: z.string(),
+  reported_by: z.number().nullable(),
+  reported_by_name: z.string().nullable(),
+  notified_by: z.number().nullable(),
+  notified_by_name: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
 export const PaginatedNotifiableCaseSchema = z.object({
   count: z.number(),
   next: z.string().nullable(),
   previous: z.string().nullable(),
   results: z.array(NotifiableCaseListSchema),
+});
+
+
+export const SurveillanceAlertTypeSchema = z.enum([
+  'NEW_CASE',
+  'OVERDUE',
+  'OUTBREAK',
+  'CASE_UPDATE',
+]);
+
+export const SurveillanceAlertListSchema = z.object({
+  id: z.number(),
+  case: z.number(),
+  case_disease_name: z.string(),
+  case_patient_mrn: z.string(),
+  alert_type: SurveillanceAlertTypeSchema,
+  message: z.string(),
+  is_acknowledged: z.boolean(),
+  created_at: z.string(),
+});
+
+export const PaginatedSurveillanceAlertSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(SurveillanceAlertListSchema),
+});
+
+/**
+ * Array of alerts (used by /unacknowledged/ endpoint which returns a plain array).
+ */
+export const SurveillanceAlertListArraySchema = z.array(SurveillanceAlertListSchema);
+
+export const SurveillanceDashboardSchema = z.object({
+  total_active_cases: z.number(),
+  immediate_cases_pending: z.number(),
+  overdue_notifications: z.number(),
+  cases_today: z.number(),
+  cases_this_week: z.number(),
+  outbreak_alerts: z.number(),
+  top_diseases: z.array(
+    z.object({
+      name: z.string(),
+      count: z.number(),
+    })
+  ),
+  cases_by_county: z.array(
+    z.object({
+      county: z.string(),
+      count: z.number(),
+    })
+  ),
+});
+
+export const OutbreakThresholdSchema = z.object({
+  id: z.number(),
+  disease: z.number(),
+  disease_name: z.string(),
+  county: z.number().nullable(),
+  county_name: z.string().nullable(),
+  case_threshold: z.number(),
+  period_days: z.number(),
+  is_active: z.boolean(),
+  threshold_status: z.object({
+    is_exceeded: z.boolean(),
+    current_count: z.number(),
+    threshold: z.number(),
+  }),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedOutbreakThresholdSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(OutbreakThresholdSchema),
+});
+
+/**
+ * Simplified threshold object returned by the /exceeded/ endpoint.
+ */
+export const ExceededThresholdSchema = z.object({
+  id: z.number(),
+  disease: z.string(),
+  county: z.string(),
+  threshold: z.number(),
+  current_count: z.number(),
+  period_days: z.number(),
+});
+
+export const ExceededThresholdListSchema = z.array(ExceededThresholdSchema);
+
+export const CountyReportSchema = z.object({
+  county_id: z.number(),
+  county_name: z.string(),
+  period_start: z.string(),
+  period_end: z.string(),
+  cases_by_disease: z.array(
+    z.object({
+      disease: z.string(),
+      category: z.string(),
+      total: z.number(),
+      lab_confirmed: z.number(),
+    })
+  ),
+  total_cases: z.number(),
+  pending_notifications: z.number(),
+  overdue_notifications: z.number(),
 });
 
 export const IDSRReportStatusSchema = z.enum([
@@ -187,7 +333,14 @@ export const IDSRSubmitResponseSchema = z.object({
 });
 
 export type NotifiableCaseListSchemaType = z.infer<typeof NotifiableCaseListSchema>;
+export type NotifiableCaseDetailSchemaType = z.infer<typeof NotifiableCaseDetailSchema>;
 export type PaginatedNotifiableCaseSchemaType = z.infer<typeof PaginatedNotifiableCaseSchema>;
+export type SurveillanceAlertListSchemaType = z.infer<typeof SurveillanceAlertListSchema>;
+export type PaginatedSurveillanceAlertSchemaType = z.infer<typeof PaginatedSurveillanceAlertSchema>;
+export type OutbreakThresholdSchemaType = z.infer<typeof OutbreakThresholdSchema>;
+export type PaginatedOutbreakThresholdSchemaType = z.infer<typeof PaginatedOutbreakThresholdSchema>;
+export type SurveillanceDashboardSchemaType = z.infer<typeof SurveillanceDashboardSchema>;
+export type CountyReportSchemaType = z.infer<typeof CountyReportSchema>;
 export type IDSRWeeklyReportSchemaType = z.infer<typeof IDSRWeeklyReportSchema>;
 export type IDSRWeeklyReportListSchemaType = z.infer<typeof IDSRWeeklyReportListSchema>;
 export type IDSRDashboardSchemaType = z.infer<typeof IDSRDashboardSchema>;

@@ -46,6 +46,43 @@ export interface NotifiableCaseListItem {
   laboratory_confirmed: boolean;
 }
 
+export interface NotifiableCaseDetail {
+  id: number;
+  disease: number;
+  disease_name: string;
+  disease_category: NotifiableDiseaseCategory;
+  patient: number;
+  patient_name: string;
+  patient_mrn: string;
+  encounter: number | null;
+  diagnosis: number | null;
+  onset_date: string | null;
+  severity: NotifiableCaseSeverity;
+  outcome: NotifiableCaseOutcome;
+  laboratory_confirmed: boolean;
+  lab_result_date: string | null;
+  notification_status: NotifiableCaseStatus;
+  detected_at: string;
+  notified_at: string | null;
+  notification_deadline: string | null;
+  is_overdue: boolean;
+  hours_until_deadline: number;
+  is_immediate: boolean;
+  county: number | null;
+  county_name: string | null;
+  sub_county: number | null;
+  sub_county_name: string | null;
+  contact_tracing_initiated: boolean;
+  contacts_identified: number;
+  investigation_notes: string;
+  reported_by: number | null;
+  reported_by_name: string | null;
+  notified_by: number | null;
+  notified_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface NotifiableCaseListParams {
   search?: string;
   category?: NotifiableDiseaseCategory;
@@ -58,6 +95,93 @@ export interface NotifiableCaseListParams {
   patient?: number;
   page?: number;
   page_size?: number;
+}
+
+export interface SurveillanceAlert {
+  id: number;
+  case: number;
+  case_disease_name: string;
+  case_patient_mrn: string;
+  case_county: string | null;
+  alert_type: string;
+  message: string;
+  is_acknowledged: boolean;
+  acknowledged_by: number | null;
+  acknowledged_by_name: string | null;
+  acknowledged_at: string | null;
+  sent_via_websocket: boolean;
+  sent_via_sms: boolean;
+  sent_via_email: boolean;
+  created_at: string;
+}
+
+export interface SurveillanceAlertListItem {
+  id: number;
+  case: number;
+  case_disease_name: string;
+  case_patient_mrn: string;
+  alert_type: string;
+  message: string;
+  is_acknowledged: boolean;
+  created_at: string;
+}
+
+export interface OutbreakThreshold {
+  id: number;
+  disease: number;
+  disease_name: string;
+  county: number | null;
+  county_name: string | null;
+  case_threshold: number;
+  period_days: number;
+  is_active: boolean;
+  threshold_status: {
+    is_exceeded: boolean;
+    current_count: number;
+    threshold: number;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Simplified threshold object returned by the /exceeded/ endpoint.
+ * Only includes exceeded thresholds with computed status.
+ */
+export interface ExceededThreshold {
+  id: number;
+  disease: string; // Disease name (not ID)
+  county: string; // County name or "National"
+  threshold: number;
+  current_count: number;
+  period_days: number;
+}
+
+export interface SurveillanceDashboard {
+  total_active_cases: number;
+  immediate_cases_pending: number;
+  overdue_notifications: number;
+  cases_today: number;
+  cases_this_week: number;
+  outbreak_alerts: number;
+  top_diseases: Array<{ name: string; count: number }>;
+  cases_by_county: Array<{ county: string; count: number }>;
+}
+
+export interface CountyReport {
+  county_id: number;
+  county_name: string;
+  period_start: string;
+  period_end: string;
+  cases_by_disease: Array<{
+    disease: string;
+    category: string;
+    total: number;
+    lab_confirmed: number;
+  }>;
+  total_cases: number;
+  pending_notifications: number;
+  overdue_notifications: number;
 }
 
 export interface IDSRDiseaseSummary {

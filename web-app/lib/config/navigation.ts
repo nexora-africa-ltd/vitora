@@ -42,6 +42,8 @@ import {
   Image as ImageIcon,
   Siren,
   Flag,
+  CircleAlert,
+  SquareActivity,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -76,8 +78,11 @@ export const mainNavItems: NavItemType[] = [
     label: 'Surveillance',
     icon: Flag,
     children: [
+      { label: 'Dashboard', href: '/surveillance', icon: LayoutDashboard },
       { label: 'Notifiable Cases', href: '/surveillance/cases', icon: AlertTriangle },
+      { label: 'Alerts', href: '/surveillance/alerts', icon: CircleAlert },
       { label: 'IDSR Reports', href: '/surveillance/idsr', icon: BarChart3 },
+      { label: 'Thresholds', href: '/surveillance/thresholds', icon: SquareActivity },
     ],
   },
   {
