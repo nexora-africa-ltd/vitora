@@ -3758,6 +3758,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/CheckInResponse'
           description: ''
+  /api/checkin/search/:
+    get:
+      operationId: api_checkin_search_retrieve
+      description: Search patients by MRN, ID, phone, or name. Returns multiple matches.
+      parameters:
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: 'Maximum number of results (default: 10, max: 50)'
+      - in: query
+        name: q
+        schema:
+          type: string
+        description: Search query (MRN, ID, phone, or name)
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+                description: Unspecified response body
+          description: ''
   /api/checkin/today/:
     get:
       operationId: api_checkin_today_list
@@ -12615,6 +12644,410 @@ paths:
               schema:
                 $ref: '#/components/schemas/NursingKardex'
           description: ''
+  /api/inpatient/review-requests/:
+    get:
+      operationId: api_inpatient_review_requests_list
+      description: |-
+        ViewSet for ReviewRequest model.
+
+        Manages pending review requests (urgent, consultant, pre-discharge).
+
+        Endpoints:
+        - GET /api/inpatient/review-requests/ - List all review requests
+        - GET /api/inpatient/review-requests/{id}/ - Review request detail
+        - POST /api/inpatient/review-requests/ - Create review request
+        - PATCH /api/inpatient/review-requests/{id}/ - Update review request
+        - POST /api/inpatient/review-requests/{id}/acknowledge/ - Acknowledge request
+        - POST /api/inpatient/review-requests/{id}/complete/ - Mark as completed
+        - POST /api/inpatient/review-requests/{id}/cancel/ - Cancel request
+      parameters:
+      - in: query
+        name: admission
+        schema:
+          type: integer
+      - in: query
+        name: assigned_to
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: requested_by
+        schema:
+          type: integer
+      - in: query
+        name: review_type
+        schema:
+          type: string
+          enum:
+          - CONSULTANT_REVIEW
+          - PRE_DISCHARGE
+          - TRANSFER_REVIEW
+          - URGENT_REVIEW
+        description: |-
+          Type of review requested
+
+          * `URGENT_REVIEW` - Urgent Review
+          * `CONSULTANT_REVIEW` - Consultant Review
+          * `TRANSFER_REVIEW` - Transfer Assessment
+          * `PRE_DISCHARGE` - Pre-Discharge Assessment
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - CANCELLED
+          - COMPLETED
+          - IN_PROGRESS
+          - PENDING
+        description: |-
+          Current status of the review request
+
+          * `PENDING` - Pending
+          * `IN_PROGRESS` - In Progress
+          * `COMPLETED` - Completed
+          * `CANCELLED` - Cancelled
+      - in: query
+        name: urgency
+        schema:
+          type: string
+          enum:
+          - ROUTINE
+          - STAT
+          - URGENT
+        description: |-
+          Urgency level of the review
+
+          * `ROUTINE` - Routine
+          * `URGENT` - Urgent
+          * `STAT` - STAT (Immediate)
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedReviewRequestList'
+          description: ''
+    post:
+      operationId: api_inpatient_review_requests_create
+      description: |-
+        Create a review request.
+
+        Uses ReviewRequestCreateSerializer for validation but returns
+        full ReviewRequestSerializer data.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequestCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReviewRequestCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReviewRequestCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewRequestCreate'
+          description: ''
+  /api/inpatient/review-requests/{id}/:
+    get:
+      operationId: api_inpatient_review_requests_retrieve
+      description: |-
+        ViewSet for ReviewRequest model.
+
+        Manages pending review requests (urgent, consultant, pre-discharge).
+
+        Endpoints:
+        - GET /api/inpatient/review-requests/ - List all review requests
+        - GET /api/inpatient/review-requests/{id}/ - Review request detail
+        - POST /api/inpatient/review-requests/ - Create review request
+        - PATCH /api/inpatient/review-requests/{id}/ - Update review request
+        - POST /api/inpatient/review-requests/{id}/acknowledge/ - Acknowledge request
+        - POST /api/inpatient/review-requests/{id}/complete/ - Mark as completed
+        - POST /api/inpatient/review-requests/{id}/cancel/ - Cancel request
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Review Request.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewRequest'
+          description: ''
+    put:
+      operationId: api_inpatient_review_requests_update
+      description: |-
+        ViewSet for ReviewRequest model.
+
+        Manages pending review requests (urgent, consultant, pre-discharge).
+
+        Endpoints:
+        - GET /api/inpatient/review-requests/ - List all review requests
+        - GET /api/inpatient/review-requests/{id}/ - Review request detail
+        - POST /api/inpatient/review-requests/ - Create review request
+        - PATCH /api/inpatient/review-requests/{id}/ - Update review request
+        - POST /api/inpatient/review-requests/{id}/acknowledge/ - Acknowledge request
+        - POST /api/inpatient/review-requests/{id}/complete/ - Mark as completed
+        - POST /api/inpatient/review-requests/{id}/cancel/ - Cancel request
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Review Request.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReviewRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReviewRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewRequest'
+          description: ''
+    patch:
+      operationId: api_inpatient_review_requests_partial_update
+      description: |-
+        ViewSet for ReviewRequest model.
+
+        Manages pending review requests (urgent, consultant, pre-discharge).
+
+        Endpoints:
+        - GET /api/inpatient/review-requests/ - List all review requests
+        - GET /api/inpatient/review-requests/{id}/ - Review request detail
+        - POST /api/inpatient/review-requests/ - Create review request
+        - PATCH /api/inpatient/review-requests/{id}/ - Update review request
+        - POST /api/inpatient/review-requests/{id}/acknowledge/ - Acknowledge request
+        - POST /api/inpatient/review-requests/{id}/complete/ - Mark as completed
+        - POST /api/inpatient/review-requests/{id}/cancel/ - Cancel request
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Review Request.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedReviewRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedReviewRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedReviewRequestRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewRequest'
+          description: ''
+    delete:
+      operationId: api_inpatient_review_requests_destroy
+      description: |-
+        ViewSet for ReviewRequest model.
+
+        Manages pending review requests (urgent, consultant, pre-discharge).
+
+        Endpoints:
+        - GET /api/inpatient/review-requests/ - List all review requests
+        - GET /api/inpatient/review-requests/{id}/ - Review request detail
+        - POST /api/inpatient/review-requests/ - Create review request
+        - PATCH /api/inpatient/review-requests/{id}/ - Update review request
+        - POST /api/inpatient/review-requests/{id}/acknowledge/ - Acknowledge request
+        - POST /api/inpatient/review-requests/{id}/complete/ - Mark as completed
+        - POST /api/inpatient/review-requests/{id}/cancel/ - Cancel request
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Review Request.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/inpatient/review-requests/{id}/acknowledge/:
+    post:
+      operationId: api_inpatient_review_requests_acknowledge_create
+      description: |-
+        Acknowledge a review request and mark as in-progress.
+
+        The current user will be assigned to the request if not already assigned.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Review Request.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReviewRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReviewRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewRequest'
+          description: ''
+  /api/inpatient/review-requests/{id}/cancel/:
+    post:
+      operationId: api_inpatient_review_requests_cancel_create
+      description: |-
+        Cancel a review request.
+
+        Request body:
+        - reason: Reason for cancellation (required)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Review Request.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReviewRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReviewRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewRequest'
+          description: ''
+  /api/inpatient/review-requests/{id}/complete/:
+    post:
+      operationId: api_inpatient_review_requests_complete_create
+      description: |-
+        Mark a review request as completed.
+
+        Should be called after creating a ward round that fulfills the request.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Review Request.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewRequestRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReviewRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReviewRequestRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewRequest'
+          description: ''
   /api/inpatient/shift-handovers/:
     get:
       operationId: api_inpatient_shift_handovers_list
@@ -15517,6 +15950,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/LabOrder'
           description: ''
+  /api/lab/orders/{order_number}/specimens/:
+    get:
+      operationId: api_lab_orders_specimens_retrieve
+      description: |-
+        List all specimens for a lab order.
+
+        GET: List all specimens associated with this order.
+      parameters:
+      - in: path
+        name: order_number
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabOrder'
+          description: ''
   /api/lab/orders/{order_number}/submit/:
     post:
       operationId: api_lab_orders_submit_create
@@ -16516,6 +16973,147 @@ paths:
               schema:
                 $ref: '#/components/schemas/LabResult'
           description: ''
+  /api/lab/specimens/:
+    get:
+      operationId: api_lab_specimens_list
+      description: |-
+        ViewSet for specimens — read-only.
+
+        Provides list and retrieve operations for specimen tracking.
+        Specimens are created automatically via signals when lab orders/queue entries are created.
+
+        Lookup is by barcode (unique identifier).
+      parameters:
+      - in: query
+        name: collected_at__gte
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: collected_at__lte
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: created_at__gte
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: created_at__lte
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: lab_order
+        schema:
+          type: integer
+      - in: query
+        name: order_number
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: patient
+        schema:
+          type: number
+      - in: query
+        name: specimen_type
+        schema:
+          type: string
+          enum:
+          - ASPIRATE
+          - BLOOD
+          - CSF
+          - OTHER
+          - PLASMA
+          - SERUM
+          - SPUTUM
+          - STOOL
+          - SWAB
+          - TISSUE
+          - URINE
+        description: |-
+          * `BLOOD` - Whole Blood
+          * `SERUM` - Serum
+          * `PLASMA` - Plasma
+          * `URINE` - Urine
+          * `STOOL` - Stool
+          * `CSF` - Cerebrospinal Fluid
+          * `SPUTUM` - Sputum
+          * `SWAB` - Swab
+          * `TISSUE` - Tissue
+          * `ASPIRATE` - Aspirate
+          * `OTHER` - Other
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - COLLECTED
+          - DISPOSED
+          - PENDING
+          - PROCESSING
+          - RECEIVED
+          - REJECTED
+          - STORED
+        description: |-
+          * `PENDING` - Pending Collection
+          * `COLLECTED` - Collected
+          * `RECEIVED` - Received at Lab
+          * `PROCESSING` - Processing
+          * `REJECTED` - Rejected
+          * `STORED` - Stored
+          * `DISPOSED` - Disposed
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSpecimenList'
+          description: ''
+  /api/lab/specimens/{barcode}/:
+    get:
+      operationId: api_lab_specimens_retrieve
+      description: |-
+        ViewSet for specimens — read-only.
+
+        Provides list and retrieve operations for specimen tracking.
+        Specimens are created automatically via signals when lab orders/queue entries are created.
+
+        Lookup is by barcode (unique identifier).
+      parameters:
+      - in: path
+        name: barcode
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Specimen'
+          description: ''
   /api/lab/tests/:
     get:
       operationId: api_lab_tests_list
@@ -16738,6 +17336,73 @@ paths:
               schema:
                 $ref: '#/components/schemas/Ward'
           description: ''
+  /api/mfa/backup-codes/regenerate/:
+    post:
+      operationId: api_mfa_backup_codes_regenerate_create
+      description: Regenerate backup codes after TOTP verification.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/mfa/disable/:
+    post:
+      operationId: api_mfa_disable_create
+      description: Disable MFA after password verification.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/mfa/status/:
+    get:
+      operationId: api_mfa_status_retrieve
+      description: Return MFA status.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/mfa/totp/confirm/:
+    post:
+      operationId: api_mfa_totp_confirm_create
+      description: Verify token and confirm device.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/mfa/totp/setup/:
+    post:
+      operationId: api_mfa_totp_setup_create
+      description: Create new TOTP device and return QR code.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/mfa/verify/:
+    post:
+      operationId: api_mfa_verify_create
+      description: Verify TOTP or backup code and return JWT tokens.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/notifications/:
     get:
       operationId: api_notifications_list
@@ -17485,6 +18150,35 @@ paths:
           type: integer
         description: A unique integer value identifying this Patient.
         required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+  /api/patients/check-duplicate/:
+    get:
+      operationId: api_patients_check_duplicate_retrieve
+      description: |-
+        Check for potential duplicate patients before registration.
+
+        Query Parameters:
+            - identification_number: Check for exact ID match
+            - identification_type: Type of ID (default: national_id)
+            - first_name: For demographic matching
+            - last_name: For demographic matching
+            - date_of_birth: For demographic matching (YYYY-MM-DD)
+            - gender: For demographic matching (M/F/O)
+
+        Returns:
+            - has_duplicate: Boolean indicating if potential duplicate found
+            - match_type: "exact_id" | "demographic" | null
+            - matches: List of matching patients (limited info for privacy)
       tags:
       - api
       security:
@@ -23690,7 +24384,7 @@ paths:
   /api/token/:
     post:
       operationId: api_token_create
-      description: Handle token obtain request with audit logging.
+      description: Handle token obtain request with audit logging and MFA.
       tags:
       - api
       requestBody:
@@ -24052,7 +24746,7 @@ paths:
           - SPECIALTY
           - TRAUMA
         description: |-
-          Care area assignment
+          Emergency care area assignment (ER zones). Use for emergency cases.
 
           * `ER_RESUS` - ER - Resuscitation
           * `ER_ACUTE` - ER - Acute Care
@@ -24063,6 +24757,10 @@ paths:
           * `PEDIATRIC_ER` - Pediatric ER
           * `MATERNITY` - Maternity/Labor
           * `SPECIALTY` - Specialty Clinic
+      - in: query
+        name: encounter
+        schema:
+          type: integer
       - in: query
         name: mental_status
         schema:
@@ -24448,7 +25146,7 @@ paths:
           - SPECIALTY
           - TRAUMA
         description: |-
-          Care area assignment
+          Emergency care area assignment (ER zones). Use for emergency cases.
 
           * `ER_RESUS` - ER - Resuscitation
           * `ER_ACUTE` - ER - Acute Care
@@ -24626,6 +25324,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TriageQueue'
+          description: ''
+  /api/triage/queue/critical/:
+    get:
+      operationId: api_triage_queue_critical_retrieve
+      description: Get critical (RED) patients in the ER queue for emergency alerts.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/triage/queue/zones-summary/:
+    get:
+      operationId: api_triage_queue_zones_summary_retrieve
+      description: Get summary stats for all ER zones.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
           description: ''
   /api/triage/reports/volume/:
     get:
@@ -25597,6 +26327,15 @@ components:
         recommended_by_username:
           type: string
           readOnly: true
+        patient_id:
+          type: integer
+          readOnly: true
+        patient_name:
+          type: string
+          readOnly: true
+        patient_mrn:
+          type: string
+          readOnly: true
         reason:
           type: string
           description: Clinical reason for admission
@@ -25676,6 +26415,9 @@ components:
       - encounter
       - id
       - is_expired
+      - patient_id
+      - patient_mrn
+      - patient_name
       - provisional_diagnosis
       - provisional_diagnosis_text
       - reason
@@ -29237,7 +29979,9 @@ components:
           readOnly: true
           description: Queue number for this session
         status:
-          $ref: '#/components/schemas/ClinicVisitStatusEnum'
+          allOf:
+          - $ref: '#/components/schemas/ClinicVisitStatusEnum'
+          default: REGISTERED
         status_display:
           type: string
           readOnly: true
@@ -29540,7 +30284,9 @@ components:
         session:
           type: integer
         status:
-          $ref: '#/components/schemas/ClinicVisitStatusEnum'
+          allOf:
+          - $ref: '#/components/schemas/ClinicVisitStatusEnum'
+          default: REGISTERED
         priority:
           $ref: '#/components/schemas/ClinicVisitPriorityEnum'
         visit_type:
@@ -35497,6 +36243,24 @@ components:
         * `UNVERIFIED` - Unverified
         * `VERIFIED` - Verified
         * `REJECTED` - Rejected
+    LabSpecimenStatusEnum:
+      enum:
+      - PENDING
+      - COLLECTED
+      - RECEIVED
+      - PROCESSING
+      - REJECTED
+      - STORED
+      - DISPOSED
+      type: string
+      description: |-
+        * `PENDING` - Pending Collection
+        * `COLLECTED` - Collected
+        * `RECEIVED` - Received at Lab
+        * `PROCESSING` - Processing
+        * `REJECTED` - Rejected
+        * `STORED` - Stored
+        * `DISPOSED` - Disposed
     LabTestCategoryEnum:
       enum:
       - HEMATOLOGY
@@ -37368,6 +38132,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ResourceList'
+    PaginatedReviewRequestList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewRequest'
     PaginatedRoleList:
       type: object
       required:
@@ -37552,6 +38339,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ShiftHandover'
+    PaginatedSpecimenList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Specimen'
     PaginatedStaffProfileList:
       type: object
       required:
@@ -38629,7 +39439,9 @@ components:
         session:
           type: integer
         status:
-          $ref: '#/components/schemas/ClinicVisitStatusEnum'
+          allOf:
+          - $ref: '#/components/schemas/ClinicVisitStatusEnum'
+          default: REGISTERED
         priority:
           $ref: '#/components/schemas/ClinicVisitPriorityEnum'
         visit_type:
@@ -40045,6 +40857,63 @@ components:
         description:
           type: string
           description: Description of the resource
+    PatchedReviewRequestRequest:
+      type: object
+      description: Serializer for ReviewRequest model.
+      properties:
+        admission:
+          type: integer
+          description: Admission requiring review
+        review_type:
+          allOf:
+          - $ref: '#/components/schemas/ReviewType139Enum'
+          description: |-
+            Type of review requested
+
+            * `URGENT_REVIEW` - Urgent Review
+            * `CONSULTANT_REVIEW` - Consultant Review
+            * `TRANSFER_REVIEW` - Transfer Assessment
+            * `PRE_DISCHARGE` - Pre-Discharge Assessment
+        urgency:
+          allOf:
+          - $ref: '#/components/schemas/OrderPriorityEnum'
+          description: |-
+            Urgency level of the review
+
+            * `ROUTINE` - Routine
+            * `URGENT` - Urgent
+            * `STAT` - STAT (Immediate)
+        reason:
+          type: string
+          minLength: 1
+          description: Clinical reason for review request
+        requested_by:
+          type: integer
+          description: User who requested the review
+        consultant_specialty:
+          type: string
+          description: Specialty required (for consultant reviews)
+          maxLength: 100
+        assigned_to:
+          type: integer
+          nullable: true
+          description: Clinician assigned to handle this review
+        status:
+          allOf:
+          - $ref: '#/components/schemas/LabOrderItemStatusEnum'
+          description: |-
+            Current status of the review request
+
+            * `PENDING` - Pending
+            * `IN_PROGRESS` - In Progress
+            * `COMPLETED` - Completed
+            * `CANCELLED` - Cancelled
+        clinical_context:
+          type: string
+          description: Additional clinical context (e.g., latest vitals, observations)
+        cancellation_reason:
+          type: string
+          description: Reason for cancellation (if cancelled)
     PatchedRoleRequest:
       type: object
       description: Serializer for Role model.
@@ -40819,15 +41688,17 @@ components:
             * `POLICE` - Police
             * `REFERRAL` - Referral from another facility
             * `OTHER` - Other
+        referring_facility_name:
+          type: string
+          description: Name of referring facility (required when arrival_mode is REFERRAL)
+          maxLength: 255
         allergies_noted:
           type: string
           description: Allergies noted at triage (snapshot from patient record)
         spo2:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          type: number
+          format: double
           nullable: true
-          description: Oxygen saturation percentage (SpO2)
         heart_rate:
           type: integer
           maximum: 300
@@ -40847,17 +41718,27 @@ components:
           nullable: true
           description: Diastolic blood pressure (mmHg)
         temperature:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+          type: number
+          format: double
           nullable: true
-          description: Body temperature in Celsius (°C)
         respiratory_rate:
           type: integer
           maximum: 60
           minimum: 0
           nullable: true
           description: Respiratory rate (breaths per minute)
+        weight:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+          description: Body weight in kilograms (kg)
+        height:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+          description: Body height in centimeters (cm)
         triage_category:
           allOf:
           - $ref: '#/components/schemas/TriageCategoryEnum'
@@ -40876,7 +41757,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/AssignedAreaEnum'
           description: |-
-            Care area assignment
+            Emergency care area assignment (ER zones). Use for emergency cases.
 
             * `ER_RESUS` - ER - Resuscitation
             * `ER_ACUTE` - ER - Acute Care
@@ -40887,6 +41768,10 @@ components:
             * `PEDIATRIC_ER` - Pediatric ER
             * `MATERNITY` - Maternity/Labor
             * `SPECIALTY` - Specialty Clinic
+        assigned_clinic:
+          type: integer
+          nullable: true
+          description: Target clinic for routing. Mutually exclusive with assigned_area.
         assigned_clinician:
           type: integer
           nullable: true
@@ -40949,6 +41834,21 @@ components:
           format: time
         conducted_by:
           type: integer
+        review_type:
+          allOf:
+          - $ref: '#/components/schemas/WardRoundReviewTypeEnum'
+          description: |-
+            Type of review being conducted
+
+            * `WARD_ROUND` - Scheduled Ward Round
+            * `URGENT_REVIEW` - Urgent Review
+            * `CONSULTANT_REVIEW` - Consultant Review
+            * `TRANSFER_REVIEW` - Transfer Assessment
+            * `PRE_DISCHARGE` - Pre-Discharge Assessment
+        review_request:
+          type: integer
+          nullable: true
+          description: Review request this ward round fulfills (if applicable)
         subjective:
           type: string
           minLength: 1
@@ -42824,6 +43724,318 @@ components:
         * `titer` - titer
         * `copies/mL` - copies/mL
         * `CFU/mL` - CFU/mL
+    ReviewRequest:
+      type: object
+      description: Serializer for ReviewRequest model.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        admission:
+          type: integer
+          description: Admission requiring review
+        admission_number:
+          type: string
+          readOnly: true
+        patient_name:
+          type: string
+          description: Get patient full name.
+          readOnly: true
+        ward_name:
+          type: string
+          readOnly: true
+        bed_number:
+          type: string
+          readOnly: true
+        review_type:
+          allOf:
+          - $ref: '#/components/schemas/ReviewType139Enum'
+          description: |-
+            Type of review requested
+
+            * `URGENT_REVIEW` - Urgent Review
+            * `CONSULTANT_REVIEW` - Consultant Review
+            * `TRANSFER_REVIEW` - Transfer Assessment
+            * `PRE_DISCHARGE` - Pre-Discharge Assessment
+        review_type_display:
+          type: string
+          readOnly: true
+        urgency:
+          allOf:
+          - $ref: '#/components/schemas/OrderPriorityEnum'
+          description: |-
+            Urgency level of the review
+
+            * `ROUTINE` - Routine
+            * `URGENT` - Urgent
+            * `STAT` - STAT (Immediate)
+        urgency_display:
+          type: string
+          readOnly: true
+        reason:
+          type: string
+          description: Clinical reason for review request
+        requested_by:
+          type: integer
+          description: User who requested the review
+        requested_by_username:
+          type: string
+          readOnly: true
+        requested_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When the review was requested
+        consultant_specialty:
+          type: string
+          description: Specialty required (for consultant reviews)
+          maxLength: 100
+        assigned_to:
+          type: integer
+          nullable: true
+          description: Clinician assigned to handle this review
+        assigned_to_username:
+          type: string
+          readOnly: true
+          nullable: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/LabOrderItemStatusEnum'
+          description: |-
+            Current status of the review request
+
+            * `PENDING` - Pending
+            * `IN_PROGRESS` - In Progress
+            * `COMPLETED` - Completed
+            * `CANCELLED` - Cancelled
+        status_display:
+          type: string
+          readOnly: true
+        acknowledged_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When the request was acknowledged
+        acknowledged_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who acknowledged the request
+        acknowledged_by_username:
+          type: string
+          readOnly: true
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When the review was completed
+        clinical_context:
+          type: string
+          description: Additional clinical context (e.g., latest vitals, observations)
+        cancellation_reason:
+          type: string
+          description: Reason for cancellation (if cancelled)
+        is_overdue:
+          type: boolean
+          description: Check if request is overdue based on urgency.
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - acknowledged_at
+      - acknowledged_by
+      - acknowledged_by_username
+      - admission
+      - admission_number
+      - assigned_to_username
+      - bed_number
+      - completed_at
+      - created_at
+      - id
+      - is_overdue
+      - patient_name
+      - reason
+      - requested_at
+      - requested_by
+      - requested_by_username
+      - review_type
+      - review_type_display
+      - status_display
+      - updated_at
+      - urgency_display
+      - ward_name
+    ReviewRequestCreate:
+      type: object
+      description: |-
+        Serializer for creating ReviewRequest.
+
+        Note: requested_by is set by the ViewSet, not in the serializer,
+        to allow flexibility in both view-based and serializer-based usage.
+      properties:
+        admission:
+          type: integer
+          description: Admission requiring review
+        review_type:
+          allOf:
+          - $ref: '#/components/schemas/ReviewType139Enum'
+          description: |-
+            Type of review requested
+
+            * `URGENT_REVIEW` - Urgent Review
+            * `CONSULTANT_REVIEW` - Consultant Review
+            * `TRANSFER_REVIEW` - Transfer Assessment
+            * `PRE_DISCHARGE` - Pre-Discharge Assessment
+        urgency:
+          allOf:
+          - $ref: '#/components/schemas/OrderPriorityEnum'
+          description: |-
+            Urgency level of the review
+
+            * `ROUTINE` - Routine
+            * `URGENT` - Urgent
+            * `STAT` - STAT (Immediate)
+        reason:
+          type: string
+          description: Clinical reason for review request
+        consultant_specialty:
+          type: string
+          description: Specialty required (for consultant reviews)
+          maxLength: 100
+        clinical_context:
+          type: string
+          description: Additional clinical context (e.g., latest vitals, observations)
+      required:
+      - admission
+      - reason
+      - review_type
+    ReviewRequestCreateRequest:
+      type: object
+      description: |-
+        Serializer for creating ReviewRequest.
+
+        Note: requested_by is set by the ViewSet, not in the serializer,
+        to allow flexibility in both view-based and serializer-based usage.
+      properties:
+        admission:
+          type: integer
+          description: Admission requiring review
+        review_type:
+          allOf:
+          - $ref: '#/components/schemas/ReviewType139Enum'
+          description: |-
+            Type of review requested
+
+            * `URGENT_REVIEW` - Urgent Review
+            * `CONSULTANT_REVIEW` - Consultant Review
+            * `TRANSFER_REVIEW` - Transfer Assessment
+            * `PRE_DISCHARGE` - Pre-Discharge Assessment
+        urgency:
+          allOf:
+          - $ref: '#/components/schemas/OrderPriorityEnum'
+          description: |-
+            Urgency level of the review
+
+            * `ROUTINE` - Routine
+            * `URGENT` - Urgent
+            * `STAT` - STAT (Immediate)
+        reason:
+          type: string
+          minLength: 1
+          description: Clinical reason for review request
+        consultant_specialty:
+          type: string
+          description: Specialty required (for consultant reviews)
+          maxLength: 100
+        clinical_context:
+          type: string
+          description: Additional clinical context (e.g., latest vitals, observations)
+      required:
+      - admission
+      - reason
+      - review_type
+    ReviewRequestRequest:
+      type: object
+      description: Serializer for ReviewRequest model.
+      properties:
+        admission:
+          type: integer
+          description: Admission requiring review
+        review_type:
+          allOf:
+          - $ref: '#/components/schemas/ReviewType139Enum'
+          description: |-
+            Type of review requested
+
+            * `URGENT_REVIEW` - Urgent Review
+            * `CONSULTANT_REVIEW` - Consultant Review
+            * `TRANSFER_REVIEW` - Transfer Assessment
+            * `PRE_DISCHARGE` - Pre-Discharge Assessment
+        urgency:
+          allOf:
+          - $ref: '#/components/schemas/OrderPriorityEnum'
+          description: |-
+            Urgency level of the review
+
+            * `ROUTINE` - Routine
+            * `URGENT` - Urgent
+            * `STAT` - STAT (Immediate)
+        reason:
+          type: string
+          minLength: 1
+          description: Clinical reason for review request
+        requested_by:
+          type: integer
+          description: User who requested the review
+        consultant_specialty:
+          type: string
+          description: Specialty required (for consultant reviews)
+          maxLength: 100
+        assigned_to:
+          type: integer
+          nullable: true
+          description: Clinician assigned to handle this review
+        status:
+          allOf:
+          - $ref: '#/components/schemas/LabOrderItemStatusEnum'
+          description: |-
+            Current status of the review request
+
+            * `PENDING` - Pending
+            * `IN_PROGRESS` - In Progress
+            * `COMPLETED` - Completed
+            * `CANCELLED` - Cancelled
+        clinical_context:
+          type: string
+          description: Additional clinical context (e.g., latest vitals, observations)
+        cancellation_reason:
+          type: string
+          description: Reason for cancellation (if cancelled)
+      required:
+      - admission
+      - reason
+      - requested_by
+      - review_type
+    ReviewType139Enum:
+      enum:
+      - URGENT_REVIEW
+      - CONSULTANT_REVIEW
+      - TRANSFER_REVIEW
+      - PRE_DISCHARGE
+      type: string
+      description: |-
+        * `URGENT_REVIEW` - Urgent Review
+        * `CONSULTANT_REVIEW` - Consultant Review
+        * `TRANSFER_REVIEW` - Transfer Assessment
+        * `PRE_DISCHARGE` - Pre-Discharge Assessment
     RhesusFactorEnum:
       enum:
       - POSITIVE
@@ -44982,6 +46194,105 @@ components:
         * `REFERRAL` - Referral from Clinic
         * `APPOINTMENT` - Scheduled Appointment
         * `INPATIENT` - From Inpatient Ward
+    Specimen:
+      type: object
+      description: Serializer for specimen listing and detail.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        barcode:
+          type: string
+          readOnly: true
+        specimen_type:
+          $ref: '#/components/schemas/SpecimenTypeEnum'
+        specimen_type_display:
+          type: string
+          readOnly: true
+        container_type:
+          type: string
+          maxLength: 50
+        lab_order:
+          type: integer
+        order_number:
+          type: string
+          readOnly: true
+        patient_name:
+          type: string
+          description: Get patient full name.
+          readOnly: true
+        patient_mrn:
+          type: string
+          readOnly: true
+        order_item_ids:
+          type: array
+          items:
+            type: integer
+          description: Get list of linked order item IDs.
+          readOnly: true
+        collected_by:
+          type: integer
+          nullable: true
+        collected_by_name:
+          type: string
+          nullable: true
+          description: Get name of user who collected the specimen.
+          readOnly: true
+        collected_at:
+          type: string
+          format: date-time
+          nullable: true
+        collection_site:
+          type: string
+          maxLength: 100
+        received_by:
+          type: integer
+          nullable: true
+        received_by_name:
+          type: string
+          nullable: true
+          description: Get name of user who received the specimen.
+          readOnly: true
+        received_at:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          $ref: '#/components/schemas/LabSpecimenStatusEnum'
+        status_display:
+          type: string
+          readOnly: true
+        rejection_reason:
+          type: string
+        storage_location:
+          type: string
+          maxLength: 100
+        storage_temperature:
+          type: string
+          maxLength: 20
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - barcode
+      - collected_by_name
+      - created_at
+      - id
+      - lab_order
+      - order_item_ids
+      - order_number
+      - patient_mrn
+      - patient_name
+      - received_by_name
+      - specimen_type
+      - specimen_type_display
+      - status_display
+      - updated_at
     SpecimenTypeEnum:
       enum:
       - BLOOD
@@ -46733,6 +48044,9 @@ components:
           readOnly: true
         encounter:
           type: integer
+        encounter_mrn:
+          type: string
+          readOnly: true
         patient_name:
           type: string
           readOnly: true
@@ -46741,6 +48055,9 @@ components:
           readOnly: true
         patient_age:
           type: integer
+          readOnly: true
+        patient_gender:
+          type: string
           readOnly: true
         chief_complaint:
           type: string
@@ -46800,15 +48117,17 @@ components:
             * `POLICE` - Police
             * `REFERRAL` - Referral from another facility
             * `OTHER` - Other
+        referring_facility_name:
+          type: string
+          description: Name of referring facility (required when arrival_mode is REFERRAL)
+          maxLength: 255
         allergies_noted:
           type: string
           description: Allergies noted at triage (snapshot from patient record)
         spo2:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          type: number
+          format: double
           nullable: true
-          description: Oxygen saturation percentage (SpO2)
         heart_rate:
           type: integer
           maximum: 300
@@ -46828,17 +48147,27 @@ components:
           nullable: true
           description: Diastolic blood pressure (mmHg)
         temperature:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+          type: number
+          format: double
           nullable: true
-          description: Body temperature in Celsius (°C)
         respiratory_rate:
           type: integer
           maximum: 60
           minimum: 0
           nullable: true
           description: Respiratory rate (breaths per minute)
+        weight:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+          description: Body weight in kilograms (kg)
+        height:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+          description: Body height in centimeters (cm)
         triage_category:
           allOf:
           - $ref: '#/components/schemas/TriageCategoryEnum'
@@ -46869,7 +48198,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/AssignedAreaEnum'
           description: |-
-            Care area assignment
+            Emergency care area assignment (ER zones). Use for emergency cases.
 
             * `ER_RESUS` - ER - Resuscitation
             * `ER_ACUTE` - ER - Acute Care
@@ -46880,10 +48209,26 @@ components:
             * `PEDIATRIC_ER` - Pediatric ER
             * `MATERNITY` - Maternity/Labor
             * `SPECIALTY` - Specialty Clinic
+        assigned_clinic:
+          type: integer
+          nullable: true
+          description: Target clinic for routing. Mutually exclusive with assigned_area.
+        assigned_clinic_name:
+          type: string
+          readOnly: true
+          nullable: true
+        routing_destination:
+          type: string
+          readOnly: true
         assigned_clinician:
           type: integer
           nullable: true
           description: Clinician assigned to this patient
+        assigned_clinician_name:
+          type: string
+          nullable: true
+          description: Get the full name of the assigned clinician.
+          readOnly: true
         arrival_time:
           type: string
           format: date-time
@@ -46903,8 +48248,14 @@ components:
           nullable: true
           description: When patient was seen by clinician
         alerts:
+          type: array
+          items: {}
+          description: |-
+            Get alerts in structured format, converting legacy string alerts if needed.
+
+            Legacy format: ['CRITICAL: Message here', 'WARNING: Another message']
+            New format: [{'id': 'uuid', 'severity': 'CRITICAL', 'vital_type': 'GENERAL', ...}]
           readOnly: true
-          description: List of critical alerts generated
         vitals:
           type: object
           additionalProperties: {}
@@ -46937,19 +48288,23 @@ components:
       required:
       - alerts
       - arrival_time
-      - assigned_area
+      - assigned_clinic_name
+      - assigned_clinician_name
       - auto_calculated_category
       - chief_complaint
       - chief_complaint_category
       - created_at
       - encounter
+      - encounter_mrn
       - id
       - is_wait_time_exceeded
       - mental_status
       - mobility
       - patient_age
+      - patient_gender
       - patient_mrn
       - patient_name
+      - routing_destination
       - triage_category
       - triage_start_time
       - triaged_by
@@ -47029,13 +48384,18 @@ components:
             * `POLICE` - Police
             * `REFERRAL` - Referral from another facility
             * `OTHER` - Other
+        referring_facility_name:
+          type: string
+          description: Name of referring facility (required when arrival_mode is REFERRAL)
+          maxLength: 255
         allergies_noted:
           type: string
           description: Allergies noted at triage (snapshot from patient record)
         spo2:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          type: number
+          format: double
+          maximum: 100
+          minimum: 0
           nullable: true
         heart_rate:
           type: integer
@@ -47053,9 +48413,10 @@ components:
           minimum: 0
           nullable: true
         temperature:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+          type: number
+          format: double
+          maximum: 45
+          minimum: 30
           nullable: true
         respiratory_rate:
           type: integer
@@ -47063,9 +48424,16 @@ components:
           minimum: 0
           nullable: true
         weight:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          type: number
+          format: double
+          maximum: 500
+          minimum: 0
+          nullable: true
+        height:
+          type: number
+          format: double
+          maximum: 300
+          minimum: 0
           nullable: true
         triage_category:
           allOf:
@@ -47077,18 +48445,11 @@ components:
         assigned_area:
           allOf:
           - $ref: '#/components/schemas/AssignedAreaEnum'
-          description: |-
-            Care area assignment
-
-            * `ER_RESUS` - ER - Resuscitation
-            * `ER_ACUTE` - ER - Acute Care
-            * `ER_FAST_TRACK` - ER - Fast Track
-            * `OBSERVATION` - Observation Unit
-            * `OPD` - Outpatient Department
-            * `TRAUMA` - Trauma Bay
-            * `PEDIATRIC_ER` - Pediatric ER
-            * `MATERNITY` - Maternity/Labor
-            * `SPECIALTY` - Specialty Clinic
+          nullable: true
+        assigned_clinic:
+          type: integer
+          nullable: true
+          description: Target clinic for routing. Mutually exclusive with assigned_area.
         assigned_clinician:
           type: integer
           nullable: true
@@ -47107,7 +48468,6 @@ components:
           readOnly: true
       required:
       - arrival_time
-      - assigned_area
       - chief_complaint
       - chief_complaint_category
       - encounter
@@ -47188,13 +48548,18 @@ components:
             * `POLICE` - Police
             * `REFERRAL` - Referral from another facility
             * `OTHER` - Other
+        referring_facility_name:
+          type: string
+          description: Name of referring facility (required when arrival_mode is REFERRAL)
+          maxLength: 255
         allergies_noted:
           type: string
           description: Allergies noted at triage (snapshot from patient record)
         spo2:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          type: number
+          format: double
+          maximum: 100
+          minimum: 0
           nullable: true
         heart_rate:
           type: integer
@@ -47212,9 +48577,10 @@ components:
           minimum: 0
           nullable: true
         temperature:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+          type: number
+          format: double
+          maximum: 45
+          minimum: 30
           nullable: true
         respiratory_rate:
           type: integer
@@ -47222,9 +48588,16 @@ components:
           minimum: 0
           nullable: true
         weight:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          type: number
+          format: double
+          maximum: 500
+          minimum: 0
+          nullable: true
+        height:
+          type: number
+          format: double
+          maximum: 300
+          minimum: 0
           nullable: true
         triage_category:
           allOf:
@@ -47241,18 +48614,11 @@ components:
         assigned_area:
           allOf:
           - $ref: '#/components/schemas/AssignedAreaEnum'
-          description: |-
-            Care area assignment
-
-            * `ER_RESUS` - ER - Resuscitation
-            * `ER_ACUTE` - ER - Acute Care
-            * `ER_FAST_TRACK` - ER - Fast Track
-            * `OBSERVATION` - Observation Unit
-            * `OPD` - Outpatient Department
-            * `TRAUMA` - Trauma Bay
-            * `PEDIATRIC_ER` - Pediatric ER
-            * `MATERNITY` - Maternity/Labor
-            * `SPECIALTY` - Specialty Clinic
+          nullable: true
+        assigned_clinic:
+          type: integer
+          nullable: true
+          description: Target clinic for routing. Mutually exclusive with assigned_area.
         assigned_clinician:
           type: integer
           nullable: true
@@ -47263,7 +48629,6 @@ components:
           description: When patient arrived at facility
       required:
       - arrival_time
-      - assigned_area
       - chief_complaint
       - chief_complaint_category
       - encounter
@@ -47334,15 +48699,17 @@ components:
             * `POLICE` - Police
             * `REFERRAL` - Referral from another facility
             * `OTHER` - Other
+        referring_facility_name:
+          type: string
+          description: Name of referring facility (required when arrival_mode is REFERRAL)
+          maxLength: 255
         allergies_noted:
           type: string
           description: Allergies noted at triage (snapshot from patient record)
         spo2:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          type: number
+          format: double
           nullable: true
-          description: Oxygen saturation percentage (SpO2)
         heart_rate:
           type: integer
           maximum: 300
@@ -47362,17 +48729,27 @@ components:
           nullable: true
           description: Diastolic blood pressure (mmHg)
         temperature:
-          type: string
-          format: decimal
-          pattern: ^-?\d{0,3}(?:\.\d{0,1})?$
+          type: number
+          format: double
           nullable: true
-          description: Body temperature in Celsius (°C)
         respiratory_rate:
           type: integer
           maximum: 60
           minimum: 0
           nullable: true
           description: Respiratory rate (breaths per minute)
+        weight:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+          description: Body weight in kilograms (kg)
+        height:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          nullable: true
+          description: Body height in centimeters (cm)
         triage_category:
           allOf:
           - $ref: '#/components/schemas/TriageCategoryEnum'
@@ -47391,7 +48768,7 @@ components:
           allOf:
           - $ref: '#/components/schemas/AssignedAreaEnum'
           description: |-
-            Care area assignment
+            Emergency care area assignment (ER zones). Use for emergency cases.
 
             * `ER_RESUS` - ER - Resuscitation
             * `ER_ACUTE` - ER - Acute Care
@@ -47402,6 +48779,10 @@ components:
             * `PEDIATRIC_ER` - Pediatric ER
             * `MATERNITY` - Maternity/Labor
             * `SPECIALTY` - Specialty Clinic
+        assigned_clinic:
+          type: integer
+          nullable: true
+          description: Target clinic for routing. Mutually exclusive with assigned_area.
         assigned_clinician:
           type: integer
           nullable: true
@@ -47426,7 +48807,6 @@ components:
           description: When patient was seen by clinician
       required:
       - arrival_time
-      - assigned_area
       - chief_complaint
       - chief_complaint_category
       - encounter
@@ -47503,7 +48883,18 @@ components:
           readOnly: true
         assigned_area_display:
           type: string
-          description: Get human-readable area name.
+          description: Get human-readable area name or clinic name.
+          readOnly: true
+        assigned_clinic:
+          type: integer
+          readOnly: true
+          nullable: true
+        assigned_clinic_name:
+          type: string
+          readOnly: true
+          nullable: true
+        routing_destination:
+          type: string
           readOnly: true
         arrival_time:
           type: string
@@ -47550,6 +48941,8 @@ components:
       - arrival_time
       - assigned_area
       - assigned_area_display
+      - assigned_clinic
+      - assigned_clinic_name
       - called_by_name
       - chief_complaint
       - chief_complaint_category
@@ -47561,6 +48954,7 @@ components:
       - patient_mrn
       - patient_name
       - position
+      - routing_destination
       - triage_category
       - triage_time
       - updated_at
@@ -48053,6 +49447,24 @@ components:
         conducted_by_username:
           type: string
           readOnly: true
+        review_type:
+          allOf:
+          - $ref: '#/components/schemas/WardRoundReviewTypeEnum'
+          description: |-
+            Type of review being conducted
+
+            * `WARD_ROUND` - Scheduled Ward Round
+            * `URGENT_REVIEW` - Urgent Review
+            * `CONSULTANT_REVIEW` - Consultant Review
+            * `TRANSFER_REVIEW` - Transfer Assessment
+            * `PRE_DISCHARGE` - Pre-Discharge Assessment
+        review_type_display:
+          type: string
+          readOnly: true
+        review_request:
+          type: integer
+          nullable: true
+          description: Review request this ward round fulfills (if applicable)
         subjective:
           type: string
           description: Patient complaints, symptoms
@@ -48096,6 +49508,7 @@ components:
       - objective
       - patient_name
       - plan
+      - review_type_display
       - round_date
       - round_time
       - subjective
@@ -48126,6 +49539,21 @@ components:
           format: time
         conducted_by:
           type: integer
+        review_type:
+          allOf:
+          - $ref: '#/components/schemas/WardRoundReviewTypeEnum'
+          description: |-
+            Type of review being conducted
+
+            * `WARD_ROUND` - Scheduled Ward Round
+            * `URGENT_REVIEW` - Urgent Review
+            * `CONSULTANT_REVIEW` - Consultant Review
+            * `TRANSFER_REVIEW` - Transfer Assessment
+            * `PRE_DISCHARGE` - Pre-Discharge Assessment
+        review_request:
+          type: integer
+          nullable: true
+          description: Review request this ward round fulfills (if applicable)
         subjective:
           type: string
           minLength: 1
@@ -48159,6 +49587,20 @@ components:
       - round_date
       - round_time
       - subjective
+    WardRoundReviewTypeEnum:
+      enum:
+      - WARD_ROUND
+      - URGENT_REVIEW
+      - CONSULTANT_REVIEW
+      - TRANSFER_REVIEW
+      - PRE_DISCHARGE
+      type: string
+      description: |-
+        * `WARD_ROUND` - Scheduled Ward Round
+        * `URGENT_REVIEW` - Urgent Review
+        * `CONSULTANT_REVIEW` - Consultant Review
+        * `TRANSFER_REVIEW` - Transfer Assessment
+        * `PRE_DISCHARGE` - Pre-Discharge Assessment
     WardTypeEnum:
       enum:
       - MEDICAL
