@@ -236,7 +236,7 @@ IDSR_{DISEASE_NAME}_O5_DEATHS  - Deaths 5 and above
 
 ### Mapping to Kenya KHIS Data Element IDs
 
-Before production deployment, placeholder IDs must be replaced with actual KHIS UIDs.
+TODO: Before production deployment, placeholder IDs must be replaced with actual KHIS UIDs.
 
 #### Step 1: Obtain Data Element UIDs from KHIS
 
