@@ -96,19 +96,19 @@ Gaps are categorized into four tiers:
 
 ### Sprint 1.B — Disease Surveillance Foundation (Weeks 5-8)
 
-#### 5. Immediate Reportable Diseases `P0` `CRITICAL`
-- **Gap**: No disease surveillance module
+#### 5. Immediate Reportable Diseases `P0` `CRITICAL` ✅ COMPLETE
+- **Gap**: ~~No disease surveillance module~~ **RESOLVED**
 - **Action**:
-  - [ ] Create `surveillance` Django app
-  - [ ] Define `NotifiableDisease` model (ICD-10 codes, MOH category, reporting timeline)
-  - [ ] Seed with MOH 502 notifiable diseases list
-  - [ ] Auto-flag encounters with notifiable diagnoses
-  - [ ] Create reporting endpoint for county health offices
-  - [ ] Real-time WebSocket alerts for immediate reportable diseases
-  - [ ] Tests: 30+ unit tests
+  - [x] Create `surveillance` Django app
+  - [x] Define `NotifiableDisease` model (ICD-10 codes, MOH category, reporting timeline)
+  - [x] Seed with MOH 502 notifiable diseases list (40 diseases: 15 immediate, 20 weekly, 5 monthly)
+  - [x] Auto-flag encounters with notifiable diagnoses (Django signals)
+  - [x] Create reporting endpoint for county health offices
+  - [x] Real-time WebSocket alerts for immediate reportable diseases
+  - [x] Tests: 30+ unit tests
 - **Owner**: Backend Team
-- **Effort**: 2 sprints (4 weeks)
-- **Deliverables**: `hmis/apps/surveillance/`
+- **Completed**: February 22, 2026
+- **Deliverables**: `hmis/apps/surveillance/`, `docs/surveillance-module.md`
 
 #### 6. IDSR Weekly Reporting `P0` `CRITICAL`
 - **Gap**: No IDSR implementation

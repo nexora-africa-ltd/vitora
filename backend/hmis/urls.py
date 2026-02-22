@@ -196,6 +196,8 @@ urlpatterns = [
     path("api/", include("hmis.apps.clinics.urls")),
     # Check-in API
     path("api/checkin/", include("hmis.apps.checkin.urls", namespace="checkin")),
+    # Disease Surveillance API
+    path("api/surveillance/", include("hmis.apps.surveillance.urls", namespace="surveillance")),
     # Core utilities API (PRC number generation, etc.)
     path("api/core/", include("hmis.apps.core.urls")),
     # MFA (Multi-Factor Authentication) API
