@@ -243,21 +243,56 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
 
     This ensures that JWT-based logins are properly logged in the audit system.
     Also includes user info in the response for the frontend.
+    Supports MFA flow when MFA is enabled for the user.
     """
 
     def post(self, request, *args, **kwargs):
-        """Handle token obtain request with audit logging."""
+        """Handle token obtain request with audit logging and MFA."""
         response = super().post(request, *args, **kwargs)
 
         if response.status_code == 200:
-            # Login successful - fire user_logged_in signal
+            # Login successful - check for MFA
             from django.contrib.auth import get_user_model
+
+            from hmis.apps.core.mfa.models import MFAToken
+            from hmis.apps.core.mfa.utils import get_client_ip, is_mfa_enabled, is_mfa_required
 
             User = get_user_model()
             username = request.data.get("username")
             try:
                 user = User.objects.get(username=username)
-                user_logged_in.send(sender=self.__class__, request=request, user=user)
+
+                # Check if MFA is enabled for this user
+                mfa_enabled = is_mfa_enabled(user)
+                mfa_required = is_mfa_required(user)
+
+                if mfa_enabled:
+                    # MFA is enabled - don't return tokens yet
+                    # Create temporary MFA token
+                    mfa_token = MFAToken.create_for_user(
+                        user=user,
+                        ip_address=get_client_ip(request),
+                    )
+
+                    # Return MFA required response (without access tokens)
+                    return Response(
+                        {
+                            "mfa_required": True,
+                            "mfa_token": mfa_token.token,
+                        }
+                    )
+
+                if mfa_required and not mfa_enabled:
+                    # MFA is required but not set up - user needs to set it up
+                    # Still return the tokens but flag that setup is needed
+                    user_logged_in.send(sender=self.__class__, request=request, user=user)
+
+                    response.data["mfa_setup_required"] = True
+                    response.data["mfa_required"] = False
+                else:
+                    # No MFA - proceed normally
+                    user_logged_in.send(sender=self.__class__, request=request, user=user)
+                    response.data["mfa_required"] = False
 
                 # Get user's role from StaffProfile or Django groups
                 role = None
