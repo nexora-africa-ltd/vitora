@@ -521,6 +521,12 @@ class TestMFALoginFlow:
         assert response.status_code == status.HTTP_200_OK
         assert "access" in response.data
         assert "refresh" in response.data
+        # User info should be included in the response
+        assert "user" in response.data
+        assert response.data["user"]["username"] == "testuser"
+        assert "first_name" in response.data["user"]
+        assert "last_name" in response.data["user"]
+        assert "permissions" in response.data["user"]
 
     def test_mfa_verify_with_backup_code(self, api_client, test_user, db):
         """Should complete login with valid backup code."""
@@ -545,6 +551,9 @@ class TestMFALoginFlow:
         assert response.status_code == status.HTTP_200_OK
         assert "access" in response.data
         assert "refresh" in response.data
+        # User info should be included in the response
+        assert "user" in response.data
+        assert response.data["user"]["username"] == "testuser"
 
     def test_mfa_verify_rejects_invalid_totp(self, api_client, test_user, db):
         """Should reject invalid TOTP token."""

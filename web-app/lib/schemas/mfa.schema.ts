@@ -68,9 +68,23 @@ export const MFAVerifyRequestSchema = z.object({
 
 export type MFAVerifyRequestSchemaType = z.infer<typeof MFAVerifyRequestSchema>;
 
+// User schema for MFA verify response (matches auth context User type)
+export const MFAVerifyUserSchema = z.object({
+  id: z.number(),
+  username: z.string(),
+  email: z.string(),
+  first_name: z.string(),
+  last_name: z.string(),
+  is_staff: z.boolean(),
+  is_superuser: z.boolean().optional(),
+  role: z.string().nullable().optional(),
+  permissions: z.array(z.string()),
+});
+
 export const MFAVerifyResponseSchema = z.object({
   access: z.string(),
   refresh: z.string(),
+  user: MFAVerifyUserSchema,
 });
 
 export type MFAVerifyResponseSchemaType = z.infer<typeof MFAVerifyResponseSchema>;

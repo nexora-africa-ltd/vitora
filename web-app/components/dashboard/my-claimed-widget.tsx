@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useMyClaimedEncounters, useReleaseEncounter } from '@/lib/hooks/use-consultation-queue';
 import { useToast } from '@/lib/hooks/use-toast';
+import { getApiErrorMessage } from '@/lib/api/client';
 
 const MAX_DISPLAY_ITEMS = 5;
 
@@ -49,7 +50,7 @@ export function MyClaimedEncountersWidget() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to release encounter',
+        description: getApiErrorMessage(error),
         variant: 'destructive',
       });
     }

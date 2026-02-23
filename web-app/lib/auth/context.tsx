@@ -187,16 +187,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await mfaApi.verifyMFA(mfaToken, options);
       const tokens: AuthTokens = { access: response.access, refresh: response.refresh };
 
-      // For MFA verification, we need to get user info from the token
-      // This is a simplified approach - in production you might want to decode the JWT
+      // User info is now included in the MFA verify response
       const user: User = {
-        id: 0,
-        username: '', // Will be updated when we refresh user data
-        email: '',
-        first_name: '',
-        last_name: '',
-        is_staff: false,
-        permissions: [],
+        id: response.user.id,
+        username: response.user.username,
+        email: response.user.email,
+        first_name: response.user.first_name,
+        last_name: response.user.last_name,
+        is_staff: response.user.is_staff,
+        is_superuser: response.user.is_superuser,
+        permissions: response.user.permissions,
+        role: response.user.role ?? undefined,
       };
 
       // Store in localStorage

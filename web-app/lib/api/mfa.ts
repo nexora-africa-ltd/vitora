@@ -47,9 +47,22 @@ export interface TOTPConfirmResponse {
   backup_codes: string[];
 }
 
+export interface MFAVerifyUser {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  is_staff: boolean;
+  is_superuser?: boolean;
+  role?: string | null;
+  permissions: string[];
+}
+
 export interface MFAVerifyResponse {
   access: string;
   refresh: string;
+  user: MFAVerifyUser;
 }
 
 export interface BackupCodesResponse {

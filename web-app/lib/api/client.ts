@@ -161,8 +161,19 @@ export interface ApiError {
 export function transformAxiosError(error: AxiosError): ApiError {
   if (error.response) {
     const data = error.response.data as any;
+    // Extract message from various DRF response formats:
+    // - {"detail": "..."} - Standard DRF error
+    // - {"message": "..."} - Custom message format
+    // - {"error": "..."} - Alternative error format
+    // - {"non_field_errors": ["..."]} - DRF validation errors
+    const message = 
+      data?.detail || 
+      data?.message || 
+      data?.error ||
+      (Array.isArray(data?.non_field_errors) ? data.non_field_errors.join('. ') : null) ||
+      'An error occurred';
     return {
-      message: data?.detail || data?.message || 'An error occurred',
+      message,
       status: error.response.status,
       code: data?.code,
       details: data?.errors || data,
@@ -194,9 +205,27 @@ export function getApiErrorMessage(error: unknown): string {
     
     // Handle DRF validation errors: {"code": ["drug with this code already exists."]}
     if (data && typeof data === 'object' && !Array.isArray(data)) {
+      // First, check for top-level error message fields (most common)
+      // Priority: detail > error > message
+      if (typeof data.detail === 'string') {
+        return data.detail;
+      }
+      if (typeof data.error === 'string') {
+        return data.error;
+      }
+      if (typeof data.message === 'string') {
+        return data.message;
+      }
+      
+      // Then handle field-level validation errors
       const messages: string[] = [];
       
       for (const [field, errors] of Object.entries(data)) {
+        // Skip already-checked top-level string fields
+        if (['detail', 'error', 'message', 'code'].includes(field) && typeof errors === 'string') {
+          continue;
+        }
+        
         if (Array.isArray(errors)) {
           errors.forEach(err => {
             if (typeof err === 'string') {
@@ -214,13 +243,8 @@ export function getApiErrorMessage(error: unknown): string {
             }
           });
         } else if (typeof errors === 'string') {
-          // Handle {"detail": "error message"} format
-          if (field === 'detail') {
-            messages.push(errors);
-          } else {
-            const fieldName = field.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
-            messages.push(`${fieldName}: ${errors}`);
-          }
+          const fieldName = field.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+          messages.push(`${fieldName}: ${errors}`);
         }
       }
       

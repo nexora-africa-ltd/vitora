@@ -31,6 +31,7 @@ import { ConsultationQueueContainer } from '@/components/encounters/consultation
 import { useEncounters } from '@/lib/hooks/use-encounters';
 import { useMyClaimedEncounters, useAllClaimedEncounters, useReleaseEncounter } from '@/lib/hooks/use-consultation-queue';
 import { useToast } from '@/lib/hooks/use-toast';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { formatRelativeTime } from '@/lib/utils/format';
 import { ENCOUNTER_TYPES, ENCOUNTER_STATUS } from '@/lib/utils/constants';
 import type { Encounter } from '@/lib/types/encounter';
@@ -78,7 +79,7 @@ export default function EncountersPage() {
     } catch (error) {
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to release encounter',
+        description: getApiErrorMessage(error),
         variant: 'destructive',
       });
     }
