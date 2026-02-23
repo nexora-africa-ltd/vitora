@@ -19,7 +19,7 @@
 | Captures Next of Kin | ✅ | `EmergencyContact` model — name, relationship, phone |
 | Captures National ID | ✅ | `identification_type = national_id` + Fernet-encrypted `identification_number` |
 | Captures Passport Number | ✅ | `identification_type = passport` + `identification_number` |
-| Captures Birth Certificate | ❌ | Not yet in `IDENTIFICATION_TYPE_CHOICES` |
+| Captures Birth Certificate | ✅ | `identification_type = birth_certificate` + `identification_number` |
 | KENHDD Compliant | ⚠️ | Partial — uses Kenya location hierarchy, SHA/CR integration, ICD-10/11; no explicit KENHDD schema validation |
 
 ---

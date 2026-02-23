@@ -20,6 +20,7 @@ export const IdentificationTypeSchema = z.enum([
   'kra_pin',
   'temporary_id',
   'passport',
+  'birth_certificate',
 ]);
 
 // Base title enum (for contract tests)

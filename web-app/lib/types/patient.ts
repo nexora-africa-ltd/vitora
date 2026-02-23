@@ -10,7 +10,8 @@ export type IdentificationType =
   | 'alien_id'
   | 'kra_pin'
   | 'temporary_id'
-  | 'passport';
+  | 'passport'
+  | 'birth_certificate';
 
 export const IDENTIFICATION_TYPE_OPTIONS: Array<{ value: IdentificationType; label: string }> = [
   { value: 'national_id', label: 'National ID' },
@@ -20,6 +21,7 @@ export const IDENTIFICATION_TYPE_OPTIONS: Array<{ value: IdentificationType; lab
   { value: 'kra_pin', label: 'KRA PIN' },
   { value: 'temporary_id', label: 'Temporary ID' },
   { value: 'passport', label: 'Passport Number' },
+  { value: 'birth_certificate', label: 'Birth Certificate' },
 ];
 
 // Title options
