@@ -229,7 +229,7 @@ DHIS2_PASSWORD=district
 DHIS2_ORG_UNIT=lZtlGVzHnKF
 
 # Facility Identification
-FACILITY_CODE=TEST001
+FACILITY_MFL_CODE=TEST001
 FACILITY_NAME=Test Health Facility
 ```
 
@@ -340,7 +340,34 @@ Ensure your DHIS2 submission service uses the mapping module instead of placehol
 
 ## Step 4: Run Integration Tests
 
-### 4.1 Generate Test IDSR Report
+### 4.1 Seed Demo Surveillance Data
+
+Before testing DHIS2 submission, seed demo notifiable cases:
+
+```bash
+cd backend
+poetry shell
+
+# Seed 20 demo cases and regenerate IDSR report for current epi week
+python manage.py seed_surveillance_demo --cases 20 --regenerate
+
+# Options:
+#   --cases N       Number of cases to create (default: 15)
+#   --week N        Target epidemiological week (default: current)
+#   --year N        Target year (default: current)
+#   --regenerate    Auto-regenerate IDSR report after seeding
+#   --clear         Clear existing demo data first
+```
+
+This creates test patients, encounters, diagnoses, and notifiable cases with realistic distributions:
+- 30% under-5, 70% 5-and-above age distribution
+- Mix of IMMEDIATE (Cholera, Measles) and WEEKLY (Malaria, Typhoid, Dysentery) diseases
+- 40% lab-confirmed cases
+- 5% mortality rate
+
+### 4.2 Generate IDSR Report (Alternative)
+
+If you prefer manual control:
 
 ```bash
 cd backend
@@ -354,7 +381,7 @@ print(f'Generated report: {result}')
 "
 ```
 
-### 4.2 Preview DHIS2 Payload
+### 4.3 Preview DHIS2 Payload
 
 ```bash
 # Via Django shell
@@ -381,7 +408,7 @@ curl -X GET http://localhost:9088/api/surveillance/idsr/{id}/dhis2_preview/ \
   -H "Authorization: Bearer <token>"
 ```
 
-### 4.3 Submit to Local DHIS2
+### 4.4 Submit to Local DHIS2
 
 ```bash
 # Approve the report first
@@ -395,7 +422,7 @@ curl -X POST http://localhost:9088/api/surveillance/idsr/{id}/submit_to_dhis2/ \
   -H "Authorization: Bearer <token>"
 ```
 
-### 4.4 Verify in DHIS2
+### 4.5 Verify in DHIS2
 
 1. Navigate to **Data Entry** in DHIS2
 2. Select your test org unit, dataset (IDSR Weekly), and period
