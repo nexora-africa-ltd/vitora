@@ -241,3 +241,23 @@ export {
   ImagingOrderArraySchema,
   WorklistStatsSchema,
 } from './imaging.schema';
+
+// Allergy schemas
+export {
+  SubstanceTypeSchema,
+  ReactionTypeSchema,
+  SeveritySchema,
+  CriticalitySchema,
+  AllergyStatusSchema,
+  VerificationStatusSchema as AllergyVerificationStatusSchema,
+  AllergySchema,
+  AllergyListSchema,
+  AllergyLookupResultSchema,
+  DrugInteractionSchema,
+  DrugInteractionCheckSchema,
+  type Allergy as AllergySchemaType,
+  type AllergyListItem as AllergyListItemSchemaType,
+  type SubstanceType as SubstanceTypeSchemaType,
+  type AllergyLookupResult as AllergyLookupResultSchemaType,
+  type DrugInteractionCheck as DrugInteractionCheckSchemaType,
+} from './allergy.schema';

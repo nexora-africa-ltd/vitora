@@ -6,3 +6,6 @@ export { QuickCheckinDialog } from './quick-checkin-dialog';
 export { PatientRegistrationSuccess } from './patient-registration-success';
 export { DuplicatePatientAlert } from './duplicate-patient-alert';
 export { DuplicatePatientModal } from './duplicate-patient-modal';
+
+// Allergy components
+export { PatientAllergiesTab, AllergyFormDialog, AllergyListItemRow } from './allergies';

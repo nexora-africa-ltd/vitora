@@ -18,5 +18,8 @@ export { DirectDispenseDialog } from './dispensing/direct-dispense-dialog';
 export { ReturnDialog } from './dispensing/return-dialog';
 export { LabelDialog } from './dispensing/label-dialog';
 
+// Drug-Allergy Interaction Warning
+export { PrescriptionAllergyWarning } from './prescription-allergy-warning';
+
 // Print Components
 export { PrescriptionPrintButton, usePrintPrescription } from './prescription-print-button';
