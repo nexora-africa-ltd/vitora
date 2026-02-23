@@ -45,6 +45,7 @@ import { EmergencyContactsList } from '@/components/patients/emergency-contacts-
 import { QuickCheckinDialog } from '@/components/patients/quick-checkin-dialog';
 import { PatientImagingSection } from '@/components/patients/patient-imaging-section';
 import { PatientAllergiesTab } from '@/components/patients/allergies';
+import { PatientAuditTrail } from '@/components/patients/patient-audit-trail';
 import { EligibilityBanner, DependentsView } from '@/components/billing/sha';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -365,6 +366,11 @@ export default function PatientDetailPage() {
               <span className="hidden sm:inline">Lab Results</span>
               <span className="sm:hidden">Labs</span>
             </TabsTrigger>
+            <TabsTrigger value="audit-trail" className="gap-1.5">
+              <Clock className="h-4 w-4" />
+              <span className="hidden sm:inline">Audit Trail</span>
+              <span className="sm:hidden">Audit</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="encounters">
@@ -397,6 +403,10 @@ export default function PatientDetailPage() {
               isLoading={loadingLabOrders}
               patientId={patientId}
             />
+          </TabsContent>
+
+          <TabsContent value="audit-trail">
+            <PatientAuditTrail patientId={patientId} />
           </TabsContent>
         </Tabs>
       </div>
