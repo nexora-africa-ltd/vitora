@@ -13,6 +13,7 @@ Endpoints:
     /fhir/Composition/{id}          - Read composition resource
     /fhir/AllergyIntolerance/{id}   - Read allergy resource
     /fhir/MedicationStatement/{id}  - Read medication statement
+    /fhir/CarePlan/{id}             - Read care plan (treatment plan)
     /fhir/Device/{id}               - Read device resource
 """
 
@@ -20,6 +21,7 @@ from django.urls import path
 
 from hmis.apps.core.fhir.views import (
     FHIRAllergyIntoleranceView,
+    FHIRCarePlanView,
     FHIRCompositionView,
     FHIRConditionView,
     FHIRDeviceView,
@@ -86,6 +88,12 @@ urlpatterns = [
         "MedicationStatement/<int:pk>",
         FHIRMedicationStatementView.as_view(),
         name="medication-statement-read",
+    ),
+    # CarePlan resources (treatment plans)
+    path(
+        "CarePlan/<int:pk>",
+        FHIRCarePlanView.as_view(),
+        name="care-plan-read",
     ),
     # Device resources
     path(
