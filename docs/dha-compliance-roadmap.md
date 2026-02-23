@@ -158,16 +158,16 @@ Gaps are categorized into four tiers:
 - **Completed**: February 23, 2026 (backend)
 - **Deliverables**: `patients/models.py::Allergy`, `AllergyViewSet`, `test_allergy.py`, `docs/allergy-implementation.md`
 
-#### 8. Birth Certificate Identification Type `P1`
-- **Gap**: Not in `IDENTIFICATION_TYPE_CHOICES`
+#### 8. Birth Certificate Identification Type `P1` ✅ COMPLETE
+- **Gap**: ~~Not in `IDENTIFICATION_TYPE_CHOICES`~~ **RESOLVED**
 - **Action**:
-  - [ ] Add `birth_certificate` to `IDENTIFICATION_TYPE_CHOICES`
-  - [ ] Migration
-  - [ ] Update patient registration forms
-  - [ ] Tests: 5 unit tests
+  - [x] Add `birth_certificate` to `IDENTIFICATION_TYPE_CHOICES`
+  - [x] Migration (`0013_add_birth_certificate_identification_type`)
+  - [x] Update patient registration forms (frontend types + Zod schema)
+  - [x] Tests: 5 unit tests (`test_birth_certificate_identification.py`)
 - **Owner**: Backend Team
-- **Effort**: 2 hours
-- **Deliverables**: Migration, form update
+- **Completed**: February 23, 2026
+- **Deliverables**: Migration, `web-app/lib/types/patient.ts`, `web-app/lib/schemas/patient.schema.ts`
 
 #### 9. IPS Bundle Dynamic Population `P1` ⏳ PARTIAL
 - **Gap**: ~~Medications/allergies not dynamically populated in IPS~~ **Allergies RESOLVED, Medications TODO**

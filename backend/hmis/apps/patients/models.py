@@ -91,6 +91,7 @@ class Patient(models.Model):
         ("kra_pin", "KRA PIN"),
         ("temporary_id", "Temporary ID"),
         ("passport", "Passport Number"),
+        ("birth_certificate", "Birth Certificate"),
     ]
 
     # Required fields

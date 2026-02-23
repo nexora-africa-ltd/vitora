@@ -142,7 +142,7 @@ function useDebounce<T>(value: T, delay: number): T {
 // Validation schema
 const patientFormSchema = z.object({
   // Identification (at the top)
-  identification_type: z.enum(['national_id', 'cr_number', 'mandate_number', 'alien_id', 'kra_pin', 'temporary_id', 'passport']).default('national_id'),
+  identification_type: z.enum(['national_id', 'cr_number', 'mandate_number', 'alien_id', 'kra_pin', 'temporary_id', 'passport', 'birth_certificate']).default('national_id'),
   identification_number: z.string()
     .max(15, 'ID number cannot exceed 15 characters')
     .regex(/^[a-zA-Z0-9-]*$/, 'ID can only contain letters, numbers, and dashes')
@@ -616,6 +616,7 @@ export function PatientForm({
         kra_pin: 'KRA PIN',
         mandate_number: 'Mandate Number',
         temporary_id: 'Temporary ID',
+        birth_certificate: 'Birth Certificate',
       };
 
       request.identification_type = idTypeMap[idType] || idType;
@@ -922,6 +923,7 @@ export function PatientForm({
           kra_pin: 'KRA PIN',
           mandate_number: 'Mandate Number',
           temporary_id: 'Temporary ID',
+          birth_certificate: 'Birth Certificate',
         }[idType] || idType,
         identification_number: idNumber,
       }),

@@ -28,6 +28,7 @@ const ID_TYPE_ICONS: Record<IdentificationType, React.ReactNode> = {
   kra_pin: <Building2 className="h-4 w-4" />,
   temporary_id: <Clock className="h-4 w-4" />,
   passport: <Fingerprint className="h-4 w-4" />,
+  birth_certificate: <FileText className="h-4 w-4" />,
 };
 
 // Placeholder text for each ID type
@@ -39,6 +40,7 @@ const ID_TYPE_PLACEHOLDERS: Record<IdentificationType, string> = {
   kra_pin: 'e.g., A001234567K',
   temporary_id: 'e.g., TMP-2026-001',
   passport: 'e.g., AB1234567',
+  birth_certificate: 'e.g., BCN-2024-001234',
 };
 
 interface IdentificationInputProps {
