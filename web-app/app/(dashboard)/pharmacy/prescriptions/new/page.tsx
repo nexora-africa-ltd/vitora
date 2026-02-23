@@ -63,6 +63,9 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { useEncounter } from '@/lib/hooks/use-encounters';
 import { useDrugs, useCreatePrescription } from '@/lib/hooks/use-pharmacy';
+import { useCheckDrugInteractions } from '@/lib/hooks/use-allergies';
+import { PrescriptionAllergyWarning } from '@/components/pharmacy/prescription-allergy-warning';
+import type { DrugInteractionCheck } from '@/lib/types/allergy';
 import { useAuth } from '@/lib/auth';
 import { useOptionalPatientContext } from '@/lib/context/patient-context';
 import { useOptionalEncounterContext } from '@/lib/context/encounter-context';
@@ -187,6 +190,11 @@ export default function NewPrescriptionPage() {
 
   // Create prescription mutation
   const createPrescription = useCreatePrescription();
+
+  // Drug-allergy interaction checking
+  const checkInteractions = useCheckDrugInteractions();
+  const [allergyWarningOpen, setAllergyWarningOpen] = useState(false);
+  const [pendingInteractions, setPendingInteractions] = useState<DrugInteractionCheck | null>(null);
 
   // Validation
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -485,31 +493,19 @@ Prescribed by: ${prescriberName}
     setShowDrugSearch(false);
   }, []);
 
-  // Submit prescription
-  const handleSubmit = useCallback(async () => {
-    if (items.length === 0) {
-      toast({
-        title: 'No Items',
-        description: 'Please add at least one item to the prescription',
-        variant: 'destructive',
-      });
-      return;
-    }
+  // Actually submit the prescription (after allergy check)
+  const submitPrescription = useCallback(async (allergyOverride?: boolean) => {
+    if (!patientId) return;
 
-    if (!patientId) {
-      toast({
-        title: 'Error',
-        description: 'Patient ID is required',
-        variant: 'destructive',
-      });
-      return;
-    }
+    const clinicalNotesWithOverride = allergyOverride
+      ? `${clinicalNotes}\n\n[ALLERGY WARNING ACKNOWLEDGED: Prescriber reviewed and acknowledged drug-allergy interactions]`.trim()
+      : clinicalNotes;
 
     try {
       await createPrescription.mutateAsync({
         patient: patientId,
         encounter: encounterId,
-        clinical_notes: clinicalNotes || undefined,
+        clinical_notes: clinicalNotesWithOverride || undefined,
         items: items.map((item) => ({
           drug: item.drug,
           quantity_prescribed: item.quantity_prescribed,
@@ -540,7 +536,70 @@ Prescribed by: ${prescriberName}
         variant: 'destructive',
       });
     }
-  }, [items, patientId, encounterId, clinicalNotes, createPrescription, toast, router]);
+  }, [patientId, encounterId, clinicalNotes, items, createPrescription, toast, router]);
+
+  // Submit prescription - checks for drug-allergy interactions first
+  const handleSubmit = useCallback(async () => {
+    if (items.length === 0) {
+      toast({
+        title: 'No Items',
+        description: 'Please add at least one item to the prescription',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!patientId) {
+      toast({
+        title: 'Error',
+        description: 'Patient ID is required',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check for drug-allergy interactions
+    const drugIds = items.map((item) => item.drug).filter((id): id is number => id !== undefined);
+    const drugNames = items
+      .map((item) => item.drug_name)
+      .filter((name): name is string => !!name);
+
+    if (drugIds.length > 0 || drugNames.length > 0) {
+      try {
+        const interactionCheck = await checkInteractions.mutateAsync({
+          patientId,
+          drugIds,
+          drugNames,
+        });
+
+        if (interactionCheck.has_interactions) {
+          // Show warning dialog
+          setPendingInteractions(interactionCheck);
+          setAllergyWarningOpen(true);
+          return;
+        }
+      } catch (error) {
+        // Non-blocking: If allergy check fails, log but allow prescription to proceed
+        console.warn('Allergy check failed, proceeding with prescription:', error);
+      }
+    }
+
+    // No interactions found, proceed with submission
+    await submitPrescription(false);
+  }, [items, patientId, checkInteractions, submitPrescription, toast]);
+
+  // Handler for acknowledging allergy warning and proceeding
+  const handleAllergyAcknowledge = useCallback(() => {
+    setAllergyWarningOpen(false);
+    setPendingInteractions(null);
+    submitPrescription(true);
+  }, [submitPrescription]);
+
+  // Handler for canceling after allergy warning
+  const handleAllergyCancel = useCallback(() => {
+    setAllergyWarningOpen(false);
+    setPendingInteractions(null);
+  }, []);
 
   // Redirect if no patient ID
   useEffect(() => {
@@ -1069,9 +1128,9 @@ Prescribed by: ${prescriberName}
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={items.length === 0 || createPrescription.isPending}
+            disabled={items.length === 0 || createPrescription.isPending || checkInteractions.isPending}
           >
-            {createPrescription.isPending ? (
+            {createPrescription.isPending || checkInteractions.isPending ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <Pill className="h-4 w-4 mr-2" />
@@ -1080,6 +1139,17 @@ Prescribed by: ${prescriberName}
           </Button>
         </div>
       </div>
+
+      {/* Drug-Allergy Interaction Warning Dialog */}
+      {pendingInteractions && (
+        <PrescriptionAllergyWarning
+          open={allergyWarningOpen}
+          onOpenChange={setAllergyWarningOpen}
+          interactions={pendingInteractions}
+          onAcknowledge={handleAllergyAcknowledge}
+          onCancel={handleAllergyCancel}
+        />
+      )}
     </div>
   );
 }

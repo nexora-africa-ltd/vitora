@@ -44,6 +44,7 @@ import { PatientEncounters } from '@/components/patients/patient-encounters';
 import { EmergencyContactsList } from '@/components/patients/emergency-contacts-list';
 import { QuickCheckinDialog } from '@/components/patients/quick-checkin-dialog';
 import { PatientImagingSection } from '@/components/patients/patient-imaging-section';
+import { PatientAllergiesTab } from '@/components/patients/allergies';
 import { EligibilityBanner, DependentsView } from '@/components/billing/sha';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -350,6 +351,10 @@ export default function PatientDetailPage() {
               <ScanLine className="h-4 w-4" />
               <span className="hidden sm:inline">Imaging</span>
             </TabsTrigger>
+            <TabsTrigger value="allergies" className="gap-1.5">
+              <Shield className="h-4 w-4" />
+              <span className="hidden sm:inline">Allergies</span>
+            </TabsTrigger>
             <TabsTrigger value="prescriptions" className="gap-1.5">
               <Pill className="h-4 w-4" />
               <span className="hidden sm:inline">Prescriptions</span>
@@ -372,6 +377,10 @@ export default function PatientDetailPage() {
 
           <TabsContent value="imaging">
             <PatientImagingSection patientId={patientId} />
+          </TabsContent>
+
+          <TabsContent value="allergies">
+            <PatientAllergiesTab patientId={patientId} />
           </TabsContent>
 
           <TabsContent value="prescriptions">
