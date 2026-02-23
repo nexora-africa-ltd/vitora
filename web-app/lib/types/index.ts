@@ -53,6 +53,31 @@ export type {
   PatientEncounter,
 } from './patient';
 
+// Re-export allergy types
+export type {
+  Allergy,
+  AllergyListItem,
+  AllergyLookupResult,
+  DrugInteraction,
+  DrugInteractionCheck,
+  AllergyCreatePayload,
+  AllergyUpdatePayload,
+  SubstanceType,
+  ReactionType,
+  AllergySeverity,
+  Criticality,
+  AllergyStatus,
+  VerificationStatus,
+} from './allergy';
+export {
+  SUBSTANCE_TYPE_OPTIONS,
+  REACTION_TYPE_OPTIONS,
+  SEVERITY_OPTIONS,
+  CRITICALITY_OPTIONS,
+  ALLERGY_STATUS_OPTIONS,
+  VERIFICATION_STATUS_OPTIONS,
+} from './allergy';
+
 // Re-export notification types
 export type {
   Notification,

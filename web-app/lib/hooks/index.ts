@@ -31,6 +31,18 @@ export {
   useUpdatePatient,
   useDeletePatient,
 } from './use-patients';
+// Allergy hooks
+export {
+  allergyKeys,
+  usePatientAllergies,
+  useAllergy,
+  useAllergyLookup,
+  useCreateAllergy,
+  useUpdateAllergy,
+  useDeleteAllergy,
+  useResolveAllergy,
+  useCheckDrugInteractions,
+} from './use-allergies';
 export { useToast, toast } from './use-toast';
 export { useToastNotification } from './use-toast-notification';
 
