@@ -349,9 +349,12 @@ class TestBackupMonitorS3:
     @patch("subprocess.run")
     def test_check_s3_success(self, mock_run, backup_dir: Path):
         """Should parse S3 listing correctly."""
+        # Use a timestamp that's within the 26h threshold
+        recent_time = datetime.now() - timedelta(hours=2)
+        timestamp_str = recent_time.strftime("%Y-%m-%d %H:%M:%S")
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout="2026-02-22 02:00:00 1048576 vitora_staging_20260222_020000_db.sql.gz.gpg\n",
+            stdout=f"{timestamp_str} 1048576 vitora_staging_{recent_time.strftime('%Y%m%d_%H%M%S')}_db.sql.gz.gpg\n",
             stderr="",
         )
 
