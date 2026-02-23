@@ -124,7 +124,7 @@ export const PatientSchema = z.object({
   emergency_contact_relationship: z.string().optional().nullable(),
 
   // Metadata
-  registered_by: z.number(),
+  registered_by: z.number().nullable(),
   registered_by_username: z.string().optional(),
   created_at: z.string(),
   updated_at: z.string(),
