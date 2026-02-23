@@ -18,10 +18,9 @@ services:
     ports:
       - "8082:8080"
     environment:
-      DHIS2_DATABASE_HOST: db
-      DHIS2_DATABASE_NAME: dhis2
-      DHIS2_DATABASE_USERNAME: dhis
-      DHIS2_DATABASE_PASSWORD: dhis
+      DHIS2_HOME: /opt/dhis2
+    volumes:
+      - ./dhis.conf:/opt/dhis2/dhis.conf:ro
     restart: always
 
 volumes:

@@ -1,0 +1,72 @@
+{
+  "_metadata": {
+    "version": "1.0.0",
+    "description": "DHIS2 Data Element UID mappings for IDSR reporting",
+    "environment": "local",
+    "dhis2_version": "2.40",
+    "last_updated": "2026-02-23",
+    "maintainer": "Vitora HMIS Team",
+    "notes": "Local DHIS2 UIDs. Replace with KHIS UIDs for production."
+  },
+  "org_unit": {
+    "uid": "lZtlGVzHnKF",
+    "name": "Test Facility",
+    "mfl_code": "TEST001"
+  },
+  "data_elements": {
+    "cholera": {
+      "_category": "IMMEDIATE",
+      "_reporting_hours": 24,
+      "cases_under_5": "jOdkuwpQGKX",
+      "cases_5_and_above": "sHSlCXKo0FA",
+      "deaths_under_5": "mMa4lFXGpUP",
+      "deaths_5_and_above": "Px7MhFr80Sb"
+    },
+    "measles": {
+      "_category": "IMMEDIATE",
+      "_reporting_hours": 24,
+      "cases_under_5": "sfLYRMo5ahz",
+      "cases_5_and_above": "In3T4jcHIdi",
+      "deaths_under_5": "x8ljy7lW0k6",
+      "deaths_5_and_above": "eWJ7Rrik4ul"
+    },
+    "acute_flaccid_paralysis_(polio)": {
+      "_category": "IMMEDIATE",
+      "_reporting_hours": 24,
+      "cases_under_5": "aB4mpXe2PKg",
+      "cases_5_and_above": "Skan0yaIMoW",
+      "deaths_under_5": "c4ANCB4y05s",
+      "deaths_5_and_above": "ZE5keDly4gM"
+    },
+    "malaria": {
+      "_category": "WEEKLY",
+      "_reporting_hours": 168,
+      "cases_under_5": "Nk7e48O4DJF",
+      "cases_5_and_above": "OknnGNIlQJg",
+      "deaths_under_5": "aR3Fj0vZ6mA",
+      "deaths_5_and_above": "oH5O2zkKIi9"
+    },
+    "typhoid_fever": {
+      "_category": "WEEKLY",
+      "_reporting_hours": 168,
+      "cases_under_5": "wdmX1DIQbBz",
+      "cases_5_and_above": "HrgJjgpv3Dc",
+      "deaths_under_5": "Ft6oBCgoysd",
+      "deaths_5_and_above": "WaX8n6EB2qK"
+    },
+    "dysentery": {
+      "_category": "WEEKLY",
+      "_reporting_hours": 168,
+      "cases_under_5": "XzL71mHZg8Y",
+      "cases_5_and_above": "Qe9SjNR5lAX",
+      "deaths_under_5": "hwNA81DRmCr",
+      "deaths_5_and_above": "Vap87Ar0Nxi"
+    }
+  },
+  "indicator_types": [
+    "cases_under_5",
+    "cases_5_and_above",
+    "deaths_under_5",
+    "deaths_5_and_above"
+  ]
+}

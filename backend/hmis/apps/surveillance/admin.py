@@ -9,6 +9,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 
 from .models import (
+    DHIS2DataElementMapping,
     IDSRDiseaseSummary,
     IDSRWeeklyReport,
     NotifiableCase,
@@ -396,3 +397,126 @@ class IDSRWeeklyReportAdmin(admin.ModelAdmin):
         return "-"
 
     outbreak_badge.short_description = "Outbreak"
+
+
+@admin.register(DHIS2DataElementMapping)
+class DHIS2DataElementMappingAdmin(admin.ModelAdmin):
+    """
+    Admin for DHIS2 Data Element Mappings.
+
+    Allows managing DHIS2 data element UIDs for IDSR reporting
+    without code changes. Supports multiple environments.
+    """
+
+    list_display = [
+        "disease",
+        "indicator_type",
+        "environment",
+        "data_element_uid",
+        "short_name",
+        "is_active",
+    ]
+    list_filter = [
+        "environment",
+        "indicator_type",
+        "is_active",
+        "disease__category",
+    ]
+    search_fields = [
+        "disease__name",
+        "data_element_uid",
+        "short_name",
+    ]
+    ordering = ["disease__name", "indicator_type", "environment"]
+    readonly_fields = ["created_at", "updated_at"]
+    raw_id_fields = ["disease"]
+    list_editable = ["data_element_uid", "is_active"]
+    list_per_page = 50
+
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "disease",
+                    "indicator_type",
+                    "environment",
+                )
+            },
+        ),
+        (
+            "DHIS2 Mapping",
+            {
+                "fields": (
+                    "data_element_uid",
+                    "short_name",
+                    "is_active",
+                )
+            },
+        ),
+        (
+            "Notes",
+            {
+                "fields": ("notes",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    actions = ["duplicate_to_production", "export_mappings"]
+
+    @admin.action(description="Duplicate selected mappings to production environment")
+    def duplicate_to_production(self, request, queryset):
+        """Create production copies of selected local/staging mappings."""
+        created = 0
+        for mapping in queryset:
+            if mapping.environment != "production":
+                _, was_created = DHIS2DataElementMapping.objects.get_or_create(
+                    disease=mapping.disease,
+                    indicator_type=mapping.indicator_type,
+                    environment="production",
+                    defaults={
+                        "data_element_uid": f"KHIS_{mapping.data_element_uid[:7]}",
+                        "short_name": mapping.short_name,
+                        "is_active": False,  # Inactive until UID updated
+                        "notes": f"Duplicated from {mapping.environment}. UPDATE UID!",
+                    },
+                )
+                if was_created:
+                    created += 1
+        self.message_user(
+            request, f"Created {created} production mapping(s). Update UIDs before activating!"
+        )
+
+    @admin.action(description="Export selected mappings as JSON")
+    def export_mappings(self, request, queryset):
+        """Export mappings to JSON (for backup/transfer)."""
+        import json
+
+        from django.http import HttpResponse
+
+        data = [
+            {
+                "disease": m.disease.name,
+                "indicator_type": m.indicator_type,
+                "environment": m.environment,
+                "data_element_uid": m.data_element_uid,
+                "short_name": m.short_name,
+                "is_active": m.is_active,
+            }
+            for m in queryset
+        ]
+        response = HttpResponse(
+            json.dumps(data, indent=2),
+            content_type="application/json",
+        )
+        response["Content-Disposition"] = 'attachment; filename="dhis2_mappings.json"'
+        return response
+
