@@ -2,7 +2,7 @@
 
 > **Integrated Disease Surveillance and Response (IDSR) Weekly Reporting Module**
 >
-> Version: 1.1
+> Version: 1.2
 > Implemented: February 23, 2026
 > Status: ✅ Complete (Backend + Frontend)
 
@@ -19,6 +19,7 @@ The IDSR Weekly Reporting module automates the generation and submission of week
 - **Per-disease summaries** with age group breakdown (under 5, 5+)
 - **Outbreak detection** based on configured thresholds
 - **DHIS2 submission** with payload preview and status tracking
+- **Hybrid data element mapping**: JSON file + Django admin with multi-environment support (local/staging/production)
 - **Report workflow**: Draft → Pending Review → Approved → Submitted
 
 ---
@@ -223,26 +224,133 @@ FACILITY_CODE = os.getenv("FACILITY_CODE")  # MFL code
 FACILITY_NAME = os.getenv("FACILITY_NAME")
 ```
 
-### Data Element Mapping
+### Data Element Mapping (Hybrid System)
 
-The DHIS2 payload uses data element IDs that must be configured per DHIS2 instance. The current implementation generates placeholder IDs:
+Vitora uses a **hybrid mapping system** for DHIS2 data element UIDs:
 
+| Source | Location | Use Case |
+|--------|----------|----------|
+| **JSON File** | `backend/data/dhis2_element_mappings.json` | Version-controlled defaults |
+| **Database** | `DHIS2DataElementMapping` model | Runtime updates via Django admin |
+
+**Lookup priority**: Database → JSON (database overrides JSON when mapping exists)
+
+#### Indicator Types
+
+Each disease maps to 4 data elements:
+
+| Indicator Type | Description | DHIS2 Short Name Pattern |
+|----------------|-------------|-------------------------|
+| `cases_under_5` | Cases in children under 5 years | `IDSR_{DISEASE}_U5_CASES` |
+| `cases_5_and_above` | Cases in patients 5+ years | `IDSR_{DISEASE}_O5_CASES` |
+| `deaths_under_5` | Deaths under 5 years | `IDSR_{DISEASE}_U5_DEATHS` |
+| `deaths_5_and_above` | Deaths 5+ years | `IDSR_{DISEASE}_O5_DEATHS` |
+
+#### Using Mappings in Code
+
+```python
+from hmis.apps.surveillance.dhis2_mappings import (
+    get_data_element_uid,
+    get_all_mappings,
+    validate_mappings,
+)
+
+# Get single UID
+uid = get_data_element_uid("Cholera", "cases_under_5", "local")
+# Returns: "jOdkuwpQGKX"
+
+# Get all mappings for payload generation
+mappings = get_all_mappings("local")
+# Returns: {"cholera": {"cases_under_5": "jOdkuwpQGKX", ...}, ...}
+
+# Validate all active diseases have mappings
+result = validate_mappings("local")
+if not result["valid"]:
+    print(f"Missing: {result['missing']}")
 ```
-IDSR_{DISEASE_NAME}_U5_CASES   - Cases under 5
-IDSR_{DISEASE_NAME}_O5_CASES   - Cases 5 and above
-IDSR_{DISEASE_NAME}_U5_DEATHS  - Deaths under 5
-IDSR_{DISEASE_NAME}_O5_DEATHS  - Deaths 5 and above
+
+#### Environment Support
+
+The mapping system supports multiple environments:
+
+| Environment | Usage | DHIS2 Instance |
+|-------------|-------|----------------|
+| `local` | Development | Local Docker DHIS2 |
+| `staging` | UAT Testing | KHIS staging/UAT |
+| `production` | Live | hiskenya.org (KHIS) |
+
+Set via environment variable:
+```bash
+DHIS2_ENVIRONMENT=staging  # Options: local, staging, production
 ```
 
-### Mapping to Kenya KHIS Data Element IDs
+---
 
-TODO: Before production deployment, placeholder IDs must be replaced with actual KHIS UIDs.
+### Managing Mappings
 
-#### Step 1: Obtain Data Element UIDs from KHIS
+#### Option 1: Django Admin (Recommended for Production)
+
+Access: `http://localhost:9088/admin/surveillance/dhis2dataelementmapping/`
+
+**Features**:
+- List view with inline editing of UIDs
+- Filter by environment, disease category, indicator type
+- Bulk actions: Duplicate to production, Export as JSON
+- No code deployment needed for UID changes
+
+#### Option 2: JSON File (Development)
+
+Edit `backend/data/dhis2_element_mappings.json`:
+
+```json
+{
+  "_metadata": {
+    "environment": "local",
+    "last_updated": "2026-02-23"
+  },
+  "data_elements": {
+    "cholera": {
+      "cases_under_5": "jOdkuwpQGKX",
+      "cases_5_and_above": "sHSlCXKo0FA",
+      "deaths_under_5": "mMa4lFXGpUP",
+      "deaths_5_and_above": "Px7MhFr80Sb"
+    }
+  }
+}
+```
+
+#### Option 3: Import JSON to Database
+
+```bash
+cd backend && poetry run python manage.py shell -c "
+from hmis.apps.surveillance.dhis2_mappings import sync_json_to_database
+result = sync_json_to_database(environment='local')
+print(f'Created: {result[\"created\"]}, Errors: {result[\"errors\"]}')
+"
+```
+
+---
+
+### Local DHIS2 Testing
+
+Before connecting to production KHIS, validate integration with local DHIS2:
+
+1. Start local DHIS2: `cd dhis2 && docker compose up -d`
+2. Create data elements matching IDSR indicators
+3. Configure mappings (JSON or admin)
+4. Generate test report and preview payload
+5. Submit to local DHIS2 and verify import
+
+See **[DHIS2 Integration Validation Guide](dhis2-integration-validation-guide.md)** for detailed setup instructions.
+
+---
+
+### Production KHIS Deployment
+
+#### Step 1: Obtain KHIS Data Element UIDs
 
 **Option A: KHIS API Query**
 ```bash
-# Query data elements containing "IDSR" in name
 curl -u "$KHIS_USERNAME:$KHIS_PASSWORD" \
   "https://hiskenya.org/api/dataElements.json?filter=name:ilike:IDSR&fields=id,name,shortName&paging=false"
 ```
@@ -253,77 +361,28 @@ curl -u "$KHIS_USERNAME:$KHIS_PASSWORD" \
 3. Search for "MOH 505" or "IDSR" indicators
 4. Export to CSV with UIDs
 
-#### Step 2: Create Mapping Configuration
+#### Step 2: Add Production Mappings
 
-Create `backend/hmis/apps/surveillance/dhis2_mappings.py`:
+Via Django admin:
+1. Access `/admin/surveillance/dhis2dataelementmapping/`
+2. Duplicate staging mappings to production (bulk action)
+3. Update each UID with actual KHIS UID
+4. Activate mappings when verified
 
-```python
-KHIS_IDSR_DATA_ELEMENTS = {
-    # Format: "disease_name": {"u5_cases": "UID", "o5_cases": "UID", ...}
-    
-    "Cholera": {
-        "u5_cases": "abc123DEF45",      # MOH 505: Cholera <5
-        "o5_cases": "ghi678JKL90",      # MOH 505: Cholera ≥5
-        "u5_deaths": "mno345PQR67",
-        "o5_deaths": "stu901VWX23",
-    },
-    "Measles": {
-        "u5_cases": "yza456BCD78",
-        # ...
-    },
-    # ... all 40 MOH 502 diseases
-}
-
-def get_data_element_id(disease_name: str, indicator: str) -> str | None:
-    """Get KHIS data element UID for a disease indicator."""
-    disease_mapping = KHIS_IDSR_DATA_ELEMENTS.get(disease_name)
-    if disease_mapping:
-        return disease_mapping.get(indicator)
-    return None
+Or via management command (bulk import):
+```bash
+python manage.py import_khis_mappings --file khis_data_elements.csv
 ```
 
-#### Step 3: Update IDSRReportingService
-
-Modify `prepare_dhis2_payload()` to use actual UIDs:
-
-```python
-from .dhis2_mappings import get_data_element_id
-
-# In prepare_dhis2_payload():
-for summary in report.disease_summaries.all():
-    disease_name = summary.disease.name
-    
-    u5_cases_uid = get_data_element_id(disease_name, "u5_cases")
-    if u5_cases_uid and summary.cases_under_5 > 0:
-        data_values.append({
-            "dataElement": u5_cases_uid,
-            "period": period,
-            "orgUnit": org_unit,
-            "value": str(summary.cases_under_5),
-        })
-```
-
-#### Step 4: Environment-Based Configuration
-
-For different environments (staging vs production KHIS):
-
-```python
-# settings/production.py
-DHIS2_ENV = "production"  # Uses hiskenya.org UIDs
-
-# settings/staging.py  
-DHIS2_ENV = "staging"  # Uses test instance UIDs
-```
-
-#### Validation Before Go-Live
+#### Step 3: Validation Before Go-Live
 
 | Step | Action |
 |------|--------|
-| 1 | Export all MOH 505/506 data elements from KHIS |
-| 2 | Map each MOH 502 disease to its KHIS UID |
-| 3 | Test with KHIS staging instance first |
+| 1 | Run `validate_mappings("production")` - ensure all diseases mapped |
+| 2 | Preview DHIS2 payload with production UIDs |
+| 3 | Test submission to KHIS staging instance first |
 | 4 | Verify import summaries return `imported > 0` |
-| 5 | Document mappings in deployment runbook |
+| 5 | Get sign-off from county HRIO |
 
 #### Key KHIS Resources
 
@@ -333,15 +392,12 @@ DHIS2_ENV = "staging"  # Uses test instance UIDs
 
 #### Responsible Parties
 
-This mapping is a **deployment configuration task**, typically done by:
-
 | Role | Responsibility |
 |------|----------------|
-| **M&E Officer** | Has KHIS admin access, knows data element UIDs |
-| **Health Records Officer** | Understands MOH 502 disease mapping |
-| **DevOps** | Implements environment configuration |
-
-The mapping file should be reviewed by the county/sub-county HRIO before production deployment.
+| **M&E Officer** | Has KHIS admin access, provides data element UIDs |
+| **Health Records Officer** | Validates MOH 502 disease mapping |
+| **DevOps** | Configures environment variables, manages deployment |
+| **County HRIO** | Reviews and approves mappings before go-live |
 
 ---
 
