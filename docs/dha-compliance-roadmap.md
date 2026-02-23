@@ -152,7 +152,7 @@ Gaps are categorized into four tiers:
   - [x] Drug-allergy interaction checking in prescription flow
   - [x] FHIR AllergyIntolerance resource mapping
   - [x] IPS Bundle integration (allergies dynamically populated)
-  - [ ] Frontend allergy management UI (in progress)
+  - [x] Frontend allergy management UI 
   - [x] Tests: 39 unit tests (exceeded 35+ requirement)
 - **Owner**: Backend + Frontend Team
 - **Completed**: February 23, 2026 (backend)
