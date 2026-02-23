@@ -58,9 +58,8 @@ export function PullToRefresh({
     (e: React.TouchEvent) => {
       if (disabled || isRefreshing) return;
 
-      // Only start if at the top of scroll
-      const container = containerRef.current;
-      if (!container || container.scrollTop > 0) return;
+      // Only start if at the top of page scroll
+      if (window.scrollY > 0) return;
 
       const touch = e.touches[0];
       if (!touch) return;
@@ -75,9 +74,8 @@ export function PullToRefresh({
     (e: React.TouchEvent) => {
       if (!isPulling || disabled || isRefreshing) return;
 
-      const container = containerRef.current;
-      if (!container || container.scrollTop > 0) {
-        // User scrolled down, cancel pull
+      // Cancel if user scrolled down
+      if (window.scrollY > 0) {
         setIsPulling(false);
         setPullDistance(0);
         return;
@@ -124,7 +122,7 @@ export function PullToRefresh({
   return (
     <div
       ref={containerRef}
-      className={cn('relative overflow-auto', className)}
+      className={cn('relative', className)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
