@@ -68,10 +68,15 @@ export const laboratoryApi = {
    * Get paginated list of lab tests.
    */
   async listTests(params?: TestCatalogListParams): Promise<PaginatedResponse<TestCatalogListItem>> {
-    const response = await apiClient.get<PaginatedResponse<TestCatalogListItem>>('/api/lab/tests/', {
-      params,
+    const response = await apiClient.get<PaginatedResponse<TestCatalogListItem>>(
+      '/api/lab/tests/',
+      {
+        params,
+      }
+    );
+    return parseResponse(PaginatedLabTestCatalogSchema, response.data, {
+      context: 'laboratoryApi.listTests',
     });
-    return parseResponse(PaginatedLabTestCatalogSchema, response.data, { context: 'laboratoryApi.listTests' });
   },
 
   /**
@@ -87,10 +92,15 @@ export const laboratoryApi = {
    * Uses the list endpoint with search query param.
    */
   async searchTests(query: string): Promise<TestCatalogListItem[]> {
-    const response = await apiClient.get<PaginatedResponse<TestCatalogListItem>>('/api/lab/tests/', {
-      params: { search: query, is_active: true },
+    const response = await apiClient.get<PaginatedResponse<TestCatalogListItem>>(
+      '/api/lab/tests/',
+      {
+        params: { search: query, is_active: true },
+      }
+    );
+    const validated = parseResponse(PaginatedLabTestCatalogSchema, response.data, {
+      context: 'laboratoryApi.searchTests',
     });
-    const validated = parseResponse(PaginatedLabTestCatalogSchema, response.data, { context: 'laboratoryApi.searchTests' });
     return validated.results;
   },
 
@@ -103,7 +113,9 @@ export const laboratoryApi = {
     const response = await apiClient.get<PaginatedResponse<LabOrder>>('/api/lab/orders/', {
       params,
     });
-    return parseResponse(PaginatedLabOrderSchema, response.data, { context: 'laboratoryApi.listOrders' });
+    return parseResponse(PaginatedLabOrderSchema, response.data, {
+      context: 'laboratoryApi.listOrders',
+    });
   },
 
   /**
@@ -118,20 +130,36 @@ export const laboratoryApi = {
    * Get lab orders for a specific patient.
    */
   async getPatientOrders(patientId: number): Promise<LabOrder[]> {
-    const response = await apiClient.get<LabOrder[]>(`/api/patients/${patientId}/lab-orders/`);
-    return parseResponse(z.array(LabOrderSchema), response.data, { context: 'laboratoryApi.getPatientOrders' });
+    const response = await apiClient.get<{ results: LabOrder[] } | LabOrder[]>(
+      `/api/patients/${patientId}/lab-orders/`
+    );
+    // Handle both paginated and non-paginated responses
+    if (Array.isArray(response.data)) {
+      return parseResponse(z.array(LabOrderSchema), response.data, {
+        context: 'laboratoryApi.getPatientOrders',
+      });
+    }
+    return parseResponse(z.array(LabOrderSchema), response.data.results || [], {
+      context: 'laboratoryApi.getPatientOrders',
+    });
   },
 
   /**
    * Get lab orders for a specific encounter.
    */
   async getEncounterOrders(encounterId: number): Promise<LabOrder[]> {
-    const response = await apiClient.get<{ results: LabOrder[] } | LabOrder[]>(`/api/encounters/${encounterId}/lab-orders/`);
+    const response = await apiClient.get<{ results: LabOrder[] } | LabOrder[]>(
+      `/api/encounters/${encounterId}/lab-orders/`
+    );
     // Handle both paginated and non-paginated responses
     if (Array.isArray(response.data)) {
-      return parseResponse(z.array(LabOrderSchema), response.data, { context: 'laboratoryApi.getEncounterOrders' });
+      return parseResponse(z.array(LabOrderSchema), response.data, {
+        context: 'laboratoryApi.getEncounterOrders',
+      });
     }
-    return parseResponse(z.array(LabOrderSchema), response.data.results || [], { context: 'laboratoryApi.getEncounterOrders' });
+    return parseResponse(z.array(LabOrderSchema), response.data.results || [], {
+      context: 'laboratoryApi.getEncounterOrders',
+    });
   },
 
   /**
@@ -166,7 +194,9 @@ export const laboratoryApi = {
       `/api/lab/orders/${orderNumber}/collect-specimen/`,
       { sample_id: sampleId }
     );
-    return parseResponse(LabOrderSchema, response.data, { context: 'laboratoryApi.collectSpecimen' });
+    return parseResponse(LabOrderSchema, response.data, {
+      context: 'laboratoryApi.collectSpecimen',
+    });
   },
 
   /**
@@ -187,14 +217,13 @@ export const laboratoryApi = {
     testId: number,
     specialInstructions?: string
   ): Promise<LabOrderItem> {
-    const response = await apiClient.post<LabOrderItem>(
-      `/api/lab/orders/${orderNumber}/items/`,
-      {
-        test: testId,
-        special_instructions: specialInstructions,
-      }
-    );
-    return parseResponse(LabOrderItemSchema, response.data, { context: 'laboratoryApi.addOrderItem' });
+    const response = await apiClient.post<LabOrderItem>(`/api/lab/orders/${orderNumber}/items/`, {
+      test: testId,
+      special_instructions: specialInstructions,
+    });
+    return parseResponse(LabOrderItemSchema, response.data, {
+      context: 'laboratoryApi.addOrderItem',
+    });
   },
 
   /**
@@ -218,10 +247,10 @@ export const laboratoryApi = {
    * Check for critical results alerts.
    */
   async getCriticalAlerts(orderNumber: string): Promise<CriticalAlert[]> {
-    const response = await apiClient.get<CriticalAlert[]>(
-      `/api/lab/orders/${orderNumber}/alerts/`
-    );
-    return parseResponse(CriticalAlertArraySchema, response.data, { context: 'laboratoryApi.getCriticalAlerts' });
+    const response = await apiClient.get<CriticalAlert[]>(`/api/lab/orders/${orderNumber}/alerts/`);
+    return parseResponse(CriticalAlertArraySchema, response.data, {
+      context: 'laboratoryApi.getCriticalAlerts',
+    });
   },
 
   // ============ Lab Results ============
@@ -238,20 +267,20 @@ export const laboratoryApi = {
    * Get results for an order.
    */
   async getOrderResults(orderNumber: string): Promise<LabResult[]> {
-    const response = await apiClient.get<LabResult[]>(
-      `/api/lab/orders/${orderNumber}/results/`
-    );
-    return parseResponse(z.array(LabResultSchema), response.data, { context: 'laboratoryApi.getOrderResults' });
+    const response = await apiClient.get<LabResult[]>(`/api/lab/orders/${orderNumber}/results/`);
+    return parseResponse(z.array(LabResultSchema), response.data, {
+      context: 'laboratoryApi.getOrderResults',
+    });
   },
 
   /**
    * Get results for a patient.
    */
   async getPatientResults(patientId: number): Promise<LabResult[]> {
-    const response = await apiClient.get<LabResult[]>(
-      `/api/patients/${patientId}/lab-results/`
-    );
-    return parseResponse(z.array(LabResultSchema), response.data, { context: 'laboratoryApi.getPatientResults' });
+    const response = await apiClient.get<LabResult[]>(`/api/patients/${patientId}/lab-results/`);
+    return parseResponse(z.array(LabResultSchema), response.data, {
+      context: 'laboratoryApi.getPatientResults',
+    });
   },
 
   /**
@@ -276,7 +305,11 @@ export const laboratoryApi = {
   /**
    * Verify a result.
    */
-  async verifyResult(resultId: number, approved: boolean = true, comments?: string): Promise<LabResult> {
+  async verifyResult(
+    resultId: number,
+    approved: boolean = true,
+    comments?: string
+  ): Promise<LabResult> {
     const response = await apiClient.post<LabResult>(`/api/lab/results/${resultId}/verify/`, {
       approved,
       comments: comments || '',
@@ -287,11 +320,15 @@ export const laboratoryApi = {
   /**
    * Upload external result attachment.
    */
-  async listResultAttachments(resultId: number): Promise<Array<{ id: number; file: string; file_name: string; uploaded_at?: string }>> {
-    const response = await apiClient.get<Array<{ id: number; file: string; file_name: string; uploaded_at?: string }>>(
-      `/api/lab/results/${resultId}/attachments/`
-    );
-    return parseResponse(LabResultAttachmentArraySchema, response.data, { context: 'laboratoryApi.listResultAttachments' });
+  async listResultAttachments(
+    resultId: number
+  ): Promise<Array<{ id: number; file: string; file_name: string; uploaded_at?: string }>> {
+    const response = await apiClient.get<
+      Array<{ id: number; file: string; file_name: string; uploaded_at?: string }>
+    >(`/api/lab/results/${resultId}/attachments/`);
+    return parseResponse(LabResultAttachmentArraySchema, response.data, {
+      context: 'laboratoryApi.listResultAttachments',
+    });
   },
 
   async uploadResultAttachment(resultId: number, file: File): Promise<LabResult> {
@@ -309,7 +346,9 @@ export const laboratoryApi = {
           },
         }
       );
-      return parseResponse(LabResultSchema, response.data, { context: 'laboratoryApi.uploadResultAttachment' });
+      return parseResponse(LabResultSchema, response.data, {
+        context: 'laboratoryApi.uploadResultAttachment',
+      });
     } catch {
       const response = await apiClient.post<LabResult>(
         `/api/lab/results/${resultId}/attachment/`,
@@ -320,7 +359,9 @@ export const laboratoryApi = {
           },
         }
       );
-      return parseResponse(LabResultSchema, response.data, { context: 'laboratoryApi.uploadResultAttachment.fallback' });
+      return parseResponse(LabResultSchema, response.data, {
+        context: 'laboratoryApi.uploadResultAttachment.fallback',
+      });
     }
   },
 
@@ -329,7 +370,9 @@ export const laboratoryApi = {
    */
   async getPendingVerification(): Promise<LabResult[]> {
     const response = await apiClient.get<LabResult[]>('/api/lab/results/pending-verification/');
-    return parseResponse(z.array(LabResultSchema), response.data, { context: 'laboratoryApi.getPendingVerification' });
+    return parseResponse(z.array(LabResultSchema), response.data, {
+      context: 'laboratoryApi.getPendingVerification',
+    });
   },
 
   // ============ Specimens ============
@@ -347,7 +390,9 @@ export const laboratoryApi = {
    */
   async listOrderSpecimens(orderNumber: string): Promise<Specimen[]> {
     const response = await apiClient.get<Specimen[]>(`/api/lab/orders/${orderNumber}/specimens/`);
-    return parseResponse(SpecimenArraySchema, response.data, { context: 'laboratoryApi.listOrderSpecimens' });
+    return parseResponse(SpecimenArraySchema, response.data, {
+      context: 'laboratoryApi.listOrderSpecimens',
+    });
   },
 
   // ============ Result Validations (Two-Stage) ============
@@ -356,8 +401,12 @@ export const laboratoryApi = {
    * Get validation history for a result.
    */
   async getResultValidations(resultId: number): Promise<ResultValidation[]> {
-    const response = await apiClient.get<ResultValidation[]>(`/api/lab/results/${resultId}/validations/`);
-    return parseResponse(ResultValidationArraySchema, response.data, { context: 'laboratoryApi.getResultValidations' });
+    const response = await apiClient.get<ResultValidation[]>(
+      `/api/lab/results/${resultId}/validations/`
+    );
+    return parseResponse(ResultValidationArraySchema, response.data, {
+      context: 'laboratoryApi.getResultValidations',
+    });
   },
 
   /**
@@ -367,8 +416,13 @@ export const laboratoryApi = {
     resultId: number,
     data: ResultValidationCreateData
   ): Promise<ResultValidation> {
-    const response = await apiClient.post<ResultValidation>(`/api/lab/results/${resultId}/validate/`, data);
-    return parseResponse(ResultValidationSchema, response.data, { context: 'laboratoryApi.createResultValidation' });
+    const response = await apiClient.post<ResultValidation>(
+      `/api/lab/results/${resultId}/validate/`,
+      data
+    );
+    return parseResponse(ResultValidationSchema, response.data, {
+      context: 'laboratoryApi.createResultValidation',
+    });
   },
 
   // ============ Instruments ============
@@ -382,9 +436,13 @@ export const laboratoryApi = {
       { params }
     );
     if (Array.isArray(response.data)) {
-      return parseResponse(InstrumentArraySchema, response.data, { context: 'laboratoryApi.listInstruments' });
+      return parseResponse(InstrumentArraySchema, response.data, {
+        context: 'laboratoryApi.listInstruments',
+      });
     }
-    return parseResponse(InstrumentArraySchema, response.data.results || [], { context: 'laboratoryApi.listInstruments' });
+    return parseResponse(InstrumentArraySchema, response.data.results || [], {
+      context: 'laboratoryApi.listInstruments',
+    });
   },
 
   /**
@@ -392,7 +450,9 @@ export const laboratoryApi = {
    */
   async getInstrument(id: number): Promise<Instrument> {
     const response = await apiClient.get<Instrument>(`/api/lab/instruments/${id}/`);
-    return parseResponse(InstrumentSchema, response.data, { context: 'laboratoryApi.getInstrument' });
+    return parseResponse(InstrumentSchema, response.data, {
+      context: 'laboratoryApi.getInstrument',
+    });
   },
 
   /**
@@ -400,7 +460,9 @@ export const laboratoryApi = {
    */
   async createInstrument(data: Partial<Instrument>): Promise<Instrument> {
     const response = await apiClient.post<Instrument>('/api/lab/instruments/', data);
-    return parseResponse(InstrumentSchema, response.data, { context: 'laboratoryApi.createInstrument' });
+    return parseResponse(InstrumentSchema, response.data, {
+      context: 'laboratoryApi.createInstrument',
+    });
   },
 
   /**
@@ -408,7 +470,9 @@ export const laboratoryApi = {
    */
   async updateInstrument(id: number, data: Partial<Instrument>): Promise<Instrument> {
     const response = await apiClient.patch<Instrument>(`/api/lab/instruments/${id}/`, data);
-    return parseResponse(InstrumentSchema, response.data, { context: 'laboratoryApi.updateInstrument' });
+    return parseResponse(InstrumentSchema, response.data, {
+      context: 'laboratoryApi.updateInstrument',
+    });
   },
 
   // ============ Analyzer Runs ============
@@ -423,9 +487,13 @@ export const laboratoryApi = {
       { params }
     );
     if (Array.isArray(response.data)) {
-      return parseResponse(AnalyzerRunArraySchema, response.data, { context: 'laboratoryApi.listAnalyzerRuns' });
+      return parseResponse(AnalyzerRunArraySchema, response.data, {
+        context: 'laboratoryApi.listAnalyzerRuns',
+      });
     }
-    return parseResponse(AnalyzerRunArraySchema, response.data.results || [], { context: 'laboratoryApi.listAnalyzerRuns' });
+    return parseResponse(AnalyzerRunArraySchema, response.data.results || [], {
+      context: 'laboratoryApi.listAnalyzerRuns',
+    });
   },
 
   /**
@@ -433,7 +501,9 @@ export const laboratoryApi = {
    */
   async getAnalyzerRun(id: number): Promise<AnalyzerRun> {
     const response = await apiClient.get<AnalyzerRun>(`/api/lab/analyzer-runs/${id}/`);
-    return parseResponse(AnalyzerRunSchema, response.data, { context: 'laboratoryApi.getAnalyzerRun' });
+    return parseResponse(AnalyzerRunSchema, response.data, {
+      context: 'laboratoryApi.getAnalyzerRun',
+    });
   },
 
   /**
@@ -443,7 +513,9 @@ export const laboratoryApi = {
     const response = await apiClient.post<AnalyzerRun>(`/api/lab/analyzer-runs/${id}/mark_error/`, {
       error_message: errorMessage,
     });
-    return parseResponse(AnalyzerRunSchema, response.data, { context: 'laboratoryApi.markAnalyzerRunError' });
+    return parseResponse(AnalyzerRunSchema, response.data, {
+      context: 'laboratoryApi.markAnalyzerRunError',
+    });
   },
 
   // ============ Diagnostic Reports ============
@@ -460,9 +532,13 @@ export const laboratoryApi = {
       { params }
     );
     if (Array.isArray(response.data)) {
-      return parseResponse(DiagnosticReportArraySchema, response.data, { context: 'laboratoryApi.listDiagnosticReports' });
+      return parseResponse(DiagnosticReportArraySchema, response.data, {
+        context: 'laboratoryApi.listDiagnosticReports',
+      });
     }
-    return parseResponse(DiagnosticReportArraySchema, response.data.results || [], { context: 'laboratoryApi.listDiagnosticReports' });
+    return parseResponse(DiagnosticReportArraySchema, response.data.results || [], {
+      context: 'laboratoryApi.listDiagnosticReports',
+    });
   },
 
   /**
@@ -470,7 +546,9 @@ export const laboratoryApi = {
    */
   async getDiagnosticReport(id: number | string): Promise<DiagnosticReport> {
     const response = await apiClient.get<DiagnosticReport>(`/api/lab/diagnostic-reports/${id}/`);
-    return parseResponse(DiagnosticReportSchema, response.data, { context: 'laboratoryApi.getDiagnosticReport' });
+    return parseResponse(DiagnosticReportSchema, response.data, {
+      context: 'laboratoryApi.getDiagnosticReport',
+    });
   },
 
   /**
@@ -478,7 +556,9 @@ export const laboratoryApi = {
    */
   async createDiagnosticReport(data: DiagnosticReportCreateData): Promise<DiagnosticReport> {
     const response = await apiClient.post<DiagnosticReport>('/api/lab/diagnostic-reports/', data);
-    return parseResponse(DiagnosticReportSchema, response.data, { context: 'laboratoryApi.createDiagnosticReport' });
+    return parseResponse(DiagnosticReportSchema, response.data, {
+      context: 'laboratoryApi.createDiagnosticReport',
+    });
   },
 
   /**
@@ -488,36 +568,55 @@ export const laboratoryApi = {
     id: number,
     data: Partial<DiagnosticReport>
   ): Promise<DiagnosticReport> {
-    const response = await apiClient.patch<DiagnosticReport>(`/api/lab/diagnostic-reports/${id}/`, data);
-    return parseResponse(DiagnosticReportSchema, response.data, { context: 'laboratoryApi.updateDiagnosticReport' });
+    const response = await apiClient.patch<DiagnosticReport>(
+      `/api/lab/diagnostic-reports/${id}/`,
+      data
+    );
+    return parseResponse(DiagnosticReportSchema, response.data, {
+      context: 'laboratoryApi.updateDiagnosticReport',
+    });
   },
 
   /**
    * Finalize a diagnostic report.
    */
   async finalizeDiagnosticReport(id: number): Promise<DiagnosticReport> {
-    const response = await apiClient.post<DiagnosticReport>(`/api/lab/diagnostic-reports/${id}/finalize/`);
-    return parseResponse(DiagnosticReportSchema, response.data, { context: 'laboratoryApi.finalizeDiagnosticReport' });
+    const response = await apiClient.post<DiagnosticReport>(
+      `/api/lab/diagnostic-reports/${id}/finalize/`
+    );
+    return parseResponse(DiagnosticReportSchema, response.data, {
+      context: 'laboratoryApi.finalizeDiagnosticReport',
+    });
   },
 
   /**
    * Amend a diagnostic report.
    */
   async amendDiagnosticReport(id: number, conclusion: string): Promise<DiagnosticReport> {
-    const response = await apiClient.post<DiagnosticReport>(`/api/lab/diagnostic-reports/${id}/amend/`, {
-      conclusion,
+    const response = await apiClient.post<DiagnosticReport>(
+      `/api/lab/diagnostic-reports/${id}/amend/`,
+      {
+        conclusion,
+      }
+    );
+    return parseResponse(DiagnosticReportSchema, response.data, {
+      context: 'laboratoryApi.amendDiagnosticReport',
     });
-    return parseResponse(DiagnosticReportSchema, response.data, { context: 'laboratoryApi.amendDiagnosticReport' });
   },
 
   /**
    * Cancel a diagnostic report.
    */
   async cancelDiagnosticReport(id: number, reason: string): Promise<DiagnosticReport> {
-    const response = await apiClient.post<DiagnosticReport>(`/api/lab/diagnostic-reports/${id}/cancel/`, {
-      reason,
+    const response = await apiClient.post<DiagnosticReport>(
+      `/api/lab/diagnostic-reports/${id}/cancel/`,
+      {
+        reason,
+      }
+    );
+    return parseResponse(DiagnosticReportSchema, response.data, {
+      context: 'laboratoryApi.cancelDiagnosticReport',
     });
-    return parseResponse(DiagnosticReportSchema, response.data, { context: 'laboratoryApi.cancelDiagnosticReport' });
   },
 
   /**
@@ -545,10 +644,15 @@ export const laboratoryApi = {
    * Get turnaround time report.
    */
   async getTurnaroundTimeReport(startDate: string, endDate: string): Promise<TurnaroundTimeReport> {
-    const response = await apiClient.get<TurnaroundTimeReport>('/api/lab/reports/turnaround-time/', {
-      params: { start: startDate, end: endDate },
+    const response = await apiClient.get<TurnaroundTimeReport>(
+      '/api/lab/reports/turnaround-time/',
+      {
+        params: { start: startDate, end: endDate },
+      }
+    );
+    return parseResponse(TurnaroundTimeReportSchema, response.data, {
+      context: 'laboratoryApi.getTurnaroundTimeReport',
     });
-    return parseResponse(TurnaroundTimeReportSchema, response.data, { context: 'laboratoryApi.getTurnaroundTimeReport' });
   },
 
   /**
@@ -558,27 +662,39 @@ export const laboratoryApi = {
     const response = await apiClient.get<WorkloadReport>('/api/lab/reports/workload/', {
       params: { start: startDate, end: endDate },
     });
-    return parseResponse(WorkloadReportSchema, response.data, { context: 'laboratoryApi.getWorkloadReport' });
+    return parseResponse(WorkloadReportSchema, response.data, {
+      context: 'laboratoryApi.getWorkloadReport',
+    });
   },
 
   /**
    * Get critical values report.
    */
   async getCriticalValuesReport(startDate: string, endDate: string): Promise<CriticalValuesReport> {
-    const response = await apiClient.get<CriticalValuesReport>('/api/lab/reports/critical-values/', {
-      params: { start: startDate, end: endDate },
+    const response = await apiClient.get<CriticalValuesReport>(
+      '/api/lab/reports/critical-values/',
+      {
+        params: { start: startDate, end: endDate },
+      }
+    );
+    return parseResponse(CriticalValuesReportSchema, response.data, {
+      context: 'laboratoryApi.getCriticalValuesReport',
     });
-    return parseResponse(CriticalValuesReportSchema, response.data, { context: 'laboratoryApi.getCriticalValuesReport' });
   },
 
   /**
    * Get sample rejection report.
    */
-  async getSampleRejectionReport(startDate: string, endDate: string): Promise<SampleRejectionReport> {
+  async getSampleRejectionReport(
+    startDate: string,
+    endDate: string
+  ): Promise<SampleRejectionReport> {
     const response = await apiClient.get<SampleRejectionReport>('/api/lab/reports/rejections/', {
       params: { start: startDate, end: endDate },
     });
-    return parseResponse(SampleRejectionReportSchema, response.data, { context: 'laboratoryApi.getSampleRejectionReport' });
+    return parseResponse(SampleRejectionReportSchema, response.data, {
+      context: 'laboratoryApi.getSampleRejectionReport',
+    });
   },
 
   // ============ Lab Queue ============
@@ -591,12 +707,18 @@ export const laboratoryApi = {
     if (status) {
       params.queue_status = status;
     }
-    const response = await apiClient.get<LabQueue[] | { results: LabQueue[] }>('/api/lab/queue/', { params });
+    const response = await apiClient.get<LabQueue[] | { results: LabQueue[] }>('/api/lab/queue/', {
+      params,
+    });
     // Handle both paginated and non-paginated responses
     if (Array.isArray(response.data)) {
-      return parseResponse(z.array(LabQueueSchema), response.data, { context: 'laboratoryApi.getQueue' });
+      return parseResponse(z.array(LabQueueSchema), response.data, {
+        context: 'laboratoryApi.getQueue',
+      });
     }
-    return parseResponse(z.array(LabQueueSchema), response.data.results || [], { context: 'laboratoryApi.getQueue' });
+    return parseResponse(z.array(LabQueueSchema), response.data.results || [], {
+      context: 'laboratoryApi.getQueue',
+    });
   },
 
   /**
@@ -616,15 +738,21 @@ export const laboratoryApi = {
     const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueNumber}/assign/`, {
       technician_id: technicianId,
     });
-    return parseResponse(LabQueueSchema, response.data, { context: 'laboratoryApi.assignQueueEntry' });
+    return parseResponse(LabQueueSchema, response.data, {
+      context: 'laboratoryApi.assignQueueEntry',
+    });
   },
 
   /**
    * Start processing queue entry.
    */
   async startProcessing(queueNumber: string): Promise<LabQueue> {
-    const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueNumber}/start-processing/`);
-    return parseResponse(LabQueueSchema, response.data, { context: 'laboratoryApi.startProcessing' });
+    const response = await apiClient.post<LabQueue>(
+      `/api/lab/queue/${queueNumber}/start-processing/`
+    );
+    return parseResponse(LabQueueSchema, response.data, {
+      context: 'laboratoryApi.startProcessing',
+    });
   },
 
   /**
@@ -632,7 +760,9 @@ export const laboratoryApi = {
    */
   async submitForReview(queueNumber: string): Promise<LabQueue> {
     const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueNumber}/submit-review/`);
-    return parseResponse(LabQueueSchema, response.data, { context: 'laboratoryApi.submitForReview' });
+    return parseResponse(LabQueueSchema, response.data, {
+      context: 'laboratoryApi.submitForReview',
+    });
   },
 
   /**
@@ -640,7 +770,9 @@ export const laboratoryApi = {
    */
   async releaseResults(queueNumber: string): Promise<LabQueue> {
     const response = await apiClient.post<LabQueue>(`/api/lab/queue/${queueNumber}/release/`);
-    return parseResponse(LabQueueSchema, response.data, { context: 'laboratoryApi.releaseResults' });
+    return parseResponse(LabQueueSchema, response.data, {
+      context: 'laboratoryApi.releaseResults',
+    });
   },
 
   /**
@@ -671,7 +803,9 @@ export const laboratoryApi = {
     const response = await apiClient.get<LabQueue>('/api/lab/queue/lookup/', {
       params: { barcode },
     });
-    return parseResponse(LabQueueSchema, response.data, { context: 'laboratoryApi.lookupByBarcode' });
+    return parseResponse(LabQueueSchema, response.data, {
+      context: 'laboratoryApi.lookupByBarcode',
+    });
   },
 
   /**
@@ -679,7 +813,9 @@ export const laboratoryApi = {
    */
   async getTechnicians(): Promise<Array<{ id: number; username: string; full_name: string }>> {
     const response = await apiClient.get('/api/lab/queue/technicians/');
-    return parseResponse(LabTechnicianArraySchema, response.data, { context: 'laboratoryApi.getTechnicians' });
+    return parseResponse(LabTechnicianArraySchema, response.data, {
+      context: 'laboratoryApi.getTechnicians',
+    });
   },
 
   /**
@@ -693,6 +829,8 @@ export const laboratoryApi = {
     released: number;
   }> {
     const response = await apiClient.get('/api/lab/queue/stats/');
-    return parseResponse(LabQueueStatsSchema, response.data, { context: 'laboratoryApi.getQueueStats' });
+    return parseResponse(LabQueueStatsSchema, response.data, {
+      context: 'laboratoryApi.getQueueStats',
+    });
   },
 };

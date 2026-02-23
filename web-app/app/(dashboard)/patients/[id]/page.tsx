@@ -2,8 +2,8 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useState } from 'react';
 import {
-  ArrowLeft,
   Edit,
   Trash2,
   Phone,
@@ -16,8 +16,13 @@ import {
   TestTube2,
   History,
   Shield,
-  UserCheck,
   ScanLine,
+  Users,
+  Pill,
+  Clipboard,
+  Clock,
+  CheckCircle,
+  XCircle,
   Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,8 +30,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { useQuery } from '@tanstack/react-query';
 import { usePatientEmergencyContacts } from '@/lib/hooks/use-patients';
+import { usePatientPrescriptions } from '@/lib/hooks/use-pharmacy';
+import { usePatientLabOrders } from '@/lib/hooks/use-laboratory';
 import { usePatientContext } from '@/lib/context/patient-context';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { calculateAge, formatDate, formatPhoneNumber } from '@/lib/utils/format';
 import { PatientEncounters } from '@/components/patients/patient-encounters';
@@ -34,13 +45,13 @@ import { EmergencyContactsList } from '@/components/patients/emergency-contacts-
 import { QuickCheckinDialog } from '@/components/patients/quick-checkin-dialog';
 import { PatientImagingSection } from '@/components/patients/patient-imaging-section';
 import { EligibilityBanner, DependentsView } from '@/components/billing/sha';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, Users } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { EmptyState } from '@/components/shared/empty-state';
 import { shaApi } from '@/lib/api/sha';
-import { useState } from 'react';
+import { cn } from '@/lib/utils';
+import type { Prescription, PrescriptionStatus } from '@/lib/types/pharmacy';
+import type { LabOrder, LabOrderStatus } from '@/lib/types/laboratory';
 
 export default function PatientDetailPage() {
   const params = useParams();
@@ -52,6 +63,14 @@ export default function PatientDetailPage() {
   const { patient, isLoading, error } = usePatientContext();
   const { canEditPatient } = usePermissions();
   const { data: emergencyContacts } = usePatientEmergencyContacts(patientId);
+
+  // Pull-to-refresh support
+  const { refresh, isRefreshing } = usePageRefresh();
+
+  // Fetch prescriptions and lab orders
+  const { data: prescriptionsData, isLoading: loadingPrescriptions } =
+    usePatientPrescriptions(patientId);
+  const { data: labOrdersData, isLoading: loadingLabOrders } = usePatientLabOrders(patientId);
 
   // Fetch SHA member for this patient to check if they're a principal
   const { data: shaMembersData } = useQuery({
@@ -71,7 +90,7 @@ export default function PatientDetailPage() {
     return (
       <div className="container mx-auto py-12 text-center">
         <h2 className="text-xl font-semibold">Patient not found</h2>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           The patient you&apos;re looking for doesn&apos;t exist or has been removed.
         </p>
         <Button onClick={() => router.push('/patients')} className="mt-4">
@@ -82,248 +101,297 @@ export default function PatientDetailPage() {
   }
 
   const genderLabels: Record<string, string> = { M: 'Male', F: 'Female', O: 'Other' };
+  const prescriptions = prescriptionsData ?? [];
+  const labOrders = labOrdersData ?? [];
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="flex items-start gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-bold">
-                {patient.first_name} {patient.last_name}
-              </h1>
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
+      <div className="space-y-4 sm:space-y-6">
+        {/* Page Header with Actions */}
+        <PageHeader
+          title={`${patient.first_name} ${patient.last_name}`}
+          helpContent="View patient details, encounters, prescriptions, lab results, and imaging orders. Use Quick Check-in to create a new encounter."
+          actions={
+            <>
               {patient.is_sensitive && (
-                <Badge variant="destructive">
-                  <AlertTriangle className="h-3 w-3 mr-1" />
+                <Badge variant="destructive" className="w-fit shrink-0">
+                  <AlertTriangle className="mr-1 h-3 w-3" />
                   Sensitive
                 </Badge>
               )}
-            </div>
-            <p className="text-muted-foreground font-mono">MRN: {patient.mrn}</p>
+            </>
+          }
+        />
+
+        {/* Patient Summary Bar */}
+        <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="truncate font-mono text-sm font-medium">
+              MRN: {patient.mrn}
+              {patient.sha_number && (
+                <span className="text-muted-foreground"> • SHA: {patient.sha_number}</span>
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground sm:text-sm">
+              {genderLabels[patient.gender] || patient.gender} •{' '}
+              {calculateAge(patient.date_of_birth)} years
+              {patient.phone_number && ` • ${formatPhoneNumber(patient.phone_number)}`}
+            </p>
           </div>
+          <Badge
+            variant={patient.consent_given ? 'default' : 'secondary'}
+            className="w-fit shrink-0 self-start sm:self-auto"
+          >
+            {patient.consent_given ? 'Consented' : 'Consent Pending'}
+          </Badge>
         </div>
 
-        <div className="flex gap-2">
+        {/* Action Buttons - Stack on mobile */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <QuickCheckinDialog
             patientId={patient.id}
             patientName={`${patient.first_name} ${patient.last_name}`}
             patientMrn={patient.mrn}
           />
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="w-full sm:w-auto">
             <Link href={`/admissions/new?patient=${patient.id}`}>
-              Admit
+              <Clipboard className="mr-2 h-4 w-4" />
+              <span className="sm:hidden">Admit</span>
+              <span className="hidden sm:inline">Admit Patient</span>
             </Link>
           </Button>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="w-full sm:w-auto">
             <Link href={`/patients/${patient.id}/history`}>
-              <History className="h-4 w-4 mr-2" />
+              <History className="mr-2 h-4 w-4" />
               History
             </Link>
           </Button>
           {canEditPatient && (
-            <Button variant="outline" asChild>
+            <Button variant="outline" asChild className="w-full sm:w-auto">
               <Link href={`/patients/${patient.id}/edit`}>
-                <Edit className="h-4 w-4 mr-2" />
+                <Edit className="mr-2 h-4 w-4" />
                 Edit
               </Link>
             </Button>
           )}
           {canEditPatient && (
-            <Button variant="outline" className="text-destructive hover:bg-destructive/10">
-              <Trash2 className="h-4 w-4 mr-2" />
+            <Button
+              variant="outline"
+              className="w-full text-destructive hover:bg-destructive/10 sm:w-auto"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </Button>
           )}
         </div>
-      </div>
 
-      {/* SHA Eligibility Banner */}
-      <EligibilityBanner patientId={patientId} />
+        {/* SHA Eligibility Banner */}
+        <EligibilityBanner patientId={patientId} />
 
-      {/* SHA Dependents Section - Only for Principal Members */}
-      {isPrincipalMember && shaMember && (
+        {/* SHA Dependents Section - Only for Principal Members */}
+        {isPrincipalMember && shaMember && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  <div>
+                    <p className="font-medium">SHA Dependents</p>
+                    <p className="text-sm text-muted-foreground">
+                      View dependents covered under this principal member
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="show-dependents" className="text-sm">
+                    Show Dependents
+                  </Label>
+                  <Switch
+                    id="show-dependents"
+                    checked={showDependents}
+                    onCheckedChange={setShowDependents}
+                  />
+                </div>
+              </div>
+
+              {showDependents && (
+                <div className="mt-4 border-t pt-4">
+                  <DependentsView
+                    principalMember={shaMember}
+                    onDependentClick={(dependent) => {
+                      if (dependent.patient) {
+                        router.push(`/patients/${dependent.patient}`);
+                      }
+                    }}
+                    showAddButton={false}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Patient Info Cards */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* Identification */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Identification</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <InfoRow icon={FileText} label="CR Number" value={patient.cr_number || '—'} />
+              <InfoRow icon={Shield} label="SHA Number" value={patient.sha_number || '—'} />
+              <InfoRow
+                icon={FileText}
+                label={
+                  patient.identification_type === 'national_id'
+                    ? 'National ID'
+                    : patient.identification_type || 'ID'
+                }
+                value={patient.identification_number || patient.national_id || '—'}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Basic Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Basic Information</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <InfoRow
+                icon={User}
+                label="Gender"
+                value={genderLabels[patient.gender] || patient.gender}
+              />
+              <InfoRow
+                icon={Calendar}
+                label="Date of Birth"
+                value={`${formatDate(patient.date_of_birth)} (${calculateAge(patient.date_of_birth)} years)`}
+              />
+              <InfoRow
+                icon={Phone}
+                label="Phone"
+                value={formatPhoneNumber(patient.phone_number || '') || '—'}
+              />
+              <InfoRow icon={Mail} label="Email" value={patient.email || '—'} />
+            </CardContent>
+          </Card>
+
+          {/* Address */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Address</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <InfoRow icon={MapPin} label="County" value={patient.county_name || '—'} />
+              <InfoRow icon={MapPin} label="Sub-County" value={patient.sub_county_name || '—'} />
+              <InfoRow icon={MapPin} label="Ward" value={patient.ward_name || '—'} />
+              <InfoRow icon={MapPin} label="Village" value={patient.village || '—'} />
+            </CardContent>
+          </Card>
+
+          {/* Emergency Contact */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Emergency Contact</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <InfoRow icon={User} label="Name" value={patient.emergency_contact_name || '—'} />
+              <InfoRow
+                icon={Phone}
+                label="Phone"
+                value={formatPhoneNumber(patient.emergency_contact_phone || '')}
+              />
+              <InfoRow
+                icon={User}
+                label="Relationship"
+                value={patient.emergency_contact_relationship || '—'}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Consent Status */}
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Users className="h-5 w-5 text-blue-600" />
+                <FileText className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <p className="font-medium">SHA Dependents</p>
+                  <p className="font-medium">Consent Status</p>
                   <p className="text-sm text-muted-foreground">
-                    View dependents covered under this principal member
+                    {patient.consent_given
+                      ? `Consent given on ${formatDate(patient.consent_date || '')}`
+                      : 'Consent not yet recorded'}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="show-dependents" className="text-sm">
-                  Show Dependents
-                </Label>
-                <Switch
-                  id="show-dependents"
-                  checked={showDependents}
-                  onCheckedChange={setShowDependents}
-                />
-              </div>
+              <Badge variant={patient.consent_given ? 'default' : 'secondary'}>
+                {patient.consent_given ? 'Consented' : 'Pending'}
+              </Badge>
             </div>
-
-            {showDependents && (
-              <div className="mt-4 pt-4 border-t">
-                <DependentsView
-                  principalMember={shaMember}
-                  onDependentClick={(dependent) => {
-                    if (dependent.patient) {
-                      router.push(`/patients/${dependent.patient}`);
-                    }
-                  }}
-                  showAddButton={false}
-                />
-              </div>
-            )}
           </CardContent>
         </Card>
-      )}
 
-      {/* Patient Info Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Identification */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Identification</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <InfoRow icon={FileText} label="CR Number" value={patient.cr_number || '—'} />
-            <InfoRow icon={Shield} label="SHA Number" value={patient.sha_number || '—'} />
-            <InfoRow
-              icon={FileText}
-              label={patient.identification_type === 'national_id' ? 'National ID' : (patient.identification_type || 'ID')}
-              value={patient.identification_number || patient.national_id || '—'}
+        {/* Tabs for encounters and more */}
+        <Tabs defaultValue="encounters" className="space-y-4">
+          <TabsList className="h-auto flex-wrap gap-1">
+            <TabsTrigger value="encounters" className="gap-1.5">
+              <Clipboard className="h-4 w-4" />
+              <span className="hidden sm:inline">Encounters</span>
+            </TabsTrigger>
+            <TabsTrigger value="emergency-contacts" className="gap-1.5">
+              <Phone className="h-4 w-4" />
+              <span className="hidden sm:inline">Emergency Contacts</span>
+              <span className="sm:hidden">Contacts</span>
+            </TabsTrigger>
+            <TabsTrigger value="imaging" className="gap-1.5">
+              <ScanLine className="h-4 w-4" />
+              <span className="hidden sm:inline">Imaging</span>
+            </TabsTrigger>
+            <TabsTrigger value="prescriptions" className="gap-1.5">
+              <Pill className="h-4 w-4" />
+              <span className="hidden sm:inline">Prescriptions</span>
+              <span className="sm:hidden">Rx</span>
+            </TabsTrigger>
+            <TabsTrigger value="lab-results" className="gap-1.5">
+              <TestTube2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Lab Results</span>
+              <span className="sm:hidden">Labs</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="encounters">
+            <PatientEncounters patientId={patientId} />
+          </TabsContent>
+
+          <TabsContent value="emergency-contacts">
+            <EmergencyContactsList contacts={emergencyContacts || []} />
+          </TabsContent>
+
+          <TabsContent value="imaging">
+            <PatientImagingSection patientId={patientId} />
+          </TabsContent>
+
+          <TabsContent value="prescriptions">
+            <PatientPrescriptionsSection
+              prescriptions={prescriptions}
+              isLoading={loadingPrescriptions}
+              patientId={patientId}
             />
-          </CardContent>
-        </Card>
+          </TabsContent>
 
-        {/* Basic Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Basic Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <InfoRow icon={User} label="Gender" value={genderLabels[patient.gender] || patient.gender} />
-            <InfoRow
-              icon={Calendar}
-              label="Date of Birth"
-              value={`${formatDate(patient.date_of_birth)} (${calculateAge(patient.date_of_birth)} years)`}
+          <TabsContent value="lab-results">
+            <PatientLabResultsSection
+              labOrders={labOrders}
+              isLoading={loadingLabOrders}
+              patientId={patientId}
             />
-            <InfoRow icon={Phone} label="Phone" value={formatPhoneNumber(patient.phone_number || '') || '—'} />
-            <InfoRow icon={Mail} label="Email" value={patient.email || '—'} />
-          </CardContent>
-        </Card>
-
-        {/* Address */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Address</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <InfoRow icon={MapPin} label="County" value={patient.county_name || '—'} />
-            <InfoRow icon={MapPin} label="Sub-County" value={patient.sub_county_name || '—'} />
-            <InfoRow icon={MapPin} label="Ward" value={patient.ward_name || '—'} />
-            <InfoRow icon={MapPin} label="Village" value={patient.village || '—'} />
-          </CardContent>
-        </Card>
-
-        {/* Emergency Contact */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Emergency Contact</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <InfoRow icon={User} label="Name" value={patient.emergency_contact_name || '—'} />
-            <InfoRow
-              icon={Phone}
-              label="Phone"
-              value={formatPhoneNumber(patient.emergency_contact_phone || '')}
-            />
-            <InfoRow
-              icon={User}
-              label="Relationship"
-              value={patient.emergency_contact_relationship || '—'}
-            />
-          </CardContent>
-        </Card>
+          </TabsContent>
+        </Tabs>
       </div>
-
-      {/* Consent Status */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileText className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="font-medium">Consent Status</p>
-                <p className="text-sm text-muted-foreground">
-                  {patient.consent_given
-                    ? `Consent given on ${formatDate(patient.consent_date || '')}`
-                    : 'Consent not yet recorded'}
-                </p>
-              </div>
-            </div>
-            <Badge variant={patient.consent_given ? 'default' : 'secondary'}>
-              {patient.consent_given ? 'Consented' : 'Pending'}
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Tabs for encounters and more */}
-      <Tabs defaultValue="encounters" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="encounters">Encounters</TabsTrigger>
-          <TabsTrigger value="emergency-contacts">Emergency Contacts</TabsTrigger>
-          <TabsTrigger value="imaging">
-            <ScanLine className="h-4 w-4 mr-1.5" />
-            Imaging
-          </TabsTrigger>
-          <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
-          <TabsTrigger value="lab-results">Lab Results</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="encounters">
-          <PatientEncounters patientId={patientId} />
-        </TabsContent>
-
-        <TabsContent value="emergency-contacts">
-          <EmergencyContactsList contacts={emergencyContacts || []} />
-        </TabsContent>
-
-        <TabsContent value="imaging">
-          <PatientImagingSection patientId={patientId} />
-        </TabsContent>
-
-        <TabsContent value="prescriptions">
-          <Card>
-            <CardContent className="py-12 text-center">
-              <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">Prescriptions will be displayed here</p>
-              <p className="text-sm text-muted-foreground mt-1">Coming in Phase 2</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="lab-results">
-          <Card>
-            <CardContent className="py-12 text-center">
-              <TestTube2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">Lab results will be displayed here</p>
-              <p className="text-sm text-muted-foreground mt-1">Coming in Phase 2</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
+    </PullToRefresh>
   );
 }
 
@@ -338,10 +406,10 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-sm font-medium truncate">{value || '—'}</p>
+        <p className="truncate text-sm font-medium">{value || '—'}</p>
       </div>
     </div>
   );
@@ -349,28 +417,247 @@ function InfoRow({
 
 function PatientDetailSkeleton() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-start gap-4">
-        <Skeleton className="h-10 w-10" />
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-32" />
-        </div>
+    <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-32" />
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3].map((i) => (
+      <Skeleton className="h-20 w-full rounded-lg" />
+      <div className="flex flex-wrap gap-2">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-10 w-24" />
+        ))}
+      </div>
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3, 4].map((i) => (
           <Card key={i}>
             <CardHeader>
               <Skeleton className="h-6 w-32" />
             </CardHeader>
             <CardContent className="space-y-3">
-              {[1, 2, 3, 4].map((j) => (
-                <Skeleton key={j} className="h-8 w-full" />
+              {[1, 2, 3].map((j) => (
+                <Skeleton key={j} className="h-6 w-full" />
               ))}
             </CardContent>
           </Card>
         ))}
       </div>
     </div>
+  );
+}
+
+// =============================================================================
+// Prescriptions Section
+// =============================================================================
+
+const PRESCRIPTION_STATUS_CONFIG: Record<
+  PrescriptionStatus,
+  { label: string; icon: typeof Clock; className: string }
+> = {
+  PENDING: {
+    label: 'Pending',
+    icon: Clock,
+    className: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
+  },
+  PARTIAL: { label: 'Partial', icon: Pill, className: 'bg-primary/15 text-primary' },
+  DISPENSED: {
+    label: 'Dispensed',
+    icon: CheckCircle,
+    className: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
+  },
+  CANCELLED: { label: 'Cancelled', icon: XCircle, className: 'bg-muted text-muted-foreground' },
+  EXPIRED: { label: 'Expired', icon: XCircle, className: 'bg-destructive/15 text-destructive' },
+};
+
+function PatientPrescriptionsSection({
+  prescriptions,
+  isLoading,
+  patientId,
+}: {
+  prescriptions: Prescription[];
+  isLoading: boolean;
+  patientId: number;
+}) {
+  const router = useRouter();
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="space-y-3 py-8">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!prescriptions.length) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <EmptyState
+            icon={Pill}
+            title="No prescriptions"
+            description="This patient has no prescriptions yet."
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base sm:text-lg">
+          Prescriptions ({prescriptions.length})
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {prescriptions.slice(0, 10).map((rx) => {
+          const statusConfig =
+            PRESCRIPTION_STATUS_CONFIG[rx.status] || PRESCRIPTION_STATUS_CONFIG.PENDING;
+          const StatusIcon = statusConfig.icon;
+
+          return (
+            <div
+              key={rx.id}
+              className="flex cursor-pointer flex-col gap-2 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
+              onClick={() => router.push(`/pharmacy/prescriptions/${rx.id}`)}
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">Rx #{rx.prescription_number}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDate(rx.prescribed_date)} • {rx.items?.length || 0} item(s)
+                </p>
+              </div>
+              <Badge
+                className={cn(
+                  'w-fit shrink-0 gap-1 self-start sm:self-auto',
+                  statusConfig.className
+                )}
+              >
+                <StatusIcon className="h-3 w-3" />
+                {statusConfig.label}
+              </Badge>
+            </div>
+          );
+        })}
+        {prescriptions.length > 10 && (
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => router.push(`/pharmacy/prescriptions?patient=${patientId}`)}
+          >
+            View all {prescriptions.length} prescriptions
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// =============================================================================
+// Lab Results Section
+// =============================================================================
+
+const LAB_STATUS_CONFIG: Record<LabOrderStatus, { label: string; className: string }> = {
+  DRAFT: { label: 'Draft', className: 'bg-muted text-muted-foreground' },
+  ORDERED: { label: 'Ordered', className: 'bg-amber-500/15 text-amber-700 dark:text-amber-400' },
+  SPECIMEN_COLLECTED: { label: 'Collected', className: 'bg-primary/15 text-primary' },
+  IN_PROGRESS: { label: 'In Progress', className: 'bg-primary/15 text-primary' },
+  COMPLETED: {
+    label: 'Completed',
+    className: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
+  },
+  CANCELLED: { label: 'Cancelled', className: 'bg-muted text-muted-foreground' },
+  REJECTED: { label: 'Rejected', className: 'bg-destructive/15 text-destructive' },
+};
+
+function PatientLabResultsSection({
+  labOrders,
+  isLoading,
+  patientId,
+}: {
+  labOrders: LabOrder[];
+  isLoading: boolean;
+  patientId: number;
+}) {
+  const router = useRouter();
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="space-y-3 py-8">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!labOrders.length) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <EmptyState
+            icon={TestTube2}
+            title="No lab orders"
+            description="This patient has no lab orders yet."
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base sm:text-lg">Lab Orders ({labOrders.length})</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {labOrders.slice(0, 10).map((order) => {
+          const statusConfig = LAB_STATUS_CONFIG[order.status] || LAB_STATUS_CONFIG.ORDERED;
+          const hasCritical = order.items?.some((item) => item.result?.is_critical_result);
+
+          return (
+            <div
+              key={order.id}
+              className="flex cursor-pointer flex-col gap-2 rounded-lg border bg-card p-3 transition-colors hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
+              onClick={() => router.push(`/laboratory/orders/${order.order_number}`)}
+            >
+              <div className="min-w-0">
+                <p className="flex items-center gap-2 truncate text-sm font-medium">
+                  {order.order_number}
+                  {hasCritical && (
+                    <Badge variant="destructive" className="text-xs">
+                      Critical
+                    </Badge>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDate(order.ordered_at)} • {order.items?.length || 0} test(s)
+                </p>
+              </div>
+              <Badge
+                className={cn('w-fit shrink-0 self-start sm:self-auto', statusConfig.className)}
+              >
+                {statusConfig.label}
+              </Badge>
+            </div>
+          );
+        })}
+        {labOrders.length > 10 && (
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => router.push(`/laboratory/orders?patient=${patientId}`)}
+          >
+            View all {labOrders.length} lab orders
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }
