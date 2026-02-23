@@ -17,6 +17,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { ConsultationQueue } from './consultation-queue';
 import { StartConsultationDialog } from './start-consultation-dialog';
 import { BypassTriageDialog, type BypassTriageEncounter } from './bypass-triage-dialog';
@@ -32,11 +33,13 @@ import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { ConsultationQueueItem } from '@/lib/types/encounter';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertCircle, Users, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import axios from 'axios';
+import { EmptyState } from '@/components/shared/empty-state';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 
 // =============================================================================
 // Types
@@ -249,17 +252,35 @@ export function ConsultationQueueContainer({
   // Render States
   // ===========================================================================
 
-  // Loading state
+  // Loading state - matches actual queue layout
   if (isLoading) {
     return (
       <div role="status" aria-label="Loading consultation queue">
         <Card>
-          <CardContent className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-            <Skeleton className="h-6 sm:h-8 w-40 sm:w-48" />
-            <Skeleton className="h-4 w-52 sm:w-64" />
-            <div className="space-y-2 sm:space-y-3 mt-4 sm:mt-6">
+          <CardHeader className="pb-3 sm:pb-6 px-3 sm:px-6">
+            {/* Header row */}
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-5 rounded" />
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-5 w-8 rounded-full" />
+            </div>
+            {/* Stats row */}
+            <div className="flex gap-2 mt-3">
+              <Skeleton className="h-5 w-12 rounded-full" />
+              <Skeleton className="h-5 w-12 rounded-full" />
+              <Skeleton className="h-5 w-12 rounded-full" />
+            </div>
+            {/* Filters row */}
+            <div className="flex gap-2 mt-3">
+              <Skeleton className="h-9 flex-1" />
+              <Skeleton className="h-9 w-32" />
+              <Skeleton className="h-9 w-32" />
+            </div>
+          </CardHeader>
+          <CardContent className="px-3 sm:px-6">
+            <div className="space-y-2 sm:space-y-3">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-20 sm:h-24 w-full rounded-lg" />
+                <Skeleton key={i} className="h-24 sm:h-28 w-full rounded-lg" />
               ))}
             </div>
           </CardContent>
@@ -273,7 +294,9 @@ export function ConsultationQueueContainer({
     return (
       <Card className="border-destructive/50">
         <CardContent className="p-4 sm:p-6 text-center">
-          <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-destructive mb-3 sm:mb-4" />
+          <div className="rounded-full bg-destructive/10 p-4 mb-4 w-fit mx-auto">
+            <AlertCircle className="h-8 w-8 text-destructive" />
+          </div>
           <h3 className="text-base sm:text-lg font-semibold text-destructive mb-2">
             Failed to load consultation queue
           </h3>
@@ -296,20 +319,16 @@ export function ConsultationQueueContainer({
   if (!queueData?.results.length) {
     return (
       <Card>
-        <CardContent className="p-6 sm:p-12 text-center">
-          <Users className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-3 sm:mb-4" />
-          <h3 className="text-base sm:text-lg font-semibold mb-2">No patients in queue</h3>
-          <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 px-2">
-            Patients will appear here once they complete triage or are registered
-            for encounters that don&apos;t require triage.
-          </p>
-          <Button asChild size="sm">
-            <Link href="/patients">
-              <UserPlus className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Select from Patient List</span>
-              <span className="sm:hidden">Patient List</span>
-            </Link>
-          </Button>
+        <CardContent className="py-6">
+          <EmptyState
+            icon={Users}
+            title="No patients in queue"
+            description="Patients will appear here once they complete triage or are registered for encounters."
+            action={{
+              label: 'Select from Patient List',
+              onClick: () => window.location.href = '/patients',
+            }}
+          />
         </CardContent>
       </Card>
     );
@@ -319,8 +338,17 @@ export function ConsultationQueueContainer({
   // Main Render
   // ===========================================================================
 
+  const handleRefresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
   return (
-    <>
+    <PullToRefresh onRefresh={handleRefresh} isRefreshing={isFetching}>
+      {/* Screen reader announcement for queue updates */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {queueData?.results.length} patients in queue
+      </div>
+
       <ConsultationQueue
         queueItems={queueData.results}
         currentUserId={user?.id}
@@ -381,7 +409,7 @@ export function ConsultationQueueContainer({
           }
         />
       )}
-    </>
+    </PullToRefresh>
   );
 }
 

@@ -27,15 +27,26 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  RefreshCw,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Search,
   Users,
   AlertCircle,
   Filter,
+  PhoneCall,
+  Forward,
+  LogIn,
 } from 'lucide-react';
 import { ConsultationQueueItem } from './consultation-queue-item';
+import { ConsultationQueueGridItem } from './consultation-queue-grid-item';
 import StatusIndicator from '@/components/ui/status-indicator';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { ViewToggle, type ViewMode } from '@/components/ui/view-toggle';
+import { EntityGrid } from '@/components/shared/entity-card';
 import type {
   ConsultationQueueItem as QueueItemType,
   ConsultationQueueFilters,
@@ -59,7 +70,6 @@ export interface ConsultationQueueProps {
   onClaimEncounter?: (encounterId: number) => Promise<void> | void;
   /** Release encounter callback (Data Integrity - Sprint 1.7) */
   onReleaseEncounter?: (encounterId: number) => Promise<void> | void;
-  onRefresh?: () => void;
   isLoading?: boolean;
   error?: string | null;
   autoRefreshInterval?: number; // ms, 0 to disable
@@ -175,7 +185,6 @@ export function ConsultationQueue({
   onStartConsultation,
   onClaimEncounter,
   onReleaseEncounter,
-  onRefresh,
   isLoading = false,
   error = null,
   autoRefreshInterval = 0,
@@ -185,6 +194,7 @@ export function ConsultationQueue({
   const [filters, setFilters] = useState<ConsultationQueueFilters>({});
   const [callingPatientId, setCallingPatientId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   // Calculate stats
   const stats = useMemo(() => calculateStats(queueItems), [queueItems]);
@@ -278,12 +288,7 @@ export function ConsultationQueue({
             <AlertCircle className="h-10 w-10 sm:h-12 sm:w-12 text-destructive mb-3 sm:mb-4" />
             <p className="text-destructive font-medium mb-2 text-sm sm:text-base">Failed to load queue</p>
             <p className="text-xs sm:text-sm text-muted-foreground mb-4 px-4">{error}</p>
-            {onRefresh && (
-              <Button variant="outline" onClick={onRefresh} size="sm">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Retry
-              </Button>
-            )}
+            <p className="text-xs text-muted-foreground">Pull down to retry</p>
           </div>
         </CardContent>
       </Card>
@@ -306,6 +311,9 @@ export function ConsultationQueue({
             </div>
 
             <div className="flex items-center gap-2">
+              {/* View Toggle */}
+              <ViewToggle value={viewMode} onChange={setViewMode} />
+
               {/* Polling Status Indicator */}
               {autoRefreshInterval > 0 && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -313,77 +321,102 @@ export function ConsultationQueue({
                   <span className="hidden sm:inline">Auto-refresh</span>
                 </div>
               )}
-
-              {onRefresh && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onRefresh}
-                  disabled={isLoading}
-                  className="shrink-0"
-                >
-                  <RefreshCw
-                    className={cn('h-4 w-4', isLoading && 'animate-spin')}
-                  />
-                  <span className="hidden sm:inline ml-2">Refresh</span>
-                </Button>
-              )}
             </div>
           </div>
 
-          {/* Stats Summary - scrollable on mobile */}
-          <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0" data-testid="queue-stats">
-            <div className="flex gap-1.5 sm:gap-2 flex-nowrap sm:flex-wrap min-w-max sm:min-w-0">
+          {/* Stats Summary - Colored Dots */}
+          <TooltipProvider delayDuration={200}>
+            <div className="flex items-center gap-3 flex-wrap" data-testid="queue-stats">
               {stats.by_category.RED > 0 && (
-                <Badge className="bg-red-500 text-white shrink-0 text-xs">
-                  <span className="hidden sm:inline">RED:</span>
-                  <span className="sm:hidden">R</span> {stats.by_category.RED}
-                </Badge>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 cursor-default">
+                      <span className="h-3 w-3 rounded-full bg-red-500 shrink-0" />
+                      <span className="text-sm font-medium">{stats.by_category.RED}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>RED - Immediate</TooltipContent>
+                </Tooltip>
               )}
               {stats.by_category.ORANGE > 0 && (
-                <Badge className="bg-orange-500 text-white shrink-0 text-xs">
-                  <span className="hidden sm:inline">ORANGE:</span>
-                  <span className="sm:hidden">O</span> {stats.by_category.ORANGE}
-                </Badge>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 cursor-default">
+                      <span className="h-3 w-3 rounded-full bg-orange-500 shrink-0" />
+                      <span className="text-sm font-medium">{stats.by_category.ORANGE}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>ORANGE - Very Urgent</TooltipContent>
+                </Tooltip>
               )}
               {stats.by_category.YELLOW > 0 && (
-                <Badge className="bg-yellow-500 text-black shrink-0 text-xs">
-                  <span className="hidden sm:inline">YELLOW:</span>
-                  <span className="sm:hidden">Y</span> {stats.by_category.YELLOW}
-                </Badge>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 cursor-default">
+                      <span className="h-3 w-3 rounded-full bg-yellow-500 shrink-0" />
+                      <span className="text-sm font-medium">{stats.by_category.YELLOW}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>YELLOW - Urgent</TooltipContent>
+                </Tooltip>
               )}
               {stats.by_category.GREEN > 0 && (
-                <Badge className="bg-green-500 text-white shrink-0 text-xs">
-                  <span className="hidden sm:inline">GREEN:</span>
-                  <span className="sm:hidden">G</span> {stats.by_category.GREEN}
-                </Badge>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 cursor-default">
+                      <span className="h-3 w-3 rounded-full bg-green-500 shrink-0" />
+                      <span className="text-sm font-medium">{stats.by_category.GREEN}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>GREEN - Standard</TooltipContent>
+                </Tooltip>
               )}
               {stats.by_category.BLUE > 0 && (
-                <Badge className="bg-blue-500 text-white shrink-0 text-xs">
-                  <span className="hidden sm:inline">BLUE:</span>
-                  <span className="sm:hidden">B</span> {stats.by_category.BLUE}
-                </Badge>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 cursor-default">
+                      <span className="h-3 w-3 rounded-full bg-blue-500 shrink-0" />
+                      <span className="text-sm font-medium">{stats.by_category.BLUE}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>BLUE - Non-Urgent</TooltipContent>
+                </Tooltip>
               )}
               {stats.by_category.bypassed > 0 && (
-                <Badge variant="secondary" className="shrink-0 text-xs">
-                  <span className="hidden sm:inline">Bypassed:</span>
-                  <span className="sm:hidden">BP</span> {stats.by_category.bypassed}
-                </Badge>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 cursor-default text-muted-foreground">
+                      <Forward className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-sm">{stats.by_category.bypassed}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Bypassed Triage</TooltipContent>
+                </Tooltip>
               )}
               {stats.by_category.direct > 0 && (
-                <Badge variant="secondary" className="shrink-0 text-xs">
-                  <span className="hidden sm:inline">Direct:</span>
-                  <span className="sm:hidden">D</span> {stats.by_category.direct}
-                </Badge>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 cursor-default text-muted-foreground">
+                      <LogIn className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-sm">{stats.by_category.direct}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Direct (No Triage)</TooltipContent>
+                </Tooltip>
               )}
               {stats.called > 0 && (
-                <Badge variant="outline" className="border-blue-500 text-blue-600 shrink-0 text-xs">
-                  <span className="hidden sm:inline">Called:</span>
-                  <span className="sm:hidden">C</span> {stats.called}
-                </Badge>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-1 cursor-default text-blue-600">
+                      <PhoneCall className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-sm font-medium">{stats.called}</span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>Called Patients</TooltipContent>
+                </Tooltip>
               )}
             </div>
-          </div>
+          </TooltipProvider>
         </div>
 
         {/* Filters */}
@@ -461,7 +494,8 @@ export function ConsultationQueue({
               </Button>
             )}
           </div>
-        ) : (
+        ) : viewMode === 'list' ? (
+          /* List View */
           <div className="space-y-2 sm:space-y-3" data-testid="queue-list">
             {displayedItems.map((item) => (
               <ConsultationQueueItem
@@ -478,6 +512,24 @@ export function ConsultationQueue({
               />
             ))}
           </div>
+        ) : (
+          /* Grid View */
+          <EntityGrid data-testid="queue-grid">
+            {displayedItems.map((item) => (
+              <ConsultationQueueGridItem
+                key={item.id}
+                item={item}
+                currentUserId={currentUserId}
+                onCall={handleCallPatient}
+                onStartConsultation={handleStartConsultation}
+                onClaim={onClaimEncounter}
+                onRelease={onReleaseEncounter}
+                isCallingPatient={callingPatientId === item.id}
+                isClaimingEncounter={isClaimingEncounter}
+                isReleasingEncounter={isReleasingEncounter}
+              />
+            ))}
+          </EntityGrid>
         )}
       </CardContent>
     </Card>
