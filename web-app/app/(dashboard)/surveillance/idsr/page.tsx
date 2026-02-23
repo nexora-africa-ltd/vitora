@@ -3,13 +3,13 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { WebSocketStatus } from '@/components/ui/websocket-status';
 import {
   Select,
   SelectContent,
@@ -20,6 +20,7 @@ import {
 import { surveillanceApi } from '@/lib/api/surveillance';
 import { formatDate } from '@/lib/utils/format';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useSurveillanceWebSocket } from '@/lib/hooks/surveillance-websocket';
 import { IDSRStatusBadge } from '@/components/surveillance/idsr-status-badge';
 import { GenerateReportDialog } from '@/components/surveillance/generate-report-dialog';
 import type { IDSRListParams, IDSRWeeklyReportListItem } from '@/lib/types/surveillance';
@@ -29,6 +30,22 @@ const PAGE_SIZE = 20;
 export default function IDSRReportsPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
+
+  // WebSocket connection with polling fallback
+  const {
+    connectionState,
+    reconnectAttempts,
+    refresh: wsRefresh,
+  } = useSurveillanceWebSocket({
+    showToastNotifications: true,
+  });
+
+  // Combined refresh: WebSocket + React Query
+  const handleRefresh = () => {
+    wsRefresh();
+    refresh();
+  };
+
   const currentYear = new Date().getFullYear();
 
   const [page, setPage] = useState(1);
@@ -125,15 +142,22 @@ export default function IDSRReportsPage() {
   ];
 
   return (
-    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
+    <PullToRefresh onRefresh={handleRefresh} isRefreshing={isRefreshing}>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="IDSR Weekly Reports"
           helpContent="Generate, review, and submit weekly disease surveillance reports to DHIS2/KHIS."
           actions={
-            <Button size="sm" onClick={() => setGenerateOpen(true)}>
-              Generate Report
-            </Button>
+            <div className="flex items-center gap-2">
+              <WebSocketStatus
+                connectionState={connectionState}
+                reconnectAttempts={reconnectAttempts}
+                size="sm"
+              />
+              <Button size="sm" onClick={() => setGenerateOpen(true)}>
+                Generate Report
+              </Button>
+            </div>
           }
         />
 
