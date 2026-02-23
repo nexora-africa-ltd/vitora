@@ -14,8 +14,9 @@ class TestGeneratePRCNumber:
         """Should generate PRC number in correct format."""
         prc = generate_prc_number()
 
-        # Should match format: FAC-PRC-XXXX/YYYY
-        assert prc.startswith("FAC-PRC-")
+        # Should match format: {FACILITY_CODE}-PRC-XXXX/YYYY
+        # Default facility code is TEST-001 from settings
+        assert "-PRC-" in prc
         assert "/" in prc
         parts = prc.split("-PRC-")
         assert len(parts) == 2
@@ -47,8 +48,9 @@ class TestGenerateCaseNumber:
         """Should generate case number in correct format."""
         case_num = generate_case_number("RTA")
 
-        # Should match format: FAC-RTA-XXXX/YYYY
-        assert "FAC-RTA-" in case_num
+        # Should match format: {FACILITY_CODE}-RTA-XXXX/YYYY
+        # Default facility code is TEST-001 from settings
+        assert "-RTA-" in case_num
         assert "/" in case_num
 
     def test_generate_case_number_with_custom_prefix(self):
@@ -91,7 +93,8 @@ class TestPRCNumberAPI:
 
         assert response.status_code == 200
         assert "prc_number" in response.data
-        assert response.data["prc_number"].startswith("FAC-PRC-")
+        # Uses default FACILITY_MFL_CODE (TEST-001) or FAC if not set
+        assert "-PRC-" in response.data["prc_number"]
 
     def test_generate_prc_number_endpoint_with_facility_code(self, authenticated_client):
         """Should accept custom facility code."""
