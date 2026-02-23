@@ -104,10 +104,11 @@ def migrate_allergies_forward(apps, schema_editor):
     for encounter in encounters_with_allergies:
         patient_id = encounter.patient_id
         if patient_id not in patient_allergens:
-            # Check for existing allergies for this patient
+            # Check for existing allergies for this patient (case-insensitive)
             existing = set(
-                Allergy.objects.filter(patient_id=patient_id).values_list(
-                    "substance__iexact", flat=True
+                s.lower()
+                for s in Allergy.objects.filter(patient_id=patient_id).values_list(
+                    "substance", flat=True
                 )
             )
             patient_allergens[patient_id] = existing
