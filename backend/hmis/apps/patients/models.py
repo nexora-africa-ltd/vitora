@@ -9,6 +9,9 @@ from datetime import date, datetime
 from django.core.exceptions import ValidationError
 from django.core.validators import EmailValidator
 from django.db import models
+from simple_history.models import HistoricalRecords
+
+from hmis.apps.core.history import HistoryMixin
 
 
 def generate_mrn():
@@ -38,7 +41,7 @@ def generate_mrn():
     return f"{prefix}{sequence:04d}"
 
 
-class Patient(models.Model):
+class Patient(HistoryMixin, models.Model):
     """
     Patient model representing a patient in the system.
 
@@ -62,6 +65,7 @@ class Patient(models.Model):
         is_person_with_disability: PWD status
         created_at: Timestamp when the record was created
         updated_at: Timestamp when the record was last updated
+        history: Version history tracked by django-simple-history
     """
 
     GENDER_CHOICES = [
@@ -262,6 +266,12 @@ class Patient(models.Model):
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # Version history tracking (DHA Audit Trail Enhancement)
+    history = HistoricalRecords(
+        table_name="patients_patient_history",
+        excluded_fields=["updated_at"],  # Auto-updated field not useful in history
+    )
 
     class Meta:
         """Meta options for Patient model."""

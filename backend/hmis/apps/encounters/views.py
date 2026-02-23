@@ -14,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.checkin.serializers import ClinicalSnapshotSerializer
+from hmis.apps.core.history_views import ModelHistoryMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
@@ -248,7 +249,7 @@ class DiagnosisViewSet(viewsets.ModelViewSet):
         return self.update(request, *args, **kwargs)
 
 
-class EncounterViewSet(viewsets.ModelViewSet):
+class EncounterViewSet(ModelHistoryMixin, viewsets.ModelViewSet):
     """
     ViewSet for Encounter model.
 
@@ -262,6 +263,11 @@ class EncounterViewSet(viewsets.ModelViewSet):
     - PUT /api/encounters/{id}/ - Update an encounter
     - PATCH /api/encounters/{id}/ - Partial update an encounter
     - DELETE /api/encounters/{id}/ - Delete an encounter
+
+    History:
+    - GET /api/encounters/{id}/history/ - Get version history
+    - GET /api/encounters/{id}/history/{version_id}/ - Get specific version
+    - GET /api/encounters/{id}/history-count/ - Get version count
     """
 
     queryset = Encounter.objects.select_related("patient").all()

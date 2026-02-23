@@ -21,6 +21,9 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+from simple_history.models import HistoricalRecords
+
+from hmis.apps.core.history import HistoryMixin
 
 
 def generate_prescription_number():
@@ -522,7 +525,7 @@ class StockAlert(models.Model):
         return alerts
 
 
-class Prescription(models.Model):
+class Prescription(HistoryMixin, models.Model):
     """Prescription for a patient encounter."""
 
     PRESCRIPTION_STATUS = [
@@ -582,6 +585,12 @@ class Prescription(models.Model):
     # Tracking
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # Version history tracking (DHA Audit Trail Enhancement)
+    history = HistoricalRecords(
+        table_name="pharmacy_prescription_history",
+        excluded_fields=["updated_at"],
+    )
 
     class Meta:
         ordering = ["-prescribed_at"]

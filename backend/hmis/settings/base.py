@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "channels",  # Django Channels for WebSocket support
     "oauth2_provider",  # SMART on FHIR OAuth2 server
     "drf_spectacular",  # OpenAPI schema generation
+    "simple_history",  # Model version tracking for audit trail (DHA compliance)
     # Local apps
     "hmis.apps.core",
     "hmis.apps.patients",
@@ -76,6 +77,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "simple_history.middleware.HistoryRequestMiddleware",  # Tracks request user for history
 ]
 
 ROOT_URLCONF = "hmis.urls"

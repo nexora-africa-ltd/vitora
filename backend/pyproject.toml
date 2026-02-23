@@ -51,6 +51,7 @@ africastalking = "^2.0.2"
 twisted = {extras = ["http2", "tls"], version = "^25.5.0"}
 django-otp = "^1.7.0"
 pyotp = "^2.9.0"
+django-simple-history = "^3.11.0"
 
 [tool.poetry.group.dev.dependencies]
 # Testing
