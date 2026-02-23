@@ -42,6 +42,8 @@ export interface WebSocketStatusProps {
   showLabel?: boolean;
   /** Size variant */
   size?: 'sm' | 'md' | 'lg';
+  /** Last update timestamp for "Live · Xs ago" display */
+  lastUpdate?: Date | null;
 }
 
 /**
@@ -71,6 +73,18 @@ const labelColorClasses = {
   idle: 'text-gray-500 dark:text-gray-400',
 };
 
+/**
+ * Format lastUpdate as relative time ("just now", "5s ago", "2m ago")
+ */
+function formatLastUpdate(lastUpdate: Date | null | undefined): string | null {
+  if (!lastUpdate) return null;
+  const now = new Date();
+  const diff = Math.floor((now.getTime() - lastUpdate.getTime()) / 1000);
+  if (diff < 5) return 'just now';
+  if (diff < 60) return `${diff}s ago`;
+  return `${Math.floor(diff / 60)}m ago`;
+}
+
 export function WebSocketStatus({
   connectionState,
   reconnectAttempts = 0,
@@ -78,9 +92,11 @@ export function WebSocketStatus({
   className,
   showLabel = false,
   size = 'md',
+  lastUpdate,
 }: WebSocketStatusProps) {
   const statusText = getConnectionStatusText(connectionState);
   const indicatorState = mapConnectionState(connectionState);
+  const lastUpdateText = formatLastUpdate(lastUpdate);
 
   const getLabel = () => {
     switch (connectionState) {
@@ -119,10 +135,15 @@ export function WebSocketStatus({
             {/* StatusIndicator dot */}
             <StatusIndicator state={indicatorState} size={size} />
 
-            {/* Optional label */}
+            {/* Optional label with timestamp */}
             {showLabel && (
               <span className={cn('text-xs font-medium', labelColorClasses[indicatorState])}>
                 {getLabel()}
+                {connectionState === 'connected' && lastUpdateText && (
+                  <span className="text-muted-foreground font-normal ml-1">
+                    · {lastUpdateText}
+                  </span>
+                )}
               </span>
             )}
           </div>

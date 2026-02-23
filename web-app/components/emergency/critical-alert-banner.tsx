@@ -5,18 +5,20 @@
  * Shows patient details with direct links to view them.
  *
  * Features:
- * - Sticky positioning at top of ER pages
- * - Visual alert with pulsing animation
- * - Patient list with wait times
+ * - Toggle between list and grid views
+ * - Visual alert header with subtle styling
+ * - Patient cards with wait times
  * - Click-to-view functionality
  */
 'use client';
 
 import { AlertTriangle, Clock, Eye, X } from 'lucide-react';
 import { useState } from 'react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { ViewToggle, type ViewMode } from '@/components/ui/view-toggle';
+import { EntityCard, EntityGrid } from '@/components/shared/entity-card';
 import { cn } from '@/lib/utils/cn';
 
 /**
@@ -49,6 +51,28 @@ interface CriticalAlertBannerProps {
   className?: string;
 }
 
+/**
+ * Get initials from patient name
+ */
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+}
+
+/**
+ * Format wait time for display
+ */
+function formatWaitTime(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+}
+
 export function CriticalAlertBanner({
   patients,
   onViewPatient,
@@ -56,88 +80,117 @@ export function CriticalAlertBanner({
   className,
 }: CriticalAlertBannerProps) {
   const [isDismissed, setIsDismissed] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
 
   if (patients.length === 0 || isDismissed) {
     return null;
   }
 
   return (
-    <Alert
-      variant="destructive"
-      className={cn(
-        'border-red-500 dark:border-red-700 bg-red-50 dark:bg-red-950/50',
-        'animate-pulse-slow', // Custom animation defined in globals.css
-        className
-      )}
-    >
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="h-5 w-5 mt-0.5 text-red-600 dark:text-red-400" />
-        <div className="flex-1 space-y-3">
-          <div className="flex items-center justify-between">
-            <AlertTitle className="text-red-700 dark:text-red-300 font-semibold">
-              ⚠️ CRITICAL ALERT: {patients.length} RED patient{patients.length > 1 ? 's' : ''} waiting
-            </AlertTitle>
+    <Card className={cn('border-destructive/50', className)}>
+      {/* Alert Header */}
+      <CardHeader className="pb-3 bg-destructive/10 border-b border-destructive/20">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-destructive text-base font-semibold">
+            <AlertTriangle className="h-5 w-5" />
+            CRITICAL: {patients.length} RED patient{patients.length > 1 ? 's' : ''} waiting
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <ViewToggle value={viewMode} onChange={setViewMode} />
             {dismissible && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 -mr-2 -mt-1"
+                className="h-8 w-8"
                 onClick={() => setIsDismissed(true)}
               >
                 <X className="h-4 w-4" />
               </Button>
             )}
           </div>
-          <AlertDescription>
-            <div className="space-y-2">
-              {patients.map((patient) => (
-                <div
-                  key={patient.id}
-                  className={cn(
-                    'flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between',
-                    'p-2 rounded-md bg-white/50 dark:bg-white/5',
-                    'border border-red-200 dark:border-red-800'
-                  )}
-                >
-                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                    <span className="font-medium text-red-700 dark:text-red-300">
-                      {patient.patient_name}
-                    </span>
-                    <Badge variant="outline" className="w-fit text-xs">
-                      {patient.mrn}
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {patient.chief_complaint || 'No complaint recorded'}
-                    </span>
-                    <Badge className="w-fit bg-red-600 text-white">
-                      {patient.assigned_area_display}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="flex items-center gap-1 text-sm text-red-600 dark:text-red-400">
-                      <Clock className="h-4 w-4" />
-                      <span className="font-medium">
-                        Waiting {patient.wait_minutes} min
-                      </span>
-                    </div>
-                    {onViewPatient && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => onViewPatient(patient)}
-                        className="shrink-0"
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </AlertDescription>
         </div>
-      </div>
-    </Alert>
+      </CardHeader>
+
+      <CardContent className="pt-4">
+        {viewMode === 'list' ? (
+          /* List View */
+          <div className="space-y-2">
+            {patients.map((patient) => (
+              <div
+                key={patient.id}
+                className={cn(
+                  'flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between',
+                  'p-3 rounded-md bg-muted/50 border'
+                )}
+              >
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                  <span className="font-medium">{patient.patient_name}</span>
+                  <Badge variant="outline" className="w-fit text-xs">
+                    {patient.mrn}
+                  </Badge>
+                  <span className="text-sm text-muted-foreground truncate max-w-[200px]">
+                    {patient.chief_complaint || 'No complaint recorded'}
+                  </span>
+                  <Badge variant="destructive" className="w-fit">
+                    {patient.assigned_area_display}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="flex items-center gap-1 text-sm text-destructive">
+                    <Clock className="h-4 w-4" />
+                    <span className="font-medium">{formatWaitTime(patient.wait_minutes)}</span>
+                  </div>
+                  {onViewPatient && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onViewPatient(patient)}
+                      className="shrink-0"
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      View
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* Grid View */
+          <EntityGrid>
+            {patients.map((patient) => (
+              <EntityCard
+                key={patient.id}
+                title={patient.patient_name}
+                subtitle={patient.mrn}
+                initials={getInitials(patient.patient_name)}
+                status={{
+                  label: 'RED',
+                  variant: 'destructive',
+                }}
+                badges={[
+                  {
+                    label: patient.assigned_area_display,
+                    variant: 'outline',
+                  },
+                ]}
+                metadata={[
+                  {
+                    icon: <Clock className="h-3 w-3" />,
+                    label: 'Waiting',
+                    value: formatWaitTime(patient.wait_minutes),
+                  },
+                  {
+                    label: 'Complaint',
+                    value: patient.chief_complaint || 'None',
+                  },
+                ]}
+                onClick={onViewPatient ? () => onViewPatient(patient) : undefined}
+              />
+            ))}
+          </EntityGrid>
+        )}
+      </CardContent>
+    </Card>
   );
 }
