@@ -41,12 +41,14 @@ interface SyncContextValue extends SyncStatus {
 const SyncContext = createContext<SyncContextValue | null>(null);
 
 export function SyncProvider({ children }: { children: React.ReactNode }) {
-  const [status, setStatus] = useState<SyncStatus>({
-    lastSyncTime: null,
+  const [status, setStatus] = useState<SyncStatus>(() => ({
+    // Initialize lastSyncTime to now (user is online on first load)
+    // This will be replaced by actual PowerSync integration later
+    lastSyncTime: new Date(),
     isSyncing: false,
     pendingChanges: 0,
     lastError: null,
-  });
+  }));
 
   // Store the trigger sync function (can be set by components that handle syncing)
   const triggerSyncRef = React.useRef<() => Promise<void>>(async () => {

@@ -441,17 +441,17 @@ curl -u admin:district \
 
 ### Authentication & Connectivity
 
-- [ ] Backend can reach DHIS2 at configured URL
-- [ ] Basic Auth credentials are accepted
-- [ ] API version is compatible (v2.40)
+- [x] Backend can reach DHIS2 at configured URL
+- [x] Basic Auth credentials are accepted
+- [x] API version is compatible (v2.40.11)
 
 ### Payload Structure
 
-- [ ] DataValueSet JSON is valid
-- [ ] Period format is correct (`2026W08` for weekly)
-- [ ] Org unit UID is valid
-- [ ] All data element UIDs are valid
-- [ ] Value types match (Integer for case counts)
+- [x] DataValueSet JSON is valid
+- [x] Period format is correct (`2026W09` for weekly)
+- [x] Org unit UID is valid (`lZtlGVzHnKF`)
+- [x] All data element UIDs are valid (unmapped_count: 0)
+- [x] Value types match (Integer for case counts)
 
 ### Data Integrity
 
@@ -462,7 +462,7 @@ curl -u admin:district \
 
 ### Error Handling
 
-- [ ] Invalid credentials return 401
+- [x] Invalid credentials return 401
 - [ ] Invalid org unit returns meaningful error
 - [ ] Invalid data element returns meaningful error
 - [ ] Network timeout is handled gracefully
@@ -470,7 +470,7 @@ curl -u admin:district \
 
 ### Workflow
 
-- [ ] Draft reports can be previewed
+- [x] Draft reports can be previewed
 - [ ] Approval workflow enforces status
 - [ ] Submitted reports record `dhis2_submitted_at`
 - [ ] DHIS2 response is stored in `dhis2_response`

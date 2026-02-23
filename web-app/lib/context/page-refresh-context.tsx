@@ -28,8 +28,24 @@ export function PageRefreshProvider({ children }: { children: React.ReactNode })
   const [lastFetchTime, setLastFetchTime] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Listen to React Query global events to track fetches
+  // Initialize from cached queries and listen to React Query events
   useEffect(() => {
+    // Initialize lastFetchTime from existing cached queries on mount
+    const initializeFromCache = () => {
+      const queries = queryClient.getQueryCache().getAll();
+      const latestUpdate = queries
+        .filter(q => q.state.status === 'success' && q.state.dataUpdatedAt)
+        .map(q => q.state.dataUpdatedAt)
+        .sort((a, b) => b - a)[0];
+      
+      if (latestUpdate) {
+        setLastFetchTime(new Date(latestUpdate));
+      }
+    };
+
+    initializeFromCache();
+
+    // Subscribe to query cache updates
     const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
       // Track when queries successfully fetch
       if (event?.type === 'updated' && event.query.state.status === 'success') {
