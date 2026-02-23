@@ -49,6 +49,8 @@ help:
 	@echo "  create-test-user - Create test user (admin/voXOQkM4Tn6qCNQTy)"
 	@echo "  seed-diseases   - Seed MOH 502 notifiable diseases"
 	@echo "  seed-diseases-update - Update diseases from JSON"
+	@echo "  seed-surveillance - Seed surveillance demo cases for DHIS2 testing"
+	@echo "  seed-surveillance-clear - Clear and re-seed surveillance demo data"
 	@echo "  import-all      - Run all data imports"
 	@echo ""
 	@echo "Setup:"
@@ -252,6 +254,14 @@ seed-diseases:
 seed-diseases-update:
 	@echo "Updating MOH 502 notifiable diseases from JSON..."
 	poetry run python manage.py seed_notifiable_diseases --update
+
+seed-surveillance:
+	@echo "Seeding surveillance demo data for DHIS2 testing..."
+	poetry run python manage.py seed_surveillance_demo
+
+seed-surveillance-clear:
+	@echo "Clearing and re-seeding surveillance demo data..."
+	poetry run python manage.py seed_surveillance_demo --clear --regenerate
 
 # Import all data - run after fresh database setup
 import-all: migrate import-locations import-icd10 import-loinc import-drugs load-roles load-templates load-lab-ranges create-lab-queues seed-diseases
