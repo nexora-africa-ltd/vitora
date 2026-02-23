@@ -2,7 +2,7 @@
 
 > **MOH 502 Notifiable Disease Reporting for Kenya**
 >
-> Version: 2.3
+> Version: 2.4
 > Created: February 22, 2026
 > Updated: February 23, 2026
 > Sprint: Phase 1, Sprint 1.B
@@ -26,6 +26,7 @@ The Disease Surveillance module implements Kenya's Ministry of Health (MOH) 502 
 - **Outbreak Detection**: Configurable numeric thresholds for automatic outbreak alerts
 - **County Reporting**: Reports endpoint for county health offices
 - **Extensible JSON Data**: Easy maintenance and expansion via `data/notifiable_diseases.json`
+- **DHIS2/KHIS Integration**: Hybrid mapping system (JSON + Django admin) for data element UIDs with multi-environment support (local/staging/production)
 
 ---
 
@@ -120,6 +121,30 @@ Configuration for outbreak detection.
 | `county` | ForeignKey | Specific county (null = national) |
 | `case_threshold` | PositiveIntegerField | Cases to trigger outbreak |
 | `period_days` | PositiveIntegerField | Time period for counting |
+
+### DHIS2DataElementMapping
+
+Mapping between NotifiableDisease and DHIS2 Data Element UIDs.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `disease` | ForeignKey | NotifiableDisease reference |
+| `indicator_type` | CharField | cases_under_5 / cases_5_and_above / deaths_under_5 / deaths_5_and_above |
+| `environment` | CharField | local / staging / production |
+| `data_element_uid` | CharField | DHIS2 Data Element UID (11 chars) |
+| `short_name` | CharField | DHIS2 short name (e.g., IDSR_CHOLERA_U5_CASES) |
+| `is_active` | BooleanField | Whether mapping is active |
+| `notes` | TextField | Additional notes or KHIS mapping references |
+
+**Management**: Django Admin at `/admin/surveillance/dhis2dataelementmapping/`
+
+**Usage**:
+```python
+from hmis.apps.surveillance.dhis2_mappings import get_data_element_uid
+uid = get_data_element_uid("Cholera", "cases_under_5", "local")
+```
+
+See [IDSR Weekly Reporting](idsr-weekly-reporting.md#data-element-mapping-hybrid-system) for full documentation.
 
 ---
 
