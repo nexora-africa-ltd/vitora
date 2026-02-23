@@ -13,6 +13,9 @@ from datetime import date
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
+from simple_history.models import HistoricalRecords
+
+from hmis.apps.core.history import HistoryMixin
 
 # ICD-10 code format validator
 icd10_code_validator = RegexValidator(
@@ -108,7 +111,7 @@ class ICD10Code(models.Model):
         super().save(*args, **kwargs)
 
 
-class Encounter(models.Model):
+class Encounter(HistoryMixin, models.Model):
     """
     Encounter model representing a patient encounter/visit.
 
@@ -129,6 +132,7 @@ class Encounter(models.Model):
         consultation_status: Current consultation status (WAITING/CALLED/etc.)
         created_at: Timestamp when the record was created
         updated_at: Timestamp when the record was last updated
+        history: Version history tracked by django-simple-history
     """
 
     # =========================================================================
@@ -607,6 +611,12 @@ class Encounter(models.Model):
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # Version history tracking (DHA Audit Trail Enhancement)
+    history = HistoricalRecords(
+        table_name="encounters_encounter_history",
+        excluded_fields=["updated_at"],  # Auto-updated field not useful in history
+    )
 
     class Meta:
         """Meta options for Encounter model."""
@@ -2102,7 +2112,7 @@ class Encounter(models.Model):
             invoice.save(update_fields=["status", "updated_at"])
 
 
-class Diagnosis(models.Model):
+class Diagnosis(HistoryMixin, models.Model):
     """
     Diagnosis model linking encounters to ICD-10 codes.
 
@@ -2207,6 +2217,12 @@ class Diagnosis(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # Version history tracking (DHA Audit Trail Enhancement)
+    history = HistoricalRecords(
+        table_name="encounters_diagnosis_history",
+        excluded_fields=["updated_at"],
+    )
 
     class Meta:
         # Note: For proper ordering by diagnosis_type priority, use

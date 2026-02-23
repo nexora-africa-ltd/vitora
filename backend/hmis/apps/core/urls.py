@@ -11,6 +11,7 @@ from .dashboard_views import (
     patient_volume_history,
     revenue_breakdown,
 )
+from .history_views import EncounterHistoryView, PatientHistoryView
 from .views import (
     AuditLogViewSet,
     DepartmentViewSet,
@@ -44,4 +45,11 @@ urlpatterns = [
     path("verify/", verify_document, name="verify-document"),
     # Emergency access (break-glass)
     path("emergency-access/", include("hmis.apps.core.emergency_access.urls")),
+    # History API endpoints (DHA Compliance - Audit Trail)
+    path("history/patients/<int:patient_id>/", PatientHistoryView.as_view(), name="patient-history"),
+    path(
+        "history/encounters/<int:encounter_id>/",
+        EncounterHistoryView.as_view(),
+        name="encounter-history",
+    ),
 ] + router.urls

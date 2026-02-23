@@ -13,6 +13,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.core.history_views import ModelHistoryMixin
 from hmis.apps.core.mixins import IdempotentCreateMixin
 from hmis.apps.core.models import AuditLog, IdempotencyKey
 from hmis.apps.core.permissions import SensitiveAccessPermission, get_client_ip
@@ -27,7 +28,7 @@ from .serializers import (
 )
 
 
-class PatientViewSet(IdempotentCreateMixin, viewsets.ModelViewSet):
+class PatientViewSet(ModelHistoryMixin, IdempotentCreateMixin, viewsets.ModelViewSet):
     """
     ViewSet for Patient model.
 
@@ -36,11 +37,17 @@ class PatientViewSet(IdempotentCreateMixin, viewsets.ModelViewSet):
     - Automatic audit logging
     - Filtering of sensitive records for unauthorized users
     - Idempotent patient creation (prevents duplicate submissions)
+    - Version history tracking (/api/patients/{id}/history/)
 
     Idempotency:
         Include X-Idempotency-Key header with a unique UUID to enable
         idempotent patient creation. Repeated requests with the same
         key will return the same response.
+
+    History:
+        GET /api/patients/{id}/history/ - Get version history
+        GET /api/patients/{id}/history/{version_id}/ - Get specific version
+        GET /api/patients/{id}/history-count/ - Get version count
     """
 
     queryset = Patient.objects.all()
