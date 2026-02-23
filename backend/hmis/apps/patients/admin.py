@@ -4,7 +4,7 @@ Django admin configuration for patients app.
 
 from django.contrib import admin
 
-from .models import EmergencyContact, Patient
+from .models import Allergy, EmergencyContact, Patient
 
 
 class EmergencyContactInline(admin.TabularInline):
@@ -84,3 +84,107 @@ class EmergencyContactAdmin(admin.ModelAdmin):
     ]
     ordering = ["-created_at"]
     autocomplete_fields = ["patient"]
+
+
+class AllergyInline(admin.TabularInline):
+    """Inline admin for Allergy on Patient page."""
+
+    model = Allergy
+    extra = 0
+    fields = [
+        "substance",
+        "substance_type",
+        "reaction_type",
+        "severity",
+        "status",
+        "onset_date",
+    ]
+    readonly_fields = ["recorded_by", "created_at"]
+
+
+@admin.register(Allergy)
+class AllergyAdmin(admin.ModelAdmin):
+    """Admin configuration for Allergy model."""
+
+    list_display = [
+        "patient",
+        "substance",
+        "substance_type",
+        "reaction_type",
+        "severity",
+        "status",
+        "verification_status",
+        "created_at",
+    ]
+    list_filter = [
+        "substance_type",
+        "severity",
+        "status",
+        "verification_status",
+        "reaction_type",
+    ]
+    search_fields = [
+        "patient__mrn",
+        "patient__first_name",
+        "patient__last_name",
+        "substance",
+        "substance_code",
+    ]
+    readonly_fields = ["recorded_by", "created_at", "updated_at"]
+    ordering = ["-created_at"]
+    autocomplete_fields = ["patient", "drug", "source_encounter"]
+
+    fieldsets = (
+        (
+            "Patient & Substance",
+            {
+                "fields": (
+                    "patient",
+                    "substance",
+                    "substance_type",
+                    "drug",
+                    "substance_code",
+                    "substance_code_system",
+                )
+            },
+        ),
+        (
+            "Reaction Details",
+            {
+                "fields": (
+                    "reaction_type",
+                    "reaction_description",
+                    "severity",
+                    "criticality",
+                )
+            },
+        ),
+        (
+            "Status & Dates",
+            {
+                "fields": (
+                    "status",
+                    "verification_status",
+                    "onset_date",
+                    "last_occurrence",
+                )
+            },
+        ),
+        (
+            "Source & Notes",
+            {
+                "fields": (
+                    "source_encounter",
+                    "recorded_by",
+                    "notes",
+                ),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )

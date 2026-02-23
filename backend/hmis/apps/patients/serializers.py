@@ -6,7 +6,7 @@ from datetime import date
 
 from rest_framework import serializers
 
-from .models import EmergencyContact, Patient
+from .models import Allergy, EmergencyContact, Patient
 
 
 class EmergencyContactSerializer(serializers.ModelSerializer):
@@ -193,3 +193,156 @@ class PatientSerializer(serializers.ModelSerializer):
                     )
 
         return data
+
+class AllergySerializer(serializers.ModelSerializer):
+    """Serializer for the Allergy model."""
+
+    # Read-only display fields
+    patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
+    patient_name = serializers.CharField(source="patient.full_name", read_only=True)
+    drug_name = serializers.CharField(source="drug.generic_name", read_only=True, allow_null=True)
+    recorded_by_username = serializers.CharField(source="recorded_by.username", read_only=True)
+
+    # Make patient optional for nested routes (will be set in view)
+    patient = serializers.PrimaryKeyRelatedField(
+        queryset=Patient.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
+    # Display values for choice fields
+    substance_type_display = serializers.CharField(
+        source="get_substance_type_display", read_only=True
+    )
+    reaction_type_display = serializers.CharField(
+        source="get_reaction_type_display", read_only=True
+    )
+    severity_display = serializers.CharField(source="get_severity_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    verification_status_display = serializers.CharField(
+        source="get_verification_status_display", read_only=True
+    )
+    criticality_display = serializers.CharField(
+        source="get_criticality_display", read_only=True
+    )
+
+    # Computed fields
+    is_high_risk = serializers.ReadOnlyField()
+    is_active = serializers.ReadOnlyField()
+
+    class Meta:
+        model = Allergy
+        fields = [
+            "id",
+            # Patient info
+            "patient",
+            "patient_mrn",
+            "patient_name",
+            # Substance
+            "substance",
+            "substance_code",
+            "substance_code_system",
+            "substance_type",
+            "substance_type_display",
+            # Drug link
+            "drug",
+            "drug_name",
+            # Reaction
+            "reaction_type",
+            "reaction_type_display",
+            "reaction_description",
+            "severity",
+            "severity_display",
+            "criticality",
+            "criticality_display",
+            # Dates
+            "onset_date",
+            "last_occurrence",
+            # Status
+            "status",
+            "status_display",
+            "verification_status",
+            "verification_status_display",
+            # Computed
+            "is_high_risk",
+            "is_active",
+            # Notes and source
+            "notes",
+            "source_encounter",
+            "recorded_by",
+            "recorded_by_username",
+            # Timestamps
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "patient_mrn",
+            "patient_name",
+            "drug_name",
+            "recorded_by",
+            "recorded_by_username",
+            "substance_type_display",
+            "reaction_type_display",
+            "severity_display",
+            "status_display",
+            "verification_status_display",
+            "criticality_display",
+            "is_high_risk",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+
+    def validate_onset_date(self, value):
+        """Validate onset_date is not in the future."""
+        if value and value > date.today():
+            raise serializers.ValidationError("Onset date cannot be in the future.")
+        return value
+
+    def validate_last_occurrence(self, value):
+        """Validate last_occurrence is not in the future."""
+        if value and value > date.today():
+            raise serializers.ValidationError("Last occurrence date cannot be in the future.")
+        return value
+
+    def validate(self, data):
+        """Cross-field validation."""
+        onset_date = data.get("onset_date")
+        last_occurrence = data.get("last_occurrence")
+
+        # If updating, get existing values if not provided
+        if self.instance:
+            onset_date = onset_date or self.instance.onset_date
+            last_occurrence = last_occurrence or self.instance.last_occurrence
+
+        # Validate last_occurrence is after onset_date
+        if onset_date and last_occurrence and last_occurrence < onset_date:
+            raise serializers.ValidationError(
+                {"last_occurrence": "Last occurrence cannot be before onset date."}
+            )
+
+        return data
+
+
+class AllergyListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for Allergy listing (embedded in patient views)."""
+
+    severity_display = serializers.CharField(source="get_severity_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    is_high_risk = serializers.ReadOnlyField()
+
+    class Meta:
+        model = Allergy
+        fields = [
+            "id",
+            "substance",
+            "substance_type",
+            "reaction_type",
+            "severity",
+            "severity_display",
+            "status",
+            "status_display",
+            "is_high_risk",
+            "onset_date",
+        ]

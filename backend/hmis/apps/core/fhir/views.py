@@ -731,9 +731,59 @@ class FHIRCompositionView(APIView):
         fhir_composition = self._to_fhir_composition(patient, request)
         return Response(fhir_composition, status=status.HTTP_200_OK)
 
-    def _to_fhir_composition(self, patient, request) -> dict:
+    def _to_fhir_composition(self, patient, request, allergies=None) -> dict:
         """Create an IPS Composition for a patient."""
         base_url = get_base_url(request)
+
+        # Build allergy section text
+        if allergies and len(allergies) > 0:
+            allergy_html = '<div xmlns="http://www.w3.org/1999/xhtml"><ul>'
+            for allergy in allergies:
+                allergy_html += f'<li>{allergy.substance} - {allergy.get_severity_display()}</li>'
+            allergy_html += '</ul></div>'
+            allergy_section = {
+                "title": "Allergies and Intolerances",
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://loinc.org",
+                            "code": "48765-2",
+                            "display": "Allergies and adverse reactions Document",
+                        }
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": allergy_html,
+                },
+                "entry": [{"reference": f"AllergyIntolerance/{a.id}"} for a in allergies],
+            }
+        else:
+            allergy_section = {
+                "title": "Allergies and Intolerances",
+                "code": {
+                    "coding": [
+                        {
+                            "system": "http://loinc.org",
+                            "code": "48765-2",
+                            "display": "Allergies and adverse reactions Document",
+                        }
+                    ]
+                },
+                "text": {
+                    "status": "generated",
+                    "div": '<div xmlns="http://www.w3.org/1999/xhtml">No known allergies</div>',
+                },
+                "emptyReason": {
+                    "coding": [
+                        {
+                            "system": "http://terminology.hl7.org/CodeSystem/list-empty-reason",
+                            "code": "unavailable",
+                            "display": "Unavailable",
+                        }
+                    ]
+                },
+            }
 
         fhir_resource = {
             "resourceType": "Composition",
@@ -758,31 +808,7 @@ class FHIRCompositionView(APIView):
             "author": [{"reference": "Organization/1", "display": "Vitora HMIS"}],
             "title": f"International Patient Summary for {patient.first_name} {patient.last_name}",
             "section": [
-                {
-                    "title": "Allergies and Intolerances",
-                    "code": {
-                        "coding": [
-                            {
-                                "system": "http://loinc.org",
-                                "code": "48765-2",
-                                "display": "Allergies and adverse reactions Document",
-                            }
-                        ]
-                    },
-                    "text": {
-                        "status": "generated",
-                        "div": '<div xmlns="http://www.w3.org/1999/xhtml">No known allergies</div>',
-                    },
-                    "emptyReason": {
-                        "coding": [
-                            {
-                                "system": "http://terminology.hl7.org/CodeSystem/list-empty-reason",
-                                "code": "unavailable",
-                                "display": "Unavailable",
-                            }
-                        ]
-                    },
-                },
+                allergy_section,
                 {
                     "title": "Medication Summary",
                     "code": {
@@ -854,20 +880,196 @@ class FHIRAllergyIntoleranceView(APIView):
     )
     def get(self, request, pk: int) -> Response:
         """Get an AllergyIntolerance resource by ID."""
-        # For now, return a placeholder since allergies may be stored differently
-        return Response(
-            {
-                "resourceType": "OperationOutcome",
-                "issue": [
-                    {
-                        "severity": "error",
-                        "code": "not-found",
-                        "diagnostics": f"AllergyIntolerance with ID {pk} not found",
-                    }
-                ],
-            },
-            status=status.HTTP_404_NOT_FOUND,
+        from hmis.apps.patients.models import Allergy
+
+        try:
+            allergy = Allergy.objects.select_related("patient", "recorded_by").get(pk=pk)
+        except Allergy.DoesNotExist:
+            return Response(
+                {
+                    "resourceType": "OperationOutcome",
+                    "issue": [
+                        {
+                            "severity": "error",
+                            "code": "not-found",
+                            "diagnostics": f"AllergyIntolerance with ID {pk} not found",
+                        }
+                    ],
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        fhir_resource = self._to_fhir_allergy_intolerance(allergy, request)
+        return Response(fhir_resource, status=status.HTTP_200_OK)
+
+    def _to_fhir_allergy_intolerance(self, allergy, request) -> dict:
+        """Convert Django Allergy model to FHIR AllergyIntolerance resource."""
+        base_url = get_base_url(request)
+
+        # Map clinical status
+        clinical_status_map = {
+            "active": ("active", "Active"),
+            "inactive": ("inactive", "Inactive"),
+            "resolved": ("resolved", "Resolved"),
+        }
+        clinical_status = clinical_status_map.get(
+            allergy.status, ("active", "Active")
         )
+
+        # Map verification status
+        verification_status_map = {
+            "unconfirmed": ("unconfirmed", "Unconfirmed"),
+            "presumed": ("presumed", "Presumed"),
+            "confirmed": ("confirmed", "Confirmed"),
+            "refuted": ("refuted", "Refuted"),
+            "entered_in_error": ("entered-in-error", "Entered in Error"),
+        }
+        verification_status = verification_status_map.get(
+            allergy.verification_status, ("unconfirmed", "Unconfirmed")
+        )
+
+        # Map category
+        category_map = {
+            "medication": "medication",
+            "food": "food",
+            "environmental": "environment",
+            "biological": "biologic",
+            "other": "medication",  # Default to medication for "other"
+        }
+        category = category_map.get(allergy.substance_type, "medication")
+
+        # Map criticality
+        criticality_map = {
+            "low": "low",
+            "high": "high",
+            "unable_to_assess": "unable-to-assess",
+        }
+        criticality = criticality_map.get(allergy.criticality, "unable-to-assess")
+
+        # Build FHIR resource
+        fhir_resource = {
+            "resourceType": "AllergyIntolerance",
+            "id": str(allergy.id),
+            "meta": {
+                "versionId": "1",
+                "lastUpdated": format_date(allergy.updated_at),
+                "profile": ["http://hl7.org/fhir/StructureDefinition/AllergyIntolerance"],
+            },
+            "clinicalStatus": {
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+                        "code": clinical_status[0],
+                        "display": clinical_status[1],
+                    }
+                ]
+            },
+            "verificationStatus": {
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+                        "code": verification_status[0],
+                        "display": verification_status[1],
+                    }
+                ]
+            },
+            "type": "allergy",  # Assume true allergy (vs intolerance)
+            "category": [category],
+            "criticality": criticality,
+            "patient": {
+                "reference": f"Patient/{allergy.patient.id}",
+                "display": allergy.patient.full_name,
+            },
+            "recordedDate": format_date(allergy.created_at),
+        }
+
+        # Add code for the allergen
+        code = {"text": allergy.substance}
+        if allergy.substance_code and allergy.substance_code_system:
+            code["coding"] = [
+                {
+                    "system": allergy.substance_code_system,
+                    "code": allergy.substance_code,
+                    "display": allergy.substance,
+                }
+            ]
+        fhir_resource["code"] = code
+
+        # Add onset date if available
+        if allergy.onset_date:
+            fhir_resource["onsetDateTime"] = format_date(allergy.onset_date)
+
+        # Add last occurrence if available
+        if allergy.last_occurrence:
+            fhir_resource["lastOccurrence"] = format_date(allergy.last_occurrence)
+
+        # Add recorder if available
+        if allergy.recorded_by:
+            fhir_resource["recorder"] = {
+                "reference": f"Practitioner/{allergy.recorded_by.id}",
+                "display": allergy.recorded_by.get_full_name() or allergy.recorded_by.username,
+            }
+
+        # Add reaction details
+        if allergy.reaction_type != "other" or allergy.reaction_description:
+            reaction = {
+                "severity": self._map_severity(allergy.severity),
+            }
+
+            # Map reaction type to SNOMED manifestation
+            manifestation_map = {
+                "anaphylaxis": ("39579001", "Anaphylaxis"),
+                "angioedema": ("41291007", "Angioedema"),
+                "bronchospasm": ("4386001", "Bronchospasm"),
+                "cardiac_arrhythmia": ("698247007", "Cardiac arrhythmia"),
+                "diarrhea": ("62315008", "Diarrhea"),
+                "dyspnea": ("267036007", "Dyspnea"),
+                "hives": ("126485001", "Urticaria"),
+                "hypotension": ("45007003", "Hypotension"),
+                "itching": ("418363000", "Itching"),
+                "nausea": ("422587007", "Nausea"),
+                "rash": ("271807003", "Rash"),
+                "swelling": ("65124004", "Swelling"),
+                "vomiting": ("422400008", "Vomiting"),
+            }
+
+            if allergy.reaction_type in manifestation_map:
+                snomed = manifestation_map[allergy.reaction_type]
+                reaction["manifestation"] = [
+                    {
+                        "coding": [
+                            {
+                                "system": "http://snomed.info/sct",
+                                "code": snomed[0],
+                                "display": snomed[1],
+                            }
+                        ]
+                    }
+                ]
+            elif allergy.reaction_description:
+                reaction["manifestation"] = [{"text": allergy.reaction_description}]
+
+            # Add description if available
+            if allergy.reaction_description:
+                reaction["description"] = allergy.reaction_description
+
+            fhir_resource["reaction"] = [reaction]
+
+        # Add notes if available
+        if allergy.notes:
+            fhir_resource["note"] = [{"text": allergy.notes}]
+
+        return fhir_resource
+
+    def _map_severity(self, severity: str) -> str:
+        """Map internal severity to FHIR severity."""
+        severity_map = {
+            "mild": "mild",
+            "moderate": "moderate",
+            "severe": "severe",
+            "life_threatening": "severe",  # FHIR only has mild/moderate/severe
+        }
+        return severity_map.get(severity, "moderate")
 
 
 class FHIRMedicationStatementView(APIView):
@@ -984,7 +1186,7 @@ class FHIRPatientSummaryView(APIView):
     def get(self, request, pk: int) -> Response:
         """Generate IPS Bundle for a patient."""
         from hmis.apps.encounters.models import Diagnosis
-        from hmis.apps.patients.models import Patient
+        from hmis.apps.patients.models import Allergy, Patient
 
         try:
             patient = Patient.objects.select_related("county", "sub_county", "ward").get(pk=pk)
@@ -1008,12 +1210,17 @@ class FHIRPatientSummaryView(APIView):
             "icd10_code", "encounter"
         )[:10]
 
+        # Get patient's active allergies
+        allergies = Allergy.get_active_allergies_for_patient(patient.id).select_related(
+            "recorded_by"
+        )[:20]
+
         # Build IPS Bundle
-        ips_bundle = self._build_ips_bundle(patient, diagnoses, request)
+        ips_bundle = self._build_ips_bundle(patient, diagnoses, allergies, request)
 
         return Response(ips_bundle, status=status.HTTP_200_OK)
 
-    def _build_ips_bundle(self, patient, diagnoses, request) -> dict:
+    def _build_ips_bundle(self, patient, diagnoses, allergies, request) -> dict:
         """Build an IPS Bundle for the patient."""
         base_url = get_base_url(request)
 
@@ -1022,7 +1229,7 @@ class FHIRPatientSummaryView(APIView):
         fhir_patient = patient_view._to_fhir_patient(patient, request)
 
         composition_view = FHIRCompositionView()
-        fhir_composition = composition_view._to_fhir_composition(patient, request)
+        fhir_composition = composition_view._to_fhir_composition(patient, request, allergies=allergies)
 
         # Build condition entries
         condition_entries = []
@@ -1033,6 +1240,15 @@ class FHIRPatientSummaryView(APIView):
                 {"fullUrl": f"{base_url}/Condition/{diagnosis.id}", "resource": fhir_condition}
             )
 
+        # Build allergy entries
+        allergy_entries = []
+        allergy_view = FHIRAllergyIntoleranceView()
+        for allergy in allergies:
+            fhir_allergy = allergy_view._to_fhir_allergy_intolerance(allergy, request)
+            allergy_entries.append(
+                {"fullUrl": f"{base_url}/AllergyIntolerance/{allergy.id}", "resource": fhir_allergy}
+            )
+
         # Update composition with condition references
         if condition_entries:
             problem_section = next(
@@ -1041,6 +1257,15 @@ class FHIRPatientSummaryView(APIView):
             if problem_section:
                 problem_section.pop("emptyReason", None)
                 problem_section["entry"] = [{"reference": f"Condition/{d.id}"} for d in diagnoses]
+
+        # Update composition with allergy references
+        if allergy_entries:
+            allergy_section = next(
+                (s for s in fhir_composition["section"] if s["title"] == "Allergies and Intolerances"), None
+            )
+            if allergy_section:
+                allergy_section.pop("emptyReason", None)
+                allergy_section["entry"] = [{"reference": f"AllergyIntolerance/{a.id}"} for a in allergies]
 
         # Build the IPS Bundle
         ips_bundle = {
@@ -1060,7 +1285,8 @@ class FHIRPatientSummaryView(APIView):
                 {"fullUrl": f"{base_url}/Composition/{patient.id}", "resource": fhir_composition},
                 {"fullUrl": f"{base_url}/Patient/{patient.id}", "resource": fhir_patient},
             ]
-            + condition_entries,
+            + condition_entries
+            + allergy_entries,
         }
 
         return ips_bundle

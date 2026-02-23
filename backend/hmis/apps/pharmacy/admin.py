@@ -50,6 +50,12 @@ class DrugAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
+    search_fields = (
+        "code",
+        "generic_name",
+        "keml_code",
+        "nhif_code",
+    )
     date_hierarchy = "created_at"
 
 

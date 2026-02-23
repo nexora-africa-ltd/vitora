@@ -441,6 +441,324 @@ class Patient(models.Model):
         return display_names.get(category, category.replace("_", " ").title())
 
 
+class Allergy(models.Model):
+    """
+    Structured allergy record for a patient.
+
+    Stores medication, food, and environmental allergies with structured
+    data for clinical decision support and drug-allergy interaction checking.
+
+    Compliant with:
+    - DHA Digital Health Standards (structured allergy data)
+    - FHIR R4 AllergyIntolerance resource mapping
+
+    Attributes:
+        patient: The patient this allergy belongs to
+        substance: The allergen (drug name, food item, or environmental trigger)
+        substance_type: Category of allergen (medication, food, environmental)
+        reaction_type: Type of allergic reaction
+        severity: Severity of the reaction (mild, moderate, severe)
+        onset_date: When the allergy was first identified
+        status: Current status of the allergy (active, inactive, resolved)
+        verification_status: Whether the allergy is confirmed or suspected
+        notes: Additional clinical notes
+        recorded_by: Staff who recorded this allergy
+        source_encounter: Encounter during which allergy was recorded (optional)
+        created_at: Timestamp when the record was created
+        updated_at: Timestamp when the record was last updated
+    """
+
+    SUBSTANCE_TYPE_CHOICES = [
+        ("medication", "Medication"),
+        ("food", "Food"),
+        ("environmental", "Environmental"),
+        ("biological", "Biological"),
+        ("other", "Other"),
+    ]
+
+    REACTION_TYPE_CHOICES = [
+        ("anaphylaxis", "Anaphylaxis"),
+        ("angioedema", "Angioedema"),
+        ("bronchospasm", "Bronchospasm"),
+        ("cardiac_arrhythmia", "Cardiac Arrhythmia"),
+        ("diarrhea", "Diarrhea"),
+        ("dyspnea", "Dyspnea"),
+        ("hives", "Hives/Urticaria"),
+        ("hypotension", "Hypotension"),
+        ("itching", "Itching/Pruritus"),
+        ("nausea", "Nausea"),
+        ("rash", "Rash"),
+        ("swelling", "Swelling"),
+        ("vomiting", "Vomiting"),
+        ("other", "Other"),
+    ]
+
+    SEVERITY_CHOICES = [
+        ("mild", "Mild"),
+        ("moderate", "Moderate"),
+        ("severe", "Severe"),
+        ("life_threatening", "Life-Threatening"),
+    ]
+
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("inactive", "Inactive"),
+        ("resolved", "Resolved"),
+    ]
+
+    VERIFICATION_STATUS_CHOICES = [
+        ("unconfirmed", "Unconfirmed"),
+        ("presumed", "Presumed"),
+        ("confirmed", "Confirmed"),
+        ("refuted", "Refuted"),
+        ("entered_in_error", "Entered in Error"),
+    ]
+
+    CRITICALITY_CHOICES = [
+        ("low", "Low Risk"),
+        ("high", "High Risk"),
+        ("unable_to_assess", "Unable to Assess"),
+    ]
+
+    # Core fields
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.CASCADE,
+        related_name="allergies",
+        help_text="The patient this allergy belongs to",
+    )
+
+    # Substance information - supports both free text and structured lookup
+    substance = models.CharField(
+        max_length=500,
+        help_text="Name of the allergen (medication, food, or environmental trigger)",
+    )
+    substance_code = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Standard code for the substance (RxNorm, SNOMED CT, or local drug code)",
+    )
+    substance_code_system = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Code system URI (e.g., http://www.nlm.nih.gov/research/umls/rxnorm)",
+    )
+    substance_type = models.CharField(
+        max_length=20,
+        choices=SUBSTANCE_TYPE_CHOICES,
+        default="medication",
+        help_text="Category of allergen",
+    )
+
+    # Link to Drug model for medication allergies (enables drug-allergy checking)
+    drug = models.ForeignKey(
+        "pharmacy.Drug",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="patient_allergies",
+        help_text="Linked drug record for medication allergies (enables interaction checking)",
+    )
+
+    # Reaction details
+    reaction_type = models.CharField(
+        max_length=30,
+        choices=REACTION_TYPE_CHOICES,
+        default="other",
+        help_text="Type of allergic reaction",
+    )
+    reaction_description = models.TextField(
+        blank=True,
+        default="",
+        help_text="Detailed description of the reaction",
+    )
+    severity = models.CharField(
+        max_length=20,
+        choices=SEVERITY_CHOICES,
+        default="moderate",
+        help_text="Severity of the allergic reaction",
+    )
+    criticality = models.CharField(
+        max_length=20,
+        choices=CRITICALITY_CHOICES,
+        default="unable_to_assess",
+        help_text="Estimate of potential clinical harm (FHIR criticality)",
+    )
+
+    # Dates
+    onset_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date when the allergy was first identified",
+    )
+    last_occurrence = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date of most recent known occurrence",
+    )
+
+    # Status
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="active",
+        help_text="Current status of the allergy",
+    )
+    verification_status = models.CharField(
+        max_length=20,
+        choices=VERIFICATION_STATUS_CHOICES,
+        default="unconfirmed",
+        help_text="Whether the allergy is confirmed or suspected",
+    )
+
+    # Clinical notes
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Additional clinical notes about the allergy",
+    )
+
+    # Source tracking
+    source_encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_allergies",
+        help_text="Encounter during which this allergy was recorded",
+    )
+    recorded_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorded_allergies",
+        help_text="Staff member who recorded this allergy",
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        """Meta options for Allergy model."""
+
+        ordering = ["-severity", "-created_at"]
+        verbose_name = "Allergy"
+        verbose_name_plural = "Allergies"
+        indexes = [
+            models.Index(fields=["patient", "status"]),
+            models.Index(fields=["substance"]),
+            models.Index(fields=["severity"]),
+            models.Index(fields=["substance_type"]),
+        ]
+        # Prevent duplicate active allergies for the same substance
+        constraints = [
+            models.UniqueConstraint(
+                fields=["patient", "substance"],
+                condition=models.Q(status="active"),
+                name="unique_active_allergy_per_patient",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        """String representation of the allergy."""
+        return f"{self.substance} ({self.get_severity_display()}) - {self.patient.mrn}"
+
+    def clean(self):
+        """Validate the model fields."""
+        super().clean()
+
+        errors = {}
+
+        if not self.substance or not self.substance.strip():
+            errors["substance"] = "Substance is required."
+
+        # Validate onset_date is not in the future
+        if self.onset_date and self.onset_date > date.today():
+            errors["onset_date"] = "Onset date cannot be in the future."
+
+        # Validate last_occurrence is not in the future
+        if self.last_occurrence and self.last_occurrence > date.today():
+            errors["last_occurrence"] = "Last occurrence date cannot be in the future."
+
+        # Validate last_occurrence is after onset_date
+        if self.onset_date and self.last_occurrence and self.last_occurrence < self.onset_date:
+            errors["last_occurrence"] = "Last occurrence cannot be before onset date."
+
+        if errors:
+            raise ValidationError(errors)
+
+    @property
+    def is_high_risk(self) -> bool:
+        """Check if this allergy is high risk (severe or life-threatening)."""
+        return self.severity in ("severe", "life_threatening") or self.criticality == "high"
+
+    @property
+    def is_active(self) -> bool:
+        """Check if this allergy is currently active."""
+        return self.status == "active"
+
+    @classmethod
+    def get_active_allergies_for_patient(cls, patient_id: int) -> models.QuerySet:
+        """
+        Get all active allergies for a patient.
+
+        Args:
+            patient_id: The patient's ID
+
+        Returns:
+            QuerySet of active Allergy objects
+        """
+        return cls.objects.filter(patient_id=patient_id, status="active")
+
+    @classmethod
+    def check_drug_allergy(cls, patient_id: int, drug_id: int) -> list["Allergy"]:
+        """
+        Check if a patient has an allergy to a specific drug.
+
+        Args:
+            patient_id: The patient's ID
+            drug_id: The drug's ID
+
+        Returns:
+            List of matching Allergy objects (empty if no allergy)
+        """
+        return list(
+            cls.objects.filter(
+                patient_id=patient_id,
+                drug_id=drug_id,
+                status="active",
+            )
+        )
+
+    @classmethod
+    def check_drug_name_allergy(cls, patient_id: int, drug_name: str) -> list["Allergy"]:
+        """
+        Check if a patient has an allergy to a drug by name (case-insensitive).
+
+        This is useful for checking allergies when only the drug name is known,
+        or when checking against generic names.
+
+        Args:
+            patient_id: The patient's ID
+            drug_name: The drug's generic or brand name
+
+        Returns:
+            List of matching Allergy objects (empty if no allergy)
+        """
+        return list(
+            cls.objects.filter(
+                patient_id=patient_id,
+                status="active",
+                substance_type="medication",
+                substance__icontains=drug_name,
+            )
+        )
+
+
 class EmergencyContact(models.Model):
     """
     Emergency contact for a patient.
