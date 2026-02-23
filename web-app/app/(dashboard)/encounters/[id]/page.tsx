@@ -26,6 +26,7 @@ import { EncounterImagingOrders } from '@/components/encounters/encounter-imagin
 import { EncounterPrescriptions } from '@/components/encounters/encounter-prescriptions';
 import { SOAPNoteSummary } from '@/components/encounters/soap-note-summary';
 import { ClinicalSnapshotBanner } from '@/components/encounters/clinical-snapshot-banner';
+import { EncounterAuditTrail } from '@/components/encounters/encounter-audit-trail';
 import Link from 'next/link';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 
@@ -216,6 +217,7 @@ export default function EncounterDetailPage() {
           <TabsTrigger value="imaging" className="text-xs sm:text-sm">Imaging ({imagingOrders?.length || 0})</TabsTrigger>
           <TabsTrigger value="pharmacy" className="text-xs sm:text-sm">Rx ({prescriptions?.length || 0})</TabsTrigger>
           <TabsTrigger value="history" className="text-xs sm:text-sm">Hx</TabsTrigger>
+          <TabsTrigger value="audit" className="text-xs sm:text-sm">Audit</TabsTrigger>
         </TabsList>
 
         <TabsContent value="soap">
@@ -315,6 +317,10 @@ export default function EncounterDetailPage() {
 
         <TabsContent value="history">
           <MedicalHistoryView encounter={encounter} />
+        </TabsContent>
+
+        <TabsContent value="audit">
+          <EncounterAuditTrail encounterId={encounterId} />
         </TabsContent>
       </Tabs>
     </div>
