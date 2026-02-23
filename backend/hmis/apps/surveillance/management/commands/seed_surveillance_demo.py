@@ -241,10 +241,43 @@ class Command(BaseCommand):
         if icd_codes:
             icd10_code = ICD10Code.objects.filter(code__iexact=icd_codes[0]).first()
             if not icd10_code:
-                # Create a placeholder ICD-10 code
+                # Create a placeholder ICD-10 code with required fields
+                # Determine chapter from code prefix (A/B = Ch.1, C/D = Ch.2, etc.)
+                code_prefix = icd_codes[0][0].upper()
+                chapter_map = {
+                    "A": 1,
+                    "B": 1,  # Infectious diseases
+                    "C": 2,
+                    "D": 2,  # Neoplasms / Blood diseases
+                    "E": 4,  # Endocrine
+                    "F": 5,  # Mental
+                    "G": 6,  # Nervous
+                    "H": 7,  # Eye/Ear
+                    "I": 9,  # Circulatory
+                    "J": 10,  # Respiratory
+                    "K": 11,  # Digestive
+                    "L": 12,  # Skin
+                    "M": 13,  # Musculoskeletal
+                    "N": 14,  # Genitourinary
+                    "O": 15,  # Pregnancy
+                    "P": 16,  # Perinatal
+                    "Q": 17,  # Congenital
+                    "R": 18,  # Symptoms
+                    "S": 19,
+                    "T": 19,  # Injury
+                    "V": 20,
+                    "W": 20,
+                    "X": 20,
+                    "Y": 20,  # External causes
+                    "Z": 21,  # Health status
+                    "U": 22,  # Special codes
+                }
+                chapter = chapter_map.get(code_prefix, 1)
                 icd10_code = ICD10Code.objects.create(
                     code=icd_codes[0],
                     description=f"{disease.name} (auto-created for demo)",
+                    category="Notifiable diseases",
+                    chapter=chapter,
                 )
 
         # Create diagnosis
