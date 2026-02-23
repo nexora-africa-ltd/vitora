@@ -454,6 +454,13 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
     )
     # Default valid_until to 30 days from now
     valid_until = serializers.DateField(required=False)
+    # Override flag to allow prescriptions despite allergy warnings
+    acknowledge_allergy_warnings = serializers.BooleanField(
+        required=False,
+        default=False,
+        write_only=True,
+        help_text="Set to true to acknowledge allergy warnings and proceed with prescription",
+    )
 
     class Meta:
         model = Prescription
@@ -465,23 +472,86 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
             "valid_until",
             "clinical_notes",
             "items",
+            "acknowledge_allergy_warnings",
         ]
 
     def validate(self, data):
-        """Set default valid_until if not provided."""
+        """Validate prescription data and check for drug-allergy interactions."""
+        from hmis.apps.patients.models import Allergy
+
         if "valid_until" not in data or data["valid_until"] is None:
             from datetime import date, timedelta
 
             data["valid_until"] = date.today() + timedelta(days=30)
+
+        # Extract items for allergy checking
+        items_data = data.get("items", [])
+        patient = data.get("patient")
+        acknowledge_warnings = data.pop("acknowledge_allergy_warnings", False)
+
+        if not patient:
+            return data
+
+        # Check for drug-allergy interactions
+        allergy_warnings = []
+        for item_data in items_data:
+            drug = item_data.get("drug")
+            if not drug:
+                continue
+
+            # Check by drug ID
+            matching_allergies = Allergy.check_drug_allergy(patient.id, drug.id)
+
+            # Also check by drug name in case allergy was recorded by name only
+            if not matching_allergies:
+                matching_allergies = Allergy.check_drug_name_allergy(patient.id, drug.generic_name)
+
+            for allergy in matching_allergies:
+                warning = {
+                    "drug_id": drug.id,
+                    "drug_name": drug.generic_name,
+                    "allergy_id": allergy.id,
+                    "substance": allergy.substance,
+                    "severity": allergy.severity,
+                    "severity_display": allergy.get_severity_display(),
+                    "reaction_type": allergy.reaction_type,
+                    "is_high_risk": allergy.is_high_risk,
+                }
+                allergy_warnings.append(warning)
+
+        # If there are warnings and user hasn't acknowledged them, raise validation error
+        if allergy_warnings and not acknowledge_warnings:
+            raise serializers.ValidationError({
+                "allergy_warnings": allergy_warnings,
+                "message": "Drug-allergy interactions detected. Set acknowledge_allergy_warnings=true to proceed.",
+                "has_high_risk": any(w["is_high_risk"] for w in allergy_warnings),
+            })
+
+        # Store warnings for later use (e.g., audit logging)
+        data["_allergy_warnings"] = allergy_warnings
+        data["_warnings_acknowledged"] = acknowledge_warnings
+
         return data
 
     def create(self, validated_data):
         """Create prescription with nested items."""
         items_data = validated_data.pop("items", [])
+        allergy_warnings = validated_data.pop("_allergy_warnings", [])
+        warnings_acknowledged = validated_data.pop("_warnings_acknowledged", False)
+
         prescription = Prescription.objects.create(**validated_data)
 
         for item_data in items_data:
             PrescriptionItem.objects.create(prescription=prescription, **item_data)
+
+        # If there were allergy warnings that were acknowledged, add to clinical notes
+        if allergy_warnings and warnings_acknowledged:
+            warning_text = "\n\n[ALLERGY WARNING ACKNOWLEDGED BY PRESCRIBER]\n"
+            warning_text += "The following drug-allergy interactions were detected:\n"
+            for w in allergy_warnings:
+                warning_text += f"- {w['drug_name']}: Patient allergic to {w['substance']} ({w['severity_display']})\n"
+            prescription.clinical_notes = (prescription.clinical_notes or "") + warning_text
+            prescription.save(update_fields=["clinical_notes"])
 
         return prescription
 

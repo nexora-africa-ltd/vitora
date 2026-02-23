@@ -39,7 +39,7 @@ from hmis.apps.laboratory.views import (
     PatientLabOrderViewSet,
     PatientLabResultViewSet,
 )
-from hmis.apps.patients.views import EmergencyContactViewSet, PatientViewSet
+from hmis.apps.patients.views import AllergyViewSet, EmergencyContactViewSet, PatientViewSet
 
 
 def health_check(request):
@@ -75,6 +75,7 @@ router = routers.DefaultRouter()
 
 # Register viewsets
 router.register(r"patients", PatientViewSet, basename="patient")
+router.register(r"allergies", AllergyViewSet, basename="allergy")
 router.register(r"encounters", EncounterViewSet, basename="encounter")
 router.register(r"auditlogs", AuditLogViewSet, basename="auditlog")
 router.register(r"icd10-codes", ICD10CodeViewSet, basename="icd10code")
@@ -118,6 +119,19 @@ urlpatterns = [
             {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
         ),
         name="patient-emergency-contacts-detail",
+    ),
+    # Nested route for allergies under patients
+    path(
+        "api/patients/<int:patient_pk>/allergies/",
+        AllergyViewSet.as_view({"get": "list", "post": "create"}),
+        name="patient-allergies-list",
+    ),
+    path(
+        "api/patients/<int:patient_pk>/allergies/<int:pk>/",
+        AllergyViewSet.as_view(
+            {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
+        ),
+        name="patient-allergies-detail",
     ),
     # Nested route for diagnoses under encounters
     path(
