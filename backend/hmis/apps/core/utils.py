@@ -21,7 +21,7 @@ def generate_prc_number(facility_code: str | None = None) -> str:
 
     Args:
         facility_code: Optional facility code. If not provided, uses
-                      settings.FACILITY_CODE or defaults to 'FAC'.
+                      settings.FACILITY_MFL_CODE or defaults to 'FAC'.
 
     Returns:
         str: A unique PRC number string
@@ -30,7 +30,7 @@ def generate_prc_number(facility_code: str | None = None) -> str:
     from hmis.apps.encounters.models import Encounter
 
     year = datetime.now().year
-    code = facility_code or getattr(settings, "FACILITY_CODE", "FAC")
+    code = facility_code or getattr(settings, "FACILITY_MFL_CODE", "FAC")
 
     # Build the prefix pattern for searching
     prefix_pattern = f"{code}-PRC-"
@@ -101,7 +101,7 @@ def generate_case_number(prefix: str, facility_code: str | None = None) -> str:
 
     Args:
         prefix: The case type prefix (e.g., 'GBV', 'RTA', 'TRAUMA')
-        facility_code: Optional facility code.
+        facility_code: Optional facility code. Uses settings.FACILITY_MFL_CODE if not provided.
 
     Returns:
         str: A unique case number string
@@ -109,7 +109,7 @@ def generate_case_number(prefix: str, facility_code: str | None = None) -> str:
     from hmis.apps.encounters.models import Encounter
 
     year = datetime.now().year
-    code = facility_code or getattr(settings, "FACILITY_CODE", "FAC")
+    code = facility_code or getattr(settings, "FACILITY_MFL_CODE", "FAC")
     full_prefix = f"{code}-{prefix}-"
     suffix = f"/{year}"
 

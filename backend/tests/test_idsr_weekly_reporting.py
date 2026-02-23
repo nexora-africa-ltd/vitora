@@ -396,7 +396,7 @@ class TestIDSRReportingService:
         assert report.total_cases == 1
         assert report.disease_summaries.count() == 1
 
-    def test_prepare_dhis2_payload(self, db):
+    def test_prepare_dhis2_payload(self, db, settings):
         """Should prepare valid DHIS2 payload."""
         from hmis.apps.surveillance.models import (
             IDSRDiseaseSummary,
@@ -404,6 +404,9 @@ class TestIDSRReportingService:
             NotifiableDisease,
         )
         from hmis.apps.surveillance.services import IDSRReportingService
+
+        # Override DHIS2_ORG_UNIT to test fallback behavior
+        settings.DHIS2_ORG_UNIT = ""  # Empty = use facility_code fallback
 
         disease = NotifiableDisease.objects.create(
             name="Cholera",
@@ -430,6 +433,7 @@ class TestIDSRReportingService:
 
         assert "dataValues" in payload
         assert payload["period"] == "2026W08"
+        # When DHIS2_ORG_UNIT not set, falls back to facility_code
         assert payload["orgUnit"] == "MFL001"
         assert len(payload["dataValues"]) > 0
 

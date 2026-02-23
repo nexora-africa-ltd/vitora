@@ -561,7 +561,7 @@ class IDSRReportingService:
 
         # Get facility info from settings if not provided
         if not facility_code:
-            facility_code = getattr(settings, "FACILITY_CODE", "")
+            facility_code = getattr(settings, "FACILITY_MFL_CODE", "")
         if not facility_name:
             facility_name = getattr(settings, "FACILITY_NAME", "")
 
@@ -737,7 +737,7 @@ class IDSRReportingService:
         Prepare DHIS2 DataValueSet payload for submission.
 
         Formats the IDSR report data according to Kenya KHIS
-        data element structure.
+        data element structure using configured DHIS2 mappings.
 
         Args:
             report: IDSRWeeklyReport to submit
@@ -747,61 +747,66 @@ class IDSRReportingService:
         """
         from django.conf import settings
 
+        from .dhis2_mappings import get_data_element_uid, get_environment
+
         # DHIS2 period format for weekly: YYYY"W"WW (e.g., 2026W08)
         period = f"{report.epi_year}W{report.epi_week:02d}"
 
-        # Get org unit from settings
-        org_unit = getattr(settings, "DHIS2_ORG_UNIT", report.facility_code)
+        # Get org unit: prefer DHIS2_ORG_UNIT (the actual DHIS2 UID) if configured,
+        # otherwise fall back to facility_code (MFL code) - note these are different:
+        # - DHIS2_ORG_UNIT: DHIS2's internal org unit UID (e.g., "lZtlGVzHnKF")
+        # - facility_code: Kenya MFL code (e.g., "12345")
+        dhis2_org_unit = getattr(settings, "DHIS2_ORG_UNIT", "")
+        org_unit = dhis2_org_unit if dhis2_org_unit else report.facility_code
+
+        # Get current environment for mapping lookups
+        environment = get_environment()
 
         data_values = []
+        unmapped_diseases = []
 
-        # TODO: Map disease summaries to actual DHIS2 data elements
-        # These data element IDs need to be configured per DHIS2 instance
+        # Map disease summaries to actual DHIS2 data elements using mappings
         for summary in report.disease_summaries.select_related("disease"):
-            # Placeholder data element mapping
-            disease_code = summary.disease.name.upper().replace(" ", "_")
+            disease_name = summary.disease.name
 
-            # Cases under 5
-            if summary.cases_under_5 > 0:
-                data_values.append({
-                    "dataElement": f"IDSR_{disease_code}_U5_CASES",
-                    "period": period,
-                    "orgUnit": org_unit,
-                    "value": summary.cases_under_5,
-                })
+            # Build data values for each indicator (only if value > 0 and mapping exists)
+            indicator_mapping = [
+                ("cases_under_5", summary.cases_under_5),
+                ("cases_5_and_above", summary.cases_5_and_above),
+                ("deaths_under_5", summary.deaths_under_5),
+                ("deaths_5_and_above", summary.deaths_5_and_above),
+            ]
 
-            # Cases 5 and above
-            if summary.cases_5_and_above > 0:
-                data_values.append({
-                    "dataElement": f"IDSR_{disease_code}_O5_CASES",
-                    "period": period,
-                    "orgUnit": org_unit,
-                    "value": summary.cases_5_and_above,
-                })
+            for indicator_type, value in indicator_mapping:
+                if value > 0:
+                    uid = get_data_element_uid(disease_name, indicator_type, environment)
+                    if uid:
+                        data_values.append({
+                            "dataElement": uid,
+                            "period": period,
+                            "orgUnit": org_unit,
+                            "value": value,
+                        })
+                    else:
+                        # Track unmapped diseases for debugging
+                        unmapped_diseases.append(f"{disease_name}/{indicator_type}")
 
-            # Deaths under 5
-            if summary.deaths_under_5 > 0:
-                data_values.append({
-                    "dataElement": f"IDSR_{disease_code}_U5_DEATHS",
-                    "period": period,
-                    "orgUnit": org_unit,
-                    "value": summary.deaths_under_5,
-                })
-
-            # Deaths 5 and above
-            if summary.deaths_5_and_above > 0:
-                data_values.append({
-                    "dataElement": f"IDSR_{disease_code}_O5_DEATHS",
-                    "period": period,
-                    "orgUnit": org_unit,
-                    "value": summary.deaths_5_and_above,
-                })
+        if unmapped_diseases:
+            logger.warning(
+                f"Unmapped DHIS2 data elements for report {report.id}: "
+                f"{', '.join(unmapped_diseases[:10])}{'...' if len(unmapped_diseases) > 10 else ''}"
+            )
 
         return {
             "dataValues": data_values,
             "period": period,
             "orgUnit": org_unit,
             "completeDate": timezone.localdate().isoformat(),
+            "_metadata": {
+                "report_id": report.id,
+                "environment": environment,
+                "unmapped_count": len(unmapped_diseases),
+            },
         }
 
     @classmethod
@@ -856,3 +861,44 @@ class IDSRReportingService:
             report.mark_failed(error_response)
             logger.error(f"DHIS2 request failed: {e}")
             return error_response
+
+
+# -----------------------------------------------------------------------------
+# Module-level convenience functions (for easier imports)
+# -----------------------------------------------------------------------------
+
+
+def generate_dhis2_payload(report: "IDSRWeeklyReport") -> dict:
+    """
+    Generate DHIS2 DataValueSet payload from an IDSR report.
+
+    This is a convenience wrapper around IDSRReportingService.prepare_dhis2_payload.
+
+    Args:
+        report: IDSRWeeklyReport to generate payload for
+
+    Returns:
+        DHIS2 API payload dict ready for submission
+
+    Example:
+        >>> from hmis.apps.surveillance.services import generate_dhis2_payload
+        >>> report = IDSRWeeklyReport.objects.latest('created_at')
+        >>> payload = generate_dhis2_payload(report)
+        >>> print(json.dumps(payload, indent=2))
+    """
+    return IDSRReportingService.prepare_dhis2_payload(report)
+
+
+def submit_report_to_dhis2(report: "IDSRWeeklyReport") -> dict:
+    """
+    Submit an approved IDSR report to DHIS2.
+
+    This is a convenience wrapper around IDSRReportingService.submit_to_dhis2.
+
+    Args:
+        report: Approved IDSRWeeklyReport to submit
+
+    Returns:
+        DHIS2 API response dict
+    """
+    return IDSRReportingService.submit_to_dhis2(report)

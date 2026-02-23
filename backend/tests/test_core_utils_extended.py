@@ -23,8 +23,10 @@ class TestGeneratePRCNumber:
         assert result.endswith(f"/{year}")
 
     @mock.patch("hmis.apps.encounters.models.Encounter")
-    def test_uses_default_facility_code(self, mock_encounter_model):
-        """Should use 'FAC' as default facility code."""
+    @mock.patch("hmis.apps.core.utils.settings", spec=[])
+    def test_uses_default_facility_code(self, mock_settings, mock_encounter_model):
+        """Should use 'FAC' as default facility code when setting not configured."""
+        # spec=[] means no attributes exist, so getattr returns the default
         mock_encounter_model.objects.filter.return_value.exclude.return_value = []
 
         result = generate_prc_number()
@@ -35,7 +37,7 @@ class TestGeneratePRCNumber:
     @mock.patch("hmis.apps.core.utils.settings")
     def test_uses_settings_facility_code(self, mock_settings, mock_encounter_model):
         """Should use facility code from settings."""
-        mock_settings.FACILITY_CODE = "HOSP"
+        mock_settings.FACILITY_MFL_CODE = "HOSP"
         mock_encounter_model.objects.filter.return_value.exclude.return_value = []
 
         result = generate_prc_number()
