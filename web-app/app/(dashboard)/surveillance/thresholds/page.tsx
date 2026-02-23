@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { WebSocketStatus } from '@/components/ui/websocket-status';
 import {
   Select,
   SelectContent,
@@ -19,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { surveillanceApi, type ThresholdListParams } from '@/lib/api/surveillance';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useSurveillanceWebSocket } from '@/lib/hooks/surveillance-websocket';
 import type { OutbreakThreshold } from '@/lib/types/surveillance';
 
 const PAGE_SIZE = 20;
@@ -76,6 +78,22 @@ function ThresholdProgress({ threshold }: { threshold: OutbreakThreshold }) {
 
 export default function OutbreakThresholdsPage() {
   const { refresh, isRefreshing } = usePageRefresh();
+
+  // WebSocket connection with polling fallback
+  const {
+    connectionState,
+    reconnectAttempts,
+    refresh: wsRefresh,
+  } = useSurveillanceWebSocket({
+    showToastNotifications: true,
+  });
+
+  // Combined refresh: WebSocket + React Query
+  const handleRefresh = () => {
+    wsRefresh();
+    refresh();
+  };
+
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({
     status: 'all',
@@ -192,11 +210,19 @@ export default function OutbreakThresholdsPage() {
   ];
 
   return (
-    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
+    <PullToRefresh onRefresh={handleRefresh} isRefreshing={isRefreshing}>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="Outbreak Thresholds"
           helpContent="Configure and monitor outbreak detection thresholds. Alerts are triggered when case counts exceed defined thresholds within specified periods."
+          actions={
+            <WebSocketStatus
+              connectionState={connectionState}
+              reconnectAttempts={reconnectAttempts}
+              showLabel
+              size="sm"
+            />
+          }
         />
 
         {/* Summary Cards */}

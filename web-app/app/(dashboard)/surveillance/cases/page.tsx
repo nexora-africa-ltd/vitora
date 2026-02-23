@@ -8,6 +8,7 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { WebSocketStatus } from '@/components/ui/websocket-status';
 import {
   Select,
   SelectContent,
@@ -19,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { surveillanceApi } from '@/lib/api/surveillance';
 import { formatDateTime } from '@/lib/utils/format';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useSurveillanceWebSocket } from '@/lib/hooks/surveillance-websocket';
 import type {
   NotifiableCaseListItem,
   NotifiableCaseListParams,
@@ -42,6 +44,16 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export default function NotifiableCasesPage() {
   const { refresh, isRefreshing } = usePageRefresh();
+
+  // WebSocket connection with polling fallback
+  const {
+    connectionState,
+    reconnectAttempts,
+    refresh: wsRefresh,
+  } = useSurveillanceWebSocket({
+    showToastNotifications: true,
+  });
+
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({
@@ -84,6 +96,12 @@ export default function NotifiableCasesPage() {
   const totalPages = data ? Math.ceil(data.count / PAGE_SIZE) : 0;
   const hasNext = !!data?.next;
   const hasPrev = page > 1;
+
+  // Combined refresh: WebSocket + React Query
+  const handleRefresh = () => {
+    wsRefresh();
+    refresh();
+  };
 
   const columns = [
     {
@@ -146,11 +164,19 @@ export default function NotifiableCasesPage() {
   ];
 
   return (
-    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
+    <PullToRefresh onRefresh={handleRefresh} isRefreshing={isRefreshing}>
       <div className="space-y-4 sm:space-y-6">
         <PageHeader
           title="Notifiable Cases"
           helpContent="Track notifiable disease cases and their notification status for county reporting."
+          actions={
+            <WebSocketStatus
+              connectionState={connectionState}
+              reconnectAttempts={reconnectAttempts}
+              showLabel
+              size="sm"
+            />
+          }
         />
 
         <Card className="p-4 space-y-3">
