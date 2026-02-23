@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
@@ -152,12 +151,6 @@ export default function NotifiableCasesPage() {
         <PageHeader
           title="Notifiable Cases"
           helpContent="Track notifiable disease cases and their notification status for county reporting."
-          actions={
-            <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <RefreshCw className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Refresh</span>
-            </Button>
-          }
         />
 
         <Card className="p-4 space-y-3">
