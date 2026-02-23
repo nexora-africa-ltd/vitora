@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
@@ -44,6 +45,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export default function NotifiableCasesPage() {
   const { refresh, isRefreshing } = usePageRefresh();
+  const router = useRouter();
 
   // WebSocket connection with polling fallback
   const {
@@ -258,6 +260,7 @@ export default function NotifiableCasesPage() {
             data={data?.results ?? []}
             columns={columns}
             keyExtractor={(item) => item.id}
+            onRowClick={(item) => router.push(`/surveillance/cases/${item.id}`)}
             isLoading={isLoading}
             emptyMessage="No notifiable cases found."
             mobileCard={(item) => (
