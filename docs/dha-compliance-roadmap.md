@@ -169,16 +169,20 @@ Gaps are categorized into four tiers:
 - **Completed**: February 23, 2026
 - **Deliverables**: Migration, `web-app/lib/types/patient.ts`, `web-app/lib/schemas/patient.schema.ts`
 
-#### 9. IPS Bundle Dynamic Population `P1` ⏳ PARTIAL
-- **Gap**: ~~Medications/allergies not dynamically populated in IPS~~ **Allergies RESOLVED, Medications TODO**
+#### 9. IPS Bundle Dynamic Population `P1` ✅ COMPLETE
+- **Gap**: ~~Medications/allergies not dynamically populated in IPS~~ **RESOLVED**
 - **Action**:
-  - [ ] Query active prescriptions for IPS MedicationStatement section
+  - [x] Query active prescriptions for IPS MedicationStatement section ✅
   - [x] Query allergies for IPS AllergyIntolerance section ✅
-  - [ ] Include TreatmentPlan as FHIR CarePlan resource
-  - [ ] Tests: 15 unit tests
+  - [x] Include TreatmentPlan as FHIR CarePlan resource ✅
+  - [x] Tests: 23 unit tests (exceeded 15+ requirement) ✅
 - **Owner**: Backend Team
-- **Effort**: 1 sprint (1 week remaining)
-- **Deliverables**: Updated `fhir/views.py::generate_ips_bundle()`
+- **Completed**: February 23, 2026
+- **Deliverables**: 
+  - Updated `fhir/views.py` with enhanced `FHIRMedicationStatementView`, new `FHIRCarePlanView`
+  - Updated `FHIRPatientSummaryView._build_ips_bundle()` to include medications and care plans
+  - New CarePlan URL endpoint `/fhir/CarePlan/{id}`
+  - `tests/core/test_fhir_ips.py` - 23 comprehensive unit tests
 
 ### Sprint 1.D — Audit & Integrity Enhancements (Weeks 13-16)
 
