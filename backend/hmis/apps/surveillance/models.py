@@ -873,3 +873,153 @@ class IDSRDiseaseSummary(models.Model):
         else:
             self.case_fatality_rate = None
         super().save(*args, **kwargs)
+
+
+class IndicatorType(models.TextChoices):
+    """DHIS2 indicator types for age/outcome disaggregation."""
+
+    CASES_UNDER_5 = "cases_under_5", "Cases Under 5 Years"
+    CASES_5_AND_ABOVE = "cases_5_and_above", "Cases 5 Years and Above"
+    DEATHS_UNDER_5 = "deaths_under_5", "Deaths Under 5 Years"
+    DEATHS_5_AND_ABOVE = "deaths_5_and_above", "Deaths 5 Years and Above"
+
+
+class DHIS2Environment(models.TextChoices):
+    """DHIS2 environment for mapping (allows different UIDs per environment)."""
+
+    LOCAL = "local", "Local Development"
+    STAGING = "staging", "Staging/UAT"
+    PRODUCTION = "production", "Production (KHIS)"
+
+
+class DHIS2DataElementMapping(models.Model):
+    """
+    Mapping between NotifiableDisease and DHIS2 Data Element UIDs.
+
+    Allows managing DHIS2 data element mappings via Django admin,
+    supporting different UIDs per environment (local, staging, production).
+
+    For expandability, new diseases can be mapped without code changes
+    by adding records via Django admin or data import.
+
+    Attributes:
+        disease: Reference to NotifiableDisease
+        indicator_type: Type of indicator (cases_under_5, etc.)
+        environment: Target DHIS2 environment
+        data_element_uid: DHIS2 Data Element UID (11 chars)
+        short_name: DHIS2 short name for reference
+        is_active: Whether this mapping is active
+
+    Example:
+        disease="Cholera", indicator_type="cases_under_5",
+        environment="local", data_element_uid="jOdkuwpQGKX"
+    """
+
+    disease = models.ForeignKey(
+        NotifiableDisease,
+        on_delete=models.CASCADE,
+        related_name="dhis2_mappings",
+        help_text="Notifiable disease to map",
+    )
+    indicator_type = models.CharField(
+        max_length=30,
+        choices=IndicatorType.choices,
+        help_text="Age/outcome indicator type",
+    )
+    environment = models.CharField(
+        max_length=20,
+        choices=DHIS2Environment.choices,
+        default=DHIS2Environment.LOCAL,
+        help_text="DHIS2 environment (local/staging/production)",
+    )
+    data_element_uid = models.CharField(
+        max_length=11,
+        help_text="DHIS2 Data Element UID (11 characters)",
+    )
+    short_name = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="DHIS2 short name for reference (e.g., IDSR_CHOLERA_U5_CASES)",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this mapping is currently active",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Additional notes or KHIS mapping references",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["disease__name", "indicator_type", "environment"]
+        verbose_name = "DHIS2 Data Element Mapping"
+        verbose_name_plural = "DHIS2 Data Element Mappings"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["disease", "indicator_type", "environment"],
+                name="unique_disease_indicator_environment",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["environment", "is_active"]),
+            models.Index(fields=["data_element_uid"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.disease.name} - {self.get_indicator_type_display()} ({self.environment})"
+
+    @classmethod
+    def get_uid(
+        cls,
+        disease_name: str,
+        indicator_type: str,
+        environment: str = "local",
+    ) -> str | None:
+        """
+        Get DHIS2 data element UID for a disease indicator.
+
+        Args:
+            disease_name: Disease name (case-insensitive)
+            indicator_type: One of IndicatorType values
+            environment: DHIS2 environment (local, staging, production)
+
+        Returns:
+            Data element UID or None if not mapped
+        """
+        try:
+            mapping = cls.objects.get(
+                disease__name__iexact=disease_name,
+                indicator_type=indicator_type,
+                environment=environment,
+                is_active=True,
+            )
+            return mapping.data_element_uid
+        except cls.DoesNotExist:
+            return None
+
+    @classmethod
+    def get_all_mappings(cls, environment: str = "local") -> dict:
+        """
+        Get all active mappings for an environment as a dictionary.
+
+        Returns:
+            Dict in format: {disease_name_lower: {indicator_type: uid}}
+        """
+        mappings = cls.objects.filter(
+            environment=environment,
+            is_active=True,
+        ).select_related("disease")
+
+        result: dict[str, dict[str, str]] = {}
+        for m in mappings:
+            key = m.disease.name.lower().replace(" ", "_")
+            if key not in result:
+                result[key] = {}
+            result[key][m.indicator_type] = m.data_element_uid
+
+        return result
+
