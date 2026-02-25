@@ -5,7 +5,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { ModuleCard } from '@/components/allied-health/shared/module-card';
+import { ModuleCard } from '@/components/allied-health/module-card';
 import { Stethoscope } from 'lucide-react';
 
 // Mock next/navigation

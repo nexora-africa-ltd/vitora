@@ -27,7 +27,7 @@ export function SessionProgress({
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Sessions</span>
           <span className="font-medium">
-            {completed}/{total} ({percentage}%)
+            {completed} / {total}
           </span>
         </div>
       )}
@@ -53,7 +53,7 @@ export function SessionCount({ completed, total, size = 'md', className }: Sessi
   return (
     <span className={cn(sizeClasses[size], 'text-muted-foreground', className)}>
       <span className="font-medium text-foreground">{completed}</span>
-      <span>/</span>
+      <span> / </span>
       <span>{total}</span>
       <span className="ml-1">sessions</span>
     </span>

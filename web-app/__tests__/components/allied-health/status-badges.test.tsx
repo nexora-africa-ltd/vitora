@@ -8,8 +8,8 @@ import '@testing-library/jest-dom';
 import {
   OrderStatusBadge,
   SessionStatusBadge,
-  PriorityBadge,
-} from '@/components/allied-health/shared/status-badges';
+} from '@/components/allied-health/status-badges';
+import { PriorityBadge } from '@/components/allied-health/priority-badge';
 
 describe('OrderStatusBadge', () => {
   it('renders PENDING status correctly', () => {
