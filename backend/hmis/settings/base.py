@@ -393,6 +393,30 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 
+# =============================================================================
+# Key Management System (KMS) Configuration
+# =============================================================================
+# KMS_PROVIDER options: "local", "azure", "gcp"
+# - "local": Uses Fernet symmetric encryption (dev/test or single-server)
+# - "azure": Azure Key Vault (recommended for production)
+# - "gcp": Google Cloud KMS (alternative cloud option)
+KMS_PROVIDER = os.getenv("KMS_PROVIDER", "local")
+
+# Key rotation policy (in days) - minimum 365 per DHA compliance
+KMS_KEY_ROTATION_DAYS = int(os.getenv("KMS_KEY_ROTATION_DAYS", "365"))
+
+# Azure Key Vault settings (when KMS_PROVIDER="azure")
+AZURE_KEY_VAULT_URL = os.getenv("AZURE_KEY_VAULT_URL", "")
+AZURE_KEY_NAME = os.getenv("AZURE_KEY_NAME", "vitora-hmis-key")
+# Authentication via Azure Managed Identity or environment variables:
+# AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET
+
+# Google Cloud KMS settings (when KMS_PROVIDER="gcp") - NOT YET IMPLEMENTED
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "")
+GCP_KMS_LOCATION = os.getenv("GCP_KMS_LOCATION", "global")
+GCP_KMS_KEYRING = os.getenv("GCP_KMS_KEYRING", "vitora-hmis")
+GCP_KMS_KEY = os.getenv("GCP_KMS_KEY", "vitora-key")
+
 # Celery Configuration
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
