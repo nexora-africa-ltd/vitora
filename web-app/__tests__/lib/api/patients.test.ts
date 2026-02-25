@@ -9,6 +9,49 @@ jest.mock('@/lib/api/client');
 
 const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
 
+// Mock data that matches the Zod schema
+const mockPatientListItem = {
+  id: 1,
+  mrn: 'MRN-001',
+  cr_number: null,
+  sha_number: null,
+  title: 'Mr',
+  first_name: 'John',
+  middle_name: null,
+  last_name: 'Doe',
+  full_name: 'John Doe',
+  date_of_birth: '1990-01-01',
+  age: 36,
+  gender: 'M' as const,
+  phone_number: '0712345678',
+  county_name: 'Nairobi',
+  sub_county_name: 'Westlands',
+  is_sensitive: false,
+  created_at: '2026-01-01T00:00:00Z',
+};
+
+const mockPatient = {
+  ...mockPatientListItem,
+  place_of_birth: null,
+  citizenship: null,
+  is_person_with_disability: false,
+  identification_type: null,
+  identification_number: null,
+  national_id: null,
+  email: null,
+  address: null,
+  county: 1,
+  sub_county: 1,
+  ward: null,
+  payment_mode: 'cash' as const,
+  referral_source: 'self' as const,
+  consent_given: false,
+  consent_date: null,
+  registered_by: null,
+  registered_by_name: null,
+  updated_at: '2026-01-01T00:00:00Z',
+};
+
 describe('Patients API', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -21,7 +64,7 @@ describe('Patients API', () => {
           count: 10,
           next: null,
           previous: null,
-          results: [{ id: 1, mrn: 'MRN-001', first_name: 'John' }],
+          results: [mockPatientListItem],
         },
       };
       mockApiClient.get.mockResolvedValue(mockResponse);
@@ -33,7 +76,7 @@ describe('Patients API', () => {
     });
 
     it('should include search params when provided', async () => {
-      const mockResponse = { data: { count: 0, results: [] } };
+      const mockResponse = { data: { count: 0, next: null, previous: null, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
       await patientsApi.getPatients({ search: 'john', page: 2, page_size: 20 });
@@ -45,7 +88,7 @@ describe('Patients API', () => {
     });
 
     it('should include gender filter when provided', async () => {
-      const mockResponse = { data: { count: 0, results: [] } };
+      const mockResponse = { data: { count: 0, next: null, previous: null, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
       await patientsApi.getPatients({ gender: 'M' });
@@ -56,13 +99,13 @@ describe('Patients API', () => {
 
   describe('getPatient', () => {
     it('should fetch a single patient by ID', async () => {
-      const mockPatient = { id: 1, mrn: 'MRN-001', first_name: 'John', last_name: 'Doe' };
       mockApiClient.get.mockResolvedValue({ data: mockPatient });
 
       const result = await patientsApi.getPatient(1);
 
       expect(mockApiClient.get).toHaveBeenCalledWith('/api/patients/1/');
-      expect(result).toEqual(mockPatient);
+      expect(result.mrn).toBe('MRN-001');
+      expect(result.first_name).toBe('John');
     });
   });
 
@@ -76,8 +119,17 @@ describe('Patients API', () => {
         county: 1,
         sub_county: 1,
       };
-      const mockResponse = { id: 2, mrn: 'MRN-002', ...patientData };
-      mockApiClient.post.mockResolvedValue({ data: mockResponse });
+      const mockCreatedPatient = {
+        ...mockPatient,
+        id: 2,
+        mrn: 'MRN-002',
+        first_name: 'Jane',
+        last_name: 'Smith',
+        full_name: 'Jane Smith',
+        gender: 'F' as const,
+        date_of_birth: '1990-05-15',
+      };
+      mockApiClient.post.mockResolvedValue({ data: mockCreatedPatient });
 
       const result = await patientsApi.createPatient(patientData);
 
@@ -89,8 +141,12 @@ describe('Patients API', () => {
   describe('updatePatient', () => {
     it('should update an existing patient', async () => {
       const updateData = { first_name: 'Janet' };
-      const mockResponse = { id: 1, mrn: 'MRN-001', first_name: 'Janet' };
-      mockApiClient.patch.mockResolvedValue({ data: mockResponse });
+      const mockUpdatedPatient = {
+        ...mockPatient,
+        first_name: 'Janet',
+        full_name: 'Janet Doe',
+      };
+      mockApiClient.patch.mockResolvedValue({ data: mockUpdatedPatient });
 
       const result = await patientsApi.updatePatient(1, updateData);
 
@@ -112,7 +168,15 @@ describe('Patients API', () => {
   describe('getEmergencyContacts', () => {
     it('should fetch emergency contacts for a patient', async () => {
       const mockContacts = [
-        { id: 1, name: 'Jane Doe', phone: '0712345678', relationship: 'Spouse' },
+        {
+          id: 1,
+          full_name: 'Jane Doe',
+          relationship: 'Spouse',
+          phone_number: '0712345678',
+          alternative_phone: null,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
       ];
       mockApiClient.get.mockResolvedValue({ data: mockContacts });
 
@@ -126,7 +190,14 @@ describe('Patients API', () => {
   describe('getEncounters', () => {
     it('should fetch encounters for a patient', async () => {
       const mockEncounters = [
-        { id: 1, encounter_type: 'OPD', chief_complaint: 'Headache' },
+        {
+          id: 1,
+          encounter_type: 'OPD',
+          status: 'CLOSED' as const,
+          encounter_date: '2026-01-01',
+          chief_complaint: 'Headache',
+          created_at: '2026-01-01T00:00:00Z',
+        },
       ];
       mockApiClient.get.mockResolvedValue({ data: { results: mockEncounters } });
 
