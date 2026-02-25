@@ -768,7 +768,8 @@ describe('Inpatient Contract Tests', () => {
   describe('ConditionStatusSchema (enum)', () => {
     it('should match OpenAPI ConditionStatusEnum values', () => {
       const zodValues = getZodEnumValues(ConditionStatusSchema);
-      const apiValues = getSchemaEnumValues(openapi, 'ConditionStatusEnum');
+      // Backend uses WardRoundConditionStatusEnum, not ConditionStatusEnum
+      const apiValues = getSchemaEnumValues(openapi, 'WardRoundConditionStatusEnum');
 
       expect(apiValues).not.toBeNull();
       if (!apiValues) return;

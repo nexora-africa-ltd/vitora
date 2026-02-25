@@ -191,9 +191,11 @@ describe('Sidebar', () => {
     expect(screen.getByText('Laboratory')).toBeInTheDocument();
     expect(screen.getByText('Imaging')).toBeInTheDocument();
 
-    // Children should be links with correct hrefs
-    expect(screen.getByRole('link', { name: /laboratory/i })).toHaveAttribute('href', '/laboratory');
-    expect(screen.getByRole('link', { name: /imaging/i })).toHaveAttribute('href', '/imaging');
+    // Children should be links with correct hrefs (use getAllByRole to handle potential duplicates)
+    const labLinks = screen.getAllByRole('link', { name: /laboratory/i });
+    expect(labLinks.some(link => link.getAttribute('href') === '/laboratory')).toBe(true);
+    const imagingLinks = screen.getAllByRole('link', { name: /imaging/i });
+    expect(imagingLinks.some(link => link.getAttribute('href') === '/imaging')).toBe(true);
   });
 
   it('should have Theatre menu with Schedule, Checklists, Cases, and Reports children', () => {
@@ -208,10 +210,13 @@ describe('Sidebar', () => {
     expect(screen.getByText('Cases')).toBeInTheDocument();
     expect(screen.getAllByText('Reports').length).toBeGreaterThan(0);
 
-    // Children should be links with correct hrefs
-    expect(screen.getByRole('link', { name: /schedule/i })).toHaveAttribute('href', '/theatre/schedule');
-    expect(screen.getByRole('link', { name: /checklists/i })).toHaveAttribute('href', '/theatre/checklists');
-    expect(screen.getByRole('link', { name: /cases/i })).toHaveAttribute('href', '/theatre/cases');
+    // Children should be links with correct hrefs (use getAllByRole to handle potential duplicates)
+    const scheduleLinks = screen.getAllByRole('link', { name: /schedule/i });
+    expect(scheduleLinks.some(link => link.getAttribute('href') === '/theatre/schedule')).toBe(true);
+    const checklistLinks = screen.getAllByRole('link', { name: /checklists/i });
+    expect(checklistLinks.some(link => link.getAttribute('href') === '/theatre/checklists')).toBe(true);
+    const casesLinks = screen.getAllByRole('link', { name: /cases/i });
+    expect(casesLinks.some(link => link.getAttribute('href') === '/theatre/cases')).toBe(true);
     const reportsLinks = screen.getAllByRole('link', { name: /reports/i });
     expect(reportsLinks.some(link => link.getAttribute('href') === '/theatre/reports')).toBe(true);
   });

@@ -80,16 +80,15 @@ describe('AdmissionsPage', () => {
     });
   });
 
-  it('renders the Admissions page title and description', () => {
+  it('renders the Admissions page title and help popover', () => {
     render(<AdmissionsPage />);
 
     expect(
       screen.getByRole('heading', { name: /^admissions$/i })
     ).toBeInTheDocument();
 
-    expect(
-      screen.getByText(/manage inpatient admissions and bed assignments/i)
-    ).toBeInTheDocument();
+    // Description is now in HelpPopover, check that popover trigger exists
+    expect(screen.getByRole('button', { name: /help/i })).toBeInTheDocument();
   });
 
   it('shows admission recommendations section', () => {

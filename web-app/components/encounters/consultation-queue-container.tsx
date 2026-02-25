@@ -87,6 +87,14 @@ export function ConsultationQueueContainer({
   // ===========================================================================
 
   /**
+   * Handle refresh (for pull-to-refresh)
+   * NOTE: This hook must be defined before any early returns to maintain hook order.
+   */
+  const handleRefresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
+  /**
    * Handle calling a patient (also claims the encounter automatically)
    */
   const handleCallPatient = useCallback(
@@ -337,10 +345,6 @@ export function ConsultationQueueContainer({
   // ===========================================================================
   // Main Render
   // ===========================================================================
-
-  const handleRefresh = useCallback(async () => {
-    await refetch();
-  }, [refetch]);
 
   return (
     <PullToRefresh onRefresh={handleRefresh} isRefreshing={isFetching}>

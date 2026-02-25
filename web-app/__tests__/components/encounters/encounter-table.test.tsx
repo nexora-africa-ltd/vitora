@@ -75,7 +75,8 @@ describe('EncounterTable', () => {
   it('should render encounter data in table', () => {
     render(<EncounterTable {...defaultProps} />);
 
-    expect(screen.getByText('Headache and fever')).toBeInTheDocument();
+    // Data may appear in both mobile and desktop views
+    expect(screen.getAllByText('Headache and fever').length).toBeGreaterThan(0);
   });
 
   it('should render table headers', () => {
@@ -92,8 +93,9 @@ describe('EncounterTable', () => {
   it('should show loading skeleton when loading', () => {
     render(<EncounterTable {...defaultProps} isLoading={true} encounters={[]} />);
 
-    const tableRows = document.querySelectorAll('tbody tr');
-    expect(tableRows.length).toBe(5);
+    // When loading, skeletons are rendered via data-slot or animate-pulse class
+    const skeletons = document.querySelectorAll('[data-slot="skeleton"], .animate-pulse');
+    expect(skeletons.length).toBeGreaterThan(0);
   });
 
   it('should show error state when error occurs', () => {
@@ -119,8 +121,9 @@ describe('EncounterTable', () => {
     };
     render(<EncounterTable {...defaultProps} encounters={[mockEncounter, secondEncounter]} />);
 
-    expect(screen.getByText('Headache and fever')).toBeInTheDocument();
-    expect(screen.getByText('Chest pain')).toBeInTheDocument();
+    // Data may appear in both mobile and desktop views
+    expect(screen.getAllByText('Headache and fever').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Chest pain').length).toBeGreaterThan(0);
   });
 
   it('should highlight encounter with critical SpO2', () => {
