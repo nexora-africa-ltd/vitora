@@ -14,6 +14,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TriageAssessmentForm } from '@/components/triage/triage-assessment-form';
 
 jest.mock('@/lib/hooks/use-triage', () => {
@@ -66,22 +67,49 @@ const defaultProps = {
 };
 
 // =============================================================================
+// TEST WRAPPER
+// =============================================================================
+
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+const createWrapper = () => {
+  const queryClient = createTestQueryClient();
+  return function Wrapper({ children }: { children: React.ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        {children}
+      </QueryClientProvider>
+    );
+  };
+};
+
+const renderWithWrapper = (ui: React.ReactElement) => {
+  return render(ui, { wrapper: createWrapper() });
+};
+
+// =============================================================================
 // PATIENT INFO DISPLAY TESTS
 // =============================================================================
 
 describe('TriageAssessmentForm - Patient Info', () => {
   it('should display patient name', () => {
-    render(<TriageAssessmentForm {...defaultProps} />);
+    renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
     expect(screen.getByText('John Kamau')).toBeInTheDocument();
   });
 
   it('should display patient MRN', () => {
-    render(<TriageAssessmentForm {...defaultProps} />);
+    renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
     expect(screen.getByText(/MRN-20260103-0001/)).toBeInTheDocument();
   });
 
   it('should display patient age and gender', () => {
-    render(<TriageAssessmentForm {...defaultProps} />);
+    renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
     // Patient born 1970, so ~55-56 years old in 2026
     expect(screen.getByText(/5[56] yrs.*Male/)).toBeInTheDocument();
   });
@@ -94,48 +122,48 @@ describe('TriageAssessmentForm - Patient Info', () => {
 describe('TriageAssessmentForm - Form Structure', () => {
   describe('@arrival - Arrival Information', () => {
     it('should render arrival information section', () => {
-      render(<TriageAssessmentForm {...defaultProps} />);
+      renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
       expect(screen.getByText(/arrival information/i)).toBeInTheDocument();
     });
 
     it('should render arrival time input', () => {
-      render(<TriageAssessmentForm {...defaultProps} />);
+      renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
       expect(screen.getByLabelText(/arrival time/i)).toBeInTheDocument();
     });
   });
 
   describe('@chief-complaint - Chief Complaint', () => {
     it('should render chief complaint category label', () => {
-      render(<TriageAssessmentForm {...defaultProps} />);
+      renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
       expect(screen.getByText(/chief complaint category/i)).toBeInTheDocument();
     });
 
     it('should render chief complaint details textarea', () => {
-      render(<TriageAssessmentForm {...defaultProps} />);
+      renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
       expect(screen.getByLabelText(/chief complaint details/i)).toBeInTheDocument();
     });
   });
 
   describe('@pain-score - Pain Scale', () => {
     it('should render pain score slider', () => {
-      render(<TriageAssessmentForm {...defaultProps} />);
+      renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
       expect(screen.getByRole('slider', { name: /pain score/i })).toBeInTheDocument();
     });
 
     it('should display pain scale range 0-10', () => {
-      render(<TriageAssessmentForm {...defaultProps} />);
+      renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
       expect(screen.getByText('0')).toBeInTheDocument();
       expect(screen.getByText('10')).toBeInTheDocument();
     });
 
     it('should show current pain value text', () => {
-      render(<TriageAssessmentForm {...defaultProps} />);
+      renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
       // Should show "Current:" text with pain status
       expect(screen.getByText(/current:/i)).toBeInTheDocument();
     });
 
     it('should update pain display when slider changes', () => {
-      render(<TriageAssessmentForm {...defaultProps} />);
+      renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
       const slider = screen.getByRole('slider', { name: /pain score/i });
       fireEvent.change(slider, { target: { value: '7' } });
       // Should show updated value in the "Current: X" text
@@ -145,28 +173,28 @@ describe('TriageAssessmentForm - Form Structure', () => {
 
   describe('@avpu - AVPU Mental Status', () => {
     it('should render mental status section', () => {
-      render(<TriageAssessmentForm {...defaultProps} />);
+      renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
       expect(screen.getByText(/mental status.*avpu/i)).toBeInTheDocument();
     });
   });
 
   describe('@mobility - Mobility Status', () => {
     it('should render clinical assessment section', () => {
-      render(<TriageAssessmentForm {...defaultProps} />);
+      renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
       expect(screen.getByText(/clinical assessment/i)).toBeInTheDocument();
     });
   });
 
   describe('@allergies - Allergies', () => {
     it('should pre-populate allergies from patient record', () => {
-      render(<TriageAssessmentForm {...defaultProps} />);
+      renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
       const allergiesInput = screen.getByLabelText(/allergies/i);
       expect(allergiesInput).toHaveValue('Penicillin, Sulfa drugs');
     });
 
     it('should allow editing allergies', async () => {
       const user = userEvent.setup();
-      render(<TriageAssessmentForm {...defaultProps} />);
+      renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
       const allergiesInput = screen.getByLabelText(/allergies/i);
       await user.clear(allergiesInput);
       await user.type(allergiesInput, 'NKDA');
@@ -176,12 +204,12 @@ describe('TriageAssessmentForm - Form Structure', () => {
 
   describe('@vitals - Vital Signs', () => {
     it('should render vital signs section', () => {
-      render(<TriageAssessmentForm {...defaultProps} />);
+      renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
       expect(screen.getByText(/vital signs/i)).toBeInTheDocument();
     });
 
     it('should render vital inputs with unit labels', () => {
-      render(<TriageAssessmentForm {...defaultProps} />);
+      renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
 
       expect(screen.getByLabelText(/spo2/i)).toBeInTheDocument();
       expect(screen.getByText('%')).toBeInTheDocument();
@@ -205,7 +233,7 @@ describe('TriageAssessmentForm - Form Structure', () => {
 
     it('should highlight critical values in red border (SpO2 < 90)', async () => {
       const user = userEvent.setup();
-      render(<TriageAssessmentForm {...defaultProps} />);
+      renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
 
       const spo2Input = screen.getByLabelText(/spo2/i);
       await user.clear(spo2Input);
@@ -223,7 +251,7 @@ describe('TriageAssessmentForm - Form Structure', () => {
 
 describe('TriageAssessmentForm - AVPU Critical Alert', () => {
   it('should show critical alert when Unresponsive is selected via initial data', () => {
-    render(
+    renderWithWrapper(
       <TriageAssessmentForm
         {...defaultProps}
         initialData={{ mental_status: 'U' }}
@@ -236,7 +264,7 @@ describe('TriageAssessmentForm - AVPU Critical Alert', () => {
   });
 
   it('should show suggested RED category when Unresponsive is in initial data', () => {
-    render(
+    renderWithWrapper(
       <TriageAssessmentForm
         {...defaultProps}
         initialData={{ mental_status: 'U' }}
@@ -254,7 +282,7 @@ describe('TriageAssessmentForm - AVPU Critical Alert', () => {
 
 describe('TriageAssessmentForm - Triage Category', () => {
   it('should display all 5 KETA category options', () => {
-    render(<TriageAssessmentForm {...defaultProps} />);
+    renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
     expect(screen.getByText(/emergency.*immediate/i)).toBeInTheDocument();
     expect(screen.getByText(/very urgent/i)).toBeInTheDocument();
     expect(screen.getByText(/urgent.*60/i)).toBeInTheDocument();
@@ -263,7 +291,7 @@ describe('TriageAssessmentForm - Triage Category', () => {
   });
 
   it('should show suggested category', () => {
-    render(<TriageAssessmentForm {...defaultProps} />);
+    renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
     expect(screen.getByTestId('suggested-category')).toBeInTheDocument();
   });
 });
@@ -274,8 +302,9 @@ describe('TriageAssessmentForm - Triage Category', () => {
 
 describe('TriageAssessmentForm - Care Area Routing', () => {
   it('should render assigned area label', () => {
-    render(<TriageAssessmentForm {...defaultProps} />);
-    expect(screen.getByText(/assigned area/i)).toBeInTheDocument();
+    renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
+    // The component uses "Care Area Assignment" as the label. Check for that.
+    expect(screen.getByText(/care area assignment/i)).toBeInTheDocument();
   });
 });
 
@@ -287,7 +316,7 @@ describe('TriageAssessmentForm - Validation', () => {
   it('should show validation errors when submitting empty form', async () => {
     const user = userEvent.setup();
     const handleSubmit = jest.fn();
-    render(<TriageAssessmentForm {...defaultProps} onSubmit={handleSubmit} />);
+    renderWithWrapper(<TriageAssessmentForm {...defaultProps} onSubmit={handleSubmit} />);
 
     const submitButton = screen.getByRole('button', { name: /complete triage/i });
     await user.click(submitButton);
@@ -302,7 +331,7 @@ describe('TriageAssessmentForm - Validation', () => {
   it('should reject out-of-range vitals values (SpO2 > 100)', async () => {
     const user = userEvent.setup();
     const handleSubmit = jest.fn();
-    render(
+    renderWithWrapper(
       <TriageAssessmentForm
         {...defaultProps}
         onSubmit={handleSubmit}
@@ -341,7 +370,7 @@ describe('TriageAssessmentForm - Submission', () => {
   it('should call onSubmit with valid form data', async () => {
     const user = userEvent.setup();
     const handleSubmit = jest.fn();
-    render(
+    renderWithWrapper(
       <TriageAssessmentForm
         {...defaultProps}
         onSubmit={handleSubmit}
@@ -378,7 +407,7 @@ describe('TriageAssessmentForm - Submission', () => {
   it('should call onCancel when cancel button is clicked', async () => {
     const user = userEvent.setup();
     const handleCancel = jest.fn();
-    render(<TriageAssessmentForm {...defaultProps} onCancel={handleCancel} />);
+    renderWithWrapper(<TriageAssessmentForm {...defaultProps} onCancel={handleCancel} />);
 
     const cancelButton = screen.getByRole('button', { name: /cancel/i });
     await user.click(cancelButton);
@@ -389,7 +418,7 @@ describe('TriageAssessmentForm - Submission', () => {
   it('should disable submit button while submitting', async () => {
     const user = userEvent.setup();
     const handleSubmit = jest.fn(() => new Promise<void>((resolve) => setTimeout(resolve, 50)));
-    render(
+    renderWithWrapper(
       <TriageAssessmentForm
         {...defaultProps}
         onSubmit={handleSubmit}
@@ -422,7 +451,7 @@ describe('TriageAssessmentForm - Submission', () => {
   it('should include vitals in submission payload when provided', async () => {
     const user = userEvent.setup();
     const handleSubmit = jest.fn();
-    render(
+    renderWithWrapper(
       <TriageAssessmentForm
         {...defaultProps}
         onSubmit={handleSubmit}
@@ -479,7 +508,7 @@ describe('TriageAssessmentForm - Submission', () => {
 
 describe('TriageAssessmentForm - Accessibility', () => {
   it('should have form landmark role', () => {
-    render(<TriageAssessmentForm {...defaultProps} />);
+    renderWithWrapper(<TriageAssessmentForm {...defaultProps} />);
     expect(screen.getByRole('form')).toBeInTheDocument();
   });
 });

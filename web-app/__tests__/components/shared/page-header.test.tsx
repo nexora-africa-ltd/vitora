@@ -27,7 +27,9 @@ describe('PageHeader Component', () => {
       />
     );
 
-    expect(screen.getByText('Manage patient records')).toBeInTheDocument();
+    // Description is now shown in HelpPopover, not as visible text
+    // Check that HelpPopover is rendered
+    expect(screen.getByRole('button', { name: /help/i })).toBeInTheDocument();
   });
 
   it('should not render description when not provided', () => {
@@ -91,8 +93,8 @@ describe('PageHeader Component', () => {
       />
     );
 
-    const description = screen.getByText('Test description');
-    expect(description).toHaveClass('text-muted-foreground');
+    // Description is now in HelpPopover, check popover trigger exists
+    expect(screen.getByRole('button', { name: /help/i })).toBeInTheDocument();
   });
 
   it('should have responsive layout classes', () => {
@@ -104,6 +106,7 @@ describe('PageHeader Component', () => {
     );
 
     const wrapper = container.firstChild;
-    expect(wrapper).toHaveClass('flex', 'flex-col', 'md:flex-row', 'md:items-center', 'md:justify-between');
+    // Classes use sm: breakpoint now (not md:)
+    expect(wrapper).toHaveClass('flex', 'flex-col', 'sm:flex-row', 'sm:items-center', 'sm:justify-between');
   });
 });

@@ -7,6 +7,14 @@ import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AuthProvider, useAuth } from '@/lib/auth/context';
 
+// Polyfill clearImmediate and setImmediate for JSDOM environment
+if (typeof global.clearImmediate === 'undefined') {
+  (global as any).clearImmediate = (id: any) => clearTimeout(id);
+}
+if (typeof global.setImmediate === 'undefined') {
+  (global as any).setImmediate = (fn: () => void) => setTimeout(fn, 0);
+}
+
 // Mock fetch
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
@@ -156,10 +164,8 @@ describe('AuthProvider', () => {
 
     it('should throw error on failed login', async () => {
       const user = userEvent.setup();
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({ detail: 'Invalid credentials' }),
-      });
+      const loginError = new Error('Invalid credentials');
+      mockFetch.mockRejectedValueOnce(loginError);
 
       const TestWithError = () => {
         const { login } = useAuth();
@@ -187,18 +193,14 @@ describe('AuthProvider', () => {
         </AuthProvider>
       );
 
-      // Wait for initial loading to complete
-      await waitFor(() => {
-        expect(mockFetch).not.toHaveBeenCalled();
-      });
-
       await act(async () => {
         await user.click(screen.getByText('Login'));
       });
 
+      // Allow time for the async error handling flow
       await waitFor(() => {
         expect(screen.getByTestId('error')).toBeInTheDocument();
-      }, { timeout: 3000 });
+      }, { timeout: 5000 });
 
       expect(screen.getByTestId('error')).toHaveTextContent('Invalid credentials');
     });

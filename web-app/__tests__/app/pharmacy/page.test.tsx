@@ -143,7 +143,8 @@ describe('PharmacyPage', () => {
     it('should render pharmacy description', () => {
       renderWithProviders(<PharmacyPage />);
 
-      expect(screen.getByText(/manage drugs, inventory, prescriptions, and dispensing/i)).toBeInTheDocument();
+      // Description is now in HelpPopover, check that popover trigger exists
+      expect(screen.getByRole('button', { name: /help/i })).toBeInTheDocument();
     });
 
     it('should render navigation tabs', () => {
@@ -161,9 +162,10 @@ describe('PharmacyPage', () => {
       renderWithProviders(<PharmacyPage />);
 
       await waitFor(() => {
-        expect(screen.getByText('Paracetamol')).toBeInTheDocument();
-        expect(screen.getByText('Amoxicillin')).toBeInTheDocument();
-        expect(screen.getByText('Metformin')).toBeInTheDocument();
+        // Data may appear in both mobile and desktop views
+        expect(screen.getAllByText('Paracetamol').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Amoxicillin').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Metformin').length).toBeGreaterThan(0);
       });
     });
 
@@ -180,8 +182,8 @@ describe('PharmacyPage', () => {
       renderWithProviders(<PharmacyPage />);
 
       await waitFor(() => {
-        // Paracetamol has 450 in stock
-        expect(screen.getByText('450')).toBeInTheDocument();
+        // Paracetamol has 450 in stock - may appear in multiple views
+        expect(screen.getAllByText('450').length).toBeGreaterThan(0);
       });
     });
 
@@ -217,8 +219,9 @@ describe('PharmacyPage', () => {
       await user.click(screen.getByText('Inventory'));
 
       await waitFor(() => {
-        expect(screen.getByText('BATCH001')).toBeInTheDocument();
-        expect(screen.getByText('BATCH002')).toBeInTheDocument();
+        // Batch numbers may appear in both mobile and desktop views
+        expect(screen.getAllByText('BATCH001').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('BATCH002').length).toBeGreaterThan(0);
       });
     });
 
@@ -229,9 +232,10 @@ describe('PharmacyPage', () => {
       await user.click(screen.getByText('Inventory'));
 
       await waitFor(() => {
-        expect(screen.getByText('AVAILABLE')).toBeInTheDocument();
-        expect(screen.getByText('LOW')).toBeInTheDocument();
-        expect(screen.getByText('EXPIRED')).toBeInTheDocument();
+        // Status badges may appear in both mobile and desktop views
+        expect(screen.getAllByText('AVAILABLE').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('LOW').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('EXPIRED').length).toBeGreaterThan(0);
       });
     });
   });
@@ -255,8 +259,9 @@ describe('PharmacyPage', () => {
       await user.click(screen.getByText('Prescriptions'));
 
       await waitFor(() => {
-        expect(screen.getByText('RX-20260101-0001')).toBeInTheDocument();
-        expect(screen.getByText('John Doe')).toBeInTheDocument();
+        // Data may appear in both mobile and desktop views
+        expect(screen.getAllByText('RX-20260101-0001').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('John Doe').length).toBeGreaterThan(0);
       });
     });
 
@@ -267,8 +272,9 @@ describe('PharmacyPage', () => {
       await user.click(screen.getByText('Prescriptions'));
 
       await waitFor(() => {
-        expect(screen.getByText('PENDING')).toBeInTheDocument();
-        expect(screen.getByText('DISPENSED')).toBeInTheDocument();
+        // Status badges may appear in both mobile and desktop views
+        expect(screen.getAllByText('PENDING').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('DISPENSED').length).toBeGreaterThan(0);
       });
     });
   });

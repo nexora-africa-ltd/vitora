@@ -98,14 +98,31 @@ function getZodSchemaFields(zodSchema: unknown): string[] {
 
 /**
  * Extract enum values from a Zod enum schema.
+ * Handles union types (.or()) by extracting enums from nested schemas.
  */
 function getZodEnumValues(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
   
-  if (typeof jsonSchema === 'object' && jsonSchema !== null && 'enum' in jsonSchema) {
-    return (jsonSchema as { enum: string[] }).enum;
+  if (typeof jsonSchema === 'object' && jsonSchema !== null) {
+    // Direct enum
+    if ('enum' in jsonSchema) {
+      return (jsonSchema as { enum: string[] }).enum;
+    }
+    // Union type (oneOf/anyOf) - extract enums from nested schemas
+    const schemaObj = jsonSchema as { oneOf?: Array<{ enum?: string[] }>; anyOf?: Array<{ enum?: string[] }> };
+    const unionSchemas = schemaObj.oneOf || schemaObj.anyOf;
+    if (unionSchemas) {
+      const allEnums: string[] = [];
+      for (const nested of unionSchemas) {
+        if (nested.enum) {
+          allEnums.push(...nested.enum);
+        }
+      }
+      // Filter out empty string if present (used for optional/nullable)
+      return allEnums.filter(v => v !== '');
+    }
   }
   return [];
 }

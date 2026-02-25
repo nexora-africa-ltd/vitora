@@ -30,6 +30,13 @@ import {
   CreditNoteReasonSchema,
   CreditNoteStatusSchema,
   DiscountTypeSchema,
+  // Enum constant arrays (for contract testing - getZodEnumValues doesn't work with transformed schemas)
+  INVOICE_STATUSES,
+  PAYMENT_METHODS,
+  PAYMENT_STATUSES,
+  CREDIT_NOTE_REASONS,
+  CREDIT_NOTE_STATUSES,
+  DISCOUNT_TYPES,
 } from '@/lib/schemas/billing.schema';
 
 // =============================================================================
@@ -99,14 +106,31 @@ function getZodSchemaFields(zodSchema: unknown): string[] {
 
 /**
  * Extract enum values from a Zod enum schema.
+ * Handles union types (.or()) by extracting enums from nested schemas.
  */
 function getZodEnumValues(zodSchema: unknown): string[] {
   const jsonSchema = zodToJsonSchema(zodSchema as Parameters<typeof zodToJsonSchema>[0], {
     target: 'openApi3',
   });
   
-  if (typeof jsonSchema === 'object' && jsonSchema !== null && 'enum' in jsonSchema) {
-    return (jsonSchema as { enum: string[] }).enum;
+  if (typeof jsonSchema === 'object' && jsonSchema !== null) {
+    // Direct enum
+    if ('enum' in jsonSchema) {
+      return (jsonSchema as { enum: string[] }).enum;
+    }
+    // Union type (oneOf/anyOf) - extract enums from nested schemas
+    const schemaObj = jsonSchema as { oneOf?: Array<{ enum?: string[] }>; anyOf?: Array<{ enum?: string[] }> };
+    const unionSchemas = schemaObj.oneOf || schemaObj.anyOf;
+    if (unionSchemas) {
+      const allEnums: string[] = [];
+      for (const nested of unionSchemas) {
+        if (nested.enum) {
+          allEnums.push(...nested.enum);
+        }
+      }
+      // Filter out empty string if present (used for optional/nullable)
+      return allEnums.filter(v => v !== '');
+    }
   }
   return [];
 }
@@ -443,7 +467,9 @@ describe('Billing Contract Tests', () => {
 
   describe('InvoiceStatusSchema (enum)', () => {
     it('should match OpenAPI InvoiceStatusEnum values', () => {
-      const zodValues = normalizeEnumValues(getZodEnumValues(InvoiceStatusSchema));
+      // Use constant array directly - caseInsensitiveEnum creates transformed schemas
+      // that don't serialize properly to JSON Schema
+      const zodValues = normalizeEnumValues([...INVOICE_STATUSES]);
       const apiValues = getSchemaEnumValues(openapi, 'InvoiceStatusEnum');
 
       expect(apiValues).not.toBeNull();
@@ -459,7 +485,7 @@ describe('Billing Contract Tests', () => {
     });
 
     it('should include all critical invoice statuses', () => {
-      const zodValues = normalizeEnumValues(getZodEnumValues(InvoiceStatusSchema));
+      const zodValues = normalizeEnumValues([...INVOICE_STATUSES]);
       
       const criticalStatuses = [
         'draft',
@@ -475,9 +501,9 @@ describe('Billing Contract Tests', () => {
   });
 
   describe('PaymentMethodSchema (enum)', () => {
-    it('should match OpenAPI MethodEnum values', () => {
-      const zodValues = normalizeEnumValues(getZodEnumValues(PaymentMethodSchema));
-      const apiValues = getSchemaEnumValues(openapi, 'MethodEnum');
+    it('should match OpenAPI PaymentMethodEnum values', () => {
+      const zodValues = normalizeEnumValues([...PAYMENT_METHODS]);
+      const apiValues = getSchemaEnumValues(openapi, 'PaymentMethodEnum');
 
       expect(apiValues).not.toBeNull();
       if (!apiValues) return;
@@ -492,7 +518,7 @@ describe('Billing Contract Tests', () => {
     });
 
     it('should include all critical payment methods', () => {
-      const zodValues = normalizeEnumValues(getZodEnumValues(PaymentMethodSchema));
+      const zodValues = normalizeEnumValues([...PAYMENT_METHODS]);
       
       const criticalMethods = [
         'cash',
@@ -508,7 +534,7 @@ describe('Billing Contract Tests', () => {
 
   describe('PaymentStatusSchema (enum)', () => {
     it('should match OpenAPI PaymentStatusEnum values', () => {
-      const zodValues = normalizeEnumValues(getZodEnumValues(PaymentStatusSchema));
+      const zodValues = normalizeEnumValues([...PAYMENT_STATUSES]);
       const apiValues = getSchemaEnumValues(openapi, 'PaymentStatusEnum');
 
       expect(apiValues).not.toBeNull();
@@ -524,7 +550,7 @@ describe('Billing Contract Tests', () => {
     });
 
     it('should include all critical payment statuses', () => {
-      const zodValues = normalizeEnumValues(getZodEnumValues(PaymentStatusSchema));
+      const zodValues = normalizeEnumValues([...PAYMENT_STATUSES]);
       
       const criticalStatuses = [
         'pending',
@@ -540,7 +566,7 @@ describe('Billing Contract Tests', () => {
 
   describe('CreditNoteReasonSchema (enum)', () => {
     it('should match OpenAPI CreditNoteReasonEnum values', () => {
-      const zodValues = normalizeEnumValues(getZodEnumValues(CreditNoteReasonSchema));
+      const zodValues = normalizeEnumValues([...CREDIT_NOTE_REASONS]);
       const apiValues = getSchemaEnumValues(openapi, 'CreditNoteReasonEnum');
 
       expect(apiValues).not.toBeNull();
@@ -556,7 +582,7 @@ describe('Billing Contract Tests', () => {
     });
 
     it('should include key credit note reasons', () => {
-      const zodValues = normalizeEnumValues(getZodEnumValues(CreditNoteReasonSchema));
+      const zodValues = normalizeEnumValues([...CREDIT_NOTE_REASONS]);
       
       const keyReasons = [
         'overcharge',
@@ -570,7 +596,7 @@ describe('Billing Contract Tests', () => {
 
   describe('CreditNoteStatusSchema (enum)', () => {
     it('should match OpenAPI CreditNoteStatusEnum values', () => {
-      const zodValues = normalizeEnumValues(getZodEnumValues(CreditNoteStatusSchema));
+      const zodValues = normalizeEnumValues([...CREDIT_NOTE_STATUSES]);
       const apiValues = getSchemaEnumValues(openapi, 'CreditNoteStatusEnum');
 
       expect(apiValues).not.toBeNull();
@@ -586,7 +612,7 @@ describe('Billing Contract Tests', () => {
     });
 
     it('should include all critical credit note statuses', () => {
-      const zodValues = normalizeEnumValues(getZodEnumValues(CreditNoteStatusSchema));
+      const zodValues = normalizeEnumValues([...CREDIT_NOTE_STATUSES]);
       
       const criticalStatuses = [
         'approved',
@@ -601,12 +627,28 @@ describe('Billing Contract Tests', () => {
 
   describe('DiscountTypeSchema (enum)', () => {
     it('should have valid discount type values', () => {
-      const zodValues = getZodEnumValues(DiscountTypeSchema);
+      // Use constant array directly for testing
+      const zodValues = normalizeEnumValues([...DISCOUNT_TYPES]);
 
       // DiscountType may be frontend-only or embedded in Invoice schema
       // Verify it has the expected values
-      expect(zodValues).toContain('PERCENTAGE');
-      expect(zodValues).toContain('FIXED');
+      expect(zodValues).toContain('percentage');
+      expect(zodValues).toContain('fixed');
+    });
+
+    it('should match OpenAPI DiscountTypeEnum values if exists', () => {
+      const zodValues = normalizeEnumValues([...DISCOUNT_TYPES]);
+      const apiValues = getSchemaEnumValues(openapi, 'DiscountTypeEnum');
+
+      // DiscountTypeEnum may not exist in backend as a separate schema
+      if (!apiValues) {
+        // Frontend-only enum - just verify it has valid values
+        expect(zodValues.length).toBeGreaterThan(0);
+        return;
+      }
+
+      const missingInZod = apiValues.filter((v) => !zodValues.includes(v));
+      expect(missingInZod).toEqual([]);
     });
   });
 });

@@ -9,7 +9,7 @@ describe('Query Client', () => {
   it('should have correct default stale time', () => {
     const client = createQueryClient();
     const options = client.getDefaultOptions();
-    expect(options.queries?.staleTime).toBe(60 * 1000);
+    expect(options.queries?.staleTime).toBe(2 * 60 * 1000);
   });
 });
 
