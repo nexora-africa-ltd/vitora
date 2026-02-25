@@ -260,16 +260,22 @@ Gaps are categorized into four tiers:
   - Custom actions: `approve`, `assign_therapist`, `generate_sessions`, `start`, `complete`, `cancel`, `no_show`
   - Migration: `0001_initial.py`
 
-#### 14. Nutrition/Dietetics CPOE `P2`
-- **Gap**: No dedicated nutrition order workflow
+#### 14. Nutrition/Dietetics CPOE `P2` ✅ COMPLETE
+- **Gap**: ~~No dedicated nutrition order workflow~~ **RESOLVED**
 - **Action**:
-  - [ ] Create `NutritionConsultation` model (assessment, BMI, recommendations)
-  - [ ] Create `DietPlan` model (meal_plan, restrictions, supplements)
-  - [ ] Integrate with anthropometric measurements
-  - [ ] Tests: 20+ unit tests
+  - [x] Create `NutritionConsultation` model (assessment, BMI, recommendations)
+  - [x] Create `DietPlan` model (meal_plan, restrictions, supplements)
+  - [x] Integrate with anthropometric measurements (sync from Encounter)
+  - [x] Tests: 27 unit tests (exceeded 20+ requirement)
 - **Owner**: Backend Team
-- **Effort**: 1 sprint (2 weeks)
-- **Deliverables**: `hmis/apps/nutrition/`
+- **Completed**: February 25, 2026
+- **Deliverables**: 
+  - `hmis/apps/nutrition/` (models, views, serializers, signals, admin)
+  - API endpoints: `/api/nutrition/consultations/`, `/api/nutrition/diet-plans/`
+  - Custom actions: `update_status`, `assign_dietitian`, `sync_anthropometrics`, `complete`, `cancel`, `activate`, `discontinue`, `put_on_hold`
+  - Auto-calculated fields: BMI, BMI classification, waist-hip ratio, BMR, TDEE, ideal body weight
+  - MUAC-based malnutrition screening
+  - Migration: `0001_initial.py`
 
 #### 15. Occupational Therapy Module `P2`
 - **Gap**: No occupational therapy module
