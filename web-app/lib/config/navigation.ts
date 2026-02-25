@@ -44,6 +44,13 @@ import {
   Flag,
   CircleAlert,
   SquareActivity,
+  // Allied Health icons
+  Dumbbell,
+  Apple,
+  BookHeart,
+  UsersRound,
+  HeartPlus,
+  HeartHandshake,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -117,6 +124,18 @@ export const mainNavItems: NavItemType[] = [
       { label: 'Imaging', href: '/imaging', icon: ScanLine },
       { label: 'Imaging Orders', href: '/imaging/orders', icon: ClipboardList },
       { label: 'DICOM Studies', href: '/imaging/studies', icon: ImageIcon },
+    ],
+  },
+  {
+    label: 'Allied Health',
+    icon: HeartPlus,
+    children: [
+      { label: 'Dashboard', href: '/allied-health', icon: LayoutDashboard },
+      { label: 'Physiotherapy', href: '/allied-health/physiotherapy', icon: Dumbbell },
+      { label: 'Nutrition', href: '/allied-health/nutrition', icon: Apple },
+      { label: 'Occupational Therapy', href: '/allied-health/occupational-therapy', icon: HeartHandshake },
+      { label: 'Social Work', href: '/allied-health/social-work', icon: UsersRound },
+      { label: 'Counselling', href: '/allied-health/counselling', icon: BookHeart },
     ],
   },
   {

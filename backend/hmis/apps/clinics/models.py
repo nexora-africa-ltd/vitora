@@ -56,6 +56,9 @@ class Clinic(TimeStampedModel):
         ("SURGICAL", "Surgical Outpatient Clinic"),
         ("ORTHO", "Orthopedic Clinic"),
         ("PHYSIO", "Physiotherapy Clinic"),
+        ("OT", "Occupational Therapy Clinic"),
+        ("SOCIAL_WORK", "Social Work Services"),
+        ("COUNSELLING", "Counselling Services"),
         ("DERM", "Dermatology Clinic"),
         # Chronic Care
         ("CCC", "Comprehensive Care Clinic (HIV)"),

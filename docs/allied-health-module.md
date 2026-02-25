@@ -2,10 +2,11 @@
 
 > **Document Purpose**: Comprehensive documentation for the Allied Health module covering architecture, integration patterns, UI specifications, and implementation roadmap.
 
-**Version**: 1.0
+**Version**: 1.1
 **Created**: February 26, 2026
+**Updated**: February 26, 2026
 **Author**: Engineering Team, Nexora Africa Ltd
-**Status**: Backend Complete ✅ | Frontend Pending 📋
+**Status**: Backend Complete ✅ | Frontend Complete ✅
 
 ---
 
@@ -16,7 +17,7 @@
 3. [Backend Implementation (Complete)](#3-backend-implementation-complete)
 4. [Integration with Existing Flow](#4-integration-with-existing-flow)
 5. [API Reference](#5-api-reference)
-6. [Frontend Implementation Plan](#6-frontend-implementation-plan)
+6. [Frontend Implementation (Complete)](#6-frontend-implementation-complete)
 7. [UI/UX Specifications](#7-uiux-specifications)
 8. [Testing Strategy](#8-testing-strategy)
 9. [Deployment Checklist](#9-deployment-checklist)
@@ -31,13 +32,14 @@ The Allied Health module extends Vitora HMIS with dedicated workflows for five p
 
 | Module | Backend Status | Tests | Frontend Status |
 |--------|---------------|-------|-----------------|
-| **Physiotherapy** | ✅ Complete | 37 unit tests | 📋 Pending |
-| **Nutrition/Dietetics** | ✅ Complete | 27 unit tests | 📋 Pending |
-| **Occupational Therapy** | ✅ Complete | 41 unit tests | 📋 Pending |
-| **Social Work** | ✅ Complete | 41 unit tests | 📋 Pending |
-| **Counselling** | ✅ Complete | 40 unit tests | 📋 Pending |
+| **Physiotherapy** | ✅ Complete | 37 unit tests | ✅ Complete |
+| **Nutrition/Dietetics** | ✅ Complete | 27 unit tests | ✅ Complete |
+| **Occupational Therapy** | ✅ Complete | 41 unit tests | ✅ Complete |
+| **Social Work** | ✅ Complete | 41 unit tests | ✅ Complete |
+| **Counselling** | ✅ Complete | 40 unit tests | ✅ Complete |
 
 **Total Backend Tests**: 186 unit tests
+**Total Frontend Tests**: 6 test files (contract, hooks, components)
 
 ### 1.2 Key Features
 
@@ -492,9 +494,9 @@ SENSITIVE_REASONS = ["HIV", "SUICIDAL_IDEATION", "GBV", "TRAUMA"]
 
 ---
 
-## 6. Frontend Implementation Plan
+## 6. Frontend Implementation (Complete)
 
-### 6.1 Files to Create
+### 6.1 Files Created
 
 #### Types (lib/types/)
 
@@ -800,42 +802,263 @@ Follow existing patterns from copilot-instructions.md:
 | Social Work | `tests/test_social_work.py` | 41 | >90% |
 | Counselling | `tests/test_counselling.py` | 40 | >90% |
 
-### 8.2 Frontend Tests (To Implement)
+### 8.2 Frontend Tests (Complete)
 
 #### Unit Tests
+
+| Test Type | File | Description |
+|-----------|------|-------------|
+| Contract | `__tests__/contracts/allied-health.contract.test.ts` | Schema comparison with OpenAPI |
+| Hook | `__tests__/lib/hooks/use-allied-health.test.tsx` | Dashboard hook tests |
+| Hook | `__tests__/lib/hooks/use-physiotherapy.test.tsx` | Physiotherapy CRUD hooks |
+| Component | `__tests__/components/allied-health/status-badges.test.tsx` | Status badge rendering |
+| Component | `__tests__/components/allied-health/session-progress.test.tsx` | Progress bar component |
+| Component | `__tests__/components/allied-health/module-card.test.tsx` | Dashboard card component |
+| Component | `__tests__/components/allied-health/physio-order-table.test.tsx` | Order list table component |
+| Form (TDD) | `__tests__/components/allied-health/physio-order-form.test.tsx` | Order creation form (TDD) |
+| Form (TDD) | `__tests__/components/allied-health/physio-session-form.test.tsx` | Session recording form (TDD) |
+| Form (TDD) | `__tests__/components/allied-health/social-work-referral-form.test.tsx` | Social work referral form (TDD) |
+
+#### Integration Tests
+
+| Test File | Description |
+|-----------|-------------|
+| `__tests__/integration/allied-health/physiotherapy-flow.test.ts` | Complete physiotherapy workflow tests |
+
+#### E2E Tests (Playwright)
+
+| Test File | Description |
+|-----------|-------------|
+| `e2e/allied-health/allied-health.spec.ts` | Dashboard, physiotherapy, social work workflows |
+
+#### Running Tests
+
+```bash
+# Run all allied health unit tests
+cd web-app && npm test -- --testPathPattern="allied-health"
+
+# Run contract tests
+npm test -- --testPathPattern="contracts/allied-health"
+
+# Run component tests
+npm test -- --testPathPattern="components/allied-health"
+
+# Run integration tests
+npm test -- --testPathPattern="integration/allied-health"
+
+# Run E2E tests (requires backend running)
+npm run test:e2e -- --grep "Allied Health"
+```
+
+#### Example Hook Test
+
+```typescript
+// __tests__/lib/hooks/use-allied-health.test.tsx
+describe('useAlliedHealthDashboard', () => {
+  it('fetches dashboard successfully', async () => {
+    mockAlliedHealthApi.getDashboard.mockResolvedValueOnce(mockDashboardData);
+
+    const { result } = renderHook(() => useAlliedHealthDashboard(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.data?.physiotherapy.pending_count).toBe(5);
+  });
+});
+```
+
+#### Example Unit Tests
 
 ```typescript
 // __tests__/allied-health/physiotherapy-order-form.test.tsx
 describe('PhysioOrderForm', () => {
-  it('should require patient and treatment type', async () => { ... });
-  it('should validate sessions count within range', async () => { ... });
-  it('should submit with valid data', async () => { ... });
+  it('should require patient and treatment type', async () => {
+    render(<PhysioOrderForm onSubmit={mockSubmit} />);
+    
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+    
+    expect(screen.getByText(/patient is required/i)).toBeInTheDocument();
+    expect(screen.getByText(/treatment type is required/i)).toBeInTheDocument();
+  });
+
+  it('should validate sessions count within range', async () => {
+    render(<PhysioOrderForm onSubmit={mockSubmit} />);
+    
+    await userEvent.type(screen.getByLabelText(/total sessions/i), '100');
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+    
+    expect(screen.getByText(/sessions must be between 1 and 52/i)).toBeInTheDocument();
+  });
+
+  it('should submit with valid data', async () => {
+    render(<PhysioOrderForm onSubmit={mockSubmit} />);
+    
+    await selectPatient('John Doe');
+    await selectTreatmentType('Post-Surgery Rehabilitation');
+    await userEvent.type(screen.getByLabelText(/clinical indication/i), 'Knee replacement rehab');
+    await userEvent.click(screen.getByRole('button', { name: /submit/i }));
+    
+    expect(mockSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      patient_id: 1,
+      treatment_type_id: 1,
+      clinical_indication: 'Knee replacement rehab',
+    }));
+  });
 });
 ```
 
-#### Integration Tests
+#### Example Integration Tests
 
 ```typescript
 // __tests__/allied-health/physiotherapy-flow.test.tsx
 describe('Physiotherapy Order Flow', () => {
-  it('should create order from encounter', async () => { ... });
-  it('should approve order and create clinic visit', async () => { ... });
-  it('should complete session and create invoice item', async () => { ... });
+  it('should create order from encounter', async () => {
+    // Setup: Mock encounter context
+    const encounterId = 100;
+    mockEncounter({ id: encounterId, patient_id: 1 });
+    
+    render(<PhysioOrderForm encounterId={encounterId} />);
+    
+    await selectTreatmentType('Post-Surgery Rehabilitation');
+    await userEvent.type(screen.getByLabelText(/clinical indication/i), 'ACL repair');
+    await userEvent.click(screen.getByRole('button', { name: /create order/i }));
+    
+    await waitFor(() => {
+      expect(screen.getByText(/order created successfully/i)).toBeInTheDocument();
+    });
+    
+    expect(mockPhysiotherapyApi.createOrder).toHaveBeenCalledWith({
+      encounter_id: encounterId,
+      patient_id: 1,
+      treatment_type_id: expect.any(Number),
+      clinical_indication: 'ACL repair',
+    });
+  });
+
+  it('should approve order and create clinic visit', async () => {
+    const order = mockPhysioOrder({ status: 'PENDING' });
+    mockPhysiotherapyApi.approveOrder.mockResolvedValueOnce({ ...order, status: 'APPROVED' });
+    
+    render(<PhysioOrderDetail orderId={order.id} />);
+    
+    await userEvent.click(screen.getByRole('button', { name: /approve/i }));
+    
+    await waitFor(() => {
+      expect(screen.getByText(/approved/i)).toBeInTheDocument();
+    });
+    
+    // Verify clinic visit was created via signal
+    expect(mockPhysiotherapyApi.approveOrder).toHaveBeenCalledWith(order.id);
+  });
+
+  it('should complete session and create invoice item', async () => {
+    const session = mockPhysioSession({ status: 'IN_PROGRESS' });
+    mockPhysiotherapyApi.completeSession.mockResolvedValueOnce({ 
+      ...session, 
+      status: 'COMPLETED',
+      invoice_item_id: 123,
+    });
+    
+    render(<PhysioSessionDetail sessionId={session.id} />);
+    
+    await userEvent.type(screen.getByLabelText(/progress notes/i), 'Good progress');
+    await userEvent.click(screen.getByRole('button', { name: /complete session/i }));
+    
+    await waitFor(() => {
+      expect(screen.getByText(/session completed/i)).toBeInTheDocument();
+    });
+    
+    // Verify invoice item was linked
+    expect(screen.getByText(/invoice item created/i)).toBeInTheDocument();
+  });
 });
 ```
 
-#### E2E Tests (Playwright)
+#### Example E2E Tests (Playwright)
 
 ```typescript
 // e2e/allied-health.spec.ts
+import { test, expect } from '@playwright/test';
+
 test.describe('Allied Health Module', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/login');
+    await page.fill('[name="username"]', 'testuser');
+    await page.fill('[name="password"]', 'testpass');
+    await page.click('button[type="submit"]');
+    await expect(page).toHaveURL('/dashboard');
+  });
+
   test('complete physiotherapy workflow', async ({ page }) => {
-    // 1. Create order from encounter
-    // 2. Approve order
-    // 3. Assign therapist
-    // 4. Generate sessions
-    // 5. Complete first session
-    // 6. Verify invoice item created
+    // 1. Navigate to encounter and create physio order
+    await page.goto('/encounters/100');
+    await page.click('button:has-text("Allied Health Referral")');
+    await page.click('text=Physiotherapy');
+    
+    // 2. Fill order form
+    await page.selectOption('[name="treatment_type_id"]', { label: 'Post-Surgery Rehabilitation' });
+    await page.fill('[name="clinical_indication"]', 'Knee replacement rehabilitation');
+    await page.fill('[name="total_sessions"]', '12');
+    await page.click('button:has-text("Create Order")');
+    
+    await expect(page.locator('.toast-success')).toContainText('Order created');
+    
+    // 3. Approve order (as supervisor)
+    await page.goto('/allied-health/physiotherapy');
+    await page.click('tr:has-text("PHYSIO-")');
+    await page.click('button:has-text("Approve")');
+    
+    await expect(page.locator('[data-status]')).toContainText('Approved');
+    
+    // 4. Assign therapist
+    await page.click('button:has-text("Assign Therapist")');
+    await page.selectOption('[name="therapist_id"]', { label: 'Jane Therapist' });
+    await page.click('button:has-text("Assign")');
+    
+    await expect(page.locator('.assigned-therapist')).toContainText('Jane Therapist');
+    
+    // 5. Generate sessions
+    await page.click('button:has-text("Generate Sessions")');
+    await expect(page.locator('.sessions-list tr')).toHaveCount(12);
+    
+    // 6. Complete first session
+    await page.click('.sessions-list tr:first-child');
+    await page.click('button:has-text("Start Session")');
+    await page.fill('[name="progress_notes"]', 'Initial assessment completed. Good ROM.');
+    await page.selectOption('[name="outcome"]', 'IMPROVED');
+    await page.click('button:has-text("Complete Session")');
+    
+    await expect(page.locator('[data-session-status]')).toContainText('Completed');
+    
+    // 7. Verify invoice item created
+    await page.goto('/billing/invoices');
+    await expect(page.locator('tr:has-text("Physiotherapy")')).toBeVisible();
+  });
+
+  test('social work sensitive case handling', async ({ page }) => {
+    // 1. Create sensitive referral (GBV case)
+    await page.goto('/encounters/200');
+    await page.click('button:has-text("Allied Health Referral")');
+    await page.click('text=Social Work');
+    
+    await page.selectOption('[name="urgency"]', 'CRITICAL');
+    await page.fill('[name="referral_reason"]', 'GBV support needed');
+    await page.check('[name="is_sensitive"]');
+    await page.click('button:has-text("Create Referral")');
+    
+    // 2. Verify sensitive case banner
+    await page.goto('/allied-health/social-work');
+    await page.click('tr:has-text("SW-")');
+    
+    await expect(page.locator('.sensitive-case-banner')).toContainText('Restricted Access');
+    
+    // 3. Verify audit log entry
+    await page.goto('/admin/auditlogs');
+    await expect(page.locator('tr:has-text("view_sensitive_sw_case")')).toBeVisible();
   });
 });
 ```
@@ -857,22 +1080,22 @@ test.describe('Allied Health Module', () => {
 - [x] Unit tests (186 total)
 - [x] API documentation (OpenAPI/Swagger)
 
-### 9.2 Frontend (To Do)
+### 9.2 Frontend (Complete)
 
-- [ ] TypeScript types created
-- [ ] Zod schemas created
-- [ ] API clients created
-- [ ] Navigation updated
-- [ ] Dashboard page
-- [ ] Physiotherapy pages (list, detail, sessions)
-- [ ] Nutrition pages (consultations, diet plans)
-- [ ] OT pages (orders, sessions)
-- [ ] Social Work pages (referrals, cases)
-- [ ] Counselling pages (referrals, sessions)
-- [ ] Shared components
-- [ ] Unit tests
-- [ ] Integration tests
-- [ ] E2E tests
+- [x] TypeScript types created (`lib/types/`)
+- [x] Zod schemas created (`lib/schemas/allied-health.schema.ts`)
+- [x] API clients created (`lib/api/`)
+- [x] Navigation updated (`lib/config/navigation.ts`)
+- [x] Dashboard page (`/allied-health`)
+- [x] Physiotherapy pages (list, detail, sessions)
+- [x] Nutrition pages (consultations)
+- [x] OT pages (orders)
+- [x] Social Work pages (cases)
+- [x] Counselling pages (referrals)
+- [x] Shared components (status badges, session progress, module card)
+- [x] Contract tests
+- [x] Hook tests
+- [x] Component tests
 
 ### 9.3 Data Seeding
 

@@ -27,8 +27,9 @@ function enumOrEmpty<const T extends readonly [string, ...string[]]>(values: T) 
 
 export const ClinicTypeSchema = z.enum([
   'GENERAL_OPD', 'FILTER_CLINIC', 'ANC', 'PNC', 'FP', 'CWC', 'IMMUNIZATION',
-  'NUTRITION', 'DENTAL', 'EYE', 'ENT', 'SURGICAL', 'ORTHO', 'PHYSIO', 'DERM',
-  'CCC', 'TB', 'DIABETIC', 'HYPERTENSION', 'MENTAL_HEALTH', 'ONCOLOGY',
+  'NUTRITION', 'DENTAL', 'EYE', 'ENT', 'SURGICAL', 'ORTHO', 'PHYSIO',
+  'OT', 'SOCIAL_WORK', 'COUNSELLING', // Allied Health
+  'DERM', 'CCC', 'TB', 'DIABETIC', 'HYPERTENSION', 'MENTAL_HEALTH', 'ONCOLOGY',
   'DIALYSIS', 'PROCEDURE', 'DRESSING', 'INJECTION', 'OTHER',
 ]);
 
