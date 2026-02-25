@@ -243,17 +243,22 @@ Gaps are categorized into four tiers:
 
 ### Sprint 2.A — Allied Health Modules (Weeks 1-6)
 
-#### 13. Physiotherapy CPOE `P2`
-- **Gap**: No dedicated physiotherapy order workflow
+#### 13. Physiotherapy CPOE `P2` ✅ COMPLETE
+- **Gap**: ~~No dedicated physiotherapy order workflow~~ **RESOLVED**
 - **Action**:
-  - [ ] Create `PhysiotherapyOrder` model (referral, treatment_type, sessions, frequency)
-  - [ ] Create `PhysiotherapySession` model (date, notes, outcome)
-  - [ ] Clinic queue integration
-  - [ ] Billing integration
-  - [ ] Tests: 25+ unit tests
+  - [x] Create `PhysiotherapyOrder` model (referral, treatment_type, sessions, frequency)
+  - [x] Create `PhysiotherapySession` model (date, notes, outcome)
+  - [x] Create `PhysiotherapyTreatmentType` model (catalog with pricing, SHA codes)
+  - [x] Clinic queue integration (ClinicVisit link, auto-routing on approval)
+  - [x] Billing integration (auto-invoice items on session completion)
+  - [x] Tests: 37 unit tests (exceeded 25+ requirement)
 - **Owner**: Backend Team
-- **Effort**: 2 sprints (4 weeks)
-- **Deliverables**: `hmis/apps/physiotherapy/`
+- **Completed**: February 25, 2026
+- **Deliverables**: 
+  - `hmis/apps/physiotherapy/` (models, views, serializers, signals, admin)
+  - API endpoints: `/api/physiotherapy/orders/`, `/api/physiotherapy/sessions/`, `/api/physiotherapy/treatment-types/`
+  - Custom actions: `approve`, `assign_therapist`, `generate_sessions`, `start`, `complete`, `cancel`, `no_show`
+  - Migration: `0001_initial.py`
 
 #### 14. Nutrition/Dietetics CPOE `P2`
 - **Gap**: No dedicated nutrition order workflow
