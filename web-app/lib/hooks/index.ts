@@ -4,6 +4,7 @@
 
 export { useDebounce } from './use-debounce';
 export { useAutoSave, type AutoSaveStatus } from './use-auto-save';
+export { useIdleTimer, formatCountdown, type IdleTimerConfig, type IdleTimerState } from './use-idle-timer';
 export {
   usePatientLookup,
   useTodayCheckins,
