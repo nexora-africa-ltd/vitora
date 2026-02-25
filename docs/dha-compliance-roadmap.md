@@ -209,16 +209,21 @@ Gaps are categorized into four tiers:
 - **Effort**: 1 sprint (2 weeks)
 - **Deliverables**: KMS integration, `docs/key-management.md`
 
-#### 12. Frontend Auto-Logoff `P1`
-- **Gap**: No frontend idle timeout
+#### 12. Frontend Auto-Logoff `P1` ✅ COMPLETE
+- **Gap**: ~~No frontend idle timeout~~ **RESOLVED**
 - **Action**:
-  - [ ] Add idle timer hook (15 min warning, 30 min auto-logout)
-  - [ ] Show countdown modal before logout
-  - [ ] Persist to localStorage to sync across tabs
-  - [ ] Tests: 5 frontend tests
+  - [x] Add idle timer hook (15 min warning, 30 min auto-logout)
+  - [x] Show countdown modal before logout
+  - [x] Persist to localStorage to sync across tabs
+  - [x] Tests: 7 frontend tests (exceeded 5+ requirement)
 - **Owner**: Frontend Team
-- **Effort**: 3 days
-- **Deliverables**: `useIdleTimer` hook, logout warning modal
+- **Completed**: February 25, 2026
+- **Deliverables**: 
+  - `lib/hooks/use-idle-timer.ts` - Core idle timer hook with cross-tab sync
+  - `components/shared/idle-warning-modal.tsx` - Countdown warning modal
+  - `components/shared/idle-timer-provider.tsx` - Provider wrapper for dashboard
+  - `__tests__/lib/hooks/use-idle-timer.test.ts` - 7 unit tests
+  - Login page idle logout reason notification
 
 ---
 

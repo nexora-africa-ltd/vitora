@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { Eye, EyeOff, Loader2, Sun, Moon, AlertCircle, WifiOff } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Sun, Moon, AlertCircle, WifiOff, Clock } from 'lucide-react';
 import { useAuth } from '@/lib/auth/context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,14 +26,28 @@ export default function LoginPage() {
     token?: string;
     setupRequired?: boolean;
   } | null>(null);
+  const [logoutReason, setLogoutReason] = useState<'idle' | null>(null);
   const { login, verifyMFA } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { resolvedTheme, setTheme } = useTheme();
 
   // Prevent hydration mismatch for theme-dependent images
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Check for logout reason (e.g., idle timeout)
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (reason === 'idle') {
+      setLogoutReason('idle');
+      // Clean up URL without full page reload
+      const url = new URL(window.location.href);
+      url.searchParams.delete('reason');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, [searchParams]);
 
   // Security: Strip credentials from URL if someone navigates with them in query params
   useEffect(() => {
@@ -198,6 +212,14 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent className="relative z-10">
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Idle timeout notification */}
+              {logoutReason === 'idle' && (
+                <div className="flex items-center gap-2 p-3 text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <Clock className="h-4 w-4 flex-shrink-0" />
+                  <span>You were logged out due to inactivity. Please sign in again.</span>
+                </div>
+              )}
+
               {error && (
                 <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
