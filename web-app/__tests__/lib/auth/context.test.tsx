@@ -15,9 +15,8 @@ if (typeof global.setImmediate === 'undefined') {
   (global as any).setImmediate = (fn: () => void) => setTimeout(fn, 0);
 }
 
-// Mock fetch
-const mockFetch = jest.fn();
-global.fetch = mockFetch;
+// Mock fetch using jest.spyOn for better compatibility with JSDOM
+let mockFetch: jest.SpyInstance;
 
 // Mock localStorage with a factory to ensure fresh store per test
 let localStorageStore: Record<string, string> = {};
@@ -53,9 +52,16 @@ function TestAuthConsumer() {
 describe('AuthProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockFetch.mockReset();
     localStorageStore = {};
     localStorageMock.getItem.mockImplementation((key: string) => localStorageStore[key] || null);
+    // Set up fetch mock before each test
+    mockFetch = jest.spyOn(global, 'fetch').mockImplementation(() =>
+      Promise.reject(new Error('Unmocked fetch call'))
+    );
+  });
+
+  afterEach(() => {
+    mockFetch.mockRestore();
   });
 
   describe('initial state', () => {
@@ -130,15 +136,17 @@ describe('AuthProvider', () => {
         permissions: [],
       };
 
-      mockFetch
-        .mockResolvedValueOnce({
+      // Login response includes user data in the token response
+      mockFetch.mockImplementationOnce(() =>
+        Promise.resolve({
           ok: true,
-          json: async () => ({ access: 'access_token', refresh: 'refresh_token' }),
+          json: () => Promise.resolve({
+            access: 'access_token',
+            refresh: 'refresh_token',
+            user: mockUser,
+          }),
         })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => mockUser,
-        });
+      );
 
       render(
         <AuthProvider>
@@ -164,18 +172,23 @@ describe('AuthProvider', () => {
 
     it('should throw error on failed login', async () => {
       const user = userEvent.setup();
-      const loginError = new Error('Invalid credentials');
-      mockFetch.mockRejectedValueOnce(loginError);
+      // Mock fetch to return a non-ok response (the login function handles this)
+      mockFetch.mockImplementationOnce(() =>
+        Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ detail: 'Invalid credentials' }),
+        })
+      );
 
       const TestWithError = () => {
         const { login } = useAuth();
         const [error, setError] = useState<string | null>(null);
 
         const handleLogin = async () => {
-          try {
-            await login('testuser', 'wrongpassword');
-          } catch (e) {
-            setError((e as Error).message);
+          // Login returns a result object with success: false on failure
+          const result = await login('testuser', 'wrongpassword');
+          if (!result.success && result.error) {
+            setError(result.error);
           }
         };
 
@@ -202,6 +215,7 @@ describe('AuthProvider', () => {
         expect(screen.getByTestId('error')).toBeInTheDocument();
       }, { timeout: 5000 });
 
+      // The error message should contain the detail from the failed response
       expect(screen.getByTestId('error')).toHaveTextContent('Invalid credentials');
     });
   });

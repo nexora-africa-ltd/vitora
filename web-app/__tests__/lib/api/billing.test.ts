@@ -93,6 +93,11 @@ const mockInvoice: Invoice = {
   created_at: '2026-01-03T10:00:00Z',
   updated_at: '2026-01-03T10:00:00Z',
   created_by: 1,
+  // Proforma-related fields (required by schema)
+  is_converted: false,
+  is_valid: true,
+  days_until_expiry: 30,
+  can_convert: true,
 };
 
 const mockInvoiceItem: InvoiceItem = {
@@ -190,7 +195,7 @@ describe('Billing API - Service Categories', () => {
     });
 
     it('should return active categories by default', async () => {
-      const mockResponse = { data: { count: 0, results: [] } };
+      const mockResponse = { data: { count: 0, next: null, previous: null, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
       await billingApi.getServiceCategories({ is_active: true });
@@ -240,7 +245,7 @@ describe('Billing API - Services', () => {
     });
 
     it('should filter services by category', async () => {
-      const mockResponse = { data: { count: 0, results: [] } };
+      const mockResponse = { data: { count: 0, next: null, previous: null, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
       await billingApi.getServices({ category: 1 });
@@ -249,7 +254,7 @@ describe('Billing API - Services', () => {
     });
 
     it('should filter services by active status', async () => {
-      const mockResponse = { data: { count: 0, results: [] } };
+      const mockResponse = { data: { count: 0, next: null, previous: null, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
       await billingApi.getServices({ is_active: true });
@@ -258,7 +263,7 @@ describe('Billing API - Services', () => {
     });
 
     it('should search services by name or code', async () => {
-      const mockResponse = { data: { count: 0, results: [] } };
+      const mockResponse = { data: { count: 0, next: null, previous: null, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
       await billingApi.getServices({ search: 'consultation' });
@@ -286,8 +291,15 @@ describe('Billing API - Services', () => {
         name: 'Complete Blood Count',
         unit_price: '800.00',
       };
-      const mockResponse = { id: 2, ...serviceData };
-      mockApiClient.post.mockResolvedValue({ data: mockResponse });
+      // Response contains full service object matching schema
+      const mockCreatedService = {
+        ...mockService,
+        id: 2,
+        code: 'LAB-001',
+        name: 'Complete Blood Count',
+        unit_price: '800.00',
+      };
+      mockApiClient.post.mockResolvedValue({ data: mockCreatedService });
 
       const result = await billingApi.createService(serviceData);
 
@@ -348,7 +360,7 @@ describe('Billing API - Invoices', () => {
     });
 
     it('should filter invoices by status', async () => {
-      const mockResponse = { data: { count: 0, results: [] } };
+      const mockResponse = { data: { count: 0, next: null, previous: null, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
       await billingApi.getInvoices({ status: 'PENDING' });
@@ -357,7 +369,7 @@ describe('Billing API - Invoices', () => {
     });
 
     it('should filter invoices by patient', async () => {
-      const mockResponse = { data: { count: 0, results: [] } };
+      const mockResponse = { data: { count: 0, next: null, previous: null, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
       await billingApi.getInvoices({ patient: 1 });
@@ -366,7 +378,7 @@ describe('Billing API - Invoices', () => {
     });
 
     it('should filter invoices by date range', async () => {
-      const mockResponse = { data: { count: 0, results: [] } };
+      const mockResponse = { data: { count: 0, next: null, previous: null, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
       await billingApi.getInvoices({ start_date: '2026-01-01', end_date: '2026-01-31' });
@@ -377,7 +389,7 @@ describe('Billing API - Invoices', () => {
     });
 
     it('should support pagination', async () => {
-      const mockResponse = { data: { count: 50, results: [] } };
+      const mockResponse = { data: { count: 50, next: null, previous: null, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
       await billingApi.getInvoices({ page: 2, page_size: 20 });
@@ -531,7 +543,7 @@ describe('Billing API - Invoices', () => {
   describe('getOverdueInvoices', () => {
     it('should fetch overdue invoices', async () => {
       const overdueInvoice = { ...mockInvoice, status: 'OVERDUE' as const };
-      mockApiClient.get.mockResolvedValue({ data: { count: 1, results: [overdueInvoice] } });
+      mockApiClient.get.mockResolvedValue({ data: { count: 1, next: null, previous: null, results: [overdueInvoice] } });
 
       const result = await billingApi.getOverdueInvoices();
 
@@ -569,7 +581,7 @@ describe('Billing API - Payments', () => {
     });
 
     it('should filter payments by method', async () => {
-      const mockResponse = { data: { count: 0, results: [] } };
+      const mockResponse = { data: { count: 0, next: null, previous: null, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
       await billingApi.getPayments({ method: 'MPESA' });
@@ -578,7 +590,7 @@ describe('Billing API - Payments', () => {
     });
 
     it('should filter payments by status', async () => {
-      const mockResponse = { data: { count: 0, results: [] } };
+      const mockResponse = { data: { count: 0, next: null, previous: null, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
       await billingApi.getPayments({ status: 'COMPLETED' });
@@ -587,7 +599,7 @@ describe('Billing API - Payments', () => {
     });
 
     it('should filter payments by invoice', async () => {
-      const mockResponse = { data: { count: 0, results: [] } };
+      const mockResponse = { data: { count: 0, next: null, previous: null, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
       await billingApi.getPayments({ invoice: 1 });
@@ -809,7 +821,7 @@ describe('Billing API - Credit Notes', () => {
     });
 
     it('should filter credit notes by status', async () => {
-      const mockResponse = { data: { count: 0, results: [] } };
+      const mockResponse = { data: { count: 0, next: null, previous: null, results: [] } };
       mockApiClient.get.mockResolvedValue(mockResponse);
 
       await billingApi.getCreditNotes({ status: 'PENDING' });
