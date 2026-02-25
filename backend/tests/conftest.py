@@ -27,6 +27,16 @@ django.setup()
 
 
 @pytest.fixture(autouse=True)
+def clear_throttle_cache():
+    """Clear throttle cache before and after each test to prevent rate limiting interference."""
+    from django.core.cache import cache
+
+    cache.clear()
+    yield
+    cache.clear()
+
+
+@pytest.fixture(autouse=True)
 def system_user(db):
     """Ensure system user exists for billing signals."""
     from django.contrib.auth import get_user_model
