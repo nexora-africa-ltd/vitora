@@ -248,7 +248,8 @@ describe('PharmacyPage', () => {
       await user.click(screen.getByText('Prescriptions'));
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(/search prescriptions/i)).toBeInTheDocument();
+        // Responsive design may render multiple search inputs - use getAllBy
+        expect(screen.getAllByPlaceholderText(/search prescriptions/i)[0]).toBeInTheDocument();
       });
     });
 

@@ -104,13 +104,14 @@ const mockInvoiceItem: InvoiceItem = {
   id: 1,
   invoice: 1,
   description: 'General Consultation',
-  quantity: 1,
+  quantity: '1', // DecimalField serialized as string
   unit_price: '500.00',
   discount_percentage: '0.00',
   line_total: '500.00',
   service: 1,
   service_name: 'General Consultation',
   is_covered_by_insurance: false,
+  is_converted: false,
   created_at: '2026-01-03T10:00:00Z',
   updated_at: '2026-01-03T10:00:00Z',
 };
@@ -480,7 +481,17 @@ describe('Billing API - Invoices', () => {
         unit_price: '800.00',
         service: 2,
       };
-      mockApiClient.post.mockResolvedValue({ data: { ...mockInvoiceItem, ...itemData } });
+      // Mock returns the created item with proper string types (as returned by backend)
+      mockApiClient.post.mockResolvedValue({
+        data: {
+          ...mockInvoiceItem,
+          description: itemData.description,
+          quantity: String(itemData.quantity), // Backend returns decimals as strings
+          unit_price: itemData.unit_price,
+          service: itemData.service,
+          service_name: 'Lab Test - CBC',
+        },
+      });
 
       const result = await billingApi.addInvoiceItem(1, itemData);
 

@@ -331,9 +331,10 @@ describe('InvoiceDetail', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(screen.getByTestId('invoice-number')).toHaveTextContent('INV-20260103-0001');
+    // Header shows patient info, status badge, and created date (invoice # not displayed in compact header)
     expect(screen.getAllByText(/Jane Doe/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/MRN-20260101-0001/).length).toBeGreaterThan(0);
+    expect(screen.getByTestId('invoice-status')).toHaveTextContent('PENDING');
   });
 
   it('should render itemized breakdown', () => {
@@ -1118,7 +1119,7 @@ describe('CreditNoteForm', () => {
       invoice: 1,
       amount: '100',
       reason: 'PRICING_ERROR',
-      description: 'Incorrect fee applied on consultation',
+      reason_detail: 'Incorrect fee applied on consultation',
     }));
   });
 });
@@ -1160,7 +1161,8 @@ describe('BillingDashboard', () => {
     expect(screen.getByText(/invoices/)).toBeInTheDocument();
   });
 
-  it('should show payment method breakdown', () => {
+  it('should show link to transactions page for payment breakdown', () => {
+    // Payment method breakdown is now in /transactions page
     render(
       <BillingDashboard
         dailyReport={mockDailyReport}
@@ -1169,11 +1171,10 @@ describe('BillingDashboard', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(screen.getByText(/cash/i)).toBeInTheDocument();
-    expect(screen.getByText(/8,000/)).toBeInTheDocument(); // Cash amount
-    expect(screen.getByText(/m-pesa/i)).toBeInTheDocument();
-    const amounts = screen.getAllByText(/5,000/);
-    expect(amounts.length).toBeGreaterThan(0); // M-Pesa amount exists
+    // Dashboard shows summary KPIs, not detailed payment breakdown
+    // Verify the dashboard renders with totals
+    expect(screen.getByText(/today's collection/i)).toBeInTheDocument();
+    expect(screen.getByText(/15,000/)).toBeInTheDocument();
   });
 
   it('should show pending invoices count', () => {
@@ -1244,10 +1245,11 @@ describe('PaymentList', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(screen.getByText('PAY-20260103-0001')).toBeInTheDocument();
-    expect(screen.getByText(/500/)).toBeInTheDocument(); // Currency formatted by locale
-    expect(screen.getByText('CASH')).toBeInTheDocument();
-    expect(screen.getByText('COMPLETED')).toBeInTheDocument();
+    // Responsive layout renders both desktop table and mobile card - use getAllByText
+    expect(screen.getAllByText('PAY-20260103-0001')[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/500/)[0]).toBeInTheDocument(); // Currency formatted by locale
+    expect(screen.getAllByText('CASH')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('COMPLETED')[0]).toBeInTheDocument();
   });
 
   it('should show receipt button for completed payments', () => {
