@@ -198,16 +198,26 @@ Gaps are categorized into four tiers:
 - **Completed**: February 23, 2026
 - **Deliverables**: `core/history.py`, `HistoryMixin`, history API endpoints, migrations
 
-#### 11. Key Management System `P1`
-- **Gap**: Keys in environment variables only
+#### 11. Key Management System `P1` ✅ COMPLETE
+- **Gap**: ~~Keys in environment variables only~~ **RESOLVED**
 - **Action**:
-  - [ ] Integrate AWS KMS or HashiCorp Vault (or Azure Key Vault for render)
-  - [ ] Implement key rotation mechanism (annual rotation minimum)
-  - [ ] Document key management procedures
-  - [ ] Tests: 10 unit tests
-- **Owner**: DevOps
-- **Effort**: 1 sprint (2 weeks)
-- **Deliverables**: KMS integration, `docs/key-management.md`
+  - [x] Create KMS abstraction layer (`hmis/apps/core/kms/`)
+  - [x] Implement Local Fernet provider (development/testing)
+  - [x] Implement Azure Key Vault provider (production - 90% deployment target)
+  - [x] Add GCP KMS stub (10% deployment target - implement when needed)
+  - [x] Implement key rotation mechanism (365 days minimum per DHA)
+  - [x] Key rotation service with automatic rotation detection
+  - [x] Management command (`python manage.py kms status/rotate/generate-key`)
+  - [x] Document key management procedures
+  - [x] Tests: 33 unit tests (exceeded 10+ requirement)
+- **Owner**: Backend Team
+- **Completed**: February 25, 2026
+- **Deliverables**: 
+  - `hmis/apps/core/kms/` (base, local, azure, gcp, rotation modules)
+  - `hmis/apps/core/management/commands/kms.py`
+  - `docs/key-management.md`
+  - KMS settings in `settings/base.py`
+  - Azure SDK as optional dependency (`poetry install -E azure`)
 
 #### 12. Frontend Auto-Logoff `P1` ✅ COMPLETE
 - **Gap**: ~~No frontend idle timeout~~ **RESOLVED**
