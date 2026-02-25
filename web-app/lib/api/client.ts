@@ -45,13 +45,23 @@ apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     const token = tokenStorage.getAccessToken();
 
+    // Debug logging for auth issues (development only)
+    if (process.env.NODE_ENV === 'development' && !token) {
+      console.debug('[Auth Debug] No access token found for request:', config.url);
+    }
+
     if (token) {
       // Check if token needs refresh
       if (isTokenExpired(token, 60)) {
         // Token expires within 60 seconds, try to refresh
+        if (process.env.NODE_ENV === 'development') {
+          console.debug('[Auth Debug] Token expiring soon, refreshing for:', config.url);
+        }
         const newToken = await refreshTokenIfNeeded();
         if (newToken) {
           config.headers.Authorization = `Bearer ${newToken}`;
+        } else if (process.env.NODE_ENV === 'development') {
+          console.debug('[Auth Debug] Token refresh failed, no auth header added');
         }
       } else {
         config.headers.Authorization = `Bearer ${token}`;

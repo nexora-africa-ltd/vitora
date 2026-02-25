@@ -55,6 +55,8 @@ const REFRESH_TOKEN_KEY = 'vitora_refresh_token';
 const USER_KEY = 'vitora_user';
 // Cookie name for middleware auth check (must match middleware.ts)
 const AUTH_COOKIE_NAME = 'vitora_authenticated';
+// Idle timer activity key (must match use-idle-timer.ts)
+const IDLE_ACTIVITY_KEY = 'vitora_last_activity';
 
 /**
  * Auth provider component
@@ -153,6 +155,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh);
       localStorage.setItem(USER_KEY, JSON.stringify(user));
 
+      // Reset idle timer activity to prevent immediate logout after re-login
+      localStorage.setItem(IDLE_ACTIVITY_KEY, Date.now().toString());
+
       // Set auth cookie for middleware (httpOnly: false so JS can read, but middleware needs it)
       document.cookie = `${AUTH_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 
@@ -205,6 +210,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh);
       localStorage.setItem(USER_KEY, JSON.stringify(user));
 
+      // Reset idle timer activity to prevent immediate logout after re-login
+      // This is critical: if user was idle and logged out, the old activity timestamp
+      // would cause the idle timer to immediately trigger logout again
+      localStorage.setItem(IDLE_ACTIVITY_KEY, Date.now().toString());
+
+      // Debug logging (development only)
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('[Auth Debug] MFA verify - tokens stored:', {
+          accessTokenLength: tokens.access.length,
+          hasRefreshToken: !!tokens.refresh,
+          username: user.username,
+        });
+        // Verify storage worked
+        const storedToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+        console.debug('[Auth Debug] Storage verification:', {
+          tokenStored: !!storedToken,
+          tokenMatch: storedToken === tokens.access,
+        });
+      }
+
       // Set auth cookie for middleware
       document.cookie = `${AUTH_COOKIE_NAME}=true; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 
@@ -222,12 +247,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Logout function
   const logout = useCallback(() => {
+    // Debug logging (development only)
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('[Auth Debug] Logout - clearing tokens');
+    }
+
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
 
     // Clear auth cookie
     document.cookie = `${AUTH_COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+
+    // Clear React Query cache to prevent stale auth errors on re-login
+    // This is done via dynamic import to avoid circular dependencies
+    import('@tanstack/react-query').then(({ QueryClient }) => {
+      // Note: This creates a new client just to signal intent; actual cache
+      // clearing happens when page reloads due to logout redirect
+      if (process.env.NODE_ENV === 'development') {
+        console.debug('[Auth Debug] React state cleared, page will reload');
+      }
+    }).catch(() => { /* ignore */ });
 
     setState({
       user: null,

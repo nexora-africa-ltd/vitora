@@ -35,7 +35,12 @@ export function MFAVerification({ mfaToken, onCancel }: MFAVerificationProps) {
 
       await verifyMFA(mfaToken, options);
       mfaToast.success();
-      router.push('/');
+      
+      // Small delay to ensure localStorage writes are committed before navigation
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Use replace to prevent going back to login page
+      router.replace('/');
     } catch (err) {
       mfaToast.error(err);
     } finally {
