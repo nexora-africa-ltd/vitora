@@ -218,6 +218,8 @@ urlpatterns = [
     path("api/surveillance/", include("hmis.apps.surveillance.urls", namespace="surveillance")),
     # Physiotherapy API
     path("api/physiotherapy/", include("hmis.apps.physiotherapy.urls", namespace="physiotherapy")),
+    # Nutrition/Dietetics API
+    path("api/nutrition/", include("hmis.apps.nutrition.urls", namespace="nutrition")),
     # Core utilities API (PRC number generation, etc.)
     path("api/core/", include("hmis.apps.core.urls")),
     # MFA (Multi-Factor Authentication) API
