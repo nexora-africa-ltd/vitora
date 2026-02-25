@@ -38,6 +38,9 @@ export type ClinicType =
   | 'SURGICAL'
   | 'ORTHO'
   | 'PHYSIO'
+  | 'OT' // Occupational Therapy
+  | 'SOCIAL_WORK'
+  | 'COUNSELLING'
   | 'DERM'
   | 'CCC'
   | 'TB'
