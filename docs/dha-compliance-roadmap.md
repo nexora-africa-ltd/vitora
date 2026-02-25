@@ -277,16 +277,23 @@ Gaps are categorized into four tiers:
   - MUAC-based malnutrition screening
   - Migration: `0001_initial.py`
 
-#### 15. Occupational Therapy Module `P2`
-- **Gap**: No occupational therapy module
+#### 15. Occupational Therapy Module `P2` ✅ COMPLETE
+- **Gap**: ~~No occupational therapy module~~ **RESOLVED**
 - **Action**:
-  - [ ] Create `OccupationalTherapyOrder` model (referral, assessment_type, goals)
-  - [ ] Create `OTSession` model (activities, progress_notes, outcome)
-  - [ ] Clinic queue integration
-  - [ ] Tests: 20+ unit tests
+  - [x] Create `OccupationalTherapyOrder` model (referral, assessment_type, goals)
+  - [x] Create `OTSession` model (activities, progress_notes, outcome)
+  - [x] Create `OTTreatmentType` model (catalog with pricing, SHA codes)
+  - [x] Clinic queue integration (ClinicVisit link, auto-routing on approval)
+  - [x] Billing integration (auto-invoice items on session completion)
+  - [x] Tests: 41 unit tests (exceeded 20+ requirement)
 - **Owner**: Backend Team
-- **Effort**: 1 sprint (2 weeks)
-- **Deliverables**: `hmis/apps/occupational_therapy/`
+- **Completed**: February 25, 2026
+- **Deliverables**: 
+  - `hmis/apps/occupational_therapy/` (models, views, serializers, signals, admin)
+  - API endpoints: `/api/occupational-therapy/orders/`, `/api/occupational-therapy/sessions/`, `/api/occupational-therapy/treatment-types/`
+  - Custom actions: `approve`, `assign_therapist`, `generate_sessions`, `start`, `complete`, `cancel`, `put_on_hold`, `no_show`, `reschedule`
+  - OT-specific fields: independence levels (FIM-style), functional improvement tracking, ADL/cognitive/sensory activities
+  - Migration: `0001_initial.py`
 
 #### 16. Social Work Module `P2`
 - **Gap**: No social work module
