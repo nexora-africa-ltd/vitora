@@ -11,7 +11,9 @@ This document describes the current backend Multi‑Factor Authentication (MFA) 
 - MFA login flow using a short-lived temporary MFA token
 - Role-based MFA requirement enforcement (blocks disabling MFA for required roles)
 - Audit logging for MFA lifecycle events
-- 47 comprehensive unit tests (`backend/tests/test_mfa.py`)
+- **Brute-force protection** via rate limiting and failed attempt tracking
+- 53 comprehensive unit tests (`backend/tests/test_mfa.py`)
+- 16 rate limiting tests (`backend/tests/test_rate_limiting.py`)
 
 ### Implemented (Frontend)
 - MFA setup wizard (`web-app/components/auth/mfa-setup-wizard.tsx`)
@@ -58,6 +60,7 @@ Module: [backend/hmis/apps/core/mfa/models.py](backend/hmis/apps/core/mfa/models
   - Temporary token returned during login when MFA is enabled
   - Expires after 5 minutes (`TOKEN_LIFETIME_MINUTES = 5`)
   - Enforced single-use (`used=True` after verification)
+  - **Brute-force protection**: Tracks `failed_attempts` and invalidates after 5 failed attempts (`MAX_FAILED_ATTEMPTS = 5`)
 
 Migration: [backend/hmis/apps/core/migrations/0017_mfa_models.py](backend/hmis/apps/core/migrations/0017_mfa_models.py)
 
@@ -151,6 +154,47 @@ Current MFA-related actions:
 - `backup_code_used`
 - `mfa_verification_failed`
 - `mfa_verification_success`
+
+## Brute-Force Protection
+
+Authentication endpoints are protected against brute-force attacks through multiple layers:
+
+### Rate Limiting (DRF Throttling)
+
+Configured in [backend/hmis/settings/base.py](backend/hmis/settings/base.py):
+
+| Endpoint | Scope | Rate Limit |
+|----------|-------|------------|
+| `POST /api/token/` | `login` | 5 requests/minute |
+| `POST /api/mfa/verify/` | `mfa_verify` | 5 requests/minute |
+
+When the rate limit is exceeded, requests receive HTTP `429 Too Many Requests`.
+
+### MFA Token Failed Attempt Tracking
+
+The `MFAToken` model tracks failed verification attempts:
+
+- Each failed TOTP or backup code verification increments `failed_attempts`
+- After 5 failed attempts (`MAX_FAILED_ATTEMPTS`), the token is automatically invalidated
+- The user must restart the login flow to get a new MFA token
+- Failed attempts are logged to the audit trail with attempt count
+
+### Combined Protection
+
+The dual-layer approach provides defense in depth:
+
+1. **Rate limiting** prevents rapid automated attacks from any source
+2. **Per-token attempt tracking** prevents slow attacks that stay under rate limits
+3. **5-minute token expiry** limits the attack window
+4. **Audit logging** enables detection of attack patterns
+
+### Test Coverage
+
+Rate limiting tests: [backend/tests/test_rate_limiting.py](backend/tests/test_rate_limiting.py)
+- Verifies throttle configuration on login and MFA verify endpoints
+- Tests rate limit enforcement after threshold
+- Tests failed attempt tracking and token invalidation
+- Tests 429 response after max attempts
 
 ## Test Coverage
 

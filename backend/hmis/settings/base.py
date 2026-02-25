@@ -174,6 +174,16 @@ REST_FRAMEWORK = {
     ],
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Rate limiting for brute-force protection (DHA compliance)
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/hour",
+        "login": "5/minute",       # Password login - 5 attempts per minute
+        "mfa_verify": "5/minute",  # MFA verification - 5 attempts per minute
+    },
 }
 
 

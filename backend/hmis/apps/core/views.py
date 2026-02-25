@@ -16,6 +16,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.mixins import ListModelMixin, RetrieveModelMixin
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import (
@@ -244,7 +245,12 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
     This ensures that JWT-based logins are properly logged in the audit system.
     Also includes user info in the response for the frontend.
     Supports MFA flow when MFA is enabled for the user.
+
+    Rate limited to 5 attempts per minute to prevent brute-force attacks.
     """
+
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "login"
 
     def post(self, request, *args, **kwargs):
         """Handle token obtain request with audit logging and MFA."""

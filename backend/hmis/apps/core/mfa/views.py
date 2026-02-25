@@ -20,6 +20,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -247,9 +248,17 @@ class BackupCodesRegenerateView(APIView):
 
 
 class MFAVerifyView(APIView):
-    """Verify MFA during login flow."""
+    """
+    Verify MFA during login flow.
+
+    Rate limited to 5 attempts per minute to prevent brute-force attacks.
+    Additionally tracks failed attempts per MFA token and invalidates
+    after 5 failed attempts.
+    """
 
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "mfa_verify"
 
     @transaction.atomic
     def post(self, request):
@@ -269,6 +278,14 @@ class MFAVerifyView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Check if max attempts exceeded
+        if mfa_token.failed_attempts >= MFAToken.MAX_FAILED_ATTEMPTS:
+            mfa_token.mark_used()  # Invalidate the token
+            return Response(
+                {"error": "Too many failed attempts. Please login again."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         user = mfa_token.user
         verified = False
 
@@ -278,6 +295,8 @@ class MFAVerifyView(APIView):
             if device and device.verify_token(totp_token):
                 verified = True
             else:
+                # Increment failed attempts
+                mfa_token.increment_failed_attempts()
                 # Audit failed attempt
                 AuditLog.log(
                     action="mfa_verification_failed",
@@ -285,7 +304,7 @@ class MFAVerifyView(APIView):
                     resource_type="UserTOTPDevice",
                     resource_id=device.id if device else 0,
                     ip_address=get_client_ip(request),
-                    details={"method": "totp"},
+                    details={"method": "totp", "failed_attempts": mfa_token.failed_attempts},
                 )
                 return Response(
                     {"error": "Invalid TOTP token."},
@@ -306,6 +325,8 @@ class MFAVerifyView(APIView):
                     details={"remaining": BackupCode.remaining_codes_count(user)},
                 )
             else:
+                # Increment failed attempts
+                mfa_token.increment_failed_attempts()
                 return Response(
                     {"error": "Invalid backup code."},
                     status=status.HTTP_400_BAD_REQUEST,

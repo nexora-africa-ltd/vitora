@@ -263,10 +263,14 @@ class MFAToken(models.Model):
     When a user with MFA enabled attempts to login, they receive this
     temporary token instead of an access token. They must complete
     MFA verification using this token.
+
+    Tracks failed verification attempts and invalidates after MAX_FAILED_ATTEMPTS
+    to prevent brute-force attacks on TOTP codes.
     """
 
     TOKEN_LENGTH: ClassVar[int] = 64
     TOKEN_LIFETIME_MINUTES: ClassVar[int] = 5  # Token expires after 5 minutes
+    MAX_FAILED_ATTEMPTS: ClassVar[int] = 5  # Invalidate after 5 failed attempts
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -291,6 +295,10 @@ class MFAToken(models.Model):
         null=True,
         blank=True,
         help_text="IP address of the login request",
+    )
+    failed_attempts = models.IntegerField(
+        default=0,
+        help_text="Number of failed verification attempts",
     )
 
     class Meta:
@@ -319,6 +327,19 @@ class MFAToken(models.Model):
         """Mark token as used."""
         self.used = True
         self.save(update_fields=["used"])
+
+    def increment_failed_attempts(self) -> None:
+        """
+        Increment failed verification attempts counter.
+
+        If max attempts reached, the token is automatically invalidated.
+        """
+        self.failed_attempts += 1
+        if self.failed_attempts >= self.MAX_FAILED_ATTEMPTS:
+            self.used = True  # Invalidate the token
+            self.save(update_fields=["failed_attempts", "used"])
+        else:
+            self.save(update_fields=["failed_attempts"])
 
     @classmethod
     def create_for_user(cls, user, ip_address: str | None = None) -> "MFAToken":
