@@ -224,6 +224,8 @@ urlpatterns = [
     path("api/occupational-therapy/", include("hmis.apps.occupational_therapy.urls", namespace="occupational_therapy")),
     # Social Work API
     path("api/social-work/", include("hmis.apps.social_work.urls", namespace="social_work")),
+    # Counselling API
+    path("api/counselling/", include("hmis.apps.counselling.urls", namespace="counselling")),
     # Core utilities API (PRC number generation, etc.)
     path("api/core/", include("hmis.apps.core.urls")),
     # MFA (Multi-Factor Authentication) API
