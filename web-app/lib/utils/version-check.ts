@@ -219,10 +219,11 @@ export async function clearAllCaches(): Promise<void> {
     // - Auth tokens (vitora_access_token, vitora_refresh_token, vitora_user)
     // - Draft forms (vitora_draft_*)
     // - Offline queue (vitora_autosave_queue_*)
+    // NOTE: We intentionally DO NOT clear 'vitora_chunk_error_reload' here!
+    // That marker is managed by chunk-error-handler to prevent infinite reload loops.
     const sessionKeysToRemove = [
       VERSION_KEY,
       VERSION_LAST_CHECK_KEY,
-      'vitora_chunk_error_reload',
     ];
     sessionKeysToRemove.forEach((key) => {
       sessionStorage.removeItem(key);
