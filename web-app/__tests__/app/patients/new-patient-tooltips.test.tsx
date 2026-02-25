@@ -140,7 +140,7 @@ describe('NewPatientPage tooltips', () => {
     );
   });
 
-  it('shows tooltip for "Start Encounter Directly" action on hover', async () => {
+  it('shows tooltip for "Route to Clinic" action on hover', async () => {
     const user = userEvent.setup();
 
     mockCreatePatientMutateAsync.mockResolvedValueOnce({
@@ -159,11 +159,11 @@ describe('NewPatientPage tooltips', () => {
       expect(screen.getByText(/Patient Registered/i)).toBeInTheDocument();
     });
 
-    // With Button asChild + Link, this will be role=link
-    const startEncounterLink = screen.getByRole('link', { name: /Start Encounter Directly/i });
-    expect(startEncounterLink).toHaveAttribute(
+    // Route to Clinic is a button, not a link
+    const routeToClinicButton = screen.getByRole('button', { name: /Route to Clinic/i });
+    expect(routeToClinicButton).toHaveAttribute(
       'title',
-      'Skip the triage queue and start clinical documentation now.'
+      'Skip triage and route patient directly to a clinic queue.'
     );
   });
 });

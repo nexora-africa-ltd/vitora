@@ -94,15 +94,16 @@ describe('AdmissionsPage', () => {
   it('shows admission recommendations section', () => {
     render(<AdmissionsPage />);
 
-    // CardTitle is not necessarily a semantic heading element
-    expect(screen.getByText(/pending admission recommendations/i)).toBeInTheDocument();
+    // "Pending Recommendations" appears in KPI card and CardTitle - use getAllByText
+    expect(screen.getAllByText(/Pending Recommendations/i).length).toBeGreaterThan(0);
 
+    // Text may appear in both list and card views - use getAllByText
     expect(
-      screen.getByText(/severe malaria requiring iv treatment/i)
-    ).toBeInTheDocument();
+      screen.getAllByText(/severe malaria requiring iv treatment/i).length
+    ).toBeGreaterThan(0);
 
-    // Shows diagnosis text, not code
-    expect(screen.getByText(/severe falciparum malaria/i)).toBeInTheDocument();
+    // Shows diagnosis text, not code - may appear in multiple places
+    expect(screen.getAllByText(/severe falciparum malaria/i).length).toBeGreaterThan(0);
   });
 
   it('shows active admissions section', () => {
