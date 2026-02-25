@@ -5,7 +5,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { SessionProgress } from '@/components/allied-health/shared/session-progress';
+import { SessionProgress } from '@/components/allied-health/session-progress';
 
 describe('SessionProgress', () => {
   it('renders session count correctly', () => {

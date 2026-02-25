@@ -102,7 +102,7 @@ export function PhysioOrderTable({ initialParams }: PhysioOrderTableProps) {
 
         <div className="flex gap-2">
           <Select onValueChange={handleStatusFilter} defaultValue="all">
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-[140px]" aria-label="Status filter">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -116,7 +116,7 @@ export function PhysioOrderTable({ initialParams }: PhysioOrderTableProps) {
           </Select>
 
           <Select onValueChange={handlePriorityFilter} defaultValue="all">
-            <SelectTrigger className="w-[130px]">
+            <SelectTrigger className="w-[130px]" aria-label="Priority filter">
               <SelectValue placeholder="Priority" />
             </SelectTrigger>
             <SelectContent>

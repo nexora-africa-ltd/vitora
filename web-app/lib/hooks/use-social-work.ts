@@ -402,3 +402,12 @@ export function useCancelIntervention() {
     },
   });
 }
+
+// ============ Legacy Hook Aliases (for test compatibility) ============
+// These provide alternative names for commonly used hooks
+
+/** @alias useCreateSWReferral */
+export const useCreateSocialWorkReferral = useCreateSWReferral;
+
+/** @alias useUpdateSWReferral */
+export const useUpdateSocialWorkReferral = useUpdateSWReferral;
