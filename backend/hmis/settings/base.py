@@ -14,10 +14,16 @@ from django.core.management.utils import get_random_secret_key
 try:
     from dotenv import load_dotenv
 
-    # Look for .env in project root (parent of backend/)
-    env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
-    if env_path.exists():
-        load_dotenv(env_path)
+    # Look for .env in project root (parent of backend/), fallback to backend/.env
+    # Project root: /vitora/.env (local dev)
+    # Backend root: /backend/.env (Render deployment where base dir is /backend/)
+    project_root_env = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+    backend_root_env = Path(__file__).resolve().parent.parent.parent / ".env"
+
+    if project_root_env.exists():
+        load_dotenv(project_root_env)
+    elif backend_root_env.exists():
+        load_dotenv(backend_root_env)
 except ImportError:
     pass  # python-dotenv not installed
 
