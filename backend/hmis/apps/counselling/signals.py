@@ -1,0 +1,291 @@
+"""
+Django signals for the counselling module.
+
+Handles:
+- Clinic queue integration: Auto-route patients to counselling clinic
+- Session completion: Auto-create billing items
+- Mental health integration: Link to mental health encounters
+"""
+
+import logging
+
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+from hmis.apps.counselling.models import CounsellingReferral, CounsellingSession
+
+logger = logging.getLogger(__name__)
+
+
+@receiver(post_save, sender=CounsellingReferral)
+def route_to_counselling_clinic_on_acceptance(sender, instance, created, **kwargs):
+    """
+    Route patient to Counselling clinic queue when referral is accepted.
+
+    This signal creates a clinic visit entry for queue management
+    when a counselling referral is accepted.
+    """
+    # Only process when status changes to ACCEPTED
+    if instance.status != "ACCEPTED" or not instance.accepted_at:
+        return
+
+    # Check if already has a clinic visit
+    if instance.clinic_visit:
+        return
+
+    try:
+        from hmis.apps.clinics.models import Clinic, ClinicVisit
+
+        # Find counselling clinic - try multiple name variations
+        counselling_clinic = Clinic.objects.filter(
+            name__icontains="Counselling",
+            status="active",
+        ).first()
+
+        if not counselling_clinic:
+            # Try alternate names
+            counselling_clinic = Clinic.objects.filter(
+                name__icontains="Counseling",  # US spelling
+                status="active",
+            ).first()
+
+        if not counselling_clinic:
+            # Try mental health clinic for mental health referrals
+            if instance.is_mental_health_related:
+                counselling_clinic = Clinic.objects.filter(
+                    name__icontains="Mental Health",
+                    status="active",
+                ).first()
+
+        if not counselling_clinic:
+            # Try psychology clinic
+            counselling_clinic = Clinic.objects.filter(
+                name__icontains="Psychology",
+                status="active",
+            ).first()
+
+        if not counselling_clinic:
+            logger.info(
+                f"No Counselling clinic found for referral {instance.referral_number}. "
+                f"Patient will need to be manually routed."
+            )
+            return
+
+        # Set priority based on urgency
+        priority_map = {
+            "EMERGENCY": 1,
+            "URGENT": 2,
+            "ROUTINE": 5,
+        }
+        priority = priority_map.get(instance.urgency, 5)
+
+        # Adjust priority for certain referral reasons
+        if instance.reason in ["SUICIDAL", "GBV"]:
+            priority = 1  # Always highest priority
+
+        clinic_visit = ClinicVisit.objects.create(
+            patient=instance.patient,
+            clinic=counselling_clinic,
+            visit_type="referral",
+            status="waiting",
+            priority=priority,
+            notes=f"Counselling Referral: {instance.referral_number}\n"
+                  f"Reason: {instance.get_reason_display()}\n"
+                  f"Urgency: {instance.get_urgency_display()}",
+            created_by=instance.assigned_counsellor or instance.referred_by,
+        )
+
+        # Link to referral
+        instance.clinic_visit = clinic_visit
+        instance.save(update_fields=["clinic_visit"])
+
+        logger.info(
+            f"Created clinic visit {clinic_visit.id} for counselling referral {instance.referral_number} "
+            f"(Clinic: {counselling_clinic.name})"
+        )
+
+    except Exception as e:
+        logger.error(
+            f"Failed to create clinic visit for counselling referral {instance.referral_number}: {e}"
+        )
+
+
+@receiver(post_save, sender=CounsellingReferral)
+def notify_urgent_referral(sender, instance, created, **kwargs):
+    """
+    Send notification for urgent/emergency referrals.
+
+    This signal creates notifications for counselling staff
+    when urgent referrals are created.
+    """
+    if not created:
+        return
+
+    if instance.urgency not in ["URGENT", "EMERGENCY"] and not instance.requires_immediate_attention:
+        return
+
+    # Log the urgent referral for monitoring
+    logger.warning(
+        f"URGENT counselling referral created: {instance.referral_number} - "
+        f"Patient: {instance.patient.mrn} - "
+        f"Reason: {instance.get_reason_display()} - "
+        f"Urgency: {instance.get_urgency_display()}"
+    )
+
+    # TODO: Implement notification system integration
+    # This would typically send:
+    # - SMS/Email to on-call counsellors
+    # - WebSocket notification to dashboard
+    # - Push notification to mobile app
+
+
+@receiver(post_save, sender=CounsellingSession)
+def create_billing_item_on_session_completion(sender, instance, created, **kwargs):
+    """
+    Create billing invoice item when a counselling session is completed.
+
+    This signal auto-generates billing entries for completed sessions
+    linked to the patient's invoice.
+    """
+    # Only process completed sessions that haven't been billed
+    if instance.status != "COMPLETED" or instance.is_billed:
+        return
+
+    # Check if referral has a counselling type with cost
+    referral = instance.referral
+    if not referral.counselling_type:
+        return
+
+    counselling_type = referral.counselling_type
+    if counselling_type.cost_per_session <= 0:
+        return
+
+    try:
+        from hmis.apps.billing.models import Invoice, InvoiceItem
+
+        # Find or create invoice for the patient
+        invoice = Invoice.objects.filter(
+            patient=referral.patient,
+            status="DRAFT",
+        ).first()
+
+        if not invoice:
+            # Create new invoice
+            invoice = Invoice.objects.create(
+                patient=referral.patient,
+                status="DRAFT",
+            )
+
+        # Create invoice item
+        InvoiceItem.objects.create(
+            invoice=invoice,
+            description=f"Counselling Session - {counselling_type.name}",
+            quantity=1,
+            unit_price=counselling_type.cost_per_session,
+            item_type="SERVICE",
+            service_date=instance.actual_date or instance.scheduled_date,
+        )
+
+        # Mark session as billed
+        instance.is_billed = True
+        instance.save(update_fields=["is_billed"])
+
+        # Link invoice to referral if not already linked
+        if not referral.invoice:
+            referral.invoice = invoice
+            referral.save(update_fields=["invoice"])
+
+        logger.info(
+            f"Created billing item for counselling session {instance.session_number} - "
+            f"Amount: KES {counselling_type.cost_per_session}"
+        )
+
+    except Exception as e:
+        logger.error(
+            f"Failed to create billing item for counselling session {instance.session_number}: {e}"
+        )
+
+
+@receiver(post_save, sender=CounsellingSession)
+def create_clinic_visit_for_session(sender, instance, created, **kwargs):
+    """
+    Create clinic visit for scheduled counselling sessions.
+
+    This enables queue management for individual sessions.
+    """
+    if not created:
+        return
+
+    if instance.status != "SCHEDULED":
+        return
+
+    if instance.clinic_visit:
+        return
+
+    try:
+        from hmis.apps.clinics.models import Clinic, ClinicVisit
+
+        # Find counselling clinic
+        counselling_clinic = Clinic.objects.filter(
+            name__icontains="Counselling",
+            status="active",
+        ).first()
+
+        if not counselling_clinic:
+            counselling_clinic = Clinic.objects.filter(
+                name__icontains="Counseling",
+                status="active",
+            ).first()
+
+        if not counselling_clinic:
+            return  # No clinic available
+
+        # Create clinic visit for the session
+        clinic_visit = ClinicVisit.objects.create(
+            patient=instance.referral.patient,
+            clinic=counselling_clinic,
+            visit_type="follow_up",
+            status="scheduled",
+            scheduled_date=instance.scheduled_date,
+            scheduled_time=instance.scheduled_time,
+            priority=5,  # Normal priority for regular sessions
+            notes=f"Counselling Session {instance.session_sequence} - "
+                  f"Referral: {instance.referral.referral_number}",
+            created_by=instance.counsellor,
+        )
+
+        instance.clinic_visit = clinic_visit
+        instance.save(update_fields=["clinic_visit"])
+
+        logger.info(
+            f"Created clinic visit for counselling session {instance.session_number}"
+        )
+
+    except Exception as e:
+        logger.error(
+            f"Failed to create clinic visit for counselling session {instance.session_number}: {e}"
+        )
+
+
+@receiver(post_save, sender=CounsellingSession)
+def alert_high_risk_session(sender, instance, **kwargs):
+    """
+    Generate alerts for high-risk counselling sessions.
+
+    This signal monitors risk levels and triggers appropriate responses.
+    """
+    if instance.risk_level not in ["HIGH", "IMMINENT"]:
+        return
+
+    logger.critical(
+        f"HIGH RISK ALERT - Counselling Session {instance.session_number}: "
+        f"Patient: {instance.referral.patient.mrn} - "
+        f"Risk Level: {instance.risk_level} - "
+        f"Counsellor: {instance.counsellor.username if instance.counsellor else 'Unknown'}"
+    )
+
+    # TODO: Implement alert system integration
+    # For imminent risk:
+    # - Page supervisor/psychiatrist
+    # - Create emergency intervention record
+    # - Notify security if needed

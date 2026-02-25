@@ -314,16 +314,26 @@ Gaps are categorized into four tiers:
   - Privacy features: `is_sensitive` auto-set for GBV/abuse, `view_sensitive_sw_referral` and `view_sensitive_sw_case` permissions
   - Migration: `0001_initial.py`
 
-#### 17. Counselling Module `P2`
-- **Gap**: No dedicated counselling order model
+#### 17. Counselling Module `P2` ✅ COMPLETE
+- **Gap**: ~~No dedicated counselling order model~~ **RESOLVED**
 - **Action**:
-  - [ ] Create `CounsellingSession` model (type, duration, notes, follow_up)
-  - [ ] Session types: HIV, Mental Health, Family Planning, General
-  - [ ] Integration with mental health encounters
-  - [ ] Tests: 15+ unit tests
+  - [x] Create `CounsellingType` model (catalog with pricing, SHA codes)
+  - [x] Create `CounsellingReferral` model (referral orders with workflow)
+  - [x] Create `CounsellingSession` model (type, duration, notes, follow_up)
+  - [x] Session types: HIV, Mental Health, Family Planning, General, and more
+  - [x] Integration with mental health encounters (is_mental_health_related property)
+  - [x] Sensitive referral privacy (HIV, suicidal, GBV auto-marked sensitive)
+  - [x] Clinic queue integration (auto-route to counselling clinic)
+  - [x] Billing integration (auto-invoice on session completion)
+  - [x] Tests: 40 unit tests (exceeded 15+ requirement)
 - **Owner**: Backend Team
-- **Effort**: 1 sprint (2 weeks)
-- **Deliverables**: `hmis/apps/counselling/`
+- **Completed**: February 26, 2026
+- **Deliverables**: 
+  - `hmis/apps/counselling/` (models, views, serializers, signals, admin)
+  - API endpoints: `/api/counselling/types/`, `/api/counselling/referrals/`, `/api/counselling/sessions/`
+  - Custom actions: `accept`, `assign_counsellor`, `start`, `complete`, `cancel`, `no_show`, `generate_sessions`, `reschedule`
+  - Privacy features: `is_sensitive` auto-set for HIV/suicidal/GBV, `view_sensitive_counselling_referral` permission
+  - Migration: `0001_initial.py`
 
 ### Sprint 2.B — MCH & Growth Charts (Weeks 7-10)
 

@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     "hmis.apps.nutrition.apps.NutritionConfig",
     "hmis.apps.occupational_therapy.apps.OccupationalTherapyConfig",
     "hmis.apps.social_work.apps.SocialWorkConfig",
+    "hmis.apps.counselling.apps.CounsellingConfig",
 ]
 
 MIDDLEWARE = [
