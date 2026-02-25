@@ -295,16 +295,24 @@ Gaps are categorized into four tiers:
   - OT-specific fields: independence levels (FIM-style), functional improvement tracking, ADL/cognitive/sensory activities
   - Migration: `0001_initial.py`
 
-#### 16. Social Work Module `P2`
-- **Gap**: No social work module
+#### 16. Social Work Module `P2` ✅ COMPLETE
+- **Gap**: ~~No social work module~~ **RESOLVED**
 - **Action**:
-  - [ ] Create `SocialWorkReferral` model (reason, urgency, assigned_worker)
-  - [ ] Create `SocialWorkCase` model (assessment, interventions, outcome)
-  - [ ] GBV case tracking with enhanced privacy
-  - [ ] Tests: 20+ unit tests
+  - [x] Create `SocialWorkReferral` model (reason, urgency, assigned_worker)
+  - [x] Create `SocialWorkCase` model (assessment, interventions, outcome)
+  - [x] Create `CaseNote` model (progress notes with contact tracking)
+  - [x] Create `SocialWorkIntervention` model (intervention tracking with outcomes)
+  - [x] GBV case tracking with enhanced privacy (auto-sensitive, restricted access)
+  - [x] Clinic queue integration (auto-route on referral acceptance)
+  - [x] Tests: 41 unit tests (exceeded 20+ requirement)
 - **Owner**: Backend Team
-- **Effort**: 1 sprint (2 weeks)
-- **Deliverables**: `hmis/apps/social_work/`
+- **Completed**: February 25, 2026
+- **Deliverables**: 
+  - `hmis/apps/social_work/` (models, views, serializers, signals, admin)
+  - API endpoints: `/api/social-work/referrals/`, `/api/social-work/cases/`, `/api/social-work/notes/`, `/api/social-work/interventions/`
+  - Custom actions: `accept`, `assign_worker`, `create_case`, `update_status`, `close`, `start`, `complete`, `cancel`
+  - Privacy features: `is_sensitive` auto-set for GBV/abuse, `view_sensitive_sw_referral` and `view_sensitive_sw_case` permissions
+  - Migration: `0001_initial.py`
 
 #### 17. Counselling Module `P2`
 - **Gap**: No dedicated counselling order model
