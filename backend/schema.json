@@ -4,6 +4,327 @@ info:
   version: 0.1.0
   description: Hospital Management Information System for Kenya
 paths:
+  /api/allergies/:
+    get:
+      operationId: api_allergies_list
+      description: |-
+        ViewSet for Allergy model.
+
+        Provides CRUD operations for patient allergies with:
+        - Automatic audit logging
+        - Filtering by patient, substance type, severity, status
+        - Drug-allergy interaction checking
+        - Nested under patient or standalone access
+
+        URL patterns:
+        - /api/patients/{patient_id}/allergies/  (nested)
+        - /api/allergies/  (standalone)
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: patient
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: severity
+        schema:
+          type: string
+          enum:
+          - life_threatening
+          - mild
+          - moderate
+          - severe
+        description: |-
+          Severity of the allergic reaction
+
+          * `mild` - Mild
+          * `moderate` - Moderate
+          * `severe` - Severe
+          * `life_threatening` - Life-Threatening
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - active
+          - inactive
+          - resolved
+        description: |-
+          Current status of the allergy
+
+          * `active` - Active
+          * `inactive` - Inactive
+          * `resolved` - Resolved
+      - in: query
+        name: substance_type
+        schema:
+          type: string
+          enum:
+          - biological
+          - environmental
+          - food
+          - medication
+          - other
+        description: |-
+          Category of allergen
+
+          * `medication` - Medication
+          * `food` - Food
+          * `environmental` - Environmental
+          * `biological` - Biological
+          * `other` - Other
+      - in: query
+        name: verification_status
+        schema:
+          type: string
+          enum:
+          - confirmed
+          - entered_in_error
+          - presumed
+          - refuted
+          - unconfirmed
+        description: |-
+          Whether the allergy is confirmed or suspected
+
+          * `unconfirmed` - Unconfirmed
+          * `presumed` - Presumed
+          * `confirmed` - Confirmed
+          * `refuted` - Refuted
+          * `entered_in_error` - Entered in Error
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAllergyListList'
+          description: ''
+    post:
+      operationId: api_allergies_create
+      description: Create an allergy record with audit logging.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Allergy'
+          description: ''
+  /api/allergies/{id}/:
+    get:
+      operationId: api_allergies_retrieve
+      description: Retrieve an allergy with audit logging.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Allergy.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Allergy'
+          description: ''
+    put:
+      operationId: api_allergies_update
+      description: Update an allergy with audit logging.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Allergy.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Allergy'
+          description: ''
+    patch:
+      operationId: api_allergies_partial_update
+      description: |-
+        ViewSet for Allergy model.
+
+        Provides CRUD operations for patient allergies with:
+        - Automatic audit logging
+        - Filtering by patient, substance type, severity, status
+        - Drug-allergy interaction checking
+        - Nested under patient or standalone access
+
+        URL patterns:
+        - /api/patients/{patient_id}/allergies/  (nested)
+        - /api/allergies/  (standalone)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Allergy.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAllergyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAllergyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAllergyRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Allergy'
+          description: ''
+    delete:
+      operationId: api_allergies_destroy
+      description: Delete an allergy with audit logging.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Allergy.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/allergies/check-interactions/:
+    post:
+      operationId: api_allergies_check_interactions_create
+      description: |-
+        Check if a patient has allergies to specified drugs.
+
+        Request Body:
+            patient_id: Patient ID (required)
+            drug_ids: List of drug IDs to check (optional)
+            drug_names: List of drug names to check (optional)
+
+        Returns:
+            List of matching allergies with severity warnings.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Allergy'
+          description: ''
+  /api/allergies/lookup/:
+    get:
+      operationId: api_allergies_lookup_retrieve
+      description: |-
+        Look up allergy substances from available sources.
+
+        Query Parameters:
+            q: Search query (minimum 2 characters)
+            type: Filter by substance type (medication, food, environmental, biological)
+
+        Returns:
+            List of matching substances with codes where available.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Allergy'
+          description: ''
   /api/auditlogs/:
     get:
       operationId: api_auditlogs_list
@@ -6676,6 +6997,273 @@ paths:
               schema:
                 $ref: '#/components/schemas/Department'
           description: ''
+  /api/core/emergency-access/:
+    get:
+      operationId: api_core_emergency_access_list
+      description: List emergency access records with optional filtering.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEmergencyAccessList'
+          description: ''
+    post:
+      operationId: api_core_emergency_access_create
+      description: |-
+        Create an emergency access (break-glass) request.
+
+        This endpoint invokes emergency access, bypassing normal access
+        controls. All invocations are logged and trigger escalation alerts.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmergencyAccessCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmergencyAccessCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmergencyAccessCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmergencyAccessCreate'
+          description: ''
+  /api/core/emergency-access/{id}/:
+    get:
+      operationId: api_core_emergency_access_retrieve
+      description: Retrieve a specific emergency access record.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmergencyAccess'
+          description: ''
+    put:
+      operationId: api_core_emergency_access_update
+      description: |-
+        ViewSet for Emergency Access (Break-Glass) functionality.
+
+        Provides endpoints for:
+        - Creating emergency access requests (break-glass)
+        - Viewing emergency access history
+        - Reviewing/approving emergency access
+        - Dashboard statistics for administrators
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmergencyAccessRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmergencyAccessRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmergencyAccessRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmergencyAccess'
+          description: ''
+    patch:
+      operationId: api_core_emergency_access_partial_update
+      description: |-
+        ViewSet for Emergency Access (Break-Glass) functionality.
+
+        Provides endpoints for:
+        - Creating emergency access requests (break-glass)
+        - Viewing emergency access history
+        - Reviewing/approving emergency access
+        - Dashboard statistics for administrators
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEmergencyAccessRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedEmergencyAccessRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEmergencyAccessRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmergencyAccess'
+          description: ''
+    delete:
+      operationId: api_core_emergency_access_destroy
+      description: |-
+        ViewSet for Emergency Access (Break-Glass) functionality.
+
+        Provides endpoints for:
+        - Creating emergency access requests (break-glass)
+        - Viewing emergency access history
+        - Reviewing/approving emergency access
+        - Dashboard statistics for administrators
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/core/emergency-access/{id}/review/:
+    post:
+      operationId: api_core_emergency_access_review_create
+      description: |-
+        Review an emergency access request (approve or revoke).
+
+        POST /api/core/emergency-access/{id}/review/
+        {
+            "action": "approve" | "revoke",
+            "notes": "Optional review notes"
+        }
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmergencyAccessReviewRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/EmergencyAccessReviewRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EmergencyAccessReviewRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmergencyAccessReview'
+          description: ''
+  /api/core/emergency-access/dashboard_stats/:
+    get:
+      operationId: api_core_emergency_access_dashboard_stats_retrieve
+      description: |-
+        Get dashboard statistics for emergency access.
+
+        GET /api/core/emergency-access/dashboard_stats/
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmergencyAccessDashboardStats'
+          description: ''
+  /api/core/emergency-access/my_active/:
+    get:
+      operationId: api_core_emergency_access_my_active_retrieve
+      description: |-
+        Get current user's active emergency access.
+
+        GET /api/core/emergency-access/my_active/
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmergencyAccess'
+          description: ''
   /api/core/events/:
     get:
       operationId: api_core_events_list
@@ -6921,6 +7509,40 @@ paths:
               schema:
                 $ref: '#/components/schemas/PRCNumberResponse'
           description: ''
+  /api/core/history/encounters/{encounter_id}/:
+    get:
+      operationId: api_core_history_encounters_retrieve
+      description: Get history for a specific encounter.
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/core/history/patients/{patient_id}/:
+    get:
+      operationId: api_core_history_patients_retrieve
+      description: Get history for a specific patient.
+      parameters:
+      - in: path
+        name: patient_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/core/notifications/:
     get:
       operationId: api_core_notifications_list
@@ -7996,6 +8618,11 @@ paths:
         - PUT /api/encounters/{id}/ - Update an encounter
         - PATCH /api/encounters/{id}/ - Partial update an encounter
         - DELETE /api/encounters/{id}/ - Delete an encounter
+
+        History:
+        - GET /api/encounters/{id}/history/ - Get version history
+        - GET /api/encounters/{id}/history/{version_id}/ - Get specific version
+        - GET /api/encounters/{id}/history-count/ - Get version count
       parameters:
       - in: query
         name: encounter_date
@@ -8898,6 +9525,11 @@ paths:
         - PUT /api/encounters/{id}/ - Update an encounter
         - PATCH /api/encounters/{id}/ - Partial update an encounter
         - DELETE /api/encounters/{id}/ - Delete an encounter
+
+        History:
+        - GET /api/encounters/{id}/history/ - Get version history
+        - GET /api/encounters/{id}/history/{version_id}/ - Get specific version
+        - GET /api/encounters/{id}/history-count/ - Get version count
       parameters:
       - in: path
         name: id
@@ -9220,6 +9852,123 @@ paths:
             schema:
               $ref: '#/components/schemas/EncounterRequest'
         required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Encounter'
+          description: ''
+  /api/encounters/{id}/history/:
+    get:
+      operationId: api_encounters_history_retrieve
+      description: |-
+        Get the version history for a specific instance.
+
+        Returns a list of all changes made to this record, with field-level diffs.
+
+        Query Parameters:
+            limit (int): Maximum number of versions to return (default: 50)
+
+        Response:
+            [
+                {
+                    "version_id": 123,
+                    "history_type": "updated",
+                    "history_date": "2026-02-23T10:30:00Z",
+                    "history_user": "admin",
+                    "history_user_id": 1,
+                    "changes": {
+                        "first_name": {"old": "John", "new": "Johnny"},
+                        "phone_number": {"old": "0700123456", "new": "0700654321"}
+                    }
+                },
+                ...
+            ]
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Encounter.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Encounter'
+          description: ''
+  /api/encounters/{id}/history-count/:
+    get:
+      operationId: api_encounters_history_count_retrieve
+      description: |-
+        Get the number of versions for a specific instance.
+
+        Response:
+            {
+                "count": 15
+            }
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Encounter.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Encounter'
+          description: ''
+  /api/encounters/{id}/history/{version_id}/:
+    get:
+      operationId: api_encounters_history_retrieve_2
+      description: |-
+        Get details of a specific version.
+
+        Returns the changes made in a specific version compared to the previous version.
+
+        Path Parameters:
+            version_id (int): The history_id of the version to retrieve
+
+        Response:
+            {
+                "version_id": 123,
+                "history_type": "updated",
+                "history_date": "2026-02-23T10:30:00Z",
+                "history_user": "admin",
+                "changes": {
+                    "first_name": {"old": "John", "new": "Johnny"}
+                }
+            }
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Encounter.
+        required: true
+      - in: path
+        name: version_id
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+        required: true
+      tags:
+      - api
       security:
       - jwtAuth: []
       responses:
@@ -17585,11 +18334,17 @@ paths:
         - Automatic audit logging
         - Filtering of sensitive records for unauthorized users
         - Idempotent patient creation (prevents duplicate submissions)
+        - Version history tracking (/api/patients/{id}/history/)
 
         Idempotency:
             Include X-Idempotency-Key header with a unique UUID to enable
             idempotent patient creation. Repeated requests with the same
             key will return the same response.
+
+        History:
+            GET /api/patients/{id}/history/ - Get version history
+            GET /api/patients/{id}/history/{version_id}/ - Get specific version
+            GET /api/patients/{id}/history-count/ - Get version count
       parameters:
       - in: query
         name: gender
@@ -17673,6 +18428,295 @@ paths:
               schema:
                 $ref: '#/components/schemas/Patient'
           description: ''
+  /api/patients/{patient_pk}/allergies/:
+    get:
+      operationId: api_patients_allergies_list
+      description: |-
+        ViewSet for Allergy model.
+
+        Provides CRUD operations for patient allergies with:
+        - Automatic audit logging
+        - Filtering by patient, substance type, severity, status
+        - Drug-allergy interaction checking
+        - Nested under patient or standalone access
+
+        URL patterns:
+        - /api/patients/{patient_id}/allergies/  (nested)
+        - /api/allergies/  (standalone)
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: patient
+        schema:
+          type: integer
+      - in: path
+        name: patient_pk
+        schema:
+          type: integer
+        required: true
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: severity
+        schema:
+          type: string
+          enum:
+          - life_threatening
+          - mild
+          - moderate
+          - severe
+        description: |-
+          Severity of the allergic reaction
+
+          * `mild` - Mild
+          * `moderate` - Moderate
+          * `severe` - Severe
+          * `life_threatening` - Life-Threatening
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - active
+          - inactive
+          - resolved
+        description: |-
+          Current status of the allergy
+
+          * `active` - Active
+          * `inactive` - Inactive
+          * `resolved` - Resolved
+      - in: query
+        name: substance_type
+        schema:
+          type: string
+          enum:
+          - biological
+          - environmental
+          - food
+          - medication
+          - other
+        description: |-
+          Category of allergen
+
+          * `medication` - Medication
+          * `food` - Food
+          * `environmental` - Environmental
+          * `biological` - Biological
+          * `other` - Other
+      - in: query
+        name: verification_status
+        schema:
+          type: string
+          enum:
+          - confirmed
+          - entered_in_error
+          - presumed
+          - refuted
+          - unconfirmed
+        description: |-
+          Whether the allergy is confirmed or suspected
+
+          * `unconfirmed` - Unconfirmed
+          * `presumed` - Presumed
+          * `confirmed` - Confirmed
+          * `refuted` - Refuted
+          * `entered_in_error` - Entered in Error
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAllergyListList'
+          description: ''
+    post:
+      operationId: api_patients_allergies_create
+      description: Create an allergy record with audit logging.
+      parameters:
+      - in: path
+        name: patient_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Allergy'
+          description: ''
+  /api/patients/{patient_pk}/allergies/{id}/:
+    get:
+      operationId: api_patients_allergies_retrieve
+      description: Retrieve an allergy with audit logging.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: patient_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Allergy'
+          description: ''
+    put:
+      operationId: api_patients_allergies_update
+      description: Update an allergy with audit logging.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: patient_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AllergyRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Allergy'
+          description: ''
+    patch:
+      operationId: api_patients_allergies_partial_update
+      description: |-
+        ViewSet for Allergy model.
+
+        Provides CRUD operations for patient allergies with:
+        - Automatic audit logging
+        - Filtering by patient, substance type, severity, status
+        - Drug-allergy interaction checking
+        - Nested under patient or standalone access
+
+        URL patterns:
+        - /api/patients/{patient_id}/allergies/  (nested)
+        - /api/allergies/  (standalone)
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: patient_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAllergyRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedAllergyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAllergyRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Allergy'
+          description: ''
+    delete:
+      operationId: api_patients_allergies_destroy
+      description: Delete an allergy with audit logging.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: patient_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/patients/{patient_pk}/emergency-contacts/:
     get:
       operationId: api_patients_emergency_contacts_list
@@ -18045,11 +19089,17 @@ paths:
         - Automatic audit logging
         - Filtering of sensitive records for unauthorized users
         - Idempotent patient creation (prevents duplicate submissions)
+        - Version history tracking (/api/patients/{id}/history/)
 
         Idempotency:
             Include X-Idempotency-Key header with a unique UUID to enable
             idempotent patient creation. Repeated requests with the same
             key will return the same response.
+
+        History:
+            GET /api/patients/{id}/history/ - Get version history
+            GET /api/patients/{id}/history/{version_id}/ - Get specific version
+            GET /api/patients/{id}/history-count/ - Get version count
       parameters:
       - in: path
         name: id
@@ -18124,6 +19174,123 @@ paths:
         schema:
           type: integer
         description: A unique integer value identifying this Patient.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+  /api/patients/{id}/history/:
+    get:
+      operationId: api_patients_history_retrieve
+      description: |-
+        Get the version history for a specific instance.
+
+        Returns a list of all changes made to this record, with field-level diffs.
+
+        Query Parameters:
+            limit (int): Maximum number of versions to return (default: 50)
+
+        Response:
+            [
+                {
+                    "version_id": 123,
+                    "history_type": "updated",
+                    "history_date": "2026-02-23T10:30:00Z",
+                    "history_user": "admin",
+                    "history_user_id": 1,
+                    "changes": {
+                        "first_name": {"old": "John", "new": "Johnny"},
+                        "phone_number": {"old": "0700123456", "new": "0700654321"}
+                    }
+                },
+                ...
+            ]
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Patient.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+  /api/patients/{id}/history-count/:
+    get:
+      operationId: api_patients_history_count_retrieve
+      description: |-
+        Get the number of versions for a specific instance.
+
+        Response:
+            {
+                "count": 15
+            }
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Patient.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+  /api/patients/{id}/history/{version_id}/:
+    get:
+      operationId: api_patients_history_retrieve_2
+      description: |-
+        Get details of a specific version.
+
+        Returns the changes made in a specific version compared to the previous version.
+
+        Path Parameters:
+            version_id (int): The history_id of the version to retrieve
+
+        Response:
+            {
+                "version_id": 123,
+                "history_type": "updated",
+                "history_date": "2026-02-23T10:30:00Z",
+                "history_user": "admin",
+                "changes": {
+                    "first_name": {"old": "John", "new": "Johnny"}
+                }
+            }
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Patient.
+        required: true
+      - in: path
+        name: version_id
+        schema:
+          type: string
+          pattern: ^[0-9]+$
         required: true
       tags:
       - api
@@ -24313,6 +25480,1445 @@ paths:
               schema:
                 $ref: '#/components/schemas/StaffProfile'
           description: ''
+  /api/surveillance/alerts/:
+    get:
+      operationId: api_surveillance_alerts_list
+      description: |-
+        API endpoint for SurveillanceAlert management.
+
+        Provides listing and acknowledgment of surveillance alerts.
+      parameters:
+      - in: query
+        name: alert_type
+        schema:
+          type: string
+          enum:
+          - CASE_UPDATE
+          - NEW_CASE
+          - OUTBREAK
+          - OVERDUE
+        description: |-
+          * `NEW_CASE` - New Case Detected
+          * `OVERDUE` - Notification Overdue
+          * `OUTBREAK` - Outbreak Threshold Reached
+          * `CASE_UPDATE` - Case Updated
+      - in: query
+        name: case__disease
+        schema:
+          type: integer
+      - in: query
+        name: is_acknowledged
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSurveillanceAlertListList'
+          description: ''
+    post:
+      operationId: api_surveillance_alerts_create
+      description: |-
+        API endpoint for SurveillanceAlert management.
+
+        Provides listing and acknowledgment of surveillance alerts.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SurveillanceAlertRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SurveillanceAlertRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SurveillanceAlertRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SurveillanceAlert'
+          description: ''
+  /api/surveillance/alerts/{id}/:
+    get:
+      operationId: api_surveillance_alerts_retrieve
+      description: |-
+        API endpoint for SurveillanceAlert management.
+
+        Provides listing and acknowledgment of surveillance alerts.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Surveillance Alert.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SurveillanceAlert'
+          description: ''
+  /api/surveillance/alerts/{id}/acknowledge/:
+    post:
+      operationId: api_surveillance_alerts_acknowledge_create
+      description: Acknowledge an alert.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Surveillance Alert.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SurveillanceAlertRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SurveillanceAlertRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SurveillanceAlertRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SurveillanceAlert'
+          description: ''
+  /api/surveillance/alerts/unacknowledged/:
+    get:
+      operationId: api_surveillance_alerts_unacknowledged_retrieve
+      description: Return unacknowledged alerts.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SurveillanceAlert'
+          description: ''
+  /api/surveillance/cases/:
+    get:
+      operationId: api_surveillance_cases_list
+      description: |-
+        API endpoint for NotifiableCase management.
+
+        Provides CRUD operations for disease cases and notification workflow.
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: string
+          enum:
+          - IMMEDIATE
+          - MONTHLY
+          - WEEKLY
+        description: |-
+          MOH notification category
+
+          * `IMMEDIATE` - Immediate
+          * `WEEKLY` - Weekly
+          * `MONTHLY` - Monthly
+      - in: query
+        name: county
+        schema:
+          type: integer
+      - in: query
+        name: detected_after
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: detected_before
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: disease
+        schema:
+          type: integer
+      - in: query
+        name: is_overdue
+        schema:
+          type: boolean
+      - in: query
+        name: laboratory_confirmed
+        schema:
+          type: boolean
+      - in: query
+        name: notification_status
+        schema:
+          type: string
+          enum:
+          - ACKNOWLEDGED
+          - CLOSED
+          - INVESTIGATED
+          - NOTIFIED
+          - PENDING
+        description: |-
+          Notification workflow status
+
+          * `PENDING` - Pending Notification
+          * `NOTIFIED` - Notified to County
+          * `ACKNOWLEDGED` - Acknowledged by County
+          * `INVESTIGATED` - Under Investigation
+          * `CLOSED` - Case Closed
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: patient
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotifiableCaseListList'
+          description: ''
+    post:
+      operationId: api_surveillance_cases_create
+      description: |-
+        API endpoint for NotifiableCase management.
+
+        Provides CRUD operations for disease cases and notification workflow.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotifiableCaseCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NotifiableCaseCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotifiableCaseCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifiableCaseCreate'
+          description: ''
+  /api/surveillance/cases/{id}/:
+    get:
+      operationId: api_surveillance_cases_retrieve
+      description: |-
+        API endpoint for NotifiableCase management.
+
+        Provides CRUD operations for disease cases and notification workflow.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Notifiable Case.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifiableCase'
+          description: ''
+    put:
+      operationId: api_surveillance_cases_update
+      description: |-
+        API endpoint for NotifiableCase management.
+
+        Provides CRUD operations for disease cases and notification workflow.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Notifiable Case.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotifiableCaseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NotifiableCaseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotifiableCaseRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifiableCase'
+          description: ''
+    patch:
+      operationId: api_surveillance_cases_partial_update
+      description: |-
+        API endpoint for NotifiableCase management.
+
+        Provides CRUD operations for disease cases and notification workflow.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Notifiable Case.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedNotifiableCaseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedNotifiableCaseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedNotifiableCaseRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifiableCase'
+          description: ''
+    delete:
+      operationId: api_surveillance_cases_destroy
+      description: |-
+        API endpoint for NotifiableCase management.
+
+        Provides CRUD operations for disease cases and notification workflow.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Notifiable Case.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/surveillance/cases/{id}/notify_county/:
+    post:
+      operationId: api_surveillance_cases_notify_county_create
+      description: |-
+        Mark case as notified to county health office.
+
+        POST /api/surveillance/cases/{id}/notify_county/
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Notifiable Case.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotifiableCaseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NotifiableCaseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotifiableCaseRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifiableCase'
+          description: ''
+  /api/surveillance/cases/immediate/:
+    get:
+      operationId: api_surveillance_cases_immediate_retrieve
+      description: Return immediate reportable cases.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifiableCase'
+          description: ''
+  /api/surveillance/cases/overdue/:
+    get:
+      operationId: api_surveillance_cases_overdue_retrieve
+      description: Return overdue cases.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifiableCase'
+          description: ''
+  /api/surveillance/cases/pending/:
+    get:
+      operationId: api_surveillance_cases_pending_retrieve
+      description: Return cases pending notification.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifiableCase'
+          description: ''
+  /api/surveillance/dashboard/:
+    get:
+      operationId: api_surveillance_dashboard_retrieve
+      description: Return dashboard statistics.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/surveillance/diseases/:
+    get:
+      operationId: api_surveillance_diseases_list
+      description: |-
+        API endpoint for NotifiableDisease reference data.
+
+        Provides CRUD operations for the list of notifiable diseases.
+        Read-only for most users; write access requires admin permissions.
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: string
+          enum:
+          - IMMEDIATE
+          - MONTHLY
+          - WEEKLY
+        description: |-
+          MOH notification category
+
+          * `IMMEDIATE` - Immediate (within 24 hours)
+          * `WEEKLY` - Weekly (IDSR)
+          * `MONTHLY` - Monthly
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - in: query
+        name: is_ihr_notifiable
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotifiableDiseaseListList'
+          description: ''
+    post:
+      operationId: api_surveillance_diseases_create
+      description: |-
+        API endpoint for NotifiableDisease reference data.
+
+        Provides CRUD operations for the list of notifiable diseases.
+        Read-only for most users; write access requires admin permissions.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotifiableDiseaseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NotifiableDiseaseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotifiableDiseaseRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifiableDisease'
+          description: ''
+  /api/surveillance/diseases/{id}/:
+    get:
+      operationId: api_surveillance_diseases_retrieve
+      description: |-
+        API endpoint for NotifiableDisease reference data.
+
+        Provides CRUD operations for the list of notifiable diseases.
+        Read-only for most users; write access requires admin permissions.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Notifiable Disease.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifiableDisease'
+          description: ''
+    put:
+      operationId: api_surveillance_diseases_update
+      description: |-
+        API endpoint for NotifiableDisease reference data.
+
+        Provides CRUD operations for the list of notifiable diseases.
+        Read-only for most users; write access requires admin permissions.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Notifiable Disease.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotifiableDiseaseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NotifiableDiseaseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NotifiableDiseaseRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifiableDisease'
+          description: ''
+    patch:
+      operationId: api_surveillance_diseases_partial_update
+      description: |-
+        API endpoint for NotifiableDisease reference data.
+
+        Provides CRUD operations for the list of notifiable diseases.
+        Read-only for most users; write access requires admin permissions.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Notifiable Disease.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedNotifiableDiseaseRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedNotifiableDiseaseRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedNotifiableDiseaseRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifiableDisease'
+          description: ''
+    delete:
+      operationId: api_surveillance_diseases_destroy
+      description: |-
+        API endpoint for NotifiableDisease reference data.
+
+        Provides CRUD operations for the list of notifiable diseases.
+        Read-only for most users; write access requires admin permissions.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Notifiable Disease.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/surveillance/diseases/{id}/matching_codes/:
+    get:
+      operationId: api_surveillance_diseases_matching_codes_retrieve
+      description: Return all ICD-10 codes that match this disease.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Notifiable Disease.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifiableDisease'
+          description: ''
+  /api/surveillance/diseases/immediate/:
+    get:
+      operationId: api_surveillance_diseases_immediate_retrieve
+      description: Return only immediate reportable diseases.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotifiableDisease'
+          description: ''
+  /api/surveillance/idsr/:
+    get:
+      operationId: api_surveillance_idsr_list
+      description: |-
+        API endpoint for IDSR Weekly Reports.
+
+        Provides CRUD operations and workflow actions for IDSR reports.
+
+        Actions:
+        - generate: Create a new weekly report (or regenerate existing)
+        - approve: Approve a report for submission
+        - submit_to_dhis2: Submit approved report to DHIS2
+        - dashboard: Get IDSR summary statistics
+      parameters:
+      - in: query
+        name: county
+        schema:
+          type: integer
+      - in: query
+        name: end_date
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: epi_week
+        schema:
+          type: integer
+      - in: query
+        name: epi_year
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - in: query
+        name: outbreak
+        schema:
+          type: boolean
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: start_date
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - APPROVED
+          - DRAFT
+          - FAILED
+          - PENDING_REVIEW
+          - SUBMITTED
+        description: |-
+          Report workflow status
+
+          * `DRAFT` - Draft
+          * `PENDING_REVIEW` - Pending Review
+          * `APPROVED` - Approved
+          * `SUBMITTED` - Submitted
+          * `FAILED` - Failed
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedIDSRWeeklyReportListList'
+          description: ''
+    post:
+      operationId: api_surveillance_idsr_create
+      description: |-
+        API endpoint for IDSR Weekly Reports.
+
+        Provides CRUD operations and workflow actions for IDSR reports.
+
+        Actions:
+        - generate: Create a new weekly report (or regenerate existing)
+        - approve: Approve a report for submission
+        - submit_to_dhis2: Submit approved report to DHIS2
+        - dashboard: Get IDSR summary statistics
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IDSRWeeklyReportRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IDSRWeeklyReportRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IDSRWeeklyReportRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDSRWeeklyReport'
+          description: ''
+  /api/surveillance/idsr/{id}/:
+    get:
+      operationId: api_surveillance_idsr_retrieve
+      description: |-
+        API endpoint for IDSR Weekly Reports.
+
+        Provides CRUD operations and workflow actions for IDSR reports.
+
+        Actions:
+        - generate: Create a new weekly report (or regenerate existing)
+        - approve: Approve a report for submission
+        - submit_to_dhis2: Submit approved report to DHIS2
+        - dashboard: Get IDSR summary statistics
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this IDSR Weekly Report.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDSRWeeklyReport'
+          description: ''
+    put:
+      operationId: api_surveillance_idsr_update
+      description: |-
+        API endpoint for IDSR Weekly Reports.
+
+        Provides CRUD operations and workflow actions for IDSR reports.
+
+        Actions:
+        - generate: Create a new weekly report (or regenerate existing)
+        - approve: Approve a report for submission
+        - submit_to_dhis2: Submit approved report to DHIS2
+        - dashboard: Get IDSR summary statistics
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this IDSR Weekly Report.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IDSRWeeklyReportRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IDSRWeeklyReportRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IDSRWeeklyReportRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDSRWeeklyReport'
+          description: ''
+    patch:
+      operationId: api_surveillance_idsr_partial_update
+      description: |-
+        API endpoint for IDSR Weekly Reports.
+
+        Provides CRUD operations and workflow actions for IDSR reports.
+
+        Actions:
+        - generate: Create a new weekly report (or regenerate existing)
+        - approve: Approve a report for submission
+        - submit_to_dhis2: Submit approved report to DHIS2
+        - dashboard: Get IDSR summary statistics
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this IDSR Weekly Report.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedIDSRWeeklyReportRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedIDSRWeeklyReportRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedIDSRWeeklyReportRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDSRWeeklyReport'
+          description: ''
+    delete:
+      operationId: api_surveillance_idsr_destroy
+      description: |-
+        API endpoint for IDSR Weekly Reports.
+
+        Provides CRUD operations and workflow actions for IDSR reports.
+
+        Actions:
+        - generate: Create a new weekly report (or regenerate existing)
+        - approve: Approve a report for submission
+        - submit_to_dhis2: Submit approved report to DHIS2
+        - dashboard: Get IDSR summary statistics
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this IDSR Weekly Report.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/surveillance/idsr/{id}/approve/:
+    post:
+      operationId: api_surveillance_idsr_approve_create
+      description: |-
+        Approve an IDSR report for submission.
+
+        POST /api/surveillance/idsr/{id}/approve/
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this IDSR Weekly Report.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IDSRReportApproveRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IDSRReportApproveRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IDSRReportApproveRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDSRReportApprove'
+          description: ''
+  /api/surveillance/idsr/{id}/dhis2_preview/:
+    get:
+      operationId: api_surveillance_idsr_dhis2_preview_retrieve
+      description: |-
+        Preview DHIS2 payload without submitting.
+
+        GET /api/surveillance/idsr/{id}/dhis2_preview/
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this IDSR Weekly Report.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDSRWeeklyReport'
+          description: ''
+  /api/surveillance/idsr/{id}/submit_to_dhis2/:
+    post:
+      operationId: api_surveillance_idsr_submit_to_dhis2_create
+      description: |-
+        Submit approved IDSR report to DHIS2.
+
+        POST /api/surveillance/idsr/{id}/submit_to_dhis2/
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this IDSR Weekly Report.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IDSRWeeklyReportRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IDSRWeeklyReportRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IDSRWeeklyReportRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDSRWeeklyReport'
+          description: ''
+  /api/surveillance/idsr/dashboard/:
+    get:
+      operationId: api_surveillance_idsr_dashboard_retrieve
+      description: |-
+        Get IDSR dashboard statistics.
+
+        GET /api/surveillance/idsr/dashboard/
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDSRWeeklyReport'
+          description: ''
+  /api/surveillance/idsr/generate/:
+    post:
+      operationId: api_surveillance_idsr_generate_create
+      description: |-
+        Generate a new IDSR weekly report.
+
+        POST /api/surveillance/idsr/generate/
+
+        Body (optional):
+        {
+            "epi_year": 2026,
+            "epi_week": 8
+        }
+
+        If not provided, generates for previous week.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IDSRReportGenerateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/IDSRReportGenerateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/IDSRReportGenerateRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IDSRReportGenerate'
+          description: ''
+  /api/surveillance/reports/county/{county_id}/:
+    get:
+      operationId: api_surveillance_reports_county_retrieve
+      description: Generate county report.
+      parameters:
+      - in: path
+        name: county_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/surveillance/thresholds/:
+    get:
+      operationId: api_surveillance_thresholds_list
+      description: |-
+        API endpoint for OutbreakThreshold configuration.
+
+        Admin-only endpoint for configuring outbreak detection thresholds.
+      parameters:
+      - in: query
+        name: county
+        schema:
+          type: integer
+      - in: query
+        name: disease
+        schema:
+          type: integer
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOutbreakThresholdList'
+          description: ''
+    post:
+      operationId: api_surveillance_thresholds_create
+      description: |-
+        API endpoint for OutbreakThreshold configuration.
+
+        Admin-only endpoint for configuring outbreak detection thresholds.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutbreakThresholdRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OutbreakThresholdRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OutbreakThresholdRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutbreakThreshold'
+          description: ''
+  /api/surveillance/thresholds/{id}/:
+    get:
+      operationId: api_surveillance_thresholds_retrieve
+      description: |-
+        API endpoint for OutbreakThreshold configuration.
+
+        Admin-only endpoint for configuring outbreak detection thresholds.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Outbreak Threshold.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutbreakThreshold'
+          description: ''
+    put:
+      operationId: api_surveillance_thresholds_update
+      description: |-
+        API endpoint for OutbreakThreshold configuration.
+
+        Admin-only endpoint for configuring outbreak detection thresholds.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Outbreak Threshold.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OutbreakThresholdRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OutbreakThresholdRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OutbreakThresholdRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutbreakThreshold'
+          description: ''
+    patch:
+      operationId: api_surveillance_thresholds_partial_update
+      description: |-
+        API endpoint for OutbreakThreshold configuration.
+
+        Admin-only endpoint for configuring outbreak detection thresholds.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Outbreak Threshold.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOutbreakThresholdRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOutbreakThresholdRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOutbreakThresholdRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutbreakThreshold'
+          description: ''
+    delete:
+      operationId: api_surveillance_thresholds_destroy
+      description: |-
+        API endpoint for OutbreakThreshold configuration.
+
+        Admin-only endpoint for configuring outbreak detection thresholds.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Outbreak Threshold.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/surveillance/thresholds/{id}/check/:
+    get:
+      operationId: api_surveillance_thresholds_check_retrieve
+      description: Check if threshold is exceeded.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Outbreak Threshold.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutbreakThreshold'
+          description: ''
+  /api/surveillance/thresholds/exceeded/:
+    get:
+      operationId: api_surveillance_thresholds_exceeded_retrieve
+      description: Return all thresholds that are currently exceeded.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutbreakThreshold'
+          description: ''
   /api/terminology/codesystems/:
     get:
       operationId: api_terminology_codesystems_list
@@ -24409,30 +27015,15 @@ paths:
   /api/token/refresh/:
     post:
       operationId: api_token_refresh_create
-      description: |-
-        Takes a refresh type JSON web token and returns an access type JSON web
-        token if the refresh token is valid.
+      description: Refresh token with MFA validation.
       tags:
       - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TokenRefreshRequest'
-          application/x-www-form-urlencoded:
-            schema:
-              $ref: '#/components/schemas/TokenRefreshRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/TokenRefreshRequest'
-        required: true
+      security:
+      - jwtAuth: []
+      - {}
       responses:
         '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenRefresh'
-          description: ''
+          description: No response body
   /api/token/verify/:
     post:
       operationId: api_token_verify_create
@@ -25767,6 +28358,35 @@ paths:
                 type: object
                 additionalProperties: {}
           description: ''
+  /fhir/CarePlan/{id}:
+    get:
+      operationId: fhir_CarePlan_retrieve
+      description: Get a FHIR R4 CarePlan resource by ID
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - fhir
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
   /fhir/Composition/{id}:
     get:
       operationId: fhir_Composition_retrieve
@@ -26139,6 +28759,14 @@ paths:
           description: ''
 components:
   schemas:
+    ActionEnum:
+      enum:
+      - approve
+      - revoke
+      type: string
+      description: |-
+        * `approve` - approve
+        * `revoke` - revoke
     AdjustmentTypeEnum:
       enum:
       - DAMAGE
@@ -26586,20 +29214,423 @@ components:
         * `ROUTINE` - Routine
         * `URGENT` - Urgent
         * `EMERGENCY` - Emergency
-    AlertTypeEnum:
+    AlertType92cEnum:
       enum:
-      - LOW_STOCK
-      - OUT_OF_STOCK
-      - EXPIRING_SOON
-      - EXPIRED
-      - RECALLED
+      - NEW_CASE
+      - OVERDUE
+      - OUTBREAK
+      - CASE_UPDATE
       type: string
       description: |-
-        * `LOW_STOCK` - Low Stock
-        * `OUT_OF_STOCK` - Out of Stock
-        * `EXPIRING_SOON` - Expiring Soon
-        * `EXPIRED` - Expired
-        * `RECALLED` - Product Recalled
+        * `NEW_CASE` - New Case Detected
+        * `OVERDUE` - Notification Overdue
+        * `OUTBREAK` - Outbreak Threshold Reached
+        * `CASE_UPDATE` - Case Updated
+    Allergy:
+      type: object
+      description: Serializer for the Allergy model.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        patient:
+          type: integer
+          nullable: true
+        patient_mrn:
+          type: string
+          readOnly: true
+        patient_name:
+          type: string
+          readOnly: true
+        substance:
+          type: string
+          description: Name of the allergen (medication, food, or environmental trigger)
+          maxLength: 500
+        substance_code:
+          type: string
+          description: Standard code for the substance (RxNorm, SNOMED CT, or local
+            drug code)
+          maxLength: 50
+        substance_code_system:
+          type: string
+          description: Code system URI (e.g., http://www.nlm.nih.gov/research/umls/rxnorm)
+          maxLength: 100
+        substance_type:
+          allOf:
+          - $ref: '#/components/schemas/SubstanceTypeEnum'
+          description: |-
+            Category of allergen
+
+            * `medication` - Medication
+            * `food` - Food
+            * `environmental` - Environmental
+            * `biological` - Biological
+            * `other` - Other
+        substance_type_display:
+          type: string
+          readOnly: true
+        drug:
+          type: integer
+          nullable: true
+          description: Linked drug record for medication allergies (enables interaction
+            checking)
+        drug_name:
+          type: string
+          readOnly: true
+          nullable: true
+        reaction_type:
+          allOf:
+          - $ref: '#/components/schemas/ReactionTypeEnum'
+          description: |-
+            Type of allergic reaction
+
+            * `anaphylaxis` - Anaphylaxis
+            * `angioedema` - Angioedema
+            * `bronchospasm` - Bronchospasm
+            * `cardiac_arrhythmia` - Cardiac Arrhythmia
+            * `diarrhea` - Diarrhea
+            * `dyspnea` - Dyspnea
+            * `hives` - Hives/Urticaria
+            * `hypotension` - Hypotension
+            * `itching` - Itching/Pruritus
+            * `nausea` - Nausea
+            * `rash` - Rash
+            * `swelling` - Swelling
+            * `vomiting` - Vomiting
+            * `other` - Other
+        reaction_type_display:
+          type: string
+          readOnly: true
+        reaction_description:
+          type: string
+          description: Detailed description of the reaction
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/Severity72dEnum'
+          description: |-
+            Severity of the allergic reaction
+
+            * `mild` - Mild
+            * `moderate` - Moderate
+            * `severe` - Severe
+            * `life_threatening` - Life-Threatening
+        severity_display:
+          type: string
+          readOnly: true
+        criticality:
+          allOf:
+          - $ref: '#/components/schemas/CriticalityEnum'
+          description: |-
+            Estimate of potential clinical harm (FHIR criticality)
+
+            * `low` - Low Risk
+            * `high` - High Risk
+            * `unable_to_assess` - Unable to Assess
+        criticality_display:
+          type: string
+          readOnly: true
+        onset_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date when the allergy was first identified
+        last_occurrence:
+          type: string
+          format: date
+          nullable: true
+          description: Date of most recent known occurrence
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status61bEnum'
+          default: active
+          description: |-
+            Current status of the allergy
+
+            * `active` - Active
+            * `inactive` - Inactive
+            * `resolved` - Resolved
+        status_display:
+          type: string
+          readOnly: true
+        verification_status:
+          allOf:
+          - $ref: '#/components/schemas/AllergyVerificationStatusEnum'
+          description: |-
+            Whether the allergy is confirmed or suspected
+
+            * `unconfirmed` - Unconfirmed
+            * `presumed` - Presumed
+            * `confirmed` - Confirmed
+            * `refuted` - Refuted
+            * `entered_in_error` - Entered in Error
+        verification_status_display:
+          type: string
+          readOnly: true
+        is_high_risk:
+          type: boolean
+          description: Check if this allergy is high risk (severe or life-threatening).
+          readOnly: true
+        is_active:
+          type: boolean
+          description: Check if this allergy is currently active.
+          readOnly: true
+        notes:
+          type: string
+          description: Additional clinical notes about the allergy
+        source_encounter:
+          type: integer
+          nullable: true
+          description: Encounter during which this allergy was recorded
+        recorded_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Staff member who recorded this allergy
+        recorded_by_username:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - criticality_display
+      - drug_name
+      - id
+      - is_active
+      - is_high_risk
+      - patient_mrn
+      - patient_name
+      - reaction_type_display
+      - recorded_by
+      - recorded_by_username
+      - severity_display
+      - status_display
+      - substance
+      - substance_type_display
+      - updated_at
+      - verification_status_display
+    AllergyList:
+      type: object
+      description: Lightweight serializer for Allergy listing (embedded in patient
+        views).
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        substance:
+          type: string
+          description: Name of the allergen (medication, food, or environmental trigger)
+          maxLength: 500
+        substance_type:
+          allOf:
+          - $ref: '#/components/schemas/SubstanceTypeEnum'
+          description: |-
+            Category of allergen
+
+            * `medication` - Medication
+            * `food` - Food
+            * `environmental` - Environmental
+            * `biological` - Biological
+            * `other` - Other
+        reaction_type:
+          allOf:
+          - $ref: '#/components/schemas/ReactionTypeEnum'
+          description: |-
+            Type of allergic reaction
+
+            * `anaphylaxis` - Anaphylaxis
+            * `angioedema` - Angioedema
+            * `bronchospasm` - Bronchospasm
+            * `cardiac_arrhythmia` - Cardiac Arrhythmia
+            * `diarrhea` - Diarrhea
+            * `dyspnea` - Dyspnea
+            * `hives` - Hives/Urticaria
+            * `hypotension` - Hypotension
+            * `itching` - Itching/Pruritus
+            * `nausea` - Nausea
+            * `rash` - Rash
+            * `swelling` - Swelling
+            * `vomiting` - Vomiting
+            * `other` - Other
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/Severity72dEnum'
+          description: |-
+            Severity of the allergic reaction
+
+            * `mild` - Mild
+            * `moderate` - Moderate
+            * `severe` - Severe
+            * `life_threatening` - Life-Threatening
+        severity_display:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status61bEnum'
+          description: |-
+            Current status of the allergy
+
+            * `active` - Active
+            * `inactive` - Inactive
+            * `resolved` - Resolved
+        status_display:
+          type: string
+          readOnly: true
+        is_high_risk:
+          type: boolean
+          description: Check if this allergy is high risk (severe or life-threatening).
+          readOnly: true
+        onset_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date when the allergy was first identified
+      required:
+      - id
+      - is_high_risk
+      - severity_display
+      - status_display
+      - substance
+    AllergyRequest:
+      type: object
+      description: Serializer for the Allergy model.
+      properties:
+        patient:
+          type: integer
+          nullable: true
+        substance:
+          type: string
+          minLength: 1
+          description: Name of the allergen (medication, food, or environmental trigger)
+          maxLength: 500
+        substance_code:
+          type: string
+          description: Standard code for the substance (RxNorm, SNOMED CT, or local
+            drug code)
+          maxLength: 50
+        substance_code_system:
+          type: string
+          description: Code system URI (e.g., http://www.nlm.nih.gov/research/umls/rxnorm)
+          maxLength: 100
+        substance_type:
+          allOf:
+          - $ref: '#/components/schemas/SubstanceTypeEnum'
+          description: |-
+            Category of allergen
+
+            * `medication` - Medication
+            * `food` - Food
+            * `environmental` - Environmental
+            * `biological` - Biological
+            * `other` - Other
+        drug:
+          type: integer
+          nullable: true
+          description: Linked drug record for medication allergies (enables interaction
+            checking)
+        reaction_type:
+          allOf:
+          - $ref: '#/components/schemas/ReactionTypeEnum'
+          description: |-
+            Type of allergic reaction
+
+            * `anaphylaxis` - Anaphylaxis
+            * `angioedema` - Angioedema
+            * `bronchospasm` - Bronchospasm
+            * `cardiac_arrhythmia` - Cardiac Arrhythmia
+            * `diarrhea` - Diarrhea
+            * `dyspnea` - Dyspnea
+            * `hives` - Hives/Urticaria
+            * `hypotension` - Hypotension
+            * `itching` - Itching/Pruritus
+            * `nausea` - Nausea
+            * `rash` - Rash
+            * `swelling` - Swelling
+            * `vomiting` - Vomiting
+            * `other` - Other
+        reaction_description:
+          type: string
+          description: Detailed description of the reaction
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/Severity72dEnum'
+          description: |-
+            Severity of the allergic reaction
+
+            * `mild` - Mild
+            * `moderate` - Moderate
+            * `severe` - Severe
+            * `life_threatening` - Life-Threatening
+        criticality:
+          allOf:
+          - $ref: '#/components/schemas/CriticalityEnum'
+          description: |-
+            Estimate of potential clinical harm (FHIR criticality)
+
+            * `low` - Low Risk
+            * `high` - High Risk
+            * `unable_to_assess` - Unable to Assess
+        onset_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date when the allergy was first identified
+        last_occurrence:
+          type: string
+          format: date
+          nullable: true
+          description: Date of most recent known occurrence
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status61bEnum'
+          default: active
+          description: |-
+            Current status of the allergy
+
+            * `active` - Active
+            * `inactive` - Inactive
+            * `resolved` - Resolved
+        verification_status:
+          allOf:
+          - $ref: '#/components/schemas/AllergyVerificationStatusEnum'
+          description: |-
+            Whether the allergy is confirmed or suspected
+
+            * `unconfirmed` - Unconfirmed
+            * `presumed` - Presumed
+            * `confirmed` - Confirmed
+            * `refuted` - Refuted
+            * `entered_in_error` - Entered in Error
+        notes:
+          type: string
+          description: Additional clinical notes about the allergy
+        source_encounter:
+          type: integer
+          nullable: true
+          description: Encounter during which this allergy was recorded
+      required:
+      - substance
+    AllergyVerificationStatusEnum:
+      enum:
+      - unconfirmed
+      - presumed
+      - confirmed
+      - refuted
+      - entered_in_error
+      type: string
+      description: |-
+        * `unconfirmed` - Unconfirmed
+        * `presumed` - Presumed
+        * `confirmed` - Confirmed
+        * `refuted` - Refuted
+        * `entered_in_error` - Entered in Error
     AmendReport:
       type: object
       description: Serializer for amending a finalized report.
@@ -28148,6 +31179,16 @@ components:
           type: string
       required:
       - case_number
+    Category698Enum:
+      enum:
+      - IMMEDIATE
+      - WEEKLY
+      - MONTHLY
+      type: string
+      description: |-
+        * `IMMEDIATE` - Immediate (within 24 hours)
+        * `WEEKLY` - Weekly (IDSR)
+        * `MONTHLY` - Monthly
     CertaintyEnum:
       enum:
       - confirmed
@@ -30990,6 +34031,16 @@ components:
       - end
       - start
       - total_critical
+    CriticalityEnum:
+      enum:
+      - low
+      - high
+      - unable_to_assess
+      type: string
+      description: |-
+        * `low` - Low Risk
+        * `high` - High Risk
+        * `unable_to_assess` - Unable to Assess
     DICOMSeriesList:
       type: object
       description: Compact series serializer without instances (for listing).
@@ -32592,6 +35643,350 @@ components:
       - membership_type
       - result
       - sha_number
+    EmergencyAccess:
+      type: object
+      description: Full serializer for emergency access records.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+          description: User who invoked emergency access
+        user_username:
+          type: string
+          readOnly: true
+        user_full_name:
+          type: string
+          description: Get user's full name.
+          readOnly: true
+        patient:
+          type: integer
+          nullable: true
+          description: Patient record being accessed (null for system-wide access)
+        patient_mrn:
+          type: string
+          readOnly: true
+          nullable: true
+        patient_name:
+          type: string
+          nullable: true
+          description: Get patient's full name.
+          readOnly: true
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/ReasonCdbEnum'
+          description: |-
+            Predefined reason for emergency access
+
+            * `LIFE_THREATENING` - Life-threatening emergency
+            * `UNCONSCIOUS_PATIENT` - Patient unconscious/unable to consent
+            * `MASS_CASUALTY` - Mass casualty incident
+            * `CRITICAL_LAB_RESULT` - Critical lab result requiring immediate action
+            * `MEDICATION_EMERGENCY` - Urgent medication information needed
+            * `DISASTER_RESPONSE` - Disaster/emergency response
+            * `OTHER` - Other (requires justification)
+        reason_display:
+          type: string
+          readOnly: true
+        reason_details:
+          type: string
+          description: Detailed justification for emergency access (required)
+        requested_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When emergency access was requested
+        expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When emergency access expires
+        duration_minutes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Duration of emergency access in minutes (max 1440 = 24 hours)
+        status:
+          allOf:
+          - $ref: '#/components/schemas/EmergencyAccessStatusEnum'
+          readOnly: true
+          description: |-
+            Current status of the emergency access
+
+            * `ACTIVE` - Active
+            * `EXPIRED` - Expired
+            * `REVOKED` - Revoked
+            * `REVIEWED` - Reviewed and Closed
+        status_display:
+          type: string
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+        is_expired:
+          type: boolean
+          readOnly: true
+        remaining_minutes:
+          type: integer
+          readOnly: true
+        approver:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Administrator who reviewed/approved the emergency access
+        approver_username:
+          type: string
+          readOnly: true
+          nullable: true
+        approved_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When the emergency access was reviewed
+        approval_notes:
+          type: string
+          description: Notes from the approver during review
+        revoked_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who revoked the emergency access
+        revoked_by_username:
+          type: string
+          readOnly: true
+          nullable: true
+        revoked_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When the emergency access was revoked
+        revocation_reason:
+          type: string
+          description: Reason for revoking the emergency access
+        escalation_sent:
+          type: boolean
+          readOnly: true
+          description: Whether escalation notification was sent
+        escalation_sent_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When escalation notification was sent
+        ip_address:
+          type: string
+          readOnly: true
+          nullable: true
+          description: IP address of the request
+      required:
+      - approved_at
+      - approver
+      - approver_username
+      - escalation_sent
+      - escalation_sent_at
+      - expires_at
+      - id
+      - ip_address
+      - is_active
+      - is_expired
+      - patient_mrn
+      - patient_name
+      - reason
+      - reason_details
+      - reason_display
+      - remaining_minutes
+      - requested_at
+      - revoked_at
+      - revoked_by
+      - revoked_by_username
+      - status
+      - status_display
+      - user
+      - user_full_name
+      - user_username
+    EmergencyAccessCreate:
+      type: object
+      description: Serializer for creating emergency access requests.
+      properties:
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/ReasonCdbEnum'
+          description: |-
+            Predefined reason for emergency access
+
+            * `LIFE_THREATENING` - Life-threatening emergency
+            * `UNCONSCIOUS_PATIENT` - Patient unconscious/unable to consent
+            * `MASS_CASUALTY` - Mass casualty incident
+            * `CRITICAL_LAB_RESULT` - Critical lab result requiring immediate action
+            * `MEDICATION_EMERGENCY` - Urgent medication information needed
+            * `DISASTER_RESPONSE` - Disaster/emergency response
+            * `OTHER` - Other (requires justification)
+        reason_details:
+          type: string
+          description: Detailed justification for emergency access (required)
+        duration_minutes:
+          type: integer
+          maximum: 1440
+          minimum: 15
+          default: 240
+          description: Duration in minutes (15-1440)
+      required:
+      - reason
+      - reason_details
+    EmergencyAccessCreateRequest:
+      type: object
+      description: Serializer for creating emergency access requests.
+      properties:
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/ReasonCdbEnum'
+          description: |-
+            Predefined reason for emergency access
+
+            * `LIFE_THREATENING` - Life-threatening emergency
+            * `UNCONSCIOUS_PATIENT` - Patient unconscious/unable to consent
+            * `MASS_CASUALTY` - Mass casualty incident
+            * `CRITICAL_LAB_RESULT` - Critical lab result requiring immediate action
+            * `MEDICATION_EMERGENCY` - Urgent medication information needed
+            * `DISASTER_RESPONSE` - Disaster/emergency response
+            * `OTHER` - Other (requires justification)
+        reason_details:
+          type: string
+          minLength: 1
+          description: Detailed justification for emergency access (required)
+        duration_minutes:
+          type: integer
+          maximum: 1440
+          minimum: 15
+          default: 240
+          description: Duration in minutes (15-1440)
+        patient_mrn:
+          type: string
+          writeOnly: true
+          description: Patient MRN (optional, for patient-specific access)
+      required:
+      - reason
+      - reason_details
+    EmergencyAccessDashboardStats:
+      type: object
+      description: Serializer for dashboard statistics.
+      properties:
+        total_active:
+          type: integer
+        total_pending_review:
+          type: integer
+        total_today:
+          type: integer
+        total_this_week:
+          type: integer
+        by_reason:
+          type: object
+          additionalProperties:
+            type: integer
+        by_status:
+          type: object
+          additionalProperties:
+            type: integer
+      required:
+      - by_reason
+      - by_status
+      - total_active
+      - total_pending_review
+      - total_this_week
+      - total_today
+    EmergencyAccessRequest:
+      type: object
+      description: Full serializer for emergency access records.
+      properties:
+        patient:
+          type: integer
+          nullable: true
+          description: Patient record being accessed (null for system-wide access)
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/ReasonCdbEnum'
+          description: |-
+            Predefined reason for emergency access
+
+            * `LIFE_THREATENING` - Life-threatening emergency
+            * `UNCONSCIOUS_PATIENT` - Patient unconscious/unable to consent
+            * `MASS_CASUALTY` - Mass casualty incident
+            * `CRITICAL_LAB_RESULT` - Critical lab result requiring immediate action
+            * `MEDICATION_EMERGENCY` - Urgent medication information needed
+            * `DISASTER_RESPONSE` - Disaster/emergency response
+            * `OTHER` - Other (requires justification)
+        reason_details:
+          type: string
+          minLength: 1
+          description: Detailed justification for emergency access (required)
+        duration_minutes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Duration of emergency access in minutes (max 1440 = 24 hours)
+        approval_notes:
+          type: string
+          description: Notes from the approver during review
+        revocation_reason:
+          type: string
+          description: Reason for revoking the emergency access
+      required:
+      - reason
+      - reason_details
+    EmergencyAccessReview:
+      type: object
+      description: Serializer for reviewing/approving emergency access.
+      properties:
+        action:
+          allOf:
+          - $ref: '#/components/schemas/ActionEnum'
+          description: |-
+            Action to take: approve (mark as reviewed) or revoke
+
+            * `approve` - approve
+            * `revoke` - revoke
+        notes:
+          type: string
+          description: Review notes or revocation reason
+          maxLength: 2000
+      required:
+      - action
+    EmergencyAccessReviewRequest:
+      type: object
+      description: Serializer for reviewing/approving emergency access.
+      properties:
+        action:
+          allOf:
+          - $ref: '#/components/schemas/ActionEnum'
+          description: |-
+            Action to take: approve (mark as reviewed) or revoke
+
+            * `approve` - approve
+            * `revoke` - revoke
+        notes:
+          type: string
+          description: Review notes or revocation reason
+          maxLength: 2000
+      required:
+      - action
+    EmergencyAccessStatusEnum:
+      enum:
+      - ACTIVE
+      - EXPIRED
+      - REVOKED
+      - REVIEWED
+      type: string
+      description: |-
+        * `ACTIVE` - Active
+        * `EXPIRED` - Expired
+        * `REVOKED` - Revoked
+        * `REVIEWED` - Reviewed and Closed
     EmergencyContact:
       type: object
       description: Serializer for the EmergencyContact model.
@@ -33916,6 +37311,534 @@ components:
       - code
       - description
       - id
+    IDSRDiseaseSummary:
+      type: object
+      description: Serializer for IDSRDiseaseSummary within a weekly report.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        disease:
+          type: integer
+          description: Notifiable disease
+        disease_name:
+          type: string
+          readOnly: true
+        disease_category:
+          type: string
+          readOnly: true
+        cases_under_5:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Cases in children under 5 years
+        cases_5_and_above:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Cases in patients 5 years and above
+        total_cases:
+          type: integer
+          readOnly: true
+          description: Total cases (auto-calculated)
+        deaths_under_5:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Deaths in children under 5 years
+        deaths_5_and_above:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Deaths in patients 5 years and above
+        total_deaths:
+          type: integer
+          readOnly: true
+          description: Total deaths (auto-calculated)
+        lab_confirmed:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Number of laboratory confirmed cases
+        case_fatality_rate:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          readOnly: true
+          nullable: true
+          description: CFR percentage (deaths/cases * 100)
+        is_outbreak:
+          type: boolean
+          description: Whether this disease is in outbreak status
+        notes:
+          type: string
+          description: Disease-specific notes or investigation status
+      required:
+      - case_fatality_rate
+      - disease
+      - disease_category
+      - disease_name
+      - id
+      - total_cases
+      - total_deaths
+    IDSRDiseaseSummaryRequest:
+      type: object
+      description: Serializer for IDSRDiseaseSummary within a weekly report.
+      properties:
+        disease:
+          type: integer
+          description: Notifiable disease
+        cases_under_5:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Cases in children under 5 years
+        cases_5_and_above:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Cases in patients 5 years and above
+        deaths_under_5:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Deaths in children under 5 years
+        deaths_5_and_above:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Deaths in patients 5 years and above
+        lab_confirmed:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Number of laboratory confirmed cases
+        is_outbreak:
+          type: boolean
+          description: Whether this disease is in outbreak status
+        notes:
+          type: string
+          description: Disease-specific notes or investigation status
+      required:
+      - disease
+    IDSRReportApprove:
+      type: object
+      description: Serializer for approving an IDSR report.
+      properties:
+        notes:
+          type: string
+    IDSRReportApproveRequest:
+      type: object
+      description: Serializer for approving an IDSR report.
+      properties:
+        notes:
+          type: string
+    IDSRReportGenerate:
+      type: object
+      description: Serializer for triggering IDSR report generation.
+      properties:
+        epi_year:
+          type: integer
+          maximum: 2100
+          minimum: 2020
+        epi_week:
+          type: integer
+          maximum: 53
+          minimum: 1
+    IDSRReportGenerateRequest:
+      type: object
+      description: Serializer for triggering IDSR report generation.
+      properties:
+        epi_year:
+          type: integer
+          maximum: 2100
+          minimum: 2020
+        epi_week:
+          type: integer
+          maximum: 53
+          minimum: 1
+    IDSRWeeklyReport:
+      type: object
+      description: Full serializer for IDSRWeeklyReport.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        epi_year:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Epidemiological year (ISO 8601)
+        epi_week:
+          type: integer
+          maximum: 53
+          minimum: 1
+          description: Epidemiological week number (1-53)
+        week_label:
+          type: string
+          readOnly: true
+        week_start_date:
+          type: string
+          format: date
+          description: Monday of the epidemiological week
+        week_end_date:
+          type: string
+          format: date
+          description: Sunday of the epidemiological week
+        facility_code:
+          type: string
+          default: ''
+          description: MFL code or facility identifier
+          maxLength: 50
+        facility_name:
+          type: string
+          description: Facility name at time of report generation
+          maxLength: 200
+        county:
+          type: integer
+          nullable: true
+          description: County health office for submission
+        county_name:
+          type: string
+          readOnly: true
+          nullable: true
+        sub_county:
+          type: integer
+          nullable: true
+          description: Sub-county for detailed reporting
+        sub_county_name:
+          type: string
+          readOnly: true
+          nullable: true
+        total_cases:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Total notifiable cases reported this week
+        total_deaths:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Total deaths from notifiable diseases this week
+        immediate_cases:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Cases of immediate reportable diseases
+        lab_confirmed_cases:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Laboratory confirmed cases
+        outbreak_declared:
+          type: boolean
+          description: Whether outbreak was declared this week
+        outbreak_diseases:
+          type: string
+          description: Comma-separated list of outbreak diseases
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status9e8Enum'
+          description: |-
+            Report workflow status
+
+            * `DRAFT` - Draft
+            * `PENDING_REVIEW` - Pending Review
+            * `APPROVED` - Approved
+            * `SUBMITTED` - Submitted to DHIS2
+            * `FAILED` - Submission Failed
+        is_submitted:
+          type: boolean
+          readOnly: true
+        can_edit:
+          type: boolean
+          readOnly: true
+        generated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When report was auto-generated
+        generated_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User or system that generated the report
+        generated_by_name:
+          type: string
+          readOnly: true
+          nullable: true
+        reviewed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When report was reviewed
+        reviewed_by:
+          type: integer
+          nullable: true
+          description: User who reviewed the report
+        reviewed_by_name:
+          type: string
+          readOnly: true
+          nullable: true
+        approved_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When report was approved
+        approved_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who approved the report
+        approved_by_name:
+          type: string
+          readOnly: true
+          nullable: true
+        dhis2_submitted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When submitted to DHIS2
+        dhis2_import_summary:
+          readOnly: true
+          nullable: true
+          description: DHIS2 import summary (imported, updated, ignored counts)
+        notes:
+          type: string
+          description: Additional notes or comments
+        disease_summaries:
+          type: array
+          items:
+            $ref: '#/components/schemas/IDSRDiseaseSummary'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - approved_at
+      - approved_by
+      - approved_by_name
+      - can_edit
+      - county_name
+      - created_at
+      - dhis2_import_summary
+      - dhis2_submitted_at
+      - disease_summaries
+      - epi_week
+      - epi_year
+      - generated_at
+      - generated_by
+      - generated_by_name
+      - id
+      - is_submitted
+      - reviewed_by_name
+      - sub_county_name
+      - updated_at
+      - week_end_date
+      - week_label
+      - week_start_date
+    IDSRWeeklyReportList:
+      type: object
+      description: Lightweight serializer for IDSR report list views.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        epi_year:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Epidemiological year (ISO 8601)
+        epi_week:
+          type: integer
+          maximum: 53
+          minimum: 1
+          description: Epidemiological week number (1-53)
+        week_label:
+          type: string
+          readOnly: true
+        week_start_date:
+          type: string
+          format: date
+          description: Monday of the epidemiological week
+        week_end_date:
+          type: string
+          format: date
+          description: Sunday of the epidemiological week
+        facility_name:
+          type: string
+          description: Facility name at time of report generation
+          maxLength: 200
+        county_name:
+          type: string
+          readOnly: true
+          nullable: true
+        total_cases:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Total notifiable cases reported this week
+        total_deaths:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Total deaths from notifiable diseases this week
+        outbreak_declared:
+          type: boolean
+          description: Whether outbreak was declared this week
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status9e8Enum'
+          description: |-
+            Report workflow status
+
+            * `DRAFT` - Draft
+            * `PENDING_REVIEW` - Pending Review
+            * `APPROVED` - Approved
+            * `SUBMITTED` - Submitted to DHIS2
+            * `FAILED` - Submission Failed
+        disease_count:
+          type: integer
+          description: Return count of diseases in report.
+          readOnly: true
+        generated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When report was auto-generated
+      required:
+      - county_name
+      - disease_count
+      - epi_week
+      - epi_year
+      - generated_at
+      - id
+      - week_end_date
+      - week_label
+      - week_start_date
+    IDSRWeeklyReportRequest:
+      type: object
+      description: Full serializer for IDSRWeeklyReport.
+      properties:
+        epi_year:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Epidemiological year (ISO 8601)
+        epi_week:
+          type: integer
+          maximum: 53
+          minimum: 1
+          description: Epidemiological week number (1-53)
+        week_start_date:
+          type: string
+          format: date
+          description: Monday of the epidemiological week
+        week_end_date:
+          type: string
+          format: date
+          description: Sunday of the epidemiological week
+        facility_code:
+          type: string
+          default: ''
+          description: MFL code or facility identifier
+          maxLength: 50
+        facility_name:
+          type: string
+          description: Facility name at time of report generation
+          maxLength: 200
+        county:
+          type: integer
+          nullable: true
+          description: County health office for submission
+        sub_county:
+          type: integer
+          nullable: true
+          description: Sub-county for detailed reporting
+        total_cases:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Total notifiable cases reported this week
+        total_deaths:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Total deaths from notifiable diseases this week
+        immediate_cases:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Cases of immediate reportable diseases
+        lab_confirmed_cases:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Laboratory confirmed cases
+        outbreak_declared:
+          type: boolean
+          description: Whether outbreak was declared this week
+        outbreak_diseases:
+          type: string
+          description: Comma-separated list of outbreak diseases
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status9e8Enum'
+          description: |-
+            Report workflow status
+
+            * `DRAFT` - Draft
+            * `PENDING_REVIEW` - Pending Review
+            * `APPROVED` - Approved
+            * `SUBMITTED` - Submitted to DHIS2
+            * `FAILED` - Submission Failed
+        reviewed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When report was reviewed
+        reviewed_by:
+          type: integer
+          nullable: true
+          description: User who reviewed the report
+        notes:
+          type: string
+          description: Additional notes or comments
+      required:
+      - epi_week
+      - epi_year
+      - week_end_date
+      - week_start_date
     IdentificationTypeEnum:
       enum:
       - national_id
@@ -33925,6 +37848,7 @@ components:
       - kra_pin
       - temporary_id
       - passport
+      - birth_certificate
       type: string
       description: |-
         * `national_id` - National ID
@@ -33934,6 +37858,7 @@ components:
         * `kra_pin` - KRA PIN
         * `temporary_id` - Temporary ID
         * `passport` - Passport Number
+        * `birth_certificate` - Birth Certificate
     ImagingOrder:
       type: object
       description: Order with status and items.
@@ -36716,6 +40641,676 @@ components:
       - result_code
       - result_description
       - success
+    NotifiableCase:
+      type: object
+      description: Full serializer for NotifiableCase.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        disease:
+          type: integer
+          description: Notifiable disease type
+        disease_name:
+          type: string
+          readOnly: true
+        disease_category:
+          type: string
+          readOnly: true
+        patient:
+          type: integer
+          description: Patient with notifiable condition
+        patient_name:
+          type: string
+          description: Return patient full name.
+          readOnly: true
+        patient_mrn:
+          type: string
+          readOnly: true
+        encounter:
+          type: integer
+          description: Encounter where diagnosis was made
+        diagnosis:
+          type: integer
+          nullable: true
+          description: Diagnosis record that triggered case creation
+        onset_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of symptom onset
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/Severity748Enum'
+          description: |-
+            Clinical severity
+
+            * `MILD` - Mild
+            * `MODERATE` - Moderate
+            * `SEVERE` - Severe
+            * `CRITICAL` - Critical
+        outcome:
+          allOf:
+          - $ref: '#/components/schemas/OutcomeEnum'
+          description: |-
+            Patient outcome
+
+            * `ACTIVE` - Active/Under Treatment
+            * `RECOVERED` - Recovered
+            * `REFERRED` - Referred to Higher Facility
+            * `DECEASED` - Deceased
+            * `LOST_TO_FOLLOWUP` - Lost to Follow-up
+        laboratory_confirmed:
+          type: boolean
+          description: Whether diagnosis is laboratory confirmed
+        lab_result_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of confirmatory lab result
+        notification_status:
+          allOf:
+          - $ref: '#/components/schemas/NotificationStatusEnum'
+          description: |-
+            Notification workflow status
+
+            * `PENDING` - Pending Notification
+            * `NOTIFIED` - Notified to County
+            * `ACKNOWLEDGED` - Acknowledged by County
+            * `INVESTIGATED` - Under Investigation
+            * `CLOSED` - Case Closed
+        detected_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When case was detected/created
+        notified_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When county health office was notified
+        notification_deadline:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: Deadline for notification based on disease category
+        is_overdue:
+          type: boolean
+          readOnly: true
+        hours_until_deadline:
+          type: integer
+          readOnly: true
+        is_immediate:
+          type: boolean
+          readOnly: true
+        county:
+          type: integer
+          nullable: true
+          description: County health office to notify
+        county_name:
+          type: string
+          readOnly: true
+        sub_county:
+          type: integer
+          nullable: true
+          description: Sub-county for granular reporting
+        sub_county_name:
+          type: string
+          readOnly: true
+        contact_tracing_initiated:
+          type: boolean
+          description: Whether contact tracing has started
+        contacts_identified:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Number of contacts identified
+        investigation_notes:
+          type: string
+          description: Notes from case investigation
+        reported_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Staff who reported/created the case
+        reported_by_name:
+          type: string
+          readOnly: true
+        notified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Staff who submitted notification
+        notified_by_name:
+          type: string
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - county_name
+      - created_at
+      - detected_at
+      - disease
+      - disease_category
+      - disease_name
+      - encounter
+      - hours_until_deadline
+      - id
+      - is_immediate
+      - is_overdue
+      - notification_deadline
+      - notified_by
+      - notified_by_name
+      - patient
+      - patient_mrn
+      - patient_name
+      - reported_by
+      - reported_by_name
+      - sub_county_name
+      - updated_at
+    NotifiableCaseCreate:
+      type: object
+      description: Serializer for creating new cases.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        disease:
+          type: integer
+          description: Notifiable disease type
+        patient:
+          type: integer
+          description: Patient with notifiable condition
+        encounter:
+          type: integer
+          description: Encounter where diagnosis was made
+        diagnosis:
+          type: integer
+          nullable: true
+          description: Diagnosis record that triggered case creation
+        onset_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of symptom onset
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/Severity748Enum'
+          description: |-
+            Clinical severity
+
+            * `MILD` - Mild
+            * `MODERATE` - Moderate
+            * `SEVERE` - Severe
+            * `CRITICAL` - Critical
+        outcome:
+          allOf:
+          - $ref: '#/components/schemas/OutcomeEnum'
+          description: |-
+            Patient outcome
+
+            * `ACTIVE` - Active/Under Treatment
+            * `RECOVERED` - Recovered
+            * `REFERRED` - Referred to Higher Facility
+            * `DECEASED` - Deceased
+            * `LOST_TO_FOLLOWUP` - Lost to Follow-up
+        laboratory_confirmed:
+          type: boolean
+          description: Whether diagnosis is laboratory confirmed
+        lab_result_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of confirmatory lab result
+        contact_tracing_initiated:
+          type: boolean
+          description: Whether contact tracing has started
+        contacts_identified:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Number of contacts identified
+        investigation_notes:
+          type: string
+          description: Notes from case investigation
+        notification_status:
+          allOf:
+          - $ref: '#/components/schemas/NotificationStatusEnum'
+          readOnly: true
+          description: |-
+            Notification workflow status
+
+            * `PENDING` - Pending Notification
+            * `NOTIFIED` - Notified to County
+            * `ACKNOWLEDGED` - Acknowledged by County
+            * `INVESTIGATED` - Under Investigation
+            * `CLOSED` - Case Closed
+        notification_deadline:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: Deadline for notification based on disease category
+        detected_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When case was detected/created
+      required:
+      - detected_at
+      - disease
+      - encounter
+      - id
+      - notification_deadline
+      - notification_status
+      - patient
+    NotifiableCaseCreateRequest:
+      type: object
+      description: Serializer for creating new cases.
+      properties:
+        disease:
+          type: integer
+          description: Notifiable disease type
+        patient:
+          type: integer
+          description: Patient with notifiable condition
+        encounter:
+          type: integer
+          description: Encounter where diagnosis was made
+        diagnosis:
+          type: integer
+          nullable: true
+          description: Diagnosis record that triggered case creation
+        onset_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of symptom onset
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/Severity748Enum'
+          description: |-
+            Clinical severity
+
+            * `MILD` - Mild
+            * `MODERATE` - Moderate
+            * `SEVERE` - Severe
+            * `CRITICAL` - Critical
+        outcome:
+          allOf:
+          - $ref: '#/components/schemas/OutcomeEnum'
+          description: |-
+            Patient outcome
+
+            * `ACTIVE` - Active/Under Treatment
+            * `RECOVERED` - Recovered
+            * `REFERRED` - Referred to Higher Facility
+            * `DECEASED` - Deceased
+            * `LOST_TO_FOLLOWUP` - Lost to Follow-up
+        laboratory_confirmed:
+          type: boolean
+          description: Whether diagnosis is laboratory confirmed
+        lab_result_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of confirmatory lab result
+        contact_tracing_initiated:
+          type: boolean
+          description: Whether contact tracing has started
+        contacts_identified:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Number of contacts identified
+        investigation_notes:
+          type: string
+          description: Notes from case investigation
+      required:
+      - disease
+      - encounter
+      - patient
+    NotifiableCaseList:
+      type: object
+      description: Lightweight serializer for case list views.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        disease:
+          type: integer
+          description: Notifiable disease type
+        disease_name:
+          type: string
+          readOnly: true
+        disease_category:
+          type: string
+          readOnly: true
+        patient:
+          type: integer
+          description: Patient with notifiable condition
+        patient_name:
+          type: string
+          description: Return patient full name.
+          readOnly: true
+        patient_mrn:
+          type: string
+          readOnly: true
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/Severity748Enum'
+          description: |-
+            Clinical severity
+
+            * `MILD` - Mild
+            * `MODERATE` - Moderate
+            * `SEVERE` - Severe
+            * `CRITICAL` - Critical
+        outcome:
+          allOf:
+          - $ref: '#/components/schemas/OutcomeEnum'
+          description: |-
+            Patient outcome
+
+            * `ACTIVE` - Active/Under Treatment
+            * `RECOVERED` - Recovered
+            * `REFERRED` - Referred to Higher Facility
+            * `DECEASED` - Deceased
+            * `LOST_TO_FOLLOWUP` - Lost to Follow-up
+        notification_status:
+          allOf:
+          - $ref: '#/components/schemas/NotificationStatusEnum'
+          description: |-
+            Notification workflow status
+
+            * `PENDING` - Pending Notification
+            * `NOTIFIED` - Notified to County
+            * `ACKNOWLEDGED` - Acknowledged by County
+            * `INVESTIGATED` - Under Investigation
+            * `CLOSED` - Case Closed
+        detected_at:
+          type: string
+          format: date-time
+          description: When case was detected/created
+        notification_deadline:
+          type: string
+          format: date-time
+          nullable: true
+          description: Deadline for notification based on disease category
+        is_overdue:
+          type: boolean
+          readOnly: true
+        is_immediate:
+          type: boolean
+          readOnly: true
+        county_name:
+          type: string
+          readOnly: true
+        laboratory_confirmed:
+          type: boolean
+          description: Whether diagnosis is laboratory confirmed
+      required:
+      - county_name
+      - disease
+      - disease_category
+      - disease_name
+      - id
+      - is_immediate
+      - is_overdue
+      - patient
+      - patient_mrn
+      - patient_name
+    NotifiableCaseRequest:
+      type: object
+      description: Full serializer for NotifiableCase.
+      properties:
+        disease:
+          type: integer
+          description: Notifiable disease type
+        patient:
+          type: integer
+          description: Patient with notifiable condition
+        encounter:
+          type: integer
+          description: Encounter where diagnosis was made
+        diagnosis:
+          type: integer
+          nullable: true
+          description: Diagnosis record that triggered case creation
+        onset_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of symptom onset
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/Severity748Enum'
+          description: |-
+            Clinical severity
+
+            * `MILD` - Mild
+            * `MODERATE` - Moderate
+            * `SEVERE` - Severe
+            * `CRITICAL` - Critical
+        outcome:
+          allOf:
+          - $ref: '#/components/schemas/OutcomeEnum'
+          description: |-
+            Patient outcome
+
+            * `ACTIVE` - Active/Under Treatment
+            * `RECOVERED` - Recovered
+            * `REFERRED` - Referred to Higher Facility
+            * `DECEASED` - Deceased
+            * `LOST_TO_FOLLOWUP` - Lost to Follow-up
+        laboratory_confirmed:
+          type: boolean
+          description: Whether diagnosis is laboratory confirmed
+        lab_result_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of confirmatory lab result
+        notification_status:
+          allOf:
+          - $ref: '#/components/schemas/NotificationStatusEnum'
+          description: |-
+            Notification workflow status
+
+            * `PENDING` - Pending Notification
+            * `NOTIFIED` - Notified to County
+            * `ACKNOWLEDGED` - Acknowledged by County
+            * `INVESTIGATED` - Under Investigation
+            * `CLOSED` - Case Closed
+        notified_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When county health office was notified
+        county:
+          type: integer
+          nullable: true
+          description: County health office to notify
+        sub_county:
+          type: integer
+          nullable: true
+          description: Sub-county for granular reporting
+        contact_tracing_initiated:
+          type: boolean
+          description: Whether contact tracing has started
+        contacts_identified:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Number of contacts identified
+        investigation_notes:
+          type: string
+          description: Notes from case investigation
+      required:
+      - disease
+      - encounter
+      - patient
+    NotifiableDisease:
+      type: object
+      description: Serializer for NotifiableDisease model.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Disease name (e.g., Cholera, Measles)
+          maxLength: 200
+        icd10_codes:
+          type: string
+          description: Comma-separated ICD-10 codes (e.g., 'A00,A00.0,A00.1,A00.9')
+        icd10_code_list:
+          type: array
+          items:
+            type: string
+          description: Return list of ICD-10 codes.
+          readOnly: true
+        category:
+          allOf:
+          - $ref: '#/components/schemas/Category698Enum'
+          description: |-
+            MOH notification category
+
+            * `IMMEDIATE` - Immediate (within 24 hours)
+            * `WEEKLY` - Weekly (IDSR)
+            * `MONTHLY` - Monthly
+        reporting_hours:
+          type: integer
+          maximum: 720
+          minimum: 1
+          description: Maximum hours to report to authorities
+        description:
+          type: string
+          description: Clinical description and case definition
+        case_definition:
+          type: string
+          description: WHO/MOH case definition criteria
+        laboratory_criteria:
+          type: string
+          description: Laboratory confirmation criteria
+        is_ihr_notifiable:
+          type: boolean
+          description: Requires International Health Regulations notification
+        is_active:
+          type: boolean
+          description: Whether disease is currently on MOH reportable list
+        is_immediate:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - icd10_code_list
+      - icd10_codes
+      - id
+      - is_immediate
+      - name
+      - updated_at
+    NotifiableDiseaseList:
+      type: object
+      description: Lightweight serializer for disease list views.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Disease name (e.g., Cholera, Measles)
+          maxLength: 200
+        category:
+          allOf:
+          - $ref: '#/components/schemas/Category698Enum'
+          description: |-
+            MOH notification category
+
+            * `IMMEDIATE` - Immediate (within 24 hours)
+            * `WEEKLY` - Weekly (IDSR)
+            * `MONTHLY` - Monthly
+        reporting_hours:
+          type: integer
+          maximum: 720
+          minimum: 1
+          description: Maximum hours to report to authorities
+        is_immediate:
+          type: boolean
+          description: Return True if this is an immediate reportable disease.
+          readOnly: true
+        is_active:
+          type: boolean
+          description: Whether disease is currently on MOH reportable list
+      required:
+      - id
+      - is_immediate
+      - name
+    NotifiableDiseaseRequest:
+      type: object
+      description: Serializer for NotifiableDisease model.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Disease name (e.g., Cholera, Measles)
+          maxLength: 200
+        icd10_codes:
+          type: string
+          minLength: 1
+          description: Comma-separated ICD-10 codes (e.g., 'A00,A00.0,A00.1,A00.9')
+        category:
+          allOf:
+          - $ref: '#/components/schemas/Category698Enum'
+          description: |-
+            MOH notification category
+
+            * `IMMEDIATE` - Immediate (within 24 hours)
+            * `WEEKLY` - Weekly (IDSR)
+            * `MONTHLY` - Monthly
+        reporting_hours:
+          type: integer
+          maximum: 720
+          minimum: 1
+          description: Maximum hours to report to authorities
+        description:
+          type: string
+          description: Clinical description and case definition
+        case_definition:
+          type: string
+          description: WHO/MOH case definition criteria
+        laboratory_criteria:
+          type: string
+          description: Laboratory confirmation criteria
+        is_ihr_notifiable:
+          type: boolean
+          description: Requires International Health Regulations notification
+        is_active:
+          type: boolean
+          description: Whether disease is currently on MOH reportable list
+      required:
+      - icd10_codes
+      - name
     Notification:
       type: object
       description: Serializer for Notification model.
@@ -36806,6 +41401,20 @@ components:
           format: date-time
           nullable: true
           description: When notification was marked as read
+    NotificationStatusEnum:
+      enum:
+      - PENDING
+      - NOTIFIED
+      - ACKNOWLEDGED
+      - INVESTIGATED
+      - CLOSED
+      type: string
+      description: |-
+        * `PENDING` - Pending Notification
+        * `NOTIFIED` - Notified to County
+        * `ACKNOWLEDGED` - Acknowledged by County
+        * `INVESTIGATED` - Under Investigation
+        * `CLOSED` - Case Closed
     NursingKardex:
       type: object
       description: Serializer for NursingKardex model.
@@ -37003,6 +41612,103 @@ components:
       description: |-
         * `IN_HOUSE` - In-House Processing
         * `EXTERNAL` - External Lab Referral
+    OutbreakThreshold:
+      type: object
+      description: Serializer for OutbreakThreshold model.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        disease:
+          type: integer
+          description: Disease to monitor
+        disease_name:
+          type: string
+          readOnly: true
+        county:
+          type: integer
+          nullable: true
+          description: County for threshold (null = national)
+        county_name:
+          type: string
+          readOnly: true
+          nullable: true
+        case_threshold:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 1
+          format: int64
+          description: Number of cases to trigger outbreak alert
+        period_days:
+          type: integer
+          maximum: 365
+          minimum: 1
+          description: Period in days for case counting
+        is_active:
+          type: boolean
+          description: Whether threshold is active
+        threshold_status:
+          type: object
+          additionalProperties: {}
+          description: Return current threshold status.
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - county_name
+      - created_at
+      - disease
+      - disease_name
+      - id
+      - threshold_status
+      - updated_at
+    OutbreakThresholdRequest:
+      type: object
+      description: Serializer for OutbreakThreshold model.
+      properties:
+        disease:
+          type: integer
+          description: Disease to monitor
+        county:
+          type: integer
+          nullable: true
+          description: County for threshold (null = national)
+        case_threshold:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 1
+          format: int64
+          description: Number of cases to trigger outbreak alert
+        period_days:
+          type: integer
+          maximum: 365
+          minimum: 1
+          description: Period in days for case counting
+        is_active:
+          type: boolean
+          description: Whether threshold is active
+      required:
+      - disease
+    OutcomeEnum:
+      enum:
+      - ACTIVE
+      - RECOVERED
+      - REFERRED
+      - DECEASED
+      - LOST_TO_FOLLOWUP
+      type: string
+      description: |-
+        * `ACTIVE` - Active/Under Treatment
+        * `RECOVERED` - Recovered
+        * `REFERRED` - Referred to Higher Facility
+        * `DECEASED` - Deceased
+        * `LOST_TO_FOLLOWUP` - Lost to Follow-up
     OverrideReasonEnum:
       enum:
       - PATIENT_REQUEST
@@ -37074,6 +41780,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AdmissionRecommendation'
+    PaginatedAllergyListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AllergyList'
     PaginatedAnalyzerRunList:
       type: object
       required:
@@ -37603,6 +42332,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Drug'
+    PaginatedEmergencyAccessList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmergencyAccess'
     PaginatedEmergencyContactList:
       type: object
       required:
@@ -37695,6 +42447,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ICD10Code'
+    PaginatedIDSRWeeklyReportListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/IDSRWeeklyReportList'
     PaginatedImagingOrderList:
       type: object
       required:
@@ -37948,6 +42723,52 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Medication'
+    PaginatedNotifiableCaseListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotifiableCaseList'
+    PaginatedNotifiableDiseaseListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotifiableDiseaseList'
     PaginatedNotificationList:
       type: object
       required:
@@ -37994,6 +42815,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/NursingKardex'
+    PaginatedOutbreakThresholdList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutbreakThreshold'
     PaginatedPatientList:
       type: object
       required:
@@ -38454,6 +43298,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/StockBatch'
+    PaginatedSurveillanceAlertListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SurveillanceAlertList'
     PaginatedTestCatalogList:
       type: object
       required:
@@ -38779,6 +43646,123 @@ components:
         constraint_override_reason:
           type: string
           description: Reason for overriding compatibility constraints
+    PatchedAllergyRequest:
+      type: object
+      description: Serializer for the Allergy model.
+      properties:
+        patient:
+          type: integer
+          nullable: true
+        substance:
+          type: string
+          minLength: 1
+          description: Name of the allergen (medication, food, or environmental trigger)
+          maxLength: 500
+        substance_code:
+          type: string
+          description: Standard code for the substance (RxNorm, SNOMED CT, or local
+            drug code)
+          maxLength: 50
+        substance_code_system:
+          type: string
+          description: Code system URI (e.g., http://www.nlm.nih.gov/research/umls/rxnorm)
+          maxLength: 100
+        substance_type:
+          allOf:
+          - $ref: '#/components/schemas/SubstanceTypeEnum'
+          description: |-
+            Category of allergen
+
+            * `medication` - Medication
+            * `food` - Food
+            * `environmental` - Environmental
+            * `biological` - Biological
+            * `other` - Other
+        drug:
+          type: integer
+          nullable: true
+          description: Linked drug record for medication allergies (enables interaction
+            checking)
+        reaction_type:
+          allOf:
+          - $ref: '#/components/schemas/ReactionTypeEnum'
+          description: |-
+            Type of allergic reaction
+
+            * `anaphylaxis` - Anaphylaxis
+            * `angioedema` - Angioedema
+            * `bronchospasm` - Bronchospasm
+            * `cardiac_arrhythmia` - Cardiac Arrhythmia
+            * `diarrhea` - Diarrhea
+            * `dyspnea` - Dyspnea
+            * `hives` - Hives/Urticaria
+            * `hypotension` - Hypotension
+            * `itching` - Itching/Pruritus
+            * `nausea` - Nausea
+            * `rash` - Rash
+            * `swelling` - Swelling
+            * `vomiting` - Vomiting
+            * `other` - Other
+        reaction_description:
+          type: string
+          description: Detailed description of the reaction
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/Severity72dEnum'
+          description: |-
+            Severity of the allergic reaction
+
+            * `mild` - Mild
+            * `moderate` - Moderate
+            * `severe` - Severe
+            * `life_threatening` - Life-Threatening
+        criticality:
+          allOf:
+          - $ref: '#/components/schemas/CriticalityEnum'
+          description: |-
+            Estimate of potential clinical harm (FHIR criticality)
+
+            * `low` - Low Risk
+            * `high` - High Risk
+            * `unable_to_assess` - Unable to Assess
+        onset_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date when the allergy was first identified
+        last_occurrence:
+          type: string
+          format: date
+          nullable: true
+          description: Date of most recent known occurrence
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status61bEnum'
+          default: active
+          description: |-
+            Current status of the allergy
+
+            * `active` - Active
+            * `inactive` - Inactive
+            * `resolved` - Resolved
+        verification_status:
+          allOf:
+          - $ref: '#/components/schemas/AllergyVerificationStatusEnum'
+          description: |-
+            Whether the allergy is confirmed or suspected
+
+            * `unconfirmed` - Unconfirmed
+            * `presumed` - Presumed
+            * `confirmed` - Confirmed
+            * `refuted` - Refuted
+            * `entered_in_error` - Entered in Error
+        notes:
+          type: string
+          description: Additional clinical notes about the allergy
+        source_encounter:
+          type: integer
+          nullable: true
+          description: Encounter during which this allergy was recorded
     PatchedAnalyzerRunRequest:
       type: object
       description: Serializer for analyzer runs.
@@ -39841,6 +44825,43 @@ components:
           nullable: true
         is_active:
           type: boolean
+    PatchedEmergencyAccessRequest:
+      type: object
+      description: Full serializer for emergency access records.
+      properties:
+        patient:
+          type: integer
+          nullable: true
+          description: Patient record being accessed (null for system-wide access)
+        reason:
+          allOf:
+          - $ref: '#/components/schemas/ReasonCdbEnum'
+          description: |-
+            Predefined reason for emergency access
+
+            * `LIFE_THREATENING` - Life-threatening emergency
+            * `UNCONSCIOUS_PATIENT` - Patient unconscious/unable to consent
+            * `MASS_CASUALTY` - Mass casualty incident
+            * `CRITICAL_LAB_RESULT` - Critical lab result requiring immediate action
+            * `MEDICATION_EMERGENCY` - Urgent medication information needed
+            * `DISASTER_RESPONSE` - Disaster/emergency response
+            * `OTHER` - Other (requires justification)
+        reason_details:
+          type: string
+          minLength: 1
+          description: Detailed justification for emergency access (required)
+        duration_minutes:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Duration of emergency access in minutes (max 1440 = 24 hours)
+        approval_notes:
+          type: string
+          description: Notes from the approver during review
+        revocation_reason:
+          type: string
+          description: Reason for revoking the emergency access
     PatchedEmergencyContactRequest:
       type: object
       description: Serializer for the EmergencyContact model.
@@ -40041,6 +45062,99 @@ components:
             * `LAB_REVIEW` - Lab Results Review
             * `REFERRAL_VISIT` - Referral from Another Facility
             * `OTHER` - Other
+    PatchedIDSRWeeklyReportRequest:
+      type: object
+      description: Full serializer for IDSRWeeklyReport.
+      properties:
+        epi_year:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Epidemiological year (ISO 8601)
+        epi_week:
+          type: integer
+          maximum: 53
+          minimum: 1
+          description: Epidemiological week number (1-53)
+        week_start_date:
+          type: string
+          format: date
+          description: Monday of the epidemiological week
+        week_end_date:
+          type: string
+          format: date
+          description: Sunday of the epidemiological week
+        facility_code:
+          type: string
+          default: ''
+          description: MFL code or facility identifier
+          maxLength: 50
+        facility_name:
+          type: string
+          description: Facility name at time of report generation
+          maxLength: 200
+        county:
+          type: integer
+          nullable: true
+          description: County health office for submission
+        sub_county:
+          type: integer
+          nullable: true
+          description: Sub-county for detailed reporting
+        total_cases:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Total notifiable cases reported this week
+        total_deaths:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Total deaths from notifiable diseases this week
+        immediate_cases:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Cases of immediate reportable diseases
+        lab_confirmed_cases:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Laboratory confirmed cases
+        outbreak_declared:
+          type: boolean
+          description: Whether outbreak was declared this week
+        outbreak_diseases:
+          type: string
+          description: Comma-separated list of outbreak diseases
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status9e8Enum'
+          description: |-
+            Report workflow status
+
+            * `DRAFT` - Draft
+            * `PENDING_REVIEW` - Pending Review
+            * `APPROVED` - Approved
+            * `SUBMITTED` - Submitted to DHIS2
+            * `FAILED` - Submission Failed
+        reviewed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When report was reviewed
+        reviewed_by:
+          type: integer
+          nullable: true
+          description: User who reviewed the report
+        notes:
+          type: string
+          description: Additional notes or comments
     PatchedImagingOrderRequest:
       type: object
       description: Order with status and items.
@@ -40496,6 +45610,135 @@ components:
           format: date
           nullable: true
           description: End date of medication
+    PatchedNotifiableCaseRequest:
+      type: object
+      description: Full serializer for NotifiableCase.
+      properties:
+        disease:
+          type: integer
+          description: Notifiable disease type
+        patient:
+          type: integer
+          description: Patient with notifiable condition
+        encounter:
+          type: integer
+          description: Encounter where diagnosis was made
+        diagnosis:
+          type: integer
+          nullable: true
+          description: Diagnosis record that triggered case creation
+        onset_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of symptom onset
+        severity:
+          allOf:
+          - $ref: '#/components/schemas/Severity748Enum'
+          description: |-
+            Clinical severity
+
+            * `MILD` - Mild
+            * `MODERATE` - Moderate
+            * `SEVERE` - Severe
+            * `CRITICAL` - Critical
+        outcome:
+          allOf:
+          - $ref: '#/components/schemas/OutcomeEnum'
+          description: |-
+            Patient outcome
+
+            * `ACTIVE` - Active/Under Treatment
+            * `RECOVERED` - Recovered
+            * `REFERRED` - Referred to Higher Facility
+            * `DECEASED` - Deceased
+            * `LOST_TO_FOLLOWUP` - Lost to Follow-up
+        laboratory_confirmed:
+          type: boolean
+          description: Whether diagnosis is laboratory confirmed
+        lab_result_date:
+          type: string
+          format: date
+          nullable: true
+          description: Date of confirmatory lab result
+        notification_status:
+          allOf:
+          - $ref: '#/components/schemas/NotificationStatusEnum'
+          description: |-
+            Notification workflow status
+
+            * `PENDING` - Pending Notification
+            * `NOTIFIED` - Notified to County
+            * `ACKNOWLEDGED` - Acknowledged by County
+            * `INVESTIGATED` - Under Investigation
+            * `CLOSED` - Case Closed
+        notified_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When county health office was notified
+        county:
+          type: integer
+          nullable: true
+          description: County health office to notify
+        sub_county:
+          type: integer
+          nullable: true
+          description: Sub-county for granular reporting
+        contact_tracing_initiated:
+          type: boolean
+          description: Whether contact tracing has started
+        contacts_identified:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 0
+          format: int64
+          description: Number of contacts identified
+        investigation_notes:
+          type: string
+          description: Notes from case investigation
+    PatchedNotifiableDiseaseRequest:
+      type: object
+      description: Serializer for NotifiableDisease model.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Disease name (e.g., Cholera, Measles)
+          maxLength: 200
+        icd10_codes:
+          type: string
+          minLength: 1
+          description: Comma-separated ICD-10 codes (e.g., 'A00,A00.0,A00.1,A00.9')
+        category:
+          allOf:
+          - $ref: '#/components/schemas/Category698Enum'
+          description: |-
+            MOH notification category
+
+            * `IMMEDIATE` - Immediate (within 24 hours)
+            * `WEEKLY` - Weekly (IDSR)
+            * `MONTHLY` - Monthly
+        reporting_hours:
+          type: integer
+          maximum: 720
+          minimum: 1
+          description: Maximum hours to report to authorities
+        description:
+          type: string
+          description: Clinical description and case definition
+        case_definition:
+          type: string
+          description: WHO/MOH case definition criteria
+        laboratory_criteria:
+          type: string
+          description: Laboratory confirmation criteria
+        is_ihr_notifiable:
+          type: boolean
+          description: Requires International Health Regulations notification
+        is_active:
+          type: boolean
+          description: Whether disease is currently on MOH reportable list
     PatchedNursingKardexRequest:
       type: object
       description: Serializer for NursingKardex model.
@@ -40552,6 +45795,31 @@ components:
           type: string
           description: Type of isolation (e.g., Contact, Droplet, Airborne)
           maxLength: 100
+    PatchedOutbreakThresholdRequest:
+      type: object
+      description: Serializer for OutbreakThreshold model.
+      properties:
+        disease:
+          type: integer
+          description: Disease to monitor
+        county:
+          type: integer
+          nullable: true
+          description: County for threshold (null = national)
+        case_threshold:
+          type: integer
+          maximum: 9223372036854775807
+          minimum: 1
+          format: int64
+          description: Number of cases to trigger outbreak alert
+        period_days:
+          type: integer
+          maximum: 365
+          minimum: 1
+          description: Period in days for case counting
+        is_active:
+          type: boolean
+          description: Whether threshold is active
     PatchedPatientRequest:
       type: object
       description: Serializer for the Patient model.
@@ -40634,6 +45902,7 @@ components:
             * `kra_pin` - KRA PIN
             * `temporary_id` - Temporary ID
             * `passport` - Passport Number
+            * `birth_certificate` - Birth Certificate
         identification_number:
           type: string
           nullable: true
@@ -41400,7 +46669,7 @@ components:
         drug:
           type: integer
         alert_type:
-          $ref: '#/components/schemas/AlertTypeEnum'
+          $ref: '#/components/schemas/StockAlertAlertTypeEnum'
         severity:
           $ref: '#/components/schemas/StockAlertSeverityEnum'
         message:
@@ -41974,6 +47243,7 @@ components:
             * `kra_pin` - KRA PIN
             * `temporary_id` - Temporary ID
             * `passport` - Passport Number
+            * `birth_certificate` - Birth Certificate
         identification_number:
           type: string
           nullable: true
@@ -42173,6 +47443,7 @@ components:
             * `kra_pin` - KRA PIN
             * `temporary_id` - Temporary ID
             * `passport` - Passport Number
+            * `birth_certificate` - Birth Certificate
         identification_number:
           type: string
           readOnly: true
@@ -42310,6 +47581,7 @@ components:
             * `kra_pin` - KRA PIN
             * `temporary_id` - Temporary ID
             * `passport` - Passport Number
+            * `birth_certificate` - Birth Certificate
         identification_number:
           type: string
           nullable: true
@@ -42857,6 +48129,12 @@ components:
           items:
             $ref: '#/components/schemas/PrescriptionItemWriteRequest'
           writeOnly: true
+        acknowledge_allergy_warnings:
+          type: boolean
+          writeOnly: true
+          default: false
+          description: Set to true to acknowledge allergy warnings and proceed with
+            prescription
       required:
       - patient
     PrescriptionItem:
@@ -43398,6 +48676,56 @@ components:
       required:
       - findings
       - impression
+    ReactionTypeEnum:
+      enum:
+      - anaphylaxis
+      - angioedema
+      - bronchospasm
+      - cardiac_arrhythmia
+      - diarrhea
+      - dyspnea
+      - hives
+      - hypotension
+      - itching
+      - nausea
+      - rash
+      - swelling
+      - vomiting
+      - other
+      type: string
+      description: |-
+        * `anaphylaxis` - Anaphylaxis
+        * `angioedema` - Angioedema
+        * `bronchospasm` - Bronchospasm
+        * `cardiac_arrhythmia` - Cardiac Arrhythmia
+        * `diarrhea` - Diarrhea
+        * `dyspnea` - Dyspnea
+        * `hives` - Hives/Urticaria
+        * `hypotension` - Hypotension
+        * `itching` - Itching/Pruritus
+        * `nausea` - Nausea
+        * `rash` - Rash
+        * `swelling` - Swelling
+        * `vomiting` - Vomiting
+        * `other` - Other
+    ReasonCdbEnum:
+      enum:
+      - LIFE_THREATENING
+      - UNCONSCIOUS_PATIENT
+      - MASS_CASUALTY
+      - CRITICAL_LAB_RESULT
+      - MEDICATION_EMERGENCY
+      - DISASTER_RESPONSE
+      - OTHER
+      type: string
+      description: |-
+        * `LIFE_THREATENING` - Life-threatening emergency
+        * `UNCONSCIOUS_PATIENT` - Patient unconscious/unable to consent
+        * `MASS_CASUALTY` - Mass casualty incident
+        * `CRITICAL_LAB_RESULT` - Critical lab result requiring immediate action
+        * `MEDICATION_EMERGENCY` - Urgent medication information needed
+        * `DISASTER_RESPONSE` - Disaster/emergency response
+        * `OTHER` - Other (requires justification)
     ReferralSourceEnum:
       enum:
       - self
@@ -45902,6 +51230,30 @@ components:
       - code
       - name
       - unit_price
+    Severity72dEnum:
+      enum:
+      - mild
+      - moderate
+      - severe
+      - life_threatening
+      type: string
+      description: |-
+        * `mild` - Mild
+        * `moderate` - Moderate
+        * `severe` - Severe
+        * `life_threatening` - Life-Threatening
+    Severity748Enum:
+      enum:
+      - MILD
+      - MODERATE
+      - SEVERE
+      - CRITICAL
+      type: string
+      description: |-
+        * `MILD` - Mild
+        * `MODERATE` - Moderate
+        * `SEVERE` - Severe
+        * `CRITICAL` - Critical
     ShaClaimItemStatusEnum:
       enum:
       - pending
@@ -46718,6 +52070,30 @@ components:
       - primary_department
       - primary_role
       - user
+    Status61bEnum:
+      enum:
+      - active
+      - inactive
+      - resolved
+      type: string
+      description: |-
+        * `active` - Active
+        * `inactive` - Inactive
+        * `resolved` - Resolved
+    Status9e8Enum:
+      enum:
+      - DRAFT
+      - PENDING_REVIEW
+      - APPROVED
+      - SUBMITTED
+      - FAILED
+      type: string
+      description: |-
+        * `DRAFT` - Draft
+        * `PENDING_REVIEW` - Pending Review
+        * `APPROVED` - Approved
+        * `SUBMITTED` - Submitted to DHIS2
+        * `FAILED` - Submission Failed
     StockAdjustment:
       type: object
       description: Serializer for StockAdjustment model.
@@ -46831,7 +52207,7 @@ components:
           readOnly: true
           nullable: true
         alert_type:
-          $ref: '#/components/schemas/AlertTypeEnum'
+          $ref: '#/components/schemas/StockAlertAlertTypeEnum'
         severity:
           $ref: '#/components/schemas/StockAlertSeverityEnum'
         message:
@@ -46877,6 +52253,20 @@ components:
       - message
       - resolved
       - severity
+    StockAlertAlertTypeEnum:
+      enum:
+      - LOW_STOCK
+      - OUT_OF_STOCK
+      - EXPIRING_SOON
+      - EXPIRED
+      - RECALLED
+      type: string
+      description: |-
+        * `LOW_STOCK` - Low Stock
+        * `OUT_OF_STOCK` - Out of Stock
+        * `EXPIRING_SOON` - Expiring Soon
+        * `EXPIRED` - Expired
+        * `RECALLED` - Product Recalled
     StockAlertRequest:
       type: object
       description: Serializer for StockAlert model.
@@ -46884,7 +52274,7 @@ components:
         drug:
           type: integer
         alert_type:
-          $ref: '#/components/schemas/AlertTypeEnum'
+          $ref: '#/components/schemas/StockAlertAlertTypeEnum'
         severity:
           $ref: '#/components/schemas/StockAlertSeverityEnum'
         message:
@@ -47131,6 +52521,20 @@ components:
       - county_name
       - id
       - name
+    SubstanceTypeEnum:
+      enum:
+      - medication
+      - food
+      - environmental
+      - biological
+      - other
+      type: string
+      description: |-
+        * `medication` - Medication
+        * `food` - Food
+        * `environmental` - Environmental
+        * `biological` - Biological
+        * `other` - Other
     SupervisorAlert:
       type: object
       description: Serializer for supervisor critical violation alerts.
@@ -47199,6 +52603,127 @@ components:
           description: List of critical alerts
       required:
       - alerts
+    SurveillanceAlert:
+      type: object
+      description: Full serializer for SurveillanceAlert.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        case:
+          type: integer
+          description: Case that triggered this alert
+        case_disease_name:
+          type: string
+          readOnly: true
+        case_patient_mrn:
+          type: string
+          readOnly: true
+        case_county:
+          type: string
+          readOnly: true
+        alert_type:
+          $ref: '#/components/schemas/AlertType92cEnum'
+        message:
+          type: string
+          description: Alert message content
+        is_acknowledged:
+          type: boolean
+          description: Whether alert has been acknowledged
+        acknowledged_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        acknowledged_by_name:
+          type: string
+          readOnly: true
+          nullable: true
+        acknowledged_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        sent_via_websocket:
+          type: boolean
+          readOnly: true
+        sent_via_sms:
+          type: boolean
+          readOnly: true
+        sent_via_email:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - acknowledged_at
+      - acknowledged_by
+      - acknowledged_by_name
+      - case
+      - case_county
+      - case_disease_name
+      - case_patient_mrn
+      - created_at
+      - id
+      - message
+      - sent_via_email
+      - sent_via_sms
+      - sent_via_websocket
+    SurveillanceAlertList:
+      type: object
+      description: Lightweight serializer for alert list views.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        case:
+          type: integer
+          description: Case that triggered this alert
+        case_disease_name:
+          type: string
+          readOnly: true
+        case_patient_mrn:
+          type: string
+          readOnly: true
+        alert_type:
+          $ref: '#/components/schemas/AlertType92cEnum'
+        message:
+          type: string
+          description: Alert message content
+        is_acknowledged:
+          type: boolean
+          description: Whether alert has been acknowledged
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - case
+      - case_disease_name
+      - case_patient_mrn
+      - created_at
+      - id
+      - message
+    SurveillanceAlertRequest:
+      type: object
+      description: Full serializer for SurveillanceAlert.
+      properties:
+        case:
+          type: integer
+          description: Case that triggered this alert
+        alert_type:
+          $ref: '#/components/schemas/AlertType92cEnum'
+        message:
+          type: string
+          minLength: 1
+          description: Alert message content
+        is_acknowledged:
+          type: boolean
+          description: Whether alert has been acknowledged
+      required:
+      - case
+      - message
     TemplateSection:
       type: object
       description: Serializer for TemplateSection model.
@@ -47541,23 +53066,6 @@ components:
       required:
       - password
       - username
-    TokenRefresh:
-      type: object
-      properties:
-        access:
-          type: string
-          readOnly: true
-      required:
-      - access
-    TokenRefreshRequest:
-      type: object
-      properties:
-        refresh:
-          type: string
-          writeOnly: true
-          minLength: 1
-      required:
-      - refresh
     TokenVerifyRequest:
       type: object
       properties:
