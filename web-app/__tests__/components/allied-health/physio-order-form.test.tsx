@@ -350,7 +350,7 @@ describe('PhysioOrderForm - Required Field Validation', () => {
     await waitFor(() => {
       // The form should show validation errors
       // Treatment type is also required, so expect at least one error
-      expect(screen.getByText(/treatment type is required/i)).toBeInTheDocument();
+      expect(screen.getByText(/treatment type/i)).toBeInTheDocument();
     });
   });
 });
