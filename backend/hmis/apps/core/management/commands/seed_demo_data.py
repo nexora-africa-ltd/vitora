@@ -1742,6 +1742,33 @@ class Command(BaseCommand):
                 "triage_required": False,
             },
             {
+                "code": "OT-DEFAULT",
+                "name": "Occupational Therapy Clinic",
+                "clinic_type": "OT",
+                "location": "Rehab Wing",
+                "capacity": 1,
+                "default_service_fee": Decimal("800.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "SOCIALWORK-DEFAULT",
+                "name": "Social Work Services",
+                "clinic_type": "SOCIAL_WORK",
+                "location": "Counseling Wing",
+                "capacity": 1,
+                "default_service_fee": Decimal("0.00"),
+                "triage_required": False,
+            },
+            {
+                "code": "COUNSELLING-DEFAULT",
+                "name": "Counselling Services",
+                "clinic_type": "COUNSELLING",
+                "location": "Counseling Wing",
+                "capacity": 2,
+                "default_service_fee": Decimal("0.00"),
+                "triage_required": False,
+            },
+            {
                 "code": "DERM-DEFAULT",
                 "name": "Dermatology Clinic",
                 "clinic_type": "DERM",
@@ -2262,19 +2289,27 @@ class Command(BaseCommand):
             target_clinic = Clinic.objects.filter(code="OPD-DEFAULT").first()
             if source_clinic and target_clinic:
                 src_session = ClinicSession.objects.get(clinic=source_clinic, session_date=today)
+                tgt_session, _ = target_clinic.get_or_create_session(today)
                 patient = preferred_patients[0] if preferred_patients else patient_pool[0]
-                src_visit = upsert_visit(
-                    session=src_session,
-                    patient=patient,
-                    status="IN_CONSULTATION",
-                    priority="PRIORITY",
-                    source="DIRECT",
-                    visit_type="NEW",
-                    assigned=clinical_officer,
-                )
-                src_visit.refer_to_clinic(
-                    target_clinic, "Referred for clinician review", clinical_officer
-                )
+
+                # Check if patient already has a visit in the target session (avoid unique constraint)
+                existing_target_visit = ClinicVisit.objects.filter(
+                    session=tgt_session, patient=patient
+                ).exists()
+
+                if not existing_target_visit:
+                    src_visit = upsert_visit(
+                        session=src_session,
+                        patient=patient,
+                        status="IN_CONSULTATION",
+                        priority="PRIORITY",
+                        source="DIRECT",
+                        visit_type="NEW",
+                        assigned=clinical_officer,
+                    )
+                    src_visit.refer_to_clinic(
+                        target_clinic, "Referred for clinician review", clinical_officer
+                    )
         except Exception as e:
             # Do not fail demo seeding because referral creation is best-effort
             self.stdout.write(self.style.WARNING(f"    Referral creation skipped: {e}"))
