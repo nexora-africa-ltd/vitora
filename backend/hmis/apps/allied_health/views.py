@@ -7,6 +7,9 @@ Provides a combined dashboard view aggregating stats from all allied health modu
 - Occupational Therapy
 - Social Work
 - Counselling
+
+Also includes ClinicVisits from allied health clinic types for patients
+checked into these clinics directly.
 """
 
 from datetime import date, timedelta
@@ -20,6 +23,16 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.allied_health.serializers import AlliedHealthDashboardSerializer
+
+# Allied health clinic types that should be included in the dashboard
+ALLIED_HEALTH_CLINIC_TYPES = [
+    "PHYSIO",
+    "NUTRITION",
+    "OT",
+    "COUNSELLING",
+    "MENTAL_HEALTH",
+    "SOCIAL_WORK",
+]
 
 
 class AlliedHealthDashboardView(APIView):
@@ -66,6 +79,9 @@ class AlliedHealthDashboardView(APIView):
         # Today's sessions across all modules
         todays_sessions = self._get_todays_sessions(today)
 
+        # Clinic queue stats for allied health clinics
+        clinic_queue_stats = self._get_clinic_queue_stats(today)
+
         data = {
             "physiotherapy": physio_stats,
             "nutrition": nutrition_stats,
@@ -73,6 +89,7 @@ class AlliedHealthDashboardView(APIView):
             "social_work": sw_stats,
             "counselling": counselling_stats,
             "todays_sessions": todays_sessions,
+            "clinic_queue_stats": clinic_queue_stats,
         }
 
         serializer = AlliedHealthDashboardSerializer(data)
@@ -207,6 +224,58 @@ class AlliedHealthDashboardView(APIView):
                 "follow_ups_count": 0,
             }
 
+    def _get_clinic_queue_stats(self, today):
+        """
+        Get queue statistics for patients checked into allied health clinics.
+
+        This captures patients who are checked into PHYSIO, NUTRITION, OT,
+        COUNSELLING, MENTAL_HEALTH, or SOCIAL_WORK clinic types directly,
+        without necessarily having an allied health order.
+        """
+        try:
+            from hmis.apps.clinics.models import ClinicVisit
+
+            # Get today's clinic visits for allied health clinic types
+            visits = ClinicVisit.objects.filter(
+                session__session_date=today,
+                session__clinic__clinic_type__in=ALLIED_HEALTH_CLINIC_TYPES,
+            )
+
+            # Group by clinic type
+            stats_by_type = {}
+            for clinic_type in ALLIED_HEALTH_CLINIC_TYPES:
+                type_visits = visits.filter(session__clinic__clinic_type=clinic_type)
+                stats_by_type[clinic_type.lower()] = {
+                    "waiting_count": type_visits.filter(
+                        status__in=["REGISTERED", "WAITING"]
+                    ).count(),
+                    "in_consultation_count": type_visits.filter(
+                        status="IN_CONSULTATION"
+                    ).count(),
+                    "completed_count": type_visits.filter(
+                        status="COMPLETED"
+                    ).count(),
+                    "total_today": type_visits.count(),
+                }
+
+            # Also include totals
+            stats_by_type["totals"] = {
+                "waiting_count": visits.filter(
+                    status__in=["REGISTERED", "WAITING"]
+                ).count(),
+                "in_consultation_count": visits.filter(
+                    status="IN_CONSULTATION"
+                ).count(),
+                "completed_count": visits.filter(
+                    status="COMPLETED"
+                ).count(),
+                "total_today": visits.count(),
+            }
+
+            return stats_by_type
+        except Exception:
+            return {}
+
     def _get_todays_sessions(self, today):
         """Get all sessions scheduled for today across all modules."""
         sessions = []
@@ -290,6 +359,51 @@ class AlliedHealthDashboardView(APIView):
                         "module": "COUNSELLING",
                         "treatment_type": session.get_session_type_display(),
                         "status": session.status,
+                    }
+                )
+        except Exception:
+            pass
+
+        # Include ClinicVisits from allied health clinic types
+        # This ensures patients checked directly into allied health clinics appear
+        try:
+            from hmis.apps.clinics.models import ClinicVisit
+
+            clinic_visits = ClinicVisit.objects.filter(
+                session__session_date=today,
+                session__clinic__clinic_type__in=ALLIED_HEALTH_CLINIC_TYPES,
+                status__in=["REGISTERED", "WAITING", "CALLED", "IN_CONSULTATION"],
+            ).select_related("patient", "session__clinic")[:20]
+
+            # Track already-added patient IDs to avoid duplicates
+            existing_patient_ids = {s.get("patient_mrn") for s in sessions}
+
+            for visit in clinic_visits:
+                # Skip if we already have this patient from a module-specific session
+                if visit.patient.mrn in existing_patient_ids:
+                    continue
+
+                clinic_type = visit.session.clinic.clinic_type
+                module_map = {
+                    "PHYSIO": "PHYSIO",
+                    "NUTRITION": "NUTRITION",
+                    "OT": "OT",
+                    "COUNSELLING": "COUNSELLING",
+                    "MENTAL_HEALTH": "COUNSELLING",
+                    "SOCIAL_WORK": "SOCIAL_WORK",
+                }
+
+                sessions.append(
+                    {
+                        "id": f"cv-{visit.id}",  # Prefix to distinguish from module sessions
+                        "session_number": visit.queue_number,
+                        "scheduled_time": visit.registered_at,
+                        "patient_name": visit.patient.full_name,
+                        "patient_mrn": visit.patient.mrn,
+                        "module": module_map.get(clinic_type, clinic_type),
+                        "treatment_type": visit.chief_complaint or visit.session.clinic.name,
+                        "status": visit.status,
+                        "source": "CLINIC_QUEUE",  # Indicate this is from clinic queue
                     }
                 )
         except Exception:

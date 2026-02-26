@@ -109,17 +109,24 @@ def route_to_ot_clinic_on_approval(sender, instance, created, **kwargs):
     try:
         from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
 
-        # Find the OT clinic
+        # Find the OT clinic - prefer by clinic_type first
         ot_clinic = Clinic.objects.filter(
-            name__icontains="Occupational Therapy",
-            status="active",
+            clinic_type="OT",
+            status="ACTIVE",
         ).first()
 
         if not ot_clinic:
-            # Try alternative names
+            # Fall back to name-based lookup
+            ot_clinic = Clinic.objects.filter(
+                name__icontains="Occupational Therapy",
+                status__in=["ACTIVE", "active"],
+            ).first()
+
+        if not ot_clinic:
+            # Try code-based lookup
             ot_clinic = Clinic.objects.filter(
                 code__icontains="OT",
-                status="active",
+                status__in=["ACTIVE", "active"],
             ).first()
 
         if not ot_clinic:

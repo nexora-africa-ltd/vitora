@@ -34,34 +34,43 @@ def route_to_counselling_clinic_on_acceptance(sender, instance, created, **kwarg
         return
 
     try:
-        from hmis.apps.clinics.models import Clinic, ClinicVisit
+        from datetime import date as date_module
 
-        # Find counselling clinic - try multiple name variations
+        from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
+
+        # Find counselling clinic - prefer by clinic_type first
         counselling_clinic = Clinic.objects.filter(
-            name__icontains="Counselling",
-            status="active",
+            clinic_type="COUNSELLING",
+            status="ACTIVE",
         ).first()
+
+        if not counselling_clinic:
+            # Try mental health clinic for mental health referrals
+            if hasattr(instance, 'is_mental_health_related') and instance.is_mental_health_related:
+                counselling_clinic = Clinic.objects.filter(
+                    clinic_type="MENTAL_HEALTH",
+                    status="ACTIVE",
+                ).first()
+
+        if not counselling_clinic:
+            # Fall back to name-based lookup
+            counselling_clinic = Clinic.objects.filter(
+                name__icontains="Counselling",
+                status__in=["ACTIVE", "active"],
+            ).first()
 
         if not counselling_clinic:
             # Try alternate names
             counselling_clinic = Clinic.objects.filter(
                 name__icontains="Counseling",  # US spelling
-                status="active",
+                status__in=["ACTIVE", "active"],
             ).first()
-
-        if not counselling_clinic:
-            # Try mental health clinic for mental health referrals
-            if instance.is_mental_health_related:
-                counselling_clinic = Clinic.objects.filter(
-                    name__icontains="Mental Health",
-                    status="active",
-                ).first()
 
         if not counselling_clinic:
             # Try psychology clinic
             counselling_clinic = Clinic.objects.filter(
                 name__icontains="Psychology",
-                status="active",
+                status__in=["ACTIVE", "active"],
             ).first()
 
         if not counselling_clinic:
@@ -71,28 +80,51 @@ def route_to_counselling_clinic_on_acceptance(sender, instance, created, **kwarg
             )
             return
 
+        # Find an active clinic session for today
+        today = date_module.today()
+        clinic_session = ClinicSession.objects.filter(
+            clinic=counselling_clinic,
+            date=today,
+            is_active=True,
+        ).first()
+
+        if not clinic_session:
+            # Try to get or create a session for today
+            clinic_session = counselling_clinic.get_current_session()
+
+        if not clinic_session:
+            logger.info(
+                f"No active counselling clinic session for today. "
+                f"Referral {instance.referral_number} will need manual scheduling."
+            )
+            return
+
         # Set priority based on urgency
         priority_map = {
-            "EMERGENCY": 1,
-            "URGENT": 2,
-            "ROUTINE": 5,
+            "EMERGENCY": "EMERGENCY",
+            "URGENT": "URGENT",
+            "ROUTINE": "STANDARD",
         }
-        priority = priority_map.get(instance.urgency, 5)
+        priority = priority_map.get(instance.urgency, "STANDARD")
 
         # Adjust priority for certain referral reasons
-        if instance.reason in ["SUICIDAL", "GBV"]:
-            priority = 1  # Always highest priority
+        if hasattr(instance, 'reason') and instance.reason in ["SUICIDAL", "GBV"]:
+            priority = "EMERGENCY"  # Always highest priority
+
+        reason_display = instance.get_reason_display() if hasattr(instance, 'get_reason_display') else str(instance.reason)
+        urgency_display = instance.get_urgency_display() if hasattr(instance, 'get_urgency_display') else str(instance.urgency)
 
         clinic_visit = ClinicVisit.objects.create(
+            session=clinic_session,
             patient=instance.patient,
-            clinic=counselling_clinic,
-            visit_type="referral",
-            status="waiting",
+            visit_type="REFERRAL",
+            source="REFERRAL",
             priority=priority,
+            queue_number=clinic_session.visits.count() + 1,
+            chief_complaint=f"Counselling Referral: {reason_display}",
             notes=f"Counselling Referral: {instance.referral_number}\n"
-                  f"Reason: {instance.get_reason_display()}\n"
-                  f"Urgency: {instance.get_urgency_display()}",
-            created_by=instance.assigned_counsellor or instance.referred_by,
+                  f"Reason: {reason_display}\n"
+                  f"Urgency: {urgency_display}",
         )
 
         # Link to referral

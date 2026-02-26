@@ -9,3 +9,13 @@ export { DuplicatePatientModal } from './duplicate-patient-modal';
 
 // Allergy components
 export { PatientAllergiesTab, AllergyFormDialog, AllergyListItemRow } from './allergies';
+
+// Allied Health components
+export {
+  PatientAlliedHealthTab,
+  PatientPhysioOrders,
+  PatientNutritionConsultations,
+  PatientCounsellingReferrals,
+  PatientOTOrders,
+  PatientSWReferrals,
+} from './allied-health';

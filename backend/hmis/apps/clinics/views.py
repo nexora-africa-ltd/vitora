@@ -104,8 +104,9 @@ class ClinicFilter(filters.FilterSet):
 class ClinicVisitFilter(filters.FilterSet):
     """Filter for ClinicVisit queryset."""
 
-    status = filters.CharFilter(field_name="status")
+    status = filters.CharFilter(method="filter_status")
     clinic = filters.NumberFilter(field_name="session__clinic__id")
+    clinic_type = filters.CharFilter(method="filter_clinic_type")
     date = filters.DateFilter(field_name="session__session_date")
     patient = filters.NumberFilter(field_name="patient__id")
 
@@ -113,7 +114,25 @@ class ClinicVisitFilter(filters.FilterSet):
         """Meta options for ClinicVisitFilter."""
 
         model = ClinicVisit
-        fields = ["status", "clinic", "date", "patient"]
+        fields = ["status", "clinic", "clinic_type", "date", "patient"]
+
+    def filter_status(self, queryset, name, value):
+        """Filter by status, supporting comma-separated values."""
+        if not value:
+            return queryset
+        statuses = [s.strip() for s in value.split(",") if s.strip()]
+        if len(statuses) == 1:
+            return queryset.filter(status=statuses[0])
+        return queryset.filter(status__in=statuses)
+
+    def filter_clinic_type(self, queryset, name, value):
+        """Filter by clinic type, supporting comma-separated values."""
+        if not value:
+            return queryset
+        clinic_types = [ct.strip() for ct in value.split(",") if ct.strip()]
+        if len(clinic_types) == 1:
+            return queryset.filter(session__clinic__clinic_type=clinic_types[0])
+        return queryset.filter(session__clinic__clinic_type__in=clinic_types)
 
 
 class ClinicEnrollmentFilter(filters.FilterSet):

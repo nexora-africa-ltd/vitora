@@ -249,6 +249,16 @@ export {
   type QueueDialogType,
 } from './use-clinic-queue-actions';
 
+// Patient Allied Health hooks - fetch allied health data by patient
+export {
+  patientAlliedHealthKeys,
+  usePatientPhysioOrders,
+  usePatientNutritionConsultations,
+  usePatientCounsellingReferrals,
+  usePatientOTOrders,
+  usePatientSWReferrals,
+} from './use-patient-allied-health';
+
 // WebSocket hooks for real-time updates
 export {
   useWebSocket,
