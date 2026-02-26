@@ -50,6 +50,7 @@ import { ClinicalFlowAccordion } from '@/components/encounters/clinical-flow-acc
 import { VitalsForm } from '@/components/encounters/vitals-form';
 import { SOAPNoteSummary } from '@/components/encounters/soap-note-summary';
 import { ChiefComplaintEditDialog, ChiefComplaintEditReason } from '@/components/encounters/chief-complaint-edit-dialog';
+import { AlliedHealthReferralActions } from '@/components/encounters/allied-health-referral-actions';
 import { useClinicalTemplate } from '@/lib/hooks/use-clinical-templates';
 import type { ClinicalTemplate } from '@/lib/types/clinical-template';
 import { ENCOUNTER_TYPES, ENCOUNTER_STATUS, ENCOUNTER_TYPE_GROUPS, getEncounterTypesByGroup } from '@/lib/utils/constants';
@@ -989,6 +990,13 @@ export default function EditEncounterPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Allied Health Referrals Section */}
+        <AlliedHealthReferralActions
+          patientId={encounter?.patient || 0}
+          encounterId={encounterId}
+          disabled={!isEditable}
+        />
 
       {/* Sticky Floating Action Bar - Bottom bar on mobile, floating on desktop */}
       <div className="fixed bottom-0 left-0 right-0 sm:bottom-4 sm:left-auto sm:right-4 z-50 flex items-center justify-center sm:justify-end gap-2 p-3 sm:p-0 bg-background/95 sm:bg-transparent border-t sm:border-0 backdrop-blur">

@@ -103,18 +103,28 @@ def route_to_nutrition_clinic(sender, instance, created, **kwargs):
         return
 
     try:
-        from hmis.apps.clinics.models import Clinic, ClinicVisit
+        from datetime import date as date_module
 
-        # Find nutrition clinic
+        from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
+
+        # Find nutrition clinic - prefer by clinic_type first
         nutrition_clinic = Clinic.objects.filter(
-            code__icontains="NUT",
-            status="active",
+            clinic_type="NUTRITION",
+            status="ACTIVE",
         ).first()
 
         if not nutrition_clinic:
+            # Fall back to code-based lookup
+            nutrition_clinic = Clinic.objects.filter(
+                code__icontains="NUT",
+                status__in=["ACTIVE", "active"],
+            ).first()
+
+        if not nutrition_clinic:
+            # Fall back to name-based lookup
             nutrition_clinic = Clinic.objects.filter(
                 name__icontains="Nutrition",
-                status="active",
+                status__in=["ACTIVE", "active"],
             ).first()
 
         if not nutrition_clinic:
@@ -125,15 +135,35 @@ def route_to_nutrition_clinic(sender, instance, created, **kwargs):
 
         # Link to clinic visit if not already linked
         if not instance.clinic_visit:
+            # Find an active clinic session for today
+            today = date_module.today()
+            clinic_session = ClinicSession.objects.filter(
+                clinic=nutrition_clinic,
+                date=today,
+                is_active=True,
+            ).first()
+
+            if not clinic_session:
+                # Try to get or create a session for today
+                clinic_session = nutrition_clinic.get_current_session()
+
+            if not clinic_session:
+                logger.info(
+                    f"No active nutrition clinic session for today. "
+                    f"Consultation {instance.consultation_number} will need manual scheduling."
+                )
+                return
+
             # Create a clinic visit for this consultation
             clinic_visit = ClinicVisit.objects.create(
-                clinic=nutrition_clinic,
+                session=clinic_session,
                 patient=instance.patient,
-                encounter=instance.encounter,
-                assigned_to=instance.dietitian,
-                status="waiting",
-                priority=instance.priority.lower() if instance.priority else "routine",
-                notes=f"Nutrition referral: {instance.referral_reason}",
+                visit_type="REFERRAL",
+                source="REFERRAL",
+                priority="STANDARD" if not instance.priority or instance.priority == "ROUTINE" else "URGENT",
+                queue_number=clinic_session.visits.count() + 1,
+                chief_complaint=f"Nutrition referral: {instance.referral_reason}",
+                notes=f"Nutrition consultation: {instance.consultation_number}",
             )
             instance.clinic_visit = clinic_visit
             instance.save(update_fields=["clinic_visit"])

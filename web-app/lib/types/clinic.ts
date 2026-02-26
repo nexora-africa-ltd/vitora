@@ -657,8 +657,9 @@ export interface ClinicVisitListParams {
   page_size?: number;
   session?: number;
   clinic?: number;
+  clinic_type?: string; // Supports comma-separated values like "NUTRITION,OT"
   patient?: number;
-  status?: ClinicVisitStatus;
+  status?: ClinicVisitStatus | string; // Supports comma-separated values
   priority?: ClinicVisitPriority;
   assigned_clinician?: number;
   date?: string;

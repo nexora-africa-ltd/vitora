@@ -122,20 +122,38 @@ export const AlliedHealthModuleStatsSchema = z.object({
 });
 
 export const TodaySessionSchema = z.object({
-  id: z.number(),
-  session_number: z.string(),
-  scheduled_time: z.string(),
+  id: z.union([z.number(), z.string()]), // Can be number or "cv-{id}" for clinic visits
+  session_number: z.union([z.string(), z.number()]).nullable(),
+  scheduled_time: z.string().nullable(),
   patient_name: z.string(),
   patient_mrn: z.string(),
-  module: z.enum(['PHYSIO', 'NUTRITION', 'OT', 'SOCIAL_WORK', 'COUNSELLING']),
+  module: z.enum(['PHYSIO', 'NUTRITION', 'OT', 'SOCIAL_WORK', 'COUNSELLING', 'MENTAL_HEALTH']),
   treatment_type: z.string(),
-  status: AlliedHealthSessionStatusSchema,
+  status: z.string(), // Can be session status or clinic visit status
+  source: z.enum(['MODULE', 'CLINIC_QUEUE']).optional().default('MODULE'),
+});
+
+export const ClinicTypeQueueStatsSchema = z.object({
+  waiting_count: z.number(),
+  in_consultation_count: z.number(),
+  completed_count: z.number(),
+  total_today: z.number(),
+});
+
+export const ClinicQueueStatsSchema = z.object({
+  physio: ClinicTypeQueueStatsSchema.optional(),
+  nutrition: ClinicTypeQueueStatsSchema.optional(),
+  ot: ClinicTypeQueueStatsSchema.optional(),
+  counselling: ClinicTypeQueueStatsSchema.optional(),
+  mental_health: ClinicTypeQueueStatsSchema.optional(),
+  social_work: ClinicTypeQueueStatsSchema.optional(),
+  totals: ClinicTypeQueueStatsSchema.optional(),
 });
 
 export const AlliedHealthDashboardStatsSchema = z.object({
   physiotherapy: AlliedHealthModuleStatsSchema,
   nutrition: AlliedHealthModuleStatsSchema.extend({
-    consultations_count: z.number(),
+    consultations_count: z.number().optional(),
   }),
   occupational_therapy: AlliedHealthModuleStatsSchema,
   social_work: z.object({
@@ -144,7 +162,8 @@ export const AlliedHealthDashboardStatsSchema = z.object({
     this_week_count: z.number(),
   }),
   counselling: AlliedHealthModuleStatsSchema.extend({
-    follow_ups_count: z.number(),
+    follow_ups_count: z.number().optional(),
   }),
   todays_sessions: z.array(TodaySessionSchema),
+  clinic_queue_stats: ClinicQueueStatsSchema.optional(),
 });

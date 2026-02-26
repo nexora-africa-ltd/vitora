@@ -51,14 +51,36 @@ class CounsellingStatsSerializer(AlliedHealthModuleStatsSerializer):
 class TodaySessionSerializer(serializers.Serializer):
     """Today's session entry for dashboard."""
 
-    id = serializers.IntegerField()
-    session_number = serializers.CharField()
-    scheduled_time = serializers.DateTimeField()
+    id = serializers.CharField()  # Can be int or "cv-{id}" for clinic visits
+    session_number = serializers.CharField(allow_null=True)
+    scheduled_time = serializers.DateTimeField(allow_null=True)
     patient_name = serializers.CharField()
     patient_mrn = serializers.CharField()
     module = serializers.CharField()
     treatment_type = serializers.CharField()
     status = serializers.CharField()
+    source = serializers.CharField(required=False, default="MODULE")  # MODULE or CLINIC_QUEUE
+
+
+class ClinicTypeQueueStatsSerializer(serializers.Serializer):
+    """Queue stats for a single clinic type."""
+
+    waiting_count = serializers.IntegerField()
+    in_consultation_count = serializers.IntegerField()
+    completed_count = serializers.IntegerField()
+    total_today = serializers.IntegerField()
+
+
+class ClinicQueueStatsSerializer(serializers.Serializer):
+    """Queue stats for all allied health clinic types."""
+
+    physio = ClinicTypeQueueStatsSerializer(required=False)
+    nutrition = ClinicTypeQueueStatsSerializer(required=False)
+    ot = ClinicTypeQueueStatsSerializer(required=False)
+    counselling = ClinicTypeQueueStatsSerializer(required=False)
+    mental_health = ClinicTypeQueueStatsSerializer(required=False)
+    social_work = ClinicTypeQueueStatsSerializer(required=False)
+    totals = ClinicTypeQueueStatsSerializer(required=False)
 
 
 class AlliedHealthDashboardSerializer(serializers.Serializer):
@@ -70,3 +92,4 @@ class AlliedHealthDashboardSerializer(serializers.Serializer):
     social_work = SocialWorkStatsSerializer()
     counselling = CounsellingStatsSerializer()
     todays_sessions = TodaySessionSerializer(many=True)
+    clinic_queue_stats = ClinicQueueStatsSerializer(required=False)

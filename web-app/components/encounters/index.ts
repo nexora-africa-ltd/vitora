@@ -25,3 +25,6 @@ export { PatientSelector } from './patient-selector';
 export { VitalsForm } from './vitals-form';
 export { MedicalHistoryForm } from './medical-history-form';
 export { DiagnosisForm, DiagnosisEntry, DiagnosisListDisplay } from './diagnosis-form';
+
+// Allied Health Referrals
+export { AlliedHealthReferralActions } from './allied-health-referral-actions';

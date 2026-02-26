@@ -229,12 +229,35 @@ export interface AlliedHealthModuleStats {
 }
 
 /**
+ * Clinic queue stats for a single clinic type
+ */
+export interface ClinicTypeQueueStats {
+  waiting_count: number;
+  in_consultation_count: number;
+  completed_count: number;
+  total_today: number;
+}
+
+/**
+ * Clinic queue stats for all allied health clinic types
+ */
+export interface ClinicQueueStats {
+  physio?: ClinicTypeQueueStats;
+  nutrition?: ClinicTypeQueueStats;
+  ot?: ClinicTypeQueueStats;
+  counselling?: ClinicTypeQueueStats;
+  mental_health?: ClinicTypeQueueStats;
+  social_work?: ClinicTypeQueueStats;
+  totals?: ClinicTypeQueueStats;
+}
+
+/**
  * Allied Health dashboard overview
  */
 export interface AlliedHealthDashboardStats {
   physiotherapy: AlliedHealthModuleStats;
   nutrition: AlliedHealthModuleStats & {
-    consultations_count: number;
+    consultations_count?: number;
   };
   occupational_therapy: AlliedHealthModuleStats;
   social_work: {
@@ -243,21 +266,23 @@ export interface AlliedHealthDashboardStats {
     this_week_count: number;
   };
   counselling: AlliedHealthModuleStats & {
-    follow_ups_count: number;
+    follow_ups_count?: number;
   };
   todays_sessions: TodaySession[];
+  clinic_queue_stats?: ClinicQueueStats;
 }
 
 /**
  * Today's session entry for dashboard
  */
 export interface TodaySession {
-  id: number;
-  session_number: string;
-  scheduled_time: string;
+  id: number | string; // Can be number or "cv-{id}" for clinic visits
+  session_number: string | number | null;
+  scheduled_time: string | null;
   patient_name: string;
   patient_mrn: string;
-  module: 'PHYSIO' | 'NUTRITION' | 'OT' | 'SOCIAL_WORK' | 'COUNSELLING';
+  module: 'PHYSIO' | 'NUTRITION' | 'OT' | 'SOCIAL_WORK' | 'COUNSELLING' | 'MENTAL_HEALTH';
   treatment_type: string;
-  status: AlliedHealthSessionStatus;
+  status: string; // Can be session status or clinic visit status
+  source?: 'MODULE' | 'CLINIC_QUEUE';
 }

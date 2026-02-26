@@ -24,6 +24,7 @@ import {
   CheckCircle,
   XCircle,
   Eye,
+  Activity,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +46,7 @@ import { EmergencyContactsList } from '@/components/patients/emergency-contacts-
 import { QuickCheckinDialog } from '@/components/patients/quick-checkin-dialog';
 import { PatientImagingSection } from '@/components/patients/patient-imaging-section';
 import { PatientAllergiesTab } from '@/components/patients/allergies';
+import { PatientAlliedHealthTab } from '@/components/patients/allied-health';
 import { PatientAuditTrail } from '@/components/patients/patient-audit-trail';
 import { EligibilityBanner, DependentsView } from '@/components/billing/sha';
 import { PageHeader } from '@/components/shared/page-header';
@@ -366,6 +368,11 @@ export default function PatientDetailPage() {
               <span className="hidden sm:inline">Lab Results</span>
               <span className="sm:hidden">Labs</span>
             </TabsTrigger>
+            <TabsTrigger value="allied-health" className="gap-1.5">
+              <Activity className="h-4 w-4" />
+              <span className="hidden sm:inline">Allied Health</span>
+              <span className="sm:hidden">Allied</span>
+            </TabsTrigger>
             <TabsTrigger value="audit-trail" className="gap-1.5">
               <Clock className="h-4 w-4" />
               <span className="hidden sm:inline">Audit Trail</span>
@@ -403,6 +410,10 @@ export default function PatientDetailPage() {
               isLoading={loadingLabOrders}
               patientId={patientId}
             />
+          </TabsContent>
+
+          <TabsContent value="allied-health">
+            <PatientAlliedHealthTab patientId={patientId} />
           </TabsContent>
 
           <TabsContent value="audit-trail">

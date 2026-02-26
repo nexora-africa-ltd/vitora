@@ -46,8 +46,8 @@ export default function AlliedHealthDashboardPage() {
       href: '/allied-health/physiotherapy',
       icon: Activity,
       stats: [
+        { label: 'clinic queue', value: stats?.clinic_queue_stats?.physio?.waiting_count || 0, variant: 'info' as const },
         { label: 'pending', value: stats?.physiotherapy.pending_count || 0, variant: 'warning' as const },
-        { label: 'in progress', value: stats?.physiotherapy.in_progress_count || 0 },
         { label: 'sessions today', value: stats?.physiotherapy.today_sessions_count || 0 },
       ],
     },
@@ -56,9 +56,9 @@ export default function AlliedHealthDashboardPage() {
       href: '/allied-health/nutrition',
       icon: Apple,
       stats: [
+        { label: 'clinic queue', value: stats?.clinic_queue_stats?.nutrition?.waiting_count || 0, variant: 'info' as const },
         { label: 'pending', value: stats?.nutrition.pending_count || 0, variant: 'warning' as const },
         { label: 'consultations', value: stats?.nutrition.consultations_count || 0 },
-        { label: 'sessions today', value: stats?.nutrition.today_sessions_count || 0 },
       ],
     },
     {
@@ -66,8 +66,8 @@ export default function AlliedHealthDashboardPage() {
       href: '/allied-health/occupational-therapy',
       icon: Briefcase,
       stats: [
+        { label: 'clinic queue', value: stats?.clinic_queue_stats?.ot?.waiting_count || 0, variant: 'info' as const },
         { label: 'pending', value: stats?.occupational_therapy.pending_count || 0, variant: 'warning' as const },
-        { label: 'in progress', value: stats?.occupational_therapy.in_progress_count || 0 },
         { label: 'sessions today', value: stats?.occupational_therapy.today_sessions_count || 0 },
       ],
     },
@@ -76,9 +76,9 @@ export default function AlliedHealthDashboardPage() {
       href: '/allied-health/social-work',
       icon: Users,
       stats: [
+        { label: 'clinic queue', value: stats?.clinic_queue_stats?.social_work?.waiting_count || 0, variant: 'info' as const },
         { label: 'open cases', value: stats?.social_work.open_cases_count || 0 },
         { label: 'urgent', value: stats?.social_work.urgent_count || 0, variant: 'danger' as const },
-        { label: 'this week', value: stats?.social_work.this_week_count || 0 },
       ],
     },
     {
@@ -86,8 +86,8 @@ export default function AlliedHealthDashboardPage() {
       href: '/allied-health/counselling',
       icon: Heart,
       stats: [
+        { label: 'clinic queue', value: (stats?.clinic_queue_stats?.counselling?.waiting_count || 0) + (stats?.clinic_queue_stats?.mental_health?.waiting_count || 0), variant: 'info' as const },
         { label: 'pending', value: stats?.counselling.pending_count || 0, variant: 'warning' as const },
-        { label: 'in progress', value: stats?.counselling.in_progress_count || 0 },
         { label: 'follow-ups', value: stats?.counselling.follow_ups_count || 0 },
       ],
     },
@@ -101,7 +101,7 @@ export default function AlliedHealthDashboardPage() {
       />
 
       {/* Summary Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Today&apos;s Sessions</CardTitle>
@@ -113,6 +113,21 @@ export default function AlliedHealthDashboardPage() {
             </div>
             <p className="text-xs text-muted-foreground">
               Across all modules
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Clinic Queue</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">
+              {stats?.clinic_queue_stats?.totals?.waiting_count || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {stats?.clinic_queue_stats?.totals?.in_consultation_count || 0} in consultation
             </p>
           </CardContent>
         </Card>

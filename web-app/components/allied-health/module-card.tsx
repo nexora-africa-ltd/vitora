@@ -16,7 +16,7 @@ interface ModuleCardProps {
   stats: {
     label: string;
     value: number;
-    variant?: 'default' | 'warning' | 'danger';
+    variant?: 'default' | 'warning' | 'danger' | 'info';
   }[];
   className?: string;
 }
@@ -26,6 +26,7 @@ export function ModuleCard({ title, href, icon: Icon, stats, className }: Module
     default: 'bg-muted text-muted-foreground',
     warning: 'bg-yellow-100 text-yellow-800',
     danger: 'bg-red-100 text-red-800',
+    info: 'bg-purple-100 text-purple-800',
   };
 
   return (
