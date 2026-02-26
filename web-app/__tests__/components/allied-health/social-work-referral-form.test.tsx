@@ -201,12 +201,12 @@ describe('SocialWorkReferralForm - Urgency Selection', () => {
     const user = userEvent.setup();
     renderWithWrapper(<SocialWorkReferralForm patientId={1} />);
     
-    await user.click(screen.getByLabelText(/urgency/i));
+    await user.click(screen.getByRole('combobox', { name: /urgency/i }));
     
     await waitFor(() => {
-      expect(screen.getByText(/routine/i)).toBeInTheDocument();
-      expect(screen.getByText(/urgent/i)).toBeInTheDocument();
-      expect(screen.getByText(/critical/i)).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /routine/i })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /urgent/i })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /critical/i })).toBeInTheDocument();
     });
   });
 
@@ -216,11 +216,12 @@ describe('SocialWorkReferralForm - Urgency Selection', () => {
     const user = userEvent.setup();
     renderWithWrapper(<SocialWorkReferralForm patientId={1} />);
     
-    await user.type(screen.getByLabelText(/referral reason/i), 'GBV support needed');
+    await user.click(screen.getByRole('combobox', { name: /referral reason/i }));
+    await user.click(screen.getByRole('option', { name: /financial/i }));
     await user.type(screen.getByLabelText(/services requested/i), 'Counselling, Safe shelter');
     
-    await user.click(screen.getByLabelText(/urgency/i));
-    await user.click(screen.getByText(/critical/i));
+    await user.click(screen.getByRole('combobox', { name: /urgency/i }));
+    await user.click(screen.getByRole('option', { name: /critical/i }));
     
     await user.click(screen.getByRole('button', { name: /create referral|submit/i }));
     
@@ -281,7 +282,8 @@ describe('SocialWorkReferralForm - Sensitive Case Handling', () => {
     const user = userEvent.setup();
     renderWithWrapper(<SocialWorkReferralForm patientId={1} />);
     
-    await user.type(screen.getByLabelText(/referral reason/i), 'GBV support needed');
+    await user.click(screen.getByRole('combobox', { name: /referral reason/i }));
+    await user.click(screen.getByRole('option', { name: /financial/i }));
     await user.type(screen.getByLabelText(/services requested/i), 'Shelter arrangement');
     await user.click(screen.getByLabelText(/sensitive case|mark as sensitive/i));
     
@@ -315,7 +317,8 @@ describe('SocialWorkReferralForm - Submission', () => {
     const user = userEvent.setup();
     renderWithWrapper(<SocialWorkReferralForm patientId={1} encounterId={100} />);
     
-    await user.type(screen.getByLabelText(/referral reason/i), 'Financial assistance needed for medication');
+    await user.click(screen.getByRole('combobox', { name: /referral reason/i }));
+    await user.click(screen.getByRole('option', { name: /financial/i }));
     await user.type(screen.getByLabelText(/services requested/i), 'NHIF enrollment assistance');
     
     await user.click(screen.getByRole('button', { name: /create referral|submit/i }));
@@ -325,7 +328,7 @@ describe('SocialWorkReferralForm - Submission', () => {
         expect.objectContaining({
           patient_id: 1,
           encounter_id: 100,
-          referral_reason: 'Financial assistance needed for medication',
+          referral_reason: 'FINANCIAL',
           services_requested: 'NHIF enrollment assistance',
         })
       );
@@ -336,7 +339,8 @@ describe('SocialWorkReferralForm - Submission', () => {
     const user = userEvent.setup();
     renderWithWrapper(<SocialWorkReferralForm patientId={1} />);
     
-    await user.type(screen.getByLabelText(/referral reason/i), 'Test reason');
+    await user.click(screen.getByRole('combobox', { name: /referral reason/i }));
+    await user.click(screen.getByRole('option', { name: /financial/i }));
     await user.type(screen.getByLabelText(/services requested/i), 'Test services');
     await user.click(screen.getByRole('button', { name: /create referral|submit/i }));
     
