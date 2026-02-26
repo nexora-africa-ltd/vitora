@@ -266,21 +266,21 @@ describe('PhysioOrderTable - Session Count', () => {
     renderWithWrapper(<PhysioOrderTable />);
     
     // Order 1: 3/12 sessions
-    expect(screen.getByText('3 / 12')).toBeInTheDocument();
+    expect(screen.getByText(/3\s*\/\s*12/i)).toBeInTheDocument();
   });
 
   it('should show zero progress for pending order', () => {
     renderWithWrapper(<PhysioOrderTable />);
     
     // Order 2: 0/8 sessions
-    expect(screen.getByText('0 / 8')).toBeInTheDocument();
+    expect(screen.getByText(/0\s*\/\s*8/i)).toBeInTheDocument();
   });
 
   it('should show completed sessions for completed order', () => {
     renderWithWrapper(<PhysioOrderTable />);
     
     // Order 3: 20/20 sessions
-    expect(screen.getByText('20 / 20')).toBeInTheDocument();
+    expect(screen.getByText(/20\s*\/\s*20/i)).toBeInTheDocument();
   });
 });
 

@@ -14,7 +14,7 @@ import { alliedHealthApi } from '@/lib/api/allied-health';
 // Mock the API
 jest.mock('@/lib/api/allied-health', () => ({
   alliedHealthApi: {
-    getDashboard: jest.fn(),
+    getDashboardStats: jest.fn(),
   },
 }));
 
@@ -97,7 +97,7 @@ describe('useAlliedHealthDashboard', () => {
   });
 
   it('fetches dashboard successfully', async () => {
-    mockAlliedHealthApi.getDashboard.mockResolvedValueOnce(mockDashboardData);
+    mockAlliedHealthApi.getDashboardStats.mockResolvedValueOnce(mockDashboardData);
 
     const { result } = renderHook(() => useAlliedHealthDashboard(), {
       wrapper: createWrapper(),
@@ -112,11 +112,11 @@ describe('useAlliedHealthDashboard', () => {
     });
 
     expect(result.current.data).toEqual(mockDashboardData);
-    expect(mockAlliedHealthApi.getDashboard).toHaveBeenCalledTimes(1);
+    expect(mockAlliedHealthApi.getDashboardStats).toHaveBeenCalledTimes(1);
   });
 
   it('returns correct physiotherapy stats', async () => {
-    mockAlliedHealthApi.getDashboard.mockResolvedValueOnce(mockDashboardData);
+    mockAlliedHealthApi.getDashboardStats.mockResolvedValueOnce(mockDashboardData);
 
     const { result } = renderHook(() => useAlliedHealthDashboard(), {
       wrapper: createWrapper(),
@@ -132,7 +132,7 @@ describe('useAlliedHealthDashboard', () => {
   });
 
   it('returns correct social work stats', async () => {
-    mockAlliedHealthApi.getDashboard.mockResolvedValueOnce(mockDashboardData);
+    mockAlliedHealthApi.getDashboardStats.mockResolvedValueOnce(mockDashboardData);
 
     const { result } = renderHook(() => useAlliedHealthDashboard(), {
       wrapper: createWrapper(),
@@ -147,7 +147,7 @@ describe('useAlliedHealthDashboard', () => {
   });
 
   it('returns todays sessions', async () => {
-    mockAlliedHealthApi.getDashboard.mockResolvedValueOnce(mockDashboardData);
+    mockAlliedHealthApi.getDashboardStats.mockResolvedValueOnce(mockDashboardData);
 
     const { result } = renderHook(() => useAlliedHealthDashboard(), {
       wrapper: createWrapper(),
@@ -164,7 +164,7 @@ describe('useAlliedHealthDashboard', () => {
 
   it('handles API errors gracefully', async () => {
     const error = new Error('Network error');
-    mockAlliedHealthApi.getDashboard.mockRejectedValueOnce(error);
+    mockAlliedHealthApi.getDashboardStats.mockRejectedValueOnce(error);
 
     const { result } = renderHook(() => useAlliedHealthDashboard(), {
       wrapper: createWrapper(),

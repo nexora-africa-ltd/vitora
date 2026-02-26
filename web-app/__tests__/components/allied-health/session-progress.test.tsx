@@ -25,23 +25,23 @@ describe('SessionProgress', () => {
 
   it('applies correct progress bar width for partial completion', () => {
     const { container } = render(<SessionProgress completed={5} total={10} />);
-    const progressIndicator = container.querySelector('[style*="width"]');
-    // Progress should be 50%
+    const progressIndicator = container.querySelector('[style*="translateX"]');
     expect(progressIndicator).toBeInTheDocument();
+    expect(progressIndicator).toHaveStyle('transform: translateX(-50%)');
   });
 
   it('applies correct progress bar width for zero completion', () => {
     const { container } = render(<SessionProgress completed={0} total={10} />);
-    const progressIndicator = container.querySelector('[style*="width"]');
-    // Progress should be 0%
+    const progressIndicator = container.querySelector('[style*="translateX"]');
     expect(progressIndicator).toBeInTheDocument();
+    expect(progressIndicator).toHaveStyle('transform: translateX(-100%)');
   });
 
   it('applies correct progress bar width for full completion', () => {
     const { container } = render(<SessionProgress completed={10} total={10} />);
-    const progressIndicator = container.querySelector('[style*="width"]');
-    // Progress should be 100%
+    const progressIndicator = container.querySelector('[style*="translateX"]');
     expect(progressIndicator).toBeInTheDocument();
+    expect(progressIndicator).toHaveStyle('transform: translateX(-0%)');
   });
 
   it('handles edge case of zero total sessions', () => {

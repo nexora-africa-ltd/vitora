@@ -8,10 +8,10 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactNode } from 'react';
 import {
-  usePhysiotherapyOrders,
-  usePhysiotherapyOrder,
-  usePhysiotherapySessions,
-  useCreatePhysiotherapyOrder,
+  usePhysioOrders,
+  usePhysioOrder,
+  usePhysioSessions,
+  useCreatePhysioOrder,
   physiotherapyKeys,
 } from '@/lib/hooks/use-physiotherapy';
 import { physiotherapyApi } from '@/lib/api/physiotherapy';
@@ -142,7 +142,7 @@ describe('physiotherapyKeys', () => {
   it('generates correct query keys', () => {
     expect(physiotherapyKeys.all).toEqual(['physiotherapy']);
     expect(physiotherapyKeys.orders()).toEqual(['physiotherapy', 'orders']);
-    expect(physiotherapyKeys.orderDetail(1)).toEqual([
+    expect(physiotherapyKeys.order(1)).toEqual([
       'physiotherapy',
       'orders',
       'detail',
@@ -151,11 +151,11 @@ describe('physiotherapyKeys', () => {
     expect(physiotherapyKeys.orderByNumber('PHYSIO-001')).toEqual([
       'physiotherapy',
       'orders',
-      'number',
+      'by-number',
       'PHYSIO-001',
     ]);
     expect(physiotherapyKeys.sessions()).toEqual(['physiotherapy', 'sessions']);
-    expect(physiotherapyKeys.sessionsByOrder(1)).toEqual([
+    expect(physiotherapyKeys.orderSessions(1)).toEqual([
       'physiotherapy',
       'sessions',
       'order',
@@ -164,7 +164,7 @@ describe('physiotherapyKeys', () => {
   });
 });
 
-describe('usePhysiotherapyOrders', () => {
+describe('usePhysioOrders', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -172,7 +172,7 @@ describe('usePhysiotherapyOrders', () => {
   it('fetches orders successfully', async () => {
     mockPhysiotherapyApi.listOrders.mockResolvedValueOnce(mockOrderList);
 
-    const { result } = renderHook(() => usePhysiotherapyOrders(), {
+    const { result } = renderHook(() => usePhysioOrders(), {
       wrapper: createWrapper(),
     });
 
@@ -190,7 +190,7 @@ describe('usePhysiotherapyOrders', () => {
     mockPhysiotherapyApi.listOrders.mockResolvedValueOnce(mockOrderList);
 
     const params = { status: 'PENDING' as const, page: 1 };
-    const { result } = renderHook(() => usePhysiotherapyOrders(params), {
+    const { result } = renderHook(() => usePhysioOrders(params), {
       wrapper: createWrapper(),
     });
 
@@ -202,7 +202,7 @@ describe('usePhysiotherapyOrders', () => {
   });
 });
 
-describe('usePhysiotherapyOrder', () => {
+describe('usePhysioOrder', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -210,7 +210,7 @@ describe('usePhysiotherapyOrder', () => {
   it('fetches single order by ID', async () => {
     mockPhysiotherapyApi.getOrder.mockResolvedValueOnce(mockOrder);
 
-    const { result } = renderHook(() => usePhysiotherapyOrder(1), {
+    const { result } = renderHook(() => usePhysioOrder(1), {
       wrapper: createWrapper(),
     });
 
@@ -223,7 +223,7 @@ describe('usePhysiotherapyOrder', () => {
   });
 
   it('does not fetch when ID is undefined', () => {
-    const { result } = renderHook(() => usePhysiotherapyOrder(undefined), {
+    const { result } = renderHook(() => usePhysioOrder(undefined), {
       wrapper: createWrapper(),
     });
 
@@ -232,7 +232,7 @@ describe('usePhysiotherapyOrder', () => {
   });
 });
 
-describe('useCreatePhysiotherapyOrder', () => {
+describe('useCreatePhysioOrder', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -240,7 +240,7 @@ describe('useCreatePhysiotherapyOrder', () => {
   it('creates order successfully', async () => {
     mockPhysiotherapyApi.createOrder.mockResolvedValueOnce(mockOrder);
 
-    const { result } = renderHook(() => useCreatePhysiotherapyOrder(), {
+    const { result } = renderHook(() => useCreatePhysioOrder(), {
       wrapper: createWrapper(),
     });
 
@@ -262,7 +262,7 @@ describe('useCreatePhysiotherapyOrder', () => {
   });
 });
 
-describe('usePhysiotherapySessions', () => {
+describe('usePhysioSessions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -280,11 +280,11 @@ describe('usePhysiotherapySessions', () => {
           patient_name: 'John Doe',
           patient_mrn: 'MRN-001',
           therapist_name: 'Jane Therapist',
-          session_date: '2026-02-27',
+          scheduled_date: '2026-02-27',
+          scheduled_time: null,
           status: 'SCHEDULED' as const,
-          duration_minutes: 45,
+          session_sequence: 1,
           outcome: null,
-          created_at: '2026-02-26T10:00:00Z',
         },
       ],
     };
@@ -292,7 +292,7 @@ describe('usePhysiotherapySessions', () => {
     mockPhysiotherapyApi.listSessions.mockResolvedValueOnce(mockSessions);
 
     const { result } = renderHook(
-      () => usePhysiotherapySessions({ order_id: 1 }),
+      () => usePhysioSessions({ order_id: 1 }),
       { wrapper: createWrapper() }
     );
 

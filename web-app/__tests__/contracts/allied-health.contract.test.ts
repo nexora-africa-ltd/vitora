@@ -13,6 +13,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 
+import type { ZodEnum } from 'zod';
+
 import {
   AlliedHealthOrderStatusSchema,
   AlliedHealthSessionStatusSchema,
@@ -67,7 +69,7 @@ function getSchemaEnumValues(
  * Get the property keys from a Zod enum schema.
  */
 function getZodEnumValues<T extends [string, ...string[]]>(
-  schema: ReturnType<typeof import('zod').z.enum<T>>
+  schema: ZodEnum<T>
 ): string[] {
   return schema.options as unknown as string[];
 }

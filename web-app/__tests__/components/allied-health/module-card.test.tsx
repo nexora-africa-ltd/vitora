@@ -18,15 +18,13 @@ jest.mock('next/navigation', () => ({
 describe('ModuleCard', () => {
   const defaultProps = {
     title: 'Physiotherapy',
-    description: 'Manage physiotherapy orders',
     icon: Stethoscope,
     href: '/allied-health/physiotherapy',
-    stats: {
-      pending: 5,
-      inProgress: 3,
-      todaySessions: 10,
-      completedToday: 7,
-    },
+    stats: [
+      { label: 'pending', value: 5, variant: 'warning' as const },
+      { label: 'in progress', value: 3 },
+      { label: 'sessions today', value: 10 },
+    ],
   };
 
   it('renders module title correctly', () => {
@@ -34,31 +32,19 @@ describe('ModuleCard', () => {
     expect(screen.getByText('Physiotherapy')).toBeInTheDocument();
   });
 
-  it('renders module description correctly', () => {
-    render(<ModuleCard {...defaultProps} />);
-    expect(screen.getByText('Manage physiotherapy orders')).toBeInTheDocument();
-  });
-
   it('renders pending count stat', () => {
     render(<ModuleCard {...defaultProps} />);
-    expect(screen.getByText('5')).toBeInTheDocument();
-    expect(screen.getByText('Pending')).toBeInTheDocument();
+    expect(screen.getByText(/5\s+pending/i)).toBeInTheDocument();
   });
 
   it('renders in-progress count stat', () => {
     render(<ModuleCard {...defaultProps} />);
-    expect(screen.getByText('3')).toBeInTheDocument();
-    expect(screen.getByText('In Progress')).toBeInTheDocument();
+    expect(screen.getByText(/3\s+in progress/i)).toBeInTheDocument();
   });
 
   it('renders today sessions count stat', () => {
     render(<ModuleCard {...defaultProps} />);
-    expect(screen.getByText('10')).toBeInTheDocument();
-  });
-
-  it('renders completed today count stat', () => {
-    render(<ModuleCard {...defaultProps} />);
-    expect(screen.getByText('7')).toBeInTheDocument();
+    expect(screen.getByText(/10\s+sessions today/i)).toBeInTheDocument();
   });
 
   it('renders icon', () => {
@@ -76,16 +62,13 @@ describe('ModuleCard', () => {
   it('renders with zero stats', () => {
     const propsWithZeroStats = {
       ...defaultProps,
-      stats: {
-        pending: 0,
-        inProgress: 0,
-        todaySessions: 0,
-        completedToday: 0,
-      },
+      stats: [
+        { label: 'pending', value: 0, variant: 'warning' as const },
+        { label: 'in progress', value: 0 },
+        { label: 'sessions today', value: 0 },
+      ],
     };
     render(<ModuleCard {...propsWithZeroStats} />);
-    // Should show 4 zeros
-    const zeros = screen.getAllByText('0');
-    expect(zeros.length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/0\s+pending/i)).toBeInTheDocument();
   });
 });

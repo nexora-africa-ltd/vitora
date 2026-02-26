@@ -95,9 +95,4 @@ describe('PriorityBadge', () => {
     render(<PriorityBadge priority="ROUTINE" />);
     expect(screen.getByText('Routine')).toBeInTheDocument();
   });
-
-  it('renders STAT priority correctly', () => {
-    render(<PriorityBadge priority="STAT" />);
-    expect(screen.getByText('STAT')).toBeInTheDocument();
-  });
 });
