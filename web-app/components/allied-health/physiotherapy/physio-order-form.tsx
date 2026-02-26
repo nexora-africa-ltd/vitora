@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -63,6 +63,7 @@ import {
 import { usePatients, usePatient } from '@/lib/hooks/use-patients';
 import { useEncounter } from '@/lib/hooks/use-encounters';
 import type { PhysiotherapyOrder, PhysiotherapyTreatmentType } from '@/lib/types/physiotherapy';
+import { PaginatedResponse } from '@/lib/types/allied-health';
 
 // =============================================================================
 // Types & Validation
@@ -191,7 +192,10 @@ export function PhysioOrderForm({
   const createMutation = useCreatePhysioOrder();
   const updateMutation = useUpdatePhysioOrder();
 
-  const treatmentTypes = treatmentTypesData?.results || [];
+  const treatmentTypes = useMemo(
+    () => treatmentTypesData?.results || [],
+    [treatmentTypesData]
+  );
   const patients = patientsData?.results || [];
 
   // Form setup
