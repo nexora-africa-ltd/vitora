@@ -132,6 +132,9 @@ class MockResizeObserver {
 }
 global.ResizeObserver = MockResizeObserver;
 
+// Mock scrollIntoView (required by cmdk/Command component)
+Element.prototype.scrollIntoView = jest.fn();
+
 // Suppress console warnings in tests (optional - comment out for debugging)
 // global.console.warn = jest.fn();
 // global.console.error = jest.fn();
