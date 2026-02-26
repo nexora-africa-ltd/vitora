@@ -41,20 +41,41 @@ import { cn } from '@/lib/utils/cn';
 
 const CLINIC_TYPE_OPTIONS: { value: ClinicType | 'ALL'; label: string }[] = [
   { value: 'ALL', label: 'All Types' },
+  // Primary Care
   { value: 'GENERAL_OPD', label: 'General OPD' },
+  { value: 'FILTER_CLINIC', label: 'Filter/Screening Clinic' },
+  // Maternal & Child Health
   { value: 'ANC', label: 'Antenatal Clinic' },
   { value: 'PNC', label: 'Postnatal Clinic' },
+  { value: 'FP', label: 'Family Planning' },
   { value: 'CWC', label: 'Child Welfare Clinic' },
   { value: 'IMMUNIZATION', label: 'Immunization' },
-  { value: 'FP', label: 'Family Planning' },
-  { value: 'EYE', label: 'Eye Clinic' },
+  { value: 'NUTRITION', label: 'Nutrition Clinic' },
+  // Specialized Clinics
   { value: 'DENTAL', label: 'Dental Clinic' },
+  { value: 'EYE', label: 'Eye Clinic' },
+  { value: 'ENT', label: 'ENT Clinic' },
+  { value: 'SURGICAL', label: 'Surgical Clinic' },
+  { value: 'ORTHO', label: 'Orthopedic Clinic' },
+  { value: 'DERM', label: 'Dermatology Clinic' },
+  // Allied Health
+  { value: 'PHYSIO', label: 'Physiotherapy' },
+  { value: 'OT', label: 'Occupational Therapy' },
+  { value: 'SOCIAL_WORK', label: 'Social Work' },
+  { value: 'COUNSELLING', label: 'Counselling' },
+  // Chronic Care
   { value: 'CCC', label: 'CCC (HIV)' },
   { value: 'TB', label: 'TB Clinic' },
   { value: 'DIABETIC', label: 'Diabetic Clinic' },
   { value: 'HYPERTENSION', label: 'Hypertension Clinic' },
   { value: 'MENTAL_HEALTH', label: 'Mental Health' },
-  { value: 'SURGICAL', label: 'Surgical Clinic' },
+  { value: 'ONCOLOGY', label: 'Oncology Clinic' },
+  { value: 'DIALYSIS', label: 'Dialysis Unit' },
+  // Other
+  { value: 'PROCEDURE', label: 'Procedure Room' },
+  { value: 'DRESSING', label: 'Dressing/Wound Care' },
+  { value: 'INJECTION', label: 'Injection Room' },
+  { value: 'OTHER', label: 'Other Clinic' },
 ];
 
 const STATUS_OPTIONS: { value: ClinicStatus | 'ALL'; label: string }[] = [
@@ -72,7 +93,9 @@ export default function ClinicsPage() {
   const [status, setStatus] = useState<ClinicStatus | 'ALL'>('ALL');
 
   const params = useMemo<ClinicListParams>(() => {
-    const p: ClinicListParams = {};
+    const p: ClinicListParams = {
+      page_size: 100, // Fetch all clinics (facilities typically have <50)
+    };
     if (search) p.search = search;
     if (clinicType !== 'ALL') p.clinic_type = clinicType;
     if (status !== 'ALL') p.status = status;
