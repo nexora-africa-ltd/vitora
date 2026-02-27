@@ -9,7 +9,7 @@
  */
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -34,11 +34,20 @@ export default function NewEncounterPatientPage() {
     setRecordVitalsNow,
     getVitals,
     setVitals,
+    hasVitals,
   } = useNewEncounterStore();
 
   const { id: patientId, data: selectedPatient } = getPatient();
   const recordVitalsNow = getRecordVitalsNow();
   const vitals = getVitals();
+  const vitalsRecorded = hasVitals();
+
+  // Auto-mark vitals section complete when vitals are recorded
+  useEffect(() => {
+    if (recordVitalsNow && vitalsRecorded) {
+      markSectionComplete('vitals');
+    }
+  }, [recordVitalsNow, vitalsRecorded, markSectionComplete]);
 
   // Build EncounterFormData for VitalsForm component
   const formData = useMemo((): EncounterFormData => ({
@@ -108,12 +117,9 @@ export default function NewEncounterPatientPage() {
   const handleNext = useCallback(() => {
     if (patientId) {
       markSectionComplete('patient');
-      if (recordVitalsNow) {
-        markSectionComplete('vitals');
-      }
       router.push('/encounters/new/details');
     }
-  }, [patientId, markSectionComplete, recordVitalsNow, router]);
+  }, [patientId, markSectionComplete, router]);
 
   const canProceed = patientId !== null;
 

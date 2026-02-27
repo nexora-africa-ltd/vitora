@@ -8,7 +8,7 @@
  */
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Stethoscope } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -31,10 +31,25 @@ export default function NewEncounterDiagnosisPage() {
   const diagnoses = getDiagnoses();
   const { data: patientData } = getPatient();
 
-  // Handle add diagnosis
+  // Redirect if missing required data
+  useEffect(() => {
+    if (!patientData) {
+      router.push('/encounters/new/patient');
+    }
+  }, [patientData, router]);
+
+  // Mark section complete when diagnoses are added
+  useEffect(() => {
+    if (diagnoses.length > 0) {
+      markSectionComplete('diagnosis');
+    }
+  }, [diagnoses.length, markSectionComplete]);
+
+  // Handle add diagnosis - saves immediately to store and marks section complete
   const handleAddDiagnosis = useCallback(
     (diagnosis: DiagnosisFormData) => {
       addDiagnosis(diagnosis);
+      // Section completion is handled by the useEffect above
     },
     [addDiagnosis]
   );
@@ -47,7 +62,7 @@ export default function NewEncounterDiagnosisPage() {
     [removeDiagnosis]
   );
 
-  // Handle update diagnosis
+  // Handle update diagnosis - also triggers save
   const handleUpdateDiagnosis = useCallback(
     (index: number, diagnosis: DiagnosisFormData) => {
       updateDiagnosis(index, diagnosis);
@@ -62,15 +77,10 @@ export default function NewEncounterDiagnosisPage() {
 
   // Navigate to next step
   const handleNext = useCallback(() => {
-    if (diagnoses.length > 0) {
-      markSectionComplete('diagnosis');
-    }
     router.push('/encounters/new/review');
-  }, [diagnoses, markSectionComplete, router]);
+  }, [router]);
 
-  // Redirect if missing required data
   if (!patientData) {
-    router.push('/encounters/new/patient');
     return null;
   }
 
