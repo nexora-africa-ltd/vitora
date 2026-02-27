@@ -371,6 +371,32 @@ export default function TriageVitalsPage() {
 
   const [alerts, setAlerts] = useState<TriageAlert[]>([]);
 
+  // Parse blood pressure from string format if separate fields not available
+  const getEncounterBP = (): { systolic: number | null; diastolic: number | null } => {
+    // Prefer computed fields if available
+    if (encounter?.systolic_bp || encounter?.diastolic_bp) {
+      return {
+        systolic: encounter.systolic_bp ?? null,
+        diastolic: encounter.diastolic_bp ?? null,
+      };
+    }
+    // Fall back to parsing blood_pressure string (format: "120/80")
+    const bp = encounter?.blood_pressure;
+    if (!bp) return { systolic: null, diastolic: null };
+    const parts = bp.split('/');
+    const systolicStr = parts[0];
+    const diastolicStr = parts[1];
+    if (!systolicStr || !diastolicStr) return { systolic: null, diastolic: null };
+    const systolic = parseInt(systolicStr, 10);
+    const diastolic = parseInt(diastolicStr, 10);
+    return {
+      systolic: isNaN(systolic) ? null : systolic,
+      diastolic: isNaN(diastolic) ? null : diastolic,
+    };
+  };
+
+  const encounterBP = getEncounterBP();
+
   const {
     register,
     handleSubmit,
@@ -381,8 +407,8 @@ export default function TriageVitalsPage() {
     defaultValues: {
       temperature: currentVitals?.temperature ?? encounter?.temperature ?? null,
       heart_rate: currentVitals?.heart_rate ?? encounter?.pulse ?? null,
-      systolic_bp: currentVitals?.systolic_bp ?? null,
-      diastolic_bp: currentVitals?.diastolic_bp ?? null,
+      systolic_bp: currentVitals?.systolic_bp ?? encounterBP.systolic,
+      diastolic_bp: currentVitals?.diastolic_bp ?? encounterBP.diastolic,
       spo2: currentVitals?.spo2 ?? encounter?.spo2 ?? null,
       respiratory_rate: currentVitals?.respiratory_rate ?? encounter?.respiratory_rate ?? null,
       weight: currentVitals?.weight ?? encounter?.weight ?? null,

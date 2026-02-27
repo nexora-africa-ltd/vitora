@@ -77,10 +77,14 @@ export interface NewEncounterSession {
   lastUpdatedAt: Date;
   isDirty: boolean;
 
+  // Vitals recording flag (optional during registration)
+  recordVitalsNow: boolean;
+
   // Section completion
   completedSections: {
     patient: boolean;
     details: boolean;
+    vitals: boolean;
     history: boolean;
     notes: boolean;
     diagnosis: boolean;
@@ -100,6 +104,13 @@ interface NewEncounterState {
   // Actions - Patient
   setPatient: (patientId: number | null, patientData: Patient | null) => void;
   getPatient: () => { id: number | null; data: Patient | null };
+
+  // Actions - Vitals
+  setRecordVitalsNow: (value: boolean) => void;
+  getRecordVitalsNow: () => boolean;
+  setVitals: (vitals: Partial<NewEncounterVitals>) => void;
+  getVitals: () => NewEncounterVitals;
+  hasVitals: () => boolean;
 
   // Actions - Details
   setDetails: (details: {
@@ -168,9 +179,11 @@ function createInitialSession(): NewEncounterSession {
     startedAt: now,
     lastUpdatedAt: now,
     isDirty: false,
+    recordVitalsNow: false,
     completedSections: {
       patient: false,
       details: false,
+      vitals: false,
       history: false,
       notes: false,
       diagnosis: false,
@@ -263,6 +276,57 @@ export const useNewEncounterStore = create<NewEncounterState>()(
           id: session?.patientId ?? null,
           data: session?.patientData ?? null,
         };
+      },
+
+      // Vitals
+      setRecordVitalsNow: (value) => {
+        set((state) => {
+          if (!state.session) return state;
+          return {
+            session: {
+              ...state.session,
+              recordVitalsNow: value,
+              lastUpdatedAt: new Date(),
+              isDirty: true,
+            },
+          };
+        });
+      },
+
+      getRecordVitalsNow: () => {
+        return get().session?.recordVitalsNow ?? false;
+      },
+
+      setVitals: (vitals) => {
+        set((state) => {
+          if (!state.session) return state;
+          return {
+            session: {
+              ...state.session,
+              vitals: { ...state.session.vitals, ...vitals },
+              lastUpdatedAt: new Date(),
+              isDirty: true,
+            },
+          };
+        });
+      },
+
+      getVitals: () => {
+        return get().session?.vitals ?? {};
+      },
+
+      hasVitals: () => {
+        const vitals = get().session?.vitals;
+        if (!vitals) return false;
+        // Check if at least some key vitals are recorded
+        return !!(
+          vitals.temperature ||
+          vitals.pulse ||
+          vitals.spo2 ||
+          vitals.blood_pressure_systolic ||
+          vitals.blood_pressure_diastolic ||
+          vitals.respiratory_rate
+        );
       },
 
       // Details

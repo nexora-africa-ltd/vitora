@@ -120,7 +120,9 @@ export default function NewEncounterDetailsPage() {
             <div className="grid gap-4 sm:grid-cols-3">
               {/* Encounter Type */}
               <div className="space-y-2">
-                <Label htmlFor="encounter_type">Encounter Type</Label>
+                <Label htmlFor="encounter_type">
+                  Encounter Type <span className="text-destructive">*</span>
+                </Label>
                 <Select
                   value={details.encounter_type}
                   onValueChange={(value) =>

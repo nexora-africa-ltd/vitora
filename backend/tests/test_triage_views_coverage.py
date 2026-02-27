@@ -258,6 +258,29 @@ class TestWaitingQueueViewSetActions:
         # Should either create or return validation error
         assert response.status_code in [status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST]
 
+    def test_create_waiting_queue_with_encounter_id(
+        self, authenticated_client, sample_patient, sample_encounter, test_user
+    ):
+        """Creating waiting queue entry with encounter_id should link the encounter."""
+        data = {
+            "patient_id": sample_patient.id,
+            "encounter_id": sample_encounter.id,
+            "reason_for_visit": "Encounter created during registration",
+            "create_encounter": False,
+        }
+
+        response = authenticated_client.post(
+            "/api/triage/waiting/",
+            data,
+            format="json",
+        )
+
+        # Should create entry or return validation error if patient already in queue
+        if response.status_code == status.HTTP_201_CREATED:
+            entry = WaitingQueue.objects.get(id=response.data["id"])
+            assert entry.encounter_id == sample_encounter.id
+            assert entry.patient_id == sample_patient.id
+
 
 @pytest.mark.django_db
 class TestTriageQueueViewSet:
