@@ -4553,6 +4553,10 @@ paths:
         schema:
           type: integer
       - in: query
+        name: clinic_type
+        schema:
+          type: string
+      - in: query
         name: date
         schema:
           type: string
@@ -25638,6 +25642,425 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/referrals/:
+    get:
+      operationId: api_referrals_list
+      description: |-
+        ViewSet for managing clinical referrals.
+
+        Provides CRUD operations plus custom actions for:
+        - Accepting referrals
+        - Declining referrals
+        - Cancelling referrals
+        - Listing referrals by encounter
+        - Pending referrals queue
+      parameters:
+      - in: query
+        name: created_from
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: created_to
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: encounter
+        schema:
+          type: integer
+      - in: query
+        name: is_sensitive
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: patient
+        schema:
+          type: integer
+      - in: query
+        name: priority
+        schema:
+          type: string
+      - in: query
+        name: referral_type
+        schema:
+          type: string
+      - in: query
+        name: referred_by
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: target_service
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedClinicalReferralListList'
+          description: ''
+    post:
+      operationId: api_referrals_create
+      description: Create and return full detail serializer.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClinicalReferralCreateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClinicalReferralCreateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClinicalReferralCreateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalReferralCreate'
+          description: ''
+  /api/referrals/{id}/:
+    get:
+      operationId: api_referrals_retrieve
+      description: |-
+        ViewSet for managing clinical referrals.
+
+        Provides CRUD operations plus custom actions for:
+        - Accepting referrals
+        - Declining referrals
+        - Cancelling referrals
+        - Listing referrals by encounter
+        - Pending referrals queue
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Clinical Referral.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalReferral'
+          description: ''
+    put:
+      operationId: api_referrals_update
+      description: |-
+        ViewSet for managing clinical referrals.
+
+        Provides CRUD operations plus custom actions for:
+        - Accepting referrals
+        - Declining referrals
+        - Cancelling referrals
+        - Listing referrals by encounter
+        - Pending referrals queue
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Clinical Referral.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClinicalReferralRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ClinicalReferralRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ClinicalReferralRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalReferral'
+          description: ''
+    patch:
+      operationId: api_referrals_partial_update
+      description: |-
+        ViewSet for managing clinical referrals.
+
+        Provides CRUD operations plus custom actions for:
+        - Accepting referrals
+        - Declining referrals
+        - Cancelling referrals
+        - Listing referrals by encounter
+        - Pending referrals queue
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Clinical Referral.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedClinicalReferralRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedClinicalReferralRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedClinicalReferralRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalReferral'
+          description: ''
+    delete:
+      operationId: api_referrals_destroy
+      description: |-
+        ViewSet for managing clinical referrals.
+
+        Provides CRUD operations plus custom actions for:
+        - Accepting referrals
+        - Declining referrals
+        - Cancelling referrals
+        - Listing referrals by encounter
+        - Pending referrals queue
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Clinical Referral.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/referrals/{id}/accept/:
+    post:
+      operationId: api_referrals_accept_create
+      description: Accept a referral.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Clinical Referral.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferralAcceptRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReferralAcceptRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReferralAcceptRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralAccept'
+          description: ''
+  /api/referrals/{id}/cancel/:
+    post:
+      operationId: api_referrals_cancel_create
+      description: Cancel a referral.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Clinical Referral.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferralCancelRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReferralCancelRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReferralCancelRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralCancel'
+          description: ''
+  /api/referrals/{id}/decline/:
+    post:
+      operationId: api_referrals_decline_create
+      description: Decline a referral with a reason.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Clinical Referral.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferralDeclineRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReferralDeclineRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReferralDeclineRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralDecline'
+          description: ''
+  /api/referrals/for-encounter/{encounter_id}/:
+    get:
+      operationId: api_referrals_for_encounter_retrieve
+      description: List all referrals for a specific encounter.
+      parameters:
+      - in: path
+        name: encounter_id
+        schema:
+          type: integer
+          description: Encounter that generated this referral
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EncounterReferral'
+          description: ''
+  /api/referrals/my-referrals/:
+    get:
+      operationId: api_referrals_my_referrals_retrieve
+      description: List referrals created by the current user.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalReferral'
+          description: ''
+  /api/referrals/pending/:
+    get:
+      operationId: api_referrals_pending_retrieve
+      description: List all pending referrals (for receiving services to review).
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalReferral'
+          description: ''
+  /api/referrals/stats/:
+    get:
+      operationId: api_referrals_stats_retrieve
+      description: Return referral statistics.
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClinicalReferral'
+          description: ''
   /api/roles/:
     get:
       operationId: api_roles_list
@@ -35204,6 +35627,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TodaySession'
+        clinic_queue_stats:
+          $ref: '#/components/schemas/ClinicQueueStats'
       required:
       - counselling
       - nutrition
@@ -38455,6 +38880,24 @@ components:
       - id
       - is_open_today
       - name
+    ClinicQueueStats:
+      type: object
+      description: Queue stats for all allied health clinic types.
+      properties:
+        physio:
+          $ref: '#/components/schemas/ClinicTypeQueueStats'
+        nutrition:
+          $ref: '#/components/schemas/ClinicTypeQueueStats'
+        ot:
+          $ref: '#/components/schemas/ClinicTypeQueueStats'
+        counselling:
+          $ref: '#/components/schemas/ClinicTypeQueueStats'
+        mental_health:
+          $ref: '#/components/schemas/ClinicTypeQueueStats'
+        social_work:
+          $ref: '#/components/schemas/ClinicTypeQueueStats'
+        totals:
+          $ref: '#/components/schemas/ClinicTypeQueueStats'
     ClinicRequest:
       type: object
       description: Serializer for Clinic model.
@@ -38959,6 +39402,23 @@ components:
         * `DRESSING` - Dressing/Wound Care
         * `INJECTION` - Injection Room
         * `OTHER` - Other Clinic
+    ClinicTypeQueueStats:
+      type: object
+      description: Queue stats for a single clinic type.
+      properties:
+        waiting_count:
+          type: integer
+        in_consultation_count:
+          type: integer
+        completed_count:
+          type: integer
+        total_today:
+          type: integer
+      required:
+      - completed_count
+      - in_consultation_count
+      - total_today
+      - waiting_count
     ClinicVisit:
       type: object
       description: Serializer for ClinicVisit model.
@@ -39371,6 +39831,709 @@ components:
         * `REFERRAL` - Referral from another clinic
         * `SCHEDULED` - Scheduled Appointment
         * `EMERGENCY` - Emergency
+    ClinicalReferral:
+      type: object
+      description: Full detail serializer for ClinicalReferral.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        referral_number:
+          type: string
+          readOnly: true
+          description: Auto-generated referral number (REF-YYYYMMDD-XXXX)
+        referral_type:
+          allOf:
+          - $ref: '#/components/schemas/ReferralTypeEnum'
+          readOnly: true
+          description: |-
+            Auto-derived from target_service. ALLIED_HEALTH, SPECIALTY_CLINIC, ADMISSION, or EXTERNAL.
+
+            * `ALLIED_HEALTH` - Allied Health Service
+            * `SPECIALTY_CLINIC` - Specialty Clinic
+            * `ADMISSION` - Inpatient Admission
+            * `EXTERNAL` - External Facility
+        referral_type_display:
+          type: string
+          readOnly: true
+        target_service:
+          allOf:
+          - $ref: '#/components/schemas/TargetServiceEnum'
+          description: |-
+            The specific service/clinic/ward being referred to
+
+            * `PHYSIOTHERAPY` - Physiotherapy
+            * `NUTRITION` - Nutrition / Dietetics
+            * `OCCUPATIONAL_THERAPY` - Occupational Therapy
+            * `COUNSELLING` - Counselling
+            * `SOCIAL_WORK` - Social Work
+            * `DENTAL` - Dental
+            * `EYE` - Eye / Ophthalmology
+            * `ENT` - ENT
+            * `SURGICAL` - Surgical
+            * `ORTHO` - Orthopedic
+            * `DERM` - Dermatology
+            * `CARDIOLOGY` - Cardiology
+            * `ONCOLOGY` - Oncology
+            * `MENTAL_HEALTH` - Mental Health / Psychiatry
+            * `DIALYSIS` - Dialysis
+            * `ANC` - Antenatal Care
+            * `PNC` - Postnatal Care
+            * `FP` - Family Planning
+            * `CWC` - Child Welfare
+            * `CCC` - Comprehensive Care (HIV)
+            * `TB` - TB Clinic
+            * `DIABETIC` - Diabetic Clinic
+            * `HYPERTENSION` - Hypertension Clinic
+            * `GENERAL_WARD` - General Ward
+            * `MEDICAL_WARD` - Medical Ward
+            * `SURGICAL_WARD` - Surgical Ward
+            * `MATERNITY_WARD` - Maternity Ward
+            * `PEDIATRIC_WARD` - Pediatric Ward
+            * `ICU` - Intensive Care Unit
+            * `HDU` - High Dependency Unit
+            * `PROCEDURE_ROOM` - Procedure Room
+            * `OTHER` - Other
+        target_service_display:
+          type: string
+          readOnly: true
+        patient:
+          type: integer
+          description: Patient being referred
+        patient_name:
+          type: string
+          readOnly: true
+        patient_mrn:
+          type: string
+          readOnly: true
+        encounter:
+          type: integer
+          description: Encounter that generated this referral
+        reason:
+          type: string
+          description: Clinical reason for referral
+        clinical_notes:
+          type: string
+          description: Additional clinical context for the receiving service
+        priority:
+          allOf:
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
+          description: |-
+            Urgency of the referral
+
+            * `ROUTINE` - Routine
+            * `URGENT` - Urgent
+            * `EMERGENCY` - Emergency
+        priority_display:
+          type: string
+          readOnly: true
+        relevant_diagnoses:
+          description: Snapshot of encounter diagnoses at referral time
+        relevant_vitals:
+          description: Snapshot of encounter vitals at referral time
+        provisional_diagnosis:
+          type: string
+          description: ICD-10 code for provisional diagnosis (admission referrals)
+          maxLength: 10
+        provisional_diagnosis_text:
+          type: string
+          description: Text description of provisional diagnosis
+          maxLength: 255
+        preferred_ward_type:
+          type: string
+          description: Preferred ward type for admission
+          maxLength: 30
+        external_facility_name:
+          type: string
+          description: Name of external facility
+          maxLength: 255
+        external_facility_code:
+          type: string
+          description: MFL code of external facility (Kenya Master Facility List)
+          maxLength: 50
+        referral_letter:
+          type: string
+          description: Referral letter content for external facility
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status7aaEnum'
+          description: |-
+            Current referral status
+
+            * `DRAFT` - Draft
+            * `PENDING` - Pending Review
+            * `ACCEPTED` - Accepted
+            * `DECLINED` - Declined
+            * `IN_PROGRESS` - In Progress
+            * `COMPLETED` - Completed
+            * `CANCELLED` - Cancelled
+            * `EXPIRED` - Expired
+        status_display:
+          type: string
+          readOnly: true
+        referred_by:
+          type: integer
+          readOnly: true
+          description: Clinician who created the referral
+        referred_by_name:
+          type: string
+          readOnly: true
+        accepted_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Person who accepted the referral
+        accepted_by_name:
+          type: string
+          readOnly: true
+        declined_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Person who declined the referral
+        declined_by_name:
+          type: string
+          readOnly: true
+        decline_reason:
+          type: string
+          description: Reason if referral was declined
+        accepted_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When the referral was accepted
+        declined_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When the referral was declined
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When the referral was completed
+        expires_at:
+          type: string
+          format: date-time
+          description: When the referral expires if not acted upon (default 48h)
+        linked_module:
+          type: string
+          readOnly: true
+          description: Module name of linked specialist record (e.g., 'physiotherapy')
+        linked_model:
+          type: string
+          readOnly: true
+          description: Model name of linked specialist record (e.g., 'PhysiotherapyOrder')
+        linked_object_id:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: PK of the linked specialist record
+        clinic_visit:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: Clinic visit created for queue routing
+        is_sensitive:
+          type: boolean
+          description: Whether this referral involves sensitive data (HIV, GBV, etc.)
+        is_active:
+          type: boolean
+          readOnly: true
+        is_terminal:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - accepted_at
+      - accepted_by
+      - accepted_by_name
+      - clinic_visit
+      - completed_at
+      - created_at
+      - declined_at
+      - declined_by
+      - declined_by_name
+      - encounter
+      - id
+      - is_active
+      - is_terminal
+      - linked_model
+      - linked_module
+      - linked_object_id
+      - patient
+      - patient_mrn
+      - patient_name
+      - priority_display
+      - reason
+      - referral_number
+      - referral_type
+      - referral_type_display
+      - referred_by
+      - referred_by_name
+      - status_display
+      - target_service
+      - target_service_display
+      - updated_at
+    ClinicalReferralCreate:
+      type: object
+      description: |-
+        Serializer for creating a referral.
+
+        Only exposes the fields that a clinician should fill.
+        Everything else is auto-populated.
+      properties:
+        encounter:
+          type: integer
+          description: Encounter that generated this referral
+        target_service:
+          allOf:
+          - $ref: '#/components/schemas/TargetServiceEnum'
+          description: |-
+            The specific service/clinic/ward being referred to
+
+            * `PHYSIOTHERAPY` - Physiotherapy
+            * `NUTRITION` - Nutrition / Dietetics
+            * `OCCUPATIONAL_THERAPY` - Occupational Therapy
+            * `COUNSELLING` - Counselling
+            * `SOCIAL_WORK` - Social Work
+            * `DENTAL` - Dental
+            * `EYE` - Eye / Ophthalmology
+            * `ENT` - ENT
+            * `SURGICAL` - Surgical
+            * `ORTHO` - Orthopedic
+            * `DERM` - Dermatology
+            * `CARDIOLOGY` - Cardiology
+            * `ONCOLOGY` - Oncology
+            * `MENTAL_HEALTH` - Mental Health / Psychiatry
+            * `DIALYSIS` - Dialysis
+            * `ANC` - Antenatal Care
+            * `PNC` - Postnatal Care
+            * `FP` - Family Planning
+            * `CWC` - Child Welfare
+            * `CCC` - Comprehensive Care (HIV)
+            * `TB` - TB Clinic
+            * `DIABETIC` - Diabetic Clinic
+            * `HYPERTENSION` - Hypertension Clinic
+            * `GENERAL_WARD` - General Ward
+            * `MEDICAL_WARD` - Medical Ward
+            * `SURGICAL_WARD` - Surgical Ward
+            * `MATERNITY_WARD` - Maternity Ward
+            * `PEDIATRIC_WARD` - Pediatric Ward
+            * `ICU` - Intensive Care Unit
+            * `HDU` - High Dependency Unit
+            * `PROCEDURE_ROOM` - Procedure Room
+            * `OTHER` - Other
+        reason:
+          type: string
+          description: Clinical reason for referral
+        clinical_notes:
+          type: string
+          description: Additional clinical context for the receiving service
+        priority:
+          allOf:
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
+          description: |-
+            Urgency of the referral
+
+            * `ROUTINE` - Routine
+            * `URGENT` - Urgent
+            * `EMERGENCY` - Emergency
+        provisional_diagnosis:
+          type: string
+          description: ICD-10 code for provisional diagnosis (admission referrals)
+          maxLength: 10
+        provisional_diagnosis_text:
+          type: string
+          description: Text description of provisional diagnosis
+          maxLength: 255
+        preferred_ward_type:
+          type: string
+          description: Preferred ward type for admission
+          maxLength: 30
+        external_facility_name:
+          type: string
+          description: Name of external facility
+          maxLength: 255
+        external_facility_code:
+          type: string
+          description: MFL code of external facility (Kenya Master Facility List)
+          maxLength: 50
+        referral_letter:
+          type: string
+          description: Referral letter content for external facility
+        is_sensitive:
+          type: boolean
+          description: Whether this referral involves sensitive data (HIV, GBV, etc.)
+      required:
+      - encounter
+      - reason
+      - target_service
+    ClinicalReferralCreateRequest:
+      type: object
+      description: |-
+        Serializer for creating a referral.
+
+        Only exposes the fields that a clinician should fill.
+        Everything else is auto-populated.
+      properties:
+        encounter:
+          type: integer
+          description: Encounter that generated this referral
+        target_service:
+          allOf:
+          - $ref: '#/components/schemas/TargetServiceEnum'
+          description: |-
+            The specific service/clinic/ward being referred to
+
+            * `PHYSIOTHERAPY` - Physiotherapy
+            * `NUTRITION` - Nutrition / Dietetics
+            * `OCCUPATIONAL_THERAPY` - Occupational Therapy
+            * `COUNSELLING` - Counselling
+            * `SOCIAL_WORK` - Social Work
+            * `DENTAL` - Dental
+            * `EYE` - Eye / Ophthalmology
+            * `ENT` - ENT
+            * `SURGICAL` - Surgical
+            * `ORTHO` - Orthopedic
+            * `DERM` - Dermatology
+            * `CARDIOLOGY` - Cardiology
+            * `ONCOLOGY` - Oncology
+            * `MENTAL_HEALTH` - Mental Health / Psychiatry
+            * `DIALYSIS` - Dialysis
+            * `ANC` - Antenatal Care
+            * `PNC` - Postnatal Care
+            * `FP` - Family Planning
+            * `CWC` - Child Welfare
+            * `CCC` - Comprehensive Care (HIV)
+            * `TB` - TB Clinic
+            * `DIABETIC` - Diabetic Clinic
+            * `HYPERTENSION` - Hypertension Clinic
+            * `GENERAL_WARD` - General Ward
+            * `MEDICAL_WARD` - Medical Ward
+            * `SURGICAL_WARD` - Surgical Ward
+            * `MATERNITY_WARD` - Maternity Ward
+            * `PEDIATRIC_WARD` - Pediatric Ward
+            * `ICU` - Intensive Care Unit
+            * `HDU` - High Dependency Unit
+            * `PROCEDURE_ROOM` - Procedure Room
+            * `OTHER` - Other
+        reason:
+          type: string
+          minLength: 1
+          description: Clinical reason for referral
+        clinical_notes:
+          type: string
+          description: Additional clinical context for the receiving service
+        priority:
+          allOf:
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
+          description: |-
+            Urgency of the referral
+
+            * `ROUTINE` - Routine
+            * `URGENT` - Urgent
+            * `EMERGENCY` - Emergency
+        provisional_diagnosis:
+          type: string
+          description: ICD-10 code for provisional diagnosis (admission referrals)
+          maxLength: 10
+        provisional_diagnosis_text:
+          type: string
+          description: Text description of provisional diagnosis
+          maxLength: 255
+        preferred_ward_type:
+          type: string
+          description: Preferred ward type for admission
+          maxLength: 30
+        external_facility_name:
+          type: string
+          description: Name of external facility
+          maxLength: 255
+        external_facility_code:
+          type: string
+          description: MFL code of external facility (Kenya Master Facility List)
+          maxLength: 50
+        referral_letter:
+          type: string
+          description: Referral letter content for external facility
+        is_sensitive:
+          type: boolean
+          description: Whether this referral involves sensitive data (HIV, GBV, etc.)
+      required:
+      - encounter
+      - reason
+      - target_service
+    ClinicalReferralList:
+      type: object
+      description: Lightweight serializer for referral list views.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        referral_number:
+          type: string
+          readOnly: true
+          description: Auto-generated referral number (REF-YYYYMMDD-XXXX)
+        referral_type:
+          allOf:
+          - $ref: '#/components/schemas/ReferralTypeEnum'
+          description: |-
+            Auto-derived from target_service. ALLIED_HEALTH, SPECIALTY_CLINIC, ADMISSION, or EXTERNAL.
+
+            * `ALLIED_HEALTH` - Allied Health Service
+            * `SPECIALTY_CLINIC` - Specialty Clinic
+            * `ADMISSION` - Inpatient Admission
+            * `EXTERNAL` - External Facility
+        referral_type_display:
+          type: string
+          readOnly: true
+        target_service:
+          allOf:
+          - $ref: '#/components/schemas/TargetServiceEnum'
+          description: |-
+            The specific service/clinic/ward being referred to
+
+            * `PHYSIOTHERAPY` - Physiotherapy
+            * `NUTRITION` - Nutrition / Dietetics
+            * `OCCUPATIONAL_THERAPY` - Occupational Therapy
+            * `COUNSELLING` - Counselling
+            * `SOCIAL_WORK` - Social Work
+            * `DENTAL` - Dental
+            * `EYE` - Eye / Ophthalmology
+            * `ENT` - ENT
+            * `SURGICAL` - Surgical
+            * `ORTHO` - Orthopedic
+            * `DERM` - Dermatology
+            * `CARDIOLOGY` - Cardiology
+            * `ONCOLOGY` - Oncology
+            * `MENTAL_HEALTH` - Mental Health / Psychiatry
+            * `DIALYSIS` - Dialysis
+            * `ANC` - Antenatal Care
+            * `PNC` - Postnatal Care
+            * `FP` - Family Planning
+            * `CWC` - Child Welfare
+            * `CCC` - Comprehensive Care (HIV)
+            * `TB` - TB Clinic
+            * `DIABETIC` - Diabetic Clinic
+            * `HYPERTENSION` - Hypertension Clinic
+            * `GENERAL_WARD` - General Ward
+            * `MEDICAL_WARD` - Medical Ward
+            * `SURGICAL_WARD` - Surgical Ward
+            * `MATERNITY_WARD` - Maternity Ward
+            * `PEDIATRIC_WARD` - Pediatric Ward
+            * `ICU` - Intensive Care Unit
+            * `HDU` - High Dependency Unit
+            * `PROCEDURE_ROOM` - Procedure Room
+            * `OTHER` - Other
+        target_service_display:
+          type: string
+          readOnly: true
+        patient:
+          type: integer
+          description: Patient being referred
+        patient_name:
+          type: string
+          readOnly: true
+        patient_mrn:
+          type: string
+          readOnly: true
+        encounter:
+          type: integer
+          description: Encounter that generated this referral
+        priority:
+          allOf:
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
+          description: |-
+            Urgency of the referral
+
+            * `ROUTINE` - Routine
+            * `URGENT` - Urgent
+            * `EMERGENCY` - Emergency
+        priority_display:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status7aaEnum'
+          description: |-
+            Current referral status
+
+            * `DRAFT` - Draft
+            * `PENDING` - Pending Review
+            * `ACCEPTED` - Accepted
+            * `DECLINED` - Declined
+            * `IN_PROGRESS` - In Progress
+            * `COMPLETED` - Completed
+            * `CANCELLED` - Cancelled
+            * `EXPIRED` - Expired
+        status_display:
+          type: string
+          readOnly: true
+        referred_by:
+          type: integer
+          description: Clinician who created the referral
+        referred_by_name:
+          type: string
+          readOnly: true
+        is_sensitive:
+          type: boolean
+          description: Whether this referral involves sensitive data (HIV, GBV, etc.)
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - encounter
+      - id
+      - patient
+      - patient_mrn
+      - patient_name
+      - priority_display
+      - referral_number
+      - referral_type
+      - referral_type_display
+      - referred_by
+      - referred_by_name
+      - status_display
+      - target_service
+      - target_service_display
+      - updated_at
+    ClinicalReferralRequest:
+      type: object
+      description: Full detail serializer for ClinicalReferral.
+      properties:
+        target_service:
+          allOf:
+          - $ref: '#/components/schemas/TargetServiceEnum'
+          description: |-
+            The specific service/clinic/ward being referred to
+
+            * `PHYSIOTHERAPY` - Physiotherapy
+            * `NUTRITION` - Nutrition / Dietetics
+            * `OCCUPATIONAL_THERAPY` - Occupational Therapy
+            * `COUNSELLING` - Counselling
+            * `SOCIAL_WORK` - Social Work
+            * `DENTAL` - Dental
+            * `EYE` - Eye / Ophthalmology
+            * `ENT` - ENT
+            * `SURGICAL` - Surgical
+            * `ORTHO` - Orthopedic
+            * `DERM` - Dermatology
+            * `CARDIOLOGY` - Cardiology
+            * `ONCOLOGY` - Oncology
+            * `MENTAL_HEALTH` - Mental Health / Psychiatry
+            * `DIALYSIS` - Dialysis
+            * `ANC` - Antenatal Care
+            * `PNC` - Postnatal Care
+            * `FP` - Family Planning
+            * `CWC` - Child Welfare
+            * `CCC` - Comprehensive Care (HIV)
+            * `TB` - TB Clinic
+            * `DIABETIC` - Diabetic Clinic
+            * `HYPERTENSION` - Hypertension Clinic
+            * `GENERAL_WARD` - General Ward
+            * `MEDICAL_WARD` - Medical Ward
+            * `SURGICAL_WARD` - Surgical Ward
+            * `MATERNITY_WARD` - Maternity Ward
+            * `PEDIATRIC_WARD` - Pediatric Ward
+            * `ICU` - Intensive Care Unit
+            * `HDU` - High Dependency Unit
+            * `PROCEDURE_ROOM` - Procedure Room
+            * `OTHER` - Other
+        patient:
+          type: integer
+          description: Patient being referred
+        encounter:
+          type: integer
+          description: Encounter that generated this referral
+        reason:
+          type: string
+          minLength: 1
+          description: Clinical reason for referral
+        clinical_notes:
+          type: string
+          description: Additional clinical context for the receiving service
+        priority:
+          allOf:
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
+          description: |-
+            Urgency of the referral
+
+            * `ROUTINE` - Routine
+            * `URGENT` - Urgent
+            * `EMERGENCY` - Emergency
+        relevant_diagnoses:
+          description: Snapshot of encounter diagnoses at referral time
+        relevant_vitals:
+          description: Snapshot of encounter vitals at referral time
+        provisional_diagnosis:
+          type: string
+          description: ICD-10 code for provisional diagnosis (admission referrals)
+          maxLength: 10
+        provisional_diagnosis_text:
+          type: string
+          description: Text description of provisional diagnosis
+          maxLength: 255
+        preferred_ward_type:
+          type: string
+          description: Preferred ward type for admission
+          maxLength: 30
+        external_facility_name:
+          type: string
+          description: Name of external facility
+          maxLength: 255
+        external_facility_code:
+          type: string
+          description: MFL code of external facility (Kenya Master Facility List)
+          maxLength: 50
+        referral_letter:
+          type: string
+          description: Referral letter content for external facility
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status7aaEnum'
+          description: |-
+            Current referral status
+
+            * `DRAFT` - Draft
+            * `PENDING` - Pending Review
+            * `ACCEPTED` - Accepted
+            * `DECLINED` - Declined
+            * `IN_PROGRESS` - In Progress
+            * `COMPLETED` - Completed
+            * `CANCELLED` - Cancelled
+            * `EXPIRED` - Expired
+        decline_reason:
+          type: string
+          description: Reason if referral was declined
+        expires_at:
+          type: string
+          format: date-time
+          description: When the referral expires if not acted upon (default 48h)
+        is_sensitive:
+          type: boolean
+          description: Whether this referral involves sensitive data (HIV, GBV, etc.)
+      required:
+      - encounter
+      - patient
+      - reason
+      - target_service
     ClinicalSnapshot:
       type: object
       description: |-
@@ -44997,6 +46160,128 @@ components:
       - patient_name
       - status
       - visit_reason
+    EncounterReferral:
+      type: object
+      description: |-
+        Compact serializer for showing referrals within an encounter detail.
+
+        Used in the encounter detail page's "Referrals" tab.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        referral_number:
+          type: string
+          readOnly: true
+          description: Auto-generated referral number (REF-YYYYMMDD-XXXX)
+        referral_type:
+          allOf:
+          - $ref: '#/components/schemas/ReferralTypeEnum'
+          description: |-
+            Auto-derived from target_service. ALLIED_HEALTH, SPECIALTY_CLINIC, ADMISSION, or EXTERNAL.
+
+            * `ALLIED_HEALTH` - Allied Health Service
+            * `SPECIALTY_CLINIC` - Specialty Clinic
+            * `ADMISSION` - Inpatient Admission
+            * `EXTERNAL` - External Facility
+        referral_type_display:
+          type: string
+          readOnly: true
+        target_service:
+          allOf:
+          - $ref: '#/components/schemas/TargetServiceEnum'
+          description: |-
+            The specific service/clinic/ward being referred to
+
+            * `PHYSIOTHERAPY` - Physiotherapy
+            * `NUTRITION` - Nutrition / Dietetics
+            * `OCCUPATIONAL_THERAPY` - Occupational Therapy
+            * `COUNSELLING` - Counselling
+            * `SOCIAL_WORK` - Social Work
+            * `DENTAL` - Dental
+            * `EYE` - Eye / Ophthalmology
+            * `ENT` - ENT
+            * `SURGICAL` - Surgical
+            * `ORTHO` - Orthopedic
+            * `DERM` - Dermatology
+            * `CARDIOLOGY` - Cardiology
+            * `ONCOLOGY` - Oncology
+            * `MENTAL_HEALTH` - Mental Health / Psychiatry
+            * `DIALYSIS` - Dialysis
+            * `ANC` - Antenatal Care
+            * `PNC` - Postnatal Care
+            * `FP` - Family Planning
+            * `CWC` - Child Welfare
+            * `CCC` - Comprehensive Care (HIV)
+            * `TB` - TB Clinic
+            * `DIABETIC` - Diabetic Clinic
+            * `HYPERTENSION` - Hypertension Clinic
+            * `GENERAL_WARD` - General Ward
+            * `MEDICAL_WARD` - Medical Ward
+            * `SURGICAL_WARD` - Surgical Ward
+            * `MATERNITY_WARD` - Maternity Ward
+            * `PEDIATRIC_WARD` - Pediatric Ward
+            * `ICU` - Intensive Care Unit
+            * `HDU` - High Dependency Unit
+            * `PROCEDURE_ROOM` - Procedure Room
+            * `OTHER` - Other
+        target_service_display:
+          type: string
+          readOnly: true
+        reason:
+          type: string
+          description: Clinical reason for referral
+        priority:
+          allOf:
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
+          description: |-
+            Urgency of the referral
+
+            * `ROUTINE` - Routine
+            * `URGENT` - Urgent
+            * `EMERGENCY` - Emergency
+        priority_display:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status7aaEnum'
+          description: |-
+            Current referral status
+
+            * `DRAFT` - Draft
+            * `PENDING` - Pending Review
+            * `ACCEPTED` - Accepted
+            * `DECLINED` - Declined
+            * `IN_PROGRESS` - In Progress
+            * `COMPLETED` - Completed
+            * `CANCELLED` - Cancelled
+            * `EXPIRED` - Expired
+        status_display:
+          type: string
+          readOnly: true
+        referred_by_name:
+          type: string
+          readOnly: true
+        is_sensitive:
+          type: boolean
+          description: Whether this referral involves sensitive data (HIV, GBV, etc.)
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - priority_display
+      - reason
+      - referral_number
+      - referral_type
+      - referral_type_display
+      - referred_by_name
+      - status_display
+      - target_service
+      - target_service_display
     EncounterRequest:
       type: object
       description: |-
@@ -52737,6 +54022,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ClinicVisit'
+    PaginatedClinicalReferralListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ClinicalReferralList'
     PaginatedClinicalTemplateListList:
       type: object
       required:
@@ -55470,6 +56778,121 @@ components:
           type: integer
           nullable: true
           description: Associated billing line item
+    PatchedClinicalReferralRequest:
+      type: object
+      description: Full detail serializer for ClinicalReferral.
+      properties:
+        target_service:
+          allOf:
+          - $ref: '#/components/schemas/TargetServiceEnum'
+          description: |-
+            The specific service/clinic/ward being referred to
+
+            * `PHYSIOTHERAPY` - Physiotherapy
+            * `NUTRITION` - Nutrition / Dietetics
+            * `OCCUPATIONAL_THERAPY` - Occupational Therapy
+            * `COUNSELLING` - Counselling
+            * `SOCIAL_WORK` - Social Work
+            * `DENTAL` - Dental
+            * `EYE` - Eye / Ophthalmology
+            * `ENT` - ENT
+            * `SURGICAL` - Surgical
+            * `ORTHO` - Orthopedic
+            * `DERM` - Dermatology
+            * `CARDIOLOGY` - Cardiology
+            * `ONCOLOGY` - Oncology
+            * `MENTAL_HEALTH` - Mental Health / Psychiatry
+            * `DIALYSIS` - Dialysis
+            * `ANC` - Antenatal Care
+            * `PNC` - Postnatal Care
+            * `FP` - Family Planning
+            * `CWC` - Child Welfare
+            * `CCC` - Comprehensive Care (HIV)
+            * `TB` - TB Clinic
+            * `DIABETIC` - Diabetic Clinic
+            * `HYPERTENSION` - Hypertension Clinic
+            * `GENERAL_WARD` - General Ward
+            * `MEDICAL_WARD` - Medical Ward
+            * `SURGICAL_WARD` - Surgical Ward
+            * `MATERNITY_WARD` - Maternity Ward
+            * `PEDIATRIC_WARD` - Pediatric Ward
+            * `ICU` - Intensive Care Unit
+            * `HDU` - High Dependency Unit
+            * `PROCEDURE_ROOM` - Procedure Room
+            * `OTHER` - Other
+        patient:
+          type: integer
+          description: Patient being referred
+        encounter:
+          type: integer
+          description: Encounter that generated this referral
+        reason:
+          type: string
+          minLength: 1
+          description: Clinical reason for referral
+        clinical_notes:
+          type: string
+          description: Additional clinical context for the receiving service
+        priority:
+          allOf:
+          - $ref: '#/components/schemas/AdmissionUrgencyPriorityEnum'
+          description: |-
+            Urgency of the referral
+
+            * `ROUTINE` - Routine
+            * `URGENT` - Urgent
+            * `EMERGENCY` - Emergency
+        relevant_diagnoses:
+          description: Snapshot of encounter diagnoses at referral time
+        relevant_vitals:
+          description: Snapshot of encounter vitals at referral time
+        provisional_diagnosis:
+          type: string
+          description: ICD-10 code for provisional diagnosis (admission referrals)
+          maxLength: 10
+        provisional_diagnosis_text:
+          type: string
+          description: Text description of provisional diagnosis
+          maxLength: 255
+        preferred_ward_type:
+          type: string
+          description: Preferred ward type for admission
+          maxLength: 30
+        external_facility_name:
+          type: string
+          description: Name of external facility
+          maxLength: 255
+        external_facility_code:
+          type: string
+          description: MFL code of external facility (Kenya Master Facility List)
+          maxLength: 50
+        referral_letter:
+          type: string
+          description: Referral letter content for external facility
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status7aaEnum'
+          description: |-
+            Current referral status
+
+            * `DRAFT` - Draft
+            * `PENDING` - Pending Review
+            * `ACCEPTED` - Accepted
+            * `DECLINED` - Declined
+            * `IN_PROGRESS` - In Progress
+            * `COMPLETED` - Completed
+            * `CANCELLED` - Cancelled
+            * `EXPIRED` - Expired
+        decline_reason:
+          type: string
+          description: Reason if referral was declined
+        expires_at:
+          type: string
+          format: date-time
+          description: When the referral expires if not acted upon (default 48h)
+        is_sensitive:
+          type: boolean
+          description: Whether this referral involves sensitive data (HIV, GBV, etc.)
     PatchedClinicalTemplateRequest:
       type: object
       description: Full serializer for ClinicalTemplate model with nested sections.
@@ -62571,6 +63994,52 @@ components:
         * `GBV` - Gender-Based Violence
         * `STRESS` - Stress Management
         * `OTHER` - Other
+    ReferralAccept:
+      type: object
+      description: Serializer for accepting a referral.
+      properties:
+        notes:
+          type: string
+          default: ''
+    ReferralAcceptRequest:
+      type: object
+      description: Serializer for accepting a referral.
+      properties:
+        notes:
+          type: string
+          default: ''
+    ReferralCancel:
+      type: object
+      description: Serializer for cancelling a referral.
+      properties:
+        reason:
+          type: string
+          default: ''
+    ReferralCancelRequest:
+      type: object
+      description: Serializer for cancelling a referral.
+      properties:
+        reason:
+          type: string
+          default: ''
+    ReferralDecline:
+      type: object
+      description: Serializer for declining a referral.
+      properties:
+        reason:
+          type: string
+          minLength: 5
+      required:
+      - reason
+    ReferralDeclineRequest:
+      type: object
+      description: Serializer for declining a referral.
+      properties:
+        reason:
+          type: string
+          minLength: 5
+      required:
+      - reason
     ReferralReason07fEnum:
       enum:
       - WEIGHT_MANAGEMENT
@@ -62681,6 +64150,18 @@ components:
         * `self` - Self
         * `clinic` - Clinic
         * `other_facility` - Other Facility
+    ReferralTypeEnum:
+      enum:
+      - ALLIED_HEALTH
+      - SPECIALTY_CLINIC
+      - ADMISSION
+      - EXTERNAL
+      type: string
+      description: |-
+        * `ALLIED_HEALTH` - Allied Health Service
+        * `SPECIALTY_CLINIC` - Specialty Clinic
+        * `ADMISSION` - Inpatient Admission
+        * `EXTERNAL` - External Facility
     RelationshipEnum:
       enum:
       - spouse
@@ -67373,6 +68854,26 @@ components:
         * `active` - Active
         * `inactive` - Inactive
         * `resolved` - Resolved
+    Status7aaEnum:
+      enum:
+      - DRAFT
+      - PENDING
+      - ACCEPTED
+      - DECLINED
+      - IN_PROGRESS
+      - COMPLETED
+      - CANCELLED
+      - EXPIRED
+      type: string
+      description: |-
+        * `DRAFT` - Draft
+        * `PENDING` - Pending Review
+        * `ACCEPTED` - Accepted
+        * `DECLINED` - Declined
+        * `IN_PROGRESS` - In Progress
+        * `COMPLETED` - Completed
+        * `CANCELLED` - Cancelled
+        * `EXPIRED` - Expired
     Status84cEnum:
       enum:
       - OPEN
@@ -68083,6 +69584,74 @@ components:
       required:
       - case
       - message
+    TargetServiceEnum:
+      enum:
+      - PHYSIOTHERAPY
+      - NUTRITION
+      - OCCUPATIONAL_THERAPY
+      - COUNSELLING
+      - SOCIAL_WORK
+      - DENTAL
+      - EYE
+      - ENT
+      - SURGICAL
+      - ORTHO
+      - DERM
+      - CARDIOLOGY
+      - ONCOLOGY
+      - MENTAL_HEALTH
+      - DIALYSIS
+      - ANC
+      - PNC
+      - FP
+      - CWC
+      - CCC
+      - TB
+      - DIABETIC
+      - HYPERTENSION
+      - GENERAL_WARD
+      - MEDICAL_WARD
+      - SURGICAL_WARD
+      - MATERNITY_WARD
+      - PEDIATRIC_WARD
+      - ICU
+      - HDU
+      - PROCEDURE_ROOM
+      - OTHER
+      type: string
+      description: |-
+        * `PHYSIOTHERAPY` - Physiotherapy
+        * `NUTRITION` - Nutrition / Dietetics
+        * `OCCUPATIONAL_THERAPY` - Occupational Therapy
+        * `COUNSELLING` - Counselling
+        * `SOCIAL_WORK` - Social Work
+        * `DENTAL` - Dental
+        * `EYE` - Eye / Ophthalmology
+        * `ENT` - ENT
+        * `SURGICAL` - Surgical
+        * `ORTHO` - Orthopedic
+        * `DERM` - Dermatology
+        * `CARDIOLOGY` - Cardiology
+        * `ONCOLOGY` - Oncology
+        * `MENTAL_HEALTH` - Mental Health / Psychiatry
+        * `DIALYSIS` - Dialysis
+        * `ANC` - Antenatal Care
+        * `PNC` - Postnatal Care
+        * `FP` - Family Planning
+        * `CWC` - Child Welfare
+        * `CCC` - Comprehensive Care (HIV)
+        * `TB` - TB Clinic
+        * `DIABETIC` - Diabetic Clinic
+        * `HYPERTENSION` - Hypertension Clinic
+        * `GENERAL_WARD` - General Ward
+        * `MEDICAL_WARD` - Medical Ward
+        * `SURGICAL_WARD` - Surgical Ward
+        * `MATERNITY_WARD` - Maternity Ward
+        * `PEDIATRIC_WARD` - Pediatric Ward
+        * `ICU` - Intensive Care Unit
+        * `HDU` - High Dependency Unit
+        * `PROCEDURE_ROOM` - Procedure Room
+        * `OTHER` - Other
     TemplateSection:
       type: object
       description: Serializer for TemplateSection model.
@@ -68404,12 +69973,14 @@ components:
       description: Today's session entry for dashboard.
       properties:
         id:
-          type: integer
+          type: string
         session_number:
           type: string
+          nullable: true
         scheduled_time:
           type: string
           format: date-time
+          nullable: true
         patient_name:
           type: string
         patient_mrn:
@@ -68420,6 +69991,9 @@ components:
           type: string
         status:
           type: string
+        source:
+          type: string
+          default: MODULE
       required:
       - id
       - module
@@ -70200,6 +71774,10 @@ components:
         patient_id:
           type: integer
           writeOnly: true
+        encounter_id:
+          type: integer
+          writeOnly: true
+          nullable: true
         reason_for_visit:
           type: string
           default: ''
