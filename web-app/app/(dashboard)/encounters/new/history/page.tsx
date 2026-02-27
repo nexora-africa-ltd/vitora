@@ -8,7 +8,7 @@
  */
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -88,26 +88,38 @@ export default function NewEncounterHistoryPage() {
     router.push('/encounters/new/details');
   }, [router]);
 
-  // Navigate to next step
-  const handleNext = useCallback(() => {
-    // Check if any history fields have data
-    const hasData =
+  // Check if any history fields have data
+  const hasHistoryData = useMemo(() => {
+    return !!(
       history.allergies?.trim() ||
       history.chronic_conditions?.trim() ||
       history.current_medications?.trim() ||
       history.past_surgeries?.trim() ||
       history.family_history?.trim() ||
-      history.social_history?.trim();
+      history.social_history?.trim()
+    );
+  }, [history]);
 
-    if (hasData) {
+  // Auto-mark section complete when history is entered
+  useEffect(() => {
+    if (hasHistoryData) {
       markSectionComplete('history');
     }
+  }, [hasHistoryData, markSectionComplete]);
+
+  // Navigate to next step
+  const handleNext = useCallback(() => {
     router.push('/encounters/new/notes');
-  }, [history, markSectionComplete, router]);
+  }, [router]);
 
   // Redirect if missing required data
+  useEffect(() => {
+    if (!patientData) {
+      router.push('/encounters/new/patient');
+    }
+  }, [patientData, router]);
+
   if (!patientData) {
-    router.push('/encounters/new/patient');
     return null;
   }
 

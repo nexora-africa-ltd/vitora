@@ -407,12 +407,17 @@ export function DiagnosisEntry({
           onClick={handleAdd}
           disabled={disabled || (!selectedCode && !icd11Value && !formData.free_text_diagnosis.trim())}
           className={editingDiagnosis ? "flex-1" : "w-full"}
-          variant={editingDiagnosis ? "default" : "default"}
+          variant={editingDiagnosis ? "default" : hasSelectedCode || formData.free_text_diagnosis.trim() ? "default" : "outline"}
         >
           {editingDiagnosis ? (
             <>
               <Check className="h-4 w-4 mr-2" />
               Update Diagnosis
+            </>
+          ) : hasSelectedCode || formData.free_text_diagnosis.trim() ? (
+            <>
+              <Check className="h-4 w-4 mr-2" />
+              Save Diagnosis
             </>
           ) : (
             <>

@@ -8,7 +8,7 @@
  */
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, ClipboardList } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -88,24 +88,36 @@ export default function NewEncounterNotesPage() {
     router.push('/encounters/new/history');
   }, [router]);
 
-  // Navigate to next step
-  const handleNext = useCallback(() => {
-    // Check if any notes fields have data
-    const hasData =
+  // Check if any notes fields have data
+  const hasNotesData = useMemo(() => {
+    return !!(
       notes.history_of_present_illness?.trim() ||
       notes.physical_examination?.trim() ||
       notes.assessment?.trim() ||
-      notes.notes?.trim();
+      notes.notes?.trim()
+    );
+  }, [notes]);
 
-    if (hasData) {
+  // Auto-mark section complete when notes are entered
+  useEffect(() => {
+    if (hasNotesData) {
       markSectionComplete('notes');
     }
+  }, [hasNotesData, markSectionComplete]);
+
+  // Navigate to next step
+  const handleNext = useCallback(() => {
     router.push('/encounters/new/diagnosis');
-  }, [notes, markSectionComplete, router]);
+  }, [router]);
 
   // Redirect if missing required data
+  useEffect(() => {
+    if (!patientData) {
+      router.push('/encounters/new/patient');
+    }
+  }, [patientData, router]);
+
   if (!patientData) {
-    router.push('/encounters/new/patient');
     return null;
   }
 
