@@ -244,7 +244,7 @@ export function TreatmentTypeSelect({
                     </div>
                     {showDetails && (
                       <div className="flex items-center gap-4 pl-6 text-xs text-muted-foreground">
-                        <span>{type.default_duration_minutes} min</span>
+                        <span>{type.typical_duration_minutes} min</span>
                         <span>{type.recommended_sessions} sessions</span>
                         {type.sha_claimable && (
                           <Badge variant="outline" className="text-green-600 border-green-300 text-xs">

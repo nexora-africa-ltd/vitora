@@ -114,7 +114,7 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Consultation ${consultation.order_number || `#${consultationId}`}`}
+        title={`Consultation ${consultation.consultation_number || `#${consultationId}`}`}
         helpContent="View nutrition consultation details, anthropometric measurements, and diet plans."
       />
 
@@ -220,53 +220,51 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 sm:grid-cols-3">
-                {consultation.anthropometrics?.weight_kg && (
+                {consultation.weight && (
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground">Weight</h4>
-                    <p className="font-medium">{consultation.anthropometrics.weight_kg} kg</p>
+                    <p className="font-medium">{consultation.weight} kg</p>
                   </div>
                 )}
-                {consultation.anthropometrics?.height_cm && (
+                {consultation.height && (
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground">Height</h4>
-                    <p className="font-medium">{consultation.anthropometrics.height_cm} cm</p>
+                    <p className="font-medium">{consultation.height} cm</p>
                   </div>
                 )}
-                {consultation.anthropometrics?.bmi && (
+                {consultation.bmi && (
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground">BMI</h4>
-                    <p className="font-medium">{consultation.anthropometrics.bmi}</p>
-                    {consultation.anthropometrics.bmi_classification && (
+                    <p className="font-medium">{consultation.bmi}</p>
+                    {consultation.bmi_classification && (
                       <Badge
                         variant="outline"
-                        className={BMI_CLASSIFICATION_CONFIG[consultation.anthropometrics.bmi_classification]?.color}
+                        className={BMI_CLASSIFICATION_CONFIG[consultation.bmi_classification]?.color}
                       >
-                        {BMI_CLASSIFICATION_CONFIG[consultation.anthropometrics.bmi_classification]?.label}
+                        {BMI_CLASSIFICATION_CONFIG[consultation.bmi_classification]?.label}
                       </Badge>
                     )}
                   </div>
                 )}
-                {consultation.anthropometrics?.waist_cm && (
+                {consultation.waist_circumference && (
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground">Waist</h4>
-                    <p className="font-medium">{consultation.anthropometrics.waist_cm} cm</p>
+                    <p className="font-medium">{consultation.waist_circumference} cm</p>
                   </div>
                 )}
-                {consultation.anthropometrics?.hip_cm && (
+                {consultation.hip_circumference && (
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground">Hip</h4>
-                    <p className="font-medium">{consultation.anthropometrics.hip_cm} cm</p>
+                    <p className="font-medium">{consultation.hip_circumference} cm</p>
                   </div>
                 )}
-                {consultation.anthropometrics?.muac_cm && (
+                {consultation.mid_upper_arm_circumference && (
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground">MUAC</h4>
-                    <p className="font-medium">{consultation.anthropometrics.muac_cm} cm</p>
-                    {consultation.anthropometrics.malnutrition_status && (
-                      <Badge
-                        variant={MALNUTRITION_STATUS_CONFIG[consultation.anthropometrics.malnutrition_status]?.variant}
-                      >
-                        {MALNUTRITION_STATUS_CONFIG[consultation.anthropometrics.malnutrition_status]?.label}
+                    <p className="font-medium">{consultation.mid_upper_arm_circumference} cm</p>
+                    {consultation.muac_classification && (
+                      <Badge variant="outline">
+                        {consultation.muac_classification}
                       </Badge>
                     )}
                   </div>

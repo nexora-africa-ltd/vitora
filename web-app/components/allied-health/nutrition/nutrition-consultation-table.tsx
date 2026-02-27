@@ -165,7 +165,7 @@ export function NutritionConsultationTable({ initialParams }: NutritionConsultat
                     onClick={() => handleRowClick(consultation)}
                   >
                     <TableCell className="font-mono text-sm">
-                      {consultation.order_number}
+                      {consultation.consultation_number}
                     </TableCell>
                     <TableCell>
                       <div>
@@ -179,7 +179,7 @@ export function NutritionConsultationTable({ initialParams }: NutritionConsultat
                       {consultation.referral_reason.toLowerCase().replace('_', ' ')}
                     </TableCell>
                     <TableCell>
-                      {consultation.assigned_dietitian_name || (
+                      {consultation.dietitian_name || (
                         <span className="text-muted-foreground">Unassigned</span>
                       )}
                     </TableCell>
@@ -191,9 +191,9 @@ export function NutritionConsultationTable({ initialParams }: NutritionConsultat
                       )}
                     </TableCell>
                     <TableCell>
-                      {consultation.malnutrition_status ? (
+                      {consultation.nutritional_status ? (
                         <Badge variant="outline">
-                          {consultation.malnutrition_status}
+                          {consultation.nutritional_status}
                         </Badge>
                       ) : (
                         <span className="text-muted-foreground">-</span>

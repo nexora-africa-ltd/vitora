@@ -63,9 +63,9 @@ const CATEGORY_OPTIONS: { value: PhysiotherapyCategory | ''; label: string }[] =
   { value: 'SPORTS', label: 'Sports' },
   { value: 'WOMENS_HEALTH', label: "Women's Health" },
   { value: 'POST_SURGICAL', label: 'Post-Surgical' },
+  { value: 'STROKE', label: 'Stroke Rehabilitation' },
   { value: 'PAIN_MANAGEMENT', label: 'Pain Management' },
   { value: 'ORTHOPEDIC', label: 'Orthopedic' },
-  { value: 'VESTIBULAR', label: 'Vestibular' },
   { value: 'OTHER', label: 'Other' },
 ];
 
@@ -260,12 +260,12 @@ export default function TreatmentTypesPage() {
                       <TableCell className="font-mono text-sm">{type.code}</TableCell>
                       <TableCell className="font-medium">{type.name}</TableCell>
                       <TableCell>{getCategoryBadge(type.category)}</TableCell>
-                      <TableCell>{type.default_duration_minutes} min</TableCell>
+                      <TableCell>{type.typical_duration_minutes} min</TableCell>
                       <TableCell>{type.recommended_sessions}</TableCell>
                       <TableCell>
                         {type.sha_claimable ? (
                           <Badge variant="outline" className="text-green-600 border-green-300">
-                            {type.sha_code || 'Yes'}
+                            {type.sha_intervention_code || 'Yes'}
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground">-</span>
@@ -273,7 +273,7 @@ export default function TreatmentTypesPage() {
                       </TableCell>
                       <TableCell>
                         <span className="font-medium">
-                          KES {parseFloat(type.unit_price).toLocaleString()}
+                          KES {parseFloat(type.cost_per_session).toLocaleString()}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -312,7 +312,7 @@ export default function TreatmentTypesPage() {
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {type.default_duration_minutes} min
+                        {type.typical_duration_minutes} min
                       </div>
                       <div className="flex items-center gap-1">
                         <Activity className="h-3 w-3" />
@@ -321,7 +321,7 @@ export default function TreatmentTypesPage() {
                     </div>
                     <div className="flex items-center justify-between mt-3">
                       <span className="font-semibold">
-                        KES {parseFloat(type.unit_price).toLocaleString()}
+                        KES {parseFloat(type.cost_per_session).toLocaleString()}
                       </span>
                       <div className="flex gap-1">
                         {type.sha_claimable && (
@@ -401,7 +401,7 @@ export default function TreatmentTypesPage() {
                       <Clock className="h-4 w-4" />
                       Duration
                     </div>
-                    <div className="text-lg font-semibold">{selectedType.default_duration_minutes} min</div>
+                    <div className="text-lg font-semibold">{selectedType.typical_duration_minutes} min</div>
                   </div>
                   <div className="rounded-lg border p-3">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -419,12 +419,12 @@ export default function TreatmentTypesPage() {
                     <div>
                       <div className="text-sm text-muted-foreground">Unit Price</div>
                       <div className="text-xl font-bold">
-                        KES {parseFloat(selectedType.unit_price).toLocaleString()}
+                        KES {parseFloat(selectedType.cost_per_session).toLocaleString()}
                       </div>
                     </div>
                     {selectedType.sha_claimable && (
                       <Badge className="bg-green-100 text-green-800">
-                        SHA Claimable: {selectedType.sha_code}
+                        SHA Claimable: {selectedType.sha_intervention_code}
                       </Badge>
                     )}
                   </div>

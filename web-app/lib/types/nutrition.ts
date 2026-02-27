@@ -132,28 +132,28 @@ export const REFERRAL_REASON_LABELS: Record<NutritionReferralReason, string> = {
 // =============================================================================
 
 /**
- * Anthropometric measurements
+ * @deprecated Use flat fields on NutritionConsultation instead
+ * Kept for backward compatibility during migration
  */
 export interface Anthropometrics {
-  weight_kg: number | null;
-  height_cm: number | null;
-  waist_cm: number | null;
-  hip_cm: number | null;
-  muac_cm: number | null;
-  // Computed fields
-  bmi: number | null;
+  weight: number | string | null;
+  height: number | string | null;
+  waist_circumference: number | string | null;
+  hip_circumference: number | string | null;
+  mid_upper_arm_circumference: number | string | null;
+  bmi: number | string | null;
   bmi_classification: BMIClassification | null;
-  waist_hip_ratio: number | null;
-  malnutrition_status: MalnutritionStatus | null;
+  waist_hip_ratio: number | string | null;
 }
 
 /**
- * Calculated nutritional values
+ * @deprecated Use flat fields on NutritionConsultation instead
+ * Kept for backward compatibility during migration
  */
 export interface NutritionalCalculations {
-  bmr: number | null;
-  tdee: number | null;
-  ideal_body_weight: number | null;
+  basal_metabolic_rate: number | string | null;
+  total_daily_energy_expenditure: number | string | null;
+  ideal_body_weight: number | string | null;
   activity_level: ActivityLevel;
 }
 
@@ -161,38 +161,91 @@ export interface NutritionalCalculations {
  * Nutrition consultation (assessment)
  */
 export interface NutritionConsultation {
+  // Identity
   id: number;
-  order_number: string;
-  patient: PatientReference;
-  patient_id: number;
-  encounter_id: number | null;
-  clinic_visit_id: number | null;
-  ordered_by: StaffReference;
-  ordered_by_id: number;
-  assigned_dietitian: StaffReference | null;
-  assigned_dietitian_id: number | null;
+  consultation_number: string;
+  // Patient & Encounter
+  patient: number;
+  patient_name: string;
+  patient_mrn: string;
+  encounter: number | null;
+  clinic_visit: number | null;
+  // Status
   status: AlliedHealthOrderStatus;
+  status_display?: string;
   priority: AlliedHealthPriority;
+  priority_display?: string;
+  // Referral
   referral_reason: NutritionReferralReason;
-  clinical_notes: string;
-  is_sensitive: boolean;
-  // Anthropometrics
-  anthropometrics: Anthropometrics;
-  // Calculations
-  calculations: NutritionalCalculations;
-  // Assessment details
+  referral_reason_display?: string;
+  referral_notes: string;
+  diagnosis: string;
+  // Anthropometrics (flat fields)
+  weight: number | string | null;
+  height: number | string | null;
+  bmi: number | string | null;
+  bmi_classification: BMIClassification | null;
+  bmi_classification_display?: string | null;
+  waist_circumference: number | string | null;
+  hip_circumference: number | string | null;
+  waist_hip_ratio: number | string | null;
+  mid_upper_arm_circumference: number | string | null;
+  triceps_skinfold: number | string | null;
+  ideal_body_weight: number | string | null;
+  percent_ideal_weight: number | string | null;
+  muac_classification?: string | null;
+  // Nutritional Assessment
+  nutritional_status: string | null;
+  nutritional_status_display?: string | null;
+  activity_level: ActivityLevel;
+  activity_level_display?: string;
   dietary_history: string;
+  food_preferences: string;
   food_allergies: string;
+  food_intolerances: string;
   current_diet: string;
-  nutritional_diagnosis: string;
+  meals_per_day: number | null;
+  snacks_per_day: number | null;
+  fluid_intake: string;
+  alcohol_consumption: string;
+  supplement_use: string;
+  // Caloric Needs
+  basal_metabolic_rate: number | string | null;
+  total_daily_energy_expenditure: number | string | null;
+  recommended_calories: number | null;
+  recommended_protein: number | null;
+  recommended_carbs: number | null;
+  recommended_fat: number | null;
+  // Clinical Assessment
+  clinical_signs: string;
+  lab_results_summary: string;
+  medical_history: string;
+  medications: string;
+  gi_symptoms: string;
+  appetite_assessment: string;
+  chewing_swallowing: string;
+  // Goals & Recommendations
+  nutrition_goals: string;
   recommendations: string;
+  education_provided: string;
+  follow_up_plan: string;
+  follow_up_date: string | null;
+  // Staff
+  dietitian: number | null;
+  dietitian_name: string | null;
+  referred_by: number | null;
+  referred_by_name: string | null;
+  age?: number | null;
+  diet_plan_count?: number;
   // SHA
-  sha_code: string | null;
   sha_claimable: boolean;
+  sha_intervention_code: string;
+  invoice: number | null;
   // Timestamps
   consultation_date: string;
   created_at: string;
   updated_at: string;
+  completed_at: string | null;
 }
 
 /**
@@ -200,36 +253,50 @@ export interface NutritionConsultation {
  */
 export interface NutritionConsultationListItem {
   id: number;
-  order_number: string;
+  consultation_number: string;
+  patient: number;
   patient_name: string;
   patient_mrn: string;
-  referral_reason: NutritionReferralReason;
   status: AlliedHealthOrderStatus;
+  status_display?: string;
   priority: AlliedHealthPriority;
-  assigned_dietitian_name: string | null;
-  bmi: number | null;
+  priority_display?: string;
+  referral_reason: NutritionReferralReason;
+  referral_reason_display?: string;
+  bmi: number | string | null;
   bmi_classification: BMIClassification | null;
-  malnutrition_status: MalnutritionStatus | null;
+  bmi_classification_display?: string | null;
+  nutritional_status: string | null;
+  dietitian: number | null;
+  dietitian_name: string | null;
   consultation_date: string;
-  created_at: string;
+  follow_up_date: string | null;
 }
 
 /**
  * Create nutrition consultation payload
  */
 export interface NutritionConsultationCreateData {
-  patient_id: number;
-  encounter_id?: number;
-  referral_reason: NutritionReferralReason;
+  patient: number;
+  encounter?: number;
+  clinic_visit?: number;
   priority?: AlliedHealthPriority;
-  clinical_notes: string;
-  // Optional initial anthropometrics
-  weight_kg?: number;
-  height_cm?: number;
-  waist_cm?: number;
-  hip_cm?: number;
-  muac_cm?: number;
+  referral_reason: NutritionReferralReason;
+  referral_notes?: string;
+  diagnosis?: string;
+  dietitian?: number;
+  // Anthropometrics (optional on create)
+  weight?: number;
+  height?: number;
+  waist_circumference?: number;
+  hip_circumference?: number;
+  mid_upper_arm_circumference?: number;
+  triceps_skinfold?: number;
+  // Basic assessment
   activity_level?: ActivityLevel;
+  dietary_history?: string;
+  food_allergies?: string;
+  current_diet?: string;
 }
 
 /**
@@ -237,21 +304,44 @@ export interface NutritionConsultationCreateData {
  */
 export interface NutritionConsultationUpdateData {
   priority?: AlliedHealthPriority;
-  clinical_notes?: string;
   referral_reason?: NutritionReferralReason;
+  referral_notes?: string;
+  diagnosis?: string;
+  dietitian?: number;
   // Anthropometrics
-  weight_kg?: number;
-  height_cm?: number;
-  waist_cm?: number;
-  hip_cm?: number;
-  muac_cm?: number;
-  activity_level?: ActivityLevel;
+  weight?: number;
+  height?: number;
+  waist_circumference?: number;
+  hip_circumference?: number;
+  mid_upper_arm_circumference?: number;
+  triceps_skinfold?: number;
   // Assessment
+  activity_level?: ActivityLevel;
+  nutritional_status?: string;
   dietary_history?: string;
+  food_preferences?: string;
   food_allergies?: string;
+  food_intolerances?: string;
   current_diet?: string;
-  nutritional_diagnosis?: string;
+  meals_per_day?: number;
+  snacks_per_day?: number;
+  fluid_intake?: string;
+  alcohol_consumption?: string;
+  supplement_use?: string;
+  // Clinical
+  clinical_signs?: string;
+  lab_results_summary?: string;
+  medical_history?: string;
+  medications?: string;
+  gi_symptoms?: string;
+  appetite_assessment?: string;
+  chewing_swallowing?: string;
+  // Goals
+  nutrition_goals?: string;
   recommendations?: string;
+  education_provided?: string;
+  follow_up_plan?: string;
+  follow_up_date?: string;
 }
 
 // =============================================================================
@@ -259,44 +349,104 @@ export interface NutritionConsultationUpdateData {
 // =============================================================================
 
 /**
+ * Diet plan type
+ */
+export type DietPlanType =
+  | 'WEIGHT_LOSS'
+  | 'WEIGHT_GAIN'
+  | 'DIABETIC'
+  | 'RENAL'
+  | 'CARDIAC'
+  | 'LOW_SODIUM'
+  | 'LOW_FAT'
+  | 'HIGH_PROTEIN'
+  | 'THERAPEUTIC'
+  | 'GENERAL'
+  | 'OTHER';
+
+/**
+ * Duration unit
+ */
+export type DurationUnit = 'DAYS' | 'WEEKS' | 'MONTHS';
+
+/**
  * Diet plan
  */
 export interface DietPlan {
+  // Identity
   id: number;
   plan_number: string;
-  consultation: Pick<NutritionConsultation, 'id' | 'order_number' | 'patient'>;
-  consultation_id: number;
-  created_by: StaffReference;
-  created_by_id: number;
+  // Links
+  patient: number;
+  patient_name: string;
+  patient_mrn: string;
+  consultation: number | null;
+  consultation_number: string | null;
+  // Plan Details
+  name: string;
+  plan_type: DietPlanType;
+  plan_type_display?: string;
   status: DietPlanStatus;
-  title: string;
+  status_display?: string;
   description: string;
-  // Targets
-  target_calories: number | null;
-  target_protein_g: number | null;
-  target_carbs_g: number | null;
-  target_fat_g: number | null;
-  target_fiber_g: number | null;
-  target_sodium_mg: number | null;
-  // Meal plans
-  breakfast: string;
-  mid_morning_snack: string;
-  lunch: string;
-  afternoon_snack: string;
-  dinner: string;
-  bedtime_snack: string;
-  // Additional
-  foods_to_avoid: string;
-  foods_to_include: string;
-  special_instructions: string;
-  supplements: string;
+  goals: string;
   // Duration
   start_date: string;
   end_date: string | null;
+  duration_value: number | null;
+  duration_unit: DurationUnit | null;
+  duration_unit_display?: string | null;
+  // Meal Plan
+  meal_plan: string;
+  breakfast_guidelines: string;
+  lunch_guidelines: string;
+  dinner_guidelines: string;
+  snack_guidelines: string;
+  sample_menu: string;
+  portion_guidelines: string;
+  // Nutritional Targets
+  target_calories: number | null;
+  target_protein: number | null;
+  target_carbs: number | null;
+  target_fat: number | null;
+  target_fiber: number | null;
+  target_sodium: number | null;
+  target_fluid: number | null;
+  // Restrictions
+  restrictions: string;
+  foods_to_avoid: string;
+  foods_to_limit: string;
+  foods_to_include: string;
+  allergen_restrictions: string;
+  texture_modifications: string;
+  // Supplements
+  supplements: string;
+  oral_nutrition_supplements: string;
+  vitamin_supplements: string;
+  mineral_supplements: string;
+  // Special Instructions
+  special_instructions: string;
+  food_preparation_notes: string;
+  timing_instructions: string;
+  hydration_instructions: string;
+  // Monitoring
+  monitoring_parameters: string;
+  target_outcomes: string;
   review_date: string | null;
+  // Staff
+  created_by: number | null;
+  created_by_name: string | null;
+  updated_by: number | null;
+  updated_by_name: string | null;
+  // Status helpers
+  is_active: boolean;
+  days_remaining: number | null;
   // Timestamps
   created_at: string;
   updated_at: string;
+  activated_at: string | null;
+  discontinued_at: string | null;
+  discontinuation_reason: string | null;
 }
 
 /**
@@ -305,13 +455,19 @@ export interface DietPlan {
 export interface DietPlanListItem {
   id: number;
   plan_number: string;
+  patient: number;
   patient_name: string;
   patient_mrn: string;
-  title: string;
+  name: string;
+  plan_type: DietPlanType;
+  plan_type_display?: string;
   status: DietPlanStatus;
-  target_calories: number | null;
+  status_display?: string;
   start_date: string;
   end_date: string | null;
+  is_active: boolean;
+  days_remaining: number | null;
+  review_date: string | null;
   created_at: string;
 }
 
@@ -319,28 +475,37 @@ export interface DietPlanListItem {
  * Create diet plan payload
  */
 export interface DietPlanCreateData {
-  consultation_id: number;
-  title: string;
+  patient: number;
+  consultation?: number;
+  name: string;
+  plan_type: DietPlanType;
   description?: string;
-  target_calories?: number;
-  target_protein_g?: number;
-  target_carbs_g?: number;
-  target_fat_g?: number;
-  target_fiber_g?: number;
-  target_sodium_mg?: number;
-  breakfast?: string;
-  mid_morning_snack?: string;
-  lunch?: string;
-  afternoon_snack?: string;
-  dinner?: string;
-  bedtime_snack?: string;
-  foods_to_avoid?: string;
-  foods_to_include?: string;
-  special_instructions?: string;
-  supplements?: string;
+  goals?: string;
   start_date: string;
   end_date?: string;
-  review_date?: string;
+  duration_value?: number;
+  duration_unit?: DurationUnit;
+  // Nutritional Targets
+  target_calories?: number;
+  target_protein?: number;
+  target_carbs?: number;
+  target_fat?: number;
+  target_fiber?: number;
+  target_sodium?: number;
+  target_fluid?: number;
+  // Meal Plan
+  meal_plan?: string;
+  breakfast_guidelines?: string;
+  lunch_guidelines?: string;
+  dinner_guidelines?: string;
+  snack_guidelines?: string;
+  // Restrictions
+  restrictions?: string;
+  foods_to_avoid?: string;
+  foods_to_limit?: string;
+  foods_to_include?: string;
+  // Supplements
+  supplements?: string;
 }
 
 // =============================================================================

@@ -31,7 +31,7 @@ export const PhysiotherapyCategorySchema = z.enum([
   'POST_SURGICAL',
   'PAIN_MANAGEMENT',
   'ORTHOPEDIC',
-  'VESTIBULAR',
+  'STROKE',
   'OTHER',
 ]);
 
@@ -43,18 +43,19 @@ export const PhysiotherapyTreatmentTypeSchema = z.object({
   id: z.number(),
   code: z.string(),
   name: z.string(),
-  description: z.string(),
+  description: z.string(), // blank=True in backend, but defaults to empty string
   category: PhysiotherapyCategorySchema,
-  default_duration_minutes: z.number(),
+  category_display: z.string().optional(), // read_only from serializer
+  typical_duration_minutes: z.number(),
   recommended_sessions: z.number(),
   recommended_frequency: z.string(),
   requires_equipment: z.boolean(),
-  equipment_needed: z.string().nullable(),
-  contraindications: z.string(),
-  precautions: z.string(),
-  sha_code: z.string().nullable(),
+  equipment_needed: z.string(), // blank=True returns empty string
+  contraindications: z.string(), // blank=True returns empty string
+  precautions: z.string(), // blank=True returns empty string
+  sha_intervention_code: z.string(), // backend field name
   sha_claimable: z.boolean(),
-  unit_price: z.string(),
+  cost_per_session: z.string(), // backend field name (DecimalField serialized as string)
   is_active: z.boolean(),
   created_at: z.string(),
   updated_at: z.string(),

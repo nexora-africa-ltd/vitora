@@ -11,17 +11,24 @@ import { Badge } from '@/components/ui/badge';
 import { Scale, Ruler, Activity } from 'lucide-react';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { BMIIndicator } from './bmi-indicator';
-import type { Anthropometrics, NutritionalCalculations } from '@/lib/types/nutrition';
+import type { Anthropometrics, NutritionalCalculations, MalnutritionStatus } from '@/lib/types/nutrition';
 import { MALNUTRITION_STATUS_CONFIG } from '@/lib/types/nutrition';
 
 interface AnthropometricsDisplayProps {
   anthropometrics: Anthropometrics;
   calculations?: NutritionalCalculations | null;
+  muacClassification?: string | null;
   /** Show calculated values (BMR, TDEE) alongside measurements */
   showCalculations?: boolean;
   /** Show the BMI visual bar */
   showBmiBar?: boolean;
   className?: string;
+}
+
+function parseNumber(value: number | string | null): number | null {
+  if (value === null) return null;
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  return isNaN(num) ? null : num;
 }
 
 function MeasurementItem({
@@ -31,11 +38,12 @@ function MeasurementItem({
   icon: Icon,
 }: {
   label: string;
-  value: number | null;
+  value: number | string | null;
   unit: string;
   icon?: React.ComponentType<{ className?: string }>;
 }) {
-  if (value === null) return null;
+  const numValue = parseNumber(value);
+  if (numValue === null) return null;
 
   return (
     <div className="flex items-start gap-2">
@@ -43,7 +51,7 @@ function MeasurementItem({
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className="font-medium tabular-nums">
-          {value} <span className="text-sm text-muted-foreground">{unit}</span>
+          {numValue} <span className="text-sm text-muted-foreground">{unit}</span>
         </p>
       </div>
     </div>
@@ -53,28 +61,28 @@ function MeasurementItem({
 export function AnthropometricsDisplay({
   anthropometrics,
   calculations,
+  muacClassification,
   showCalculations = true,
   showBmiBar = true,
   className,
 }: AnthropometricsDisplayProps) {
   const {
-    weight_kg,
-    height_cm,
-    waist_cm,
-    hip_cm,
-    muac_cm,
+    weight,
+    height,
+    waist_circumference,
+    hip_circumference,
+    mid_upper_arm_circumference,
     bmi,
     bmi_classification,
     waist_hip_ratio,
-    malnutrition_status,
   } = anthropometrics;
 
   const hasAnyMeasurement =
-    weight_kg !== null ||
-    height_cm !== null ||
-    waist_cm !== null ||
-    hip_cm !== null ||
-    muac_cm !== null;
+    parseNumber(weight) !== null ||
+    parseNumber(height) !== null ||
+    parseNumber(waist_circumference) !== null ||
+    parseNumber(hip_circumference) !== null ||
+    parseNumber(mid_upper_arm_circumference) !== null;
 
   if (!hasAnyMeasurement) {
     return (
@@ -94,6 +102,12 @@ export function AnthropometricsDisplay({
     );
   }
 
+  const bmiNum = parseNumber(bmi);
+  const whrNum = parseNumber(waist_hip_ratio);
+  const muacNum = parseNumber(mid_upper_arm_circumference);
+  const isMalnutritionStatus = (s: string | null | undefined): s is MalnutritionStatus =>
+    s === 'NORMAL' || s === 'MAM' || s === 'SAM';
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -105,9 +119,9 @@ export function AnthropometricsDisplay({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* BMI Indicator */}
-        {bmi !== null && (
+        {bmiNum !== null && (
           <BMIIndicator
-            bmi={bmi}
+            bmi={bmiNum}
             classification={bmi_classification}
             showBar={showBmiBar}
           />
@@ -117,53 +131,53 @@ export function AnthropometricsDisplay({
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
           <MeasurementItem
             label="Weight"
-            value={weight_kg}
+            value={weight}
             unit="kg"
             icon={Scale}
           />
           <MeasurementItem
             label="Height"
-            value={height_cm}
+            value={height}
             unit="cm"
             icon={Ruler}
           />
           <MeasurementItem
             label="Waist"
-            value={waist_cm}
+            value={waist_circumference}
             unit="cm"
           />
           <MeasurementItem
             label="Hip"
-            value={hip_cm}
+            value={hip_circumference}
             unit="cm"
           />
-          {waist_hip_ratio !== null && (
+          {whrNum !== null && (
             <div>
               <p className="text-xs text-muted-foreground">Waist-Hip Ratio</p>
               <p className="font-medium tabular-nums">
-                {waist_hip_ratio.toFixed(2)}
+                {whrNum.toFixed(2)}
               </p>
             </div>
           )}
         </div>
 
         {/* MUAC with malnutrition status */}
-        {muac_cm !== null && (
+        {muacNum !== null && (
           <div className="flex items-center justify-between p-2 rounded-md bg-muted/50">
             <div>
               <p className="text-xs text-muted-foreground">MUAC</p>
-              <p className="font-medium tabular-nums">{muac_cm} cm</p>
+              <p className="font-medium tabular-nums">{muacNum} cm</p>
             </div>
-            {malnutrition_status && (
+            {isMalnutritionStatus(muacClassification) && (
               <Badge
                 variant={
-                  MALNUTRITION_STATUS_CONFIG[malnutrition_status]?.variant ||
+                  MALNUTRITION_STATUS_CONFIG[muacClassification]?.variant ||
                   'outline'
                 }
               >
-                {MALNUTRITION_STATUS_CONFIG[malnutrition_status]?.label}
+                {MALNUTRITION_STATUS_CONFIG[muacClassification]?.label}
                 <span className="hidden sm:inline ml-1 text-[10px]">
-                  ({MALNUTRITION_STATUS_CONFIG[malnutrition_status]?.description})
+                  ({MALNUTRITION_STATUS_CONFIG[muacClassification]?.description})
                 </span>
               </Badge>
             )}
@@ -171,36 +185,36 @@ export function AnthropometricsDisplay({
         )}
 
         {/* Calculated nutritional values */}
-        {showCalculations && calculations && (calculations.bmr || calculations.tdee) && (
+        {showCalculations && calculations && (calculations.basal_metabolic_rate || calculations.total_daily_energy_expenditure) && (
           <div className="border-t pt-3 space-y-2">
             <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <Activity className="h-3.5 w-3.5" />
               Calculated Values
             </p>
             <div className="grid gap-2 grid-cols-2 sm:grid-cols-3">
-              {calculations.bmr !== null && (
+              {parseNumber(calculations.basal_metabolic_rate) !== null && (
                 <div>
                   <p className="text-xs text-muted-foreground">BMR</p>
                   <p className="font-medium tabular-nums">
-                    {Math.round(calculations.bmr)}{' '}
+                    {Math.round(parseNumber(calculations.basal_metabolic_rate)!)}{' '}
                     <span className="text-sm text-muted-foreground">kcal</span>
                   </p>
                 </div>
               )}
-              {calculations.tdee !== null && (
+              {parseNumber(calculations.total_daily_energy_expenditure) !== null && (
                 <div>
                   <p className="text-xs text-muted-foreground">TDEE</p>
                   <p className="font-medium tabular-nums">
-                    {Math.round(calculations.tdee)}{' '}
+                    {Math.round(parseNumber(calculations.total_daily_energy_expenditure)!)}{' '}
                     <span className="text-sm text-muted-foreground">kcal</span>
                   </p>
                 </div>
               )}
-              {calculations.ideal_body_weight !== null && (
+              {parseNumber(calculations.ideal_body_weight) !== null && (
                 <div>
                   <p className="text-xs text-muted-foreground">Ideal Weight</p>
                   <p className="font-medium tabular-nums">
-                    {calculations.ideal_body_weight.toFixed(1)}{' '}
+                    {parseNumber(calculations.ideal_body_weight)!.toFixed(1)}{' '}
                     <span className="text-sm text-muted-foreground">kg</span>
                   </p>
                 </div>
