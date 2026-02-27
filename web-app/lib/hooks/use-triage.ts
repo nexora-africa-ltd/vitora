@@ -82,6 +82,7 @@ interface WaitingQueueEntry {
 
 interface WaitingQueueCreateData {
   patient_id: number;
+  encounter_id?: number | null;
   reason_for_visit?: string;
   priority_hint?: string;
   create_encounter?: boolean;

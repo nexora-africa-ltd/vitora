@@ -68,13 +68,14 @@ class WaitingQueueCreateSerializer(serializers.ModelSerializer):
     """Serializer for checking in a patient (creating waiting queue entry)."""
 
     patient_id = serializers.IntegerField(write_only=True)
+    encounter_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     reason_for_visit = serializers.CharField(required=False, allow_blank=True, default="")
     priority_hint = serializers.CharField(required=False, allow_blank=True, default="")
     create_encounter = serializers.BooleanField(required=False, default=True)
 
     class Meta:
         model = WaitingQueue
-        fields = ["patient_id", "reason_for_visit", "priority_hint", "create_encounter", "notes"]
+        fields = ["patient_id", "encounter_id", "reason_for_visit", "priority_hint", "create_encounter", "notes"]
 
     def validate_patient_id(self, value):
         try:
@@ -93,16 +94,29 @@ class WaitingQueueCreateSerializer(serializers.ModelSerializer):
 
         return value
 
+    def validate_encounter_id(self, value):
+        """Validate that the encounter exists if provided."""
+        if value is None:
+            return value
+        try:
+            Encounter.objects.get(pk=value)
+        except Encounter.DoesNotExist:
+            raise serializers.ValidationError("Encounter not found.")
+        return value
+
     def create(self, validated_data):
         patient_id = validated_data.pop("patient_id")
+        encounter_id = validated_data.pop("encounter_id", None)
         create_encounter = validated_data.pop("create_encounter", True)
 
         patient = Patient.objects.get(pk=patient_id)
         request = self.context.get("request")
 
-        # Create encounter if requested
+        # Use existing encounter if provided, otherwise create if requested
         encounter = None
-        if create_encounter:
+        if encounter_id:
+            encounter = Encounter.objects.get(pk=encounter_id)
+        elif create_encounter:
             encounter = Encounter.objects.create(
                 patient=patient,
                 encounter_type="OPD",  # Default to OPD

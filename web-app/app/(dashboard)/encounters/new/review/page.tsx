@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/dialog';
 import { useNewEncounterStore } from '@/lib/stores/new-encounter-store';
 import { useCreateEncounterWithValidation } from '@/lib/hooks/use-encounter-form';
+import { useCheckInPatient } from '@/lib/hooks/use-triage';
 import { useToast } from '@/lib/hooks/use-toast';
 import { LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
 
@@ -86,6 +87,7 @@ export default function NewEncounterReviewPage() {
   } = useNewEncounterStore();
 
   const createEncounter = useCreateEncounterWithValidation();
+  const checkInPatient = useCheckInPatient();
 
   const [showTriageModal, setShowTriageModal] = useState(false);
   const [createdEncounterId, setCreatedEncounterId] = useState<number | null>(null);
@@ -177,7 +179,21 @@ export default function NewEncounterReviewPage() {
         return;
       }
 
-      // For OPD encounters, show triage modal
+      // For OPD encounters, add patient to triage waiting queue
+      // This ensures they appear in "Patients Awaiting Triage"
+      try {
+        await checkInPatient.mutateAsync({
+          patient_id: patientData!.id,
+          encounter_id: result.id,
+          reason_for_visit: details.chief_complaint,
+          create_encounter: false, // We already created the encounter
+        });
+      } catch (checkInError) {
+        // If patient is already in queue, that's fine - continue with the flow
+        console.log('Check-in note:', checkInError);
+      }
+
+      // Show triage modal
       setCreatedEncounterId(result.id);
       setShowTriageModal(true);
     } catch (error) {
@@ -187,7 +203,7 @@ export default function NewEncounterReviewPage() {
         variant: 'destructive',
       });
     }
-  }, [getFormData, createEncounter, toast, isUrgentEncounterType, details, clearSession, router]);
+  }, [getFormData, createEncounter, checkInPatient, toast, isUrgentEncounterType, details, patientData, clearSession, router]);
 
   // Handle triage modal response
   const handleGoToTriage = useCallback(() => {

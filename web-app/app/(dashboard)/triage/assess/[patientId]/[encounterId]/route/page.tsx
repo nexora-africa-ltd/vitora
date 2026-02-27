@@ -294,10 +294,21 @@ export default function TriageRoutePage() {
         <Alert variant="destructive" className="bg-destructive/10 border-destructive/20">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Incomplete Assessment</AlertTitle>
-          <AlertDescription>
-            {!hasVitals && 'Vitals are required. '}
-            {!hasAssessment && 'Assessment is required. '}
-            Please complete the previous tabs first.
+          <AlertDescription className="space-y-1">
+            {!hasVitals && (
+              <p>
+                <strong>Vitals not recorded:</strong> Vital signs were not captured during registration.
+                Recording vitals is required before routing the patient to consultation.
+              </p>
+            )}
+            {!hasAssessment && (
+              <p>
+                <strong>Assessment required:</strong> Please complete the triage assessment before proceeding.
+              </p>
+            )}
+            <p className="text-sm mt-2">
+              Complete the previous steps to continue.
+            </p>
           </AlertDescription>
         </Alert>
       )}
