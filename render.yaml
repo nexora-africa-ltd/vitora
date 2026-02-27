@@ -46,7 +46,8 @@ services:
         python manage.py seed_notifiable_diseases &&
         python manage.py seed_surveillance_demo &&
         python manage.py setup_allied_health_permissions &&
-        python manage.py seed_allied_health_data
+        python manage.py seed_allied_health_data &&
+        python manage.py seed_allied_health_demo
       fi
     startCommand: daphne -b 0.0.0.0 -p $PORT hmis.asgi:application
     healthCheckPath: /api/health/
