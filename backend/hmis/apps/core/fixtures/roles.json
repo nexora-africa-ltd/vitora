@@ -581,5 +581,165 @@
       "created_at": "2026-01-01T00:00:00Z",
       "updated_at": "2026-01-01T00:00:00Z"
     }
+  },
+  {
+    "model": "auth.group",
+    "pk": 20,
+    "fields": {
+      "name": "Physiotherapist"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 20,
+    "fields": {
+      "code": "PHYSIOTHERAPIST",
+      "name": "Physiotherapist",
+      "category": "ALLIED_HEALTH",
+      "description": "Licensed physiotherapist (Kenya Society of Physiotherapists registered). Provides assessment, treatment, and rehabilitation for physical conditions affecting movement and function.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "Encounter": {"create": false, "read": true, "update": false, "delete": false},
+        "PhysiotherapyOrder": {"create": true, "read": true, "update": true, "delete": false},
+        "PhysiotherapySession": {"create": true, "read": true, "update": true, "delete": false},
+        "PhysiotherapyTreatmentType": {"create": false, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 4,
+      "parent_role": null,
+      "django_group": 20,
+      "requires_license": true,
+      "license_body": "KSP",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 21,
+    "fields": {
+      "name": "Dietitian"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 21,
+    "fields": {
+      "code": "DIETITIAN",
+      "name": "Dietitian",
+      "category": "ALLIED_HEALTH",
+      "description": "Licensed dietitian/nutritionist (Kenya Nutritionists and Dietitians Institute registered). Provides nutrition assessment, diet planning, and nutritional counselling for patients.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "Encounter": {"create": false, "read": true, "update": false, "delete": false},
+        "NutritionConsultation": {"create": true, "read": true, "update": true, "delete": false},
+        "DietPlan": {"create": true, "read": true, "update": true, "delete": false}
+      },
+      "hierarchy_level": 4,
+      "parent_role": null,
+      "django_group": 21,
+      "requires_license": true,
+      "license_body": "KNDI",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 22,
+    "fields": {
+      "name": "Occupational Therapist"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 22,
+    "fields": {
+      "code": "OCCUPATIONAL_THERAPIST",
+      "name": "Occupational Therapist",
+      "category": "ALLIED_HEALTH",
+      "description": "Licensed occupational therapist (Kenya Occupational Therapy Association registered). Provides assessment and treatment to help patients participate in daily activities and occupations.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "Encounter": {"create": false, "read": true, "update": false, "delete": false},
+        "OccupationalTherapyOrder": {"create": true, "read": true, "update": true, "delete": false},
+        "OTSession": {"create": true, "read": true, "update": true, "delete": false},
+        "OTTreatmentType": {"create": false, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 4,
+      "parent_role": null,
+      "django_group": 22,
+      "requires_license": true,
+      "license_body": "KOTA",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 23,
+    "fields": {
+      "name": "Social Worker"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 23,
+    "fields": {
+      "code": "SOCIAL_WORKER",
+      "name": "Social Worker",
+      "category": "ALLIED_HEALTH",
+      "description": "Licensed medical social worker (Kenya National Association of Social Workers registered). Provides psychosocial assessment, case management, and support services including sensitive case handling (GBV, child protection).",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": true},
+        "Encounter": {"create": false, "read": true, "update": false, "delete": false},
+        "SocialWorkReferral": {"create": true, "read": true, "update": true, "delete": false},
+        "SocialWorkCase": {"create": true, "read": true, "update": true, "delete": false},
+        "CaseNote": {"create": true, "read": true, "update": true, "delete": false},
+        "Intervention": {"create": true, "read": true, "update": true, "delete": false}
+      },
+      "hierarchy_level": 4,
+      "parent_role": null,
+      "django_group": 23,
+      "requires_license": true,
+      "license_body": "KNASW",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 24,
+    "fields": {
+      "name": "Counsellor"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 24,
+    "fields": {
+      "code": "COUNSELLOR",
+      "name": "Counsellor",
+      "category": "ALLIED_HEALTH",
+      "description": "Licensed counselling professional (Kenya Counselling and Psychological Association registered). Provides individual and group counselling for mental health, HIV/AIDS, substance abuse, and other psychosocial issues.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": true},
+        "Encounter": {"create": false, "read": true, "update": false, "delete": false},
+        "CounsellingReferral": {"create": true, "read": true, "update": true, "delete": false},
+        "CounsellingSession": {"create": true, "read": true, "update": true, "delete": false},
+        "CounsellingType": {"create": false, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 4,
+      "parent_role": null,
+      "django_group": 24,
+      "requires_license": true,
+      "license_body": "KCPA",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
   }
 ]
