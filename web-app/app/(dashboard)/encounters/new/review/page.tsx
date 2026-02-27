@@ -8,7 +8,7 @@
  */
 'use client';
 
-import { useCallback, useState, useMemo } from 'react';
+import { useCallback, useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -228,8 +228,13 @@ export default function NewEncounterReviewPage() {
   }, [clearSession, toast, router]);
 
   // Redirect if missing required data
+  useEffect(() => {
+    if (!patientData) {
+      router.push('/encounters/new/patient');
+    }
+  }, [patientData, router]);
+
   if (!patientData) {
-    router.push('/encounters/new/patient');
     return null;
   }
 
