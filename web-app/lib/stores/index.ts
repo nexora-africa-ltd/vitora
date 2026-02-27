@@ -39,3 +39,12 @@ export {
   type TriageRouting,
   type TriageAssessSession,
 } from './triage-assess-store';
+
+// Encounter Edit Store - persists encounter edit data across multi-step workflow
+export {
+  useEncounterEditStore,
+  type EncounterVitals,
+  type EncounterHistory,
+  type EncounterNotes,
+  type EncounterEditSession,
+} from './encounter-edit-store';
