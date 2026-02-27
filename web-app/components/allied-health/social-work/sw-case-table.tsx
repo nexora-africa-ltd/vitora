@@ -149,12 +149,11 @@ export function SWCaseTable({ initialParams }: SWCaseTableProps) {
                 <TableRow>
                   <TableHead>Case #</TableHead>
                   <TableHead>Patient</TableHead>
-                  <TableHead>Reason</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Social Worker</TableHead>
-                  <TableHead>Urgency</TableHead>
+                  <TableHead>Risk</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Opened</TableHead>
-                  <TableHead>Notes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -176,7 +175,7 @@ export function SWCaseTable({ initialParams }: SWCaseTableProps) {
                       </div>
                     </TableCell>
                     <TableCell className="capitalize">
-                      {swCase.referral_reason.toLowerCase().replace('_', ' ')}
+                      {swCase.case_type_display || swCase.title || '—'}
                     </TableCell>
                     <TableCell>
                       {swCase.assigned_worker_name || (
@@ -186,9 +185,9 @@ export function SWCaseTable({ initialParams }: SWCaseTableProps) {
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className={urgencyConfig[swCase.urgency]?.className}
+                        className={urgencyConfig[swCase.risk_level || '']?.className}
                       >
-                        {urgencyConfig[swCase.urgency]?.label || swCase.urgency}
+                        {swCase.risk_level_display || swCase.risk_level || '—'}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -200,10 +199,7 @@ export function SWCaseTable({ initialParams }: SWCaseTableProps) {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {format(parseISO(swCase.opened_date), 'MMM d, yyyy')}
-                    </TableCell>
-                    <TableCell className="text-center text-muted-foreground">
-                      {swCase.notes_count}
+                      {format(parseISO(swCase.opened_at), 'MMM d, yyyy')}
                     </TableCell>
                   </TableRow>
                 ))}

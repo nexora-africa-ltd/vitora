@@ -123,8 +123,8 @@ export function EncounterAlliedHealthContent({
               status={order.status}
               priority={undefined}
               assignee={undefined}
-              detail={`${order.completed_sessions}/${order.total_sessions} sessions`}
-              date={order.created_at}
+              detail={`${order.sessions_completed}/${order.total_sessions} sessions`}
+              date={order.ordered_at}
             />
           ))}
         </ReferralSection>
@@ -142,12 +142,12 @@ export function EncounterAlliedHealthContent({
               key={c.id}
               href={`/allied-health/nutrition/consultations/${c.id}`}
               title={c.referral_reason.replace(/_/g, ' ')}
-              orderNumber={c.order_number}
+              orderNumber={c.consultation_number}
               status={c.status}
               priority={c.priority}
-              assignee={c.assigned_dietitian_name}
+              assignee={c.dietitian_name}
               detail={c.bmi ? `BMI: ${c.bmi}` : undefined}
-              date={c.created_at}
+              date={c.consultation_date}
             />
           ))}
         </ReferralSection>
@@ -169,8 +169,8 @@ export function EncounterAlliedHealthContent({
               status={order.status}
               priority={order.priority}
               assignee={order.assigned_therapist_name}
-              detail={`${order.completed_sessions}/${order.total_sessions} sessions`}
-              date={order.created_at}
+              detail={`${order.sessions_completed}/${order.total_sessions} sessions`}
+              date={order.ordered_at}
             />
           ))}
         </ReferralSection>
@@ -187,12 +187,12 @@ export function EncounterAlliedHealthContent({
             <ReferralCard
               key={r.id}
               href={`/allied-health/counselling/referrals/${r.id}`}
-              title={r.counselling_type_name}
+              title={r.reason_display || r.reason}
               orderNumber={r.referral_number}
               status={r.status}
-              priority={r.priority}
+              priority={undefined}
               assignee={r.assigned_counsellor_name}
-              detail={`${r.completed_sessions}/${r.total_sessions} sessions`}
+              detail={`${r.sessions_completed}/${r.total_sessions} sessions`}
               date={r.created_at}
             />
           ))}
@@ -210,10 +210,10 @@ export function EncounterAlliedHealthContent({
             <ReferralCard
               key={r.id}
               href={`/allied-health/social-work/cases?referral=${r.id}`}
-              title={r.referral_reason.replace(/_/g, ' ')}
+              title={r.reason_display || r.reason}
               orderNumber={r.referral_number}
               status={r.status}
-              priority={r.priority}
+              priority={undefined}
               assignee={r.assigned_worker_name}
               detail={r.is_sensitive ? 'Sensitive' : undefined}
               date={r.created_at}

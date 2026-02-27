@@ -64,7 +64,7 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
 
   const { data: swCase, isLoading, error } = useSWCase(caseId);
-  const { data: referral } = useSWReferral(swCase?.referral_id);
+  const { data: referral } = useSWReferral(swCase?.referral);
   const { data: notesData, isLoading: notesLoading } = useCaseNotes({ case_id: caseId });
   const { data: interventionsData, isLoading: interventionsLoading } = useInterventions({ case_id: caseId });
 
@@ -114,8 +114,10 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
   };
 
   const statusConfig = CASE_STATUS_CONFIG[swCase.status as keyof typeof CASE_STATUS_CONFIG];
-  const urgencyConfig = URGENCY_CONFIG[swCase.urgency as keyof typeof URGENCY_CONFIG];
-  const referralReason = swCase.referral.referral_reason;
+  const referralReason = referral?.reason;
+  const urgencyConfig = referral?.urgency
+    ? URGENCY_CONFIG[referral.urgency as keyof typeof URGENCY_CONFIG]
+    : undefined;
   const isSensitive =
     swCase.is_sensitive ||
     SENSITIVE_REASONS.includes(referralReason as SWReferralReason);
@@ -137,7 +139,7 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
 
       {/* Sensitive Case Warning */}
       <SensitiveCaseBanner
-        referralReason={referralReason}
+        referralReason={referralReason || ''}
         isSensitive={swCase.is_sensitive}
       />
 
@@ -148,12 +150,14 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
             <Badge variant={statusConfig?.variant} className={statusConfig?.className}>
               {statusConfig?.label || swCase.status}
             </Badge>
-            <Badge variant={urgencyConfig?.variant} className={urgencyConfig?.className}>
-              {urgencyConfig?.label || swCase.urgency}
-            </Badge>
+            {urgencyConfig && (
+              <Badge variant={urgencyConfig.variant} className={urgencyConfig.className}>
+                {urgencyConfig.label || referral?.urgency}
+              </Badge>
+            )}
           </div>
           <p className="text-muted-foreground mt-1">
-            Opened {format(parseISO(swCase.opened_date), 'PPP')}
+            Opened {format(parseISO(swCase.opened_at), 'PPP')}
           </p>
         </div>
 
@@ -202,8 +206,8 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Patient</h4>
-                <p className="font-medium">{swCase.referral.patient.full_name}</p>
-                <p className="text-sm text-muted-foreground">{swCase.referral.patient.mrn}</p>
+                <p className="font-medium">{swCase.patient_name}</p>
+                <p className="text-sm text-muted-foreground">{swCase.patient_mrn}</p>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Referral Reason</h4>
@@ -214,12 +218,12 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Referred By</h4>
-                <p className="font-medium">{referral?.referred_by.full_name || 'N/A'}</p>
+                <p className="font-medium">{referral?.referred_by_name || 'N/A'}</p>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Assigned Worker</h4>
                 <p className="font-medium">
-                  {swCase.assigned_worker?.full_name || 'Not assigned'}
+                  {swCase.assigned_worker_name || 'Not assigned'}
                 </p>
               </div>
             </CardContent>
@@ -231,12 +235,12 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
               <CardTitle>Presenting Issues</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="whitespace-pre-wrap">{referral?.presenting_problem || swCase.case_summary}</p>
+              <p className="whitespace-pre-wrap">{referral?.presenting_issues || referral?.clinical_summary || swCase.presenting_problem || ''}</p>
             </CardContent>
           </Card>
 
           {/* Safety & Needs */}
-          {referral?.immediate_needs && (
+          {referral?.specific_requests && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -245,8 +249,8 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">Immediate Needs</h4>
-                <p className="whitespace-pre-wrap">{referral.immediate_needs}</p>
+                <h4 className="text-sm font-medium text-muted-foreground mb-1">Specific Requests</h4>
+                <p className="whitespace-pre-wrap">{referral.specific_requests}</p>
               </CardContent>
             </Card>
           )}
@@ -313,12 +317,12 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
                       onClick={() => router.push(`/allied-health/social-work/notes/${note.id}`)}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-medium">{note.author.full_name}</p>
+                        <p className="text-sm font-medium">{note.author_name}</p>
                         <p className="text-xs text-muted-foreground">
                           {format(parseISO(note.created_at), 'PPp')}
                         </p>
                       </div>
-                      <p className="text-sm line-clamp-2">{note.note_content}</p>
+                      <p className="text-sm line-clamp-2">{note.content}</p>
                     </div>
                   ))}
                   {notes.length > 5 && (
@@ -370,7 +374,7 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
                       <div>
                         <p className="font-medium">{intervention.intervention_type}</p>
                         <p className="text-sm text-muted-foreground">
-                          {format(parseISO(intervention.actual_date || intervention.planned_date), 'PPP')}
+                          {format(parseISO(intervention.completion_date || intervention.start_date || intervention.planned_date || intervention.created_at), 'PPP')}
                         </p>
                       </div>
                       <Badge variant={intervention.status === 'COMPLETED' ? 'default' : 'outline'}>
@@ -398,12 +402,14 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
                   {statusConfig?.label}
                 </Badge>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Urgency</span>
-                <Badge variant={urgencyConfig?.variant} className={urgencyConfig?.className}>
-                  {urgencyConfig?.label}
-                </Badge>
-              </div>
+              {referral?.urgency && urgencyConfig && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Urgency</span>
+                  <Badge variant={urgencyConfig.variant} className={urgencyConfig.className}>
+                    {urgencyConfig.label || referral.urgency}
+                  </Badge>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Notes</span>
                 <span className="font-medium">{notes.length}</span>
@@ -415,14 +421,14 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
             </CardContent>
           </Card>
 
-          {/* External Referrals */}
-          {swCase.external_referral_status && (
+          {/* Outcome */}
+          {swCase.outcome && (
             <Card>
               <CardHeader>
-                <CardTitle>External Referrals</CardTitle>
+                <CardTitle>Outcome</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm whitespace-pre-wrap">{swCase.external_referral_status}</p>
+                <p className="text-sm whitespace-pre-wrap">{swCase.outcome}</p>
               </CardContent>
             </Card>
           )}
@@ -438,21 +444,21 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
             <CardContent className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Opened</span>
-                <span className="text-sm">{format(parseISO(swCase.opened_date), 'PP')}</span>
+                <span className="text-sm">{format(parseISO(swCase.opened_at), 'PP')}</span>
               </div>
-              {swCase.target_closure_date && (
+              {swCase.next_review_date && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Target Close</span>
+                  <span className="text-muted-foreground">Next Review</span>
                   <span className="text-sm">
-                    {format(parseISO(swCase.target_closure_date), 'PP')}
+                    {format(parseISO(swCase.next_review_date), 'PP')}
                   </span>
                 </div>
               )}
-              {swCase.actual_closure_date && (
+              {swCase.closed_at && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Closed</span>
                   <span className="text-sm">
-                    {format(parseISO(swCase.actual_closure_date), 'PP')}
+                    {format(parseISO(swCase.closed_at), 'PP')}
                   </span>
                 </div>
               )}

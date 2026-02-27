@@ -557,7 +557,7 @@ export function PhysioOrderForm({
                     </Badge>
                   )}
                   <Badge variant="outline">
-                    KES {Number((selectedTreatmentType as unknown as { cost_per_session?: string }).cost_per_session || selectedTreatmentType.unit_price).toLocaleString()}/session
+                    KES {Number(selectedTreatmentType.cost_per_session).toLocaleString()}/session
                   </Badge>
                 </div>
               )}

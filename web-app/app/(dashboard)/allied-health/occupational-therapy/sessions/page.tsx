@@ -333,7 +333,7 @@ export default function OccupationalTherapySessionsPage() {
                       <TableRow
                         key={session.id}
                         className="cursor-pointer"
-                        onClick={() => router.push(`/allied-health/occupational-therapy/orders/${session.order_number.split('-')[0]}`)}
+                        onClick={() => router.push(`/allied-health/occupational-therapy/orders/${session.order}`)}
                       >
                         <TableCell className="font-mono text-sm">
                           {session.session_number}
@@ -349,7 +349,7 @@ export default function OccupationalTherapySessionsPage() {
                         </TableCell>
                         <TableCell>{session.scheduled_time || '-'}</TableCell>
                         <TableCell>
-                          <span className="font-mono text-xs">{session.order_number}</span>
+                          <span className="font-mono text-xs">Order #{session.order}</span>
                         </TableCell>
                         <TableCell>{session.therapist_name || 'Unassigned'}</TableCell>
                         <TableCell>

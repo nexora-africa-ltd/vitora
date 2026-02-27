@@ -1,17 +1,16 @@
 /**
  * Counselling Module Types
  * Sprint Allied Health - Counselling
+ *
+ * IMPORTANT: These types match the backend serializers exactly.
+ * The backend returns flat IDs + `_name` fields, NOT nested objects.
  */
 
 import {
-  BaseAlliedHealthSession,
   AlliedHealthOrderStatus,
-  AlliedHealthPriority,
   AlliedHealthSessionStatus,
   AlliedHealthOrderListParams,
   AlliedHealthSessionListParams,
-  StaffReference,
-  PatientReference,
   SessionOutcome,
 } from './allied-health';
 
@@ -19,9 +18,6 @@ import {
 // ENUMS
 // =============================================================================
 
-/**
- * Counselling type/category
- */
 export type CounsellingCategory =
   | 'HIV'
   | 'MENTAL_HEALTH'
@@ -39,23 +35,14 @@ export type CounsellingCategory =
   | 'ANTENATAL'
   | 'OTHER';
 
-/**
- * Session modality
- */
 export type SessionModality = 'IN_PERSON' | 'VIDEO' | 'PHONE' | 'GROUP';
 
-/**
- * Risk assessment level
- */
 export type RiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
 
 // =============================================================================
 // DISPLAY CONFIGURATIONS
 // =============================================================================
 
-/**
- * Sensitive counselling categories that require special access
- */
 export const SENSITIVE_CATEGORIES: CounsellingCategory[] = [
   'HIV',
   'MENTAL_HEALTH',
@@ -99,12 +86,9 @@ export const RISK_LEVEL_CONFIG: Record<
 };
 
 // =============================================================================
-// COUNSELLING TYPE
+// COUNSELLING TYPE (matches CounsellingTypeSerializer)
 // =============================================================================
 
-/**
- * Counselling type catalog entry
- */
 export interface CounsellingType {
   id: number;
   code: string;
@@ -129,187 +113,205 @@ export interface CounsellingType {
 }
 
 // =============================================================================
-// REFERRAL
+// REFERRAL (flat IDs — matches CounsellingReferralSerializer)
 // =============================================================================
 
-/**
- * Counselling referral
- */
 export interface CounsellingReferral {
   id: number;
   referral_number: string;
-  patient: PatientReference;
-  patient_id: number;
-  encounter_id: number | null;
-  clinic_visit_id: number | null;
-  referred_by: StaffReference;
-  referred_by_id: number;
-  assigned_counsellor: StaffReference | null;
-  assigned_counsellor_id: number | null;
-  counselling_type: CounsellingType;
-  counselling_type_id: number;
+  // Patient (flat IDs + names)
+  patient: number;
+  patient_name: string;
+  patient_mrn: string;
+  encounter: number | null;
+  // Counselling type (flat ID + name)
+  counselling_type: number;
+  counselling_type_name: string;
+  // Staff
+  referred_by: number;
+  referred_by_name: string;
+  assigned_counsellor: number | null;
+  assigned_counsellor_name: string | null;
+  // Referral details
+  reason: string;
+  reason_display?: string;
+  urgency: string;
+  urgency_display?: string;
+  clinical_summary?: string;
+  presenting_issues?: string;
+  goals?: string;
+  risk_assessment?: string;
+  // Status
   status: AlliedHealthOrderStatus;
-  priority: AlliedHealthPriority;
-  presenting_concern: string;
-  background_history: string;
-  risk_assessment: string;
-  risk_level: RiskLevel;
-  goals: string;
-  recommended_sessions: number;
-  frequency: string;
-  preferred_modality: SessionModality;
+  status_display?: string;
   is_sensitive: boolean;
-  // Computed
-  completed_sessions: number;
+  is_mental_health_related: boolean;
+  is_hiv_related: boolean;
+  requires_immediate_attention: boolean;
+  // Sessions
   total_sessions: number;
-  // SHA
-  sha_code: string | null;
-  sha_claimable: boolean;
+  sessions_completed: number;
+  completion_percentage: number;
+  // Billing
+  is_paid?: boolean;
+  invoice?: number | null;
+  clinic_visit?: number | null;
+  // Completion
+  completion_notes?: string;
+  cancellation_reason?: string;
+  // Nested sessions
+  sessions?: unknown[];
   // Timestamps
-  referral_date: string;
-  accepted_date: string | null;
   created_at: string;
   updated_at: string;
+  accepted_at: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  completed_by?: number | null;
 }
 
-/**
- * Counselling referral list item
- */
 export interface CounsellingReferralListItem {
   id: number;
   referral_number: string;
+  patient: number;
   patient_name: string;
   patient_mrn: string;
-  counselling_type_name: string;
-  category: CounsellingCategory;
+  reason: string;
+  reason_display?: string;
+  urgency: string;
+  urgency_display?: string;
   status: AlliedHealthOrderStatus;
-  priority: AlliedHealthPriority;
-  risk_level: RiskLevel;
+  status_display?: string;
+  assigned_counsellor: number | null;
   assigned_counsellor_name: string | null;
-  completed_sessions: number;
   total_sessions: number;
+  sessions_completed: number;
+  completion_percentage: number;
   is_sensitive: boolean;
-  referral_date: string;
   created_at: string;
 }
 
-/**
- * Create counselling referral payload
- */
 export interface CounsellingReferralCreateData {
-  patient_id: number;
-  encounter_id?: number;
-  counselling_type_id: number;
-  priority?: AlliedHealthPriority;
-  presenting_concern: string;
-  background_history?: string;
-  risk_assessment?: string;
-  risk_level?: RiskLevel;
+  patient: number;
+  encounter?: number;
+  counselling_type: number;
+  urgency?: string;
+  reason: string;
+  clinical_summary?: string;
+  presenting_issues?: string;
   goals?: string;
-  recommended_sessions?: number;
-  frequency?: string;
-  preferred_modality?: SessionModality;
+  risk_assessment?: string;
+  total_sessions?: number;
 }
 
-/**
- * Update counselling referral payload
- */
 export interface CounsellingReferralUpdateData {
-  priority?: AlliedHealthPriority;
-  presenting_concern?: string;
-  background_history?: string;
-  risk_assessment?: string;
-  risk_level?: RiskLevel;
+  urgency?: string;
+  reason?: string;
+  clinical_summary?: string;
+  presenting_issues?: string;
   goals?: string;
-  recommended_sessions?: number;
-  frequency?: string;
-  preferred_modality?: SessionModality;
+  risk_assessment?: string;
+  total_sessions?: number;
 }
 
 // =============================================================================
-// SESSION
+// SESSION (flat IDs — matches CounsellingSessionSerializer)
 // =============================================================================
 
-/**
- * Counselling session
- */
-export interface CounsellingSession extends BaseAlliedHealthSession {
-  referral: Pick<CounsellingReferral, 'id' | 'referral_number' | 'counselling_type' | 'patient'>;
-  referral_id: number;
+export interface CounsellingSession {
+  id: number;
+  session_number: string;
+  referral: number;
+  counsellor: number | null;
+  counsellor_name: string | null;
   session_sequence: number;
-  modality: SessionModality;
+  scheduled_date: string;
+  scheduled_time: string | null;
+  actual_date?: string | null;
+  actual_start_time?: string | null;
+  actual_end_time?: string | null;
+  duration_minutes: number | null;
+  status: AlliedHealthSessionStatus;
+  status_display?: string;
+  // Pre-session
+  pre_session_mood?: number | null;
+  pre_session_notes?: string;
   // Session content
-  session_focus: string;
-  client_presentation: string;
-  interventions_used: string;
-  client_response: string;
-  progress_notes: string;
+  session_type?: string;
+  topics_discussed?: string;
+  techniques_used?: string;
+  client_responses?: string;
+  progress_notes?: string;
+  // Post-session
+  post_session_mood?: number | null;
+  outcome: SessionOutcome | null;
+  outcome_display?: string;
   // Risk
-  current_risk_level: RiskLevel;
-  safety_plan_reviewed: boolean;
-  safety_plan_notes: string;
-  // Homework
-  homework_assigned: string;
-  homework_review: string;
+  risk_assessment?: string;
+  risk_level?: string | null;
+  risk_level_display?: string | null;
+  safety_plan?: string;
   // Follow-up
-  follow_up_required: boolean;
-  next_session_date: string | null;
-  next_session_focus: string;
-  // Referrals
-  additional_referrals: string;
+  follow_up_required?: boolean;
+  follow_up_display?: string;
+  follow_up_date?: string | null;
+  homework?: string;
+  goals_for_next_session?: string;
+  // Confidentiality
+  confidentiality_level?: string;
+  is_sensitive: boolean;
+  // Clinic & billing
+  clinic_visit?: number | null;
+  is_billed?: boolean;
+  // Computed
+  mood_improvement?: number | null;
+  is_overdue?: boolean;
+  // Timestamps
+  created_at: string;
+  updated_at: string;
+  completed_at?: string | null;
 }
 
-/**
- * Counselling session list item
- */
 export interface CounsellingSessionListItem {
   id: number;
   session_number: string;
-  referral_number: string;
+  referral: number;
+  counsellor_name: string | null;
   patient_name: string;
-  patient_mrn: string;
-  counselling_type_name: string;
+  session_sequence: number;
   scheduled_date: string;
   scheduled_time: string | null;
   status: AlliedHealthSessionStatus;
-  modality: SessionModality;
-  counsellor_name: string | null;
-  session_sequence: number;
-  outcome: SessionOutcome | null;
+  status_display?: string;
+  is_sensitive: boolean;
 }
 
-/**
- * Create counselling session payload
- */
 export interface CounsellingSessionCreateData {
-  referral_id: number;
+  referral: number;
   scheduled_date: string;
   scheduled_time?: string;
-  therapist_id?: number;
-  modality?: SessionModality;
+  counsellor?: number;
 }
 
-/**
- * Complete counselling session payload
- */
 export interface CounsellingSessionCompleteData {
+  actual_date?: string;
   duration_minutes: number;
-  modality: SessionModality;
-  session_focus: string;
-  client_presentation?: string;
-  interventions_used?: string;
-  client_response?: string;
+  pre_session_mood?: number;
+  pre_session_notes?: string;
+  session_type?: string;
+  topics_discussed?: string;
+  techniques_used?: string;
+  client_responses?: string;
   progress_notes?: string;
-  current_risk_level: RiskLevel;
-  safety_plan_reviewed?: boolean;
-  safety_plan_notes?: string;
-  homework_assigned?: string;
+  post_session_mood?: number;
   outcome: SessionOutcome;
-  notes?: string;
+  risk_assessment?: string;
+  risk_level?: string;
+  safety_plan?: string;
   follow_up_required?: boolean;
-  next_session_date?: string;
-  next_session_focus?: string;
-  additional_referrals?: string;
+  follow_up_date?: string;
+  homework?: string;
+  goals_for_next_session?: string;
 }
 
 // =============================================================================
@@ -318,15 +320,13 @@ export interface CounsellingSessionCompleteData {
 
 export interface CounsellingReferralListParams extends AlliedHealthOrderListParams {
   counselling_type_id?: number;
-  category?: CounsellingCategory;
-  risk_level?: RiskLevel;
-  assigned_counsellor_id?: number;
+  urgency?: string;
   is_sensitive?: boolean;
 }
 
 export interface CounsellingSessionListParams extends AlliedHealthSessionListParams {
   referral_id?: number;
-  modality?: SessionModality;
+  counsellor_id?: number;
 }
 
 export interface CounsellingTypeListParams {

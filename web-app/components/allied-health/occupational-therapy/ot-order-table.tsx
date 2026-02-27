@@ -165,9 +165,6 @@ export function OTOrderTable({ initialParams }: OTOrderTableProps) {
                     <TableCell>
                       <div>
                         <div className="font-medium">{order.treatment_type_name}</div>
-                        <div className="text-sm text-muted-foreground capitalize">
-                          {order.category.toLowerCase().replace('_', ' ')}
-                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -177,7 +174,7 @@ export function OTOrderTable({ initialParams }: OTOrderTableProps) {
                     </TableCell>
                     <TableCell>
                       <SessionCount
-                        completed={order.completed_sessions}
+                        completed={order.sessions_completed}
                         total={order.total_sessions}
                         size="sm"
                       />
@@ -189,7 +186,7 @@ export function OTOrderTable({ initialParams }: OTOrderTableProps) {
                       <OrderStatusBadge status={order.status} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {format(parseISO(order.created_at), 'MMM d, yyyy')}
+                      {format(parseISO(order.ordered_at), 'MMM d, yyyy')}
                     </TableCell>
                   </TableRow>
                 ))}

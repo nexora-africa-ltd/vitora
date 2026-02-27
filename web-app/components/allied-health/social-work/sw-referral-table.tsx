@@ -177,7 +177,7 @@ export function SWReferralTable({ initialParams }: SWReferralTableProps) {
                         {referral.urgency === 'CRITICAL' && (
                           <AlertTriangle className="h-4 w-4 text-destructive" />
                         )}
-                        {referral.referral_reason?.replace(/_/g, ' ') || 'Not specified'}
+                        {referral.reason?.replace(/_/g, ' ') || 'Not specified'}
                       </div>
                     </TableCell>
                     <TableCell>

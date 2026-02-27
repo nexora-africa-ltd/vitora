@@ -211,7 +211,7 @@ export function NutritionConsultationTable({ initialParams }: NutritionConsultat
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {format(parseISO(consultation.created_at), 'MMM d, yyyy')}
+                      {format(parseISO(consultation.consultation_date), 'MMM d, yyyy')}
                     </TableCell>
                   </TableRow>
                 ))}

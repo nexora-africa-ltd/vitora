@@ -63,13 +63,13 @@ import {
 const sessionOutcomes = ['IMPROVED', 'MAINTAINED', 'DECLINED', 'UNABLE_TO_ASSESS'] as const;
 
 const completeSessionSchema = z.object({
-  notes: z.string().min(1, 'Progress notes is required'),
-  treatment_provided: z.string().min(1, 'Treatment provided is required'),
+  progress_notes: z.string().min(1, 'Progress notes is required'),
+  interventions: z.string().min(1, 'Interventions provided is required'),
   patient_response: z.string().optional(),
-  home_exercise_notes: z.string().optional(),
-  follow_up_notes: z.string().optional(),
-  pain_level_before: z.number().min(0).max(10).optional(),
-  pain_level_after: z.number().min(0).max(10).optional(),
+  home_exercise_instructions: z.string().optional(),
+  follow_up_recommendations: z.string().optional(),
+  pre_pain_score: z.number().min(0).max(10).optional(),
+  post_pain_score: z.number().min(0).max(10).optional(),
   outcome: z.enum(sessionOutcomes, { required_error: 'Outcome is required' }),
   duration_minutes: z.number().min(1).default(45),
 });
@@ -122,13 +122,13 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
   const form = useForm<CompleteSessionFormData>({
     resolver: zodResolver(completeSessionSchema),
     defaultValues: {
-      notes: '',
-      treatment_provided: '',
+      progress_notes: '',
+      interventions: '',
       patient_response: '',
-      home_exercise_notes: '',
-      follow_up_notes: '',
-      pain_level_before: 0,
-      pain_level_after: 0,
+      home_exercise_instructions: '',
+      follow_up_recommendations: '',
+      pre_pain_score: 0,
+      post_pain_score: 0,
       outcome: undefined,
       duration_minutes: 45,
     },
@@ -138,13 +138,13 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
   useEffect(() => {
     if (session) {
       form.reset({
-        notes: session.notes || '',
-        treatment_provided: session.treatment_provided || '',
+        progress_notes: session.progress_notes || '',
+        interventions: session.interventions || '',
         patient_response: session.patient_response || '',
-        home_exercise_notes: session.home_exercise_notes || '',
-        follow_up_notes: session.follow_up_notes || '',
-        pain_level_before: session.pain_level_before ?? 0,
-        pain_level_after: session.pain_level_after ?? 0,
+        home_exercise_instructions: session.home_exercise_instructions || '',
+        follow_up_recommendations: session.follow_up_recommendations || '',
+        pre_pain_score: session.pre_pain_score ?? 0,
+        post_pain_score: session.post_pain_score ?? 0,
         outcome: session.outcome as typeof sessionOutcomes[number] | undefined,
         duration_minutes: session.duration_minutes ?? 45,
       });
@@ -159,8 +159,8 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
 
   // Calculate elapsed time for in-progress sessions
   const getElapsedTime = () => {
-    if (!session?.actual_start_time) return null;
-    const startDate = parseISO(`${session.scheduled_date}T${session.actual_start_time}`);
+    if (!session?.actual_date) return null;
+    const startDate = parseISO(session.actual_date);
     const now = new Date();
     const minutes = differenceInMinutes(now, startDate);
     const hours = Math.floor(minutes / 60);
@@ -188,8 +188,8 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
       setTimeout(() => {
         if (orderId) {
           router.push(`/allied-health/physiotherapy/orders/${orderId}`);
-        } else if (session?.order_id) {
-          router.push(`/allied-health/physiotherapy/orders/${session.order_id}`);
+        } else if (session?.order) {
+          router.push(`/allied-health/physiotherapy/orders/${session.order}`);
         }
       }, 2000);
     } catch (err) {
@@ -269,8 +269,8 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
             <div className="flex items-start gap-2">
               <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
-                <div className="font-medium">{session.order.patient?.full_name || 'John Doe'}</div>
-                <div className="text-sm text-muted-foreground">{session.order.patient?.mrn || 'MRN-001'}</div>
+                <div className="font-medium">Patient</div>
+                <div className="text-sm text-muted-foreground">Order #{session.order}</div>
               </div>
             </div>
 
@@ -281,9 +281,9 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
                 <div className="font-medium">
                   {format(parseISO(session.scheduled_date), 'MMMM d, yyyy')}
                 </div>
-                {session.actual_start_time && (
+                {session.actual_date && (
                   <div className="text-sm text-muted-foreground">
-                    Started: {session.actual_start_time}
+                    Started: {format(parseISO(session.actual_date), 'h:mm a')}
                   </div>
                 )}
               </div>
@@ -293,7 +293,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
             <div className="flex items-start gap-2">
               <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
-                <div className="font-medium">{session.therapist?.full_name || 'Jane Therapist'}</div>
+                <div className="font-medium">{session.therapist_name || 'Unassigned'}</div>
                 <div className="text-sm text-muted-foreground">Therapist</div>
               </div>
             </div>
@@ -355,7 +355,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
                 
                 <FormField
                   control={form.control}
-                  name="pain_level_before"
+                  name="pre_pain_score"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Pain Level Before</FormLabel>
@@ -378,7 +378,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
 
                 <FormField
                   control={form.control}
-                  name="pain_level_after"
+                  name="post_pain_score"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Pain Level After</FormLabel>
@@ -409,7 +409,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
               <CardContent className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="notes"
+                  name="progress_notes"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Progress Notes *</FormLabel>
@@ -428,7 +428,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
 
                 <FormField
                   control={form.control}
-                  name="treatment_provided"
+                  name="interventions"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Treatment Provided</FormLabel>
@@ -466,7 +466,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
 
                 <FormField
                   control={form.control}
-                  name="home_exercise_notes"
+                  name="home_exercise_instructions"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Home Exercises</FormLabel>
@@ -485,7 +485,7 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
 
                 <FormField
                   control={form.control}
-                  name="follow_up_notes"
+                  name="follow_up_recommendations"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Next Session Plan</FormLabel>
@@ -538,11 +538,11 @@ export function PhysioSessionForm({ sessionId, orderId }: PhysioSessionFormProps
                   )}
                 />
 
-                {isCompleted && session.invoice_item_id && (
+                {isCompleted && session.is_billed && (
                   <div className="mt-4 p-3 bg-muted rounded-md">
                     <div className="text-sm font-medium flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-green-600" />
-                      Billed - Invoice item #{session.invoice_item_id}
+                      Billed
                     </div>
                   </div>
                 )}

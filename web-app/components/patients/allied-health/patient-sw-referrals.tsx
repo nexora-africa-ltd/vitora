@@ -21,11 +21,12 @@ const ORDER_STATUS_COLORS: Record<string, string> = {
   CASE_OPENED: 'bg-primary/15 text-primary',
 };
 
-// Priority color mapping
-const PRIORITY_COLORS: Record<string, string> = {
-  ROUTINE: 'bg-muted text-muted-foreground',
-  URGENT: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
-  STAT: 'bg-destructive/15 text-destructive',
+// Urgency color mapping
+const URGENCY_COLORS: Record<string, string> = {
+  LOW: 'bg-muted text-muted-foreground',
+  MEDIUM: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
+  HIGH: 'bg-orange-500/15 text-orange-700 dark:text-orange-400',
+  CRITICAL: 'bg-destructive/15 text-destructive',
 };
 
 interface PatientSWReferralsProps {
@@ -108,14 +109,14 @@ export function PatientSWReferrals({ patientId }: PatientSWReferralsProps) {
               <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-sm truncate">
-                    {referral.referral_reason.replace(/_/g, ' ')}
+                    {referral.reason_display || referral.reason.replace(/_/g, ' ')}
                   </span>
                   <Badge className={ORDER_STATUS_COLORS[referral.status] || ''}>
                     {referral.status.replace('_', ' ')}
                   </Badge>
-                  {referral.priority && referral.priority !== 'ROUTINE' && (
-                    <Badge className={PRIORITY_COLORS[referral.priority] || ''}>
-                      {referral.priority}
+                  {referral.urgency && referral.urgency !== 'LOW' && (
+                    <Badge className={URGENCY_COLORS[referral.urgency] || ''}>
+                      {referral.urgency_display || referral.urgency}
                     </Badge>
                   )}
                 </div>

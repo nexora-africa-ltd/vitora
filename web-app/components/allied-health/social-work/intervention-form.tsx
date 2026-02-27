@@ -134,7 +134,7 @@ export function InterventionForm({
       external_contact: '',
       cost: undefined,
       cost_source: '',
-      notes: existingIntervention?.notes || '',
+      notes: '',
     },
   });
 
@@ -143,11 +143,10 @@ export function InterventionForm({
 
     try {
       const payload = {
-        case_id: caseId,
+        case: caseId,
         intervention_type: data.intervention_type,
         description: data.description,
         planned_date: data.planned_date,
-        notes: data.notes,
       };
 
       if (isEditMode && existingIntervention) {

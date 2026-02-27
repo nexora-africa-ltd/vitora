@@ -3414,6 +3414,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "status_display",
                 "start_date",
                 "end_date",
+                "target_calories",
                 "is_active",
                 "days_remaining",
                 "review_date",

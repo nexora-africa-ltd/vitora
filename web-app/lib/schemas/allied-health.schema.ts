@@ -153,7 +153,7 @@ export const ClinicQueueStatsSchema = z.object({
 export const AlliedHealthDashboardStatsSchema = z.object({
   physiotherapy: AlliedHealthModuleStatsSchema,
   nutrition: AlliedHealthModuleStatsSchema.extend({
-    consultations_count: z.number().optional(),
+    consultations_count: z.number(),
   }),
   occupational_therapy: AlliedHealthModuleStatsSchema,
   social_work: z.object({
@@ -162,7 +162,7 @@ export const AlliedHealthDashboardStatsSchema = z.object({
     this_week_count: z.number(),
   }),
   counselling: AlliedHealthModuleStatsSchema.extend({
-    follow_ups_count: z.number().optional(),
+    follow_ups_count: z.number(),
   }),
   todays_sessions: z.array(TodaySessionSchema),
   clinic_queue_stats: ClinicQueueStatsSchema.optional(),

@@ -63,7 +63,7 @@ import {
   useMarkCounsellingSessionNoShow,
 } from '@/lib/hooks/use-counselling';
 import { useToast } from '@/lib/hooks/use-toast';
-import type { CounsellingSessionListParams, SessionModality } from '@/lib/types/counselling';
+import type { CounsellingSessionListParams } from '@/lib/types/counselling';
 import type { AlliedHealthSessionStatus } from '@/lib/types/allied-health';
 
 const STATUS_OPTIONS: { value: AlliedHealthSessionStatus | ''; label: string }[] = [
@@ -75,20 +75,6 @@ const STATUS_OPTIONS: { value: AlliedHealthSessionStatus | ''; label: string }[]
   { value: 'NO_SHOW', label: 'No Show' },
 ];
 
-const MODALITY_OPTIONS: { value: SessionModality | ''; label: string }[] = [
-  { value: '', label: 'All Types' },
-  { value: 'IN_PERSON', label: 'In Person' },
-  { value: 'VIDEO', label: 'Video Call' },
-  { value: 'PHONE', label: 'Phone Call' },
-  { value: 'GROUP', label: 'Group Session' },
-];
-
-const MODALITY_ICONS: Record<SessionModality, React.ReactNode> = {
-  IN_PERSON: <User className="h-3 w-3" />,
-  VIDEO: <Video className="h-3 w-3" />,
-  PHONE: <Phone className="h-3 w-3" />,
-  GROUP: <Users className="h-3 w-3" />,
-};
 
 export default function CounsellingSessionsPage() {
   const router = useRouter();
@@ -98,7 +84,6 @@ export default function CounsellingSessionsPage() {
   const [dateFrom, setDateFrom] = useState(() => format(subDays(new Date(), 7), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(() => format(addDays(new Date(), 7), 'yyyy-MM-dd'));
   const [status, setStatus] = useState<AlliedHealthSessionStatus | ''>('');
-  const [modality, setModality] = useState<SessionModality | ''>('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
@@ -109,7 +94,6 @@ export default function CounsellingSessionsPage() {
     ...(dateFrom && { date_from: dateFrom }),
     ...(dateTo && { date_to: dateTo }),
     ...(status && { status }),
-    ...(modality && { modality }),
     ...(search && { search }),
   };
 
@@ -295,27 +279,6 @@ export default function CounsellingSessionsPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Session Type</label>
-              <Select
-                value={modality}
-                onValueChange={(v) => {
-                  setModality(v as SessionModality | '');
-                  setPage(1);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Types" />
-                </SelectTrigger>
-                <SelectContent>
-                  {MODALITY_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
               <label className="text-sm font-medium">Search</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -360,7 +323,6 @@ export default function CounsellingSessionsPage() {
                     <TableHead>Patient</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Time</TableHead>
-                    <TableHead>Type</TableHead>
                     <TableHead>Counsellor</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
@@ -371,35 +333,23 @@ export default function CounsellingSessionsPage() {
                     const canStart = session.status === 'SCHEDULED';
                     const canCancel = session.status === 'SCHEDULED';
                     const canMarkNoShow = session.status === 'SCHEDULED';
-                    const modalityIcon = MODALITY_ICONS[session.modality];
 
                     return (
                       <TableRow
                         key={session.id}
                         className="cursor-pointer"
-                        onClick={() => router.push(`/allied-health/counselling/referrals/${session.referral_number.split('-')[0]}`)}
+                        onClick={() => router.push(`/allied-health/counselling/referrals/${session.referral}`)}
                       >
                         <TableCell className="font-mono text-sm">
                           {session.session_number}
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">{session.patient_name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {session.patient_mrn}
-                          </div>
                         </TableCell>
                         <TableCell>
                           {format(parseISO(session.scheduled_date), 'MMM d, yyyy')}
                         </TableCell>
                         <TableCell>{session.scheduled_time || '-'}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            {modalityIcon}
-                            <span className="text-sm">
-                              {MODALITY_OPTIONS.find((m) => m.value === session.modality)?.label || session.modality}
-                            </span>
-                          </div>
-                        </TableCell>
                         <TableCell>{session.counsellor_name || 'Unassigned'}</TableCell>
                         <TableCell>
                           <SessionStatusBadge status={session.status} />

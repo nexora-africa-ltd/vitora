@@ -122,19 +122,19 @@ export function CaseNoteForm({
   const form = useForm<CaseNoteFormData>({
     resolver: zodResolver(caseNoteSchema),
     defaultValues: {
-      note_type: existingNote?.contact_method ? 'CONTACT' : '',
+      note_type: existingNote?.note_type || '',
       contact_date: existingNote?.contact_date || format(new Date(), 'yyyy-MM-dd'),
       contact_method: (existingNote?.contact_method as ContactMethod) || 'IN_PERSON',
-      contact_with: existingNote?.contact_with || '',
+      contact_with: existingNote?.participant_names || '',
       duration_minutes: undefined,
-      subject: '',
-      note_content: existingNote?.note_content || '',
+      subject: existingNote?.subject || '',
+      note_content: existingNote?.content || '',
       participant_names: '',
-      actions_taken: existingNote?.actions_taken || '',
+      actions_taken: '',
       follow_up_required: existingNote?.follow_up_required || false,
-      follow_up_actions: '',
+      follow_up_actions: existingNote?.follow_up_actions || '',
       follow_up_date: existingNote?.follow_up_date || '',
-      is_confidential: false,
+      is_confidential: existingNote?.is_confidential || false,
     },
   });
 
@@ -145,15 +145,18 @@ export function CaseNoteForm({
 
     try {
       const payload = {
-        case_id: caseId,
+        case: caseId,
+        note_type: data.note_type,
         contact_date: data.contact_date,
-        contact_method: data.contact_method as ContactMethod,
-        contact_with: data.contact_with,
-        note_content: data.note_content,
-        actions_taken: data.actions_taken,
+        contact_method: data.contact_method,
+        duration_minutes: data.duration_minutes ? Number(data.duration_minutes) : undefined,
+        subject: data.subject,
+        content: data.note_content,
+        participant_names: [data.contact_with, data.participant_names].filter(Boolean).join(', ') || undefined,
         follow_up_required: data.follow_up_required,
+        follow_up_actions: data.follow_up_actions,
         follow_up_date: data.follow_up_required ? data.follow_up_date : undefined,
-        follow_up_notes: data.follow_up_actions,
+        is_confidential: data.is_confidential,
       };
 
       if (isEditMode && existingNote) {

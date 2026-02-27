@@ -11,11 +11,24 @@ import type {
   SWCaseListParams,
   SWCaseCreateData,
   SWCaseUpdateData,
-  CaseNoteListParams,
   CaseNoteCreateData,
-  SWInterventionListParams,
   SWInterventionCreateData,
 } from '@/lib/types/social-work';
+
+// Defined locally — these are query-param shapes, not in the types file
+interface CaseNoteListParams {
+  case_id?: number;
+  page?: number;
+  page_size?: number;
+  search?: string;
+}
+
+interface SWInterventionListParams {
+  case_id?: number;
+  page?: number;
+  page_size?: number;
+  search?: string;
+}
 
 // ============ Query Key Factory ============
 
@@ -280,8 +293,8 @@ export function useCreateCaseNote() {
     mutationFn: (data: CaseNoteCreateData) => socialWorkApi.createCaseNote(data),
     onSuccess: (_, data) => {
       queryClient.invalidateQueries({ queryKey: socialWorkKeys.notes() });
-      queryClient.invalidateQueries({ queryKey: socialWorkKeys.caseNotes(data.case_id) });
-      queryClient.invalidateQueries({ queryKey: socialWorkKeys.case(data.case_id) });
+      queryClient.invalidateQueries({ queryKey: socialWorkKeys.caseNotes(data.case) });
+      queryClient.invalidateQueries({ queryKey: socialWorkKeys.case(data.case) });
     },
   });
 }
@@ -339,8 +352,8 @@ export function useCreateIntervention() {
     mutationFn: (data: SWInterventionCreateData) => socialWorkApi.createIntervention(data),
     onSuccess: (_, data) => {
       queryClient.invalidateQueries({ queryKey: socialWorkKeys.interventions() });
-      queryClient.invalidateQueries({ queryKey: socialWorkKeys.caseInterventions(data.case_id) });
-      queryClient.invalidateQueries({ queryKey: socialWorkKeys.case(data.case_id) });
+      queryClient.invalidateQueries({ queryKey: socialWorkKeys.caseInterventions(data.case) });
+      queryClient.invalidateQueries({ queryKey: socialWorkKeys.case(data.case) });
     },
   });
 }
