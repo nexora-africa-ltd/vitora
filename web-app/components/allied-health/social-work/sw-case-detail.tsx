@@ -52,6 +52,7 @@ import {
   type SWReferralReason,
 } from '@/lib/types/social-work';
 import { useToast } from '@/lib/hooks/use-toast';
+import { SensitiveCaseBanner } from './sensitive-case-banner';
 
 interface SWCaseDetailProps {
   caseId: number;
@@ -135,14 +136,10 @@ export function SWCaseDetail({ caseId }: SWCaseDetailProps) {
       />
 
       {/* Sensitive Case Warning */}
-      {isSensitive && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-          <Shield className="h-5 w-5 text-destructive" />
-          <p className="text-sm text-destructive font-medium">
-            Sensitive Case - Access restricted to authorized personnel only
-          </p>
-        </div>
-      )}
+      <SensitiveCaseBanner
+        referralReason={referralReason}
+        isSensitive={swCase.is_sensitive}
+      />
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
