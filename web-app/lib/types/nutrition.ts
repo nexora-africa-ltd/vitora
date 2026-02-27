@@ -97,6 +97,17 @@ export const MALNUTRITION_STATUS_CONFIG: Record<
   SAM: { label: 'SAM', variant: 'destructive', description: 'Severe Acute Malnutrition (< 11.5 cm)' },
 };
 
+export const DIET_PLAN_STATUS_CONFIG: Record<
+  DietPlanStatus,
+  { label: string; className: string; description: string }
+> = {
+  DRAFT: { label: 'Draft', className: 'bg-gray-100 text-gray-800', description: 'Plan is being created' },
+  ACTIVE: { label: 'Active', className: 'bg-green-100 text-green-800', description: 'Plan is currently being followed' },
+  ON_HOLD: { label: 'On Hold', className: 'bg-yellow-100 text-yellow-800', description: 'Plan temporarily paused' },
+  DISCONTINUED: { label: 'Discontinued', className: 'bg-red-100 text-red-800', description: 'Plan has been stopped' },
+  COMPLETED: { label: 'Completed', className: 'bg-blue-100 text-blue-800', description: 'Plan successfully completed' },
+};
+
 export const REFERRAL_REASON_LABELS: Record<NutritionReferralReason, string> = {
   WEIGHT_MANAGEMENT: 'Weight Management',
   DIABETES: 'Diabetes Management',
