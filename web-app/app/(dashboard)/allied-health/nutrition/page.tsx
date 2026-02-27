@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { PageHeader } from '@/components/shared/page-header';
-import { NutritionConsultationTable } from '@/components/allied-health/nutrition';
+import { NutritionConsultationTable, DietPlanTable } from '@/components/allied-health/nutrition';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +25,7 @@ import {
   Plus,
   User,
   ArrowRight,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { useAlliedHealthDashboard } from '@/lib/hooks/use-allied-health';
 import { useClinicVisits } from '@/lib/hooks/use-clinics';
@@ -145,6 +146,11 @@ export default function NutritionDashboardPage() {
             <span className="hidden sm:inline">All Consultations</span>
             <span className="sm:hidden">All</span>
           </TabsTrigger>
+          <TabsTrigger value="diet-plans" className="gap-2">
+            <UtensilsCrossed className="h-4 w-4" />
+            <span className="hidden sm:inline">Diet Plans</span>
+            <span className="sm:hidden">Plans</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="queue" className="space-y-4">
@@ -204,6 +210,10 @@ export default function NutritionDashboardPage() {
 
         <TabsContent value="consultations">
           <NutritionConsultationTable />
+        </TabsContent>
+
+        <TabsContent value="diet-plans">
+          <DietPlanTable />
         </TabsContent>
       </Tabs>
     </div>
