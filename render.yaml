@@ -40,11 +40,13 @@ services:
         python manage.py load_lab_reference_ranges &&
         python manage.py load_default_roles &&
         echo "from hmis.apps.encounters.models import Encounter; Encounter.objects.filter(status__in=['DRAFT','COMPLETED']).update(status='CREATED')" | python manage.py shell &&
-        python manage.py seed_demo_data &&
+        python manage.py seed_demo_data --force &&
         python manage.py seed_imaging_catalog &&
         python manage.py seed_pharmacy_stock &&
         python manage.py seed_notifiable_diseases &&
-        python manage.py seed_surveillance_demo
+        python manage.py seed_surveillance_demo &&
+        python manage.py setup_allied_health_permissions &&
+        python manage.py seed_allied_health_data
       fi
     startCommand: daphne -b 0.0.0.0 -p $PORT hmis.asgi:application
     healthCheckPath: /api/health/
