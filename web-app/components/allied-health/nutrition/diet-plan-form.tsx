@@ -245,7 +245,7 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
                       ) : (
                         consultations?.results.map((c) => (
                           <SelectItem key={c.id} value={c.id.toString()}>
-                            {c.order_number} — {c.patient_name} ({c.patient_mrn})
+                            {c.consultation_number} — {c.patient_name} ({c.patient_mrn})
                           </SelectItem>
                         ))
                       )}

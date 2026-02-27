@@ -121,7 +121,7 @@ const consultationSchema = z.object({
   weight_kg: z.number().positive().optional().nullable(),
   height_cm: z.number().positive().optional().nullable(),
   waist_cm: z.number().positive().optional().nullable(),
-  hip_cm: z.number().positive().optional().nullable(),
+  hip_circumference: z.number().positive().optional().nullable(),
   muac_cm: z.number().positive().optional().nullable(),
   // Nutritional assessment
   activity_level: z.enum(activityLevels).optional(),
@@ -146,7 +146,7 @@ interface NutritionConsultationFormProps {
     weight_kg?: number | null;
     height_cm?: number | null;
     waist_cm?: number | null;
-    hip_cm?: number | null;
+    hip_circumference?: number | null;
     muac_cm?: number | null;
     activity_level?: string;
     dietary_restrictions?: string;
@@ -202,7 +202,7 @@ export function NutritionConsultationForm({
       weight_kg: consultation?.weight_kg ?? undefined,
       height_cm: consultation?.height_cm ?? undefined,
       waist_cm: consultation?.waist_cm ?? undefined,
-      hip_cm: consultation?.hip_cm ?? undefined,
+      hip_circumference: consultation?.hip_circumference ?? undefined,
       muac_cm: consultation?.muac_cm ?? undefined,
       activity_level: (consultation?.activity_level as typeof activityLevels[number]) || 'SEDENTARY',
       dietary_restrictions: consultation?.dietary_restrictions || '',
@@ -261,22 +261,22 @@ export function NutritionConsultationForm({
     setSubmitSuccess(false);
 
     try {
+      // Transform form field names to backend field names
       const payload = {
-        patient_id: data.patient_id,
-        encounter_id: data.encounter_id,
+        patient: data.patient_id,
+        encounter: data.encounter_id,
         referral_reason: data.referral_reason as NutritionReferralReason,
-        clinical_notes: data.clinical_notes,
+        referral_notes: data.clinical_notes,
         priority: data.priority,
-        weight_kg: data.weight_kg || undefined,
-        height_cm: data.height_cm || undefined,
-        waist_cm: data.waist_cm || undefined,
-        hip_cm: data.hip_cm || undefined,
-        muac_cm: data.muac_cm || undefined,
+        weight: data.weight_kg || undefined,
+        height: data.height_cm || undefined,
+        waist_circumference: data.waist_cm || undefined,
+        hip_circumference: data.hip_circumference || undefined,
+        mid_upper_arm_circumference: data.muac_cm || undefined,
         activity_level: data.activity_level,
-        dietary_restrictions: data.dietary_restrictions,
         food_allergies: data.food_allergies,
         current_diet: data.current_diet,
-        nutritional_goals: data.nutritional_goals,
+        nutrition_goals: data.nutritional_goals,
       };
 
       if (isEditMode && consultation) {
@@ -627,7 +627,7 @@ export function NutritionConsultationForm({
 
                 <FormField
                   control={form.control}
-                  name="hip_cm"
+                  name="hip_circumference"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Hip (cm)</FormLabel>

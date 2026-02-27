@@ -331,10 +331,10 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
                   <span className="font-medium">{order.equipment_needed}</span>
                 </div>
               )}
-              {order.sha_claimable && (
+              {order.treatment_type?.sha_claimable && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">SHA Code</span>
-                  <Badge variant="outline">{order.sha_code}</Badge>
+                  <Badge variant="outline">{order.treatment_type?.sha_intervention_code}</Badge>
                 </div>
               )}
             </CardContent>

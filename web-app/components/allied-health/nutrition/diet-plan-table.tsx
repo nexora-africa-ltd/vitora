@@ -198,7 +198,7 @@ export function DietPlanTable({
                       </div>
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate">
-                      {plan.title}
+                      {plan.name}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       {plan.target_calories ? (

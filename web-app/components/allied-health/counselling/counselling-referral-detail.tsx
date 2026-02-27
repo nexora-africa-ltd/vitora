@@ -354,10 +354,10 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
                   </span>
                 </div>
               )}
-              {referral.counselling_type?.default_duration_minutes && (
+              {referral.counselling_type?.typical_duration_minutes && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Duration</span>
-                  <span className="font-medium">{referral.counselling_type.default_duration_minutes} min</span>
+                  <span className="font-medium">{referral.counselling_type.typical_duration_minutes} min</span>
                 </div>
               )}
             </CardContent>

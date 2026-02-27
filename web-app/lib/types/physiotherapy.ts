@@ -30,7 +30,7 @@ export type PhysiotherapyCategory =
   | 'POST_SURGICAL'
   | 'PAIN_MANAGEMENT'
   | 'ORTHOPEDIC'
-  | 'VESTIBULAR'
+  | 'STROKE'
   | 'OTHER';
 
 /**
@@ -42,16 +42,17 @@ export interface PhysiotherapyTreatmentType {
   name: string;
   description: string;
   category: PhysiotherapyCategory;
-  default_duration_minutes: number;
+  category_display?: string;
+  typical_duration_minutes: number;
   recommended_sessions: number;
   recommended_frequency: string;
   requires_equipment: boolean;
-  equipment_needed: string | null;
+  equipment_needed: string;
   contraindications: string;
   precautions: string;
-  sha_code: string | null;
+  sha_intervention_code: string;
   sha_claimable: boolean;
-  unit_price: string;
+  cost_per_session: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;

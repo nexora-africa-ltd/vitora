@@ -215,7 +215,7 @@ export function OTOrderForm({
     const type = treatmentTypes.find(t => t.id === id);
     if (type && !isEditMode) {
       form.setValue('recommended_sessions', type.recommended_sessions);
-      form.setValue('duration_per_session', type.default_duration_minutes);
+      form.setValue('duration_per_session', type.typical_duration_minutes);
       if (type.recommended_frequency) {
         form.setValue('frequency', type.recommended_frequency);
       }

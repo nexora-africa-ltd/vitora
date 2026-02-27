@@ -220,14 +220,14 @@ export function DietPlanDetail({ dietPlanId }: DietPlanDetailProps) {
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
         <div className="flex flex-col gap-1 min-w-0">
           <p className="text-sm font-medium truncate">
-            {plan.consultation.patient.full_name}
+            {plan.patient_name}
             <span className="text-muted-foreground">
               {' '}
-              &bull; {plan.consultation.patient.mrn}
+              &bull; {plan.patient_mrn}
             </span>
           </p>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Consultation {plan.consultation.order_number}
+            Consultation {plan.consultation_number || 'N/A'}
           </p>
         </div>
         <div className="flex items-center gap-3 text-sm">
@@ -356,33 +356,33 @@ export function DietPlanDetail({ dietPlanId }: DietPlanDetailProps) {
               />
               <NutrientRow
                 label="Protein"
-                value={plan.target_protein_g}
+                value={plan.target_protein}
                 unit="g"
               />
               <NutrientRow
                 label="Carbohydrates"
-                value={plan.target_carbs_g}
+                value={plan.target_carbs}
                 unit="g"
               />
               <NutrientRow
                 label="Fat"
-                value={plan.target_fat_g}
+                value={plan.target_fat}
                 unit="g"
               />
               <NutrientRow
                 label="Fiber"
-                value={plan.target_fiber_g}
+                value={plan.target_fiber}
                 unit="g"
               />
               <NutrientRow
                 label="Sodium"
-                value={plan.target_sodium_mg}
+                value={plan.target_sodium}
                 unit="mg"
               />
               {!plan.target_calories &&
-                !plan.target_protein_g &&
-                !plan.target_carbs_g &&
-                !plan.target_fat_g && (
+                !plan.target_protein &&
+                !plan.target_carbs &&
+                !plan.target_fat && (
                   <p className="text-sm text-muted-foreground">
                     No targets set
                   </p>
@@ -402,12 +402,13 @@ export function DietPlanDetail({ dietPlanId }: DietPlanDetailProps) {
               <div>
                 <p className="text-xs text-muted-foreground">Patient</p>
                 <p className="font-medium">
-                  {plan.consultation.patient.full_name}
+                  {plan.patient_name}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {plan.consultation.patient.mrn}
+                  {plan.patient_mrn}
                 </p>
               </div>
+              {plan.consultation && (
               <div>
                 <p className="text-xs text-muted-foreground">Consultation</p>
                 <Button
@@ -415,18 +416,19 @@ export function DietPlanDetail({ dietPlanId }: DietPlanDetailProps) {
                   className="h-auto p-0 text-sm"
                   onClick={() =>
                     router.push(
-                      `/allied-health/nutrition/consultations/${plan.consultation.id}`
+                      `/allied-health/nutrition/consultations/${plan.consultation}`
                     )
                   }
                 >
-                  {plan.consultation.order_number}
+                  {plan.consultation_number}
                 </Button>
               </div>
+              )}
               <div>
                 <p className="text-xs text-muted-foreground">Created By</p>
                 <p className="text-sm flex items-center gap-1">
                   <User className="h-3.5 w-3.5" />
-                  {plan.created_by.full_name}
+                  {plan.created_by_name || 'Unknown'}
                 </p>
               </div>
             </CardContent>
