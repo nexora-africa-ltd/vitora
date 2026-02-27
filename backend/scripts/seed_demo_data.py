@@ -48,7 +48,7 @@ User = get_user_model()
 DEMO_USERS = [
     {
         "username": "demo_admin",
-        "password": "DemoAdmin2026!",
+        "password": "DemoAdmin2026?!",
         "first_name": "Demo",
         "last_name": "Administrator",
         "email": "admin@demo.vitora.health",
@@ -58,7 +58,7 @@ DEMO_USERS = [
     },
     {
         "username": "demo_receptionist",
-        "password": "DemoReception2026!",
+        "password": "DemoReception2026?!",
         "first_name": "Faith",
         "last_name": "Mwangi",
         "email": "receptionist@demo.vitora.health",
@@ -67,7 +67,7 @@ DEMO_USERS = [
     },
     {
         "username": "demo_nurse",
-        "password": "DemoNurse2026!",
+        "password": "DemoNurse2026?!",
         "first_name": "Grace",
         "last_name": "Ochieng",
         "email": "nurse@demo.vitora.health",
@@ -76,7 +76,7 @@ DEMO_USERS = [
     },
     {
         "username": "demo_doctor",
-        "password": "DemoDoctor2026!",
+        "password": "DemoDoctor2026?!",
         "first_name": "Dr. James",
         "last_name": "Kamau",
         "email": "doctor@demo.vitora.health",
@@ -85,7 +85,7 @@ DEMO_USERS = [
     },
     {
         "username": "demo_pharmacist",
-        "password": "DemoPharmacy2026!",
+        "password": "DemoPharmacy2026?!",
         "first_name": "Peter",
         "last_name": "Njoroge",
         "email": "pharmacy@demo.vitora.health",
@@ -94,7 +94,7 @@ DEMO_USERS = [
     },
     {
         "username": "demo_labtech",
-        "password": "DemoLab2026!",
+        "password": "DemoLab2026?!",
         "first_name": "Sarah",
         "last_name": "Wanjiku",
         "email": "lab@demo.vitora.health",
@@ -103,7 +103,7 @@ DEMO_USERS = [
     },
     {
         "username": "demo_billing",
-        "password": "DemoBilling2026!",
+        "password": "DemoBilling2026?!",
         "first_name": "John",
         "last_name": "Mutua",
         "email": "billing@demo.vitora.health",

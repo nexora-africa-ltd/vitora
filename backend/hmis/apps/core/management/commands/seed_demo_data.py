@@ -173,7 +173,7 @@ class Command(BaseCommand):
             {
                 "username": "demo_admin",
                 "email": "admin@demo.vitora.health",
-                "password": "DemoAdmin2026!",
+                "password": "DemoAdmin2026?!",
                 "first_name": "Admin",
                 "last_name": "User",
                 "is_staff": True,
@@ -187,7 +187,7 @@ class Command(BaseCommand):
             {
                 "username": "demo_receptionist",
                 "email": "reception@demo.vitora.health",
-                "password": "DemoReception2026!",
+                "password": "DemoReception2026?!",
                 "first_name": "Mary",
                 "last_name": "Wanjiku",
                 "is_staff": False,
@@ -201,7 +201,7 @@ class Command(BaseCommand):
             {
                 "username": "demo_nurse",
                 "email": "nurse@demo.vitora.health",
-                "password": "DemoNurse2026!",
+                "password": "DemoNurse2026?!",
                 "first_name": "Grace",
                 "last_name": "Akinyi",
                 "is_staff": False,
@@ -217,7 +217,7 @@ class Command(BaseCommand):
             {
                 "username": "demo_doctor",
                 "email": "doctor@demo.vitora.health",
-                "password": "DemoDoctor2026!",
+                "password": "DemoDoctor2026?!",
                 "first_name": "James",
                 "last_name": "Ochieng",
                 "is_staff": False,
@@ -234,7 +234,7 @@ class Command(BaseCommand):
             {
                 "username": "demo_pharmacist",
                 "email": "pharmacy@demo.vitora.health",
-                "password": "DemoPharmacy2026!",
+                "password": "DemoPharmacy2026?!",
                 "first_name": "Peter",
                 "last_name": "Mwangi",
                 "is_staff": False,
@@ -250,7 +250,7 @@ class Command(BaseCommand):
             {
                 "username": "demo_labtech",
                 "email": "lab@demo.vitora.health",
-                "password": "DemoLab2026!",
+                "password": "DemoLab2026?!",
                 "first_name": "Susan",
                 "last_name": "Njeri",
                 "is_staff": False,
@@ -266,7 +266,7 @@ class Command(BaseCommand):
             {
                 "username": "demo_billing",
                 "email": "billing@demo.vitora.health",
-                "password": "DemoBilling2026!",
+                "password": "DemoBilling2026?!",
                 "first_name": "John",
                 "last_name": "Kamau",
                 "is_staff": False,
@@ -280,7 +280,7 @@ class Command(BaseCommand):
             {
                 "username": "demo_records",
                 "email": "records@demo.vitora.health",
-                "password": "DemoRecords2026!",
+                "password": "DemoRecords2026?!",
                 "first_name": "Faith",
                 "last_name": "Wambui",
                 "is_staff": False,
@@ -294,7 +294,7 @@ class Command(BaseCommand):
             {
                 "username": "demo_clinical_officer",
                 "email": "co@demo.vitora.health",
-                "password": "DemoCO2026!",
+                "password": "DemoCO2026?!",
                 "first_name": "Daniel",
                 "last_name": "Kipchoge",
                 "is_staff": False,
@@ -310,7 +310,7 @@ class Command(BaseCommand):
             {
                 "username": "demo_ipd_nurse",
                 "email": "ipd.nurse@demo.vitora.health",
-                "password": "DemoIPDNurse2026!",
+                "password": "DemoIPDNurse2026?!",
                 "first_name": "Agnes",
                 "last_name": "Chebet",
                 "is_staff": False,
@@ -326,7 +326,7 @@ class Command(BaseCommand):
             {
                 "username": "demo_radiographer",
                 "email": "radiology@demo.vitora.health",
-                "password": "DemoRadiology2026!",
+                "password": "DemoRadiology2026?!",
                 "first_name": "Evans",
                 "last_name": "Maina",
                 "is_staff": False,
@@ -343,7 +343,7 @@ class Command(BaseCommand):
             {
                 "username": "demo_radiologist",
                 "email": "radiologist@demo.vitora.health",
-                "password": "DemoRadiologist2026!",
+                "password": "DemoRadiologist2026?!",
                 "first_name": "Dr. Beatrice",
                 "last_name": "Nyokabi",
                 "is_staff": False,
@@ -360,7 +360,7 @@ class Command(BaseCommand):
             {
                 "username": "demo_sonographer",
                 "email": "ultrasound@demo.vitora.health",
-                "password": "DemoSonographer2026!",
+                "password": "DemoSonographer2026?!",
                 "first_name": "Lucy",
                 "last_name": "Wangari",
                 "is_staff": False,
