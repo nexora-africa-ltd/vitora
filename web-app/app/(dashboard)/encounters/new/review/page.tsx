@@ -81,6 +81,8 @@ export default function NewEncounterReviewPage() {
     getHistory,
     getNotes,
     getDiagnoses,
+    getVitals,
+    hasVitals,
     getSectionCompletion,
     getFormData,
     clearSession,
@@ -97,6 +99,8 @@ export default function NewEncounterReviewPage() {
   const history = getHistory();
   const notes = getNotes();
   const diagnoses = getDiagnoses();
+  const vitals = getVitals();
+  const vitalsRecorded = hasVitals();
   const completion = getSectionCompletion();
 
   // Check if required sections are complete
@@ -179,6 +183,17 @@ export default function NewEncounterReviewPage() {
         return;
       }
 
+      // If vitals were already recorded during registration, skip triage prompt
+      if (vitalsRecorded) {
+        toast({
+          title: 'Encounter Created',
+          description: 'Encounter created successfully with vital signs.',
+        });
+        clearSession();
+        router.push(`/encounters/${result.id}`);
+        return;
+      }
+
       // For OPD encounters, add patient to triage waiting queue
       // This ensures they appear in "Patients Awaiting Triage"
       try {
@@ -203,7 +218,7 @@ export default function NewEncounterReviewPage() {
         variant: 'destructive',
       });
     }
-  }, [getFormData, createEncounter, checkInPatient, toast, isUrgentEncounterType, details, patientData, clearSession, router]);
+  }, [getFormData, createEncounter, checkInPatient, toast, isUrgentEncounterType, vitalsRecorded, details, patientData, clearSession, router]);
 
   // Handle triage modal response
   const handleGoToTriage = useCallback(() => {
@@ -435,16 +450,38 @@ export default function NewEncounterReviewPage() {
         )}
 
         {/* Vitals Info Banner */}
-        <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
-          <Activity className="h-4 w-4 text-blue-600" />
-          <AlertTitle className="text-blue-800 dark:text-blue-200">
-            Vital Signs Recording
-          </AlertTitle>
-          <AlertDescription className="text-blue-700 dark:text-blue-300">
-            After creating the encounter, you&apos;ll be prompted to record vital signs through
-            the Triage module for proper patient prioritization.
-          </AlertDescription>
-        </Alert>
+        {vitalsRecorded ? (
+          <Alert className="border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertTitle className="text-green-800 dark:text-green-200">
+              Vital Signs Recorded
+            </AlertTitle>
+            <AlertDescription className="text-green-700 dark:text-green-300">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                {vitals.temperature && <span>Temp: {vitals.temperature}°C</span>}
+                {vitals.pulse && <span>HR: {vitals.pulse} bpm</span>}
+                {(vitals.blood_pressure_systolic && vitals.blood_pressure_diastolic) && (
+                  <span>BP: {vitals.blood_pressure_systolic}/{vitals.blood_pressure_diastolic} mmHg</span>
+                )}
+                {vitals.spo2 && <span>SpO₂: {vitals.spo2}%</span>}
+                {vitals.respiratory_rate && <span>RR: {vitals.respiratory_rate}/min</span>}
+                {vitals.weight && <span>Weight: {vitals.weight} kg</span>}
+                {vitals.height && <span>Height: {vitals.height} cm</span>}
+              </div>
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Alert className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
+            <Activity className="h-4 w-4 text-blue-600" />
+            <AlertTitle className="text-blue-800 dark:text-blue-200">
+              Vital Signs Recording
+            </AlertTitle>
+            <AlertDescription className="text-blue-700 dark:text-blue-300">
+              After creating the encounter, you&apos;ll be prompted to record vital signs through
+              the Triage module for proper patient prioritization.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Navigation & Actions */}
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
