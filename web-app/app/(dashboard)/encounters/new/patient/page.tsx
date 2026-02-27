@@ -3,24 +3,25 @@
  *
  * First step in the new encounter workflow.
  * Allows selecting a patient for the encounter.
- * Optionally allows recording vitals upfront.
+ * Optionally allows recording vitals upfront with threshold alerts.
  *
  * Route: /encounters/new/patient
  */
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Activity, Thermometer, Heart, Droplets, Wind, Scale, Ruler } from 'lucide-react';
+import { ArrowRight, Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { PatientSelector } from '@/components/encounters/patient-selector';
+import { VitalsForm } from '@/components/encounters/vitals-form';
 import { useNewEncounterStore, type NewEncounterVitals } from '@/lib/stores/new-encounter-store';
 import type { Patient } from '@/lib/types/patient';
+import type { EncounterFormData } from '@/lib/types/encounter-form';
 import { AlertTriangle, User } from 'lucide-react';
 
 export default function NewEncounterPatientPage() {
@@ -38,6 +39,35 @@ export default function NewEncounterPatientPage() {
   const { id: patientId, data: selectedPatient } = getPatient();
   const recordVitalsNow = getRecordVitalsNow();
   const vitals = getVitals();
+
+  // Build EncounterFormData for VitalsForm component
+  const formData = useMemo((): EncounterFormData => ({
+    patient: patientId,
+    encounter_type: 'OPD',
+    encounter_date: new Date().toISOString().split('T')[0] || '',
+    chief_complaint: '',
+    status: 'CREATED',
+    // Vitals from store
+    temperature: vitals.temperature ?? null,
+    pulse: vitals.pulse ?? null,
+    blood_pressure_systolic: vitals.blood_pressure_systolic ?? null,
+    blood_pressure_diastolic: vitals.blood_pressure_diastolic ?? null,
+    respiratory_rate: vitals.respiratory_rate ?? null,
+    spo2: vitals.spo2 ?? null,
+    weight: vitals.weight ?? null,
+    height: vitals.height ?? null,
+    // Empty for this step
+    allergies: '',
+    chronic_conditions: '',
+    current_medications: '',
+    past_surgeries: '',
+    family_history: '',
+    social_history: '',
+    notes: '',
+    history_of_present_illness: '',
+    physical_examination: '',
+    assessment: '',
+  }), [patientId, vitals]);
 
   // Handle patient selection
   const handlePatientChange = useCallback(
@@ -59,11 +89,17 @@ export default function NewEncounterPatientPage() {
     [setRecordVitalsNow]
   );
 
-  // Handle vitals changes
+  // Handle vitals changes (VitalsForm onChange signature)
   const handleVitalChange = useCallback(
-    (field: keyof NewEncounterVitals, value: string) => {
-      const numValue = value === '' ? null : parseFloat(value);
-      setVitals({ [field]: numValue });
+    (field: keyof EncounterFormData, value: number | null) => {
+      // Map EncounterFormData vitals fields to NewEncounterVitals
+      const vitalFields: (keyof NewEncounterVitals)[] = [
+        'temperature', 'pulse', 'blood_pressure_systolic', 'blood_pressure_diastolic',
+        'respiratory_rate', 'spo2', 'weight', 'height'
+      ];
+      if (vitalFields.includes(field as keyof NewEncounterVitals)) {
+        setVitals({ [field]: value });
+      }
     },
     [setVitals]
   );
@@ -129,191 +165,16 @@ export default function NewEncounterPatientPage() {
                 </div>
               </div>
             </CardHeader>
-
-            {/* Vitals Form - Shown when checkbox is checked */}
-            {recordVitalsNow && (
-              <CardContent className="px-3 sm:px-6 pt-0 border-t">
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 pt-4">
-                  {/* Temperature */}
-                  <div className="space-y-2">
-                    <Label htmlFor="temperature" className="flex items-center gap-2 text-sm">
-                      <Thermometer className="h-4 w-4" />
-                      Temperature
-                    </Label>
-                    <div className="flex">
-                      <Input
-                        id="temperature"
-                        type="number"
-                        step="0.1"
-                        min={30}
-                        max={45}
-                        placeholder="36.5"
-                        value={vitals.temperature ?? ''}
-                        onChange={(e) => handleVitalChange('temperature', e.target.value)}
-                        className="rounded-r-none"
-                      />
-                      <span className="inline-flex items-center px-3 border border-l-0 rounded-r-md bg-muted text-sm text-muted-foreground">
-                        °C
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Normal: 36.5-37.5°C</p>
-                  </div>
-
-                  {/* Heart Rate / Pulse */}
-                  <div className="space-y-2">
-                    <Label htmlFor="pulse" className="flex items-center gap-2 text-sm">
-                      <Heart className="h-4 w-4" />
-                      Heart Rate
-                    </Label>
-                    <div className="flex">
-                      <Input
-                        id="pulse"
-                        type="number"
-                        min={0}
-                        max={300}
-                        placeholder="72"
-                        value={vitals.pulse ?? ''}
-                        onChange={(e) => handleVitalChange('pulse', e.target.value)}
-                        className="rounded-r-none"
-                      />
-                      <span className="inline-flex items-center px-3 border border-l-0 rounded-r-md bg-muted text-sm text-muted-foreground">
-                        bpm
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Normal: 60-100 bpm</p>
-                  </div>
-
-                  {/* Blood Pressure */}
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-sm">
-                      <Droplets className="h-4 w-4" />
-                      Blood Pressure
-                    </Label>
-                    <div className="flex items-center gap-1">
-                      <Input
-                        id="bp-systolic"
-                        type="number"
-                        min={0}
-                        max={300}
-                        placeholder="120"
-                        value={vitals.blood_pressure_systolic ?? ''}
-                        onChange={(e) => handleVitalChange('blood_pressure_systolic', e.target.value)}
-                        className="w-20"
-                      />
-                      <span className="text-muted-foreground">/</span>
-                      <Input
-                        id="bp-diastolic"
-                        type="number"
-                        min={0}
-                        max={200}
-                        placeholder="80"
-                        value={vitals.blood_pressure_diastolic ?? ''}
-                        onChange={(e) => handleVitalChange('blood_pressure_diastolic', e.target.value)}
-                        className="w-20"
-                      />
-                      <span className="text-sm text-muted-foreground">mmHg</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Normal: 90-120/60-80</p>
-                  </div>
-
-                  {/* SpO2 */}
-                  <div className="space-y-2">
-                    <Label htmlFor="spo2" className="flex items-center gap-2 text-sm">
-                      <Droplets className="h-4 w-4" />
-                      SpO2
-                    </Label>
-                    <div className="flex">
-                      <Input
-                        id="spo2"
-                        type="number"
-                        min={0}
-                        max={100}
-                        placeholder="98"
-                        value={vitals.spo2 ?? ''}
-                        onChange={(e) => handleVitalChange('spo2', e.target.value)}
-                        className="rounded-r-none"
-                      />
-                      <span className="inline-flex items-center px-3 border border-l-0 rounded-r-md bg-muted text-sm text-muted-foreground">
-                        %
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Normal: 95-100%</p>
-                  </div>
-
-                  {/* Respiratory Rate */}
-                  <div className="space-y-2">
-                    <Label htmlFor="respiratory_rate" className="flex items-center gap-2 text-sm">
-                      <Wind className="h-4 w-4" />
-                      Respiratory Rate
-                    </Label>
-                    <div className="flex">
-                      <Input
-                        id="respiratory_rate"
-                        type="number"
-                        min={0}
-                        max={60}
-                        placeholder="16"
-                        value={vitals.respiratory_rate ?? ''}
-                        onChange={(e) => handleVitalChange('respiratory_rate', e.target.value)}
-                        className="rounded-r-none"
-                      />
-                      <span className="inline-flex items-center px-3 border border-l-0 rounded-r-md bg-muted text-sm text-muted-foreground">
-                        /min
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Normal: 12-20/min</p>
-                  </div>
-
-                  {/* Weight */}
-                  <div className="space-y-2">
-                    <Label htmlFor="weight" className="flex items-center gap-2 text-sm">
-                      <Scale className="h-4 w-4" />
-                      Weight
-                    </Label>
-                    <div className="flex">
-                      <Input
-                        id="weight"
-                        type="number"
-                        step="0.1"
-                        min={0}
-                        max={500}
-                        placeholder="70"
-                        value={vitals.weight ?? ''}
-                        onChange={(e) => handleVitalChange('weight', e.target.value)}
-                        className="rounded-r-none"
-                      />
-                      <span className="inline-flex items-center px-3 border border-l-0 rounded-r-md bg-muted text-sm text-muted-foreground">
-                        kg
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Height */}
-                  <div className="space-y-2">
-                    <Label htmlFor="height" className="flex items-center gap-2 text-sm">
-                      <Ruler className="h-4 w-4" />
-                      Height
-                    </Label>
-                    <div className="flex">
-                      <Input
-                        id="height"
-                        type="number"
-                        min={0}
-                        max={300}
-                        placeholder="170"
-                        value={vitals.height ?? ''}
-                        onChange={(e) => handleVitalChange('height', e.target.value)}
-                        className="rounded-r-none"
-                      />
-                      <span className="inline-flex items-center px-3 border border-l-0 rounded-r-md bg-muted text-sm text-muted-foreground">
-                        cm
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            )}
           </Card>
+        )}
+
+        {/* Vitals Form - Shown when checkbox is checked */}
+        {patientId && recordVitalsNow && (
+          <VitalsForm
+            data={formData}
+            onChange={handleVitalChange}
+            patient={selectedPatient}
+          />
         )}
 
         {/* Validation Warning */}
