@@ -5,7 +5,6 @@ Views for the encounters app.
 from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
@@ -326,12 +325,44 @@ class EncounterViewSet(ModelHistoryMixin, viewsets.ModelViewSet):
         return response
 
     def perform_create(self, serializer):
-        """Set created_by on creation."""
-        serializer.save(created_by=self.request.user)
+        """Set created_by on creation, claim encounter, and link any existing waiting queue entries."""
+        from django.utils import timezone
+
+        from hmis.apps.triage.models import WaitingQueue
+
+        # Auto-claim: The user who creates the encounter is assigned as the clinician
+        instance = serializer.save(
+            created_by=self.request.user,
+            assigned_clinician=self.request.user,
+            claimed_at=timezone.now(),
+        )
+
+        # Link any existing waiting queue entries for this patient to this encounter
+        # This handles the case where a patient checked in (creating a WaitingQueue entry)
+        # before an encounter was created
+        waiting_entries = WaitingQueue.objects.filter(
+            patient=instance.patient,
+            status__in=["WAITING_TRIAGE", "IN_TRIAGE"],
+            encounter__isnull=True,  # Only entries without an encounter
+        )
+
+        for entry in waiting_entries:
+            entry.encounter = instance
+            # If the encounter has vitals recorded, mark as triaged (vitals = triage complete)
+            if instance.has_vitals():
+                entry.status = "TRIAGED"
+                entry.save(update_fields=["encounter", "status", "updated_at"])
+            else:
+                entry.save(update_fields=["encounter", "updated_at"])
 
     def update(self, request, *args, **kwargs):
         """Override update to check if encounter can be edited and add audit logging."""
+        from hmis.apps.triage.models import WaitingQueue
+
         encounter = self.get_object()
+
+        # Track if encounter had vitals before update
+        had_vitals_before = encounter.has_vitals()
 
         # Check if encounter can be edited
         if not encounter.can_edit():
@@ -343,6 +374,16 @@ class EncounterViewSet(ModelHistoryMixin, viewsets.ModelViewSet):
         response = super().update(request, *args, **kwargs)
 
         if response.status_code == 200:
+            # Refresh encounter from DB to get updated values
+            encounter.refresh_from_db()
+
+            # If vitals were just added, mark any waiting queue entries as TRIAGED
+            if not had_vitals_before and encounter.has_vitals():
+                WaitingQueue.objects.filter(
+                    encounter=encounter,
+                    status__in=["WAITING_TRIAGE", "IN_TRIAGE"],
+                ).update(status="TRIAGED")
+
             AuditLog.log(
                 action="encounter_update",
                 user=request.user,

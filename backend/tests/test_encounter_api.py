@@ -132,6 +132,15 @@ class TestEncounterAPIEndpoints:
         assert response.data["created_by"] == auth_user.id
         assert response.data["created_by_name"] in [auth_user.get_full_name(), auth_user.username]
 
+    def test_create_encounter_auto_claims_for_creator(self, auth_client, auth_user, sample_encounter_data):
+        """POST /api/encounters/ should auto-claim the encounter for the creating user."""
+        response = auth_client.post("/api/encounters/", sample_encounter_data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        # Encounter should be claimed by the user who created it
+        assert response.data["assigned_clinician"] == auth_user.id
+        assert response.data["claimed_at"] is not None
+
     def test_create_encounter_with_vitals_source_tracking(self, auth_client, sample_patient):
         """POST /api/encounters/ should accept and return vitals source metadata."""
         payload = {
@@ -293,6 +302,99 @@ class TestEncounterAPIEndpoints:
 
         assert response.status_code == status.HTTP_409_CONFLICT
         assert "billing records" in response.data["detail"]
+
+    def test_create_encounter_links_existing_waiting_queue_entry(self, auth_client, sample_patient):
+        """Test POST /api/encounters/ - Links to existing waiting queue entries for patient."""
+        from hmis.apps.triage.models import WaitingQueue
+
+        # Create a waiting queue entry without an encounter (simulating patient registration)
+        waiting_entry = WaitingQueue.objects.create(
+            patient=sample_patient,
+            reason_for_visit="Checkup",
+            status="WAITING_TRIAGE",
+        )
+        assert waiting_entry.encounter is None
+
+        # Create encounter for the same patient
+        payload = {
+            "patient": sample_patient.id,
+            "encounter_type": "OPD",
+            "chief_complaint": "Routine checkup",
+        }
+        response = auth_client.post("/api/encounters/", payload, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        # Waiting queue entry should now be linked to the encounter
+        waiting_entry.refresh_from_db()
+        assert waiting_entry.encounter is not None
+        assert waiting_entry.encounter.id == response.data["id"]
+        # Without vitals, status should still be WAITING_TRIAGE
+        assert waiting_entry.status == "WAITING_TRIAGE"
+
+    def test_create_encounter_with_vitals_marks_waiting_queue_triaged(self, auth_client, sample_patient):
+        """Test POST /api/encounters/ with vitals marks waiting queue entry as TRIAGED."""
+        from hmis.apps.triage.models import WaitingQueue
+
+        # Create a waiting queue entry without an encounter
+        waiting_entry = WaitingQueue.objects.create(
+            patient=sample_patient,
+            reason_for_visit="Feeling unwell",
+            status="WAITING_TRIAGE",
+        )
+
+        # Create encounter with vitals for the same patient
+        payload = {
+            "patient": sample_patient.id,
+            "encounter_type": "OPD",
+            "chief_complaint": "Fever",
+            "temperature": "37.8",
+            "pulse": 80,
+            "blood_pressure": "120/80",
+        }
+        response = auth_client.post("/api/encounters/", payload, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        # Waiting queue entry should be linked and marked as TRIAGED
+        waiting_entry.refresh_from_db()
+        assert waiting_entry.encounter is not None
+        assert waiting_entry.encounter.id == response.data["id"]
+        assert waiting_entry.status == "TRIAGED"
+
+    def test_update_encounter_with_vitals_marks_waiting_queue_triaged(self, auth_client, sample_patient):
+        """Test PATCH /api/encounters/{id}/ with vitals marks waiting queue entry as TRIAGED."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.triage.models import WaitingQueue
+
+        # Create encounter without vitals
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="General checkup",
+        )
+
+        # Create waiting queue entry linked to the encounter
+        waiting_entry = WaitingQueue.objects.create(
+            patient=sample_patient,
+            encounter=encounter,
+            reason_for_visit="General checkup",
+            status="WAITING_TRIAGE",
+        )
+
+        # Update encounter with vitals
+        payload = {
+            "temperature": "37.5",
+            "pulse": 75,
+            "blood_pressure": "118/76",
+        }
+        response = auth_client.patch(f"/api/encounters/{encounter.id}/", payload, format="json")
+
+        assert response.status_code == status.HTTP_200_OK
+
+        # Waiting queue entry should now be marked as TRIAGED
+        waiting_entry.refresh_from_db()
+        assert waiting_entry.status == "TRIAGED"
 
 
 @pytest.mark.integration

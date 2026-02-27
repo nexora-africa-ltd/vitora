@@ -974,6 +974,24 @@ class Encounter(HistoryMixin, models.Model):
         "CANCELLED": set(),  # Terminal state
     }
 
+    def has_vitals(self) -> bool:
+        """
+        Check if any vital signs have been recorded for this encounter.
+
+        Returns True if at least one of the core vital sign fields has a value:
+        temperature, pulse, blood_pressure, respiratory_rate, or spo2.
+
+        Returns:
+            bool: True if vitals have been recorded, False otherwise
+        """
+        return any([
+            self.temperature is not None,
+            self.pulse is not None,
+            self.blood_pressure,  # Non-empty string
+            self.respiratory_rate is not None,
+            self.spo2 is not None,
+        ])
+
     def can_edit(self) -> bool:
         """
         Check if the encounter can be edited.
