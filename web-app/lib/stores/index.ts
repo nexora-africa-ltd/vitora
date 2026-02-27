@@ -48,3 +48,12 @@ export {
   type EncounterNotes,
   type EncounterEditSession,
 } from './encounter-edit-store';
+
+// New Encounter Store - persists new encounter data across multi-step workflow
+export {
+  useNewEncounterStore,
+  type NewEncounterVitals,
+  type NewEncounterHistory,
+  type NewEncounterNotes,
+  type NewEncounterSession,
+} from './new-encounter-store';
