@@ -62,6 +62,16 @@ import { FIM_LEVEL_LABELS, type FIMLevel } from '@/lib/types/occupational-therap
 const sessionOutcomes = ['IMPROVED', 'MAINTAINED', 'DECLINED', 'UNABLE_TO_ASSESS'] as const;
 const fimLevels = [1, 2, 3, 4, 5, 6, 7] as const;
 
+const fimLevelSchema = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+  z.literal(7),
+]);
+
 const completeSessionSchema = z.object({
   notes: z.string().min(1, 'Progress notes are required'),
   duration_minutes: z.number().min(1, 'Duration is required').default(45),
@@ -72,9 +82,9 @@ const completeSessionSchema = z.object({
   sensory_activities: z.string().optional(),
   motor_activities: z.string().optional(),
   // FIM Scores
-  current_adl_score: z.number().min(1).max(7).optional(),
-  current_iadl_score: z.number().min(1).max(7).optional(),
-  current_cognitive_score: z.number().min(1).max(7).optional(),
+  current_adl_score: fimLevelSchema.optional(),
+  current_iadl_score: fimLevelSchema.optional(),
+  current_cognitive_score: fimLevelSchema.optional(),
   // Progress
   patient_participation: z.string().optional(),
   barriers_encountered: z.string().optional(),
