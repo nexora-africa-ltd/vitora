@@ -206,6 +206,15 @@ from hmis.apps.counselling.serializers import (
     CounsellingTypeListSerializer,
     CounsellingTypeSerializer,
 )
+from hmis.apps.referrals.serializers import (
+    ClinicalReferralCreateSerializer,
+    ClinicalReferralListSerializer as ReferralListSerializer,
+    ClinicalReferralSerializer as ReferralDetailSerializer,
+    EncounterReferralSerializer,
+    ReferralAcceptSerializer,
+    ReferralCancelSerializer,
+    ReferralDeclineSerializer,
+)
 
 # ── Serializer imports ──────────────────────────────────────────────
 
@@ -3960,6 +3969,148 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "status",
                 "status_display",
                 "is_sensitive",
+            }
+        ),
+    ),
+    # ── Referrals ────────────────────────────────────────────────────
+    (
+        ReferralListSerializer,
+        frozenset(
+            {
+                "id",
+                "referral_number",
+                "referral_type",
+                "referral_type_display",
+                "target_service",
+                "target_service_display",
+                "patient",
+                "patient_name",
+                "patient_mrn",
+                "encounter",
+                "priority",
+                "priority_display",
+                "status",
+                "status_display",
+                "referred_by",
+                "referred_by_name",
+                "is_sensitive",
+                "created_at",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        ReferralDetailSerializer,
+        frozenset(
+            {
+                "id",
+                "referral_number",
+                "referral_type",
+                "referral_type_display",
+                "target_service",
+                "target_service_display",
+                "patient",
+                "patient_name",
+                "patient_mrn",
+                "encounter",
+                "reason",
+                "clinical_notes",
+                "priority",
+                "priority_display",
+                "relevant_diagnoses",
+                "relevant_vitals",
+                "provisional_diagnosis",
+                "provisional_diagnosis_text",
+                "preferred_ward_type",
+                "external_facility_name",
+                "external_facility_code",
+                "referral_letter",
+                "status",
+                "status_display",
+                "referred_by",
+                "referred_by_name",
+                "accepted_by",
+                "accepted_by_name",
+                "declined_by",
+                "declined_by_name",
+                "decline_reason",
+                "accepted_at",
+                "declined_at",
+                "completed_at",
+                "expires_at",
+                "linked_module",
+                "linked_model",
+                "linked_object_id",
+                "clinic_visit",
+                "is_sensitive",
+                "is_active",
+                "is_terminal",
+                "created_at",
+                "updated_at",
+            }
+        ),
+    ),
+    (
+        ClinicalReferralCreateSerializer,
+        frozenset(
+            {
+                "encounter",
+                "target_service",
+                "reason",
+                "clinical_notes",
+                "priority",
+                "provisional_diagnosis",
+                "provisional_diagnosis_text",
+                "preferred_ward_type",
+                "external_facility_name",
+                "external_facility_code",
+                "referral_letter",
+                "is_sensitive",
+            }
+        ),
+    ),
+    (
+        EncounterReferralSerializer,
+        frozenset(
+            {
+                "id",
+                "referral_number",
+                "referral_type",
+                "referral_type_display",
+                "target_service",
+                "target_service_display",
+                "reason",
+                "priority",
+                "priority_display",
+                "status",
+                "status_display",
+                "referred_by_name",
+                "is_sensitive",
+                "created_at",
+            }
+        ),
+    ),
+    (
+        ReferralAcceptSerializer,
+        frozenset(
+            {
+                "notes",
+            }
+        ),
+    ),
+    (
+        ReferralDeclineSerializer,
+        frozenset(
+            {
+                "reason",
+            }
+        ),
+    ),
+    (
+        ReferralCancelSerializer,
+        frozenset(
+            {
+                "reason",
             }
         ),
     ),

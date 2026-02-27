@@ -14,7 +14,15 @@ import { useEncounterDiagnoses, useEncounterTreatmentPlan } from '@/lib/hooks/us
 import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
 import { useEncounterImagingOrders } from '@/lib/hooks/use-imaging';
 import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
+import { useEncounterReferrals } from '@/lib/hooks/use-referrals';
 import { useLabEncounterSocket } from '@/lib/hooks';
+import {
+  useEncounterPhysioOrders,
+  useEncounterNutritionConsultations,
+  useEncounterCounsellingReferrals,
+  useEncounterOTOrders,
+  useEncounterSWReferrals,
+} from '@/lib/hooks/use-encounter-allied-health';
 import { formatDate } from '@/lib/utils/format';
 import { ENCOUNTER_STATUS, ENCOUNTER_TYPES } from '@/lib/utils/constants';
 import { VitalsDisplay } from '@/components/encounters/vitals-display';
@@ -27,6 +35,8 @@ import { EncounterPrescriptions } from '@/components/encounters/encounter-prescr
 import { SOAPNoteSummary } from '@/components/encounters/soap-note-summary';
 import { ClinicalSnapshotBanner } from '@/components/encounters/clinical-snapshot-banner';
 import { EncounterAuditTrail } from '@/components/encounters/encounter-audit-trail';
+import { EncounterAlliedHealthContent } from '@/components/encounters/encounter-allied-health-content';
+import { EncounterReferralsContent } from '@/components/encounters/encounter-referrals-content';
 import Link from 'next/link';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 
@@ -52,6 +62,23 @@ export default function EncounterDetailPage() {
   const { data: labOrders } = useEncounterLabOrders(encounterId);
   const { data: imagingOrders } = useEncounterImagingOrders(encounterId);
   const { data: prescriptions } = useEncounterPrescriptions(encounterId);
+
+  // Allied health data (for tab badge count)
+  const { data: ahPhysio } = useEncounterPhysioOrders(encounterId);
+  const { data: ahNutrition } = useEncounterNutritionConsultations(encounterId);
+  const { data: ahOT } = useEncounterOTOrders(encounterId);
+  const { data: ahCounselling } = useEncounterCounsellingReferrals(encounterId);
+  const { data: ahSW } = useEncounterSWReferrals(encounterId);
+  const alliedHealthCount =
+    (ahPhysio?.results?.length || 0) +
+    (ahNutrition?.results?.length || 0) +
+    (ahOT?.results?.length || 0) +
+    (ahCounselling?.results?.length || 0) +
+    (ahSW?.results?.length || 0);
+
+  // Referrals data (for tab badge count)
+  const { data: referralsList } = useEncounterReferrals(encounterId);
+  const referralsCount = referralsList?.length || 0;
 
   // Real-time WebSocket subscription for lab result updates
   // Automatically invalidates lab orders cache when results are verified
@@ -147,14 +174,7 @@ export default function EncounterDetailPage() {
         </Button>
       )}
 
-      {encounter.encounter_type === 'OPD' && (
-        <Button variant="secondary" className="w-full sm:w-auto text-sm" asChild>
-          <Link href={`/admissions/recommendations/new?encounter=${encounter.id}&patient_name=${encodeURIComponent(encounter.patient_name || '')}&patient_mrn=${encodeURIComponent(encounter.patient_mrn || '')}`}>
-            <span className="sm:hidden">Admit</span>
-            <span className="hidden sm:inline">Recommend for Admission</span>
-          </Link>
-        </Button>
-      )}
+      {/* Admission referrals are now created through the Referrals tab */}
     </>
   );
 
@@ -216,6 +236,14 @@ export default function EncounterDetailPage() {
           <TabsTrigger value="lab" className="text-xs sm:text-sm">Lab ({labOrders?.length || 0})</TabsTrigger>
           <TabsTrigger value="imaging" className="text-xs sm:text-sm">Imaging ({imagingOrders?.length || 0})</TabsTrigger>
           <TabsTrigger value="pharmacy" className="text-xs sm:text-sm">Rx ({prescriptions?.length || 0})</TabsTrigger>
+          <TabsTrigger value="allied-health" className="text-xs sm:text-sm">
+            <span className="sm:hidden">AH{alliedHealthCount > 0 ? ` (${alliedHealthCount})` : ''}</span>
+            <span className="hidden sm:inline">Allied Health{alliedHealthCount > 0 ? ` (${alliedHealthCount})` : ''}</span>
+          </TabsTrigger>
+          <TabsTrigger value="referrals" className="text-xs sm:text-sm">
+            <span className="sm:hidden">Ref{referralsCount > 0 ? ` (${referralsCount})` : ''}</span>
+            <span className="hidden sm:inline">Referrals{referralsCount > 0 ? ` (${referralsCount})` : ''}</span>
+          </TabsTrigger>
           <TabsTrigger value="history" className="text-xs sm:text-sm">Hx</TabsTrigger>
           <TabsTrigger value="audit" className="text-xs sm:text-sm">Audit</TabsTrigger>
         </TabsList>
@@ -309,6 +337,23 @@ export default function EncounterDetailPage() {
 
         <TabsContent value="pharmacy">
           <EncounterPrescriptions
+            encounterId={encounterId}
+            patientId={encounter.patient}
+            disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
+          />
+        </TabsContent>
+
+        <TabsContent value="allied-health">
+          <EncounterAlliedHealthContent
+            encounterId={encounterId}
+            patientId={encounter.patient}
+            showActions={false}
+            disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}
+          />
+        </TabsContent>
+
+        <TabsContent value="referrals">
+          <EncounterReferralsContent
             encounterId={encounterId}
             patientId={encounter.patient}
             disabled={encounter.status === 'CLOSED' || encounter.status === 'CANCELLED'}

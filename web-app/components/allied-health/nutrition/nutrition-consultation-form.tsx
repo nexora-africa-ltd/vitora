@@ -11,6 +11,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -59,6 +60,7 @@ import {
   useUpdateNutritionConsultation,
 } from '@/lib/hooks/use-nutrition';
 import { usePatients, usePatient } from '@/lib/hooks/use-patients';
+import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { REFERRAL_REASON_LABELS, type NutritionReferralReason, type ActivityLevel } from '@/lib/types/nutrition';
 
 // =============================================================================
@@ -180,6 +182,10 @@ export function NutritionConsultationForm({
   });
   const { data: selectedPatient, isLoading: patientLoading } = usePatient(selectedPatientId!);
 
+  // Fetch encounter vitals and diagnoses for auto-population (when referred from encounter/triage)
+  const { data: encounter } = useEncounter(encounterId!);
+  const { data: encounterDiagnoses } = useEncounterDiagnoses(encounterId!);
+
   const createMutation = useCreateNutritionConsultation();
   const updateMutation = useUpdateNutritionConsultation();
 
@@ -214,6 +220,21 @@ export function NutritionConsultationForm({
       setSelectedPatientId(patientId);
     }
   }, [patientId, form]);
+
+  // Auto-populate anthropometrics from encounter/triage vitals
+  useEffect(() => {
+    if (!encounter || isEditMode) return;
+
+    const currentWeight = form.getValues('weight_kg');
+    const currentHeight = form.getValues('height_cm');
+
+    if (!currentWeight && encounter.weight) {
+      form.setValue('weight_kg', encounter.weight);
+    }
+    if (!currentHeight && encounter.height) {
+      form.setValue('height_cm', encounter.height);
+    }
+  }, [encounter, form, isEditMode]);
 
   // Handle patient selection
   const handlePatientSelect = useCallback((id: number) => {
@@ -465,6 +486,34 @@ export function NutritionConsultationForm({
                 />
               </div>
 
+              {/* Encounter Diagnoses (read-only context from referring encounter) */}
+              {encounterDiagnoses && encounterDiagnoses.length > 0 && (
+                <div className="rounded-lg border p-3 sm:p-4 bg-muted/30 space-y-2">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    Encounter Diagnoses
+                    <HelpPopover content="Diagnoses from the referring encounter. These provide clinical context for the nutrition consultation." />
+                  </h4>
+                  <div className="space-y-1.5">
+                    {encounterDiagnoses.map((dx) => (
+                      <div key={dx.id} className="flex items-start gap-2 text-sm">
+                        <Badge
+                          variant={dx.diagnosis_type === 'PRIMARY' ? 'default' : 'outline'}
+                          className="shrink-0 text-xs mt-0.5"
+                        >
+                          {dx.diagnosis_type}
+                        </Badge>
+                        <span>
+                          {dx.icd10_code_display || dx.icd10_display || dx.free_text_diagnosis || 'Unknown'}
+                          {dx.icd10_description && (
+                            <span className="text-muted-foreground"> — {dx.icd10_description}</span>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <FormField
                 control={form.control}
                 name="clinical_notes"
@@ -491,10 +540,18 @@ export function NutritionConsultationForm({
               <CardTitle className="text-base sm:text-lg flex items-center gap-2">
                 <Scale className="h-4 w-4 sm:h-5 sm:w-5" />
                 Anthropometrics
-                <HelpPopover content="Body measurements for nutritional assessment. BMI is calculated automatically." />
+                <HelpPopover content="Body measurements for nutritional assessment. BMI is calculated automatically. When opened from an encounter, weight and height are pre-filled from triage vitals." />
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {encounter && (encounter.weight || encounter.height) && !isEditMode && (
+                <Alert>
+                  <Scale className="h-4 w-4" />
+                  <AlertDescription>
+                    Weight and height have been pre-filled from {encounter.vitals_source === 'TRIAGE' ? 'triage' : 'encounter'} vitals. You can adjust if needed.
+                  </AlertDescription>
+                </Alert>
+              )}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <FormField
                   control={form.control}
