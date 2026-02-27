@@ -28,3 +28,8 @@ export { DiagnosisForm, DiagnosisEntry, DiagnosisListDisplay } from './diagnosis
 
 // Allied Health Referrals
 export { AlliedHealthReferralActions } from './allied-health-referral-actions';
+export { EncounterAlliedHealthContent } from './encounter-allied-health-content';
+
+// Unified Referrals
+export { EncounterReferralsContent } from './encounter-referrals-content';
+export { ReferralCreateDialog } from './referral-create-dialog';

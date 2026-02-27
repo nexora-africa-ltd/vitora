@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     "hmis.apps.social_work.apps.SocialWorkConfig",
     "hmis.apps.counselling.apps.CounsellingConfig",
     "hmis.apps.allied_health.apps.AlliedHealthConfig",
+    "hmis.apps.referrals.apps.ReferralsConfig",
 ]
 
 MIDDLEWARE = [

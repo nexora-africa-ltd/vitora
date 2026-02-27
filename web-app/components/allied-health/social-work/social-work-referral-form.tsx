@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/form';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { AlertTriangle, User, Send } from 'lucide-react';
+import { SensitiveCaseBanner } from './sensitive-case-banner';
 import {
   useCreateSocialWorkReferral,
   useUpdateSocialWorkReferral,
@@ -336,13 +337,10 @@ export function SocialWorkReferralForm({
               {/* Warning when sensitive */}
               {isSensitive && (
                 <>
-                  <Alert variant="default" className="border-amber-500 bg-amber-50 dark:bg-amber-950">
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                    <AlertDescription className="text-amber-800 dark:text-amber-200">
-                      This case has restricted access. Only authorized staff with special permissions 
-                      will have limited visibility to this referral.
-                    </AlertDescription>
-                  </Alert>
+                  <SensitiveCaseBanner
+                    referralReason={form.watch('referral_reason')}
+                    isSensitive={true}
+                  />
 
                   {/* Sensitive Categories */}
                   <div className="space-y-3">

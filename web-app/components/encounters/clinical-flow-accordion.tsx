@@ -9,7 +9,10 @@
  * 3. Clinical Template
  * 4. Diagnosis (Dx)
  * 5. Lab Orders
- * 6. Prescriptions (Rx)
+ * 6. Imaging Orders (Img)
+ * 7. Prescriptions (Rx)
+ * 8. Allied Health Orders (AH) — read-only view of linked AH orders
+ * 9. Referrals (Ref) — unified referral creation (allied health, specialty, admission, external)
  */
 'use client';
 
@@ -22,6 +25,8 @@ import {
   Beaker,
   ScanLine,
   Pill,
+  HeartHandshake,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { FormAccordion, type FormAccordionSection } from '@/components/ui/form-accordion';
 import { MedicalHistoryFormContent } from '@/components/encounters/medical-history-form';
@@ -30,6 +35,8 @@ import { DiagnosisFormContent } from '@/components/encounters/diagnosis-form';
 import { EncounterLabOrdersContent } from '@/components/encounters/encounter-lab-orders';
 import { EncounterImagingOrdersContent } from '@/components/encounters/encounter-imaging-orders';
 import { EncounterPrescriptionsContent } from '@/components/encounters/encounter-prescriptions';
+import { EncounterAlliedHealthContent } from '@/components/encounters/encounter-allied-health-content';
+import { EncounterReferralsContent } from '@/components/encounters/encounter-referrals-content';
 import { ClinicalTemplateFormContent } from '@/components/encounters/clinical-template-section';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 import type { ClinicalTemplate } from '@/lib/types/clinical-template';
@@ -250,6 +257,39 @@ export function ClinicalFlowAccordion({
           patientId={patientId}
           disabled={disabled}
           onBeforeNavigate={onBeforeNavigate}
+        />
+      ),
+    },
+    {
+      id: 'allied-health',
+      title: 'Allied Health',
+      abbreviation: 'AH',
+      icon: <HeartHandshake className="h-4 w-4" />,
+      isComplete: false,
+      tooltipTitle: 'Allied Health Orders (AH)',
+      tooltipDescription: 'View existing Physiotherapy, Nutrition, OT, Counselling, and Social Work orders linked to this encounter',
+      children: (
+        <EncounterAlliedHealthContent
+          encounterId={encounterId}
+          patientId={patientId}
+          showActions={false}
+          disabled={disabled}
+        />
+      ),
+    },
+    {
+      id: 'referrals',
+      title: 'Referrals',
+      abbreviation: 'Ref',
+      icon: <ArrowRightLeft className="h-4 w-4" />,
+      isComplete: false,
+      tooltipTitle: 'Referrals (Ref)',
+      tooltipDescription: 'Create referrals to allied health, specialty clinics, admission, or external facilities',
+      children: (
+        <EncounterReferralsContent
+          encounterId={encounterId}
+          patientId={patientId}
+          disabled={disabled}
         />
       ),
     },

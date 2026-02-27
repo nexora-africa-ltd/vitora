@@ -2,9 +2,9 @@
 
 > **Document Purpose**: Comprehensive documentation for the Allied Health module covering architecture, integration patterns, UI specifications, and implementation roadmap.
 
-**Version**: 1.1
+**Version**: 1.2
 **Created**: February 26, 2026
-**Updated**: February 26, 2026
+**Updated**: February 27, 2026
 **Author**: Engineering Team, Nexora Africa Ltd
 **Status**: Backend Complete ✅ | Frontend Complete ✅
 
@@ -44,11 +44,14 @@ The Allied Health module extends Vitora HMIS with dedicated workflows for five p
 ### 1.2 Key Features
 
 - **Referral-based workflow**: Orders originate from clinical encounters
+- **Encounter integration**: Allied Health tab on encounter detail + accordion section in clinical flow
 - **Session-based treatment**: Track individual sessions with progress notes
 - **Clinic queue integration**: Auto-routing to appropriate clinic on approval
 - **Billing integration**: Auto-generate invoice items on session completion
 - **SHA compliance**: SHA intervention codes for Kenya claims
 - **Privacy controls**: Enhanced privacy for sensitive cases (GBV, HIV, Mental Health)
+- **Vitals auto-population**: Nutrition form pre-fills weight/height from triage vitals
+- **Diagnosis context**: Encounter diagnoses shown in nutrition referral form
 - **Audit trail**: Full audit logging per Kenya DPA 2019
 
 ### 1.3 How Allied Health Fits in Patient Flow
@@ -224,6 +227,8 @@ All Allied Health orders follow a standardized state machine:
   - Ideal body weight
 - MUAC-based malnutrition screening (SAM/MAM detection)
 - Anthropometric sync from Encounter vitals
+- **Frontend auto-population**: When opened from an encounter, weight and height are pre-filled from triage vitals
+- **Encounter diagnoses display**: Referring encounter's diagnoses shown as read-only context in the consultation form
 - 16 referral reasons (Weight Management, Diabetes, Renal, etc.)
 
 **API Custom Actions**:
@@ -288,7 +293,34 @@ All Allied Health orders follow a standardized state machine:
 
 ### 4.1 Encounter Integration
 
-Allied Health orders originate from clinical encounters:
+Allied Health orders originate from clinical encounters. The integration has three touchpoints:
+
+#### 4.1.1 Encounter Edit Page (Clinical Flow Accordion)
+
+During consultation, the clinical flow accordion includes an **"Allied Health" (AH)** section as section #8:
+
+```
+Hx → HPI → Template → Dx → Labs → Img → Rx → AH
+```
+
+This section uses `EncounterAlliedHealthContent` to show existing allied health referrals and provide in-context referral buttons for all 5 modules. Located in:
+- Accordion section: `components/encounters/clinical-flow-accordion.tsx`
+- Content component: `components/encounters/encounter-allied-health-content.tsx`
+- Referral buttons: `components/encounters/allied-health-referral-actions.tsx`
+
+#### 4.1.2 Encounter Detail Page (Allied Health Tab)
+
+The read-only encounter detail page (`/encounters/[id]`) includes an **"Allied Health"** tab that displays all referrals linked to the encounter with badge counts:
+
+```
+SOAP | Assessment | Dx | Treatment | Lab | Imaging | Rx | Allied Health (3) | Hx | Audit
+```
+
+The tab shows referral cards grouped by module (Physiotherapy, Nutrition, OT, Counselling, Social Work) with status and priority badges.
+
+#### 4.1.3 Data Flow from Encounter to Allied Health
+
+When a referral is created from an encounter:
 
 ```python
 # When a doctor creates an order during consultation
@@ -332,8 +364,8 @@ def create_clinic_visit_on_approval(sender, instance, **kwargs):
 |--------|-------------|-------------|
 | Physiotherapy | `PHYSIO` | Physiotherapy Clinic |
 | Nutrition | `NUTRITION` | Nutrition Clinic |
-| Occupational Therapy | `OT` (needs to be added) | Occupational Therapy Clinic |
-| Social Work | `SOCIAL_WORK` (needs to be added) | Social Work |
+| Occupational Therapy | `OT` | Occupational Therapy Clinic |
+| Social Work | `SOCIAL_WORK` | Social Work |
 | Counselling | `MENTAL_HEALTH` | Mental Health / Counselling |
 
 ### 4.3 Billing Integration
@@ -530,6 +562,30 @@ lib/api/social-work.ts                        # Social Work API client
 lib/api/counselling.ts                        # Counselling API client
 ```
 
+#### Hooks (lib/hooks/)
+
+```
+lib/hooks/use-allied-health.ts                # Dashboard hook
+lib/hooks/use-physiotherapy.ts                # Physiotherapy CRUD hooks
+lib/hooks/use-nutrition.ts                    # Nutrition CRUD hooks
+lib/hooks/use-occupational-therapy.ts         # OT CRUD hooks
+lib/hooks/use-social-work.ts                  # Social Work CRUD hooks
+lib/hooks/use-counselling.ts                  # Counselling CRUD hooks
+lib/hooks/use-encounter-allied-health.ts      # Encounter-scoped queries (all 5 modules)
+```
+
+The `use-encounter-allied-health.ts` hooks provide encounter-filtered queries:
+
+```typescript
+useEncounterPhysioOrders(encounterId)
+useEncounterNutritionConsultations(encounterId)
+useEncounterOTOrders(encounterId)
+useEncounterCounsellingReferrals(encounterId)
+useEncounterSWReferrals(encounterId)
+```
+
+These power both the encounter detail "Allied Health" tab and the clinical accordion section.
+
 #### Pages (app/(dashboard)/)
 
 ```
@@ -538,24 +594,35 @@ app/(dashboard)/allied-health/
 ├── physiotherapy/
 │   ├── page.tsx                              # Orders list
 │   ├── [id]/page.tsx                         # Order detail
+│   ├── orders/new/page.tsx                   # New order
 │   ├── sessions/page.tsx                     # Sessions list
 │   └── treatment-types/page.tsx              # Treatment catalog
 ├── nutrition/
 │   ├── page.tsx                              # Consultations list
 │   ├── [id]/page.tsx                         # Consultation detail
+│   ├── consultations/new/page.tsx            # New consultation
 │   └── diet-plans/page.tsx                   # Diet plans
 ├── occupational-therapy/
 │   ├── page.tsx                              # Orders list
 │   ├── [id]/page.tsx                         # Order detail
+│   ├── orders/new/page.tsx                   # New order
 │   └── sessions/page.tsx                     # Sessions list
 ├── social-work/
 │   ├── page.tsx                              # Referrals list
 │   ├── [id]/page.tsx                         # Referral detail
+│   ├── referrals/new/page.tsx                # New referral
 │   ├── cases/page.tsx                        # Cases list
-│   └── cases/[id]/page.tsx                   # Case detail
+│   ├── cases/new/page.tsx                    # New case
+│   └── cases/[id]/
+│       ├── page.tsx                          # Case detail
+│       ├── edit/page.tsx                     # Edit case
+│       ├── notes/page.tsx                    # Notes list
+│       ├── notes/new/page.tsx                # Add note
+│       └── interventions/new/page.tsx        # Add intervention
 └── counselling/
     ├── page.tsx                              # Referrals list
     ├── [id]/page.tsx                         # Referral detail
+    ├── referrals/new/page.tsx                # New referral
     └── sessions/page.tsx                     # Sessions list
 ```
 
@@ -584,14 +651,27 @@ components/allied-health/
 │   └── ot-session-form.tsx
 ├── social-work/
 │   ├── sw-referral-form.tsx
-│   ├── case-form.tsx
-│   ├── case-note-form.tsx
-│   ├── intervention-form.tsx
-│   └── sensitive-case-banner.tsx             # Privacy warning
+│   ├── sw-referral-table.tsx
+│   ├── sw-case-form.tsx
+│   ├── sw-case-detail.tsx
+│   ├── sw-case-table.tsx
+│   ├── social-work-referral-form.tsx         # Referral with SensitiveCaseBanner
+│   ├── case-note-form.tsx                    # Wired to cases/[id]/notes/new
+│   ├── intervention-form.tsx                 # Wired to cases/[id]/interventions/new
+│   └── sensitive-case-banner.tsx             # Used in case detail + referral form
 └── counselling/
     ├── counselling-referral-form.tsx
     ├── counselling-session-form.tsx
     └── follow-up-scheduler.tsx
+```
+
+#### Encounter Integration Components (components/encounters/)
+
+```
+components/encounters/
+├── encounter-allied-health-content.tsx       # Allied health referrals per encounter
+├── allied-health-referral-actions.tsx        # Referral creation buttons (5 modules)
+└── clinical-flow-accordion.tsx              # Includes AH as section #8
 ```
 
 ### 6.2 Navigation Updates
@@ -1087,12 +1167,23 @@ test.describe('Allied Health Module', () => {
 - [x] API clients created (`lib/api/`)
 - [x] Navigation updated (`lib/config/navigation.ts`)
 - [x] Dashboard page (`/allied-health`)
-- [x] Physiotherapy pages (list, detail, sessions)
-- [x] Nutrition pages (consultations)
-- [x] OT pages (orders)
-- [x] Social Work pages (cases)
-- [x] Counselling pages (referrals)
+- [x] Physiotherapy pages (list, detail, sessions, new order)
+- [x] Nutrition pages (consultations, new, diet plans)
+- [x] OT pages (orders, new order, sessions)
+- [x] Social Work pages (referrals, new referral, cases, case detail, edit, notes, interventions)
+- [x] Counselling pages (referrals, new referral, sessions)
 - [x] Shared components (status badges, session progress, module card)
+- [x] **Encounter detail** — Allied Health tab with badge counts
+- [x] **Clinical flow accordion** — AH section (#8) with inline referral actions
+- [x] **Encounter-scoped hooks** (`use-encounter-allied-health.ts`)
+- [x] **Barrel export** for `EncounterAlliedHealthContent`
+- [x] Social Work: `CaseNoteForm` wired to `cases/[id]/notes/new`
+- [x] Social Work: `InterventionForm` wired to `cases/[id]/interventions/new`
+- [x] Social Work: `SensitiveCaseBanner` used in case detail + referral form
+- [x] Social Work: Case edit page (`cases/[id]/edit`)
+- [x] Social Work: Notes list page (`cases/[id]/notes`)
+- [x] Nutrition: Auto-populate weight/height from encounter triage vitals
+- [x] Nutrition: Show encounter diagnoses as referral context
 - [x] Contract tests
 - [x] Hook tests
 - [x] Component tests
@@ -1185,6 +1276,6 @@ Clinic.objects.get_or_create(
 
 ---
 
-**Last Updated**: February 26, 2026
+**Last Updated**: February 27, 2026
 **Maintainer**: Engineering Lead
-**Version**: 1.0
+**Version**: 1.2
