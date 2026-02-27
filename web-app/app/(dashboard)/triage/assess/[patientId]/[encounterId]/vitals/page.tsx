@@ -13,7 +13,6 @@ import { useState, useCallback, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   Activity,
   Thermometer,
@@ -43,272 +42,49 @@ import {
 } from '@/components/triage';
 import type { TriageAlert, VitalType, AlertSeverity } from '@/lib/types/triage';
 
-// =============================================================================
-// Schema
-// =============================================================================
+// Import shared vitals module
+import {
+  triageVitalsSchema,
+  generateVitalAlerts as generateVitalAlertsShared,
+  type TriageVitalsFormValues,
+  type VitalAlert,
+} from '@/lib/vitals';
 
-const vitalsSchema = z.object({
-  temperature: z.union([
-    z.literal(null),
-    z.number().min(30, 'Must be 30-45°C').max(45, 'Must be 30-45°C'),
-  ]).nullable().optional(),
-  heart_rate: z.union([
-    z.literal(null),
-    z.number().min(0, 'Must be 0-300').max(300, 'Must be 0-300'),
-  ]).nullable().optional(),
-  systolic_bp: z.union([
-    z.literal(null),
-    z.number().min(0, 'Must be 0-300').max(300, 'Must be 0-300'),
-  ]).nullable().optional(),
-  diastolic_bp: z.union([
-    z.literal(null),
-    z.number().min(0, 'Must be 0-200').max(200, 'Must be 0-200'),
-  ]).nullable().optional(),
-  spo2: z.union([
-    z.literal(null),
-    z.number().min(0, 'Must be 0-100%').max(100, 'Must be 0-100%'),
-  ]).nullable().optional(),
-  respiratory_rate: z.union([
-    z.literal(null),
-    z.number().min(0, 'Must be 0-60').max(60, 'Must be 0-60'),
-  ]).nullable().optional(),
-  weight: z.union([
-    z.literal(null),
-    z.number().min(0, 'Must be positive').max(500, 'Must be < 500kg'),
-  ]).nullable().optional(),
-  height: z.union([
-    z.literal(null),
-    z.number().min(0, 'Must be positive').max(300, 'Must be < 300cm'),
-  ]).nullable().optional(),
-});
-
-type VitalsFormData = z.infer<typeof vitalsSchema>;
+// Use shared schema
+const vitalsSchema = triageVitalsSchema;
+type VitalsFormData = TriageVitalsFormValues;
 
 // =============================================================================
-// Vital Alert Generation (matches DEFAULT_THRESHOLDS from vital-input-with-alert)
+// Vital Alert Generation - Using shared module
 // =============================================================================
 
+/**
+ * Generate alerts using shared vitals module and convert to TriageAlert format
+ */
 function generateVitalAlerts(vitals: VitalsFormData): TriageAlert[] {
-  const alerts: TriageAlert[] = [];
+  // Convert triage field names to shared module field names
+  const mappedVitals = {
+    temperature: vitals.temperature,
+    heart_rate: vitals.heart_rate,
+    systolic_bp: vitals.systolic_bp,
+    diastolic_bp: vitals.diastolic_bp,
+    spo2: vitals.spo2,
+    respiratory_rate: vitals.respiratory_rate,
+  };
 
-  // SpO2 alerts - emergency ≤85, critical <90, warning <95
-  if (vitals.spo2 !== null && vitals.spo2 !== undefined) {
-    if (vitals.spo2 <= 85) {
-      alerts.push({
-        id: 'spo2-emergency',
-        vital_type: 'SPO2' as VitalType,
-        value: vitals.spo2,
-        severity: 'CRITICAL' as AlertSeverity,
-        message: `EMERGENCY: ${vitals.spo2}% - Severe hypoxemia`,
-        threshold: 85,
-      });
-    } else if (vitals.spo2 < 90) {
-      alerts.push({
-        id: 'spo2-critical',
-        vital_type: 'SPO2' as VitalType,
-        value: vitals.spo2,
-        severity: 'CRITICAL' as AlertSeverity,
-        message: `Critical: ${vitals.spo2}% - Moderate hypoxemia`,
-        threshold: 90,
-      });
-    } else if (vitals.spo2 < 95) {
-      alerts.push({
-        id: 'spo2-warning',
-        vital_type: 'SPO2' as VitalType,
-        value: vitals.spo2,
-        severity: 'WARNING' as AlertSeverity,
-        message: `Warning: ${vitals.spo2}% - Mild hypoxemia`,
-        threshold: 95,
-      });
-    }
-  }
+  // Use shared alert generation
+  const sharedAlerts = generateVitalAlertsShared(mappedVitals);
 
-  // Heart rate alerts - critical <40 or >150, warning <50 or >100
-  if (vitals.heart_rate !== null && vitals.heart_rate !== undefined) {
-    if (vitals.heart_rate < 40) {
-      alerts.push({
-        id: 'hr-critical-low',
-        vital_type: 'HEART_RATE' as VitalType,
-        value: vitals.heart_rate,
-        severity: 'CRITICAL' as AlertSeverity,
-        message: `Critical: ${vitals.heart_rate} bpm - Severe bradycardia`,
-        threshold: 40,
-      });
-    } else if (vitals.heart_rate > 150) {
-      alerts.push({
-        id: 'hr-critical-high',
-        vital_type: 'HEART_RATE' as VitalType,
-        value: vitals.heart_rate,
-        severity: 'CRITICAL' as AlertSeverity,
-        message: `Critical: ${vitals.heart_rate} bpm - Severe tachycardia`,
-        threshold: 150,
-      });
-    } else if (vitals.heart_rate < 50) {
-      alerts.push({
-        id: 'hr-warning-low',
-        vital_type: 'HEART_RATE' as VitalType,
-        value: vitals.heart_rate,
-        severity: 'WARNING' as AlertSeverity,
-        message: `Warning: ${vitals.heart_rate} bpm - Bradycardia`,
-        threshold: 50,
-      });
-    } else if (vitals.heart_rate > 100) {
-      alerts.push({
-        id: 'hr-warning-high',
-        vital_type: 'HEART_RATE' as VitalType,
-        value: vitals.heart_rate,
-        severity: 'WARNING' as AlertSeverity,
-        message: `Warning: ${vitals.heart_rate} bpm - Tachycardia`,
-        threshold: 100,
-      });
-    }
-  }
-
-  // Temperature alerts - matches legacy clinical terminology
-  // Critical: <32°C (severe hypothermia), ≥40°C (hyperpyrexia)
-  // Warning: 32-35°C (moderate hypothermia), 35-36°C (mild hypothermia)
-  // Warning: >37.5-38.4°C (low-grade fever), 38.5-39.9°C (moderate fever)
-  if (vitals.temperature !== null && vitals.temperature !== undefined) {
-    if (vitals.temperature < 32) {
-      alerts.push({
-        id: 'temp-critical-low',
-        vital_type: 'TEMPERATURE' as VitalType,
-        value: vitals.temperature,
-        severity: 'CRITICAL' as AlertSeverity,
-        message: `Critical: ${vitals.temperature}°C - Severe hypothermia`,
-        threshold: 32,
-      });
-    } else if (vitals.temperature >= 40) {
-      alerts.push({
-        id: 'temp-critical-high',
-        vital_type: 'TEMPERATURE' as VitalType,
-        value: vitals.temperature,
-        severity: 'CRITICAL' as AlertSeverity,
-        message: `Critical: ${vitals.temperature}°C - High fever / Hyperpyrexia`,
-        threshold: 40,
-      });
-    } else if (vitals.temperature >= 38.5) {
-      alerts.push({
-        id: 'temp-moderate-fever',
-        vital_type: 'TEMPERATURE' as VitalType,
-        value: vitals.temperature,
-        severity: 'WARNING' as AlertSeverity,
-        message: `Warning: ${vitals.temperature}°C - Moderate fever`,
-        threshold: 38.5,
-      });
-    } else if (vitals.temperature > 37.5) {
-      alerts.push({
-        id: 'temp-low-fever',
-        vital_type: 'TEMPERATURE' as VitalType,
-        value: vitals.temperature,
-        severity: 'WARNING' as AlertSeverity,
-        message: `Warning: ${vitals.temperature}°C - Low-grade fever`,
-        threshold: 37.5,
-      });
-    } else if (vitals.temperature < 35) {
-      alerts.push({
-        id: 'temp-moderate-hypothermia',
-        vital_type: 'TEMPERATURE' as VitalType,
-        value: vitals.temperature,
-        severity: 'WARNING' as AlertSeverity,
-        message: `Warning: ${vitals.temperature}°C - Moderate hypothermia`,
-        threshold: 35,
-      });
-    } else if (vitals.temperature < 36) {
-      alerts.push({
-        id: 'temp-mild-hypothermia',
-        vital_type: 'TEMPERATURE' as VitalType,
-        value: vitals.temperature,
-        severity: 'WARNING' as AlertSeverity,
-        message: `Warning: ${vitals.temperature}°C - Mild hypothermia`,
-        threshold: 36,
-      });
-    }
-  }
-
-  // Blood pressure alerts - critical <90 or >180 systolic
-  if (vitals.systolic_bp !== null && vitals.systolic_bp !== undefined) {
-    if (vitals.systolic_bp >= 180) {
-      alerts.push({
-        id: 'bp-critical-high',
-        vital_type: 'SYSTOLIC_BP' as VitalType,
-        value: vitals.systolic_bp,
-        severity: 'CRITICAL' as AlertSeverity,
-        message: `Critical: ${vitals.systolic_bp} mmHg - Hypertensive crisis`,
-        threshold: 180,
-      });
-    } else if (vitals.systolic_bp < 90) {
-      alerts.push({
-        id: 'bp-critical-low',
-        vital_type: 'SYSTOLIC_BP' as VitalType,
-        value: vitals.systolic_bp,
-        severity: 'CRITICAL' as AlertSeverity,
-        message: `Critical: ${vitals.systolic_bp} mmHg - Hypotension`,
-        threshold: 90,
-      });
-    } else if (vitals.systolic_bp > 140) {
-      alerts.push({
-        id: 'bp-warning-high',
-        vital_type: 'SYSTOLIC_BP' as VitalType,
-        value: vitals.systolic_bp,
-        severity: 'WARNING' as AlertSeverity,
-        message: `Warning: ${vitals.systolic_bp} mmHg - Elevated blood pressure`,
-        threshold: 140,
-      });
-    } else if (vitals.systolic_bp < 100) {
-      alerts.push({
-        id: 'bp-warning-low',
-        vital_type: 'SYSTOLIC_BP' as VitalType,
-        value: vitals.systolic_bp,
-        severity: 'WARNING' as AlertSeverity,
-        message: `Warning: ${vitals.systolic_bp} mmHg - Low blood pressure`,
-        threshold: 100,
-      });
-    }
-  }
-
-  // Respiratory rate alerts - critical <8 or >30, warning <10 or >24
-  if (vitals.respiratory_rate !== null && vitals.respiratory_rate !== undefined) {
-    if (vitals.respiratory_rate < 8) {
-      alerts.push({
-        id: 'rr-critical-low',
-        vital_type: 'RESPIRATORY_RATE' as VitalType,
-        value: vitals.respiratory_rate,
-        severity: 'CRITICAL' as AlertSeverity,
-        message: `Critical: ${vitals.respiratory_rate}/min - Respiratory depression`,
-        threshold: 8,
-      });
-    } else if (vitals.respiratory_rate > 30) {
-      alerts.push({
-        id: 'rr-critical-high',
-        vital_type: 'RESPIRATORY_RATE' as VitalType,
-        value: vitals.respiratory_rate,
-        severity: 'CRITICAL' as AlertSeverity,
-        message: `Critical: ${vitals.respiratory_rate}/min - Respiratory distress`,
-        threshold: 30,
-      });
-    } else if (vitals.respiratory_rate < 10) {
-      alerts.push({
-        id: 'rr-warning-low',
-        vital_type: 'RESPIRATORY_RATE' as VitalType,
-        value: vitals.respiratory_rate,
-        severity: 'WARNING' as AlertSeverity,
-        message: `Warning: ${vitals.respiratory_rate}/min - Bradypnea`,
-        threshold: 10,
-      });
-    } else if (vitals.respiratory_rate > 24) {
-      alerts.push({
-        id: 'rr-warning-high',
-        vital_type: 'RESPIRATORY_RATE' as VitalType,
-        value: vitals.respiratory_rate,
-        severity: 'WARNING' as AlertSeverity,
-        message: `Warning: ${vitals.respiratory_rate}/min - Tachypnea`,
-        threshold: 24,
-      });
-    }
-  }
-
-  return alerts;
+  // Convert to TriageAlert format (add threshold field)
+  return sharedAlerts.map((alert) => ({
+    id: alert.id || `${alert.field}-${alert.severity.toLowerCase()}`,
+    vital_type: alert.vital_type,
+    value: alert.value,
+    severity: alert.severity as AlertSeverity,
+    message: alert.message,
+    threshold: alert.threshold ?? null,
+    clinical_note: alert.clinical_note ?? undefined,
+  }));
 }
 
 // =============================================================================
