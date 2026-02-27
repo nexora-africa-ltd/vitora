@@ -156,6 +156,7 @@ export function VitalsForm({
   const alertsForDisplay = alerts.map(a => ({
     ...a,
     severity: a.severity.toLowerCase() as 'critical' | 'warning',
+    clinical_note: a.clinical_note ?? undefined,  // Convert null to undefined
   }));
 
   return (
