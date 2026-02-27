@@ -465,6 +465,7 @@ export interface DietPlanListItem {
   status_display?: string;
   start_date: string;
   end_date: string | null;
+  target_calories: number | null;
   is_active: boolean;
   days_remaining: number | null;
   review_date: string | null;

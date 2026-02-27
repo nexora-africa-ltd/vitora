@@ -26,7 +26,6 @@ import {
   User,
   Wrench,
   Target,
-  Home,
   CheckCircle,
   XCircle,
   Play,
@@ -34,7 +33,6 @@ import {
   Plus,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
-import { HelpPopover } from '@/components/shared/help-popover';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { OrderStatusBadge, PriorityBadge, SessionProgress } from '@/components/allied-health';
 import {
@@ -46,7 +44,6 @@ import {
   useCompleteOTOrder,
   useCancelOTOrder,
 } from '@/lib/hooks/use-occupational-therapy';
-import { FIM_LEVEL_LABELS, type FIMLevel } from '@/lib/types/occupational-therapy';
 import { useToast } from '@/lib/hooks/use-toast';
 
 interface OTOrderDetailProps {
@@ -119,23 +116,11 @@ export function OTOrderDetail({ orderId }: OTOrderDetailProps) {
 
   const canApprove = order.status === 'PENDING';
   const canStart = order.status === 'APPROVED';
-  const canComplete = order.status === 'IN_PROGRESS' && order.completed_sessions >= order.total_sessions;
+  const canComplete = order.status === 'IN_PROGRESS' && order.sessions_completed >= order.total_sessions;
   const canCancel = ['PENDING', 'APPROVED', 'IN_PROGRESS'].includes(order.status);
   const canEdit = !['COMPLETED', 'CANCELLED', 'REJECTED'].includes(order.status);
 
   const sessions = sessionsData?.results || [];
-
-  const renderFIMScore = (score: number | null | undefined, label: string) => {
-    if (!score) return null;
-    const fimLevel = FIM_LEVEL_LABELS[score as FIMLevel];
-    return (
-      <div>
-        <h4 className="text-sm font-medium text-muted-foreground">{label}</h4>
-        <p className="font-medium">{score} - {fimLevel?.label}</p>
-        <p className="text-xs text-muted-foreground">{fimLevel?.description}</p>
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -152,7 +137,7 @@ export function OTOrderDetail({ orderId }: OTOrderDetailProps) {
             <PriorityBadge priority={order.priority} showIcon />
           </div>
           <p className="text-muted-foreground mt-1">
-            Created {format(parseISO(order.created_at), 'PPP')}
+            Created {format(parseISO(order.ordered_at), 'PPP')}
           </p>
         </div>
 
@@ -213,24 +198,21 @@ export function OTOrderDetail({ orderId }: OTOrderDetailProps) {
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Patient</h4>
-                <p className="font-medium">{order.patient?.full_name}</p>
-                <p className="text-sm text-muted-foreground">{order.patient?.mrn}</p>
+                <p className="font-medium">{order.patient_name}</p>
+                <p className="text-sm text-muted-foreground">{order.patient_mrn}</p>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Treatment Type</h4>
-                <p className="font-medium">{order.treatment_type?.name}</p>
-                <p className="text-sm text-muted-foreground capitalize">
-                  {order.treatment_type?.category?.toLowerCase().replace('_', ' ')}
-                </p>
+                <p className="font-medium">{order.treatment_type_name}</p>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Ordered By</h4>
-                <p className="font-medium">{order.ordered_by?.full_name || 'N/A'}</p>
+                <p className="font-medium">{order.ordered_by_name || 'N/A'}</p>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Assigned Therapist</h4>
                 <p className="font-medium">
-                  {order.assigned_therapist?.full_name || 'Not assigned'}
+                  {order.assigned_therapist_name || 'Not assigned'}
                 </p>
               </div>
             </CardContent>
@@ -245,29 +227,14 @@ export function OTOrderDetail({ orderId }: OTOrderDetailProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="whitespace-pre-wrap">{order.clinical_notes || 'No clinical notes'}</p>
+              <p className="whitespace-pre-wrap">{order.clinical_indication || 'No clinical notes'}</p>
             </CardContent>
           </Card>
 
-          {/* Functional Assessment */}
-          {(order.baseline_adl_score || order.baseline_iadl_score || order.baseline_cognitive_score) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  Functional Assessment (FIM)
-                  <HelpPopover content="Functional Independence Measure: 1=Total Assistance to 7=Complete Independence" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-3">
-                {renderFIMScore(order.baseline_adl_score, 'ADL Score')}
-                {renderFIMScore(order.baseline_iadl_score, 'IADL Score')}
-                {renderFIMScore(order.baseline_cognitive_score, 'Cognitive Score')}
-              </CardContent>
-            </Card>
-          )}
+
 
           {/* Goals */}
-          {(order.short_term_goals || order.long_term_goals || order.discharge_criteria) && (
+          {(order.short_term_goals || order.long_term_goals) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -286,38 +253,6 @@ export function OTOrderDetail({ orderId }: OTOrderDetailProps) {
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground mb-1">Long-Term Goals</h4>
                     <p className="whitespace-pre-wrap">{order.long_term_goals}</p>
-                  </div>
-                )}
-                {order.discharge_criteria && (
-                  <div>
-                    <h4 className="text-sm font-medium text-muted-foreground mb-1">Discharge Criteria</h4>
-                    <p className="whitespace-pre-wrap">{order.discharge_criteria}</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Equipment & Modifications */}
-          {(order.assistive_devices_needed || order.home_modifications_needed) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Home className="h-5 w-5" />
-                  Equipment & Modifications
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {order.assistive_devices_needed && (
-                  <div>
-                    <h4 className="text-sm font-medium text-muted-foreground mb-1">Assistive Devices</h4>
-                    <p className="whitespace-pre-wrap">{order.assistive_devices_needed}</p>
-                  </div>
-                )}
-                {order.home_modifications_needed && (
-                  <div>
-                    <h4 className="text-sm font-medium text-muted-foreground mb-1">Home Modifications</h4>
-                    <p className="whitespace-pre-wrap">{order.home_modifications_needed}</p>
                   </div>
                 )}
               </CardContent>
@@ -382,7 +317,7 @@ export function OTOrderDetail({ orderId }: OTOrderDetailProps) {
             </CardHeader>
             <CardContent>
               <SessionProgress
-                completed={order.completed_sessions}
+                completed={order.sessions_completed}
                 total={order.total_sessions}
               />
             </CardContent>
@@ -396,22 +331,12 @@ export function OTOrderDetail({ orderId }: OTOrderDetailProps) {
             <CardContent className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Sessions</span>
-                <span className="font-medium">{order.recommended_sessions}</span>
+                <span className="font-medium">{order.total_sessions}</span>
               </div>
               {order.frequency && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Frequency</span>
                   <span className="font-medium">{order.frequency}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Duration</span>
-                <span className="font-medium">{order.duration_per_session} min</span>
-              </div>
-              {order.treatment_type?.sha_claimable && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">SHA Code</span>
-                  <Badge variant="outline">{order.treatment_type.sha_intervention_code}</Badge>
                 </div>
               )}
             </CardContent>
@@ -428,12 +353,14 @@ export function OTOrderDetail({ orderId }: OTOrderDetailProps) {
             <CardContent className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Created</span>
-                <span className="text-sm">{format(parseISO(order.created_at), 'PP')}</span>
+                <span className="text-sm">{format(parseISO(order.ordered_at), 'PP')}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Last Updated</span>
-                <span className="text-sm">{format(parseISO(order.updated_at), 'PP')}</span>
-              </div>
+              {order.completed_at && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Completed</span>
+                  <span className="text-sm">{format(parseISO(order.completed_at), 'PP')}</span>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

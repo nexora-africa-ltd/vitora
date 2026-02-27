@@ -257,7 +257,7 @@ export interface ClinicQueueStats {
 export interface AlliedHealthDashboardStats {
   physiotherapy: AlliedHealthModuleStats;
   nutrition: AlliedHealthModuleStats & {
-    consultations_count?: number;
+    consultations_count: number;
   };
   occupational_therapy: AlliedHealthModuleStats;
   social_work: {
@@ -266,7 +266,7 @@ export interface AlliedHealthDashboardStats {
     this_week_count: number;
   };
   counselling: AlliedHealthModuleStats & {
-    follow_ups_count?: number;
+    follow_ups_count: number;
   };
   todays_sessions: TodaySession[];
   clinic_queue_stats?: ClinicQueueStats;

@@ -107,12 +107,12 @@ export function PatientPhysioOrders({ patientId }: PatientPhysioOrdersProps) {
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {order.order_number} • {order.completed_sessions}/{order.total_sessions} sessions
+                  {order.order_number} • {order.sessions_completed}/{order.total_sessions} sessions
                 </p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Calendar className="h-3 w-3" />
-                  <span>{formatDate(order.created_at)}</span>
-                  <span className="hidden sm:inline">• {formatRelativeTime(order.created_at)}</span>
+                  <span>{formatDate(order.ordered_at)}</span>
+                  <span className="hidden sm:inline">• {formatRelativeTime(order.ordered_at)}</span>
                 </div>
               </div>
             </div>

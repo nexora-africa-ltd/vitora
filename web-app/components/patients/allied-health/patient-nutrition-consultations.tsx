@@ -107,15 +107,15 @@ export function PatientNutritionConsultations({ patientId }: PatientNutritionCon
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {consultation.order_number}
-                  {consultation.assigned_dietitian_name && (
-                    <> • Dietitian: {consultation.assigned_dietitian_name}</>
+                  {consultation.consultation_number}
+                  {consultation.dietitian_name && (
+                    <> • Dietitian: {consultation.dietitian_name}</>
                   )}
                 </p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Calendar className="h-3 w-3" />
-                  <span>{formatDate(consultation.created_at)}</span>
-                  <span className="hidden sm:inline">• {formatRelativeTime(consultation.created_at)}</span>
+                  <span>{formatDate(consultation.consultation_date)}</span>
+                  <span className="hidden sm:inline">• {formatRelativeTime(consultation.consultation_date)}</span>
                 </div>
               </div>
             </div>

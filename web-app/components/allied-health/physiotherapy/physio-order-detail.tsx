@@ -126,7 +126,7 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
 
   const canApprove = order.status === 'PENDING';
   const canStart = order.status === 'APPROVED';
-  const canComplete = order.status === 'IN_PROGRESS' && order.completed_sessions >= order.total_sessions;
+  const canComplete = order.status === 'IN_PROGRESS' && order.sessions_completed >= order.total_sessions;
   const canCancel = ['PENDING', 'APPROVED', 'IN_PROGRESS'].includes(order.status);
   const canGenerateSessions = ['APPROVED', 'IN_PROGRESS'].includes(order.status);
 
@@ -141,7 +141,7 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
             <PriorityBadge priority={order.priority} showIcon />
           </div>
           <p className="text-muted-foreground mt-1">
-            Created {format(parseISO(order.created_at), 'PPP')}
+            Created {format(parseISO(order.ordered_at), 'PPP')}
           </p>
         </div>
 
@@ -199,24 +199,24 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Patient</h4>
-                <p className="font-medium">{order.patient.full_name}</p>
-                <p className="text-sm text-muted-foreground">{order.patient.mrn}</p>
+                <p className="font-medium">{order.patient_name}</p>
+                <p className="text-sm text-muted-foreground">{order.patient_mrn}</p>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Treatment Type</h4>
-                <p className="font-medium">{order.treatment_type.name}</p>
-                <p className="text-sm text-muted-foreground capitalize">
-                  {order.treatment_type.category.toLowerCase().replace('_', ' ')}
-                </p>
+                <p className="font-medium">{order.treatment_type_name}</p>
+                {order.treatment_type_code && (
+                  <p className="text-sm text-muted-foreground">{order.treatment_type_code}</p>
+                )}
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Ordered By</h4>
-                <p className="font-medium">{order.ordered_by.full_name}</p>
+                <p className="font-medium">{order.ordered_by_name}</p>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Assigned Therapist</h4>
                 <p className="font-medium">
-                  {order.assigned_therapist?.full_name || 'Not assigned'}
+                  {order.assigned_therapist_name || 'Not assigned'}
                 </p>
               </div>
             </CardContent>
@@ -231,7 +231,7 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="whitespace-pre-wrap">{order.clinical_notes || 'No clinical notes'}</p>
+              <p className="whitespace-pre-wrap">{order.clinical_indication || 'No clinical notes'}</p>
             </CardContent>
           </Card>
 
@@ -244,10 +244,10 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {order.goals && (
+              {order.treatment_goals && (
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground mb-1">Goals</h4>
-                  <p className="whitespace-pre-wrap">{order.goals}</p>
+                  <p className="whitespace-pre-wrap">{order.treatment_goals}</p>
                 </div>
               )}
               {order.contraindications && (
@@ -301,7 +301,7 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
             </CardHeader>
             <CardContent>
               <SessionProgress
-                completed={order.completed_sessions}
+                completed={order.sessions_completed}
                 total={order.total_sessions}
               />
             </CardContent>
@@ -315,26 +315,16 @@ export function PhysioOrderDetail({ orderId }: PhysioOrderDetailProps) {
             <CardContent className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Sessions</span>
-                <span className="font-medium">{order.recommended_sessions}</span>
+                <span className="font-medium">{order.total_sessions}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Frequency</span>
                 <span className="font-medium">{order.frequency}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Duration</span>
-                <span className="font-medium">{order.duration_per_session} min</span>
-              </div>
-              {order.equipment_needed && (
+              {order.total_cost && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Equipment</span>
-                  <span className="font-medium">{order.equipment_needed}</span>
-                </div>
-              )}
-              {order.treatment_type?.sha_claimable && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">SHA Code</span>
-                  <Badge variant="outline">{order.treatment_type?.sha_intervention_code}</Badge>
+                  <span className="text-muted-foreground">Total Cost</span>
+                  <span className="font-medium">{order.total_cost}</span>
                 </div>
               )}
             </CardContent>

@@ -200,16 +200,6 @@ export function DietPlanTable({
                     <TableCell className="max-w-[200px] truncate">
                       {plan.name}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {plan.target_calories ? (
-                        <span className="flex items-center gap-1 tabular-nums">
-                          <Flame className="h-3.5 w-3.5 text-orange-500" />
-                          {plan.target_calories} kcal
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
                     <TableCell className="hidden sm:table-cell text-muted-foreground">
                       {format(parseISO(plan.start_date), 'MMM d, yyyy')}
                     </TableCell>

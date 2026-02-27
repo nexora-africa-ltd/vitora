@@ -547,21 +547,17 @@ function MealGrid({
   plan,
 }: {
   plan: {
-    breakfast: string;
-    mid_morning_snack: string;
-    lunch: string;
-    afternoon_snack: string;
-    dinner: string;
-    bedtime_snack: string;
+    breakfast_guidelines: string;
+    lunch_guidelines: string;
+    dinner_guidelines: string;
+    snack_guidelines: string;
   };
 }) {
   const meals = [
-    { label: 'Breakfast', value: plan.breakfast, icon: '🌅' },
-    { label: 'Mid-Morning Snack', value: plan.mid_morning_snack, icon: '🍎' },
-    { label: 'Lunch', value: plan.lunch, icon: '☀️' },
-    { label: 'Afternoon Snack', value: plan.afternoon_snack, icon: '🍐' },
-    { label: 'Dinner', value: plan.dinner, icon: '🌙' },
-    { label: 'Bedtime Snack', value: plan.bedtime_snack, icon: '😴' },
+    { label: 'Breakfast', value: plan.breakfast_guidelines, icon: '🌅' },
+    { label: 'Lunch', value: plan.lunch_guidelines, icon: '☀️' },
+    { label: 'Dinner', value: plan.dinner_guidelines, icon: '🌙' },
+    { label: 'Snacks', value: plan.snack_guidelines, icon: '🍎' },
   ];
 
   const hasMeals = meals.some((m) => m.value);

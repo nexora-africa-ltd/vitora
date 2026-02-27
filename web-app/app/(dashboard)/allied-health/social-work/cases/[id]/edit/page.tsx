@@ -8,13 +8,14 @@ import { useParams } from 'next/navigation';
 import { PageHeader } from '@/components/shared/page-header';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { SWCaseForm } from '@/components/allied-health/social-work';
-import { useSWCase } from '@/lib/hooks/use-social-work';
+import { useSWCase, useSWReferral } from '@/lib/hooks/use-social-work';
 
 export default function EditSWCasePage() {
   const params = useParams();
   const caseId = Number(params.id);
 
   const { data: swCase, isLoading, error } = useSWCase(caseId);
+  const { data: referral } = useSWReferral(swCase?.referral);
 
   if (isLoading) {
     return (
@@ -42,16 +43,16 @@ export default function EditSWCasePage() {
       <SWCaseForm
         swCase={{
           id: swCase.id,
-          patient_id: swCase.referral.patient.id,
-          referral_reason: swCase.referral.referral_reason,
-          presenting_issues: swCase.case_summary,
-          urgency: swCase.urgency,
-          safety_concerns: '',
+          patient_id: swCase.patient,
+          referral_reason: referral?.reason || '',
+          presenting_issues: swCase.presenting_problem || '',
+          urgency: referral?.urgency || '',
+          safety_concerns: swCase.safety_assessment || '',
           immediate_needs: '',
-          support_network: '',
+          support_network: swCase.support_systems || '',
           goals: swCase.goals,
           intervention_plan: swCase.intervention_plan,
-          external_referrals: swCase.external_agencies,
+          external_referrals: '',
           status: swCase.status,
         }}
       />

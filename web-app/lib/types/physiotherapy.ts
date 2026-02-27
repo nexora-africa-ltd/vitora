@@ -1,14 +1,17 @@
 /**
  * Physiotherapy Module Types
  * Sprint Allied Health - Physiotherapy
+ *
+ * IMPORTANT: These types match the backend serializers exactly.
+ * The backend returns flat IDs + `_name` fields, NOT nested objects.
  */
 
 import {
-  BaseAlliedHealthOrder,
-  BaseAlliedHealthSession,
+  AlliedHealthOrderStatus,
+  AlliedHealthPriority,
+  AlliedHealthSessionStatus,
   AlliedHealthOrderListParams,
   AlliedHealthSessionListParams,
-  StaffReference,
   SessionOutcome,
 } from './allied-health';
 
@@ -16,9 +19,6 @@ import {
 // TREATMENT TYPE
 // =============================================================================
 
-/**
- * Physiotherapy treatment category
- */
 export type PhysiotherapyCategory =
   | 'MUSCULOSKELETAL'
   | 'NEUROLOGICAL'
@@ -33,9 +33,6 @@ export type PhysiotherapyCategory =
   | 'STROKE'
   | 'OTHER';
 
-/**
- * Physiotherapy treatment type catalog entry
- */
 export interface PhysiotherapyTreatmentType {
   id: number;
   code: string;
@@ -59,175 +56,212 @@ export interface PhysiotherapyTreatmentType {
 }
 
 // =============================================================================
-// ORDER
+// ORDER (flat IDs — matches PhysiotherapyOrderSerializer)
 // =============================================================================
 
-/**
- * Physiotherapy order (referral)
- */
-export interface PhysiotherapyOrder extends BaseAlliedHealthOrder {
-  treatment_type: PhysiotherapyTreatmentType;
-  treatment_type_id: number;
-  assigned_therapist: StaffReference | null;
-  assigned_therapist_id: number | null;
-  recommended_sessions: number;
-  frequency: string;
-  duration_per_session: number;
-  equipment_needed: string | null;
-  contraindications: string;
-  precautions: string;
-  goals: string;
-  // Computed fields
-  completed_sessions: number;
+export interface PhysiotherapyOrder {
+  id: number;
+  order_number: string;
+  // Patient (flat ID + name)
+  patient: number;
+  patient_name: string;
+  patient_mrn: string;
+  encounter: number | null;
+  // Treatment type (flat ID + name/code)
+  treatment_type: number;
+  treatment_type_name: string;
+  treatment_type_code?: string;
+  // Staff (flat IDs + names)
+  ordered_by: number;
+  ordered_by_name: string;
+  assigned_therapist: number | null;
+  assigned_therapist_name: string | null;
+  // Referral details
+  referral_reason?: string;
+  referral_reason_display?: string;
+  clinical_indication?: string;
+  relevant_history?: string;
+  diagnosis?: string;
+  precautions?: string;
+  contraindications?: string;
+  // Sessions
   total_sessions: number;
+  sessions_completed: number;
+  sessions_remaining?: number;
+  frequency?: string;
+  treatment_goals?: string;
+  // Priority & Status
+  priority: AlliedHealthPriority;
+  priority_display?: string;
+  status: AlliedHealthOrderStatus;
+  status_display?: string;
+  status_changed_at?: string | null;
+  // Dates
+  start_date?: string | null;
+  expected_end_date?: string | null;
+  // Clinic & billing
+  clinic_visit?: number | null;
+  total_cost?: string | null;
+  is_paid?: boolean;
+  invoice?: number | null;
+  // Progress
   progress_percentage: number;
+  // Nested sessions
+  sessions?: unknown[];
+  // Timestamps
+  ordered_at: string;
+  completed_at?: string | null;
 }
 
-/**
- * Physiotherapy order list item (lighter version)
- */
 export interface PhysiotherapyOrderListItem {
   id: number;
   order_number: string;
+  patient: number;
   patient_name: string;
   patient_mrn: string;
   treatment_type_name: string;
-  category: PhysiotherapyCategory;
-  status: PhysiotherapyOrder['status'];
-  priority: PhysiotherapyOrder['priority'];
-  assigned_therapist_name: string | null;
-  completed_sessions: number;
+  status: AlliedHealthOrderStatus;
+  status_display?: string;
+  priority: AlliedHealthPriority;
+  priority_display?: string;
   total_sessions: number;
-  created_at: string;
+  sessions_completed: number;
+  progress_percentage: number;
+  assigned_therapist_name: string | null;
+  ordered_at: string;
 }
 
-/**
- * Create physiotherapy order payload
- */
 export interface PhysiotherapyOrderCreateData {
-  patient_id: number;
-  encounter_id?: number;
-  treatment_type_id: number;
-  priority?: PhysiotherapyOrder['priority'];
-  clinical_notes: string;
-  recommended_sessions?: number;
+  patient: number;
+  encounter?: number;
+  treatment_type: number;
+  priority?: AlliedHealthPriority;
+  clinical_indication: string;
+  referral_reason?: string;
+  relevant_history?: string;
+  diagnosis?: string;
+  total_sessions?: number;
   frequency?: string;
-  duration_per_session?: number;
-  equipment_needed?: string;
-  contraindications?: string;
+  treatment_goals?: string;
   precautions?: string;
-  goals?: string;
+  contraindications?: string;
 }
 
-/**
- * Update physiotherapy order payload
- */
 export interface PhysiotherapyOrderUpdateData {
-  priority?: PhysiotherapyOrder['priority'];
-  clinical_notes?: string;
-  recommended_sessions?: number;
+  priority?: AlliedHealthPriority;
+  clinical_indication?: string;
+  referral_reason?: string;
+  relevant_history?: string;
+  diagnosis?: string;
+  total_sessions?: number;
   frequency?: string;
-  duration_per_session?: number;
-  equipment_needed?: string;
-  contraindications?: string;
+  treatment_goals?: string;
   precautions?: string;
-  goals?: string;
+  contraindications?: string;
 }
 
 // =============================================================================
-// SESSION
+// SESSION (flat IDs — matches PhysiotherapySessionSerializer)
 // =============================================================================
 
-/**
- * Physiotherapy session
- */
-export interface PhysiotherapySession extends BaseAlliedHealthSession {
-  order: Pick<PhysiotherapyOrder, 'id' | 'order_number' | 'treatment_type' | 'patient'>;
-  order_id: number;
-  session_sequence: number;
-  treatment_provided: string;
-  patient_response: string;
-  pain_level_before: number | null;
-  pain_level_after: number | null;
-  rom_measurements: string;
-  strength_assessment: string;
-  functional_progress: string;
-  home_exercise_given: boolean;
-  home_exercise_notes: string;
-  follow_up_notes: string;
-  next_session_date: string | null;
+export interface PhysiotherapySession {
+  id: number;
+  order: number;
+  therapist: number | null;
+  therapist_name: string | null;
+  session_number: string;
+  scheduled_date: string;
+  scheduled_time: string | null;
+  actual_date: string | null;
+  duration_minutes: number | null;
+  status: AlliedHealthSessionStatus;
+  status_display?: string;
+  // Pre-session
+  pre_pain_score: number | null;
+  pre_assessment_notes?: string;
+  patient_reported_changes?: string;
+  // Treatment
+  interventions?: string;
+  exercises_performed?: string;
+  modalities_used?: string;
+  patient_response?: string;
+  // Post-session
+  post_pain_score: number | null;
+  outcome: SessionOutcome | null;
+  outcome_display?: string;
+  progress_notes?: string;
+  // Home exercises
+  home_exercises?: string;
+  home_exercise_instructions?: string;
+  // Follow-up
+  precautions_advised?: string;
+  follow_up_recommendations?: string;
+  next_session_goals?: string;
+  // Clinic & billing
+  clinic_visit?: number | null;
+  is_billed?: boolean;
+  // Computed
+  pain_improvement?: number | null;
+  // Timestamps
+  created_at: string;
+  updated_at: string;
+  completed_at?: string | null;
 }
 
-/**
- * Physiotherapy session list item
- */
 export interface PhysiotherapySessionListItem {
   id: number;
   session_number: string;
-  order_number: string;
+  order: number;
   patient_name: string;
   patient_mrn: string;
   scheduled_date: string;
   scheduled_time: string | null;
-  status: PhysiotherapySession['status'];
+  status: AlliedHealthSessionStatus;
+  status_display?: string;
   therapist_name: string | null;
-  session_sequence: number;
   outcome: SessionOutcome | null;
 }
 
-/**
- * Create physiotherapy session payload
- */
 export interface PhysiotherapySessionCreateData {
-  order_id: number;
+  order: number;
   scheduled_date: string;
   scheduled_time?: string;
-  therapist_id?: number;
+  therapist?: number;
 }
 
-/**
- * Complete session payload
- */
 export interface PhysiotherapySessionCompleteData {
+  actual_date?: string;
   duration_minutes: number;
-  treatment_provided: string;
+  pre_pain_score?: number;
+  pre_assessment_notes?: string;
+  patient_reported_changes?: string;
+  interventions?: string;
+  exercises_performed?: string;
+  modalities_used?: string;
   patient_response?: string;
-  pain_level_before?: number;
-  pain_level_after?: number;
-  rom_measurements?: string;
-  strength_assessment?: string;
-  functional_progress?: string;
-  home_exercise_given?: boolean;
-  home_exercise_notes?: string;
+  post_pain_score?: number;
   outcome: SessionOutcome;
-  notes?: string;
-  follow_up_notes?: string;
-  next_session_date?: string;
+  progress_notes?: string;
+  home_exercises?: string;
+  home_exercise_instructions?: string;
+  precautions_advised?: string;
+  follow_up_recommendations?: string;
+  next_session_goals?: string;
 }
 
 // =============================================================================
 // LIST PARAMS
 // =============================================================================
 
-/**
- * Physiotherapy order list params
- */
 export interface PhysiotherapyOrderListParams extends AlliedHealthOrderListParams {
   treatment_type_id?: number;
   category?: PhysiotherapyCategory;
   assigned_therapist_id?: number;
 }
 
-/**
- * Physiotherapy session list params
- */
 export interface PhysiotherapySessionListParams extends AlliedHealthSessionListParams {
   order_id?: number;
 }
-
-// =============================================================================
-// TREATMENT TYPE LIST PARAMS
-// =============================================================================
 
 export interface PhysiotherapyTreatmentTypeListParams {
   page?: number;

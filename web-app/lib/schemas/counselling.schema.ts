@@ -1,15 +1,15 @@
 /**
  * Counselling Zod Schemas
  * Sprint Allied Health - Counselling validation
+ *
+ * IMPORTANT: These schemas match the backend serializers exactly.
+ * The backend returns flat IDs + `_name` fields, NOT nested objects.
+ * See: backend/tests/test_contracts.py for the authoritative field list.
  */
 
 import { z } from 'zod';
 import {
-  BaseAlliedHealthSessionSchema,
-  StaffReferenceSchema,
-  PatientReferenceSchema,
   AlliedHealthOrderStatusSchema,
-  AlliedHealthPrioritySchema,
   AlliedHealthSessionStatusSchema,
   SessionOutcomeSchema,
   createPaginatedSchema,
@@ -37,12 +37,12 @@ export const CounsellingCategorySchema = z.enum([
   'OTHER',
 ]);
 
-export const SessionModalitySchema = z.enum(['IN_PERSON', 'VIDEO', 'PHONE', 'GROUP']);
+export const CounsellingUrgencySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
 
-export const RiskLevelSchema = z.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']);
+export const CounsellingRiskLevelSchema = z.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']).optional();
 
 // =============================================================================
-// COUNSELLING TYPE
+// COUNSELLING TYPE (matches CounsellingTypeSerializer)
 // =============================================================================
 
 export const CounsellingTypeSchema = z.object({
@@ -68,61 +68,99 @@ export const CounsellingTypeSchema = z.object({
   updated_at: z.string(),
 });
 
+export const CounsellingTypeListItemSchema = z.object({
+  id: z.number(),
+  code: z.string(),
+  name: z.string(),
+  category: CounsellingCategorySchema,
+  category_display: z.string().optional(),
+  cost_per_session: z.string(),
+  sha_claimable: z.boolean(),
+  is_active: z.boolean(),
+});
+
 export const PaginatedCounsellingTypeSchema = createPaginatedSchema(CounsellingTypeSchema);
 
 // =============================================================================
-// REFERRAL
+// REFERRAL (matches CounsellingReferralSerializer — flat IDs)
 // =============================================================================
 
 export const CounsellingReferralSchema = z.object({
   id: z.number(),
   referral_number: z.string(),
-  patient: PatientReferenceSchema,
-  patient_id: z.number(),
-  encounter_id: z.number().nullable(),
-  clinic_visit_id: z.number().nullable(),
-  referred_by: StaffReferenceSchema,
-  referred_by_id: z.number(),
-  assigned_counsellor: StaffReferenceSchema.nullable(),
-  assigned_counsellor_id: z.number().nullable(),
-  counselling_type: CounsellingTypeSchema,
-  counselling_type_id: z.number(),
+  // Patient (flat IDs + names)
+  patient: z.number(),
+  patient_name: z.string(),
+  patient_mrn: z.string(),
+  encounter: z.number().nullable(),
+  // Counselling type (flat ID + name)
+  counselling_type: z.number(),
+  counselling_type_name: z.string(),
+  // Staff (flat IDs + names)
+  referred_by: z.number(),
+  referred_by_name: z.string(),
+  assigned_counsellor: z.number().nullable(),
+  assigned_counsellor_name: z.string().nullable(),
+  // Referral details
+  reason: z.string(),
+  reason_display: z.string().optional(),
+  urgency: z.string(),
+  urgency_display: z.string().optional(),
+  clinical_summary: z.string().optional(),
+  presenting_issues: z.string().optional(),
+  goals: z.string().optional(),
+  risk_assessment: z.string().optional(),
+  // Status
   status: AlliedHealthOrderStatusSchema,
-  priority: AlliedHealthPrioritySchema,
-  presenting_concern: z.string(),
-  background_history: z.string(),
-  risk_assessment: z.string(),
-  risk_level: RiskLevelSchema,
-  goals: z.string(),
-  recommended_sessions: z.number(),
-  frequency: z.string(),
-  preferred_modality: SessionModalitySchema,
+  status_display: z.string().optional(),
   is_sensitive: z.boolean(),
-  completed_sessions: z.number(),
+  is_mental_health_related: z.boolean(),
+  is_hiv_related: z.boolean(),
+  requires_immediate_attention: z.boolean(),
+  // Sessions
   total_sessions: z.number(),
-  sha_code: z.string().nullable(),
-  sha_claimable: z.boolean(),
-  referral_date: z.string(),
-  accepted_date: z.string().nullable(),
+  sessions_completed: z.number(),
+  completion_percentage: z.number(),
+  // Billing
+  is_paid: z.boolean().optional(),
+  invoice: z.number().nullable().optional(),
+  clinic_visit: z.number().nullable().optional(),
+  // Completion
+  completion_notes: z.string().optional(),
+  cancellation_reason: z.string().optional(),
+  // Nested sessions
+  sessions: z.array(z.any()).optional(),
+  // Timestamps
   created_at: z.string(),
   updated_at: z.string(),
+  accepted_at: z.string().nullable(),
+  started_at: z.string().nullable().optional(),
+  completed_at: z.string().nullable().optional(),
+  completed_by: z.number().nullable().optional(),
 });
+
+// =============================================================================
+// REFERRAL LIST (matches CounsellingReferralListSerializer)
+// =============================================================================
 
 export const CounsellingReferralListItemSchema = z.object({
   id: z.number(),
   referral_number: z.string(),
+  patient: z.number(),
   patient_name: z.string(),
   patient_mrn: z.string(),
-  counselling_type_name: z.string(),
-  category: CounsellingCategorySchema,
+  reason: z.string(),
+  reason_display: z.string().optional(),
+  urgency: z.string(),
+  urgency_display: z.string().optional(),
   status: AlliedHealthOrderStatusSchema,
-  priority: AlliedHealthPrioritySchema,
-  risk_level: RiskLevelSchema,
+  status_display: z.string().optional(),
+  assigned_counsellor: z.number().nullable(),
   assigned_counsellor_name: z.string().nullable(),
-  completed_sessions: z.number(),
   total_sessions: z.number(),
+  sessions_completed: z.number(),
+  completion_percentage: z.number(),
   is_sensitive: z.boolean(),
-  referral_date: z.string(),
   created_at: z.string(),
 });
 
@@ -131,49 +169,79 @@ export const PaginatedCounsellingReferralListSchema = createPaginatedSchema(
 );
 
 // =============================================================================
-// SESSION
+// SESSION (matches CounsellingSessionSerializer — flat IDs)
 // =============================================================================
 
-export const CounsellingSessionSchema = BaseAlliedHealthSessionSchema.extend({
-  referral: z.object({
-    id: z.number(),
-    referral_number: z.string(),
-    counselling_type: CounsellingTypeSchema,
-    patient: PatientReferenceSchema,
-  }),
-  referral_id: z.number(),
+export const CounsellingSessionSchema = z.object({
+  id: z.number(),
+  session_number: z.string(),
+  referral: z.number(),
+  counsellor: z.number().nullable(),
+  counsellor_name: z.string().nullable(),
   session_sequence: z.number(),
-  modality: SessionModalitySchema,
-  session_focus: z.string(),
-  client_presentation: z.string(),
-  interventions_used: z.string(),
-  client_response: z.string(),
-  progress_notes: z.string(),
-  current_risk_level: RiskLevelSchema,
-  safety_plan_reviewed: z.boolean(),
-  safety_plan_notes: z.string(),
-  homework_assigned: z.string(),
-  homework_review: z.string(),
-  follow_up_required: z.boolean(),
-  next_session_date: z.string().nullable(),
-  next_session_focus: z.string(),
-  additional_referrals: z.string(),
+  scheduled_date: z.string(),
+  scheduled_time: z.string().nullable(),
+  actual_date: z.string().nullable().optional(),
+  actual_start_time: z.string().nullable().optional(),
+  actual_end_time: z.string().nullable().optional(),
+  duration_minutes: z.number().nullable(),
+  status: AlliedHealthSessionStatusSchema,
+  status_display: z.string().optional(),
+  // Pre-session
+  pre_session_mood: z.number().nullable().optional(),
+  pre_session_notes: z.string().optional(),
+  // Session content
+  session_type: z.string().optional(),
+  topics_discussed: z.string().optional(),
+  techniques_used: z.string().optional(),
+  client_responses: z.string().optional(),
+  progress_notes: z.string().optional(),
+  // Post-session
+  post_session_mood: z.number().nullable().optional(),
+  outcome: SessionOutcomeSchema.nullable(),
+  outcome_display: z.string().optional(),
+  // Risk
+  risk_assessment: z.string().optional(),
+  risk_level: z.string().nullable().optional(),
+  risk_level_display: z.string().nullable().optional(),
+  safety_plan: z.string().optional(),
+  // Follow-up
+  follow_up_required: z.boolean().optional(),
+  follow_up_display: z.string().optional(),
+  follow_up_date: z.string().nullable().optional(),
+  homework: z.string().optional(),
+  goals_for_next_session: z.string().optional(),
+  // Confidentiality
+  confidentiality_level: z.string().optional(),
+  is_sensitive: z.boolean(),
+  // Clinic & billing
+  clinic_visit: z.number().nullable().optional(),
+  is_billed: z.boolean().optional(),
+  // Computed
+  mood_improvement: z.number().nullable().optional(),
+  is_overdue: z.boolean().optional(),
+  // Timestamps
+  created_at: z.string(),
+  updated_at: z.string(),
+  completed_at: z.string().nullable().optional(),
 });
+
+// =============================================================================
+// SESSION LIST (matches CounsellingSessionListSerializer)
+// =============================================================================
 
 export const CounsellingSessionListItemSchema = z.object({
   id: z.number(),
   session_number: z.string(),
-  referral_number: z.string(),
+  referral: z.number(),
+  counsellor_name: z.string().nullable(),
   patient_name: z.string(),
-  patient_mrn: z.string(),
-  counselling_type_name: z.string(),
+  session_sequence: z.number(),
   scheduled_date: z.string(),
   scheduled_time: z.string().nullable(),
   status: AlliedHealthSessionStatusSchema,
-  modality: SessionModalitySchema,
-  counsellor_name: z.string().nullable(),
-  session_sequence: z.number(),
-  outcome: SessionOutcomeSchema.nullable(),
+  status_display: z.string().optional(),
+  is_sensitive: z.boolean(),
 });
 
 export const PaginatedCounsellingSessionListSchema = createPaginatedSchema(
@@ -181,60 +249,39 @@ export const PaginatedCounsellingSessionListSchema = createPaginatedSchema(
 );
 
 // =============================================================================
-// CREATE/UPDATE SCHEMAS
+// CREATE/UPDATE SCHEMAS (sent TO backend)
 // =============================================================================
 
 export const CounsellingReferralCreateSchema = z.object({
-  patient_id: z.number(),
-  encounter_id: z.number().optional(),
-  counselling_type_id: z.number(),
-  priority: AlliedHealthPrioritySchema.optional(),
-  presenting_concern: z.string().min(1, 'Presenting concern is required'),
-  background_history: z.string().optional(),
-  risk_assessment: z.string().optional(),
-  risk_level: RiskLevelSchema.optional(),
+  patient: z.number(),
+  encounter: z.number().optional(),
+  counselling_type: z.number(),
+  urgency: CounsellingUrgencySchema.optional(),
+  reason: z.string().min(1, 'Reason is required'),
+  clinical_summary: z.string().optional(),
+  presenting_issues: z.string().optional(),
   goals: z.string().optional(),
-  recommended_sessions: z.number().min(1).optional(),
-  frequency: z.string().optional(),
-  preferred_modality: SessionModalitySchema.optional(),
-});
-
-export const CounsellingReferralUpdateSchema = z.object({
-  priority: AlliedHealthPrioritySchema.optional(),
-  presenting_concern: z.string().optional(),
-  background_history: z.string().optional(),
   risk_assessment: z.string().optional(),
-  risk_level: RiskLevelSchema.optional(),
-  goals: z.string().optional(),
-  recommended_sessions: z.number().min(1).optional(),
-  frequency: z.string().optional(),
-  preferred_modality: SessionModalitySchema.optional(),
-});
-
-export const CounsellingSessionCreateSchema = z.object({
-  referral_id: z.number(),
-  scheduled_date: z.string(),
-  scheduled_time: z.string().optional(),
-  therapist_id: z.number().optional(),
-  modality: SessionModalitySchema.optional(),
+  total_sessions: z.number().min(1).optional(),
 });
 
 export const CounsellingSessionCompleteSchema = z.object({
+  actual_date: z.string().optional(),
   duration_minutes: z.number().min(1, 'Duration is required'),
-  modality: SessionModalitySchema,
-  session_focus: z.string().min(1, 'Session focus is required'),
-  client_presentation: z.string().optional(),
-  interventions_used: z.string().optional(),
-  client_response: z.string().optional(),
+  pre_session_mood: z.number().min(1).max(10).optional(),
+  pre_session_notes: z.string().optional(),
+  session_type: z.string().optional(),
+  topics_discussed: z.string().optional(),
+  techniques_used: z.string().optional(),
+  client_responses: z.string().optional(),
   progress_notes: z.string().optional(),
-  current_risk_level: RiskLevelSchema,
-  safety_plan_reviewed: z.boolean().optional(),
-  safety_plan_notes: z.string().optional(),
-  homework_assigned: z.string().optional(),
+  post_session_mood: z.number().min(1).max(10).optional(),
   outcome: SessionOutcomeSchema,
-  notes: z.string().optional(),
+  risk_assessment: z.string().optional(),
+  risk_level: z.string().optional(),
+  safety_plan: z.string().optional(),
   follow_up_required: z.boolean().optional(),
-  next_session_date: z.string().optional(),
-  next_session_focus: z.string().optional(),
-  additional_referrals: z.string().optional(),
+  follow_up_date: z.string().optional(),
+  homework: z.string().optional(),
+  goals_for_next_session: z.string().optional(),
 });

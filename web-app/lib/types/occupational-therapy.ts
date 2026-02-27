@@ -1,14 +1,17 @@
 /**
  * Occupational Therapy Module Types
  * Sprint Allied Health - Occupational Therapy
+ *
+ * IMPORTANT: These types match the backend serializers exactly.
+ * The backend returns flat IDs + `_name` fields, NOT nested objects.
  */
 
 import {
-  BaseAlliedHealthOrder,
-  BaseAlliedHealthSession,
+  AlliedHealthOrderStatus,
+  AlliedHealthPriority,
+  AlliedHealthSessionStatus,
   AlliedHealthOrderListParams,
   AlliedHealthSessionListParams,
-  StaffReference,
   SessionOutcome,
 } from './allied-health';
 
@@ -16,9 +19,6 @@ import {
 // TREATMENT TYPE
 // =============================================================================
 
-/**
- * OT treatment category
- */
 export type OTCategory =
   | 'ADL_TRAINING'
   | 'COGNITIVE_REHAB'
@@ -40,9 +40,6 @@ export type OTCategory =
  */
 export type FIMLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
-/**
- * FIM level descriptions
- */
 export const FIM_LEVEL_LABELS: Record<FIMLevel, { label: string; description: string }> = {
   1: { label: 'Total Assistance', description: 'Helper does all the activity (patient < 25%)' },
   2: { label: 'Maximal Assistance', description: 'Patient performs 25-49% of effort' },
@@ -53,9 +50,6 @@ export const FIM_LEVEL_LABELS: Record<FIMLevel, { label: string; description: st
   7: { label: 'Complete Independence', description: 'Performs safely without modification' },
 };
 
-/**
- * OT treatment type catalog entry
- */
 export interface OTTreatmentType {
   id: number;
   code: string;
@@ -79,173 +73,242 @@ export interface OTTreatmentType {
 }
 
 // =============================================================================
-// ORDER
+// ORDER (flat IDs — matches OccupationalTherapyOrderSerializer)
 // =============================================================================
 
-/**
- * OT order (referral)
- */
-export interface OTOrder extends BaseAlliedHealthOrder {
-  treatment_type: OTTreatmentType;
-  treatment_type_id: number;
-  assigned_therapist: StaffReference | null;
-  assigned_therapist_id: number | null;
-  recommended_sessions: number;
-  frequency: string;
-  duration_per_session: number;
-  // Functional assessment
-  baseline_adl_score: FIMLevel | null;
-  baseline_iadl_score: FIMLevel | null;
-  baseline_cognitive_score: FIMLevel | null;
+export interface OTOrder {
+  id: number;
+  order_number: string;
+  // Patient
+  patient: number;
+  patient_name: string;
+  patient_mrn: string;
+  encounter: number | null;
+  // Treatment type
+  treatment_type: number;
+  treatment_type_name: string;
+  // Staff
+  ordered_by: number;
+  ordered_by_name: string;
+  assigned_therapist: number | null;
+  assigned_therapist_name: string | null;
+  // Assessment
+  assessment_type?: string;
+  assessment_type_display?: string;
+  // Referral
+  referral_reason?: string;
+  referral_reason_display?: string;
+  clinical_indication?: string;
+  relevant_history?: string;
+  diagnosis?: string;
+  precautions?: string;
+  contraindications?: string;
   // Goals
-  short_term_goals: string;
-  long_term_goals: string;
-  discharge_criteria: string;
-  // Equipment
-  assistive_devices_needed: string;
-  home_modifications_needed: string;
-  // Progress
-  completed_sessions: number;
+  treatment_goals?: string;
+  short_term_goals?: string;
+  long_term_goals?: string;
+  functional_limitations?: string;
+  // Sessions
   total_sessions: number;
+  sessions_completed: number;
+  sessions_remaining?: number;
   progress_percentage: number;
+  frequency?: string;
+  // Priority & Status
+  priority: AlliedHealthPriority;
+  priority_display?: string;
+  status: AlliedHealthOrderStatus;
+  status_display?: string;
+  // Dates
+  start_date?: string | null;
+  expected_end_date?: string | null;
+  // Clinic & billing
+  clinic_visit?: number | null;
+  total_cost?: string | null;
+  is_paid?: boolean;
+  invoice?: number | null;
+  // Nested sessions
+  sessions?: unknown[];
+  // Timestamps
+  ordered_at: string;
+  completed_at?: string | null;
 }
 
-/**
- * OT order list item
- */
 export interface OTOrderListItem {
   id: number;
   order_number: string;
+  patient: number;
   patient_name: string;
   patient_mrn: string;
+  treatment_type: number;
   treatment_type_name: string;
-  category: OTCategory;
-  status: OTOrder['status'];
-  priority: OTOrder['priority'];
+  assessment_type?: string;
+  assessment_type_display?: string;
+  assigned_therapist: number | null;
   assigned_therapist_name: string | null;
-  completed_sessions: number;
+  status: AlliedHealthOrderStatus;
+  status_display?: string;
+  priority: AlliedHealthPriority;
+  priority_display?: string;
   total_sessions: number;
-  created_at: string;
+  sessions_completed: number;
+  progress_percentage: number;
+  ordered_at: string;
 }
 
-/**
- * Create OT order payload
- */
 export interface OTOrderCreateData {
-  patient_id: number;
-  encounter_id?: number;
-  treatment_type_id: number;
-  priority?: OTOrder['priority'];
-  clinical_notes: string;
-  recommended_sessions?: number;
+  patient: number;
+  encounter?: number;
+  treatment_type: number;
+  priority?: AlliedHealthPriority;
+  assessment_type?: string;
+  clinical_indication: string;
+  referral_reason?: string;
+  relevant_history?: string;
+  diagnosis?: string;
+  total_sessions?: number;
   frequency?: string;
-  duration_per_session?: number;
-  baseline_adl_score?: FIMLevel;
-  baseline_iadl_score?: FIMLevel;
-  baseline_cognitive_score?: FIMLevel;
+  treatment_goals?: string;
   short_term_goals?: string;
   long_term_goals?: string;
-  discharge_criteria?: string;
-  assistive_devices_needed?: string;
-  home_modifications_needed?: string;
+  functional_limitations?: string;
+  precautions?: string;
+  contraindications?: string;
 }
 
-/**
- * Update OT order payload
- */
 export interface OTOrderUpdateData {
-  priority?: OTOrder['priority'];
-  clinical_notes?: string;
-  recommended_sessions?: number;
+  priority?: AlliedHealthPriority;
+  assessment_type?: string;
+  clinical_indication?: string;
+  referral_reason?: string;
+  relevant_history?: string;
+  diagnosis?: string;
+  total_sessions?: number;
   frequency?: string;
-  duration_per_session?: number;
+  treatment_goals?: string;
   short_term_goals?: string;
   long_term_goals?: string;
-  discharge_criteria?: string;
-  assistive_devices_needed?: string;
-  home_modifications_needed?: string;
+  functional_limitations?: string;
+  precautions?: string;
+  contraindications?: string;
 }
 
 // =============================================================================
-// SESSION
+// SESSION (flat IDs — matches OTSessionSerializer)
 // =============================================================================
 
-/**
- * OT session
- */
-export interface OTSession extends BaseAlliedHealthSession {
-  order: Pick<OTOrder, 'id' | 'order_number' | 'treatment_type' | 'patient'>;
-  order_id: number;
-  session_sequence: number;
-  // Activities performed
-  adl_activities: string;
-  cognitive_activities: string;
-  sensory_activities: string;
-  motor_activities: string;
-  // Assessment scores
-  current_adl_score: FIMLevel | null;
-  current_iadl_score: FIMLevel | null;
-  current_cognitive_score: FIMLevel | null;
-  // Progress notes
-  patient_participation: string;
-  barriers_encountered: string;
-  adaptations_made: string;
-  home_program: string;
-  caregiver_training: string;
-  equipment_recommendations: string;
-  follow_up_notes: string;
-  next_session_date: string | null;
+export interface OTSession {
+  id: number;
+  order: number;
+  therapist: number | null;
+  therapist_name: string | null;
+  session_number: string;
+  scheduled_date: string;
+  scheduled_time: string | null;
+  actual_date: string | null;
+  duration_minutes: number | null;
+  status: AlliedHealthSessionStatus;
+  status_display?: string;
+  // Pre-session
+  pre_functional_status?: string | null;
+  pre_functional_status_display?: string | null;
+  pre_assessment_notes?: string;
+  patient_reported_changes?: string;
+  patient_goals_for_session?: string;
+  // Activities
+  activities_performed?: string;
+  adl_activities?: string;
+  cognitive_exercises?: string;
+  sensory_activities?: string;
+  fine_motor_exercises?: string;
+  gross_motor_activities?: string;
+  adaptive_equipment_training?: string;
+  splint_orthotics?: string;
+  // Patient response
+  patient_response?: string;
+  patient_engagement?: string | null;
+  patient_engagement_display?: string | null;
+  // Post-session
+  post_functional_status?: string | null;
+  post_functional_status_display?: string | null;
+  outcome: SessionOutcome | null;
+  outcome_display?: string;
+  // Progress
+  progress_notes?: string;
+  goals_addressed?: string;
+  goals_progress?: string;
+  // Home program
+  home_activities?: string;
+  home_activity_instructions?: string;
+  caregiver_education?: string;
+  environmental_recommendations?: string;
+  // Follow-up
+  precautions_advised?: string;
+  follow_up_recommendations?: string;
+  next_session_goals?: string;
+  equipment_recommendations?: string;
+  // Clinic & billing
+  clinic_visit?: number | null;
+  is_billed?: boolean;
+  // Computed
+  functional_improvement?: number | null;
+  // Timestamps
+  created_at: string;
+  updated_at: string;
+  completed_at?: string | null;
 }
 
-/**
- * OT session list item
- */
 export interface OTSessionListItem {
   id: number;
   session_number: string;
-  order_number: string;
+  order: number;
   patient_name: string;
   patient_mrn: string;
   scheduled_date: string;
   scheduled_time: string | null;
-  status: OTSession['status'];
+  status: AlliedHealthSessionStatus;
+  status_display?: string;
   therapist_name: string | null;
-  session_sequence: number;
   outcome: SessionOutcome | null;
 }
 
-/**
- * Create OT session payload
- */
 export interface OTSessionCreateData {
-  order_id: number;
+  order: number;
   scheduled_date: string;
   scheduled_time?: string;
-  therapist_id?: number;
+  therapist?: number;
 }
 
-/**
- * Complete OT session payload
- */
 export interface OTSessionCompleteData {
+  actual_date?: string;
   duration_minutes: number;
+  pre_functional_status?: string;
+  pre_assessment_notes?: string;
+  patient_reported_changes?: string;
+  patient_goals_for_session?: string;
+  activities_performed?: string;
   adl_activities?: string;
-  cognitive_activities?: string;
+  cognitive_exercises?: string;
   sensory_activities?: string;
-  motor_activities?: string;
-  current_adl_score?: FIMLevel;
-  current_iadl_score?: FIMLevel;
-  current_cognitive_score?: FIMLevel;
-  patient_participation?: string;
-  barriers_encountered?: string;
-  adaptations_made?: string;
-  home_program?: string;
-  caregiver_training?: string;
-  equipment_recommendations?: string;
+  fine_motor_exercises?: string;
+  gross_motor_activities?: string;
+  adaptive_equipment_training?: string;
+  splint_orthotics?: string;
+  patient_response?: string;
+  patient_engagement?: string;
+  post_functional_status?: string;
   outcome: SessionOutcome;
-  notes?: string;
-  follow_up_notes?: string;
-  next_session_date?: string;
+  progress_notes?: string;
+  goals_addressed?: string;
+  goals_progress?: string;
+  home_activities?: string;
+  home_activity_instructions?: string;
+  caregiver_education?: string;
+  environmental_recommendations?: string;
+  precautions_advised?: string;
+  follow_up_recommendations?: string;
+  next_session_goals?: string;
+  equipment_recommendations?: string;
 }
 
 // =============================================================================

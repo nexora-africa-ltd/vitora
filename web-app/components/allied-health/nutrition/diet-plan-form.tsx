@@ -53,25 +53,39 @@ import {
   useNutritionConsultations,
 } from '@/lib/hooks/use-nutrition';
 import { useToast } from '@/lib/hooks/use-toast';
+import type { DietPlanType } from '@/lib/types/nutrition';
+
+const PLAN_TYPES: { value: DietPlanType; label: string }[] = [
+  { value: 'WEIGHT_LOSS', label: 'Weight Loss' },
+  { value: 'WEIGHT_GAIN', label: 'Weight Gain' },
+  { value: 'DIABETIC', label: 'Diabetic Diet' },
+  { value: 'RENAL', label: 'Renal Diet' },
+  { value: 'CARDIAC', label: 'Cardiac/Heart Healthy' },
+  { value: 'LOW_SODIUM', label: 'Low Sodium' },
+  { value: 'LOW_FAT', label: 'Low Fat' },
+  { value: 'HIGH_PROTEIN', label: 'High Protein' },
+  { value: 'THERAPEUTIC', label: 'Therapeutic' },
+  { value: 'GENERAL', label: 'General Healthy Eating' },
+  { value: 'OTHER', label: 'Other' },
+];
 
 const dietPlanFormSchema = z.object({
-  consultation_id: z.number({ required_error: 'Consultation is required' }),
-  title: z.string().min(1, 'Title is required').max(200),
+  consultation: z.number({ required_error: 'Consultation is required' }),
+  name: z.string().min(1, 'Name is required').max(200),
+  plan_type: z.string().min(1, 'Plan type is required'),
   description: z.string().optional(),
   // Targets
   target_calories: z.coerce.number().positive().optional().or(z.literal('')),
-  target_protein_g: z.coerce.number().positive().optional().or(z.literal('')),
-  target_carbs_g: z.coerce.number().positive().optional().or(z.literal('')),
-  target_fat_g: z.coerce.number().positive().optional().or(z.literal('')),
-  target_fiber_g: z.coerce.number().positive().optional().or(z.literal('')),
-  target_sodium_mg: z.coerce.number().positive().optional().or(z.literal('')),
-  // Meals
-  breakfast: z.string().optional(),
-  mid_morning_snack: z.string().optional(),
-  lunch: z.string().optional(),
-  afternoon_snack: z.string().optional(),
-  dinner: z.string().optional(),
-  bedtime_snack: z.string().optional(),
+  target_protein: z.coerce.number().positive().optional().or(z.literal('')),
+  target_carbs: z.coerce.number().positive().optional().or(z.literal('')),
+  target_fat: z.coerce.number().positive().optional().or(z.literal('')),
+  target_fiber: z.coerce.number().positive().optional().or(z.literal('')),
+  target_sodium: z.coerce.number().positive().optional().or(z.literal('')),
+  // Meal Guidelines
+  breakfast_guidelines: z.string().optional(),
+  lunch_guidelines: z.string().optional(),
+  dinner_guidelines: z.string().optional(),
+  snack_guidelines: z.string().optional(),
   // Additional
   foods_to_avoid: z.string().optional(),
   foods_to_include: z.string().optional(),
@@ -106,21 +120,20 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
   const form = useForm<DietPlanFormValues>({
     resolver: zodResolver(dietPlanFormSchema),
     defaultValues: {
-      consultation_id: consultationId,
-      title: '',
+      consultation: consultationId,
+      name: '',
+      plan_type: 'GENERAL',
       description: '',
       target_calories: '' as unknown as undefined,
-      target_protein_g: '' as unknown as undefined,
-      target_carbs_g: '' as unknown as undefined,
-      target_fat_g: '' as unknown as undefined,
-      target_fiber_g: '' as unknown as undefined,
-      target_sodium_mg: '' as unknown as undefined,
-      breakfast: '',
-      mid_morning_snack: '',
-      lunch: '',
-      afternoon_snack: '',
-      dinner: '',
-      bedtime_snack: '',
+      target_protein: '' as unknown as undefined,
+      target_carbs: '' as unknown as undefined,
+      target_fat: '' as unknown as undefined,
+      target_fiber: '' as unknown as undefined,
+      target_sodium: '' as unknown as undefined,
+      breakfast_guidelines: '',
+      lunch_guidelines: '',
+      dinner_guidelines: '',
+      snack_guidelines: '',
       foods_to_avoid: '',
       foods_to_include: '',
       special_instructions: '',
@@ -135,21 +148,20 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
   useEffect(() => {
     if (existingPlan) {
       form.reset({
-        consultation_id: existingPlan.consultation_id,
-        title: existingPlan.title,
+        consultation: existingPlan.consultation ?? undefined,
+        name: existingPlan.name,
+        plan_type: existingPlan.plan_type,
         description: existingPlan.description || '',
         target_calories: existingPlan.target_calories ?? ('' as unknown as undefined),
-        target_protein_g: existingPlan.target_protein_g ?? ('' as unknown as undefined),
-        target_carbs_g: existingPlan.target_carbs_g ?? ('' as unknown as undefined),
-        target_fat_g: existingPlan.target_fat_g ?? ('' as unknown as undefined),
-        target_fiber_g: existingPlan.target_fiber_g ?? ('' as unknown as undefined),
-        target_sodium_mg: existingPlan.target_sodium_mg ?? ('' as unknown as undefined),
-        breakfast: existingPlan.breakfast || '',
-        mid_morning_snack: existingPlan.mid_morning_snack || '',
-        lunch: existingPlan.lunch || '',
-        afternoon_snack: existingPlan.afternoon_snack || '',
-        dinner: existingPlan.dinner || '',
-        bedtime_snack: existingPlan.bedtime_snack || '',
+        target_protein: existingPlan.target_protein ?? ('' as unknown as undefined),
+        target_carbs: existingPlan.target_carbs ?? ('' as unknown as undefined),
+        target_fat: existingPlan.target_fat ?? ('' as unknown as undefined),
+        target_fiber: existingPlan.target_fiber ?? ('' as unknown as undefined),
+        target_sodium: existingPlan.target_sodium ?? ('' as unknown as undefined),
+        breakfast_guidelines: existingPlan.breakfast_guidelines || '',
+        lunch_guidelines: existingPlan.lunch_guidelines || '',
+        dinner_guidelines: existingPlan.dinner_guidelines || '',
+        snack_guidelines: existingPlan.snack_guidelines || '',
         foods_to_avoid: existingPlan.foods_to_avoid || '',
         foods_to_include: existingPlan.foods_to_include || '',
         special_instructions: existingPlan.special_instructions || '',
@@ -162,15 +174,28 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
   }, [existingPlan, form]);
 
   const onSubmit = async (values: DietPlanFormValues) => {
+    // Get patient from selected consultation
+    const selectedConsultation = consultations?.results.find((c) => c.id === values.consultation);
+    if (!selectedConsultation && !isEditing) {
+      toast({
+        title: 'Error',
+        description: 'Please select a valid consultation',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Clean up empty string numeric fields
     const cleanedData = {
       ...values,
+      patient: isEditing ? existingPlan?.patient : selectedConsultation?.patient,
+      plan_type: values.plan_type as DietPlanType,
       target_calories: values.target_calories === '' ? undefined : Number(values.target_calories),
-      target_protein_g: values.target_protein_g === '' ? undefined : Number(values.target_protein_g),
-      target_carbs_g: values.target_carbs_g === '' ? undefined : Number(values.target_carbs_g),
-      target_fat_g: values.target_fat_g === '' ? undefined : Number(values.target_fat_g),
-      target_fiber_g: values.target_fiber_g === '' ? undefined : Number(values.target_fiber_g),
-      target_sodium_mg: values.target_sodium_mg === '' ? undefined : Number(values.target_sodium_mg),
+      target_protein: values.target_protein === '' ? undefined : Number(values.target_protein),
+      target_carbs: values.target_carbs === '' ? undefined : Number(values.target_carbs),
+      target_fat: values.target_fat === '' ? undefined : Number(values.target_fat),
+      target_fiber: values.target_fiber === '' ? undefined : Number(values.target_fiber),
+      target_sodium: values.target_sodium === '' ? undefined : Number(values.target_sodium),
       end_date: values.end_date || undefined,
       review_date: values.review_date || undefined,
       description: values.description || undefined,
@@ -223,7 +248,7 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
             {/* Consultation Select */}
             <FormField
               control={form.control}
-              name="consultation_id"
+              name="consultation"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Consultation *</FormLabel>
@@ -256,19 +281,45 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
               )}
             />
 
-            {/* Title */}
+            {/* Name */}
             <FormField
               control={form.control}
-              name="title"
+              name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Title *</FormLabel>
+                  <FormLabel>Name *</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="e.g. Low Sodium Cardiac Diet, Diabetic Meal Plan..."
                       {...field}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Plan Type */}
+            <FormField
+              control={form.control}
+              name="plan_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Plan Type *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select plan type..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {PLAN_TYPES.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -370,7 +421,7 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
               />
               <FormField
                 control={form.control}
-                name="target_protein_g"
+                name="target_protein"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Protein (g)</FormLabel>
@@ -388,7 +439,7 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
               />
               <FormField
                 control={form.control}
-                name="target_carbs_g"
+                name="target_carbs"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Carbohydrates (g)</FormLabel>
@@ -406,7 +457,7 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
               />
               <FormField
                 control={form.control}
-                name="target_fat_g"
+                name="target_fat"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Fat (g)</FormLabel>
@@ -424,7 +475,7 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
               />
               <FormField
                 control={form.control}
-                name="target_fiber_g"
+                name="target_fiber"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Fiber (g)</FormLabel>
@@ -442,7 +493,7 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
               />
               <FormField
                 control={form.control}
-                name="target_sodium_mg"
+                name="target_sodium"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Sodium (mg)</FormLabel>
@@ -467,18 +518,18 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <UtensilsCrossed className="h-5 w-5" />
-              Meal Plan
-              <HelpPopover content="Describe specific foods, portions, and preparation methods for each meal. Be specific about quantities where possible." />
+              Meal Guidelines
+              <HelpPopover content="Provide specific recommendations for each meal. Include food types, portions, and preparation suggestions." />
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
-                name="breakfast"
+                name="breakfast_guidelines"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Breakfast</FormLabel>
+                    <FormLabel>Breakfast Guidelines</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="e.g. 2 eggs, 1 slice whole wheat toast, 1 fruit..."
@@ -492,27 +543,10 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
               />
               <FormField
                 control={form.control}
-                name="mid_morning_snack"
+                name="lunch_guidelines"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Mid-Morning Snack</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="e.g. 1 cup yogurt, handful of nuts..."
-                        rows={3}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="lunch"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Lunch</FormLabel>
+                    <FormLabel>Lunch Guidelines</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="e.g. Grilled chicken, brown rice, steamed vegetables..."
@@ -526,27 +560,10 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
               />
               <FormField
                 control={form.control}
-                name="afternoon_snack"
+                name="dinner_guidelines"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Afternoon Snack</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="e.g. Fresh fruit, crackers with cheese..."
-                        rows={3}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="dinner"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Dinner</FormLabel>
+                    <FormLabel>Dinner Guidelines</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="e.g. Fish fillet, potato, salad..."
@@ -560,13 +577,13 @@ export function DietPlanForm({ consultationId, dietPlanId }: DietPlanFormProps) 
               />
               <FormField
                 control={form.control}
-                name="bedtime_snack"
+                name="snack_guidelines"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Bedtime Snack</FormLabel>
+                    <FormLabel>Snack Guidelines</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="e.g. Warm milk, 2 biscuits..."
+                        placeholder="e.g. Mid-morning: yogurt with nuts. Afternoon: fresh fruit..."
                         rows={3}
                         {...field}
                       />

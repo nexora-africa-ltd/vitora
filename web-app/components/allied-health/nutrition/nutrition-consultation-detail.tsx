@@ -175,8 +175,8 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Patient</h4>
-                <p className="font-medium">{consultation.patient?.full_name}</p>
-                <p className="text-sm text-muted-foreground">{consultation.patient?.mrn}</p>
+                <p className="font-medium">{consultation.patient_name}</p>
+                <p className="text-sm text-muted-foreground">{consultation.patient_mrn}</p>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Referral Reason</h4>
@@ -185,28 +185,28 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
                 </p>
               </div>
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground">Ordered By</h4>
-                <p className="font-medium">{consultation.ordered_by?.full_name || 'N/A'}</p>
+                <h4 className="text-sm font-medium text-muted-foreground">Referred By</h4>
+                <p className="font-medium">{consultation.referred_by_name || 'N/A'}</p>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Assigned Dietitian</h4>
                 <p className="font-medium">
-                  {consultation.assigned_dietitian?.full_name || 'Not assigned'}
+                  {consultation.dietitian_name || 'Not assigned'}
                 </p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Clinical Notes */}
+          {/* Referral Notes */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
-                Clinical Notes
+                Referral Notes
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="whitespace-pre-wrap">{consultation.clinical_notes || 'No clinical notes'}</p>
+              <p className="whitespace-pre-wrap">{consultation.referral_notes || 'No referral notes'}</p>
             </CardContent>
           </Card>
 
@@ -319,7 +319,7 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Calculated Values */}
-          {(consultation.calculations?.bmr || consultation.calculations?.tdee) && (
+          {(consultation.basal_metabolic_rate || consultation.total_daily_energy_expenditure) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -328,22 +328,22 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {consultation.calculations?.bmr && (
+                {consultation.basal_metabolic_rate && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">BMR</span>
-                    <span className="font-medium">{Math.round(consultation.calculations.bmr)} kcal</span>
+                    <span className="font-medium">{Math.round(Number(consultation.basal_metabolic_rate))} kcal</span>
                   </div>
                 )}
-                {consultation.calculations?.tdee && (
+                {consultation.total_daily_energy_expenditure && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">TDEE</span>
-                    <span className="font-medium">{Math.round(consultation.calculations.tdee)} kcal</span>
+                    <span className="font-medium">{Math.round(Number(consultation.total_daily_energy_expenditure))} kcal</span>
                   </div>
                 )}
-                {consultation.calculations?.ideal_body_weight && (
+                {consultation.ideal_body_weight && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Ideal Weight</span>
-                    <span className="font-medium">{consultation.calculations.ideal_body_weight.toFixed(1)} kg</span>
+                    <span className="font-medium">{Number(consultation.ideal_body_weight).toFixed(1)} kg</span>
                   </div>
                 )}
               </CardContent>
@@ -351,14 +351,14 @@ export function NutritionConsultationDetail({ consultationId }: NutritionConsult
           )}
 
           {/* Activity Level */}
-          {consultation.calculations?.activity_level && (
+          {consultation.activity_level && (
             <Card>
               <CardHeader>
                 <CardTitle>Activity Level</CardTitle>
               </CardHeader>
               <CardContent>
                 <Badge variant="outline" className="capitalize">
-                  {consultation.calculations.activity_level.toLowerCase().replace('_', ' ')}
+                  {consultation.activity_level.toLowerCase().replace('_', ' ')}
                 </Badge>
               </CardContent>
             </Card>

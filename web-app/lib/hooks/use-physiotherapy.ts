@@ -228,7 +228,7 @@ export function useCreatePhysioSession() {
     mutationFn: (data: PhysiotherapySessionCreateData) => physiotherapyApi.createSession(data),
     onSuccess: (_, data) => {
       queryClient.invalidateQueries({ queryKey: physiotherapyKeys.sessions() });
-      queryClient.invalidateQueries({ queryKey: physiotherapyKeys.orderSessions(data.order_id) });
+      queryClient.invalidateQueries({ queryKey: physiotherapyKeys.orderSessions(data.order) });
     },
   });
 }
@@ -253,7 +253,7 @@ export function useCompletePhysioSession() {
       queryClient.invalidateQueries({ queryKey: physiotherapyKeys.session(id) });
       queryClient.invalidateQueries({ queryKey: physiotherapyKeys.sessions() });
       queryClient.invalidateQueries({
-        queryKey: physiotherapyKeys.order(result.order_id),
+        queryKey: physiotherapyKeys.order(result.order),
       });
     },
   });

@@ -79,10 +79,10 @@ export default function CaseNotesListPage() {
                   <div className="flex items-center gap-2 min-w-0">
                     <User className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span className="font-medium text-sm truncate">
-                      {note.author.full_name}
+                      {note.author_name}
                     </span>
                     <Badge variant="outline" className="shrink-0 text-xs">
-                      {CONTACT_METHOD_LABELS[note.contact_method] || note.contact_method}
+                      {(note.contact_method && CONTACT_METHOD_LABELS[note.contact_method]) || note.contact_method || 'N/A'}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
@@ -90,7 +90,7 @@ export default function CaseNotesListPage() {
                     {format(parseISO(note.created_at), 'PPp')}
                   </div>
                 </div>
-                <p className="text-sm line-clamp-3">{note.note_content}</p>
+                <p className="text-sm line-clamp-3">{note.content}</p>
                 {note.follow_up_required && (
                   <div className="mt-2">
                     <Badge variant="secondary" className="text-xs">

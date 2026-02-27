@@ -178,9 +178,11 @@ export function useCreateDietPlan() {
     mutationFn: (data: DietPlanCreateData) => nutritionApi.createDietPlan(data),
     onSuccess: (_, data) => {
       queryClient.invalidateQueries({ queryKey: nutritionKeys.dietPlans() });
-      queryClient.invalidateQueries({
-        queryKey: nutritionKeys.consultationDietPlans(data.consultation_id),
-      });
+      if (data.consultation) {
+        queryClient.invalidateQueries({
+          queryKey: nutritionKeys.consultationDietPlans(data.consultation),
+        });
+      }
     },
   });
 }

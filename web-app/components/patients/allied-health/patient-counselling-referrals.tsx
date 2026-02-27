@@ -100,7 +100,7 @@ export function PatientCounsellingReferrals({ patientId }: PatientCounsellingRef
               <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-sm truncate">
-                    {referral.counselling_type_name || 'Counselling'}
+                    {referral.reason_display || referral.reason || 'Counselling'}
                   </span>
                   <Badge className={ORDER_STATUS_COLORS[referral.status] || ''}>
                     {referral.status.replace('_', ' ')}

@@ -34,7 +34,7 @@ import {
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
-import { OrderStatusBadge, PriorityBadge, SessionProgress } from '@/components/allied-health';
+import { OrderStatusBadge, SessionProgress } from '@/components/allied-health';
 import {
   useCounsellingReferral,
   useCounsellingReferralSessions,
@@ -44,8 +44,6 @@ import {
   useCompleteCounsellingReferral,
 } from '@/lib/hooks/use-counselling';
 import {
-  COUNSELLING_CATEGORY_LABELS,
-  MODALITY_LABELS,
   RISK_LEVEL_CONFIG,
 } from '@/lib/types/counselling';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -133,15 +131,6 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
         <div>
           <div className="flex items-center gap-3">
             <OrderStatusBadge status={referral.status} />
-            <PriorityBadge priority={referral.priority} showIcon />
-            {referral.risk_level && (
-              <Badge
-                variant={RISK_LEVEL_CONFIG[referral.risk_level as keyof typeof RISK_LEVEL_CONFIG]?.variant}
-                className={RISK_LEVEL_CONFIG[referral.risk_level as keyof typeof RISK_LEVEL_CONFIG]?.className}
-              >
-                {RISK_LEVEL_CONFIG[referral.risk_level as keyof typeof RISK_LEVEL_CONFIG]?.label}
-              </Badge>
-            )}
           </div>
           <p className="text-muted-foreground mt-1">
             Created {format(parseISO(referral.created_at), 'PPP')}
@@ -199,25 +188,21 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Patient</h4>
-                <p className="font-medium">{referral.patient?.full_name}</p>
-                <p className="text-sm text-muted-foreground">{referral.patient?.mrn}</p>
+                <p className="font-medium">{referral.patient_name}</p>
+                <p className="text-sm text-muted-foreground">{referral.patient_mrn}</p>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Counselling Type</h4>
-                <p className="font-medium">{referral.counselling_type?.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {COUNSELLING_CATEGORY_LABELS[referral.counselling_type?.category as keyof typeof COUNSELLING_CATEGORY_LABELS] || 
-                   referral.counselling_type?.category}
-                </p>
+                <p className="font-medium">{referral.counselling_type_name}</p>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Referred By</h4>
-                <p className="font-medium">{referral.referred_by?.full_name || 'N/A'}</p>
+                <p className="font-medium">{referral.referred_by_name || 'N/A'}</p>
               </div>
               <div>
                 <h4 className="text-sm font-medium text-muted-foreground">Assigned Counsellor</h4>
                 <p className="font-medium">
-                  {referral.assigned_counsellor?.full_name || 'Not assigned'}
+                  {referral.assigned_counsellor_name || 'Not assigned'}
                 </p>
               </div>
             </CardContent>
@@ -232,12 +217,12 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="whitespace-pre-wrap">{referral.presenting_concern}</p>
+              <p className="whitespace-pre-wrap">{referral.presenting_issues}</p>
               
-              {referral.background_history && (
+              {referral.clinical_summary && (
                 <div className="mt-4">
-                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Background History</h4>
-                  <p className="whitespace-pre-wrap">{referral.background_history}</p>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-1">Clinical Summary</h4>
+                  <p className="whitespace-pre-wrap">{referral.clinical_summary}</p>
                 </div>
               )}
             </CardContent>
@@ -253,15 +238,7 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-sm font-medium text-muted-foreground">Risk Level:</span>
-                {referral.risk_level && (
-                  <Badge
-                    variant={RISK_LEVEL_CONFIG[referral.risk_level as keyof typeof RISK_LEVEL_CONFIG]?.variant}
-                    className={RISK_LEVEL_CONFIG[referral.risk_level as keyof typeof RISK_LEVEL_CONFIG]?.className}
-                  >
-                    {RISK_LEVEL_CONFIG[referral.risk_level as keyof typeof RISK_LEVEL_CONFIG]?.label}
-                  </Badge>
-                )}
+                <span className="text-sm font-medium text-muted-foreground">Risk Assessment:</span>
               </div>
               
               {referral.risk_assessment ? (
@@ -331,7 +308,7 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
             <CardContent>
               <SessionProgress
                 completed={completedSessions}
-                total={referral.recommended_sessions}
+                total={referral.total_sessions}
               />
             </CardContent>
           </Card>
@@ -343,23 +320,9 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Recommended</span>
-                <span className="font-medium">{referral.recommended_sessions} sessions</span>
+                <span className="text-muted-foreground">Total Sessions</span>
+                <span className="font-medium">{referral.total_sessions} sessions</span>
               </div>
-              {referral.preferred_modality && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Modality</span>
-                  <span className="font-medium">
-                    {MODALITY_LABELS[referral.preferred_modality as keyof typeof MODALITY_LABELS]}
-                  </span>
-                </div>
-              )}
-              {referral.counselling_type?.typical_duration_minutes && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Duration</span>
-                  <span className="font-medium">{referral.counselling_type.typical_duration_minutes} min</span>
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -376,10 +339,10 @@ export function CounsellingReferralDetail({ referralId }: CounsellingReferralDet
                 <span className="text-muted-foreground">Created</span>
                 <span className="text-sm">{format(parseISO(referral.created_at), 'PP')}</span>
               </div>
-              {referral.accepted_date && (
+              {referral.accepted_at && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Accepted</span>
-                  <span className="text-sm">{format(parseISO(referral.accepted_date), 'PP')}</span>
+                  <span className="text-sm">{format(parseISO(referral.accepted_at), 'PP')}</span>
                 </div>
               )}
             </CardContent>

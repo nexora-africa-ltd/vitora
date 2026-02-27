@@ -81,29 +81,27 @@ const riskLevels: RiskLevel[] = ['LOW', 'MODERATE', 'HIGH', 'CRITICAL'];
 
 const completeSessionSchema = z.object({
   duration_minutes: z.number().min(1, 'Duration is required').default(45),
-  modality: z.enum(['IN_PERSON', 'VIDEO', 'PHONE', 'GROUP'] as const, {
-    required_error: 'Modality is required',
+  session_type: z.enum(['IN_PERSON', 'VIDEO', 'PHONE', 'GROUP'] as const, {
+    required_error: 'Session type is required',
   }),
   outcome: z.enum(sessionOutcomes, { required_error: 'Outcome is required' }),
   // Session content
-  session_focus: z.string().min(1, 'Session focus is required'),
-  client_presentation: z.string().optional(),
-  interventions_used: z.string().optional(),
-  client_response: z.string().optional(),
+  topics_discussed: z.string().min(1, 'Topics discussed is required'),
+  pre_session_notes: z.string().optional(),
+  techniques_used: z.string().optional(),
+  client_responses: z.string().optional(),
   progress_notes: z.string().optional(),
   // Risk
-  current_risk_level: z.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL'] as const, {
+  risk_level: z.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL'] as const, {
     required_error: 'Risk level is required',
   }),
-  safety_plan_reviewed: z.boolean().default(false),
-  safety_plan_notes: z.string().optional(),
+  safety_plan: z.string().optional(),
   // Homework
-  homework_assigned: z.string().optional(),
+  homework: z.string().optional(),
   // Follow-up
   follow_up_required: z.boolean().default(true),
-  next_session_date: z.string().optional(),
-  next_session_focus: z.string().optional(),
-  additional_referrals: z.string().optional(),
+  follow_up_date: z.string().optional(),
+  goals_for_next_session: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -155,21 +153,19 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
     resolver: zodResolver(completeSessionSchema),
     defaultValues: {
       duration_minutes: 45,
-      modality: 'IN_PERSON',
+      session_type: 'IN_PERSON',
       outcome: undefined,
-      session_focus: '',
-      client_presentation: '',
-      interventions_used: '',
-      client_response: '',
+      topics_discussed: '',
+      pre_session_notes: '',
+      techniques_used: '',
+      client_responses: '',
       progress_notes: '',
-      current_risk_level: 'LOW',
-      safety_plan_reviewed: false,
-      safety_plan_notes: '',
-      homework_assigned: '',
+      risk_level: 'LOW',
+      safety_plan: '',
+      homework: '',
       follow_up_required: true,
-      next_session_date: '',
-      next_session_focus: '',
-      additional_referrals: '',
+      follow_up_date: '',
+      goals_for_next_session: '',
       notes: '',
     },
   });
@@ -179,22 +175,20 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
     if (session) {
       form.reset({
         duration_minutes: session.duration_minutes ?? 45,
-        modality: (session.modality as SessionModality) || 'IN_PERSON',
+        session_type: (session.session_type as SessionModality) || 'IN_PERSON',
         outcome: session.outcome as (typeof sessionOutcomes)[number] | undefined,
-        session_focus: session.session_focus || '',
-        client_presentation: session.client_presentation || '',
-        interventions_used: session.interventions_used || '',
-        client_response: session.client_response || '',
+        topics_discussed: session.topics_discussed || '',
+        pre_session_notes: session.pre_session_notes || '',
+        techniques_used: session.techniques_used || '',
+        client_responses: session.client_responses || '',
         progress_notes: session.progress_notes || '',
-        current_risk_level: (session.current_risk_level as RiskLevel) || 'LOW',
-        safety_plan_reviewed: session.safety_plan_reviewed || false,
-        safety_plan_notes: session.safety_plan_notes || '',
-        homework_assigned: session.homework_assigned || '',
+        risk_level: (session.risk_level as RiskLevel) || 'LOW',
+        safety_plan: session.safety_plan || '',
+        homework: session.homework || '',
         follow_up_required: session.follow_up_required ?? true,
-        next_session_date: session.next_session_date || '',
-        next_session_focus: session.next_session_focus || '',
-        additional_referrals: session.additional_referrals || '',
-        notes: session.notes || '',
+        follow_up_date: session.follow_up_date || '',
+        goals_for_next_session: session.goals_for_next_session || '',
+        notes: session.progress_notes || '',
       });
     }
   }, [session, form]);
@@ -217,7 +211,7 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
       await completeMutation.mutateAsync({ id: sessionId, data });
       setShowSuccess(true);
       setTimeout(() => {
-        const targetReferralId = referralId || session?.referral_id;
+        const targetReferralId = referralId || session?.referral;
         if (targetReferralId) {
           router.push(`/allied-health/counselling/referrals/${targetReferralId}`);
         }
@@ -241,7 +235,7 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
     }
   };
 
-  const watchRiskLevel = form.watch('current_risk_level');
+  const watchRiskLevel = form.watch('risk_level');
 
   if (isLoading) {
     return (
@@ -294,8 +288,8 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
             <div className="flex items-start gap-2">
               <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
-                <div className="font-medium">{session.referral?.patient?.full_name || 'Patient'}</div>
-                <div className="text-sm text-muted-foreground">{session.referral?.patient?.mrn || ''}</div>
+                <div className="font-medium">Patient</div>
+                <div className="text-sm text-muted-foreground">Session #{session.session_sequence}</div>
               </div>
             </div>
             <div className="flex items-start gap-2">
@@ -312,7 +306,7 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
             <div className="flex items-start gap-2">
               <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
-                <div className="font-medium">{session.therapist?.full_name || 'Unassigned'}</div>
+                <div className="font-medium">{session.counsellor_name || 'Unassigned'}</div>
                 <div className="text-sm text-muted-foreground">Counsellor</div>
               </div>
             </div>
@@ -375,10 +369,10 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
                   />
                   <FormField
                     control={form.control}
-                    name="modality"
+                    name="session_type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Modality *</FormLabel>
+                        <FormLabel>Session Type *</FormLabel>
                         <Select
                           onValueChange={field.onChange}
                           value={field.value}
@@ -386,7 +380,7 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
                         >
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder="Select modality" />
+                              <SelectValue placeholder="Select session type" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -405,10 +399,10 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
 
                 <FormField
                   control={form.control}
-                  name="session_focus"
+                  name="topics_discussed"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Session Focus *</FormLabel>
+                      <FormLabel>Topics Discussed *</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
@@ -424,10 +418,10 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
 
                 <FormField
                   control={form.control}
-                  name="client_presentation"
+                  name="pre_session_notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Client Presentation</FormLabel>
+                      <FormLabel>Pre-Session Notes</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
@@ -451,10 +445,10 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
               <CardContent className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="interventions_used"
+                  name="techniques_used"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Interventions Used</FormLabel>
+                      <FormLabel>Techniques Used</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
@@ -470,10 +464,10 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
 
                 <FormField
                   control={form.control}
-                  name="client_response"
+                  name="client_responses"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Client Response</FormLabel>
+                      <FormLabel>Client Responses</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
@@ -519,10 +513,10 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
               <CardContent className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="current_risk_level"
+                  name="risk_level"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Current Risk Level *</FormLabel>
+                      <FormLabel>Risk Level *</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
@@ -558,25 +552,7 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
 
                 <FormField
                   control={form.control}
-                  name="safety_plan_reviewed"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center gap-2">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          disabled={isCompleted}
-                        />
-                      </FormControl>
-                      <FormLabel className="!mt-0">Safety plan reviewed with client</FormLabel>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="safety_plan_notes"
+                  name="safety_plan"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Safety Plan Notes</FormLabel>
@@ -603,7 +579,7 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
               <CardContent className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="homework_assigned"
+                  name="homework"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Homework Assigned</FormLabel>
@@ -642,7 +618,7 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
                   <>
                     <FormField
                       control={form.control}
-                      name="next_session_date"
+                      name="follow_up_date"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Next Session Date</FormLabel>
@@ -655,10 +631,10 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
                     />
                     <FormField
                       control={form.control}
-                      name="next_session_focus"
+                      name="goals_for_next_session"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Next Session Focus</FormLabel>
+                          <FormLabel>Goals for Next Session</FormLabel>
                           <FormControl>
                             <Textarea
                               {...field}
@@ -674,24 +650,6 @@ export function CounsellingSessionForm({ sessionId, referralId }: CounsellingSes
                   </>
                 )}
 
-                <FormField
-                  control={form.control}
-                  name="additional_referrals"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Additional Referrals</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          {...field}
-                          placeholder="Any additional referrals needed (psychiatry, social work...)"
-                          rows={2}
-                          disabled={isCompleted}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </CardContent>
             </Card>
 

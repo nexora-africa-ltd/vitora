@@ -73,27 +73,26 @@ const fimLevelSchema = z.union([
 ]);
 
 const completeSessionSchema = z.object({
-  notes: z.string().min(1, 'Progress notes are required'),
+  progress_notes: z.string().min(1, 'Progress notes are required'),
   duration_minutes: z.number().min(1, 'Duration is required').default(45),
   outcome: z.enum(sessionOutcomes, { required_error: 'Outcome is required' }),
   // Activities
   adl_activities: z.string().optional(),
-  cognitive_activities: z.string().optional(),
+  cognitive_exercises: z.string().optional(),
   sensory_activities: z.string().optional(),
-  motor_activities: z.string().optional(),
+  gross_motor_activities: z.string().optional(),
   // FIM Scores
   current_adl_score: fimLevelSchema.optional(),
   current_iadl_score: fimLevelSchema.optional(),
   current_cognitive_score: fimLevelSchema.optional(),
   // Progress
-  patient_participation: z.string().optional(),
-  barriers_encountered: z.string().optional(),
-  adaptations_made: z.string().optional(),
-  home_program: z.string().optional(),
-  caregiver_training: z.string().optional(),
+  patient_response: z.string().optional(),
+  pre_assessment_notes: z.string().optional(),
+  home_activities: z.string().optional(),
+  caregiver_education: z.string().optional(),
   equipment_recommendations: z.string().optional(),
-  follow_up_notes: z.string().optional(),
-  next_session_date: z.string().optional(),
+  follow_up_recommendations: z.string().optional(),
+  next_session_goals: z.string().optional(),
 });
 
 type CompleteSessionFormData = z.infer<typeof completeSessionSchema>;
@@ -189,24 +188,23 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
   const form = useForm<CompleteSessionFormData>({
     resolver: zodResolver(completeSessionSchema),
     defaultValues: {
-      notes: '',
+      progress_notes: '',
       duration_minutes: 45,
       outcome: undefined,
       adl_activities: '',
-      cognitive_activities: '',
+      cognitive_exercises: '',
       sensory_activities: '',
-      motor_activities: '',
+      gross_motor_activities: '',
       current_adl_score: undefined,
       current_iadl_score: undefined,
       current_cognitive_score: undefined,
-      patient_participation: '',
-      barriers_encountered: '',
-      adaptations_made: '',
-      home_program: '',
-      caregiver_training: '',
+      patient_response: '',
+      pre_assessment_notes: '',
+      home_activities: '',
+      caregiver_education: '',
       equipment_recommendations: '',
-      follow_up_notes: '',
-      next_session_date: '',
+      follow_up_recommendations: '',
+      next_session_goals: '',
     },
   });
 
@@ -214,24 +212,23 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
   useEffect(() => {
     if (session) {
       form.reset({
-        notes: session.notes || '',
+        progress_notes: session.progress_notes || '',
         duration_minutes: session.duration_minutes ?? 45,
         outcome: session.outcome as (typeof sessionOutcomes)[number] | undefined,
         adl_activities: session.adl_activities || '',
-        cognitive_activities: session.cognitive_activities || '',
+        cognitive_exercises: session.cognitive_exercises || '',
         sensory_activities: session.sensory_activities || '',
-        motor_activities: session.motor_activities || '',
-        current_adl_score: session.current_adl_score ?? undefined,
-        current_iadl_score: session.current_iadl_score ?? undefined,
-        current_cognitive_score: session.current_cognitive_score ?? undefined,
-        patient_participation: session.patient_participation || '',
-        barriers_encountered: session.barriers_encountered || '',
-        adaptations_made: session.adaptations_made || '',
-        home_program: session.home_program || '',
-        caregiver_training: session.caregiver_training || '',
+        gross_motor_activities: session.gross_motor_activities || '',
+        current_adl_score: undefined,
+        current_iadl_score: undefined,
+        current_cognitive_score: undefined,
+        patient_response: session.patient_response || '',
+        pre_assessment_notes: session.pre_assessment_notes || '',
+        home_activities: session.home_activities || '',
+        caregiver_education: session.caregiver_education || '',
         equipment_recommendations: session.equipment_recommendations || '',
-        follow_up_notes: session.follow_up_notes || '',
-        next_session_date: session.next_session_date || '',
+        follow_up_recommendations: session.follow_up_recommendations || '',
+        next_session_goals: session.next_session_goals || '',
       });
     }
   }, [session, form]);
@@ -254,7 +251,7 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
       await completeMutation.mutateAsync({ id: sessionId, data });
       setShowSuccess(true);
       setTimeout(() => {
-        const targetOrderId = orderId || session?.order_id;
+        const targetOrderId = orderId || session?.order;
         if (targetOrderId) {
           router.push(`/allied-health/occupational-therapy/orders/${targetOrderId}`);
         }
@@ -332,8 +329,8 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
             <div className="flex items-start gap-2">
               <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
-                <div className="font-medium">{session.order?.patient?.full_name || 'Patient'}</div>
-                <div className="text-sm text-muted-foreground">{session.order?.patient?.mrn || ''}</div>
+                <div className="font-medium">Patient</div>
+                <div className="text-sm text-muted-foreground">Order #{session.order}</div>
               </div>
             </div>
             <div className="flex items-start gap-2">
@@ -350,7 +347,7 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
             <div className="flex items-start gap-2">
               <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
               <div>
-                <div className="font-medium">{session.therapist?.full_name || 'Unassigned'}</div>
+                <div className="font-medium">{session.therapist_name || 'Unassigned'}</div>
                 <div className="text-sm text-muted-foreground">Therapist</div>
               </div>
             </div>
@@ -411,7 +408,7 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
                 />
                 <FormField
                   control={form.control}
-                  name="cognitive_activities"
+                  name="cognitive_exercises"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Cognitive Activities</FormLabel>
@@ -447,7 +444,7 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
                 />
                 <FormField
                   control={form.control}
-                  name="motor_activities"
+                  name="gross_motor_activities"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Motor Activities</FormLabel>
@@ -528,7 +525,7 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
               <CardContent className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="notes"
+                  name="progress_notes"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Progress Notes *</FormLabel>
@@ -546,10 +543,10 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
                 />
                 <FormField
                   control={form.control}
-                  name="patient_participation"
+                  name="patient_response"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Patient Participation</FormLabel>
+                      <FormLabel>Patient Response</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
@@ -564,32 +561,14 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
                 />
                 <FormField
                   control={form.control}
-                  name="barriers_encountered"
+                  name="pre_assessment_notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Barriers Encountered</FormLabel>
+                      <FormLabel>Assessment Notes</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
-                          placeholder="Any barriers to progress..."
-                          rows={2}
-                          disabled={isCompleted}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="adaptations_made"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Adaptations Made</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          {...field}
-                          placeholder="Modifications or adaptations during session..."
+                          placeholder="Pre-assessment observations..."
                           rows={2}
                           disabled={isCompleted}
                         />
@@ -609,7 +588,7 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
               <CardContent className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="home_program"
+                  name="home_activities"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Home Program</FormLabel>
@@ -627,7 +606,7 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
                 />
                 <FormField
                   control={form.control}
-                  name="caregiver_training"
+                  name="caregiver_education"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Caregiver Training</FormLabel>
@@ -663,7 +642,7 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
                 />
                 <FormField
                   control={form.control}
-                  name="follow_up_notes"
+                  name="follow_up_recommendations"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Next Session Plan</FormLabel>
@@ -681,12 +660,12 @@ export function OTSessionForm({ sessionId, orderId }: OTSessionFormProps) {
                 />
                 <FormField
                   control={form.control}
-                  name="next_session_date"
+                  name="next_session_goals"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Next Session Date</FormLabel>
+                      <FormLabel>Next Session Goals</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} disabled={isCompleted} />
+                        <Input type="text" {...field} disabled={isCompleted} placeholder="Goals for next session..." />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

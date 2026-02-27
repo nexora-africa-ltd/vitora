@@ -140,10 +140,10 @@ export function CounsellingReferralTable({ initialParams }: CounsellingReferralT
                 <TableRow>
                   <TableHead>Referral #</TableHead>
                   <TableHead>Patient</TableHead>
-                  <TableHead>Type</TableHead>
+                  <TableHead>Reason</TableHead>
                   <TableHead>Counsellor</TableHead>
                   <TableHead>Sessions</TableHead>
-                  <TableHead>Priority</TableHead>
+                  <TableHead>Urgency</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
                 </TableRow>
@@ -167,7 +167,7 @@ export function CounsellingReferralTable({ initialParams }: CounsellingReferralT
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{referral.counselling_type_name}</Badge>
+                      <Badge variant="outline">{referral.reason_display || referral.reason}</Badge>
                     </TableCell>
                     <TableCell>
                       {referral.assigned_counsellor_name || (
@@ -176,13 +176,13 @@ export function CounsellingReferralTable({ initialParams }: CounsellingReferralT
                     </TableCell>
                     <TableCell>
                       <SessionCount
-                        completed={referral.completed_sessions}
+                        completed={referral.sessions_completed}
                         total={referral.total_sessions}
                         size="sm"
                       />
                     </TableCell>
                     <TableCell>
-                      <PriorityBadge priority={referral.priority} />
+                      <PriorityBadge priority={referral.urgency as AlliedHealthPriority} />
                     </TableCell>
                     <TableCell>
                       <OrderStatusBadge status={referral.status} />

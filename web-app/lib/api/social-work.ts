@@ -12,8 +12,8 @@ import {
   SWInterventionSchema,
   PaginatedSWReferralListSchema,
   PaginatedSWCaseListSchema,
-  PaginatedCaseNoteListSchema,
-  PaginatedSWInterventionListSchema,
+  PaginatedCaseNoteSchema,
+  PaginatedSWInterventionSchema,
 } from '@/lib/schemas/social-work.schema';
 import type {
   SWReferral,
@@ -27,11 +27,24 @@ import type {
   SWCaseListParams,
   CaseNote,
   CaseNoteCreateData,
-  CaseNoteListParams,
   SWIntervention,
   SWInterventionCreateData,
-  SWInterventionListParams,
 } from '@/lib/types/social-work';
+
+// Defined locally — query param shapes not exported from types
+interface CaseNoteListParams {
+  case_id?: number;
+  page?: number;
+  page_size?: number;
+  search?: string;
+}
+
+interface SWInterventionListParams {
+  case_id?: number;
+  page?: number;
+  page_size?: number;
+  search?: string;
+}
 import type { PaginatedResponse } from '@/lib/types/allied-health';
 
 const BASE_URL = '/api/social-work';
@@ -221,7 +234,7 @@ export const socialWorkApi = {
     params?: CaseNoteListParams
   ): Promise<PaginatedResponse<CaseNote>> => {
     const response = await apiClient.get(`${BASE_URL}/notes/`, { params });
-    return parseResponse(PaginatedCaseNoteListSchema, response.data, {
+    return parseResponse(PaginatedCaseNoteSchema, response.data, {
       context: 'socialWorkApi.listCaseNotes',
     });
   },
@@ -260,7 +273,7 @@ export const socialWorkApi = {
     params?: SWInterventionListParams
   ): Promise<PaginatedResponse<SWIntervention>> => {
     const response = await apiClient.get(`${BASE_URL}/interventions/`, { params });
-    return parseResponse(PaginatedSWInterventionListSchema, response.data, {
+    return parseResponse(PaginatedSWInterventionSchema, response.data, {
       context: 'socialWorkApi.listInterventions',
     });
   },

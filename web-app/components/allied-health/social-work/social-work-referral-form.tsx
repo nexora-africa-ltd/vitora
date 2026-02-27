@@ -107,12 +107,12 @@ export function SocialWorkReferralForm({
     try {
       // Only include fields that match the API type
       const payload = {
-        patient_id: patientId,
-        encounter_id: encounterId,
-        referral_reason: data.referral_reason,
-        presenting_problem: data.presenting_problem,
-        immediate_needs: data.immediate_needs,
-        background_info: data.background_info,
+        patient: patientId,
+        encounter: encounterId,
+        reason: data.referral_reason,
+        presenting_issues: data.presenting_problem,
+        specific_requests: data.immediate_needs,
+        clinical_summary: data.background_info,
         urgency: data.urgency,
       };
 

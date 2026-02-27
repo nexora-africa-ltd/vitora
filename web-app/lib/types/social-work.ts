@@ -1,23 +1,20 @@
 /**
  * Social Work Module Types
  * Sprint Allied Health - Social Work
+ *
+ * IMPORTANT: These types match the backend serializers exactly.
+ * The backend returns flat IDs + `_name` fields, NOT nested objects.
  */
 
 import {
   AlliedHealthOrderStatus,
-  AlliedHealthPriority,
   AlliedHealthOrderListParams,
-  StaffReference,
-  PatientReference,
 } from './allied-health';
 
 // =============================================================================
 // ENUMS
 // =============================================================================
 
-/**
- * Social work referral reason
- */
 export type SWReferralReason =
   | 'GBV'
   | 'CHILD_PROTECTION'
@@ -40,9 +37,6 @@ export type SWReferralReason =
   | 'EDUCATION'
   | 'OTHER';
 
-/**
- * Social work case status
- */
 export type SWCaseStatus =
   | 'OPEN'
   | 'IN_PROGRESS'
@@ -52,28 +46,16 @@ export type SWCaseStatus =
   | 'CLOSED_UNRESOLVED'
   | 'CLOSED_TRANSFERRED';
 
-/**
- * Intervention status
- */
 export type InterventionStatus = 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 
-/**
- * Contact method
- */
 export type ContactMethod = 'PHONE' | 'IN_PERSON' | 'HOME_VISIT' | 'VIDEO_CALL' | 'EMAIL' | 'OTHER';
 
-/**
- * Urgency level for cases
- */
 export type CaseUrgency = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 // =============================================================================
 // DISPLAY CONFIGURATIONS
 // =============================================================================
 
-/**
- * Sensitive referral reasons that require special access
- */
 export const SENSITIVE_REASONS: SWReferralReason[] = [
   'GBV',
   'CHILD_PROTECTION',
@@ -129,235 +111,275 @@ export const URGENCY_CONFIG: Record<
 };
 
 // =============================================================================
-// REFERRAL
+// REFERRAL (flat IDs — matches SocialWorkReferralSerializer)
 // =============================================================================
 
-/**
- * Social work referral
- */
 export interface SWReferral {
   id: number;
   referral_number: string;
-  patient: PatientReference;
-  patient_id: number;
-  encounter_id: number | null;
-  clinic_visit_id: number | null;
-  referred_by: StaffReference;
-  referred_by_id: number;
-  assigned_worker: StaffReference | null;
-  assigned_worker_id: number | null;
+  // Patient (flat IDs + names)
+  patient: number;
+  patient_name: string;
+  patient_mrn: string;
+  encounter: number | null;
+  // Staff (flat IDs + names)
+  referred_by: number;
+  referred_by_name: string;
+  assigned_worker: number | null;
+  assigned_worker_name: string | null;
+  // Referral details
+  reason: string;
+  reason_display?: string;
+  urgency: string;
+  urgency_display?: string;
+  clinical_summary?: string;
+  presenting_issues?: string;
+  specific_requests?: string;
+  risk_factors?: string;
+  // Status & sensitivity
   status: AlliedHealthOrderStatus;
-  priority: AlliedHealthPriority;
-  referral_reason: SWReferralReason;
-  urgency: CaseUrgency;
-  presenting_problem: string;
-  background_info: string;
-  immediate_needs: string;
+  status_display?: string;
   is_sensitive: boolean;
-  // SHA
-  sha_code: string | null;
-  sha_claimable: boolean;
+  confidentiality_notes?: string;
+  // External
+  external_agency?: string;
+  external_contact?: string;
+  // Clinic
+  clinic_visit?: number | null;
+  // Flags
+  is_gbv_case: boolean;
+  requires_immediate_attention: boolean;
   // Timestamps
-  referral_date: string;
-  accepted_date: string | null;
   created_at: string;
   updated_at: string;
+  accepted_at: string | null;
+  completed_at?: string | null;
 }
 
-/**
- * Social work referral list item
- */
 export interface SWReferralListItem {
   id: number;
   referral_number: string;
+  patient: number;
   patient_name: string;
   patient_mrn: string;
-  referral_reason: SWReferralReason;
+  reason: string;
+  reason_display?: string;
+  urgency: string;
+  urgency_display?: string;
   status: AlliedHealthOrderStatus;
-  priority: AlliedHealthPriority;
-  urgency: CaseUrgency;
+  status_display?: string;
+  assigned_worker: number | null;
   assigned_worker_name: string | null;
   is_sensitive: boolean;
-  referral_date: string;
   created_at: string;
+  requires_immediate_attention: boolean;
 }
 
-/**
- * Create SW referral payload
- */
 export interface SWReferralCreateData {
-  patient_id: number;
-  encounter_id?: number;
-  referral_reason: SWReferralReason;
-  priority?: AlliedHealthPriority;
+  patient: number;
+  encounter?: number;
+  reason: string;
   urgency?: CaseUrgency;
-  presenting_problem: string;
-  background_info?: string;
-  immediate_needs?: string;
+  clinical_summary?: string;
+  presenting_issues?: string;
+  specific_requests?: string;
+  risk_factors?: string;
+  confidentiality_notes?: string;
+  external_agency?: string;
+  external_contact?: string;
 }
 
 // =============================================================================
-// CASE
+// CASE (flat IDs — matches SocialWorkCaseSerializer)
 // =============================================================================
 
-/**
- * Social work case
- */
 export interface SWCase {
   id: number;
   case_number: string;
-  referral: Pick<SWReferral, 'id' | 'referral_number' | 'referral_reason' | 'patient'>;
-  referral_id: number;
-  assigned_worker: StaffReference;
-  assigned_worker_id: number;
-  status: SWCaseStatus;
-  urgency: CaseUrgency;
-  case_summary: string;
-  assessment: string;
-  goals: string;
-  intervention_plan: string;
-  is_sensitive: boolean;
-  // External referrals
-  external_agencies: string;
-  external_referral_status: string;
+  // Patient & referral (flat IDs)
+  patient: number;
+  patient_name: string;
+  patient_mrn: string;
+  referral: number;
+  // Staff (flat IDs + names)
+  assigned_worker: number;
+  assigned_worker_name: string;
+  secondary_worker?: number | null;
+  supervisor?: number | null;
+  supervisor_name?: string | null;
+  // Case details
+  case_type?: string;
+  case_type_display?: string;
+  title?: string;
+  presenting_problem?: string;
+  assessment?: string;
+  psychosocial_history?: string;
+  family_composition?: string;
+  support_systems?: string;
+  strengths?: string;
+  barriers?: string;
+  safety_assessment?: string;
+  // Risk
+  risk_level?: string;
+  risk_level_display?: string;
+  priority?: string;
+  priority_display?: string;
+  // Goals
+  goals?: string;
+  intervention_plan?: string;
   // Outcome
-  outcome_summary: string;
-  closure_reason: string;
-  // Timestamps
-  opened_date: string;
-  target_closure_date: string | null;
-  actual_closure_date: string | null;
-  last_contact_date: string | null;
-  next_review_date: string | null;
-  created_at: string;
+  outcome?: string;
+  outcome_rating?: string | null;
+  // Status & sensitivity
+  status: SWCaseStatus;
+  status_display?: string;
+  is_sensitive: boolean;
+  confidentiality_level?: string;
+  // Dates
+  next_review_date?: string | null;
+  follow_up_frequency?: string;
+  opened_at: string;
   updated_at: string;
+  closed_at?: string | null;
+  // Computed
+  is_open: boolean;
+  days_open: number;
+  is_overdue_for_review: boolean;
   // Counts
   notes_count: number;
   interventions_count: number;
 }
 
-/**
- * Social work case list item
- */
 export interface SWCaseListItem {
   id: number;
   case_number: string;
+  patient: number;
   patient_name: string;
   patient_mrn: string;
-  referral_reason: SWReferralReason;
+  case_type?: string;
+  case_type_display?: string;
+  title?: string;
+  risk_level?: string;
+  risk_level_display?: string;
   status: SWCaseStatus;
-  urgency: CaseUrgency;
+  status_display?: string;
+  assigned_worker: number;
   assigned_worker_name: string;
   is_sensitive: boolean;
-  opened_date: string;
-  last_contact_date: string | null;
-  notes_count: number;
+  next_review_date?: string | null;
+  opened_at: string;
+  is_overdue_for_review: boolean;
 }
 
-/**
- * Create SW case payload (from referral)
- */
 export interface SWCaseCreateData {
-  referral_id: number;
-  case_summary: string;
+  referral: number;
+  case_type?: string;
+  title?: string;
+  presenting_problem?: string;
   assessment?: string;
   goals?: string;
   intervention_plan?: string;
-  target_closure_date?: string;
   next_review_date?: string;
 }
 
-/**
- * Update SW case payload
- */
 export interface SWCaseUpdateData {
   status?: SWCaseStatus;
-  urgency?: CaseUrgency;
-  case_summary?: string;
+  case_type?: string;
+  title?: string;
+  presenting_problem?: string;
   assessment?: string;
   goals?: string;
   intervention_plan?: string;
-  external_agencies?: string;
-  external_referral_status?: string;
-  outcome_summary?: string;
-  closure_reason?: string;
-  target_closure_date?: string;
   next_review_date?: string;
+  risk_level?: string;
+  priority?: string;
+  outcome?: string;
+  outcome_rating?: string;
 }
 
 // =============================================================================
-// CASE NOTE
+// CASE NOTE (flat IDs — matches CaseNoteSerializer)
 // =============================================================================
 
-/**
- * Case note entry
- */
 export interface CaseNote {
   id: number;
-  case: Pick<SWCase, 'id' | 'case_number'>;
-  case_id: number;
-  author: StaffReference;
-  author_id: number;
+  case: number;
+  author: number;
+  author_name: string;
+  note_type?: string;
+  note_type_display?: string;
   contact_date: string;
-  contact_method: ContactMethod;
-  contact_with: string;
-  note_content: string;
-  actions_taken: string;
+  contact_method?: string;
+  contact_method_display?: string;
+  duration_minutes?: number | null;
+  subject?: string;
+  content: string;
+  participant_names?: string;
   follow_up_required: boolean;
-  follow_up_date: string | null;
-  follow_up_notes: string;
+  follow_up_actions?: string;
+  follow_up_date?: string | null;
+  is_confidential: boolean;
   created_at: string;
   updated_at: string;
 }
 
-/**
- * Create case note payload
- */
 export interface CaseNoteCreateData {
-  case_id: number;
+  case: number;
+  note_type?: string;
   contact_date: string;
-  contact_method: ContactMethod;
-  contact_with: string;
-  note_content: string;
-  actions_taken?: string;
+  contact_method?: string;
+  duration_minutes?: number;
+  subject?: string;
+  content: string;
+  participant_names?: string;
   follow_up_required?: boolean;
+  follow_up_actions?: string;
   follow_up_date?: string;
-  follow_up_notes?: string;
+  is_confidential?: boolean;
 }
 
 // =============================================================================
-// INTERVENTION
+// INTERVENTION (flat IDs — matches SocialWorkInterventionSerializer)
 // =============================================================================
 
-/**
- * Social work intervention
- */
 export interface SWIntervention {
   id: number;
-  case: Pick<SWCase, 'id' | 'case_number'>;
-  case_id: number;
-  intervention_type: string;
+  case: number;
+  provided_by: number;
+  provided_by_name: string;
+  intervention_type?: string;
+  intervention_type_display?: string;
   description: string;
+  objectives?: string;
+  activities?: string;
   status: InterventionStatus;
-  planned_date: string;
-  actual_date: string | null;
-  completed_by: StaffReference | null;
-  completed_by_id: number | null;
-  outcome: string;
-  notes: string;
+  status_display?: string;
+  planned_date?: string | null;
+  start_date?: string | null;
+  completion_date?: string | null;
+  outcome?: string;
+  outcome_rating?: string | null;
+  outcome_rating_display?: string | null;
+  client_feedback?: string;
+  external_agency?: string;
+  external_contact?: string;
+  cost?: string | null;
+  cost_source?: string;
   created_at: string;
   updated_at: string;
 }
 
-/**
- * Create intervention payload
- */
 export interface SWInterventionCreateData {
-  case_id: number;
-  intervention_type: string;
+  case: number;
+  intervention_type?: string;
   description: string;
-  planned_date: string;
-  notes?: string;
+  objectives?: string;
+  activities?: string;
+  planned_date?: string;
+  external_agency?: string;
+  external_contact?: string;
+  cost?: string;
+  cost_source?: string;
 }
 
 // =============================================================================
@@ -365,9 +387,8 @@ export interface SWInterventionCreateData {
 // =============================================================================
 
 export interface SWReferralListParams extends AlliedHealthOrderListParams {
-  referral_reason?: SWReferralReason;
+  reason?: SWReferralReason;
   urgency?: CaseUrgency;
-  assigned_worker_id?: number;
   is_sensitive?: boolean;
 }
 
@@ -376,31 +397,8 @@ export interface SWCaseListParams {
   page_size?: number;
   search?: string;
   status?: SWCaseStatus;
-  urgency?: CaseUrgency;
+  case_type?: string;
+  risk_level?: string;
   assigned_worker_id?: number;
-  referral_reason?: SWReferralReason;
   is_sensitive?: boolean;
-  date_from?: string;
-  date_to?: string;
-  ordering?: string;
-}
-
-export interface CaseNoteListParams {
-  page?: number;
-  page_size?: number;
-  case_id?: number;
-  contact_method?: ContactMethod;
-  date_from?: string;
-  date_to?: string;
-  ordering?: string;
-}
-
-export interface SWInterventionListParams {
-  page?: number;
-  page_size?: number;
-  case_id?: number;
-  status?: InterventionStatus;
-  date_from?: string;
-  date_to?: string;
-  ordering?: string;
 }

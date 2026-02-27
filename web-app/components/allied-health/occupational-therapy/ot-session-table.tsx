@@ -114,7 +114,6 @@ export function OTSessionTable({ sessions, orderId }: OTSessionTableProps) {
 
           return (
             <TableRow key={session.id}>
-              <TableCell>{session.session_sequence}</TableCell>
               <TableCell className="font-mono text-sm">{session.session_number}</TableCell>
               <TableCell>
                 {format(parseISO(session.scheduled_date), 'MMM d, yyyy')}

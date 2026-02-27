@@ -229,7 +229,7 @@ export function useCreateCounsellingSession() {
     onSuccess: (_, data) => {
       queryClient.invalidateQueries({ queryKey: counsellingKeys.sessions() });
       queryClient.invalidateQueries({
-        queryKey: counsellingKeys.referralSessions(data.referral_id),
+        queryKey: counsellingKeys.referralSessions(data.referral),
       });
     },
   });
@@ -255,7 +255,7 @@ export function useCompleteCounsellingSession() {
       queryClient.invalidateQueries({ queryKey: counsellingKeys.session(id) });
       queryClient.invalidateQueries({ queryKey: counsellingKeys.sessions() });
       queryClient.invalidateQueries({
-        queryKey: counsellingKeys.referral(result.referral_id),
+        queryKey: counsellingKeys.referral(result.referral),
       });
     },
   });

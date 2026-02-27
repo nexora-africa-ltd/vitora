@@ -225,7 +225,7 @@ export function useCreateOTSession() {
     mutationFn: (data: OTSessionCreateData) => occupationalTherapyApi.createSession(data),
     onSuccess: (_, data) => {
       queryClient.invalidateQueries({ queryKey: otKeys.sessions() });
-      queryClient.invalidateQueries({ queryKey: otKeys.orderSessions(data.order_id) });
+      queryClient.invalidateQueries({ queryKey: otKeys.orderSessions(data.order) });
     },
   });
 }
@@ -249,7 +249,7 @@ export function useCompleteOTSession() {
     onSuccess: (result, { id }) => {
       queryClient.invalidateQueries({ queryKey: otKeys.session(id) });
       queryClient.invalidateQueries({ queryKey: otKeys.sessions() });
-      queryClient.invalidateQueries({ queryKey: otKeys.order(result.order_id) });
+      queryClient.invalidateQueries({ queryKey: otKeys.order(result.order) });
     },
   });
 }
