@@ -8,6 +8,8 @@ from datetime import date, timedelta
 
 import pytest  # type: ignore
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
+from django.urls import reverse
 
 User = get_user_model()
 
@@ -155,6 +157,119 @@ class TestGrowthMeasurement:
         )
 
         assert measurement.muac_classification == "SAM"
+
+
+@pytest.mark.django_db
+class TestANCVisit:
+    """Tests for ANC visit model and API."""
+
+    def test_gestation_weeks_auto_calculated(self, anc_enrollment, sample_patient):
+        """Should auto-calculate gestation weeks from ANC enrollment LMP."""
+        from hmis.apps.mch.models import ANCVisit, MCHRegistration
+
+        registration = MCHRegistration.objects.create(
+            mother=sample_patient,
+            anc_enrollment=anc_enrollment,
+            registration_date=date.today(),
+        )
+
+        visit = ANCVisit.objects.create(
+            registration=registration,
+            visit_number=1,
+            visit_date=anc_enrollment.lmp + timedelta(days=140),
+        )
+
+        assert visit.gestation_weeks == 20
+
+    def test_anc_visit_alerts(self, anc_enrollment, sample_patient):
+        """Should return alerts for abnormal fetal heart rate and proteinuria."""
+        from hmis.apps.mch.models import ANCVisit, MCHRegistration
+
+        registration = MCHRegistration.objects.create(
+            mother=sample_patient,
+            anc_enrollment=anc_enrollment,
+            registration_date=date.today(),
+        )
+
+        visit = ANCVisit.objects.create(
+            registration=registration,
+            visit_number=1,
+            visit_date=date.today(),
+            fetal_heart_rate=180,
+            urine_protein="2+",
+        )
+
+        alerts = visit.get_alerts()
+        assert any("tachycardia" in alert.lower() for alert in alerts)
+        assert any("proteinuria" in alert.lower() for alert in alerts)
+
+    def test_visit_number_unique_per_registration(self, anc_enrollment, sample_patient):
+        """Should not allow duplicate visit numbers for same registration."""
+        from hmis.apps.mch.models import ANCVisit, MCHRegistration
+
+        registration = MCHRegistration.objects.create(
+            mother=sample_patient,
+            anc_enrollment=anc_enrollment,
+            registration_date=date.today(),
+        )
+
+        ANCVisit.objects.create(
+            registration=registration,
+            visit_number=1,
+            visit_date=date.today(),
+        )
+
+        with pytest.raises(IntegrityError):
+            ANCVisit.objects.create(
+                registration=registration,
+                visit_number=1,
+                visit_date=date.today(),
+            )
+
+    def test_create_anc_visit_api(self, authenticated_client, anc_enrollment, sample_patient):
+        """Should create ANC visit via API."""
+        from hmis.apps.mch.models import MCHRegistration
+
+        registration = MCHRegistration.objects.create(
+            mother=sample_patient,
+            anc_enrollment=anc_enrollment,
+            registration_date=date.today(),
+        )
+
+        payload = {
+            "registration": registration.id,
+            "visit_number": 1,
+            "visit_date": date.today().isoformat(),
+            "blood_pressure": "120/80",
+        }
+
+        url = reverse("mch:mch-anc-visit-list")
+        response = authenticated_client.post(url, payload)
+
+        assert response.status_code == 201
+        assert response.data["registration"] == registration.id
+
+    def test_list_anc_visits_filter_by_registration(self, authenticated_client, anc_enrollment, sample_patient):
+        """Should filter ANC visits by registration."""
+        from hmis.apps.mch.models import ANCVisit, MCHRegistration
+
+        registration = MCHRegistration.objects.create(
+            mother=sample_patient,
+            anc_enrollment=anc_enrollment,
+            registration_date=date.today(),
+        )
+
+        ANCVisit.objects.create(
+            registration=registration,
+            visit_number=1,
+            visit_date=date.today(),
+        )
+
+        url = reverse("mch:mch-anc-visit-list")
+        response = authenticated_client.get(url, {"registration": registration.id})
+
+        assert response.status_code == 200
+        assert response.data["count"] == 1
 
 
 @pytest.mark.django_db
