@@ -101,6 +101,7 @@ class MCHRegistrationSerializer(serializers.ModelSerializer):
             "risk_factors",
             "sha_claimable",
             "linda_jamii_beneficiary",
+            "gbv_related",
             "is_sensitive",
             "registered_by",
             "registered_by_name",
@@ -162,6 +163,7 @@ class MCHRegistrationCreateSerializer(serializers.ModelSerializer):
             "risk_factors",
             "sha_claimable",
             "linda_jamii_beneficiary",
+            "gbv_related",
             "notes",
         ]
 

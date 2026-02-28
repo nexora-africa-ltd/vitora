@@ -200,6 +200,11 @@ class MCHRegistration(HistoryMixin, TimeStampedModel):
         help_text="Whether the mother is a Linda Jamii beneficiary (free maternity)",
     )
 
+    gbv_related = models.BooleanField(
+        default=False,
+        help_text="Whether this registration is GBV-related (auto-sets sensitivity)",
+    )
+
     # Sensitive access (auto-set for HIV+)
     is_sensitive = models.BooleanField(
         default=False,
@@ -244,8 +249,10 @@ class MCHRegistration(HistoryMixin, TimeStampedModel):
         if not self.mch_number:
             self.mch_number = generate_mch_number()
 
-        # Auto-set sensitivity for HIV-positive pregnancies
-        if self.anc_enrollment and self.anc_enrollment.hiv_status == "POSITIVE":
+        # Auto-set sensitivity for HIV-positive pregnancies or GBV-related records
+        if self.gbv_related:
+            self.is_sensitive = True
+        elif self.anc_enrollment and self.anc_enrollment.hiv_status == "POSITIVE":
             self.is_sensitive = True
 
         # Auto-detect high-risk from enrollment
