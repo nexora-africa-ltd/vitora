@@ -198,14 +198,22 @@ def create_billing_item_on_session_completion(sender, instance, created, **kwarg
         # Find or create invoice for the patient
         invoice = Invoice.objects.filter(
             patient=referral.patient,
-            status="DRAFT",
+            status="draft",
         ).first()
 
         if not invoice:
-            # Create new invoice
+            # Create new invoice - find a system/staff user for created_by
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            system_user = (
+                instance.therapist
+                or referral.referred_by
+                or User.objects.filter(is_staff=True).first()
+            )
             invoice = Invoice.objects.create(
                 patient=referral.patient,
-                status="DRAFT",
+                status="draft",
+                created_by=system_user,
             )
 
         # Create invoice item
@@ -214,8 +222,7 @@ def create_billing_item_on_session_completion(sender, instance, created, **kwarg
             description=f"Counselling Session - {counselling_type.name}",
             quantity=1,
             unit_price=counselling_type.cost_per_session,
-            item_type="SERVICE",
-            service_date=instance.actual_date or instance.scheduled_date,
+            item_type="service",
         )
 
         # Mark session as billed

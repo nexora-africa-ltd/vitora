@@ -152,8 +152,8 @@ def notify_urgent_referral(sender, instance, created, **kwargs):
             ),
             notification_type="alert" if instance.urgency == "EMERGENCY" else "warning",
             user=instance.assigned_worker,  # Will be None if unassigned
-            related_object_type="social_work.SocialWorkReferral",
-            related_object_id=instance.id,
+            related_model="social_work.SocialWorkReferral",
+            related_id=instance.id,
         )
 
         logger.info(
@@ -211,8 +211,8 @@ def notify_case_review_due(sender, instance, **kwargs):
             if instance.assigned_worker:
                 Notification.objects.get_or_create(
                     user=instance.assigned_worker,
-                    related_object_type="social_work.SocialWorkCase",
-                    related_object_id=instance.id,
+                    related_model="social_work.SocialWorkCase",
+                    related_id=instance.id,
                     defaults={
                         "title": "Case Review Due",
                         "message": f"Case {instance.case_number} review is due on {instance.next_review_date}",

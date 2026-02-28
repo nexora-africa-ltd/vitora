@@ -35,6 +35,7 @@ const STATUS_CONFIG: Record<
   RESULTS_PENDING: { variant: 'outline', icon: Clock, className: 'border-orange-300 text-orange-600' },
   READY_TO_CLOSE: { variant: 'outline', icon: CheckCircle, className: 'border-green-300 text-green-600' },
   CLOSED: { variant: 'secondary', icon: Lock, className: 'bg-gray-100 text-gray-500' },
+  COMPLETED: { variant: 'secondary', icon: CheckCircle, className: 'bg-green-100 text-green-700' },
   CANCELLED: { variant: 'destructive', icon: XCircle },
 };
 

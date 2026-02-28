@@ -198,6 +198,7 @@ export type EncounterStatus =
   | 'RESULTS_PENDING'
   | 'READY_TO_CLOSE'
   | 'CLOSED'
+  | 'COMPLETED'
   | 'CANCELLED';
 
 export const ENCOUNTER_STATUS_DISPLAY: Record<EncounterStatus, string> = {
@@ -210,6 +211,7 @@ export const ENCOUNTER_STATUS_DISPLAY: Record<EncounterStatus, string> = {
   RESULTS_PENDING: 'Results Pending',
   READY_TO_CLOSE: 'Ready to Close',
   CLOSED: 'Closed',
+  COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
 };
 
@@ -224,6 +226,7 @@ export const VALID_ENCOUNTER_TRANSITIONS: Record<EncounterStatus, EncounterStatu
   RESULTS_PENDING: ['READY_TO_CLOSE'],
   READY_TO_CLOSE: ['CLOSED'],
   CLOSED: [],
+  COMPLETED: [],
   CANCELLED: [],
 };
 

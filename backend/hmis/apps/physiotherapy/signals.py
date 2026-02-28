@@ -86,7 +86,7 @@ def create_invoice_item_for_completed_session(sender, instance, created, **kwarg
         instance.save(update_fields=["is_billed", "invoice_item"])
 
         # Recalculate invoice totals
-        invoice.recalculate_totals()
+        invoice.calculate_totals()
 
         logger.info(
             f"Created invoice item {invoice_item.id} for physiotherapy session "

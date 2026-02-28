@@ -79,7 +79,7 @@ def create_invoice_item_for_completed_consultation(sender, instance, created, **
         instance.save(update_fields=["invoice"])
 
         # Recalculate invoice totals
-        invoice.recalculate_totals()
+        invoice.calculate_totals()
 
         logger.info(
             f"Created invoice item {invoice_item.id} for nutrition consultation "
@@ -139,8 +139,8 @@ def route_to_nutrition_clinic(sender, instance, created, **kwargs):
             today = date_module.today()
             clinic_session = ClinicSession.objects.filter(
                 clinic=nutrition_clinic,
-                date=today,
-                is_active=True,
+                session_date=today,
+                status="OPEN",
             ).first()
 
             if not clinic_session:
@@ -154,16 +154,18 @@ def route_to_nutrition_clinic(sender, instance, created, **kwargs):
                 )
                 return
 
-            # Create a clinic visit for this consultation
-            clinic_visit = ClinicVisit.objects.create(
+            # Get or create a clinic visit for this consultation
+            clinic_visit, created = ClinicVisit.objects.get_or_create(
                 session=clinic_session,
                 patient=instance.patient,
-                visit_type="REFERRAL",
-                source="REFERRAL",
-                priority="STANDARD" if not instance.priority or instance.priority == "ROUTINE" else "URGENT",
-                queue_number=clinic_session.visits.count() + 1,
-                chief_complaint=f"Nutrition referral: {instance.referral_reason}",
-                notes=f"Nutrition consultation: {instance.consultation_number}",
+                defaults={
+                    "visit_type": "REFERRAL",
+                    "source": "REFERRAL",
+                    "priority": "STANDARD" if not instance.priority or instance.priority == "ROUTINE" else "URGENT",
+                    "queue_number": clinic_session.visits.count() + 1,
+                    "chief_complaint": f"Nutrition referral: {instance.referral_reason}",
+                    "notes": f"Nutrition consultation: {instance.consultation_number}",
+                },
             )
             instance.clinic_visit = clinic_visit
             instance.save(update_fields=["clinic_visit"])

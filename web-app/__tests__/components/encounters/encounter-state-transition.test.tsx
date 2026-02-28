@@ -172,12 +172,12 @@ describe('EncounterStateTransition', () => {
     expect(screen.getByText('Close Encounter?')).toBeInTheDocument();
   });
 
-  it('displays all 10 status choices correctly in VALID_ENCOUNTER_TRANSITIONS', () => {
+  it('displays all 11 status choices correctly in VALID_ENCOUNTER_TRANSITIONS', () => {
     // Verify the transition map covers all statuses
     const allStatuses: EncounterStatus[] = [
       'CREATED', 'CHECKED_IN', 'TRIAGED', 'IN_PROGRESS',
       'ON_HOLD', 'ORDERS_PLACED', 'RESULTS_PENDING',
-      'READY_TO_CLOSE', 'CLOSED', 'CANCELLED',
+      'READY_TO_CLOSE', 'CLOSED', 'COMPLETED', 'CANCELLED',
     ];
 
     const { VALID_ENCOUNTER_TRANSITIONS } = require('@/lib/types/encounter');

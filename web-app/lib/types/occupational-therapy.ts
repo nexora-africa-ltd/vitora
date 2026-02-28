@@ -202,7 +202,9 @@ export interface OTSession {
   order: number;
   therapist: number | null;
   therapist_name: string | null;
-  session_number: string;
+  patient_name?: string | null;
+  patient_mrn?: string;
+  session_number: number;
   scheduled_date: string;
   scheduled_time: string | null;
   actual_date: string | null;
@@ -260,10 +262,10 @@ export interface OTSession {
 
 export interface OTSessionListItem {
   id: number;
-  session_number: string;
+  session_number: number;
   order: number;
-  patient_name: string;
-  patient_mrn: string;
+  patient_name?: string | null;
+  patient_mrn?: string;
   scheduled_date: string;
   scheduled_time: string | null;
   status: AlliedHealthSessionStatus;

@@ -2233,7 +2233,7 @@ class Command(BaseCommand):
             clinic = session.clinic
             per_clinic = 3 if clinic.is_sensitive else 5
 
-            statuses = ["WAITING", "WAITING", "CALLED", "IN_CONSULTATION", "COMPLETED"]
+            statuses = ["WAITING", "WAITING", "CALLED", "IN_CONSULTATION", "CLOSED"]
             statuses = statuses[:per_clinic]
 
             for s in statuses:
@@ -2259,24 +2259,24 @@ class Command(BaseCommand):
                     source="TRIAGE" if clinic.triage_required else "DIRECT",
                     visit_type=choice(["NEW", "RETURN", "FOLLOW_UP"]),
                     assigned=assigned_user
-                    if s in {"CALLED", "IN_CONSULTATION", "COMPLETED"}
+                    if s in {"CALLED", "IN_CONSULTATION", "CLOSED"}
                     else None,
                 )
 
                 # Add timestamps for realism
                 if (
-                    visit.status in {"CALLED", "IN_CONSULTATION", "COMPLETED"}
+                    visit.status in {"CALLED", "IN_CONSULTATION", "CLOSED"}
                     and visit.called_at is None
                 ):
                     visit.called_at = timezone.now() - timedelta(minutes=randint(5, 60))
                 if (
-                    visit.status in {"IN_CONSULTATION", "COMPLETED"}
+                    visit.status in {"IN_CONSULTATION", "CLOSED"}
                     and visit.consultation_started_at is None
                 ):
                     visit.consultation_started_at = timezone.now() - timedelta(
                         minutes=randint(1, 30)
                     )
-                if visit.status == "COMPLETED" and visit.completed_at is None:
+                if visit.status == "CLOSED" and visit.completed_at is None:
                     visit.completed_at = timezone.now() - timedelta(minutes=randint(1, 10))
                 visit.save()
 
