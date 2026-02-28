@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     "hmis.apps.occupational_therapy.apps.OccupationalTherapyConfig",
     "hmis.apps.social_work.apps.SocialWorkConfig",
     "hmis.apps.counselling.apps.CounsellingConfig",
+    "hmis.apps.mch.apps.MCHConfig",
     "hmis.apps.allied_health.apps.AlliedHealthConfig",
     "hmis.apps.referrals.apps.ReferralsConfig",
 ]

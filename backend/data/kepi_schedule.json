@@ -1,0 +1,222 @@
+[
+  {
+    "code": "BCG",
+    "name": "Bacille Calmette-Guérin",
+    "description": "Tuberculosis vaccine",
+    "disease_target": "Tuberculosis",
+    "standard_age_days": 0,
+    "route": "ID",
+    "dose_number": 1,
+    "series_name": "BCG"
+  },
+  {
+    "code": "OPV0",
+    "name": "Oral Polio Vaccine (Birth dose)",
+    "description": "Birth dose of oral polio vaccine",
+    "disease_target": "Poliomyelitis",
+    "standard_age_days": 0,
+    "route": "ORAL",
+    "dose_number": 1,
+    "series_name": "OPV"
+  },
+  {
+    "code": "HEPB0",
+    "name": "Hepatitis B (Birth dose)",
+    "description": "Birth dose of Hepatitis B vaccine",
+    "disease_target": "Hepatitis B",
+    "standard_age_days": 0,
+    "route": "IM",
+    "dose_number": 1,
+    "series_name": "Hepatitis B"
+  },
+  {
+    "code": "PENTA1",
+    "name": "Pentavalent Vaccine (1st dose)",
+    "description": "DPT-HepB-Hib combination vaccine",
+    "disease_target": "Diphtheria, Pertussis, Tetanus, Hepatitis B, Haemophilus influenzae type b",
+    "standard_age_days": 42,
+    "route": "IM",
+    "dose_number": 1,
+    "series_name": "Pentavalent"
+  },
+  {
+    "code": "OPV1",
+    "name": "Oral Polio Vaccine (1st dose)",
+    "description": "First dose of oral polio vaccine",
+    "disease_target": "Poliomyelitis",
+    "standard_age_days": 42,
+    "route": "ORAL",
+    "dose_number": 2,
+    "series_name": "OPV"
+  },
+  {
+    "code": "PCV1",
+    "name": "Pneumococcal Conjugate Vaccine (1st dose)",
+    "description": "First dose of pneumococcal vaccine",
+    "disease_target": "Pneumococcal disease",
+    "standard_age_days": 42,
+    "route": "IM",
+    "dose_number": 1,
+    "series_name": "PCV"
+  },
+  {
+    "code": "RV1",
+    "name": "Rotavirus Vaccine (1st dose)",
+    "description": "First dose of rotavirus vaccine",
+    "disease_target": "Rotavirus diarrhoea",
+    "standard_age_days": 42,
+    "route": "ORAL",
+    "dose_number": 1,
+    "series_name": "Rotavirus"
+  },
+  {
+    "code": "PENTA2",
+    "name": "Pentavalent Vaccine (2nd dose)",
+    "description": "DPT-HepB-Hib combination vaccine",
+    "disease_target": "Diphtheria, Pertussis, Tetanus, Hepatitis B, Haemophilus influenzae type b",
+    "standard_age_days": 70,
+    "route": "IM",
+    "dose_number": 2,
+    "series_name": "Pentavalent"
+  },
+  {
+    "code": "OPV2",
+    "name": "Oral Polio Vaccine (2nd dose)",
+    "description": "Second dose of oral polio vaccine",
+    "disease_target": "Poliomyelitis",
+    "standard_age_days": 70,
+    "route": "ORAL",
+    "dose_number": 3,
+    "series_name": "OPV"
+  },
+  {
+    "code": "PCV2",
+    "name": "Pneumococcal Conjugate Vaccine (2nd dose)",
+    "description": "Second dose of pneumococcal vaccine",
+    "disease_target": "Pneumococcal disease",
+    "standard_age_days": 70,
+    "route": "IM",
+    "dose_number": 2,
+    "series_name": "PCV"
+  },
+  {
+    "code": "RV2",
+    "name": "Rotavirus Vaccine (2nd dose)",
+    "description": "Second dose of rotavirus vaccine",
+    "disease_target": "Rotavirus diarrhoea",
+    "standard_age_days": 70,
+    "route": "ORAL",
+    "dose_number": 2,
+    "series_name": "Rotavirus"
+  },
+  {
+    "code": "PENTA3",
+    "name": "Pentavalent Vaccine (3rd dose)",
+    "description": "DPT-HepB-Hib combination vaccine",
+    "disease_target": "Diphtheria, Pertussis, Tetanus, Hepatitis B, Haemophilus influenzae type b",
+    "standard_age_days": 98,
+    "route": "IM",
+    "dose_number": 3,
+    "series_name": "Pentavalent"
+  },
+  {
+    "code": "OPV3",
+    "name": "Oral Polio Vaccine (3rd dose)",
+    "description": "Third dose of oral polio vaccine",
+    "disease_target": "Poliomyelitis",
+    "standard_age_days": 98,
+    "route": "ORAL",
+    "dose_number": 4,
+    "series_name": "OPV"
+  },
+  {
+    "code": "PCV3",
+    "name": "Pneumococcal Conjugate Vaccine (3rd dose)",
+    "description": "Third dose of pneumococcal vaccine",
+    "disease_target": "Pneumococcal disease",
+    "standard_age_days": 98,
+    "route": "IM",
+    "dose_number": 3,
+    "series_name": "PCV"
+  },
+  {
+    "code": "IPV",
+    "name": "Inactivated Polio Vaccine",
+    "description": "Inactivated polio vaccine injection",
+    "disease_target": "Poliomyelitis",
+    "standard_age_days": 98,
+    "route": "IM",
+    "dose_number": 1,
+    "series_name": "IPV"
+  },
+  {
+    "code": "RV3",
+    "name": "Rotavirus Vaccine (3rd dose)",
+    "description": "Third dose of rotavirus vaccine",
+    "disease_target": "Rotavirus diarrhoea",
+    "standard_age_days": 98,
+    "route": "ORAL",
+    "dose_number": 3,
+    "series_name": "Rotavirus"
+  },
+  {
+    "code": "VITA1",
+    "name": "Vitamin A Supplement (1st dose)",
+    "description": "100,000 IU Vitamin A supplement",
+    "disease_target": "Vitamin A deficiency",
+    "standard_age_days": 183,
+    "route": "ORAL",
+    "dose_number": 1,
+    "series_name": "Vitamin A"
+  },
+  {
+    "code": "MR1",
+    "name": "Measles-Rubella Vaccine (1st dose)",
+    "description": "First dose of measles-rubella vaccine",
+    "disease_target": "Measles, Rubella",
+    "standard_age_days": 274,
+    "route": "SC",
+    "dose_number": 1,
+    "series_name": "Measles-Rubella"
+  },
+  {
+    "code": "YF",
+    "name": "Yellow Fever Vaccine",
+    "description": "Yellow fever vaccine (endemic areas only)",
+    "disease_target": "Yellow Fever",
+    "standard_age_days": 274,
+    "route": "SC",
+    "dose_number": 1,
+    "series_name": "Yellow Fever"
+  },
+  {
+    "code": "VITA2",
+    "name": "Vitamin A Supplement (2nd dose)",
+    "description": "200,000 IU Vitamin A supplement",
+    "disease_target": "Vitamin A deficiency",
+    "standard_age_days": 365,
+    "route": "ORAL",
+    "dose_number": 2,
+    "series_name": "Vitamin A"
+  },
+  {
+    "code": "MR2",
+    "name": "Measles-Rubella Vaccine (2nd dose)",
+    "description": "Second dose of measles-rubella vaccine",
+    "disease_target": "Measles, Rubella",
+    "standard_age_days": 548,
+    "route": "SC",
+    "dose_number": 2,
+    "series_name": "Measles-Rubella"
+  },
+  {
+    "code": "VITA3",
+    "name": "Vitamin A Supplement (3rd dose)",
+    "description": "200,000 IU Vitamin A supplement",
+    "disease_target": "Vitamin A deficiency",
+    "standard_age_days": 548,
+    "route": "ORAL",
+    "dose_number": 3,
+    "series_name": "Vitamin A"
+  }
+]

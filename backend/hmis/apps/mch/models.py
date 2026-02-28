@@ -1,0 +1,1870 @@
+"""
+Maternal & Child Health (MCH) models for Vitora HMIS.
+
+This module contains all MCH-related models including:
+- MCHRegistration: Pregnancy record / MCH card, linked to ClinicEnrollment (ANC)
+- ANCVisit: Antenatal care visit tracking (up to 10 contacts per WHO)
+- Delivery: Delivery record with baby details & outcomes
+- PNCVisit: Postnatal care visit tracking
+- GrowthMeasurement: Pediatric growth monitoring with WHO Z-scores
+- Vaccine: KEPI immunization schedule reference data
+- ImmunizationRecord: Child immunization tracking
+- VitaminASupplement: Vitamin A supplementation tracking
+- AEFI: Adverse Event Following Immunization reporting
+- HEIFollowUp: HIV-Exposed Infant follow-up
+- HEIPCRTest: PCR test scheduling and result tracking
+
+All models follow TDD approach and Kenya healthcare requirements.
+DHA Compliance Phase 2 - Sprint 2.B: MCH & Growth Charts.
+"""
+
+from datetime import date, datetime
+from decimal import Decimal
+
+from django.apps import apps
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
+from django.utils import timezone
+from simple_history.models import HistoricalRecords
+
+from hmis.apps.core.history import HistoryMixin
+from hmis.apps.core.models import TimeStampedModel
+
+
+# =============================================================================
+# Number Generation Helpers
+# =============================================================================
+
+
+def generate_mch_number():
+    """
+    Generate a unique MCH Registration Number.
+
+    Format: MCH-YYYYMMDD-XXXX
+
+    Returns:
+        str: A unique MCH registration number string
+    """
+    today = datetime.now().strftime("%Y%m%d")
+    prefix = f"MCH-{today}-"
+
+    MCHRegistration = apps.get_model("mch", "MCHRegistration")
+
+    latest = (
+        MCHRegistration.objects.filter(mch_number__startswith=prefix)
+        .order_by("-mch_number")
+        .first()
+    )
+
+    if latest:
+        last_seq = int(latest.mch_number.split("-")[-1])
+        sequence = last_seq + 1
+    else:
+        sequence = 1
+
+    return f"{prefix}{sequence:04d}"
+
+
+def generate_hei_number():
+    """
+    Generate a unique HEI Follow-Up Number.
+
+    Format: HEI-YYYYMMDD-XXXX
+
+    Returns:
+        str: A unique HEI follow-up number string
+    """
+    today = datetime.now().strftime("%Y%m%d")
+    prefix = f"HEI-{today}-"
+
+    HEIFollowUp = apps.get_model("mch", "HEIFollowUp")
+
+    latest = (
+        HEIFollowUp.objects.filter(hei_number__startswith=prefix)
+        .order_by("-hei_number")
+        .first()
+    )
+
+    if latest:
+        last_seq = int(latest.hei_number.split("-")[-1])
+        sequence = last_seq + 1
+    else:
+        sequence = 1
+
+    return f"{prefix}{sequence:04d}"
+
+
+# =============================================================================
+# MCH Registration Model
+# =============================================================================
+
+
+class MCHRegistration(HistoryMixin, TimeStampedModel):
+    """
+    Pregnancy registration / MCH card.
+
+    Links to the existing ClinicEnrollment (ANC type) to reuse ANC fields:
+    gravida, parity, LMP, EDD, blood group, HIV status, rhesus, etc.
+
+    Tracks the full pregnancy journey: registration → ANC visits → delivery → PNC.
+    """
+
+    STATUS_CHOICES = [
+        ("ACTIVE", "Active (ANC)"),
+        ("DELIVERED", "Delivered"),
+        ("POSTNATAL", "Postnatal Care"),
+        ("COMPLETED", "Completed"),
+        ("TRANSFERRED_OUT", "Transferred Out"),
+        ("LOST_TO_FOLLOW_UP", "Lost to Follow-up"),
+        ("DECEASED", "Deceased"),
+    ]
+
+    STATUS_TRANSITIONS = {
+        "ACTIVE": ["DELIVERED", "TRANSFERRED_OUT", "LOST_TO_FOLLOW_UP", "DECEASED"],
+        "DELIVERED": ["POSTNATAL", "TRANSFERRED_OUT", "DECEASED"],
+        "POSTNATAL": ["COMPLETED", "TRANSFERRED_OUT", "LOST_TO_FOLLOW_UP", "DECEASED"],
+        "COMPLETED": [],
+        "TRANSFERRED_OUT": [],
+        "LOST_TO_FOLLOW_UP": ["ACTIVE"],
+        "DECEASED": [],
+    }
+
+    # Auto-generated number
+    mch_number = models.CharField(
+        max_length=30,
+        unique=True,
+        editable=False,
+        default=generate_mch_number,
+        help_text="Auto-generated MCH registration number (MCH-YYYYMMDD-XXXX)",
+    )
+
+    # Mother
+    mother = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="mch_registrations",
+        help_text="Mother / pregnant woman",
+    )
+
+    # Link to ANC enrollment (contains gravida, parity, LMP, EDD, blood group, etc.)
+    anc_enrollment = models.ForeignKey(
+        "clinics.ClinicEnrollment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mch_registrations",
+        help_text="ANC clinic enrollment with pregnancy details",
+    )
+
+    # Baby (linked post-delivery)
+    baby = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mch_registration_as_baby",
+        help_text="Baby patient record (linked after delivery)",
+    )
+
+    # Registration details
+    registration_date = models.DateField(
+        default=date.today,
+        help_text="Date of MCH registration",
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="ACTIVE",
+    )
+
+    # Risk assessment
+    is_high_risk = models.BooleanField(
+        default=False,
+        help_text="Whether this is a high-risk pregnancy",
+    )
+    risk_factors = models.TextField(
+        blank=True,
+        default="",
+        help_text="Description of risk factors if applicable",
+    )
+
+    # SHA / Linda Jamii
+    sha_claimable = models.BooleanField(
+        default=True,
+        help_text="Whether this registration is SHA claimable",
+    )
+    linda_jamii_beneficiary = models.BooleanField(
+        default=False,
+        help_text="Whether the mother is a Linda Jamii beneficiary (free maternity)",
+    )
+
+    # Sensitive access (auto-set for HIV+)
+    is_sensitive = models.BooleanField(
+        default=False,
+        help_text="Auto-set for HIV-positive pregnancies",
+    )
+
+    # Staff
+    registered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="mch_registrations_created",
+    )
+
+    # Notes
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Additional notes",
+    )
+
+    # Tracking
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    # Audit trail
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["-registration_date", "-created_at"]
+        verbose_name = "MCH Registration"
+        verbose_name_plural = "MCH Registrations"
+        permissions = [
+            ("view_sensitive_mch_registration", "Can view sensitive MCH registrations"),
+        ]
+
+    def __str__(self):
+        return f"{self.mch_number} - {self.mother}"
+
+    def save(self, *args, **kwargs):
+        """Override save for auto-sensitivity and MCH number generation."""
+        if not self.mch_number:
+            self.mch_number = generate_mch_number()
+
+        # Auto-set sensitivity for HIV-positive pregnancies
+        if self.anc_enrollment and self.anc_enrollment.hiv_status == "POSITIVE":
+            self.is_sensitive = True
+
+        # Auto-detect high-risk from enrollment
+        if self.anc_enrollment and self.anc_enrollment.high_risk_pregnancy:
+            self.is_high_risk = True
+            if (
+                self.anc_enrollment.high_risk_factors
+                and not self.risk_factors
+            ):
+                self.risk_factors = self.anc_enrollment.high_risk_factors
+
+        super().save(*args, **kwargs)
+
+    def can_transition_to(self, new_status: str) -> bool:
+        """Check if transition to new_status is allowed."""
+        allowed = self.STATUS_TRANSITIONS.get(self.status, [])
+        return new_status in allowed
+
+    def transition_status(self, new_status: str) -> None:
+        """Transition to a new status with validation."""
+        if not self.can_transition_to(new_status):
+            raise ValidationError(
+                f"Cannot transition from '{self.status}' to '{new_status}'. "
+                f"Allowed transitions: {self.STATUS_TRANSITIONS.get(self.status, [])}"
+            )
+        self.status = new_status
+        if new_status == "COMPLETED":
+            self.completed_at = timezone.now()
+        self.save()
+
+    @property
+    def gestation_display(self) -> str:
+        """Return gestation display from linked ANC enrollment."""
+        if self.anc_enrollment:
+            return self.anc_enrollment.gestation_display()
+        return "Unknown"
+
+    @property
+    def edd(self):
+        """Return EDD from linked ANC enrollment."""
+        if self.anc_enrollment:
+            return self.anc_enrollment.edd
+        return None
+
+    @property
+    def trimester(self):
+        """Return trimester from linked ANC enrollment."""
+        if self.anc_enrollment:
+            return self.anc_enrollment.trimester()
+        return None
+
+    @property
+    def anc_visit_count(self) -> int:
+        """Return count of ANC visits."""
+        return self.anc_visits.count()
+
+    @property
+    def pnc_visit_count(self) -> int:
+        """Return count of PNC visits."""
+        return self.pnc_visits.count()
+
+
+# =============================================================================
+# ANC Visit Model
+# =============================================================================
+
+
+class ANCVisit(HistoryMixin, TimeStampedModel):
+    """
+    Antenatal Care visit record.
+
+    WHO recommends 8+ contacts (Kenya targets 4+ ANC visits minimum).
+    Tracks clinical data, investigations, supplements per visit.
+    """
+
+    PRESENTATION_CHOICES = [
+        ("CEPHALIC", "Cephalic"),
+        ("BREECH", "Breech"),
+        ("TRANSVERSE", "Transverse"),
+        ("OBLIQUE", "Oblique"),
+        ("UNKNOWN", "Unknown"),
+    ]
+
+    LIE_CHOICES = [
+        ("LONGITUDINAL", "Longitudinal"),
+        ("TRANSVERSE", "Transverse"),
+        ("OBLIQUE", "Oblique"),
+    ]
+
+    URINE_CHOICES = [
+        ("NEGATIVE", "Negative"),
+        ("TRACE", "Trace"),
+        ("1+", "1+"),
+        ("2+", "2+"),
+        ("3+", "3+"),
+        ("4+", "4+"),
+    ]
+
+    registration = models.ForeignKey(
+        MCHRegistration,
+        on_delete=models.PROTECT,
+        related_name="anc_visits",
+        help_text="MCH registration this visit belongs to",
+    )
+
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="anc_visits",
+        help_text="Clinical encounter for this visit",
+    )
+
+    # Visit details
+    visit_number = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(20)],
+        help_text="Sequential visit number (1-20, WHO recommends 8+)",
+    )
+    visit_date = models.DateField(
+        default=date.today,
+        help_text="Date of ANC visit",
+    )
+    gestation_weeks = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="Gestation in weeks at time of visit",
+    )
+
+    # Maternal vital signs
+    weight = models.DecimalField(
+        max_digits=5,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("20.0")), MaxValueValidator(Decimal("300.0"))],
+        help_text="Weight in kg",
+    )
+    blood_pressure = models.CharField(
+        max_length=10,
+        blank=True,
+        default="",
+        help_text="Blood pressure in format '120/80'",
+    )
+
+    # Obstetric examination
+    fundal_height = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("5.0")), MaxValueValidator(Decimal("50.0"))],
+        help_text="Fundal height in cm",
+    )
+    fetal_heart_rate = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(80), MaxValueValidator(200)],
+        help_text="Fetal heart rate in BPM (normal: 110-160)",
+    )
+    presentation = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        choices=PRESENTATION_CHOICES,
+        help_text="Fetal presentation",
+    )
+    lie = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        choices=LIE_CHOICES,
+        help_text="Fetal lie",
+    )
+    fetal_movements = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Whether fetal movements are present",
+    )
+
+    # Urine analysis
+    urine_protein = models.CharField(
+        max_length=10,
+        blank=True,
+        default="",
+        choices=URINE_CHOICES,
+        help_text="Urine protein level",
+    )
+    urine_glucose = models.CharField(
+        max_length=10,
+        blank=True,
+        default="",
+        choices=URINE_CHOICES,
+        help_text="Urine glucose level",
+    )
+
+    # Investigations
+    hb_level = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("3.0")), MaxValueValidator(Decimal("20.0"))],
+        help_text="Haemoglobin level in g/dL",
+    )
+    blood_sugar = models.DecimalField(
+        max_digits=5,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        help_text="Blood sugar in mmol/L",
+    )
+    hiv_test_done = models.BooleanField(
+        default=False,
+        help_text="Whether HIV test was done at this visit",
+    )
+    syphilis_test_done = models.BooleanField(
+        default=False,
+        help_text="Whether syphilis test was done at this visit",
+    )
+
+    # Supplements & prophylaxis
+    iron_folate_given = models.BooleanField(
+        default=False,
+        help_text="Iron-folate supplement given",
+    )
+    calcium_given = models.BooleanField(
+        default=False,
+        help_text="Calcium supplement given",
+    )
+    deworming_given = models.BooleanField(
+        default=False,
+        help_text="Deworming medication given",
+    )
+    tetanus_toxoid_dose = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MaxValueValidator(5)],
+        help_text="Tetanus toxoid dose number given (1-5)",
+    )
+
+    # Scheduling & notes
+    next_visit_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Next scheduled ANC visit date",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Clinical notes",
+    )
+
+    # Staff
+    conducted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="anc_visits_conducted",
+    )
+
+    # Audit trail
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["registration", "visit_number"]
+        verbose_name = "ANC Visit"
+        verbose_name_plural = "ANC Visits"
+        unique_together = ["registration", "visit_number"]
+
+    def __str__(self):
+        return f"ANC Visit {self.visit_number} - {self.registration.mch_number}"
+
+    def save(self, *args, **kwargs):
+        """Auto-calculate gestation weeks from enrollment LMP."""
+        if not self.gestation_weeks and self.registration.anc_enrollment:
+            enrollment = self.registration.anc_enrollment
+            if enrollment.lmp:
+                days = (self.visit_date - enrollment.lmp).days
+                self.gestation_weeks = max(0, days // 7)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_fetal_heart_rate_normal(self) -> bool | None:
+        """Check if fetal heart rate is in normal range (110-160 BPM)."""
+        if self.fetal_heart_rate is None:
+            return None
+        return 110 <= self.fetal_heart_rate <= 160
+
+    def get_alerts(self) -> list[str]:
+        """Return list of clinical alerts for this visit."""
+        alerts = []
+        if self.fetal_heart_rate:
+            if self.fetal_heart_rate < 110:
+                alerts.append(f"Fetal bradycardia: {self.fetal_heart_rate} BPM")
+            elif self.fetal_heart_rate > 160:
+                alerts.append(f"Fetal tachycardia: {self.fetal_heart_rate} BPM")
+
+        if self.urine_protein and self.urine_protein not in ("NEGATIVE", "TRACE", ""):
+            alerts.append(f"Proteinuria: {self.urine_protein}")
+
+        if self.hb_level and self.hb_level < Decimal("10.0"):
+            alerts.append(f"Anaemia: Hb {self.hb_level} g/dL")
+
+        return alerts
+
+
+# =============================================================================
+# Delivery Model
+# =============================================================================
+
+
+class Delivery(HistoryMixin, TimeStampedModel):
+    """
+    Delivery record.
+
+    Records delivery details, outcomes, and baby information.
+    Auto-creates baby Patient record via signals when completed.
+    """
+
+    DELIVERY_TYPE_CHOICES = [
+        ("SVD", "Spontaneous Vaginal Delivery"),
+        ("ASSISTED_VAGINAL", "Assisted Vaginal Delivery"),
+        ("ELECTIVE_CS", "Elective Cesarean Section"),
+        ("EMERGENCY_CS", "Emergency Cesarean Section"),
+        ("VACUUM", "Vacuum Extraction"),
+        ("FORCEPS", "Forceps Delivery"),
+    ]
+
+    DELIVERY_OUTCOME_CHOICES = [
+        ("LIVE_BIRTH", "Live Birth"),
+        ("STILLBIRTH", "Stillbirth"),
+        ("NEONATAL_DEATH", "Neonatal Death"),
+        ("MATERNAL_DEATH", "Maternal Death"),
+    ]
+
+    PLACE_OF_DELIVERY_CHOICES = [
+        ("FACILITY", "Health Facility"),
+        ("HOME", "Home"),
+        ("EN_ROUTE", "En Route to Facility"),
+    ]
+
+    STATUS_CHOICES = [
+        ("PENDING", "Pending"),
+        ("COMPLETED", "Completed"),
+        ("REFERRED", "Referred"),
+    ]
+
+    GENDER_CHOICES = [
+        ("M", "Male"),
+        ("F", "Female"),
+        ("O", "Other"),
+    ]
+
+    registration = models.ForeignKey(
+        MCHRegistration,
+        on_delete=models.PROTECT,
+        related_name="deliveries",
+        help_text="MCH registration this delivery belongs to",
+    )
+
+    # Delivery details
+    delivery_date = models.DateField(
+        default=date.today,
+        help_text="Date of delivery",
+    )
+    delivery_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Time of delivery",
+    )
+    delivery_type = models.CharField(
+        max_length=30,
+        choices=DELIVERY_TYPE_CHOICES,
+        help_text="Type of delivery",
+    )
+    delivery_outcome = models.CharField(
+        max_length=30,
+        choices=DELIVERY_OUTCOME_CHOICES,
+        help_text="Delivery outcome",
+    )
+    place_of_delivery = models.CharField(
+        max_length=20,
+        choices=PLACE_OF_DELIVERY_CHOICES,
+        default="FACILITY",
+        help_text="Place of delivery",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="PENDING",
+    )
+
+    # Staff
+    delivered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="deliveries_conducted",
+    )
+
+    # Baby details
+    baby_gender = models.CharField(
+        max_length=1,
+        choices=GENDER_CHOICES,
+        blank=True,
+        default="",
+        help_text="Baby's gender",
+    )
+    birth_weight = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.30")), MaxValueValidator(Decimal("8.00"))],
+        help_text="Birth weight in kg",
+    )
+    apgar_score_1min = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MaxValueValidator(10)],
+        help_text="APGAR score at 1 minute (0-10)",
+    )
+    apgar_score_5min = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MaxValueValidator(10)],
+        help_text="APGAR score at 5 minutes (0-10)",
+    )
+    apgar_score_10min = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MaxValueValidator(10)],
+        help_text="APGAR score at 10 minutes (0-10)",
+    )
+    resuscitation_done = models.BooleanField(
+        default=False,
+        help_text="Whether neonatal resuscitation was performed",
+    )
+
+    # Baby patient record (auto-created via signal on delivery completion)
+    baby_patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="birth_delivery_record",
+        help_text="Baby's patient record (auto-created on COMPLETED)",
+    )
+
+    # Complications
+    maternal_complications = models.TextField(
+        blank=True,
+        default="",
+        help_text="Maternal complications during delivery",
+    )
+    neonatal_complications = models.TextField(
+        blank=True,
+        default="",
+        help_text="Neonatal complications",
+    )
+    blood_loss_ml = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Estimated blood loss in mL",
+    )
+    placenta_complete = models.BooleanField(
+        default=True,
+        help_text="Whether placenta was delivered complete",
+    )
+
+    # Notes
+    notes = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    # Audit trail
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["-delivery_date"]
+        verbose_name = "Delivery"
+        verbose_name_plural = "Deliveries"
+
+    def __str__(self):
+        return (
+            f"Delivery {self.delivery_date} - "
+            f"{self.registration.mch_number} ({self.get_delivery_outcome_display()})"
+        )
+
+    @property
+    def is_low_birth_weight(self) -> bool | None:
+        """Check if birth weight < 2.5 kg."""
+        if self.birth_weight is None:
+            return None
+        return self.birth_weight < Decimal("2.50")
+
+    @property
+    def is_macrosomia(self) -> bool | None:
+        """Check if birth weight > 4.0 kg."""
+        if self.birth_weight is None:
+            return None
+        return self.birth_weight > Decimal("4.00")
+
+    def get_alerts(self) -> list[str]:
+        """Return list of alerts for this delivery."""
+        alerts = []
+        if self.is_low_birth_weight:
+            alerts.append(f"Low birth weight: {self.birth_weight} kg")
+        if self.is_macrosomia:
+            alerts.append(f"Macrosomia: {self.birth_weight} kg")
+        if self.apgar_score_1min is not None and self.apgar_score_1min < 7:
+            alerts.append(f"Low APGAR at 1 min: {self.apgar_score_1min}")
+        if self.apgar_score_5min is not None and self.apgar_score_5min < 7:
+            alerts.append(f"Low APGAR at 5 min: {self.apgar_score_5min}")
+        if self.blood_loss_ml and self.blood_loss_ml > 500:
+            alerts.append(f"Postpartum haemorrhage: {self.blood_loss_ml} mL")
+        if not self.placenta_complete:
+            alerts.append("Incomplete placenta - retained products risk")
+        return alerts
+
+
+# =============================================================================
+# PNC Visit Model
+# =============================================================================
+
+
+class PNCVisit(HistoryMixin, TimeStampedModel):
+    """
+    Postnatal Care visit record.
+
+    Standard schedule: within 48hrs, 3-7 days, 8-14 days, 6 weeks post-delivery.
+    Assesses both mother and baby.
+    """
+
+    LOCHIA_CHOICES = [
+        ("NORMAL", "Normal"),
+        ("HEAVY", "Heavy"),
+        ("FOUL_SMELLING", "Foul Smelling"),
+        ("ABSENT", "Absent"),
+    ]
+
+    BREAST_CONDITION_CHOICES = [
+        ("NORMAL", "Normal"),
+        ("ENGORGED", "Engorged"),
+        ("MASTITIS", "Mastitis"),
+        ("CRACKED_NIPPLES", "Cracked Nipples"),
+        ("ABSCESS", "Abscess"),
+    ]
+
+    CORD_STATUS_CHOICES = [
+        ("CLEAN", "Clean"),
+        ("INFECTED", "Infected"),
+        ("SEPARATED", "Separated"),
+    ]
+
+    BREASTFEEDING_STATUS_CHOICES = [
+        ("EXCLUSIVE", "Exclusive Breastfeeding"),
+        ("MIXED", "Mixed Feeding"),
+        ("FORMULA", "Formula Feeding"),
+        ("NOT_FEEDING", "Not Feeding"),
+    ]
+
+    MOOD_CHOICES = [
+        ("NORMAL", "Normal"),
+        ("MILDLY_LOW", "Mildly Low Mood"),
+        ("DEPRESSED", "Possibly Depressed"),
+        ("SEVERELY_DEPRESSED", "Severely Depressed - Requires Referral"),
+    ]
+
+    registration = models.ForeignKey(
+        MCHRegistration,
+        on_delete=models.PROTECT,
+        related_name="pnc_visits",
+        help_text="MCH registration this PNC visit belongs to",
+    )
+
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pnc_visits",
+    )
+
+    # Visit details
+    visit_number = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(10)],
+        help_text="PNC visit number (1=within 48hrs, 2=3-7d, 3=8-14d, 4=6wks)",
+    )
+    visit_date = models.DateField(
+        default=date.today,
+        help_text="Date of PNC visit",
+    )
+    days_postpartum = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="Auto-calculated days since delivery",
+    )
+
+    # Mother assessment
+    blood_pressure = models.CharField(
+        max_length=10,
+        blank=True,
+        default="",
+        help_text="Blood pressure in format '120/80'",
+    )
+    temperature = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("34.0")), MaxValueValidator(Decimal("42.0"))],
+        help_text="Temperature in °C",
+    )
+    uterine_involution = models.TextField(
+        blank=True,
+        default="",
+        help_text="Uterine involution assessment",
+    )
+    lochia = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        choices=LOCHIA_CHOICES,
+        help_text="Lochia assessment",
+    )
+    breast_condition = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        choices=BREAST_CONDITION_CHOICES,
+        help_text="Breast condition",
+    )
+    mood_assessment = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        choices=MOOD_CHOICES,
+        help_text="Postpartum depression screening",
+    )
+
+    # Baby assessment
+    baby_weight = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.30")), MaxValueValidator(Decimal("15.00"))],
+        help_text="Baby weight in kg",
+    )
+    baby_temperature = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("34.0")), MaxValueValidator(Decimal("42.0"))],
+        help_text="Baby temperature in °C",
+    )
+    cord_status = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        choices=CORD_STATUS_CHOICES,
+        help_text="Umbilical cord status",
+    )
+    breastfeeding_status = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        choices=BREASTFEEDING_STATUS_CHOICES,
+        help_text="Breastfeeding status",
+    )
+
+    # Family planning
+    family_planning_counselling = models.BooleanField(
+        default=False,
+        help_text="Whether family planning counselling was provided",
+    )
+    contraceptive_given = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Contraceptive method provided (if any)",
+    )
+
+    # Staff & notes
+    conducted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pnc_visits_conducted",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    # Audit trail
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["registration", "visit_number"]
+        verbose_name = "PNC Visit"
+        verbose_name_plural = "PNC Visits"
+        unique_together = ["registration", "visit_number"]
+
+    def __str__(self):
+        return f"PNC Visit {self.visit_number} - {self.registration.mch_number}"
+
+    def save(self, *args, **kwargs):
+        """Auto-calculate days postpartum from delivery date."""
+        deliveries = self.registration.deliveries.filter(status="COMPLETED")
+        if deliveries.exists():
+            latest_delivery = deliveries.order_by("-delivery_date").first()
+            if latest_delivery:
+                self.days_postpartum = (self.visit_date - latest_delivery.delivery_date).days
+        super().save(*args, **kwargs)
+
+    def get_alerts(self) -> list[str]:
+        """Return list of alerts for this PNC visit."""
+        alerts = []
+        if self.lochia == "FOUL_SMELLING":
+            alerts.append("Foul-smelling lochia - possible infection")
+        if self.breast_condition in ("MASTITIS", "ABSCESS"):
+            alerts.append(f"Breast condition: {self.get_breast_condition_display()}")
+        if self.cord_status == "INFECTED":
+            alerts.append("Infected umbilical cord")
+        if self.mood_assessment in ("DEPRESSED", "SEVERELY_DEPRESSED"):
+            alerts.append(f"Postpartum depression screening: {self.get_mood_assessment_display()}")
+        if self.temperature and self.temperature >= Decimal("38.0"):
+            alerts.append(f"Maternal fever: {self.temperature}°C")
+        if self.baby_temperature and self.baby_temperature >= Decimal("38.0"):
+            alerts.append(f"Baby fever: {self.baby_temperature}°C")
+        return alerts
+
+
+# =============================================================================
+# Growth Measurement Model
+# =============================================================================
+
+
+class GrowthMeasurement(HistoryMixin, TimeStampedModel):
+    """
+    Pediatric growth measurement with WHO Z-score calculation.
+
+    Tracks weight, height/length, head circumference, and MUAC.
+    Auto-calculates WHO Z-scores on save.
+    """
+
+    MUAC_CLASSIFICATION_CHOICES = [
+        ("NORMAL", "Normal"),
+        ("MAM", "Moderate Acute Malnutrition"),
+        ("SAM", "Severe Acute Malnutrition"),
+    ]
+
+    NUTRITIONAL_STATUS_CHOICES = [
+        ("NORMAL", "Normal"),
+        ("MILD_UNDERWEIGHT", "Mild Underweight"),
+        ("MODERATE_UNDERWEIGHT", "Moderate Underweight"),
+        ("SEVERE_UNDERWEIGHT", "Severe Underweight"),
+        ("OVERWEIGHT", "Overweight"),
+        ("OBESE", "Obese"),
+    ]
+
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="growth_measurements",
+        help_text="Child patient",
+    )
+
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="growth_measurements",
+    )
+
+    measured_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="growth_measurements_recorded",
+    )
+
+    # Measurement details
+    measurement_date = models.DateField(
+        default=date.today,
+        help_text="Date of measurement",
+    )
+    age_in_days = models.PositiveIntegerField(
+        editable=False,
+        null=True,
+        blank=True,
+        help_text="Age in days at time of measurement (auto-calculated)",
+    )
+
+    # Anthropometric measurements
+    weight = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.30")), MaxValueValidator(Decimal("100.00"))],
+        help_text="Weight in kg",
+    )
+    height = models.DecimalField(
+        max_digits=5,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("20.0")), MaxValueValidator(Decimal("200.0"))],
+        help_text="Height/length in cm (length for <2yr, height for ≥2yr)",
+    )
+    head_circumference = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("20.0")), MaxValueValidator(Decimal("65.0"))],
+        help_text="Head circumference in cm",
+    )
+    muac = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("5.0")), MaxValueValidator(Decimal("40.0"))],
+        help_text="Mid-Upper Arm Circumference in cm",
+    )
+
+    # WHO Z-scores (auto-calculated on save)
+    weight_for_age_z = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="Weight-for-age Z-score",
+    )
+    height_for_age_z = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="Height/length-for-age Z-score",
+    )
+    weight_for_height_z = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="Weight-for-height Z-score",
+    )
+    bmi_for_age_z = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="BMI-for-age Z-score",
+    )
+    head_circumference_for_age_z = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="Head circumference-for-age Z-score",
+    )
+
+    # Classification (auto-set on save)
+    muac_classification = models.CharField(
+        max_length=10,
+        blank=True,
+        default="",
+        choices=MUAC_CLASSIFICATION_CHOICES,
+        help_text="MUAC-based malnutrition classification",
+    )
+    nutritional_status = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        choices=NUTRITIONAL_STATUS_CHOICES,
+        help_text="Overall nutritional status from Z-scores",
+    )
+
+    # Notes
+    notes = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    # Audit trail
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["-measurement_date"]
+        verbose_name = "Growth Measurement"
+        verbose_name_plural = "Growth Measurements"
+
+    def __str__(self):
+        return f"Growth {self.measurement_date} - {self.patient}"
+
+    def save(self, *args, **kwargs):
+        """Auto-calculate age, Z-scores, and classifications on save."""
+        # Calculate age in days
+        if self.patient and self.patient.date_of_birth:
+            self.age_in_days = (self.measurement_date - self.patient.date_of_birth).days
+
+        # Calculate Z-scores
+        self._calculate_z_scores()
+
+        # Classify MUAC
+        self._classify_muac()
+
+        # Classify nutritional status from Z-scores
+        self._classify_nutritional_status()
+
+        super().save(*args, **kwargs)
+
+    def _calculate_z_scores(self):
+        """Calculate WHO Z-scores using the growth calculator service."""
+        if not self.age_in_days or not self.patient:
+            return
+
+        try:
+            from hmis.apps.mch.services.growth import WHOGrowthCalculator
+
+            calculator = WHOGrowthCalculator()
+            sex = self.patient.gender  # 'M' or 'F'
+
+            if self.weight:
+                self.weight_for_age_z = calculator.weight_for_age_z(
+                    float(self.weight), self.age_in_days, sex
+                )
+
+            if self.height:
+                self.height_for_age_z = calculator.height_for_age_z(
+                    float(self.height), self.age_in_days, sex
+                )
+
+            if self.weight and self.height:
+                self.weight_for_height_z = calculator.weight_for_height_z(
+                    float(self.weight), float(self.height), sex
+                )
+
+                # BMI-for-age
+                height_m = float(self.height) / 100
+                if height_m > 0:
+                    bmi = float(self.weight) / (height_m ** 2)
+                    self.bmi_for_age_z = calculator.bmi_for_age_z(
+                        bmi, self.age_in_days, sex
+                    )
+
+            if self.head_circumference:
+                self.head_circumference_for_age_z = calculator.head_circumference_for_age_z(
+                    float(self.head_circumference), self.age_in_days, sex
+                )
+        except Exception:
+            # Z-score calculation is optional; don't prevent saving
+            pass
+
+    def _classify_muac(self):
+        """Classify MUAC for children 6-59 months."""
+        if not self.muac or not self.age_in_days:
+            return
+
+        age_months = self.age_in_days / 30.44  # Average days per month
+
+        if 6 <= age_months <= 59:
+            muac_cm = float(self.muac)
+            if muac_cm < 11.5:
+                self.muac_classification = "SAM"
+            elif muac_cm < 12.5:
+                self.muac_classification = "MAM"
+            else:
+                self.muac_classification = "NORMAL"
+
+    def _classify_nutritional_status(self):
+        """Classify overall nutritional status from weight-for-age Z-score."""
+        z = self.weight_for_age_z
+        if z is None:
+            return
+
+        z_float = float(z)
+        if z_float < -3:
+            self.nutritional_status = "SEVERE_UNDERWEIGHT"
+        elif z_float < -2:
+            self.nutritional_status = "MODERATE_UNDERWEIGHT"
+        elif z_float < -1:
+            self.nutritional_status = "MILD_UNDERWEIGHT"
+        elif z_float <= 1:
+            self.nutritional_status = "NORMAL"
+        elif z_float <= 2:
+            self.nutritional_status = "OVERWEIGHT"
+        else:
+            self.nutritional_status = "OBESE"
+
+    def has_critical_flag(self) -> bool:
+        """Return True if any Z-score < -3 (severe) or MUAC indicates SAM."""
+        if self.muac_classification == "SAM":
+            return True
+        for z in [
+            self.weight_for_age_z,
+            self.height_for_age_z,
+            self.weight_for_height_z,
+            self.bmi_for_age_z,
+        ]:
+            if z is not None and float(z) < -3:
+                return True
+        return False
+
+    def get_alerts(self) -> list[str]:
+        """Return list of growth alerts."""
+        alerts = []
+        if self.muac_classification == "SAM":
+            alerts.append(f"SEVERE ACUTE MALNUTRITION: MUAC {self.muac} cm")
+        elif self.muac_classification == "MAM":
+            alerts.append(f"Moderate acute malnutrition: MUAC {self.muac} cm")
+
+        if self.weight_for_age_z is not None and float(self.weight_for_age_z) < -3:
+            alerts.append(f"Severely underweight: WAZ {self.weight_for_age_z}")
+        if self.height_for_age_z is not None and float(self.height_for_age_z) < -3:
+            alerts.append(f"Severe stunting: HAZ {self.height_for_age_z}")
+        if self.weight_for_height_z is not None and float(self.weight_for_height_z) < -3:
+            alerts.append(f"Severe wasting: WHZ {self.weight_for_height_z}")
+
+        return alerts
+
+
+# =============================================================================
+# KEPI Immunization Models
+# =============================================================================
+
+
+class Vaccine(TimeStampedModel):
+    """
+    Vaccine reference data for Kenya Expanded Programme on Immunization (KEPI).
+
+    Seeded via management command from kepi_schedule.json.
+    """
+
+    ROUTE_CHOICES = [
+        ("ORAL", "Oral"),
+        ("IM", "Intramuscular"),
+        ("SC", "Subcutaneous"),
+        ("ID", "Intradermal"),
+    ]
+
+    code = models.CharField(
+        max_length=30,
+        unique=True,
+        help_text="Vaccine code (e.g., BCG, PENTA1, OPV0)",
+    )
+    name = models.CharField(
+        max_length=200,
+        help_text="Full vaccine name",
+    )
+    description = models.TextField(
+        blank=True,
+        default="",
+        help_text="Description and notes",
+    )
+    disease_target = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Disease(s) targeted",
+    )
+    standard_age_days = models.PositiveIntegerField(
+        help_text="Standard age for administration in days from birth",
+    )
+    route = models.CharField(
+        max_length=5,
+        choices=ROUTE_CHOICES,
+        blank=True,
+        default="",
+        help_text="Route of administration",
+    )
+    dose_number = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Dose number in the series (e.g., 1 for Penta1, 2 for Penta2)",
+    )
+    series_name = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Name of the vaccine series (e.g., 'Pentavalent' for Penta1/2/3)",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this vaccine is currently in the KEPI schedule",
+    )
+
+    class Meta:
+        ordering = ["standard_age_days", "code"]
+        verbose_name = "Vaccine"
+        verbose_name_plural = "Vaccines"
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+
+class ImmunizationRecord(HistoryMixin, TimeStampedModel):
+    """
+    Child immunization record.
+
+    Tracks scheduled and administered vaccines per KEPI schedule.
+    """
+
+    STATUS_CHOICES = [
+        ("SCHEDULED", "Scheduled"),
+        ("ADMINISTERED", "Administered"),
+        ("MISSED", "Missed"),
+        ("CONTRAINDICATED", "Contraindicated"),
+        ("DEFERRED", "Deferred"),
+    ]
+
+    SITE_CHOICES = [
+        ("LEFT_ARM", "Left Upper Arm"),
+        ("RIGHT_ARM", "Right Upper Arm"),
+        ("LEFT_THIGH", "Left Thigh"),
+        ("RIGHT_THIGH", "Right Thigh"),
+        ("ORAL", "Oral"),
+    ]
+
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="immunizations",
+        help_text="Child patient",
+    )
+    vaccine = models.ForeignKey(
+        Vaccine,
+        on_delete=models.PROTECT,
+        related_name="immunization_records",
+        help_text="Vaccine administered/scheduled",
+    )
+
+    # Schedule
+    scheduled_date = models.DateField(
+        help_text="Scheduled date for administration (DOB + standard_age_days)",
+    )
+    administered_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Actual date of administration",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="SCHEDULED",
+    )
+
+    # Administration details
+    dose_number = models.PositiveSmallIntegerField(
+        default=1,
+        help_text="Dose number in series",
+    )
+    batch_number = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Vaccine batch number",
+    )
+    lot_number = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Vaccine lot number",
+    )
+    expiry_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Vaccine expiry date",
+    )
+    site = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        choices=SITE_CHOICES,
+        help_text="Administration site",
+    )
+
+    # Staff
+    administered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="immunizations_administered",
+    )
+
+    # Next dose
+    next_dose_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Next dose date if multi-dose series",
+    )
+
+    # Notes
+    notes = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    # Audit trail
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["patient", "scheduled_date"]
+        verbose_name = "Immunization Record"
+        verbose_name_plural = "Immunization Records"
+        unique_together = ["patient", "vaccine"]
+
+    def __str__(self):
+        return f"{self.vaccine.code} - {self.patient} ({self.get_status_display()})"
+
+    @property
+    def is_overdue(self) -> bool:
+        """Check if vaccination is overdue."""
+        if self.status != "SCHEDULED":
+            return False
+        return self.scheduled_date < date.today()
+
+    @property
+    def days_overdue(self) -> int | None:
+        """Days past scheduled date."""
+        if not self.is_overdue:
+            return None
+        return (date.today() - self.scheduled_date).days
+
+
+class VitaminASupplement(TimeStampedModel):
+    """
+    Vitamin A supplementation record.
+
+    Per KEPI: 100,000 IU at 6 months, 200,000 IU at 12 and 18 months.
+    """
+
+    DOSE_CHOICES = [
+        ("100000", "100,000 IU"),
+        ("200000", "200,000 IU"),
+    ]
+
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="vitamin_a_supplements",
+    )
+    administered_date = models.DateField(
+        default=date.today,
+        help_text="Date of administration",
+    )
+    dose = models.CharField(
+        max_length=10,
+        choices=DOSE_CHOICES,
+        help_text="Dose administered",
+    )
+    administered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="vitamin_a_given",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    class Meta:
+        ordering = ["-administered_date"]
+        verbose_name = "Vitamin A Supplement"
+        verbose_name_plural = "Vitamin A Supplements"
+
+    def __str__(self):
+        return f"Vitamin A {self.dose} IU - {self.patient} ({self.administered_date})"
+
+
+class AEFI(HistoryMixin, TimeStampedModel):
+    """
+    Adverse Event Following Immunization report.
+
+    Standardized form for reporting vaccine adverse events
+    to national authorities per KEPI guidelines.
+    """
+
+    EVENT_TYPE_CHOICES = [
+        ("LOCAL_REACTION", "Local Reaction"),
+        ("SYSTEMIC_REACTION", "Systemic Reaction"),
+        ("SEVERE", "Severe Adverse Event"),
+        ("DEATH", "Death"),
+    ]
+
+    SEVERITY_CHOICES = [
+        ("MILD", "Mild"),
+        ("MODERATE", "Moderate"),
+        ("SEVERE", "Severe"),
+    ]
+
+    OUTCOME_CHOICES = [
+        ("RECOVERED", "Recovered"),
+        ("RECOVERING", "Recovering"),
+        ("NOT_RECOVERED", "Not Recovered"),
+        ("SEQUELAE", "Recovered with Sequelae"),
+        ("DEATH", "Death"),
+        ("UNKNOWN", "Unknown"),
+    ]
+
+    immunization_record = models.ForeignKey(
+        ImmunizationRecord,
+        on_delete=models.PROTECT,
+        related_name="aefi_reports",
+        help_text="The immunization that caused the adverse event",
+    )
+
+    # Event details
+    event_date = models.DateField(
+        default=date.today,
+        help_text="Date adverse event was observed",
+    )
+    event_type = models.CharField(
+        max_length=30,
+        choices=EVENT_TYPE_CHOICES,
+    )
+    severity = models.CharField(
+        max_length=10,
+        choices=SEVERITY_CHOICES,
+    )
+    description = models.TextField(
+        help_text="Description of the adverse event",
+    )
+
+    # Outcome
+    outcome = models.CharField(
+        max_length=20,
+        choices=OUTCOME_CHOICES,
+        default="UNKNOWN",
+    )
+
+    # Reporting
+    reported_to_authorities = models.BooleanField(
+        default=False,
+        help_text="Whether reported to national authorities",
+    )
+    report_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date reported to authorities",
+    )
+
+    # Investigation
+    investigated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="aefi_investigated",
+    )
+    investigation_notes = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    # Audit trail
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["-event_date"]
+        verbose_name = "AEFI Report"
+        verbose_name_plural = "AEFI Reports"
+
+    def __str__(self):
+        return (
+            f"AEFI {self.get_event_type_display()} - "
+            f"{self.immunization_record.vaccine.code} ({self.event_date})"
+        )
+
+
+# =============================================================================
+# HIV-Exposed Infant (HEI) Models
+# =============================================================================
+
+
+class HEIFollowUp(HistoryMixin, TimeStampedModel):
+    """
+    HIV-Exposed Infant follow-up tracking.
+
+    Tracks infants born to HIV-positive mothers: ARV prophylaxis,
+    PCR testing schedule, and final HIV status determination.
+    """
+
+    STATUS_CHOICES = [
+        ("ACTIVE", "Active Follow-up"),
+        ("CONFIRMED_NEGATIVE", "Confirmed HIV-Negative"),
+        ("CONFIRMED_POSITIVE", "Confirmed HIV-Positive"),
+        ("LOST_TO_FOLLOW_UP", "Lost to Follow-up"),
+        ("TRANSFERRED", "Transferred Out"),
+        ("DECEASED", "Deceased"),
+    ]
+
+    ART_STATUS_CHOICES = [
+        ("ON_ART", "On ART"),
+        ("NOT_ON_ART", "Not on ART"),
+        ("UNKNOWN", "Unknown"),
+    ]
+
+    ARV_PROPHYLAXIS_CHOICES = [
+        ("NVP", "Nevirapine (NVP)"),
+        ("AZT", "Zidovudine (AZT)"),
+        ("NVP_AZT", "NVP + AZT"),
+        ("NONE", "None"),
+    ]
+
+    BREASTFEEDING_STATUS_CHOICES = [
+        ("EXCLUSIVE", "Exclusive Breastfeeding"),
+        ("MIXED", "Mixed Feeding"),
+        ("FORMULA", "Formula Feeding"),
+        ("STOPPED", "Stopped Breastfeeding"),
+    ]
+
+    # Auto-generated number
+    hei_number = models.CharField(
+        max_length=30,
+        unique=True,
+        editable=False,
+        default=generate_hei_number,
+        help_text="Auto-generated HEI follow-up number (HEI-YYYYMMDD-XXXX)",
+    )
+
+    # Infant
+    infant = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.PROTECT,
+        related_name="hei_followups",
+        help_text="Infant patient record",
+    )
+
+    # Link to mother's MCH registration
+    mch_registration = models.ForeignKey(
+        MCHRegistration,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="hei_followups",
+        help_text="Mother's MCH registration",
+    )
+
+    # Enrollment
+    enrollment_date = models.DateField(
+        default=date.today,
+        help_text="Date of HEI enrollment",
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="ACTIVE",
+    )
+
+    # Mother's HIV details
+    mother_art_status = models.CharField(
+        max_length=20,
+        choices=ART_STATUS_CHOICES,
+        default="UNKNOWN",
+        help_text="Mother's ART status",
+    )
+
+    # Infant ARV prophylaxis
+    infant_arv_prophylaxis = models.CharField(
+        max_length=10,
+        choices=ARV_PROPHYLAXIS_CHOICES,
+        default="NONE",
+        help_text="Infant ARV prophylaxis regimen",
+    )
+    arv_start_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date ARV prophylaxis was started",
+    )
+    arv_end_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date ARV prophylaxis was stopped",
+    )
+
+    # Feeding
+    breastfeeding_status = models.CharField(
+        max_length=20,
+        choices=BREASTFEEDING_STATUS_CHOICES,
+        default="EXCLUSIVE",
+    )
+
+    # Cotrimoxazole
+    cotrimoxazole_prophylaxis = models.BooleanField(
+        default=False,
+        help_text="Whether infant is on cotrimoxazole prophylaxis",
+    )
+    cotrimoxazole_start_date = models.DateField(
+        null=True,
+        blank=True,
+    )
+
+    # Sensitive access (always set for HEI records)
+    is_sensitive = models.BooleanField(
+        default=True,
+        help_text="HEI records are always sensitive",
+    )
+
+    # Staff
+    enrolled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="hei_enrollments_created",
+    )
+
+    # Notes
+    notes = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    # Audit trail
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["-enrollment_date"]
+        verbose_name = "HEI Follow-Up"
+        verbose_name_plural = "HEI Follow-Ups"
+        permissions = [
+            ("view_sensitive_hei_followup", "Can view sensitive HEI follow-ups"),
+        ]
+
+    def __str__(self):
+        return f"{self.hei_number} - {self.infant}"
+
+    def save(self, *args, **kwargs):
+        """Ensure HEI records are always sensitive."""
+        self.is_sensitive = True
+        if not self.hei_number:
+            self.hei_number = generate_hei_number()
+        super().save(*args, **kwargs)
+
+
+class HEIPCRTest(TimeStampedModel):
+    """
+    PCR test record for HIV-exposed infants.
+
+    Standard schedule: #1 at 6 weeks, #2 at 9 months, #3 confirmatory.
+    """
+
+    RESULT_CHOICES = [
+        ("POSITIVE", "Positive"),
+        ("NEGATIVE", "Negative"),
+        ("INDETERMINATE", "Indeterminate"),
+        ("PENDING", "Pending"),
+    ]
+
+    hei_followup = models.ForeignKey(
+        HEIFollowUp,
+        on_delete=models.PROTECT,
+        related_name="pcr_tests",
+        help_text="HEI follow-up record",
+    )
+
+    # Test details
+    test_number = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text="PCR test number (1=6 weeks, 2=9 months, 3=confirmatory)",
+    )
+    scheduled_date = models.DateField(
+        help_text="Scheduled date for the test",
+    )
+    actual_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Actual date test was performed",
+    )
+    result = models.CharField(
+        max_length=20,
+        choices=RESULT_CHOICES,
+        default="PENDING",
+    )
+
+    # Lab reference
+    lab_reference = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Laboratory reference/order number",
+    )
+
+    # Notes
+    notes = models.TextField(
+        blank=True,
+        default="",
+    )
+
+    class Meta:
+        ordering = ["hei_followup", "test_number"]
+        verbose_name = "HEI PCR Test"
+        verbose_name_plural = "HEI PCR Tests"
+        unique_together = ["hei_followup", "test_number"]
+
+    def __str__(self):
+        return (
+            f"PCR #{self.test_number} - {self.hei_followup.hei_number} "
+            f"({self.get_result_display()})"
+        )
