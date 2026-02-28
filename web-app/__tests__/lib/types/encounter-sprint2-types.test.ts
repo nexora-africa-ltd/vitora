@@ -15,13 +15,13 @@ import type { EncounterStatus, VisitReason } from '@/lib/types/encounter';
 describe('Encounter Status Types (Sprint 2)', () => {
   describe('ENCOUNTER_STATUS_DISPLAY', () => {
     it('has display text for all 10 statuses', () => {
-      expect(Object.keys(ENCOUNTER_STATUS_DISPLAY)).toHaveLength(10);
+      expect(Object.keys(ENCOUNTER_STATUS_DISPLAY)).toHaveLength(11);
     });
 
     it('includes all expected statuses', () => {
       const expected: EncounterStatus[] = [
         'CREATED', 'CHECKED_IN', 'TRIAGED', 'IN_PROGRESS', 'ON_HOLD',
-        'ORDERS_PLACED', 'RESULTS_PENDING', 'READY_TO_CLOSE', 'CLOSED', 'CANCELLED',
+        'ORDERS_PLACED', 'RESULTS_PENDING', 'READY_TO_CLOSE', 'CLOSED', 'COMPLETED', 'CANCELLED',
       ];
       expected.forEach((status) => {
         expect(ENCOUNTER_STATUS_DISPLAY[status]).toBeDefined();

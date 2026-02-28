@@ -70,6 +70,8 @@ class OTSessionSerializer(serializers.ModelSerializer):
     """Serializer for OTSession model."""
 
     therapist_name = serializers.SerializerMethodField()
+    patient_name = serializers.SerializerMethodField()
+    patient_mrn = serializers.CharField(source="order.patient.mrn", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     outcome_display = serializers.CharField(source="get_outcome_display", read_only=True)
     pre_functional_status_display = serializers.CharField(
@@ -90,6 +92,8 @@ class OTSessionSerializer(serializers.ModelSerializer):
             "order",
             "therapist",
             "therapist_name",
+            "patient_name",
+            "patient_mrn",
             "session_number",
             "scheduled_date",
             "scheduled_time",
@@ -154,6 +158,13 @@ class OTSessionSerializer(serializers.ModelSerializer):
         """Return therapist full name."""
         if obj.therapist:
             return f"{obj.therapist.first_name} {obj.therapist.last_name}".strip() or obj.therapist.username
+        return None
+
+    def get_patient_name(self, obj):
+        """Return patient full name from the linked order."""
+        if obj.order and obj.order.patient:
+            p = obj.order.patient
+            return f"{p.first_name} {p.last_name}".strip()
         return None
 
 
