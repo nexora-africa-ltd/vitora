@@ -30,6 +30,7 @@ def create_baby_patient_on_delivery(sender, instance, created, **kwargs):
             county=mother.county,
             sub_county=mother.sub_county,
             ward=mother.ward,
+            registered_by=instance.delivered_by or instance.registration.registered_by,
         )
 
         instance.baby_patient = baby
