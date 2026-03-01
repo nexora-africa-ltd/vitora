@@ -53,6 +53,10 @@ import {
   HeartHandshake,
 } from 'lucide-react';
 
+import {
+  ENABLE_THEATRE,
+} from '@/lib/utils/constants';
+
 export interface NavItem {
   label: string;
   href: string;
@@ -64,6 +68,8 @@ export interface NavItemWithChildren {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   children: NavItem[];
+  /** When set, the item is only included if the flag is true. */
+  featureFlag?: boolean;
 }
 
 export type NavItemType = NavItem | NavItemWithChildren;
@@ -73,9 +79,9 @@ export function hasChildren(item: NavItemType): item is NavItemWithChildren {
 }
 
 /**
- * Main navigation items displayed in the sidebar
+ * All navigation items (unfiltered). Feature-gated items filtered below.
  */
-export const mainNavItems: NavItemType[] = [
+const _allNavItems: NavItemType[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Check-in', href: '/patients/checkin', icon: UserCheck },
   { label: 'Patients', href: '/patients', icon: Users },
@@ -151,6 +157,7 @@ export const mainNavItems: NavItemType[] = [
   {
     label: 'Theatre',
     icon: Scissors,
+    featureFlag: ENABLE_THEATRE,
     children: [
       { label: 'Schedule', href: '/theatre/schedule', icon: CalendarDays },
       { label: 'Checklists', href: '/theatre/checklists', icon: CheckSquare },
@@ -185,6 +192,16 @@ export const mainNavItems: NavItemType[] = [
     ],
   },
 ];
+
+/**
+ * Filtered navigation items — items gated by disabled feature flags are excluded.
+ */
+export const mainNavItems: NavItemType[] = _allNavItems.filter((item) => {
+  if (hasChildren(item) && 'featureFlag' in item && item.featureFlag === false) {
+    return false;
+  }
+  return true;
+});
 
 /**
  * Bottom navigation items (Settings, etc.)

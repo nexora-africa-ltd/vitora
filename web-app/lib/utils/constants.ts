@@ -13,6 +13,17 @@ export const APP_ENV = process.env.NEXT_PUBLIC_ENV || 'development';
  */
 export const LEGACY_TRIAGE_FLOW = process.env.NEXT_PUBLIC_LEGACY_TRIAGE_FLOW === '1';
 
+/**
+ * Theatre module feature flag.
+ * The theatre module is planned for Phase 2 and is not yet implemented.
+ * Set NEXT_PUBLIC_ENABLE_THEATRE=true to show the Theatre nav item.
+ * Default: true in development, must be explicitly enabled in production/staging.
+ */
+export const ENABLE_THEATRE =
+  process.env.NEXT_PUBLIC_ENABLE_THEATRE === 'true' ||
+  (process.env.NEXT_PUBLIC_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_ENABLE_THEATRE !== 'false');
+
 // Gender options
 export const GENDER_OPTIONS = [
   { value: 'M', label: 'Male' },
