@@ -682,6 +682,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "is_sensitive",
                 "required_permission",
                 "is_open_today",
+                "is_scheduled_today",
                 "created_at",
                 "updated_at",
             }
@@ -2066,6 +2067,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "status",
                 "is_sensitive",
                 "is_open_today",
+                "is_scheduled_today",
             }
         ),
     ),

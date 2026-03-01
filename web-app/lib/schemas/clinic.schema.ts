@@ -85,6 +85,7 @@ export const ClinicListItemSchema = z.object({
   location: z.string(),
   is_sensitive: z.boolean().optional(),
   is_open_today: z.boolean(),
+  is_scheduled_today: z.boolean(),
 });
 
 export const ClinicSchema = z.object({
@@ -112,6 +113,7 @@ export const ClinicSchema = z.object({
   is_sensitive: z.boolean(),
   required_permission: z.string(),
   is_open_today: z.boolean(),
+  is_scheduled_today: z.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
 });

@@ -121,6 +121,22 @@ export default function ClinicsPage() {
     [clinics]
   );
 
+  const scheduledCount = useMemo(
+    () => clinics.filter((c) => c.is_scheduled_today && !c.is_open_today).length,
+    [clinics]
+  );
+
+  /** Return badge variant + label for a clinic's operational state. */
+  const getClinicStatus = (clinic: (typeof clinics)[number]) => {
+    if (clinic.is_open_today) {
+      return { label: 'Open', variant: 'default' as const, className: 'bg-green-500 hover:bg-green-600' };
+    }
+    if (clinic.is_scheduled_today) {
+      return { label: 'Scheduled', variant: 'outline' as const, className: 'border-amber-500 text-amber-600' };
+    }
+    return { label: 'Closed', variant: 'secondary' as const, className: '' };
+  };
+
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
     <div className="space-y-4 sm:space-y-6">
@@ -152,12 +168,12 @@ export default function ClinicsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sm:p-6 pb-1 sm:pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium">Open Today</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium">Open Now</CardTitle>
             <Activity className="h-4 w-4 text-green-500 hidden sm:block" />
           </CardHeader>
           <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
             <div className="text-xl sm:text-2xl font-bold text-green-600">{openClinicsCount}</div>
-            <p className="text-xs text-muted-foreground hidden sm:block">Operating</p>
+            <p className="text-xs text-muted-foreground hidden sm:block">Session started</p>
           </CardContent>
         </Card>
 
@@ -270,7 +286,9 @@ export default function ClinicsPage() {
         </Card>
       ) : (
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
-          {clinics.map((clinic) => (
+          {clinics.map((clinic) => {
+            const clinicStatus = getClinicStatus(clinic);
+            return (
             <Link key={clinic.id} href={`/clinics/${clinic.id}`}>
               <Card className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50 active:scale-[0.98]">
                 <CardHeader className="p-3 sm:p-6 pb-2">
@@ -280,13 +298,13 @@ export default function ClinicsPage() {
                       <CardDescription className="text-xs sm:text-sm truncate">{clinic.clinic_type_display}</CardDescription>
                     </div>
                     <Badge
-                      variant={clinic.is_open_today ? 'default' : 'secondary'}
+                      variant={clinicStatus.variant}
                       className={cn(
                         'shrink-0 w-fit text-xs',
-                        clinic.is_open_today && 'bg-green-500 hover:bg-green-600'
+                        clinicStatus.className
                       )}
                     >
-                      {clinic.is_open_today ? 'Open' : 'Closed'}
+                      {clinicStatus.label}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -304,7 +322,8 @@ export default function ClinicsPage() {
                 </CardContent>
               </Card>
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

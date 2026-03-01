@@ -246,12 +246,24 @@ class Clinic(TimeStampedModel):
         """Return string representation."""
         return f"{self.name} ({self.get_clinic_type_display()})"
 
-    def is_open_today(self):
-        """Check if clinic is operating today based on schedule."""
+    def is_scheduled_today(self):
+        """Check if clinic is scheduled to operate today based on schedule."""
         today = timezone.localdate()
         return self.schedules.filter(
             day_of_week=today.weekday(),
             is_active=True,
+        ).exists()
+
+    def is_open_today(self):
+        """Check if clinic has an OPEN session today.
+
+        A clinic is considered 'open' only when a staff member has explicitly
+        opened the session for the day, not merely because it is scheduled.
+        """
+        today = timezone.localdate()
+        return self.sessions.filter(
+            session_date=today,
+            status="OPEN",
         ).exists()
 
     def get_current_session(self):

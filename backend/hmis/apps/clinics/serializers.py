@@ -31,6 +31,7 @@ class ClinicSerializer(serializers.ModelSerializer):
     """Serializer for Clinic model."""
 
     is_open_today = serializers.SerializerMethodField()
+    is_scheduled_today = serializers.SerializerMethodField()
     clinic_type_display = serializers.CharField(source="get_clinic_type_display", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
@@ -63,14 +64,19 @@ class ClinicSerializer(serializers.ModelSerializer):
             "is_sensitive",
             "required_permission",
             "is_open_today",
+            "is_scheduled_today",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
     def get_is_open_today(self, obj) -> bool:
-        """Check if clinic is open today."""
+        """Check if clinic has an open session today."""
         return obj.is_open_today()
+
+    def get_is_scheduled_today(self, obj) -> bool:
+        """Check if clinic is scheduled to operate today."""
+        return obj.is_scheduled_today()
 
     def validate_code(self, value):
         """Validate clinic code uniqueness."""
@@ -96,6 +102,7 @@ class ClinicListSerializer(serializers.ModelSerializer):
 
     clinic_type_display = serializers.CharField(source="get_clinic_type_display", read_only=True)
     is_open_today = serializers.SerializerMethodField()
+    is_scheduled_today = serializers.SerializerMethodField()
 
     class Meta:
         """Meta options for ClinicListSerializer."""
@@ -111,11 +118,16 @@ class ClinicListSerializer(serializers.ModelSerializer):
             "status",
             "is_sensitive",
             "is_open_today",
+            "is_scheduled_today",
         ]
 
     def get_is_open_today(self, obj) -> bool:
-        """Check if clinic is open today."""
+        """Check if clinic has an open session today."""
         return obj.is_open_today()
+
+    def get_is_scheduled_today(self, obj) -> bool:
+        """Check if clinic is scheduled to operate today."""
+        return obj.is_scheduled_today()
 
 
 # =============================================================================

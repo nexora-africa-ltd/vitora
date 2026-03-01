@@ -240,8 +240,8 @@ class TestClinicModel:
         str_repr = str(sample_clinic)
         assert "General OPD" in str_repr
 
-    def test_clinic_is_open_today_with_schedule(self, sample_clinic):
-        """is_open_today returns True when clinic has schedule for today."""
+    def test_clinic_is_scheduled_today_with_schedule(self, sample_clinic):
+        """is_scheduled_today returns True when clinic has schedule for today."""
         from hmis.apps.clinics.models import ClinicSchedule
 
         today_weekday = date.today().weekday()
@@ -253,11 +253,51 @@ class TestClinicModel:
             is_active=True,
         )
 
+        assert sample_clinic.is_scheduled_today() is True
+
+    def test_clinic_is_scheduled_today_without_schedule(self, sample_clinic):
+        """is_scheduled_today returns False when clinic has no schedule for today."""
+        # No schedule created for today
+        assert sample_clinic.is_scheduled_today() is False
+
+    def test_clinic_is_open_today_without_open_session(self, sample_clinic):
+        """is_open_today returns False when clinic has no OPEN session."""
+        from hmis.apps.clinics.models import ClinicSchedule
+
+        today_weekday = date.today().weekday()
+        ClinicSchedule.objects.create(
+            clinic=sample_clinic,
+            day_of_week=today_weekday,
+            start_time=time(8, 0),
+            end_time=time(17, 0),
+            is_active=True,
+        )
+
+        # Has schedule but no open session
+        assert sample_clinic.is_open_today() is False
+
+    def test_clinic_is_open_today_with_open_session(self, sample_clinic):
+        """is_open_today returns True when clinic has an OPEN session today."""
+        from hmis.apps.clinics.models import ClinicSession
+
+        ClinicSession.objects.create(
+            clinic=sample_clinic,
+            session_date=date.today(),
+            status="OPEN",
+        )
+
         assert sample_clinic.is_open_today() is True
 
-    def test_clinic_is_open_today_without_schedule(self, sample_clinic):
-        """is_open_today returns False when clinic has no schedule for today."""
-        # No schedule created for today
+    def test_clinic_is_open_today_with_closed_session(self, sample_clinic):
+        """is_open_today returns False when session exists but is CLOSED."""
+        from hmis.apps.clinics.models import ClinicSession
+
+        ClinicSession.objects.create(
+            clinic=sample_clinic,
+            session_date=date.today(),
+            status="CLOSED",
+        )
+
         assert sample_clinic.is_open_today() is False
 
     def test_clinic_get_current_session_creates_new_session(self, sample_clinic):

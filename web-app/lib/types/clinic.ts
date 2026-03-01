@@ -289,6 +289,7 @@ export interface Clinic {
   is_sensitive: boolean;
   required_permission: string;
   is_open_today: boolean;
+  is_scheduled_today: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -303,6 +304,7 @@ export interface ClinicListItem {
   location: string;
   is_sensitive?: boolean;
   is_open_today: boolean;
+  is_scheduled_today: boolean;
 }
 
 // =============================================================================
