@@ -200,21 +200,25 @@ export interface ANCVisitCreateData {
 
 /**
  * Delivery type options
+ * Backend: Delivery.DELIVERY_TYPE_CHOICES
  */
 export type DeliveryType =
-  | 'SVD'          // Spontaneous Vaginal Delivery
-  | 'ASSISTED'     // Assisted Delivery (forceps/vacuum)
-  | 'C_SECTION'    // Cesarean Section
-  | 'BREECH';
+  | 'SVD'              // Spontaneous Vaginal Delivery
+  | 'ASSISTED_VAGINAL' // Assisted Vaginal Delivery
+  | 'ELECTIVE_CS'      // Elective Cesarean Section
+  | 'EMERGENCY_CS'     // Emergency Cesarean Section
+  | 'VACUUM'           // Vacuum Extraction
+  | 'FORCEPS';         // Forceps Delivery
 
 /**
  * Delivery outcome
+ * Backend: Delivery.DELIVERY_OUTCOME_CHOICES
  */
 export type DeliveryOutcome =
   | 'LIVE_BIRTH'
-  | 'STILLBIRTH_FRESH'
-  | 'STILLBIRTH_MACERATED'
-  | 'NEONATAL_DEATH';
+  | 'STILLBIRTH'
+  | 'NEONATAL_DEATH'
+  | 'MATERNAL_DEATH';
 
 /**
  * Delivery status
@@ -223,13 +227,15 @@ export type DeliveryStatus = 'PENDING' | 'COMPLETED' | 'REFERRED';
 
 /**
  * Place of delivery
+ * Backend: Delivery.PLACE_OF_DELIVERY_CHOICES
  */
-export type PlaceOfDelivery = 'FACILITY' | 'HOME' | 'TRANSIT' | 'OTHER';
+export type PlaceOfDelivery = 'FACILITY' | 'HOME' | 'EN_ROUTE';
 
 /**
  * Baby gender
+ * Backend: Delivery.GENDER_CHOICES ('O' = Other)
  */
-export type BabyGender = 'M' | 'F' | 'AMBIGUOUS';
+export type BabyGender = 'M' | 'F' | 'O' | '';
 
 /**
  * Delivery detail
@@ -313,24 +319,27 @@ export interface DeliveryCreateData {
 // =============================================================================
 
 /**
- * Uterine involution status
+ * Uterine involution assessment (free-text field in backend)
  */
-export type UterineInvolution = 'WELL_CONTRACTED' | 'SUBINVOLUTION' | 'NORMAL' | '';
+export type UterineInvolution = string;
 
 /**
  * Lochia status
+ * Backend: PNCVisit.LOCHIA_CHOICES
  */
-export type LochiaStatus = 'NORMAL' | 'FOUL_SMELLING' | 'HEAVY' | 'ABSENT' | '';
+export type LochiaStatus = 'NORMAL' | 'HEAVY' | 'FOUL_SMELLING' | 'ABSENT' | '';
 
 /**
  * Breast condition
+ * Backend: PNCVisit.BREAST_CONDITION_CHOICES
  */
-export type BreastCondition = 'NORMAL' | 'ENGORGED' | 'MASTITIS' | 'CRACKED_NIPPLES' | '';
+export type BreastCondition = 'NORMAL' | 'ENGORGED' | 'MASTITIS' | 'CRACKED_NIPPLES' | 'ABSCESS' | '';
 
 /**
- * Mood assessment
+ * Mood assessment (postpartum depression screening)
+ * Backend: PNCVisit.MOOD_CHOICES
  */
-export type MoodAssessment = 'NORMAL' | 'ANXIOUS' | 'DEPRESSED' | 'ELATED' | '';
+export type MoodAssessment = 'NORMAL' | 'MILDLY_LOW' | 'DEPRESSED' | 'SEVERELY_DEPRESSED' | '';
 
 /**
  * Cord status
@@ -339,23 +348,14 @@ export type CordStatus = 'CLEAN' | 'INFECTED' | 'SEPARATED' | '';
 
 /**
  * Breastfeeding status
+ * Backend: PNCVisit.BREASTFEEDING_STATUS_CHOICES
  */
-export type BreastfeedingStatus = 'EXCLUSIVE' | 'MIXED' | 'FORMULA' | 'NOT_BREASTFEEDING' | '';
+export type BreastfeedingStatus = 'EXCLUSIVE' | 'MIXED' | 'FORMULA' | 'NOT_FEEDING' | '';
 
 /**
- * Contraceptive method
+ * Contraceptive method given (free-text field in backend)
  */
-export type ContraceptiveMethod =
-  | 'IMPLANT'
-  | 'IUCD'
-  | 'INJECTION'
-  | 'PILLS'
-  | 'CONDOM'
-  | 'BTL'
-  | 'VASECTOMY'
-  | 'LAM'
-  | 'NONE'
-  | '';
+export type ContraceptiveMethod = string;
 
 /**
  * PNC visit detail
@@ -370,7 +370,7 @@ export interface PNCVisit {
   days_postpartum: number;
   blood_pressure: string;
   temperature: number | null;
-  uterine_involution: UterineInvolution;
+  uterine_involution: string;
   lochia: LochiaStatus;
   breast_condition: BreastCondition;
   mood_assessment: MoodAssessment;
@@ -379,7 +379,7 @@ export interface PNCVisit {
   cord_status: CordStatus;
   breastfeeding_status: BreastfeedingStatus;
   family_planning_counselling: boolean;
-  contraceptive_given: ContraceptiveMethod;
+  contraceptive_given: string;
   conducted_by: number | null;
   conducted_by_name: string | null;
   alerts: string[];
@@ -412,7 +412,7 @@ export interface PNCVisitCreateData {
   visit_date?: string;
   blood_pressure?: string;
   temperature?: number;
-  uterine_involution?: UterineInvolution;
+  uterine_involution?: string;
   lochia?: LochiaStatus;
   breast_condition?: BreastCondition;
   mood_assessment?: MoodAssessment;
@@ -421,7 +421,7 @@ export interface PNCVisitCreateData {
   cord_status?: CordStatus;
   breastfeeding_status?: BreastfeedingStatus;
   family_planning_counselling?: boolean;
-  contraceptive_given?: ContraceptiveMethod;
+  contraceptive_given?: string;
   conducted_by?: number;
   notes?: string;
 }
@@ -432,19 +432,22 @@ export interface PNCVisitCreateData {
 
 /**
  * MUAC classification
+ * Backend: GrowthMeasurement.MUAC_CLASSIFICATION_CHOICES
  */
-export type MUACClassification = 'SAM' | 'MAM' | 'NORMAL' | null;
+export type MUACClassification = 'SAM' | 'MAM' | 'NORMAL' | '' | null;
 
 /**
  * Nutritional status
+ * Backend: GrowthMeasurement.NUTRITIONAL_STATUS_CHOICES
  */
 export type NutritionalStatus =
   | 'NORMAL'
-  | 'MILD_WASTING'
-  | 'MODERATE_WASTING'
-  | 'SEVERE_WASTING'
+  | 'MILD_UNDERWEIGHT'
+  | 'MODERATE_UNDERWEIGHT'
+  | 'SEVERE_UNDERWEIGHT'
   | 'OVERWEIGHT'
   | 'OBESE'
+  | ''
   | null;
 
 /**
@@ -535,12 +538,14 @@ export interface GrowthMeasurementListParams {
 
 /**
  * Growth chart data (for plotting)
+ * Backend: GrowthChartDataSerializer
  */
 export interface GrowthChartData {
   measurements: GrowthMeasurementListItem[];
-  percentile_lines: Record<string, number[]>;
+  /** Percentile lines keyed by z-score label, values are arrays of {x, y} or flat numbers */
+  percentile_lines: Record<string, unknown>;
   chart_type: GrowthChartType;
-  sex: 'M' | 'F';
+  sex: string;
 }
 
 // =============================================================================
@@ -574,8 +579,9 @@ export interface Vaccine {
 
 /**
  * Immunization status
+ * Backend: ImmunizationRecord.STATUS_CHOICES
  */
-export type ImmunizationStatus = 'SCHEDULED' | 'ADMINISTERED' | 'MISSED' | 'CONTRAINDICATED';
+export type ImmunizationStatus = 'SCHEDULED' | 'ADMINISTERED' | 'MISSED' | 'CONTRAINDICATED' | 'DEFERRED';
 
 /**
  * Injection site
@@ -693,8 +699,9 @@ export type AEFISeverity = 'MILD' | 'MODERATE' | 'SEVERE';
 
 /**
  * AEFI outcome
+ * Backend: AEFI.OUTCOME_CHOICES
  */
-export type AEFIOutcome = 'RECOVERED' | 'RECOVERING' | 'NOT_RECOVERED' | 'SEQUELAE' | 'DEATH';
+export type AEFIOutcome = 'RECOVERED' | 'RECOVERING' | 'NOT_RECOVERED' | 'SEQUELAE' | 'DEATH' | 'UNKNOWN';
 
 /**
  * AEFI report detail
@@ -767,13 +774,15 @@ export type MotherARTStatus = 'ON_ART' | 'NOT_ON_ART' | 'UNKNOWN';
 
 /**
  * Infant ARV prophylaxis
+ * Backend: HEIFollowUp.ARV_PROPHYLAXIS_CHOICES
  */
-export type InfantARVProphylaxis = 'NVP' | 'AZT' | 'NVP_AZT' | 'NONE' | '';
+export type InfantARVProphylaxis = 'NVP' | 'AZT' | 'NVP_AZT' | 'NONE';
 
 /**
  * HEI breastfeeding status
+ * Backend: HEIFollowUp.BREASTFEEDING_STATUS_CHOICES
  */
-export type HEIBreastfeedingStatus = 'EXCLUSIVE' | 'MIXED' | 'FORMULA' | 'STOPPED' | '';
+export type HEIBreastfeedingStatus = 'EXCLUSIVE' | 'MIXED' | 'FORMULA' | 'STOPPED';
 
 /**
  * PCR test result

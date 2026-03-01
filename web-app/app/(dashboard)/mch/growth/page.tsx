@@ -23,7 +23,8 @@ import { MalnutritionAlert } from '@/components/mch/malnutrition-alert';
 import { PatientSearchInput } from '@/components/patients/patient-search-input';
 import { growthMeasurementsApi } from '@/lib/api/mch';
 import { patientsApi } from '@/lib/api/patients';
-import type { GrowthChartType, Sex } from '@/lib/types/mch';
+import type { GrowthChartType } from '@/lib/types/mch';
+import type { Sex } from '@/lib/data/who-growth';
 
 export default function GrowthChartPage() {
   const searchParams = useSearchParams();
@@ -172,7 +173,7 @@ export default function GrowthChartPage() {
                     measurements={measurements}
                     sex={sex}
                     patientDob={patient?.date_of_birth}
-                    apiPercentileLines={chartData?.percentile_lines}
+                    apiPercentileLines={chartData?.percentile_lines as Record<string, { x: number; y: number }[]> | undefined}
                   />
                 </CardContent>
               </Card>

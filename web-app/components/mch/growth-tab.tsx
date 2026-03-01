@@ -27,17 +27,17 @@ interface GrowthTabProps {
   patientId: number;
 }
 
-const muacColors: Record<NonNullable<MUACClassification>, string> = {
+const muacColors: Record<Exclude<NonNullable<MUACClassification>, ''>, string> = {
   NORMAL: 'bg-green-100 text-green-800',
   MAM: 'bg-orange-100 text-orange-800',
   SAM: 'bg-red-100 text-red-800',
 };
 
-const nutritionColors: Record<NonNullable<NutritionalStatus>, string> = {
+const nutritionColors: Record<Exclude<NonNullable<NutritionalStatus>, ''>, string> = {
   NORMAL: 'bg-green-100 text-green-800',
-  MILD_WASTING: 'bg-yellow-100 text-yellow-800',
-  MODERATE_WASTING: 'bg-orange-100 text-orange-800',
-  SEVERE_WASTING: 'bg-red-100 text-red-800',
+  MILD_UNDERWEIGHT: 'bg-yellow-100 text-yellow-800',
+  MODERATE_UNDERWEIGHT: 'bg-orange-100 text-orange-800',
+  SEVERE_UNDERWEIGHT: 'bg-red-100 text-red-800',
   OVERWEIGHT: 'bg-blue-100 text-blue-800',
   OBESE: 'bg-purple-100 text-purple-800',
 };

@@ -77,20 +77,23 @@ function interpolateLMS(
   data: LMSDataPoint[],
 ): { L: number; M: number; S: number } | null {
   if (data.length === 0) return null;
-  if (ageDays <= data[0].age_days) return { L: data[0].L, M: data[0].M, S: data[0].S };
-  if (ageDays >= data[data.length - 1].age_days) {
-    const last = data[data.length - 1];
+  const first = data[0]!;
+  if (ageDays <= first.age_days) return { L: first.L, M: first.M, S: first.S };
+  const last = data[data.length - 1]!;
+  if (ageDays >= last.age_days) {
     return { L: last.L, M: last.M, S: last.S };
   }
 
   for (let i = 0; i < data.length - 1; i++) {
-    if (ageDays >= data[i].age_days && ageDays <= data[i + 1].age_days) {
+    const curr = data[i]!;
+    const next = data[i + 1]!;
+    if (ageDays >= curr.age_days && ageDays <= next.age_days) {
       const t =
-        (ageDays - data[i].age_days) / (data[i + 1].age_days - data[i].age_days);
+        (ageDays - curr.age_days) / (next.age_days - curr.age_days);
       return {
-        L: data[i].L + t * (data[i + 1].L - data[i].L),
-        M: data[i].M + t * (data[i + 1].M - data[i].M),
-        S: data[i].S + t * (data[i + 1].S - data[i].S),
+        L: curr.L + t * (next.L - curr.L),
+        M: curr.M + t * (next.M - curr.M),
+        S: curr.S + t * (next.S - curr.S),
       };
     }
   }
@@ -177,13 +180,13 @@ export function generatePercentileLines(
   };
 
   for (const z of Z_SCORE_LINES) {
-    const key = zLabels[z];
+    const key = zLabels[z]!;
     lines[key] = [];
 
     for (const point of data) {
       if (!('age_days' in point)) continue;
       const y = measurementFromZ(z, point.L, point.M, point.S);
-      lines[key].push({ x: point.age_days, y: Math.round(y * 100) / 100 });
+      lines[key]!.push({ x: point.age_days, y: Math.round(y * 100) / 100 });
     }
   }
 

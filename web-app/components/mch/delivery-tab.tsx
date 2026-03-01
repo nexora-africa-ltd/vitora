@@ -43,36 +43,37 @@ interface DeliveryTabProps {
 
 const DELIVERY_TYPES: { value: DeliveryType; label: string }[] = [
   { value: 'SVD', label: 'SVD (Spontaneous Vaginal)' },
-  { value: 'ASSISTED', label: 'Assisted (Forceps/Vacuum)' },
-  { value: 'C_SECTION', label: 'Cesarean Section' },
-  { value: 'BREECH', label: 'Breech Delivery' },
+  { value: 'ASSISTED_VAGINAL', label: 'Assisted Vaginal' },
+  { value: 'ELECTIVE_CS', label: 'Elective C-Section' },
+  { value: 'EMERGENCY_CS', label: 'Emergency C-Section' },
+  { value: 'VACUUM', label: 'Vacuum Extraction' },
+  { value: 'FORCEPS', label: 'Forceps Delivery' },
 ];
 
 const OUTCOMES: { value: DeliveryOutcome; label: string }[] = [
   { value: 'LIVE_BIRTH', label: 'Live Birth' },
-  { value: 'STILLBIRTH_FRESH', label: 'Fresh Stillbirth' },
-  { value: 'STILLBIRTH_MACERATED', label: 'Macerated Stillbirth' },
+  { value: 'STILLBIRTH', label: 'Stillbirth' },
   { value: 'NEONATAL_DEATH', label: 'Neonatal Death' },
+  { value: 'MATERNAL_DEATH', label: 'Maternal Death' },
 ];
 
 const PLACES: { value: PlaceOfDelivery; label: string }[] = [
   { value: 'FACILITY', label: 'Health Facility' },
   { value: 'HOME', label: 'Home' },
-  { value: 'TRANSIT', label: 'In Transit' },
-  { value: 'OTHER', label: 'Other' },
+  { value: 'EN_ROUTE', label: 'En Route to Facility' },
 ];
 
 const GENDERS: { value: BabyGender; label: string }[] = [
   { value: 'M', label: 'Male' },
   { value: 'F', label: 'Female' },
-  { value: 'AMBIGUOUS', label: 'Ambiguous' },
+  { value: 'O', label: 'Other' },
 ];
 
 const outcomeColors: Record<DeliveryOutcome, string> = {
   LIVE_BIRTH: 'bg-green-100 text-green-800',
-  STILLBIRTH_FRESH: 'bg-red-100 text-red-800',
-  STILLBIRTH_MACERATED: 'bg-red-100 text-red-800',
+  STILLBIRTH: 'bg-red-100 text-red-800',
   NEONATAL_DEATH: 'bg-red-100 text-red-800',
+  MATERNAL_DEATH: 'bg-red-100 text-red-800',
 };
 
 export function DeliveryTab({ registrationId }: DeliveryTabProps) {
@@ -393,18 +394,12 @@ export function DeliveryTab({ registrationId }: DeliveryTabProps) {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Gender:</span>{' '}
-                    {delivery.baby_gender === 'M' ? 'Male' : delivery.baby_gender === 'F' ? 'Female' : 'Ambiguous'}
+                    {delivery.baby_gender === 'M' ? 'Male' : delivery.baby_gender === 'F' ? 'Female' : 'Other'}
                   </div>
                   {delivery.birth_weight && (
                     <div>
                       <span className="text-muted-foreground">Weight:</span>{' '}
                       {delivery.birth_weight} kg
-                    </div>
-                  )}
-                  {delivery.baby_patient_mrn && (
-                    <div>
-                      <span className="text-muted-foreground">Baby MRN:</span>{' '}
-                      {delivery.baby_patient_mrn}
                     </div>
                   )}
                 </div>

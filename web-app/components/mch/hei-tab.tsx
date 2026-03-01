@@ -65,15 +65,13 @@ const ART_OPTIONS: { value: MotherARTStatus; label: string }[] = [
 ];
 
 const ARV_OPTIONS: { value: InfantARVProphylaxis; label: string }[] = [
-  { value: '', label: 'None selected' },
+  { value: 'NONE', label: 'None selected' },
   { value: 'NVP', label: 'Nevirapine (NVP)' },
   { value: 'AZT', label: 'Zidovudine (AZT)' },
   { value: 'NVP_AZT', label: 'NVP + AZT' },
-  { value: 'NONE', label: 'None' },
 ];
 
 const FEEDING_OPTIONS: { value: HEIBreastfeedingStatus; label: string }[] = [
-  { value: '', label: 'Not recorded' },
   { value: 'EXCLUSIVE', label: 'Exclusive Breastfeeding' },
   { value: 'MIXED', label: 'Mixed Feeding' },
   { value: 'FORMULA', label: 'Formula Only' },
@@ -89,8 +87,8 @@ export function HEITab({ registrationId, infantId }: HEITabProps) {
   // Enroll form state
   const [enrollmentDate, setEnrollmentDate] = useState(new Date().toISOString().split('T')[0]);
   const [motherArt, setMotherArt] = useState<MotherARTStatus>('ON_ART');
-  const [infantArv, setInfantArv] = useState<InfantARVProphylaxis>('');
-  const [feedingStatus, setFeedingStatus] = useState<HEIBreastfeedingStatus>('');
+  const [infantArv, setInfantArv] = useState<InfantARVProphylaxis>('NONE');
+  const [feedingStatus, setFeedingStatus] = useState<HEIBreastfeedingStatus>('EXCLUSIVE');
   const [notes, setNotes] = useState('');
 
   // PCR form state
@@ -125,7 +123,7 @@ export function HEITab({ registrationId, infantId }: HEITabProps) {
     mutationFn: () =>
       heiFollowUpApi.recordPCR(pcrHeiId!, {
         test_number: parseInt(testNumber),
-        actual_date: actualDate,
+        actual_date: actualDate!,
         result: pcrResult,
         lab_reference: labReference,
         notes: pcrNotes,

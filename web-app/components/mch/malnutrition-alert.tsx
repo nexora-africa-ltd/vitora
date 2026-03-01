@@ -41,10 +41,10 @@ export function MalnutritionAlert({
 
   const isSAM =
     muacClassification === 'SAM' ||
-    nutritionalStatus === 'SEVERE_WASTING';
+    nutritionalStatus === 'SEVERE_UNDERWEIGHT';
   const isMAM =
     muacClassification === 'MAM' ||
-    nutritionalStatus === 'MODERATE_WASTING';
+    nutritionalStatus === 'MODERATE_UNDERWEIGHT';
 
   return (
     <Alert variant="destructive" className={isSAM ? 'border-red-500 bg-red-50' : 'border-orange-500 bg-orange-50'}>

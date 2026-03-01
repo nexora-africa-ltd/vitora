@@ -44,50 +44,45 @@ export const UrineResultSchema = z.enum([
 ]);
 
 export const DeliveryTypeSchema = z.enum([
-  'SVD', 'ASSISTED', 'C_SECTION', 'BREECH',
+  'SVD', 'ASSISTED_VAGINAL', 'ELECTIVE_CS', 'EMERGENCY_CS', 'VACUUM', 'FORCEPS',
 ]);
 
 export const DeliveryOutcomeSchema = z.enum([
-  'LIVE_BIRTH', 'STILLBIRTH_FRESH', 'STILLBIRTH_MACERATED', 'NEONATAL_DEATH',
+  'LIVE_BIRTH', 'STILLBIRTH', 'NEONATAL_DEATH', 'MATERNAL_DEATH',
 ]);
 
 export const DeliveryStatusSchema = z.enum(['PENDING', 'COMPLETED', 'REFERRED']);
 
-export const PlaceOfDeliverySchema = z.enum(['FACILITY', 'HOME', 'TRANSIT', 'OTHER']);
+export const PlaceOfDeliverySchema = z.enum(['FACILITY', 'HOME', 'EN_ROUTE']);
 
-export const BabyGenderSchema = z.enum(['M', 'F', 'AMBIGUOUS']);
+export const BabyGenderSchema = z.enum(['M', 'F', 'O', '']);
 
-export const UterineInvolutionSchema = z.enum([
-  'WELL_CONTRACTED', 'SUBINVOLUTION', 'NORMAL', '',
-]);
+export const UterineInvolutionSchema = z.string();
 
 export const LochiaStatusSchema = z.enum([
   'NORMAL', 'FOUL_SMELLING', 'HEAVY', 'ABSENT', '',
 ]);
 
 export const BreastConditionSchema = z.enum([
-  'NORMAL', 'ENGORGED', 'MASTITIS', 'CRACKED_NIPPLES', '',
+  'NORMAL', 'ENGORGED', 'MASTITIS', 'CRACKED_NIPPLES', 'ABSCESS', '',
 ]);
 
 export const MoodAssessmentSchema = z.enum([
-  'NORMAL', 'ANXIOUS', 'DEPRESSED', 'ELATED', '',
+  'NORMAL', 'MILDLY_LOW', 'DEPRESSED', 'SEVERELY_DEPRESSED', '',
 ]);
 
 export const CordStatusSchema = z.enum(['CLEAN', 'INFECTED', 'SEPARATED', '']);
 
 export const BreastfeedingStatusSchema = z.enum([
-  'EXCLUSIVE', 'MIXED', 'FORMULA', 'NOT_BREASTFEEDING', '',
+  'EXCLUSIVE', 'MIXED', 'FORMULA', 'NOT_FEEDING', '',
 ]);
 
-export const ContraceptiveMethodSchema = z.enum([
-  'IMPLANT', 'IUCD', 'INJECTION', 'PILLS', 'CONDOM',
-  'BTL', 'VASECTOMY', 'LAM', 'NONE', '',
-]);
+export const ContraceptiveMethodSchema = z.string();
 
-export const MUACClassificationSchema = z.enum(['SAM', 'MAM', 'NORMAL']).nullable();
+export const MUACClassificationSchema = z.enum(['SAM', 'MAM', 'NORMAL', '']).nullable();
 
 export const NutritionalStatusSchema = z.enum([
-  'NORMAL', 'MILD_WASTING', 'MODERATE_WASTING', 'SEVERE_WASTING', 'OVERWEIGHT', 'OBESE',
+  'NORMAL', 'MILD_UNDERWEIGHT', 'MODERATE_UNDERWEIGHT', 'SEVERE_UNDERWEIGHT', 'OVERWEIGHT', 'OBESE', '',
 ]).nullable();
 
 export const GrowthChartTypeSchema = z.enum([
@@ -98,7 +93,7 @@ export const GrowthChartTypeSchema = z.enum([
 export const VaccineRouteSchema = z.enum(['IM', 'SC', 'ORAL', 'ID', '']);
 
 export const ImmunizationStatusSchema = z.enum([
-  'SCHEDULED', 'ADMINISTERED', 'MISSED', 'CONTRAINDICATED',
+  'SCHEDULED', 'ADMINISTERED', 'MISSED', 'CONTRAINDICATED', 'DEFERRED',
 ]);
 
 export const InjectionSiteSchema = z.enum([
@@ -112,7 +107,7 @@ export const AEFIEventTypeSchema = z.enum([
 export const AEFISeveritySchema = z.enum(['MILD', 'MODERATE', 'SEVERE']);
 
 export const AEFIOutcomeSchema = z.enum([
-  'RECOVERED', 'RECOVERING', 'NOT_RECOVERED', 'SEQUELAE', 'DEATH',
+  'RECOVERED', 'RECOVERING', 'NOT_RECOVERED', 'SEQUELAE', 'DEATH', 'UNKNOWN',
 ]);
 
 export const HEIStatusSchema = z.enum([
@@ -122,9 +117,9 @@ export const HEIStatusSchema = z.enum([
 
 export const MotherARTStatusSchema = z.enum(['ON_ART', 'NOT_ON_ART', 'UNKNOWN']);
 
-export const InfantARVProphylaxisSchema = z.enum(['NVP', 'AZT', 'NVP_AZT', 'NONE', '']);
+export const InfantARVProphylaxisSchema = z.enum(['NVP', 'AZT', 'NVP_AZT', 'NONE']);
 
-export const HEIBreastfeedingStatusSchema = z.enum(['EXCLUSIVE', 'MIXED', 'FORMULA', 'STOPPED', '']);
+export const HEIBreastfeedingStatusSchema = z.enum(['EXCLUSIVE', 'MIXED', 'FORMULA', 'STOPPED']);
 
 export const PCRResultSchema = z.enum(['POSITIVE', 'NEGATIVE', 'INDETERMINATE', 'PENDING']);
 
@@ -372,9 +367,9 @@ export const PaginatedGrowthMeasurementListSchema = createPaginatedSchema(Growth
 
 export const GrowthChartDataSchema = z.object({
   measurements: z.array(GrowthMeasurementListItemSchema),
-  percentile_lines: z.record(z.array(z.number())),
+  percentile_lines: z.record(z.unknown()),
   chart_type: GrowthChartTypeSchema,
-  sex: z.enum(['M', 'F']),
+  sex: z.string(),
 });
 
 // =============================================================================
