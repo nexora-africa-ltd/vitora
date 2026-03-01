@@ -12,7 +12,7 @@ interface StatsCardProps {
   description?: ReactNode;
   icon: LucideIcon;
   trend?: 'up' | 'down' | 'neutral';
-  variant?: 'default' | 'warning' | 'success';
+  variant?: 'default' | 'warning' | 'success' | 'info' | 'destructive';
   loading?: boolean;
   /** Optional link to navigate to on click */
   href?: string;
@@ -32,6 +32,8 @@ export function StatsCard({
     default: 'bg-primary/10 text-primary',
     warning: 'bg-warning/10 text-warning',
     success: 'bg-success/10 text-success',
+    info: 'bg-info/10 text-info',
+    destructive: 'bg-destructive/10 text-destructive',
   };
 
   const cardContent = (

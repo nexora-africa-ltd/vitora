@@ -393,7 +393,7 @@ export const growthMeasurementsApi = {
     chartType: GrowthChartType = 'weight_for_age'
   ): Promise<GrowthChartData> => {
     const response = await apiClient.get<GrowthChartData>(
-      `${BASE_URL}/growth-measurements/chart_data/`,
+      `${BASE_URL}/growth-measurements/chart-data/`,
       { params: { patient: patientId, chart_type: chartType } }
     );
     return parseResponse(GrowthChartDataSchema, response.data, {
@@ -473,12 +473,12 @@ export const immunizationsApi = {
    * Generate immunization schedule for a patient
    */
   generateSchedule: async (patientId: number): Promise<ImmunizationRecordListItem[]> => {
-    const response = await apiClient.post<{ records: ImmunizationRecordListItem[] }>(
-      `${BASE_URL}/immunizations/generate_schedule/`,
+    const response = await apiClient.post<ImmunizationRecordListItem[]>(
+      `${BASE_URL}/immunizations/generate-schedule/`,
       { patient: patientId }
     );
-    // The response contains { records: [...] }
-    return response.data.records;
+    // Backend returns serialized array directly (not wrapped in { records: [...] })
+    return response.data;
   },
 
   /**
@@ -486,7 +486,7 @@ export const immunizationsApi = {
    */
   reportAEFI: async (id: number, data: AEFIReportData): Promise<AEFI> => {
     const response = await apiClient.post<AEFI>(
-      `${BASE_URL}/immunizations/${id}/report_aefi/`,
+      `${BASE_URL}/immunizations/${id}/report-aefi/`,
       data
     );
     return parseResponse(AEFISchema, response.data, {
@@ -629,12 +629,13 @@ export const heiFollowUpApi = {
   },
 
   /**
-   * Record a PCR test result
+   * Record a PCR test result.
+   * Uses the dedicated hei-pcr ViewSet (not an action on HEIFollowUpViewSet).
    */
-  recordPCR: async (id: number, data: RecordPCRTestData): Promise<HEIPCRTest> => {
+  recordPCR: async (heiFollowUpId: number, data: RecordPCRTestData): Promise<HEIPCRTest> => {
     const response = await apiClient.post<HEIPCRTest>(
-      `${BASE_URL}/hei/${id}/record_pcr/`,
-      data
+      `${BASE_URL}/hei-pcr/`,
+      { ...data, hei_followup: heiFollowUpId }
     );
     return parseResponse(HEIPCRTestSchema, response.data, {
       context: 'heiFollowUpApi.recordPCR',

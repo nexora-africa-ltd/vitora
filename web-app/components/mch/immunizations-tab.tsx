@@ -21,6 +21,7 @@ const statusIcons: Record<ImmunizationStatus, string> = {
   SCHEDULED: '\uD83D\uDCC5',
   MISSED: '\u26A0\uFE0F',
   CONTRAINDICATED: '\uD83D\uDEAB',
+  DEFERRED: '\u23F8\uFE0F',
 };
 
 const statusColors: Record<ImmunizationStatus, string> = {
@@ -28,6 +29,7 @@ const statusColors: Record<ImmunizationStatus, string> = {
   SCHEDULED: 'bg-blue-100 text-blue-800',
   MISSED: 'bg-orange-100 text-orange-800',
   CONTRAINDICATED: 'bg-gray-100 text-gray-800',
+  DEFERRED: 'bg-yellow-100 text-yellow-800',
 };
 
 export function ImmunizationsTab({ patientId }: ImmunizationsTabProps) {

@@ -44,11 +44,11 @@ interface PNCVisitsTabProps {
   registrationId: number;
 }
 
-const UTERINE_OPTIONS: { value: UterineInvolution; label: string }[] = [
+const UTERINE_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'Not recorded' },
-  { value: 'WELL_CONTRACTED', label: 'Well Contracted' },
-  { value: 'SUBINVOLUTION', label: 'Subinvolution' },
-  { value: 'NORMAL', label: 'Normal' },
+  { value: 'Well contracted', label: 'Well Contracted' },
+  { value: 'Subinvolution', label: 'Subinvolution' },
+  { value: 'Normal', label: 'Normal' },
 ];
 
 const LOCHIA_OPTIONS: { value: LochiaStatus; label: string }[] = [
@@ -65,14 +65,15 @@ const BREAST_OPTIONS: { value: BreastCondition; label: string }[] = [
   { value: 'ENGORGED', label: 'Engorged' },
   { value: 'MASTITIS', label: 'Mastitis' },
   { value: 'CRACKED_NIPPLES', label: 'Cracked Nipples' },
+  { value: 'ABSCESS', label: 'Abscess' },
 ];
 
 const MOOD_OPTIONS: { value: MoodAssessment; label: string }[] = [
   { value: '', label: 'Not assessed' },
   { value: 'NORMAL', label: 'Normal' },
-  { value: 'ANXIOUS', label: 'Anxious' },
-  { value: 'DEPRESSED', label: 'Depressed' },
-  { value: 'ELATED', label: 'Elated' },
+  { value: 'MILDLY_LOW', label: 'Mildly Low Mood' },
+  { value: 'DEPRESSED', label: 'Possibly Depressed' },
+  { value: 'SEVERELY_DEPRESSED', label: 'Severely Depressed' },
 ];
 
 const CORD_OPTIONS: { value: CordStatus; label: string }[] = [
@@ -87,10 +88,10 @@ const FEEDING_OPTIONS: { value: BreastfeedingStatus; label: string }[] = [
   { value: 'EXCLUSIVE', label: 'Exclusive Breastfeeding' },
   { value: 'MIXED', label: 'Mixed Feeding' },
   { value: 'FORMULA', label: 'Formula Only' },
-  { value: 'NOT_BREASTFEEDING', label: 'Not Breastfeeding' },
+  { value: 'NOT_FEEDING', label: 'Not Feeding' },
 ];
 
-const CONTRACEPTIVE_OPTIONS: { value: ContraceptiveMethod; label: string }[] = [
+const CONTRACEPTIVE_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'None' },
   { value: 'IMPLANT', label: 'Implant' },
   { value: 'IUCD', label: 'IUCD' },
