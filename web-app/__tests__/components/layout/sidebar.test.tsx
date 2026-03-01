@@ -198,7 +198,8 @@ describe('Sidebar', () => {
     expect(imagingLinks.some(link => link.getAttribute('href') === '/imaging')).toBe(true);
   });
 
-  it('should have Theatre menu with Schedule, Checklists, Cases, and Reports children', () => {
+  it('should have Theatre menu with Schedule, Checklists, Cases, and Reports children (feature-flagged)', () => {
+    // Theatre is gated behind ENABLE_THEATRE flag (defaults to true in non-production)
     render(<Sidebar {...defaultProps} />);
 
     // Theatre parent should be visible
