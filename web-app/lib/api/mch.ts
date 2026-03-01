@@ -78,7 +78,8 @@ import type {
   HEIPCRTest,
   RecordPCRTestData,
   UpdateFeedingData,
-  DetermineStatusData,
+  DetermineStatusResponse,
+  UpdateFeedingResponse,
 } from '@/lib/types/mch';
 import type { PaginatedResponse } from '@/lib/types';
 
@@ -632,10 +633,10 @@ export const heiFollowUpApi = {
    * Record a PCR test result.
    * Uses the dedicated hei-pcr ViewSet (not an action on HEIFollowUpViewSet).
    */
-  recordPCR: async (heiFollowUpId: number, data: RecordPCRTestData): Promise<HEIPCRTest> => {
+  recordPCR: async (data: RecordPCRTestData): Promise<HEIPCRTest> => {
     const response = await apiClient.post<HEIPCRTest>(
       `${BASE_URL}/hei-pcr/`,
-      { ...data, hei_followup: heiFollowUpId }
+      data
     );
     return parseResponse(HEIPCRTestSchema, response.data, {
       context: 'heiFollowUpApi.recordPCR',
@@ -645,27 +646,22 @@ export const heiFollowUpApi = {
   /**
    * Update feeding status
    */
-  updateFeeding: async (id: number, data: UpdateFeedingData): Promise<HEIFollowUp> => {
-    const response = await apiClient.post<HEIFollowUp>(
+  updateFeeding: async (id: number, data: UpdateFeedingData): Promise<UpdateFeedingResponse> => {
+    const response = await apiClient.post<UpdateFeedingResponse>(
       `${BASE_URL}/hei/${id}/update_feeding/`,
       data
     );
-    return parseResponse(HEIFollowUpSchema, response.data, {
-      context: 'heiFollowUpApi.updateFeeding',
-    });
+    return response.data;
   },
 
   /**
    * Determine final status
    */
-  determineStatus: async (id: number, data: DetermineStatusData): Promise<HEIFollowUp> => {
-    const response = await apiClient.post<HEIFollowUp>(
-      `${BASE_URL}/hei/${id}/determine_final_status/`,
-      data
+  determineStatus: async (id: number): Promise<DetermineStatusResponse> => {
+    const response = await apiClient.post<DetermineStatusResponse>(
+      `${BASE_URL}/hei/${id}/determine_final_status/`
     );
-    return parseResponse(HEIFollowUpSchema, response.data, {
-      context: 'heiFollowUpApi.determineStatus',
-    });
+    return response.data;
   },
 };
 

@@ -770,6 +770,24 @@ class HEIPCRTestSerializer(serializers.ModelSerializer):
             "notes",
             "created_at",
         ]
+
+
+class HEIPCRTestReadSerializer(serializers.ModelSerializer):
+    """Read-only serializer for nested HEI PCR test records."""
+
+    class Meta:
+        model = HEIPCRTest
+        fields = [
+            "id",
+            "hei_followup",
+            "test_number",
+            "scheduled_date",
+            "actual_date",
+            "result",
+            "lab_reference",
+            "notes",
+            "created_at",
+        ]
         read_only_fields = ["hei_followup"]
 
 
@@ -779,7 +797,7 @@ class HEIFollowUpSerializer(serializers.ModelSerializer):
     infant_name = serializers.SerializerMethodField()
     infant_mrn = serializers.CharField(source="infant.mrn", read_only=True)
     mother_name = serializers.SerializerMethodField()
-    pcr_tests = HEIPCRTestSerializer(many=True, read_only=True)
+    pcr_tests = HEIPCRTestReadSerializer(many=True, read_only=True)
     enrolled_by_name = serializers.SerializerMethodField()
 
     class Meta:

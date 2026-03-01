@@ -31,6 +31,7 @@ from hmis.apps.mch.serializers import (
     GrowthChartDataSerializer,
     GrowthMeasurementListSerializer,
     GrowthMeasurementSerializer,
+    HEIFollowUpListSerializer,
     HEIFollowUpSerializer,
     HEIPCRTestSerializer,
     ImmunizationRecordListSerializer,
@@ -146,6 +147,16 @@ class AEFIFilter(django_filters.FilterSet):
     class Meta:
         model = AEFI
         fields = ["event_type", "severity"]
+
+
+class VitaminASupplementFilter(django_filters.FilterSet):
+    """Filter for Vitamin A supplements."""
+
+    patient = django_filters.NumberFilter()
+
+    class Meta:
+        model = VitaminASupplement
+        fields = ["patient"]
 
 
 class HEIFollowUpFilter(django_filters.FilterSet):
@@ -567,15 +578,10 @@ class ImmunizationRecordViewSet(viewsets.ModelViewSet):
             investigation_notes=request.data.get("notes", ""),
         )
 
-        return Response({
-            "id": aefi.id,
-            "immunization_record": record.id,
-            "event_date": aefi.event_date,
-            "event_type": aefi.event_type,
-            "description": aefi.description,
-            "severity": aefi.severity,
-            "message": "AEFI reported successfully.",
-        }, status=status.HTTP_201_CREATED)
+        return Response(
+            AEFISerializer(aefi).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class VitaminASupplementViewSet(viewsets.ModelViewSet):
@@ -585,6 +591,7 @@ class VitaminASupplementViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = VitaminASupplementSerializer
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = VitaminASupplementFilter
     ordering_fields = ["administered_date", "created_at"]
     ordering = ["-administered_date"]
 
@@ -615,6 +622,11 @@ class HEIFollowUpViewSet(viewsets.ModelViewSet):
     ordering_fields = ["enrollment_date", "created_at", "status"]
     ordering = ["-enrollment_date"]
     serializer_class = HEIFollowUpSerializer
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return HEIFollowUpListSerializer
+        return HEIFollowUpSerializer
 
     def perform_create(self, serializer):
         serializer.save(enrolled_by=self.request.user)

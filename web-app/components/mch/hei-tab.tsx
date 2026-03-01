@@ -94,7 +94,8 @@ export function HEITab({ registrationId, infantId }: HEITabProps) {
   // PCR form state
   const [pcrHeiId, setPcrHeiId] = useState<number | null>(null);
   const [testNumber, setTestNumber] = useState('1');
-  const [actualDate, setActualDate] = useState(new Date().toISOString().split('T')[0]);
+  const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split('T')[0]!);
+  const [actualDate, setActualDate] = useState(new Date().toISOString().split('T')[0]!);
   const [pcrResult, setPcrResult] = useState<PCRResult>('PENDING');
   const [labReference, setLabReference] = useState('');
   const [pcrNotes, setPcrNotes] = useState('');
@@ -121,9 +122,11 @@ export function HEITab({ registrationId, infantId }: HEITabProps) {
 
   const pcrMutation = useMutation({
     mutationFn: () =>
-      heiFollowUpApi.recordPCR(pcrHeiId!, {
+      heiFollowUpApi.recordPCR({
+        hei_followup: pcrHeiId!,
         test_number: parseInt(testNumber),
-        actual_date: actualDate!,
+        scheduled_date: scheduledDate,
+        actual_date: actualDate || undefined,
         result: pcrResult,
         lab_reference: labReference,
         notes: pcrNotes,
@@ -347,12 +350,20 @@ export function HEITab({ registrationId, infantId }: HEITabProps) {
                             </Select>
                           </div>
                           <div className="space-y-2">
-                            <Label>Test Date</Label>
+                            <Label>Scheduled Date</Label>
+                            <Input
+                              type="date"
+                              value={scheduledDate}
+                              onChange={(e) => setScheduledDate(e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Actual Test Date</Label>
                             <Input
                               type="date"
                               value={actualDate}
                               onChange={(e) => setActualDate(e.target.value)}
-                              required
                             />
                           </div>
                           <div className="space-y-2">
