@@ -32,7 +32,6 @@ from simple_history.models import HistoricalRecords
 from hmis.apps.core.history import HistoryMixin
 from hmis.apps.core.models import TimeStampedModel
 
-
 # =============================================================================
 # Number Generation Helpers
 # =============================================================================
@@ -250,9 +249,7 @@ class MCHRegistration(HistoryMixin, TimeStampedModel):
             self.mch_number = generate_mch_number()
 
         # Auto-set sensitivity for HIV-positive pregnancies or GBV-related records
-        if self.gbv_related:
-            self.is_sensitive = True
-        elif self.anc_enrollment and self.anc_enrollment.hiv_status == "POSITIVE":
+        if self.gbv_related or self.anc_enrollment and self.anc_enrollment.hiv_status == "POSITIVE":
             self.is_sensitive = True
 
         # Auto-detect high-risk from enrollment

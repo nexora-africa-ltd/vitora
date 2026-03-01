@@ -261,3 +261,6 @@ export {
   type AllergyLookupResult as AllergyLookupResultSchemaType,
   type DrugInteractionCheck as DrugInteractionCheckSchemaType,
 } from './allergy.schema';
+
+// MCH schemas
+export * from './mch.schema';

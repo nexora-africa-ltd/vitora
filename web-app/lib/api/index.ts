@@ -18,6 +18,19 @@ export { pharmacyApi } from './pharmacy';
 export { billingApi } from './billing';
 export { triageApi } from './triage';
 export { mfaApi } from './mfa';
+export {
+  mchApi,
+  mchRegistrationsApi,
+  ancVisitsApi,
+  deliveriesApi,
+  pncVisitsApi,
+  growthMeasurementsApi,
+  vaccinesApi,
+  immunizationsApi,
+  vitaminAApi,
+  aefiApi,
+  heiFollowUpApi,
+} from './mch';
 export type {
   TriageAssessmentUpdateData,
   TriageAssessmentListParams,

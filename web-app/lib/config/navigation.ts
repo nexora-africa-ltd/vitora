@@ -106,6 +106,16 @@ export const mainNavItems: NavItemType[] = [
       { label: 'Immunization', href: '/clinics/immunization', icon: Syringe },
     ],
   },
+  {
+    label: 'MCH',
+    icon: Baby,
+    children: [
+      { label: 'Registrations', href: '/mch', icon: ClipboardList },
+      { label: 'Growth Charts', href: '/mch/growth', icon: BarChart3 },
+      { label: 'Immunizations', href: '/mch/immunizations', icon: Syringe },
+      { label: 'HEI Follow-up', href: '/mch/hei', icon: HeartPulse },
+    ],
+  },
   { label: 'Encounters', href: '/encounters', icon: Stethoscope },
   {
     label: 'Inpatient',

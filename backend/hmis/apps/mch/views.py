@@ -1,5 +1,6 @@
 """Views for the MCH module."""
 
+from django.db import models
 from django_filters import rest_framework as django_filters
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
@@ -43,7 +44,6 @@ from hmis.apps.mch.serializers import (
     VitaminASupplementSerializer,
 )
 from hmis.apps.mch.services.immunization import generate_immunization_schedule
-
 
 # =============================================================================
 # Filters
@@ -199,6 +199,97 @@ class MCHRegistrationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(registered_by=self.request.user)
 
+    @action(detail=True, methods=["post"])
+    def route_to_anc(self, request, pk=None):
+        """
+        Route mother to ANC clinic queue.
+
+        Creates a ClinicVisit for the mother in an ANC clinic.
+        Optionally accepts `clinic_id` in request data to specify which ANC clinic.
+        """
+        registration = self.get_object()
+        clinic_id = request.data.get("clinic_id")
+        notes = request.data.get("notes", "")
+
+        try:
+            from datetime import date as dt_date
+            from datetime import timedelta
+
+            from django.utils import timezone
+
+            from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
+
+            # Find ANC clinic
+            if clinic_id:
+                clinic = Clinic.objects.filter(
+                    id=clinic_id,
+                    clinic_type="ANC",
+                    status="ACTIVE",
+                ).first()
+                if not clinic:
+                    return Response(
+                        {"detail": f"ANC clinic with ID {clinic_id} not found or inactive."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            else:
+                clinic = Clinic.objects.filter(
+                    clinic_type="ANC",
+                    status="ACTIVE",
+                ).first()
+                if not clinic:
+                    return Response(
+                        {"detail": "No active ANC clinic found."},
+                        status=status.HTTP_404_NOT_FOUND,
+                    )
+
+            # Get or create today's session
+            today = dt_date.today()
+            session = ClinicSession.objects.filter(
+                clinic=clinic,
+                session_date=today,
+            ).first()
+
+            if not session:
+                # Create a default session for today
+                session = ClinicSession.objects.create(
+                    clinic=clinic,
+                    session_date=today,
+                    status="OPEN",
+                    opened_at=timezone.now(),
+                )
+
+            # Get next queue number
+            max_queue = ClinicVisit.objects.filter(session=session).aggregate(
+                max_q=models.Max("queue_number")
+            )["max_q"] or 0
+
+            # Create clinic visit
+            visit = ClinicVisit.objects.create(
+                session=session,
+                patient=registration.mother,
+                queue_number=max_queue + 1,
+                status="REGISTERED",
+                priority="STANDARD",
+                visit_type="SCHEDULED" if registration.anc_enrollment else "NEW",
+                source="DIRECT",
+                chief_complaint=f"ANC visit - MCH: {registration.mch_number}",
+                notes=notes,
+            )
+
+            return Response({
+                "message": "Mother routed to ANC queue successfully.",
+                "clinic_visit_id": visit.id,
+                "queue_number": visit.queue_number,
+                "clinic": clinic.name,
+                "session_id": session.id,
+            })
+
+        except Exception as exc:
+            return Response(
+                {"detail": f"Failed to route to ANC: {exc!s}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 class ANCVisitViewSet(viewsets.ModelViewSet):
     """ViewSet for ANC visits."""
@@ -316,6 +407,47 @@ class GrowthMeasurementViewSet(viewsets.ModelViewSet):
         }
         return Response(GrowthChartDataSerializer(payload).data)
 
+    @action(detail=False, methods=["get"], url_path="export-pdf")
+    def export_pdf(self, request):
+        """
+        Export growth chart as PDF for a patient.
+
+        Query parameters:
+            - patient: Required. Patient ID to export growth chart for.
+        """
+        from django.http import HttpResponse
+
+        patient_id = request.query_params.get("patient")
+        if not patient_id:
+            return Response(
+                {"detail": "patient query parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.filter(id=patient_id).first()
+        if not patient:
+            return Response(
+                {"detail": "Patient not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            from hmis.apps.mch.services.pdf_export import generate_growth_chart_pdf
+
+            pdf_bytes = generate_growth_chart_pdf(patient)
+
+            response = HttpResponse(pdf_bytes, content_type="application/pdf")
+            response["Content-Disposition"] = f'attachment; filename="growth_chart_{patient.mrn}.pdf"'
+            return response
+
+        except Exception as exc:
+            return Response(
+                {"detail": f"Failed to generate PDF: {exc!s}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 class VaccineViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only viewset for vaccine reference data."""
@@ -381,6 +513,70 @@ class ImmunizationRecordViewSet(viewsets.ModelViewSet):
         serializer = ImmunizationRecordListSerializer(records, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=["post"], url_path="report-aefi")
+    def report_aefi(self, request, pk=None):
+        """
+        Report an AEFI (Adverse Event Following Immunization) for this immunization.
+
+        Required fields:
+            - event_date: Date the adverse event occurred
+            - event_type: LOCAL_REACTION, SYSTEMIC_REACTION, SEVERE, or DEATH
+            - description: Description of the event
+
+        Optional fields:
+            - severity: MILD, MODERATE, or SEVERE
+            - outcome: RECOVERED, RECOVERING, NOT_RECOVERED, SEQUELAE, or DEATH
+            - notes: Additional notes
+        """
+        record = self.get_object()
+
+        # Validate that the vaccine was administered
+        if record.status != "ADMINISTERED":
+            return Response(
+                {"detail": "AEFI can only be reported for administered vaccines."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Extract and validate required fields
+        event_date = request.data.get("event_date")
+        event_type = request.data.get("event_type")
+        description = request.data.get("description")
+
+        if not event_date or not event_type or not description:
+            return Response(
+                {"detail": "event_date, event_type, and description are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate event_type
+        valid_event_types = [choice[0] for choice in AEFI.EVENT_TYPE_CHOICES]
+        if event_type not in valid_event_types:
+            return Response(
+                {"detail": f"Invalid event_type. Must be one of: {valid_event_types}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Create AEFI record
+        aefi = AEFI.objects.create(
+            immunization_record=record,
+            event_date=event_date,
+            event_type=event_type,
+            description=description,
+            severity=request.data.get("severity", "MILD"),
+            outcome=request.data.get("outcome", ""),
+            investigation_notes=request.data.get("notes", ""),
+        )
+
+        return Response({
+            "id": aefi.id,
+            "immunization_record": record.id,
+            "event_date": aefi.event_date,
+            "event_type": aefi.event_type,
+            "description": aefi.description,
+            "severity": aefi.severity,
+            "message": "AEFI reported successfully.",
+        }, status=status.HTTP_201_CREATED)
+
 
 class VitaminASupplementViewSet(viewsets.ModelViewSet):
     """ViewSet for Vitamin A supplements."""
@@ -422,6 +618,91 @@ class HEIFollowUpViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(enrolled_by=self.request.user)
+
+    @action(detail=True, methods=["post"])
+    def determine_final_status(self, request, pk=None):
+        """
+        Determine final HIV status based on PCR test results.
+
+        Business rules:
+        - If any PCR test is POSITIVE → CONFIRMED_POSITIVE
+        - If all scheduled PCR tests (at least 2) are NEGATIVE → CONFIRMED_NEGATIVE
+        - If tests are still PENDING or insufficient → remains ACTIVE
+
+        When confirmed positive, auto-enrollment to CCC is triggered via signal.
+        """
+        hei = self.get_object()
+
+        if hei.status != "ACTIVE":
+            return Response(
+                {"detail": f"Cannot determine status: HEI is already {hei.get_status_display()}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        pcr_tests = hei.pcr_tests.all()
+
+        if not pcr_tests.exists():
+            return Response(
+                {"detail": "No PCR tests recorded. Cannot determine final status."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Check for positive results
+        positive_tests = pcr_tests.filter(result="POSITIVE")
+        if positive_tests.exists():
+            hei.status = "CONFIRMED_POSITIVE"
+            hei.save(update_fields=["status"])
+            return Response({
+                "status": "CONFIRMED_POSITIVE",
+                "message": "Infant confirmed HIV-positive. CCC enrollment may be auto-created.",
+                "positive_test_number": positive_tests.first().test_number,
+            })
+
+        # Check if sufficient negative results
+        negative_tests = pcr_tests.filter(result="NEGATIVE")
+        pending_tests = pcr_tests.filter(result="PENDING")
+
+        # Kenya protocol: need at least 2 negative PCR tests to confirm negative
+        # (one at 6 weeks, one at 9 months or after cessation of breastfeeding)
+        if negative_tests.count() >= 2 and pending_tests.count() == 0:
+            hei.status = "CONFIRMED_NEGATIVE"
+            hei.save(update_fields=["status"])
+            return Response({
+                "status": "CONFIRMED_NEGATIVE",
+                "message": "Infant confirmed HIV-negative after 2+ negative PCR tests.",
+                "negative_test_count": negative_tests.count(),
+            })
+
+        # Still pending determination
+        return Response({
+            "status": "ACTIVE",
+            "message": "Insufficient results to determine final status.",
+            "negative_tests": negative_tests.count(),
+            "pending_tests": pending_tests.count(),
+            "required_negative_tests": 2,
+        })
+
+    @action(detail=True, methods=["post"])
+    def update_feeding(self, request, pk=None):
+        """Update infant's breastfeeding status."""
+        hei = self.get_object()
+        new_status = request.data.get("breastfeeding_status")
+
+        valid_statuses = [choice[0] for choice in HEIFollowUp.BREASTFEEDING_STATUS_CHOICES]
+        if new_status not in valid_statuses:
+            return Response(
+                {"detail": f"Invalid breastfeeding_status. Must be one of: {valid_statuses}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        hei.breastfeeding_status = new_status
+        hei.save(update_fields=["breastfeeding_status"])
+
+        return Response({
+            "hei_number": hei.hei_number,
+            "breastfeeding_status": new_status,
+            "message": f"Breastfeeding status updated to {hei.get_breastfeeding_status_display()}",
+        })
 
 
 class HEIPCRTestViewSet(viewsets.ModelViewSet):

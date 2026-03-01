@@ -18,7 +18,6 @@ import logging
 import math
 from decimal import Decimal
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +74,7 @@ class WHOGrowthCalculator:
             return []
 
     @staticmethod
-    def _calculate_z_score(x: float, l: float, m: float, s: float) -> Optional[Decimal]:
+    def _calculate_z_score(x: float, l: float, m: float, s: float) -> Decimal | None:
         """
         Calculate Z-score using the LMS method.
 
@@ -108,7 +107,7 @@ class WHOGrowthCalculator:
     @classmethod
     def _interpolate_lms(
         cls, data: list[dict], target_key: str, target_value: float
-    ) -> Optional[tuple[float, float, float]]:
+    ) -> tuple[float, float, float] | None:
         """
         Interpolate LMS parameters for a given target value (age or height/length).
 
@@ -175,7 +174,7 @@ class WHOGrowthCalculator:
         sex_label = "boys" if sex.upper() == "M" else "girls"
         return f"{indicator}_{sex_label}_0_5.json"
 
-    def weight_for_age_z(self, weight_kg: float, age_days: int, sex: str) -> Optional[Decimal]:
+    def weight_for_age_z(self, weight_kg: float, age_days: int, sex: str) -> Decimal | None:
         """
         Calculate weight-for-age Z-score.
 
@@ -200,7 +199,7 @@ class WHOGrowthCalculator:
 
         return self._calculate_z_score(weight_kg, *lms)
 
-    def height_for_age_z(self, height_cm: float, age_days: int, sex: str) -> Optional[Decimal]:
+    def height_for_age_z(self, height_cm: float, age_days: int, sex: str) -> Decimal | None:
         """
         Calculate height/length-for-age Z-score.
 
@@ -228,7 +227,7 @@ class WHOGrowthCalculator:
 
     def weight_for_height_z(
         self, weight_kg: float, height_cm: float, sex: str
-    ) -> Optional[Decimal]:
+    ) -> Decimal | None:
         """
         Calculate weight-for-height/length Z-score.
 
@@ -261,7 +260,7 @@ class WHOGrowthCalculator:
 
         return None
 
-    def bmi_for_age_z(self, bmi: float, age_days: int, sex: str) -> Optional[Decimal]:
+    def bmi_for_age_z(self, bmi: float, age_days: int, sex: str) -> Decimal | None:
         """
         Calculate BMI-for-age Z-score.
 
@@ -288,7 +287,7 @@ class WHOGrowthCalculator:
 
     def head_circumference_for_age_z(
         self, hc_cm: float, age_days: int, sex: str
-    ) -> Optional[Decimal]:
+    ) -> Decimal | None:
         """
         Calculate head-circumference-for-age Z-score.
 
@@ -314,7 +313,7 @@ class WHOGrowthCalculator:
         return self._calculate_z_score(hc_cm, *lms)
 
     @staticmethod
-    def classify_z_score(z: Optional[Decimal]) -> str:
+    def classify_z_score(z: Decimal | None) -> str:
         """
         Classify nutritional status from a Z-score.
 
