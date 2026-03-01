@@ -3570,6 +3570,7 @@ class Command(BaseCommand):
             self.stdout.write(f"    ANC Visits: {a_visits} created (4 total, HIV monitored)")
 
             # Delivery – Amina delivers Blessing
+            # Pre-link baby_patient to prevent signal from creating a duplicate
             amina_delivery, d_created = Delivery.objects.update_or_create(
                 registration=amina_reg,
                 defaults={
@@ -3588,15 +3589,12 @@ class Command(BaseCommand):
                     "resuscitation_done": False,
                     "blood_loss_ml": 300,
                     "placenta_complete": True,
+                    "baby_patient": blessing,
                     "notes": "SVD at 38 weeks. Baby received NVP syrup immediately. Mother continued ART. PMTCT protocol followed.",
                 },
             )
 
-            # Link to the existing Blessing patient if not auto-linked
             baby_for_hei = amina_delivery.baby_patient or blessing
-            if blessing and not amina_delivery.baby_patient:
-                amina_delivery.baby_patient = blessing
-                amina_delivery.save(update_fields=["baby_patient"])
             if baby_for_hei and not amina_reg.baby:
                 amina_reg.baby = baby_for_hei
                 amina_reg.save(update_fields=["baby"])
