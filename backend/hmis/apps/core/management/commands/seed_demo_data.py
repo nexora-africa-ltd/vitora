@@ -747,6 +747,25 @@ class Command(BaseCommand):
                         "notes": "GBV clinic (sensitive) demo patient",
                         "is_sensitive": True,
                     },
+                    # MCH – HIV-positive mother (delivered, HEI follow-up)
+                    {
+                        "identification_number": "DEMO-PT-0105",
+                        "first_name": "Amina",
+                        "last_name": "Hassan",
+                        "gender": "F",
+                        "date_of_birth": date.today() - timedelta(days=365 * 28),
+                        "notes": "HIV+ ANC/PNC/HEI demo patient",
+                        "is_sensitive": True,
+                    },
+                    # MCH – newborn baby (6 weeks old, for immunization/growth demo)
+                    {
+                        "identification_number": "DEMO-PT-0106",
+                        "first_name": "Blessing",
+                        "last_name": "Hassan",
+                        "gender": "F",
+                        "date_of_birth": date.today() - timedelta(days=42),
+                        "notes": "Newborn baby for immunization & growth demo",
+                    },
                 ]
 
                 # Use a predictable county/sub-county combo for deterministic patients
@@ -840,6 +859,12 @@ class Command(BaseCommand):
             # =============================================================
             self.stdout.write(self.style.MIGRATE_HEADING("\n8. Creating Pharmacy Stock Data..."))
             self._seed_pharmacy_stock_data(options)
+
+            # =============================================================
+            # Step 9: Create MCH Demo Data (ANC, delivery, PNC, growth, immunization, HEI)
+            # =============================================================
+            self.stdout.write(self.style.MIGRATE_HEADING("\n9. Creating MCH Demo Data..."))
+            self._seed_mch_data(options)
 
         # =============================================================
         # Summary
@@ -2789,3 +2814,981 @@ class Command(BaseCommand):
         self.stdout.write(f"  Skipped {batches_skipped} drugs (already have stock)")
         self.stdout.write(f"  Total stock value: KES {total_stock_value:,.2f}")
         self.stdout.write(self.style.SUCCESS("  ✅ Pharmacy stock data created successfully!"))
+
+    # =================================================================
+    # Step 9: MCH Demo Data
+    # =================================================================
+    def _seed_mch_data(self, options):
+        """
+        Seed comprehensive MCH demo data showing the full maternal & child health journey.
+
+        Scenarios created:
+        1. Grace Wambui (DEMO-PT-0101) – Active ANC at ~28 weeks, 3 ANC visits
+        2. Faith Nyambura (DEMO-PT-0102) – Completed journey: ANC→Delivery→PNC, healthy baby
+        3. Brian Mwangi (DEMO-PT-0104) – 2yr old child with growth measurements
+        4. Amina Hassan (DEMO-PT-0105) – HIV+ mother, delivered, HEI follow-up for baby
+        5. Blessing Hassan (DEMO-PT-0106) – 6wk old newborn, immunizations partially given
+        """
+        from datetime import date, time, timedelta
+        from decimal import Decimal
+
+        from django.contrib.auth import get_user_model
+
+        from hmis.apps.clinics.models import Clinic, ClinicEnrollment
+        from hmis.apps.mch.models import (
+            ANCVisit,
+            Delivery,
+            GrowthMeasurement,
+            HEIFollowUp,
+            HEIPCRTest,
+            ImmunizationRecord,
+            MCHRegistration,
+            PNCVisit,
+            Vaccine,
+            VitaminASupplement,
+        )
+        from hmis.apps.patients.models import Patient
+
+        User = get_user_model()
+        today = date.today()
+
+        # Helpers
+        def get_patient(temp_id: str) -> Patient | None:
+            return Patient.objects.filter(
+                identification_type="temporary_id", identification_number=temp_id
+            ).first()
+
+        def get_user(username: str):
+            return User.objects.filter(username=username).first()
+
+        doctor = get_user("demo_doctor")
+        nurse = get_user("demo_nurse")
+        if not doctor and not nurse:
+            self.stdout.write(
+                self.style.WARNING("  No demo_doctor/demo_nurse found. Skipping MCH data.")
+            )
+            return
+
+        clinician = doctor or nurse
+
+        # ─────────────────────────────────────────────────────────────
+        # Scenario 1: Grace Wambui – Active ANC at ~28 weeks
+        # ─────────────────────────────────────────────────────────────
+        grace = get_patient("DEMO-PT-0101")
+        if grace:
+            self.stdout.write("  Scenario 1: Grace Wambui – Active ANC (28 weeks)...")
+
+            # Ensure ANC enrollment exists with pregnancy details
+            anc_clinic = Clinic.objects.filter(clinic_type="ANC", status="ACTIVE").first()
+            grace_enrollment = None
+            if anc_clinic:
+                grace_lmp = today - timedelta(weeks=28)
+                grace_edd = grace_lmp + timedelta(days=280)
+                grace_enrollment, _ = ClinicEnrollment.objects.update_or_create(
+                    clinic=anc_clinic,
+                    patient=grace,
+                    defaults={
+                        "enrollment_date": grace_lmp + timedelta(weeks=8),
+                        "status": "ACTIVE",
+                        "enrolled_by": clinician,
+                        "next_appointment": today + timedelta(weeks=4),
+                        "appointment_interval_days": 28,
+                        "gravida": 2,
+                        "para": 1,
+                        "lmp": grace_lmp,
+                        "edd": grace_edd,
+                        "blood_group": "O+",
+                        "rhesus_factor": "POSITIVE",
+                        "hiv_status": "NEGATIVE",
+                        "previous_cesarean": False,
+                        "high_risk_pregnancy": False,
+                    },
+                )
+
+            # MCH Registration
+            grace_reg, created = MCHRegistration.objects.update_or_create(
+                mother=grace,
+                status="ACTIVE",
+                defaults={
+                    "registration_date": (grace_enrollment.enrollment_date if grace_enrollment else today - timedelta(weeks=20)),
+                    "anc_enrollment": grace_enrollment,
+                    "is_high_risk": False,
+                    "linda_jamii_beneficiary": True,
+                    "sha_claimable": True,
+                    "registered_by": clinician,
+                    "notes": "Gravida 2 Para 1, normal pregnancy. Linda Jamii beneficiary.",
+                },
+            )
+            self.stdout.write(f"    MCH Registration: {grace_reg.mch_number} ({'new' if created else 'exists'})")
+
+            # ANC Visits (3 completed visits at weeks 12, 20, 28)
+            anc_visit_data = [
+                {
+                    "visit_number": 1,
+                    "visit_date": (grace_enrollment.lmp if grace_enrollment else today - timedelta(weeks=28)) + timedelta(weeks=12),
+                    "gestation_weeks": 12,
+                    "weight": Decimal("62.0"),
+                    "blood_pressure": "110/70",
+                    "fundal_height": None,
+                    "fetal_heart_rate": None,
+                    "presentation": "",
+                    "lie": "",
+                    "fetal_movements": None,
+                    "urine_protein": "NEGATIVE",
+                    "urine_glucose": "NEGATIVE",
+                    "hb_level": Decimal("12.5"),
+                    "hiv_test_done": True,
+                    "syphilis_test_done": True,
+                    "iron_folate_given": True,
+                    "calcium_given": True,
+                    "deworming_given": False,
+                    "tetanus_toxoid_dose": 1,
+                    "notes": "First ANC visit. Hb normal. HIV/syphilis negative. TT1 given.",
+                },
+                {
+                    "visit_number": 2,
+                    "visit_date": (grace_enrollment.lmp if grace_enrollment else today - timedelta(weeks=28)) + timedelta(weeks=20),
+                    "gestation_weeks": 20,
+                    "weight": Decimal("65.5"),
+                    "blood_pressure": "115/75",
+                    "fundal_height": Decimal("20.0"),
+                    "fetal_heart_rate": 144,
+                    "presentation": "CEPHALIC",
+                    "lie": "LONGITUDINAL",
+                    "fetal_movements": True,
+                    "urine_protein": "NEGATIVE",
+                    "urine_glucose": "NEGATIVE",
+                    "hb_level": Decimal("11.8"),
+                    "hiv_test_done": False,
+                    "syphilis_test_done": False,
+                    "iron_folate_given": True,
+                    "calcium_given": True,
+                    "deworming_given": True,
+                    "tetanus_toxoid_dose": 2,
+                    "notes": "Anomaly scan normal. FHR 144 BPM regular. TT2 given. Deworming done.",
+                },
+                {
+                    "visit_number": 3,
+                    "visit_date": (grace_enrollment.lmp if grace_enrollment else today - timedelta(weeks=28)) + timedelta(weeks=28),
+                    "gestation_weeks": 28,
+                    "weight": Decimal("68.2"),
+                    "blood_pressure": "118/78",
+                    "fundal_height": Decimal("28.0"),
+                    "fetal_heart_rate": 138,
+                    "presentation": "CEPHALIC",
+                    "lie": "LONGITUDINAL",
+                    "fetal_movements": True,
+                    "urine_protein": "NEGATIVE",
+                    "urine_glucose": "NEGATIVE",
+                    "hb_level": Decimal("11.2"),
+                    "hiv_test_done": False,
+                    "syphilis_test_done": False,
+                    "iron_folate_given": True,
+                    "calcium_given": True,
+                    "deworming_given": False,
+                    "tetanus_toxoid_dose": None,
+                    "next_visit_date": today + timedelta(weeks=4),
+                    "notes": "Fundal height corresponds to dates. FHR regular. Next visit at 32 weeks.",
+                },
+            ]
+
+            visits_created = 0
+            for vdata in anc_visit_data:
+                next_visit = vdata.pop("next_visit_date", None)
+                _, created = ANCVisit.objects.update_or_create(
+                    registration=grace_reg,
+                    visit_number=vdata["visit_number"],
+                    defaults={
+                        **vdata,
+                        "next_visit_date": next_visit,
+                        "conducted_by": clinician,
+                    },
+                )
+                if created:
+                    visits_created += 1
+            self.stdout.write(f"    ANC Visits: {visits_created} created (3 total)")
+        else:
+            self.stdout.write(self.style.WARNING("    Grace Wambui (DEMO-PT-0101) not found"))
+
+        # ─────────────────────────────────────────────────────────────
+        # Scenario 2: Faith Nyambura – Complete journey (ANC→Delivery→PNC)
+        # ─────────────────────────────────────────────────────────────
+        faith = get_patient("DEMO-PT-0102")
+        if faith:
+            self.stdout.write("  Scenario 2: Faith Nyambura – Complete ANC→Delivery→PNC...")
+
+            anc_clinic = Clinic.objects.filter(clinic_type="ANC", status="ACTIVE").first()
+            delivery_date = today - timedelta(days=21)  # Delivered 3 weeks ago
+            faith_lmp = delivery_date - timedelta(weeks=39)
+            faith_edd = faith_lmp + timedelta(days=280)
+
+            faith_enrollment = None
+            if anc_clinic:
+                faith_enrollment, _ = ClinicEnrollment.objects.update_or_create(
+                    clinic=anc_clinic,
+                    patient=faith,
+                    defaults={
+                        "enrollment_date": faith_lmp + timedelta(weeks=10),
+                        "status": "ACTIVE",
+                        "enrolled_by": clinician,
+                        "appointment_interval_days": 28,
+                        "gravida": 3,
+                        "para": 2,
+                        "lmp": faith_lmp,
+                        "edd": faith_edd,
+                        "blood_group": "A+",
+                        "rhesus_factor": "POSITIVE",
+                        "hiv_status": "NEGATIVE",
+                        "previous_cesarean": False,
+                        "high_risk_pregnancy": False,
+                    },
+                )
+
+            faith_reg, created = MCHRegistration.objects.update_or_create(
+                mother=faith,
+                defaults={
+                    "registration_date": faith_lmp + timedelta(weeks=10),
+                    "status": "POSTNATAL",
+                    "anc_enrollment": faith_enrollment,
+                    "is_high_risk": False,
+                    "linda_jamii_beneficiary": False,
+                    "sha_claimable": True,
+                    "registered_by": clinician,
+                    "notes": "Gravida 3 Para 2. Normal pregnancy, SVD at term.",
+                },
+            )
+            self.stdout.write(f"    MCH Registration: {faith_reg.mch_number} ({'new' if created else 'exists'})")
+
+            # 4 ANC visits (complete ANC journey)
+            faith_anc_data = [
+                {
+                    "visit_number": 1,
+                    "visit_date": faith_lmp + timedelta(weeks=10),
+                    "gestation_weeks": 10,
+                    "weight": Decimal("70.0"),
+                    "blood_pressure": "120/80",
+                    "hb_level": Decimal("13.0"),
+                    "hiv_test_done": True,
+                    "syphilis_test_done": True,
+                    "iron_folate_given": True,
+                    "calcium_given": True,
+                    "tetanus_toxoid_dose": 1,
+                    "urine_protein": "NEGATIVE",
+                    "urine_glucose": "NEGATIVE",
+                    "notes": "Booking visit. All baseline investigations normal.",
+                },
+                {
+                    "visit_number": 2,
+                    "visit_date": faith_lmp + timedelta(weeks=20),
+                    "gestation_weeks": 20,
+                    "weight": Decimal("73.5"),
+                    "blood_pressure": "115/75",
+                    "fundal_height": Decimal("20.5"),
+                    "fetal_heart_rate": 150,
+                    "presentation": "CEPHALIC",
+                    "lie": "LONGITUDINAL",
+                    "fetal_movements": True,
+                    "hb_level": Decimal("12.2"),
+                    "iron_folate_given": True,
+                    "calcium_given": True,
+                    "deworming_given": True,
+                    "tetanus_toxoid_dose": 2,
+                    "urine_protein": "NEGATIVE",
+                    "urine_glucose": "NEGATIVE",
+                    "notes": "Anomaly scan normal. Good fetal growth.",
+                },
+                {
+                    "visit_number": 3,
+                    "visit_date": faith_lmp + timedelta(weeks=28),
+                    "gestation_weeks": 28,
+                    "weight": Decimal("76.0"),
+                    "blood_pressure": "120/78",
+                    "fundal_height": Decimal("28.0"),
+                    "fetal_heart_rate": 142,
+                    "presentation": "CEPHALIC",
+                    "lie": "LONGITUDINAL",
+                    "fetal_movements": True,
+                    "iron_folate_given": True,
+                    "calcium_given": True,
+                    "urine_protein": "NEGATIVE",
+                    "urine_glucose": "NEGATIVE",
+                    "notes": "Growth on track. Prepared birth plan.",
+                },
+                {
+                    "visit_number": 4,
+                    "visit_date": faith_lmp + timedelta(weeks=36),
+                    "gestation_weeks": 36,
+                    "weight": Decimal("79.0"),
+                    "blood_pressure": "118/76",
+                    "fundal_height": Decimal("35.0"),
+                    "fetal_heart_rate": 136,
+                    "presentation": "CEPHALIC",
+                    "lie": "LONGITUDINAL",
+                    "fetal_movements": True,
+                    "iron_folate_given": True,
+                    "hb_level": Decimal("11.5"),
+                    "urine_protein": "NEGATIVE",
+                    "urine_glucose": "NEGATIVE",
+                    "notes": "Term assessment. Vertex presentation, head engaged. Ready for delivery.",
+                },
+            ]
+
+            f_visits_created = 0
+            for vdata in faith_anc_data:
+                _, created = ANCVisit.objects.update_or_create(
+                    registration=faith_reg,
+                    visit_number=vdata["visit_number"],
+                    defaults={**vdata, "conducted_by": clinician},
+                )
+                if created:
+                    f_visits_created += 1
+            self.stdout.write(f"    ANC Visits: {f_visits_created} created (4 total)")
+
+            # Delivery – healthy live birth
+            faith_delivery, d_created = Delivery.objects.update_or_create(
+                registration=faith_reg,
+                defaults={
+                    "delivery_date": delivery_date,
+                    "delivery_time": time(6, 30),
+                    "delivery_type": "SVD",
+                    "delivery_outcome": "LIVE_BIRTH",
+                    "place_of_delivery": "FACILITY",
+                    "status": "COMPLETED",
+                    "delivered_by": clinician,
+                    "baby_gender": "M",
+                    "birth_weight": Decimal("3.45"),
+                    "apgar_score_1min": 8,
+                    "apgar_score_5min": 9,
+                    "apgar_score_10min": 10,
+                    "resuscitation_done": False,
+                    "blood_loss_ml": 250,
+                    "placenta_complete": True,
+                    "notes": "Spontaneous vaginal delivery at 39 weeks. Active management of 3rd stage. Baby cried immediately.",
+                },
+            )
+            # Link baby if signal created one
+            if faith_delivery.baby_patient:
+                faith_reg.baby = faith_delivery.baby_patient
+                faith_reg.save(update_fields=["baby"])
+            self.stdout.write(f"    Delivery: {'created' if d_created else 'exists'} (SVD, live birth, 3.45kg)")
+
+            # PNC Visits (3 visits at 1 day, 7 days, 21 days postpartum)
+            pnc_data = [
+                {
+                    "visit_number": 1,
+                    "visit_date": delivery_date + timedelta(days=1),
+                    "blood_pressure": "115/72",
+                    "temperature": Decimal("36.8"),
+                    "lochia": "NORMAL",
+                    "breast_condition": "NORMAL",
+                    "mood_assessment": "NORMAL",
+                    "baby_weight": Decimal("3.35"),
+                    "baby_temperature": Decimal("36.6"),
+                    "cord_status": "CLEAN",
+                    "breastfeeding_status": "EXCLUSIVE",
+                    "family_planning_counselling": False,
+                    "uterine_involution": "Uterus well contracted, fundus at umbilicus",
+                    "notes": "Day 1 PNC. Mother and baby well. Good latch established. Exclusive breastfeeding counselled.",
+                },
+                {
+                    "visit_number": 2,
+                    "visit_date": delivery_date + timedelta(days=7),
+                    "blood_pressure": "118/74",
+                    "temperature": Decimal("36.5"),
+                    "lochia": "NORMAL",
+                    "breast_condition": "NORMAL",
+                    "mood_assessment": "NORMAL",
+                    "baby_weight": Decimal("3.50"),
+                    "baby_temperature": Decimal("36.7"),
+                    "cord_status": "CLEAN",
+                    "breastfeeding_status": "EXCLUSIVE",
+                    "family_planning_counselling": True,
+                    "uterine_involution": "Involuting well, fundus below umbilicus",
+                    "notes": "Day 7 PNC. Cord clean and dry. Baby regained birth weight. Family planning discussed.",
+                },
+                {
+                    "visit_number": 3,
+                    "visit_date": delivery_date + timedelta(days=21),
+                    "blood_pressure": "112/70",
+                    "temperature": Decimal("36.6"),
+                    "lochia": "NORMAL",
+                    "breast_condition": "NORMAL",
+                    "mood_assessment": "NORMAL",
+                    "baby_weight": Decimal("4.10"),
+                    "baby_temperature": Decimal("36.5"),
+                    "cord_status": "SEPARATED",
+                    "breastfeeding_status": "EXCLUSIVE",
+                    "family_planning_counselling": True,
+                    "contraceptive_given": "Progesterone-only pill",
+                    "uterine_involution": "Complete involution",
+                    "notes": "Day 21 PNC. Cord separated. Good weight gain. Initiated on POP. EBF maintained.",
+                },
+            ]
+
+            pnc_created = 0
+            for pdata in pnc_data:
+                _, created = PNCVisit.objects.update_or_create(
+                    registration=faith_reg,
+                    visit_number=pdata["visit_number"],
+                    defaults={**pdata, "conducted_by": clinician},
+                )
+                if created:
+                    pnc_created += 1
+            self.stdout.write(f"    PNC Visits: {pnc_created} created (3 total)")
+
+            # Growth measurements for Faith's baby (if baby exists)
+            baby = faith_delivery.baby_patient or faith_reg.baby
+            if baby:
+                growth_data = [
+                    {
+                        "measurement_date": delivery_date,
+                        "weight": Decimal("3.45"),
+                        "height": Decimal("50.0"),
+                        "head_circumference": Decimal("34.5"),
+                        "notes": "Birth measurements",
+                    },
+                    {
+                        "measurement_date": delivery_date + timedelta(days=7),
+                        "weight": Decimal("3.50"),
+                        "height": Decimal("50.5"),
+                        "head_circumference": Decimal("34.8"),
+                        "notes": "Day 7 check – regained birth weight",
+                    },
+                    {
+                        "measurement_date": delivery_date + timedelta(days=21),
+                        "weight": Decimal("4.10"),
+                        "height": Decimal("52.0"),
+                        "head_circumference": Decimal("35.5"),
+                        "notes": "Day 21 check – good weight gain",
+                    },
+                ]
+                gm_created = 0
+                for gdata in growth_data:
+                    _, created = GrowthMeasurement.objects.update_or_create(
+                        patient=baby,
+                        measurement_date=gdata["measurement_date"],
+                        defaults={**gdata, "measured_by": clinician},
+                    )
+                    if created:
+                        gm_created += 1
+                self.stdout.write(f"    Growth Measurements (baby): {gm_created} created")
+        else:
+            self.stdout.write(self.style.WARNING("    Faith Nyambura (DEMO-PT-0102) not found"))
+
+        # ─────────────────────────────────────────────────────────────
+        # Scenario 3: Brian Mwangi – 2yr old child welfare
+        # ─────────────────────────────────────────────────────────────
+        brian = get_patient("DEMO-PT-0104")
+        if brian:
+            self.stdout.write("  Scenario 3: Brian Mwangi – Child welfare (growth + immunizations)...")
+
+            # Growth measurements at key milestones
+            brian_dob = brian.date_of_birth
+            brian_growth = [
+                {
+                    "measurement_date": brian_dob,
+                    "weight": Decimal("3.20"),
+                    "height": Decimal("49.0"),
+                    "head_circumference": Decimal("34.0"),
+                    "notes": "Birth measurements",
+                },
+                {
+                    "measurement_date": brian_dob + timedelta(weeks=6),
+                    "weight": Decimal("4.50"),
+                    "height": Decimal("54.0"),
+                    "head_circumference": Decimal("36.5"),
+                    "notes": "6-week visit",
+                },
+                {
+                    "measurement_date": brian_dob + timedelta(weeks=10),
+                    "weight": Decimal("5.80"),
+                    "height": Decimal("58.0"),
+                    "head_circumference": Decimal("38.0"),
+                    "notes": "10-week visit",
+                },
+                {
+                    "measurement_date": brian_dob + timedelta(weeks=14),
+                    "weight": Decimal("6.50"),
+                    "height": Decimal("61.0"),
+                    "head_circumference": Decimal("39.5"),
+                    "notes": "14-week visit",
+                },
+                {
+                    "measurement_date": brian_dob + timedelta(days=182),
+                    "weight": Decimal("7.60"),
+                    "height": Decimal("66.0"),
+                    "head_circumference": Decimal("42.0"),
+                    "muac": Decimal("14.0"),
+                    "notes": "6-month visit – introduced complementary feeding",
+                },
+                {
+                    "measurement_date": brian_dob + timedelta(days=274),
+                    "weight": Decimal("8.50"),
+                    "height": Decimal("70.0"),
+                    "head_circumference": Decimal("43.5"),
+                    "muac": Decimal("14.5"),
+                    "notes": "9-month visit",
+                },
+                {
+                    "measurement_date": brian_dob + timedelta(days=365),
+                    "weight": Decimal("9.60"),
+                    "height": Decimal("74.0"),
+                    "head_circumference": Decimal("45.0"),
+                    "muac": Decimal("15.0"),
+                    "notes": "12-month visit – walking, good development",
+                },
+                {
+                    "measurement_date": brian_dob + timedelta(days=548),
+                    "weight": Decimal("11.30"),
+                    "height": Decimal("82.0"),
+                    "head_circumference": Decimal("46.5"),
+                    "muac": Decimal("15.5"),
+                    "notes": "18-month visit – normal growth trajectory",
+                },
+                {
+                    "measurement_date": brian_dob + timedelta(days=730),
+                    "weight": Decimal("12.50"),
+                    "height": Decimal("86.5"),
+                    "head_circumference": Decimal("47.5"),
+                    "muac": Decimal("15.5"),
+                    "notes": "24-month visit – on track for age",
+                },
+            ]
+
+            bgm_created = 0
+            for gdata in brian_growth:
+                # Only create if measurement_date is not in the future
+                if gdata["measurement_date"] > today:
+                    continue
+                _, created = GrowthMeasurement.objects.update_or_create(
+                    patient=brian,
+                    measurement_date=gdata["measurement_date"],
+                    defaults={**gdata, "measured_by": clinician},
+                )
+                if created:
+                    bgm_created += 1
+            self.stdout.write(f"    Growth Measurements: {bgm_created} created")
+
+            # Ensure immunization schedule exists (signal only fires on creation)
+            if not ImmunizationRecord.objects.filter(patient=brian).exists():
+                try:
+                    from hmis.apps.mch.services.immunization import generate_immunization_schedule
+                    generate_immunization_schedule(brian)
+                    self.stdout.write("    Generated KEPI immunization schedule")
+                except Exception as exc:
+                    self.stdout.write(self.style.WARNING(f"    Could not generate schedule: {exc}"))
+
+            # Mark older immunization records as ADMINISTERED
+            vaccines = Vaccine.objects.filter(is_active=True).order_by("standard_age_days")
+            imm_updated = 0
+            for vaccine in vaccines:
+                scheduled = brian_dob + timedelta(days=vaccine.standard_age_days)
+                if scheduled > today:
+                    continue  # Future vaccines stay SCHEDULED
+
+                record = ImmunizationRecord.objects.filter(
+                    patient=brian, vaccine=vaccine
+                ).first()
+                if record and record.status == "SCHEDULED":
+                    record.status = "ADMINISTERED"
+                    record.administered_date = scheduled
+                    record.administered_by = clinician
+                    record.batch_number = f"KEPI-{vaccine.code}-2024"
+                    if vaccine.route == "ORAL":
+                        record.site = "ORAL"
+                    elif vaccine.standard_age_days < 365:
+                        record.site = "LEFT_THIGH"
+                    else:
+                        record.site = "LEFT_ARM"
+                    record.save()
+                    imm_updated += 1
+
+            self.stdout.write(f"    Immunizations administered: {imm_updated}")
+
+            # Vitamin A supplements at 6 and 12 months
+            vita_created = 0
+            vita_schedule = [
+                (182, "100000"),  # 6 months
+                (365, "200000"),  # 12 months
+            ]
+            for age_days, dose in vita_schedule:
+                admin_date = brian_dob + timedelta(days=age_days)
+                if admin_date > today:
+                    continue
+                _, created = VitaminASupplement.objects.get_or_create(
+                    patient=brian,
+                    dose=dose,
+                    administered_date=admin_date,
+                    defaults={
+                        "administered_by": clinician,
+                        "notes": f"Routine Vitamin A at {age_days // 30} months",
+                    },
+                )
+                if created:
+                    vita_created += 1
+            self.stdout.write(f"    Vitamin A Supplements: {vita_created} created")
+        else:
+            self.stdout.write(self.style.WARNING("    Brian Mwangi (DEMO-PT-0104) not found"))
+
+        # ─────────────────────────────────────────────────────────────
+        # Scenario 4: Amina Hassan – HIV+ mother with HEI follow-up
+        # ─────────────────────────────────────────────────────────────
+        amina = get_patient("DEMO-PT-0105")
+        blessing = get_patient("DEMO-PT-0106")  # Newborn baby
+        if amina:
+            self.stdout.write("  Scenario 4: Amina Hassan – HIV+ ANC→Delivery→HEI...")
+
+            anc_clinic = Clinic.objects.filter(clinic_type="ANC", status="ACTIVE").first()
+            amina_delivery_date = today - timedelta(days=42)  # 6 weeks ago
+            amina_lmp = amina_delivery_date - timedelta(weeks=38)
+            amina_edd = amina_lmp + timedelta(days=280)
+
+            amina_enrollment = None
+            if anc_clinic:
+                amina_enrollment, _ = ClinicEnrollment.objects.update_or_create(
+                    clinic=anc_clinic,
+                    patient=amina,
+                    defaults={
+                        "enrollment_date": amina_lmp + timedelta(weeks=12),
+                        "status": "ACTIVE",
+                        "enrolled_by": clinician,
+                        "appointment_interval_days": 28,
+                        "gravida": 1,
+                        "para": 0,
+                        "lmp": amina_lmp,
+                        "edd": amina_edd,
+                        "blood_group": "B+",
+                        "rhesus_factor": "POSITIVE",
+                        "hiv_status": "POSITIVE",
+                        "partner_hiv_status": "NEGATIVE",
+                        "previous_cesarean": False,
+                        "high_risk_pregnancy": True,
+                        "high_risk_factors": "HIV positive. On ART (TDF/3TC/DTG). Discordant couple.",
+                    },
+                )
+
+            amina_reg, created = MCHRegistration.objects.update_or_create(
+                mother=amina,
+                defaults={
+                    "registration_date": amina_lmp + timedelta(weeks=12),
+                    "status": "POSTNATAL",
+                    "anc_enrollment": amina_enrollment,
+                    "is_high_risk": True,
+                    "risk_factors": "HIV positive – on ART, discordant couple",
+                    "is_sensitive": True,
+                    "linda_jamii_beneficiary": False,
+                    "sha_claimable": True,
+                    "registered_by": clinician,
+                    "notes": "Primigravida. HIV+ on ART (TDF/3TC/DTG). Viral load suppressed.",
+                },
+            )
+            self.stdout.write(f"    MCH Registration: {amina_reg.mch_number} (high-risk, sensitive)")
+
+            # ANC visits for Amina (4 visits, closer monitoring due to HIV)
+            amina_anc = [
+                {
+                    "visit_number": 1,
+                    "visit_date": amina_lmp + timedelta(weeks=12),
+                    "gestation_weeks": 12,
+                    "weight": Decimal("58.0"),
+                    "blood_pressure": "108/68",
+                    "hb_level": Decimal("11.0"),
+                    "hiv_test_done": True,
+                    "syphilis_test_done": True,
+                    "iron_folate_given": True,
+                    "calcium_given": True,
+                    "tetanus_toxoid_dose": 1,
+                    "urine_protein": "NEGATIVE",
+                    "urine_glucose": "NEGATIVE",
+                    "notes": "Booking visit. Known HIV+, on TDF/3TC/DTG. VL <50 copies/mL. Syphilis negative.",
+                },
+                {
+                    "visit_number": 2,
+                    "visit_date": amina_lmp + timedelta(weeks=20),
+                    "gestation_weeks": 20,
+                    "weight": Decimal("60.5"),
+                    "blood_pressure": "112/72",
+                    "fundal_height": Decimal("19.5"),
+                    "fetal_heart_rate": 148,
+                    "presentation": "CEPHALIC",
+                    "lie": "LONGITUDINAL",
+                    "fetal_movements": True,
+                    "hb_level": Decimal("10.5"),
+                    "iron_folate_given": True,
+                    "calcium_given": True,
+                    "deworming_given": True,
+                    "tetanus_toxoid_dose": 2,
+                    "urine_protein": "NEGATIVE",
+                    "urine_glucose": "NEGATIVE",
+                    "notes": "Anomaly scan NAD. Adhering to ART. Mild anaemia – increased iron supplements.",
+                },
+                {
+                    "visit_number": 3,
+                    "visit_date": amina_lmp + timedelta(weeks=28),
+                    "gestation_weeks": 28,
+                    "weight": Decimal("62.8"),
+                    "blood_pressure": "110/70",
+                    "fundal_height": Decimal("27.5"),
+                    "fetal_heart_rate": 140,
+                    "presentation": "CEPHALIC",
+                    "lie": "LONGITUDINAL",
+                    "fetal_movements": True,
+                    "hb_level": Decimal("11.2"),
+                    "iron_folate_given": True,
+                    "urine_protein": "NEGATIVE",
+                    "urine_glucose": "NEGATIVE",
+                    "notes": "VL repeat <50 copies/mL. Good ART adherence. Hb improving.",
+                },
+                {
+                    "visit_number": 4,
+                    "visit_date": amina_lmp + timedelta(weeks=36),
+                    "gestation_weeks": 36,
+                    "weight": Decimal("65.0"),
+                    "blood_pressure": "114/74",
+                    "fundal_height": Decimal("35.5"),
+                    "fetal_heart_rate": 134,
+                    "presentation": "CEPHALIC",
+                    "lie": "LONGITUDINAL",
+                    "fetal_movements": True,
+                    "hb_level": Decimal("11.8"),
+                    "iron_folate_given": True,
+                    "urine_protein": "NEGATIVE",
+                    "urine_glucose": "NEGATIVE",
+                    "notes": "Plan SVD. VL suppressed. NVP for baby at delivery discussed. PMTCT counselling done.",
+                },
+            ]
+
+            a_visits = 0
+            for vdata in amina_anc:
+                _, created = ANCVisit.objects.update_or_create(
+                    registration=amina_reg,
+                    visit_number=vdata["visit_number"],
+                    defaults={**vdata, "conducted_by": clinician},
+                )
+                if created:
+                    a_visits += 1
+            self.stdout.write(f"    ANC Visits: {a_visits} created (4 total, HIV monitored)")
+
+            # Delivery – Amina delivers Blessing
+            amina_delivery, d_created = Delivery.objects.update_or_create(
+                registration=amina_reg,
+                defaults={
+                    "delivery_date": amina_delivery_date,
+                    "delivery_time": time(14, 15),
+                    "delivery_type": "SVD",
+                    "delivery_outcome": "LIVE_BIRTH",
+                    "place_of_delivery": "FACILITY",
+                    "status": "COMPLETED",
+                    "delivered_by": clinician,
+                    "baby_gender": "F",
+                    "birth_weight": Decimal("2.90"),
+                    "apgar_score_1min": 7,
+                    "apgar_score_5min": 9,
+                    "apgar_score_10min": 10,
+                    "resuscitation_done": False,
+                    "blood_loss_ml": 300,
+                    "placenta_complete": True,
+                    "notes": "SVD at 38 weeks. Baby received NVP syrup immediately. Mother continued ART. PMTCT protocol followed.",
+                },
+            )
+
+            # Link to the existing Blessing patient if not auto-linked
+            baby_for_hei = amina_delivery.baby_patient or blessing
+            if blessing and not amina_delivery.baby_patient:
+                amina_delivery.baby_patient = blessing
+                amina_delivery.save(update_fields=["baby_patient"])
+            if baby_for_hei and not amina_reg.baby:
+                amina_reg.baby = baby_for_hei
+                amina_reg.save(update_fields=["baby"])
+
+            self.stdout.write(f"    Delivery: {'created' if d_created else 'exists'} (SVD, 2.90kg, PMTCT)")
+
+            # PNC Visit for Amina
+            amina_pnc_data = [
+                {
+                    "visit_number": 1,
+                    "visit_date": amina_delivery_date + timedelta(days=1),
+                    "blood_pressure": "110/70",
+                    "temperature": Decimal("36.7"),
+                    "lochia": "NORMAL",
+                    "breast_condition": "NORMAL",
+                    "mood_assessment": "NORMAL",
+                    "baby_weight": Decimal("2.85"),
+                    "baby_temperature": Decimal("36.5"),
+                    "cord_status": "CLEAN",
+                    "breastfeeding_status": "EXCLUSIVE",
+                    "family_planning_counselling": False,
+                    "uterine_involution": "Uterus well contracted",
+                    "notes": "Day 1: Mother on ART. Baby on NVP prophylaxis. Exclusive breastfeeding counselled (safe with VL suppressed).",
+                },
+                {
+                    "visit_number": 2,
+                    "visit_date": amina_delivery_date + timedelta(days=7),
+                    "blood_pressure": "112/72",
+                    "temperature": Decimal("36.5"),
+                    "lochia": "NORMAL",
+                    "breast_condition": "NORMAL",
+                    "mood_assessment": "MILDLY_LOW",
+                    "baby_weight": Decimal("3.00"),
+                    "baby_temperature": Decimal("36.6"),
+                    "cord_status": "CLEAN",
+                    "breastfeeding_status": "EXCLUSIVE",
+                    "family_planning_counselling": True,
+                    "uterine_involution": "Involuting well",
+                    "notes": "Day 7: Mild anxiety about HIV transmission. Reassured – VL suppressed, risk very low with EBF. Cotrimoxazole for baby started.",
+                },
+            ]
+
+            apnc_created = 0
+            for pdata in amina_pnc_data:
+                _, created = PNCVisit.objects.update_or_create(
+                    registration=amina_reg,
+                    visit_number=pdata["visit_number"],
+                    defaults={**pdata, "conducted_by": clinician},
+                )
+                if created:
+                    apnc_created += 1
+            self.stdout.write(f"    PNC Visits: {apnc_created} created")
+
+            # HEI Follow-Up for baby
+            if baby_for_hei:
+                hei, hei_created = HEIFollowUp.objects.update_or_create(
+                    infant=baby_for_hei,
+                    defaults={
+                        "mch_registration": amina_reg,
+                        "enrollment_date": amina_delivery_date + timedelta(days=1),
+                        "status": "ACTIVE",
+                        "mother_art_status": "ON_ART",
+                        "infant_arv_prophylaxis": "NVP",
+                        "arv_start_date": amina_delivery_date,
+                        "breastfeeding_status": "EXCLUSIVE",
+                        "cotrimoxazole_prophylaxis": True,
+                        "cotrimoxazole_start_date": amina_delivery_date + timedelta(weeks=6),
+                        "enrolled_by": clinician,
+                        "notes": "HEI enrolled at birth. Mother VL suppressed on TDF/3TC/DTG. Baby on NVP prophylaxis × 6 weeks.",
+                    },
+                )
+                self.stdout.write(f"    HEI Follow-Up: {hei.hei_number} ({'new' if hei_created else 'exists'})")
+
+                # PCR Test #1 scheduled at 6 weeks (due now)
+                pcr1_scheduled = amina_delivery_date + timedelta(weeks=6)
+                pcr1, pcr_created = HEIPCRTest.objects.update_or_create(
+                    hei_followup=hei,
+                    test_number=1,
+                    defaults={
+                        "scheduled_date": pcr1_scheduled,
+                        "result": "PENDING",
+                        "notes": "First PCR at 6 weeks – sample collected, awaiting results.",
+                    },
+                )
+                # PCR #2 scheduled at 9 months
+                pcr2_scheduled = amina_delivery_date + timedelta(days=274)
+                HEIPCRTest.objects.update_or_create(
+                    hei_followup=hei,
+                    test_number=2,
+                    defaults={
+                        "scheduled_date": pcr2_scheduled,
+                        "result": "PENDING",
+                        "notes": "Second PCR at 9 months.",
+                    },
+                )
+                self.stdout.write(f"    PCR Tests: scheduled at 6wk and 9mo")
+
+                # Growth measurements for Blessing
+                blessing_growth = [
+                    {
+                        "measurement_date": amina_delivery_date,
+                        "weight": Decimal("2.90"),
+                        "height": Decimal("47.0"),
+                        "head_circumference": Decimal("33.0"),
+                        "notes": "Birth measurements (HEI)",
+                    },
+                    {
+                        "measurement_date": amina_delivery_date + timedelta(days=7),
+                        "weight": Decimal("3.00"),
+                        "height": Decimal("47.5"),
+                        "head_circumference": Decimal("33.5"),
+                        "notes": "Day 7 – weight gain noted",
+                    },
+                    {
+                        "measurement_date": amina_delivery_date + timedelta(weeks=6),
+                        "weight": Decimal("4.20"),
+                        "height": Decimal("53.0"),
+                        "head_circumference": Decimal("36.0"),
+                        "notes": "6-week visit – good growth on EBF",
+                    },
+                ]
+                bgr_created = 0
+                for gdata in blessing_growth:
+                    if gdata["measurement_date"] > today:
+                        continue
+                    _, created = GrowthMeasurement.objects.update_or_create(
+                        patient=baby_for_hei,
+                        measurement_date=gdata["measurement_date"],
+                        defaults={**gdata, "measured_by": clinician},
+                    )
+                    if created:
+                        bgr_created += 1
+                self.stdout.write(f"    Growth Measurements (Blessing): {bgr_created} created")
+
+                # Ensure immunization schedule exists for baby
+                if not ImmunizationRecord.objects.filter(patient=baby_for_hei).exists():
+                    try:
+                        from hmis.apps.mch.services.immunization import generate_immunization_schedule
+                        generate_immunization_schedule(baby_for_hei)
+                        self.stdout.write("    Generated KEPI immunization schedule for baby")
+                    except Exception as exc:
+                        self.stdout.write(self.style.WARNING(f"    Could not generate schedule: {exc}"))
+
+                # Mark birth-dose immunizations as administered for Blessing
+                birth_vaccines = Vaccine.objects.filter(
+                    is_active=True, standard_age_days__lte=1
+                )
+                imm_count = 0
+                for vaccine in birth_vaccines:
+                    record = ImmunizationRecord.objects.filter(
+                        patient=baby_for_hei, vaccine=vaccine
+                    ).first()
+                    if record and record.status == "SCHEDULED":
+                        record.status = "ADMINISTERED"
+                        record.administered_date = amina_delivery_date
+                        record.administered_by = clinician
+                        record.batch_number = f"KEPI-{vaccine.code}-2026"
+                        record.site = "ORAL" if vaccine.route == "ORAL" else "LEFT_THIGH"
+                        record.save()
+                        imm_count += 1
+
+                # Also mark 6-week vaccines as administered
+                six_week_vaccines = Vaccine.objects.filter(
+                    is_active=True,
+                    standard_age_days__gte=35,
+                    standard_age_days__lte=49,
+                )
+                for vaccine in six_week_vaccines:
+                    scheduled = baby_for_hei.date_of_birth + timedelta(days=vaccine.standard_age_days)
+                    if scheduled > today:
+                        continue
+                    record = ImmunizationRecord.objects.filter(
+                        patient=baby_for_hei, vaccine=vaccine
+                    ).first()
+                    if record and record.status == "SCHEDULED":
+                        record.status = "ADMINISTERED"
+                        record.administered_date = scheduled
+                        record.administered_by = clinician
+                        record.batch_number = f"KEPI-{vaccine.code}-2026"
+                        record.site = "ORAL" if vaccine.route == "ORAL" else "LEFT_THIGH"
+                        record.save()
+                        imm_count += 1
+                self.stdout.write(f"    Immunizations administered: {imm_count} (birth + 6wk doses)")
+        else:
+            self.stdout.write(self.style.WARNING("    Amina Hassan (DEMO-PT-0105) not found"))
+
+        # ─────────────────────────────────────────────────────────────
+        # Summary
+        # ─────────────────────────────────────────────────────────────
+        self.stdout.write(self.style.SUCCESS("  ✅ MCH demo data created successfully!"))
+        self.stdout.write("  Scenarios seeded:")
+        self.stdout.write("    1. Grace Wambui   – Active ANC (28wk), 3 visits, Linda Jamii")
+        self.stdout.write("    2. Faith Nyambura – Complete: 4 ANC → SVD → 3 PNC + baby growth")
+        self.stdout.write("    3. Brian Mwangi   – Child welfare: growth chart + immunizations")
+        self.stdout.write("    4. Amina Hassan   – HIV+ ANC → SVD → HEI/PCR + PMTCT")

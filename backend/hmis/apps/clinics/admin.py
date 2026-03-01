@@ -218,7 +218,7 @@ class ClinicEnrollmentAdmin(admin.ModelAdmin):
         "clinic",
         "status",
         "enrollment_date",
-        "next_appointment_date",
+        "next_appointment",
     )
     list_filter = ("status", "clinic")
     search_fields = ("patient__first_name", "patient__last_name", "patient__mrn", "clinic__name")
@@ -235,8 +235,8 @@ class MonthlyClinicReportAdmin(admin.ModelAdmin):
         "year",
         "month",
         "total_visits",
-        "unique_patients",
-        "average_wait_time_minutes",
+        "new_visits",
+        "active_enrollments",
     )
     list_filter = ("clinic", "year", "month")
     search_fields = ("clinic__name",)
