@@ -391,15 +391,29 @@ export const growthMeasurementsApi = {
    */
   getChartData: async (
     patientId: number,
-    chartType: GrowthChartType = 'weight_for_age'
+    chartType: GrowthChartType = 'weight_for_age',
+    sex?: 'M' | 'F'
   ): Promise<GrowthChartData> => {
+    const params: Record<string, unknown> = { patient: patientId, chart_type: chartType };
+    if (sex) params.sex = sex;
     const response = await apiClient.get<GrowthChartData>(
       `${BASE_URL}/growth-measurements/chart-data/`,
-      { params: { patient: patientId, chart_type: chartType } }
+      { params }
     );
     return parseResponse(GrowthChartDataSchema, response.data, {
       context: 'growthMeasurementsApi.getChartData',
     });
+  },
+
+  /**
+   * Export growth chart as PDF
+   */
+  exportPdf: async (patientId: number): Promise<Blob> => {
+    const response = await apiClient.get(
+      `${BASE_URL}/growth-measurements/export-pdf/`,
+      { params: { patient: patientId }, responseType: 'blob' }
+    );
+    return response.data as Blob;
   },
 };
 

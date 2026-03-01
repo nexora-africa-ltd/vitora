@@ -338,7 +338,7 @@ export const GrowthMeasurementSchema = z.object({
   patient: z.number(),
   patient_name: z.string(),
   patient_mrn: z.string(),
-  patient_gender: z.enum(['M', 'F']),
+  patient_gender: z.enum(['M', 'F', 'O']),
   patient_dob: z.string(),
   encounter: z.number().nullable(),
   measured_by: z.number().nullable(),

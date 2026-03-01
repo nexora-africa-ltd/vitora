@@ -58,19 +58,19 @@ export default function GrowthChartPage() {
     enabled: !!selectedPatientId,
   });
 
+  const measurements = measurementsData?.results || [];
+  const sex: Sex = (patient?.gender as Sex) || 'M';
+
   // Fetch chart data with precomputed percentile lines from API
   const {
     data: chartData,
     isLoading: chartLoading,
   } = useQuery({
-    queryKey: ['growth-chart-data', selectedPatientId, 'weight_for_age'],
+    queryKey: ['growth-chart-data', selectedPatientId, 'weight_for_age', sex],
     queryFn: () =>
-      growthMeasurementsApi.getChartData(selectedPatientId!, 'weight_for_age'),
+      growthMeasurementsApi.getChartData(selectedPatientId!, 'weight_for_age', sex as 'M' | 'F'),
     enabled: !!selectedPatientId,
   });
-
-  const measurements = measurementsData?.results || [];
-  const sex: Sex = (patient?.gender as Sex) || 'M';
 
   // Check for malnutrition alerts
   const latestMeasurement = measurements.length > 0

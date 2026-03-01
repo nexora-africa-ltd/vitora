@@ -468,7 +468,7 @@ export interface GrowthMeasurement {
   patient: number;
   patient_name: string;
   patient_mrn: string;
-  patient_gender: 'M' | 'F';
+  patient_gender: 'M' | 'F' | 'O';
   patient_dob: string;
   encounter: number | null;
   measured_by: number | null;
@@ -533,6 +533,9 @@ export interface GrowthMeasurementListParams {
   page?: number;
   page_size?: number;
   patient?: number;
+  muac_classification?: MUACClassification;
+  measurement_from?: string;
+  measurement_to?: string;
   ordering?: string;
 }
 

@@ -43,6 +43,7 @@ interface GrowthChartProps {
 const INDICATOR_OPTIONS: { value: GrowthIndicator; label: string }[] = [
   { value: 'weight_for_age', label: 'Weight-for-Age' },
   { value: 'height_for_age', label: 'Height-for-Age' },
+  { value: 'weight_for_height', label: 'Weight-for-Height' },
   { value: 'head_circumference_for_age', label: 'Head Circumference' },
   { value: 'bmi_for_age', label: 'BMI-for-Age' },
 ];
