@@ -17,8 +17,11 @@ import {
   Building2,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -48,6 +51,7 @@ export default function ClinicSettingsPage() {
   const { data: clinic, isLoading: clinicLoading } = useClinic(clinicId);
   const { data: schedule, isLoading: scheduleLoading } = useClinicSchedule(clinicId);
   const { data: staff, isLoading: staffLoading } = useClinicStaff(clinicId);
+  const { refresh, isRefreshing } = usePageRefresh();
 
   if (clinicLoading) {
     return (
@@ -71,6 +75,7 @@ export default function ClinicSettingsPage() {
   }
 
   return (
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
     <div className="space-y-4 sm:space-y-6">
       <PageHeader
         title={`${clinic.name} Settings`}
@@ -169,15 +174,15 @@ export default function ClinicSettingsPage() {
           {clinic.is_sensitive && (
             <Card className="border-yellow-500/50">
               <CardHeader className="p-3 sm:p-6">
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                  <Badge variant="outline" className="border-yellow-500 text-yellow-600">
-                    Sensitive
-                  </Badge>
-                  Sensitive Clinic
-                </CardTitle>
-                <CardDescription className="text-xs sm:text-sm">
-                  This clinic handles sensitive patient data (HIV, GBV, Mental Health).
-                </CardDescription>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Badge variant="outline" className="border-yellow-500 text-yellow-600">
+                      Sensitive
+                    </Badge>
+                    Sensitive Clinic
+                  </CardTitle>
+                  <HelpPopover content="This clinic handles sensitive patient data (HIV, GBV, Mental Health). Access requires special permissions." />
+                </div>
               </CardHeader>
             </Card>
           )}
@@ -347,5 +352,6 @@ export default function ClinicSettingsPage() {
         </TabsContent>
       </Tabs>
     </div>
+    </PullToRefresh>
   );
 }

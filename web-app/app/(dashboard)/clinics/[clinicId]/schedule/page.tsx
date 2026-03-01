@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -51,7 +52,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -467,7 +467,7 @@ export default function ClinicSchedulePage() {
               </div>
 
               {/* Desktop Table */}
-              <div className="hidden sm:block rounded-md border mx-3 sm:mx-0">
+              <div className="hidden sm:block overflow-x-auto rounded-md border mx-3 sm:mx-0">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -550,12 +550,12 @@ export default function ClinicSchedulePage() {
       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editSchedule ? 'Edit Schedule' : 'Add Schedule'}</DialogTitle>
-            <DialogDescription>
-              {editSchedule
+            <div className="flex items-center gap-2">
+              <DialogTitle>{editSchedule ? 'Edit Schedule' : 'Add Schedule'}</DialogTitle>
+              <HelpPopover content={editSchedule
                 ? `Update the schedule for ${editSchedule.day_display}`
-                : 'Add operating hours for a day of the week'}
-            </DialogDescription>
+                : 'Add operating hours for a day of the week'} />
+            </div>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {!editSchedule && (

@@ -13,11 +13,11 @@ import { ArrowRight } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -114,13 +114,13 @@ export function ReferPatientDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ArrowRight className="h-5 w-5" />
-            Refer Patient
-          </DialogTitle>
-          <DialogDescription>
-            Refer {visit.patient.full_name} to another clinic.
-          </DialogDescription>
+          <div className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRight className="h-5 w-5" />
+              Refer Patient
+            </DialogTitle>
+            <HelpPopover content={`Refer ${visit.patient.full_name} to another clinic for continuing care.`} />
+          </div>
         </DialogHeader>
 
         <Form {...form}>
