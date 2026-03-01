@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -53,7 +54,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -274,10 +274,10 @@ export default function ClinicStaffPage() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Assign Staff to Clinic</DialogTitle>
-                <DialogDescription>
-                  Assign a staff member to work in {clinic.name}.
-                </DialogDescription>
+                <div className="flex items-center gap-2">
+                  <DialogTitle>Assign Staff to Clinic</DialogTitle>
+                  <HelpPopover content={`Assign a staff member to work in ${clinic.name}. Select their role and set availability.`} />
+                </div>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
@@ -504,7 +504,7 @@ export default function ClinicStaffPage() {
               </div>
 
               {/* Desktop Table */}
-              <div className="hidden sm:block rounded-md border mx-3 sm:mx-0">
+              <div className="hidden sm:block overflow-x-auto rounded-md border mx-3 sm:mx-0">
                 <Table>
                   <TableHeader>
                     <TableRow>

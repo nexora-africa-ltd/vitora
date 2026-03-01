@@ -14,11 +14,11 @@ import { Search, UserPlus, AlertCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -135,13 +135,13 @@ export function AddToQueueDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5" />
-            Add Patient to Queue
-          </DialogTitle>
-          <DialogDescription>
-            Search for a patient and add them to the clinic queue.
-          </DialogDescription>
+          <div className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              Add Patient to Queue
+            </DialogTitle>
+            <HelpPopover content="Search for a patient by name, MRN, or phone number, then add them to the clinic queue with a priority level." />
+          </div>
         </DialogHeader>
 
         <Form {...form}>

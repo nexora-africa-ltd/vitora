@@ -29,8 +29,9 @@ import {
 import { format, subDays, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
@@ -446,8 +447,10 @@ export default function ClinicReportsPage() {
         <TabsContent value="trends" className="space-y-4 sm:space-y-6">
           <Card>
             <CardHeader className="p-3 sm:p-6">
-              <CardTitle className="text-base sm:text-lg">Patient Volume Trends</CardTitle>
-              <CardDescription>Daily patient visits over the selected period</CardDescription>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base sm:text-lg">Patient Volume Trends</CardTitle>
+                <HelpPopover content="Daily patient visits over the selected period" />
+              </div>
             </CardHeader>
             <CardContent>
               {sessionsLoading ? (

@@ -16,6 +16,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +40,7 @@ export function ClinicTypePage({
   icon,
 }: ClinicTypePageProps) {
   const { data, isLoading, refetch } = useClinics({ status: 'ACTIVE' });
+  const { refresh, isRefreshing } = usePageRefresh();
 
   // Filter clinics by type
   const clinics = useMemo(() => {
@@ -62,10 +65,11 @@ export function ClinicTypePage({
   };
 
   return (
-    <div className="space-y-6">
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
+    <div className="space-y-4 sm:space-y-6">
       <PageHeader
         title={title}
-        description={description}
+        helpContent={description}
         actions={
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -177,5 +181,6 @@ export function ClinicTypePage({
         </div>
       )}
     </div>
+    </PullToRefresh>
   );
 }

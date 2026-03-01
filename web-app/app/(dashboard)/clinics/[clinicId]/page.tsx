@@ -9,7 +9,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Clock,
@@ -18,14 +18,13 @@ import {
   Settings,
   RefreshCw,
   Plus,
-  ArrowLeft,
   Play,
   Pause,
   AlertCircle,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -54,13 +53,13 @@ import {
 } from '@/lib/hooks/use-clinics';
 import { useClinicQueueSocket } from '@/lib/hooks/use-websocket';
 import { WebSocketStatus } from '@/components/ui/websocket-status';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { toast } from '@/lib/hooks/use-toast';
 import type { ClinicVisit, ClinicVisitStatus } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
 
 export default function ClinicDashboardPage() {
   const params = useParams();
-  const router = useRouter();
   const clinicId = Number(params.clinicId);
 
   const [addToQueueOpen, setAddToQueueOpen] = useState(false);
@@ -164,8 +163,7 @@ export default function ClinicDashboardPage() {
         <h3 className="text-lg font-semibold mb-2">Clinic not found</h3>
         <Button asChild>
           <Link href="/clinics">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Clinics
+            View All Clinics
           </Link>
         </Button>
       </div>
@@ -173,83 +171,71 @@ export default function ClinicDashboardPage() {
   }
 
   const isSessionOpen = session?.status === 'OPEN';
-  const formattedDate = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
 
   return (
-    <div className="space-y-6">
+    <PullToRefresh onRefresh={handleRefresh}>
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/clinics">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{clinic.name}</h1>
-            <p className="text-muted-foreground">{formattedDate}</p>
-          </div>
-        </div>
-        <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center">
-          {/* WebSocket Status */}
-          <WebSocketStatus
-            connectionState={connectionState}
-            reconnectAttempts={reconnectAttempts}
-            showLabel
-            size="sm"
-          />
+      <PageHeader
+        title={clinic.name}
+        helpContent={`Clinic dashboard for ${clinic.name}. Open sessions, manage the patient queue, and track consultations.`}
+        actions={
+          <div className="flex flex-col gap-2 items-stretch sm:flex-row sm:flex-wrap sm:items-center">
+            {/* WebSocket Status */}
+            <WebSocketStatus
+              connectionState={connectionState}
+              reconnectAttempts={reconnectAttempts}
+              showLabel
+              size="sm"
+            />
 
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-
-          {isSessionOpen ? (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" disabled={closingSession}>
-                  <Pause className="h-4 w-4 mr-2" />
-                  Close Session
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Close Today&apos;s Session?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will close the clinic session for today. Patients still in queue will remain
-                    but no new patients can be added. You can reopen the session if needed.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleCloseSession}>Close Session</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          ) : (
-            <Button onClick={handleOpenSession} disabled={openingSession}>
-              <Play className="h-4 w-4 mr-2" />
-              Open Session
+            <Button variant="outline" size="sm" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
-          )}
 
-          <Button onClick={() => setAddToQueueOpen(true)} disabled={!isSessionOpen}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Patient
-          </Button>
+            {isSessionOpen ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={closingSession}>
+                    <Pause className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Close Session</span>
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Close Today&apos;s Session?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will close the clinic session for today. Patients still in queue will remain
+                      but no new patients can be added. You can reopen the session if needed.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleCloseSession}>Close Session</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <Button onClick={handleOpenSession} disabled={openingSession} size="sm">
+                <Play className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Open Session</span>
+              </Button>
+            )}
 
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/clinics/${clinicId}/settings`}>
-              <Settings className="h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-      </div>
+            <Button size="sm" onClick={() => setAddToQueueOpen(true)} disabled={!isSessionOpen}>
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add Patient</span>
+            </Button>
+
+            <Button variant="ghost" size="icon" asChild>
+              <Link href={`/clinics/${clinicId}/settings`}>
+                <Settings className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        }
+      />
 
       {/* Navigation Tabs */}
       <ClinicNavigation clinicId={clinicId} />
@@ -335,7 +321,8 @@ export default function ClinicDashboardPage() {
             )}
           </TabsTrigger>
           <TabsTrigger value="consultation">
-            In Consultation
+            <span className="sm:hidden">Consult</span>
+            <span className="hidden sm:inline">In Consultation</span>
             {inConsultation.length > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {inConsultation.length}
@@ -343,7 +330,8 @@ export default function ClinicDashboardPage() {
             )}
           </TabsTrigger>
           <TabsTrigger value="completed">
-            Completed
+            <span className="sm:hidden">Done</span>
+            <span className="hidden sm:inline">Completed</span>
             {completedToday.length > 0 && (
               <Badge variant="secondary" className="ml-2">
                 {completedToday.length}
@@ -436,5 +424,6 @@ export default function ClinicDashboardPage() {
         }}
       />
     </div>
+    </PullToRefresh>
   );
 }
