@@ -263,8 +263,12 @@ seed-surveillance-clear:
 	@echo "Clearing and re-seeding surveillance demo data..."
 	poetry run python manage.py seed_surveillance_demo --clear --regenerate
 
+seed-kepi:
+	@echo "Seeding KEPI immunization schedule..."
+	poetry run python manage.py seed_kepi_schedule
+
 # Import all data - run after fresh database setup
-import-all: migrate import-locations import-icd10 import-loinc import-drugs load-roles load-templates load-lab-ranges create-lab-queues seed-diseases
+import-all: migrate import-locations import-icd10 import-loinc import-drugs load-roles load-templates load-lab-ranges create-lab-queues seed-diseases seed-kepi
 	@echo "All data imports complete!"
 
 # Setup fresh database with all data
