@@ -41,6 +41,8 @@ import {
   HEIFollowUpListItemSchema,
   PaginatedHEIFollowUpListSchema,
   HEIPCRTestSchema,
+  DetermineStatusResponseSchema,
+  UpdateFeedingResponseSchema,
 } from '@/lib/schemas/mch.schema';
 import type {
   MCHRegistration,
@@ -665,7 +667,9 @@ export const heiFollowUpApi = {
       `${BASE_URL}/hei/${id}/update_feeding/`,
       data
     );
-    return response.data;
+    return parseResponse(UpdateFeedingResponseSchema, response.data, {
+      context: 'heiFollowUpApi.updateFeeding',
+    });
   },
 
   /**
@@ -675,7 +679,9 @@ export const heiFollowUpApi = {
     const response = await apiClient.post<DetermineStatusResponse>(
       `${BASE_URL}/hei/${id}/determine_final_status/`
     );
-    return response.data;
+    return parseResponse(DetermineStatusResponseSchema, response.data, {
+      context: 'heiFollowUpApi.determineStatus',
+    });
   },
 };
 

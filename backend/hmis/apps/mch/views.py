@@ -210,6 +210,21 @@ class MCHRegistrationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(registered_by=self.request.user)
 
+    def create(self, request, *args, **kwargs):
+        """Override create to return full serializer response (not the write-only create serializer)."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        # Re-serialize with the full detail serializer
+        instance = serializer.instance
+        # Re-fetch with select_related to ensure computed fields work
+        instance = self.get_queryset().annotate(
+            anc_visit_count=models.Count("anc_visits", distinct=True),
+            pnc_visit_count=models.Count("pnc_visits", distinct=True),
+        ).get(pk=instance.pk)
+        output_serializer = MCHRegistrationSerializer(instance)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
     @action(detail=True, methods=["post"])
     def route_to_anc(self, request, pk=None):
         """
@@ -300,6 +315,58 @@ class MCHRegistrationViewSet(viewsets.ModelViewSet):
                 {"detail": f"Failed to route to ANC: {exc!s}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @action(detail=True, methods=["post"])
+    def transition_status(self, request, pk=None):
+        """
+        Transition MCH registration to a new status.
+
+        Validates against STATUS_TRANSITIONS state machine on the model.
+        Accepts: { "status": "DELIVERED" }
+        """
+        registration = self.get_object()
+        new_status = request.data.get("status")
+
+        if not new_status:
+            return Response(
+                {"detail": "status is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        valid_choices = [c[0] for c in MCHRegistration.STATUS_CHOICES]
+        if new_status not in valid_choices:
+            return Response(
+                {"detail": f"Invalid status. Must be one of: {valid_choices}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        allowed_transitions = MCHRegistration.STATUS_TRANSITIONS.get(registration.status, [])
+        if new_status not in allowed_transitions:
+            return Response(
+                {
+                    "detail": f"Cannot transition from '{registration.status}' to '{new_status}'. "
+                    f"Allowed transitions: {allowed_transitions}"
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        old_status = registration.status
+        registration.status = new_status
+
+        # Set completed_at when transitioning to COMPLETED
+        if new_status == "COMPLETED":
+            from django.utils import timezone
+            registration.completed_at = timezone.now()
+
+        registration.save(update_fields=["status", "completed_at"] if new_status == "COMPLETED" else ["status"])
+
+        # Re-fetch with annotations
+        instance = self.get_queryset().annotate(
+            anc_visit_count=models.Count("anc_visits", distinct=True),
+            pnc_visit_count=models.Count("pnc_visits", distinct=True),
+        ).get(pk=registration.pk)
+
+        return Response(MCHRegistrationSerializer(instance).data)
 
 
 class ANCVisitViewSet(viewsets.ModelViewSet):
@@ -466,6 +533,7 @@ class VaccineViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Vaccine.objects.filter(is_active=True)
     permission_classes = [IsAuthenticated]
     serializer_class = VaccineSerializer
+    pagination_class = None  # Small reference dataset, return flat array
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     ordering_fields = ["standard_age_days", "code"]
     ordering = ["standard_age_days", "code"]
@@ -574,7 +642,7 @@ class ImmunizationRecordViewSet(viewsets.ModelViewSet):
             event_type=event_type,
             description=description,
             severity=request.data.get("severity", "MILD"),
-            outcome=request.data.get("outcome", ""),
+            outcome=request.data.get("outcome", "UNKNOWN"),
             investigation_notes=request.data.get("notes", ""),
         )
 

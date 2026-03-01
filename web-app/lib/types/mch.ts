@@ -88,6 +88,8 @@ export interface MCHRegistrationListParams {
   is_high_risk?: boolean;
   linda_jamii_beneficiary?: boolean;
   mother?: number;
+  registration_from?: string;
+  registration_to?: string;
   ordering?: string;
 }
 
