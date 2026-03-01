@@ -465,7 +465,8 @@ export type {
   HEIFollowUpListParams,
   RecordPCRTestData,
   UpdateFeedingData,
-  DetermineStatusData,
+  DetermineStatusResponse,
+  UpdateFeedingResponse,
 } from './mch';
 
 // Pagination

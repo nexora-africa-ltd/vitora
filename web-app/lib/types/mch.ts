@@ -617,7 +617,7 @@ export interface ImmunizationRecord {
   administered_by_name: string | null;
   next_dose_date: string | null;
   is_overdue: boolean;
-  days_overdue: number;
+  days_overdue: number | null;
   notes: string;
   created_at: string;
   updated_at: string;
@@ -659,8 +659,8 @@ export interface ImmunizationRecordListParams {
   page?: number;
   page_size?: number;
   patient?: number;
+  vaccine?: number;
   status?: ImmunizationStatus;
-  is_overdue?: boolean;
   ordering?: string;
 }
 
@@ -750,6 +750,7 @@ export interface AEFIReportData {
   severity: AEFISeverity;
   description: string;
   outcome?: AEFIOutcome;
+  notes?: string;
 }
 
 // =============================================================================
@@ -881,8 +882,10 @@ export interface HEIFollowUpListParams {
  * Record PCR test data
  */
 export interface RecordPCRTestData {
+  hei_followup: number;
   test_number: number;
-  actual_date: string;
+  scheduled_date: string;
+  actual_date?: string;
   result: PCRResult;
   lab_reference?: string;
   notes?: string;
@@ -896,9 +899,23 @@ export interface UpdateFeedingData {
 }
 
 /**
- * Determine final status data
+ * Determine final status response (backend auto-determines from PCR results)
  */
-export interface DetermineStatusData {
-  final_status: 'CONFIRMED_NEGATIVE' | 'CONFIRMED_POSITIVE';
-  notes?: string;
+export interface DetermineStatusResponse {
+  status: HEIStatus;
+  message: string;
+  positive_test_number?: number;
+  negative_test_count?: number;
+  negative_tests?: number;
+  pending_tests?: number;
+  required_negative_tests?: number;
+}
+
+/**
+ * Update feeding response
+ */
+export interface UpdateFeedingResponse {
+  hei_number: string;
+  breastfeeding_status: HEIBreastfeedingStatus;
+  message: string;
 }

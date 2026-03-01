@@ -429,7 +429,7 @@ export const ImmunizationRecordSchema = z.object({
   administered_by_name: z.string().nullable(),
   next_dose_date: z.string().nullable(),
   is_overdue: z.boolean(),
-  days_overdue: z.number(),
+  days_overdue: z.number().nullable(),
   notes: z.string(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -549,3 +549,19 @@ export const HEIFollowUpSchema = z.object({
 });
 
 export const PaginatedHEIFollowUpListSchema = createPaginatedSchema(HEIFollowUpListItemSchema);
+
+export const DetermineStatusResponseSchema = z.object({
+  status: HEIStatusSchema,
+  message: z.string(),
+  positive_test_number: z.number().optional(),
+  negative_test_count: z.number().optional(),
+  negative_tests: z.number().optional(),
+  pending_tests: z.number().optional(),
+  required_negative_tests: z.number().optional(),
+});
+
+export const UpdateFeedingResponseSchema = z.object({
+  hei_number: z.string(),
+  breastfeeding_status: HEIBreastfeedingStatusSchema,
+  message: z.string(),
+});
