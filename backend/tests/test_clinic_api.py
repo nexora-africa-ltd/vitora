@@ -294,12 +294,13 @@ class TestClinicViewSet:
         assert response.data["clinic_type"] == "GENERAL_OPD"
 
     def test_retrieve_clinic_includes_is_open_today(self, authenticated_client, sample_clinic):
-        """Clinic detail includes is_open_today computed field."""
+        """Clinic detail includes is_open_today and is_scheduled_today computed fields."""
         url = reverse("clinic-detail", kwargs={"pk": sample_clinic.pk})
         response = authenticated_client.get(url)
 
         assert response.status_code == status.HTTP_200_OK
         assert "is_open_today" in response.data
+        assert "is_scheduled_today" in response.data
 
     # -------------------------------------------------------------------------
     # Create Clinic

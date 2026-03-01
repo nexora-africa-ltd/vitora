@@ -28,6 +28,7 @@ const mockClinicList = [
     status_display: 'Active',
     location: 'Main Block - Room 2',
     is_open_today: false,
+    is_scheduled_today: false,
   },
   {
     id: 2,
@@ -39,6 +40,7 @@ const mockClinicList = [
     status_display: 'Active',
     location: 'Main Block - Room 3',
     is_open_today: true,
+    is_scheduled_today: true,
   },
 ];
 

@@ -162,6 +162,7 @@ describe('Clinic Contract Tests', () => {
         'code',
         'status',
         'is_open_today',
+        'is_scheduled_today',
         'created_at',
         'updated_at',
       ];
@@ -182,6 +183,7 @@ describe('Clinic Contract Tests', () => {
         'code',
         'status',
         'is_open_today',
+        'is_scheduled_today',
       ];
 
       const missing = essentialFields.filter((field) => !zodFields.includes(field));

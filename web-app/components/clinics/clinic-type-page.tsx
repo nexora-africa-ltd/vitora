@@ -48,6 +48,18 @@ export function ClinicTypePage({
   }, [data?.results, clinicTypes]);
 
   const openClinicsCount = clinics.filter((c) => c.is_open_today).length;
+  const scheduledCount = clinics.filter((c) => c.is_scheduled_today && !c.is_open_today).length;
+
+  /** Return badge variant + label for a clinic's operational state. */
+  const getClinicStatus = (clinic: (typeof clinics)[number]) => {
+    if (clinic.is_open_today) {
+      return { label: 'Open', variant: 'default' as const, className: 'bg-green-500 hover:bg-green-600' };
+    }
+    if (clinic.is_scheduled_today) {
+      return { label: 'Scheduled', variant: 'outline' as const, className: 'border-amber-500 text-amber-600' };
+    }
+    return { label: 'Closed', variant: 'secondary' as const, className: '' };
+  };
 
   return (
     <div className="space-y-6">
@@ -76,7 +88,7 @@ export function ClinicTypePage({
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Open Today</CardTitle>
+            <CardTitle className="text-sm font-medium">Open Now</CardTitle>
             <Activity className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
@@ -86,11 +98,12 @@ export function ClinicTypePage({
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Closed Today</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Scheduled</CardTitle>
+            <Clock className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{clinics.length - openClinicsCount}</div>
+            <div className="text-2xl font-bold text-amber-600">{scheduledCount}</div>
+            <p className="text-xs text-muted-foreground">Awaiting session start</p>
           </CardContent>
         </Card>
       </div>
@@ -126,7 +139,9 @@ export function ClinicTypePage({
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {clinics.map((clinic) => (
+          {clinics.map((clinic) => {
+            const status = getClinicStatus(clinic);
+            return (
             <Link key={clinic.id} href={`/clinics/${clinic.id}`}>
               <Card className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50 h-full">
                 <CardHeader className="pb-2">
@@ -136,12 +151,10 @@ export function ClinicTypePage({
                       <CardDescription>{clinic.clinic_type_display}</CardDescription>
                     </div>
                     <Badge
-                      variant={clinic.is_open_today ? 'default' : 'secondary'}
-                      className={cn(
-                        clinic.is_open_today && 'bg-green-500 hover:bg-green-600'
-                      )}
+                      variant={status.variant}
+                      className={cn(status.className)}
                     >
-                      {clinic.is_open_today ? 'Open' : 'Closed'}
+                      {status.label}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -159,7 +172,8 @@ export function ClinicTypePage({
                 </CardContent>
               </Card>
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
