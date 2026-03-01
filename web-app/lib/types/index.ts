@@ -389,6 +389,85 @@ export {
   LATERALITY_LABELS,
 } from './imaging';
 
+// Re-export MCH types
+export type {
+  // MCH Registration
+  MCHRegistrationStatus,
+  MCHRegistrationListItem,
+  MCHRegistration,
+  MCHRegistrationCreateData,
+  MCHRegistrationListParams,
+  // ANC Visit
+  FetalPresentation,
+  FetalLie,
+  UrineResult,
+  ANCVisit,
+  ANCVisitListItem,
+  ANCVisitCreateData,
+  // Delivery
+  DeliveryType,
+  DeliveryOutcome,
+  DeliveryStatus,
+  PlaceOfDelivery,
+  BabyGender,
+  Delivery,
+  DeliveryListItem,
+  DeliveryCreateData,
+  // PNC Visit
+  UterineInvolution,
+  LochiaStatus,
+  BreastCondition,
+  MoodAssessment,
+  CordStatus,
+  BreastfeedingStatus,
+  ContraceptiveMethod,
+  PNCVisit,
+  PNCVisitListItem,
+  PNCVisitCreateData,
+  // Growth Measurement
+  MUACClassification,
+  NutritionalStatus,
+  GrowthChartType,
+  GrowthMeasurement,
+  GrowthMeasurementListItem,
+  GrowthMeasurementCreateData,
+  GrowthMeasurementListParams,
+  GrowthChartData,
+  // Vaccine
+  VaccineRoute,
+  Vaccine,
+  // Immunization
+  ImmunizationStatus,
+  InjectionSite,
+  ImmunizationRecord,
+  ImmunizationRecordListItem,
+  ImmunizationRecordListParams,
+  AdministerVaccineData,
+  // Vitamin A
+  VitaminASupplement,
+  // AEFI
+  AEFIEventType,
+  AEFISeverity,
+  AEFIOutcome,
+  AEFI,
+  AEFIListItem,
+  AEFIReportData,
+  // HEI
+  HEIStatus,
+  MotherARTStatus,
+  InfantARVProphylaxis,
+  HEIBreastfeedingStatus,
+  PCRResult,
+  HEIPCRTest,
+  HEIFollowUp,
+  HEIFollowUpListItem,
+  HEIFollowUpCreateData,
+  HEIFollowUpListParams,
+  RecordPCRTestData,
+  UpdateFeedingData,
+  DetermineStatusData,
+} from './mch';
+
 // Pagination
 export interface PaginatedResponse<T> {
   count: number;

@@ -3,7 +3,6 @@ Serializers for the MCH (Maternal & Child Health) module.
 """
 
 from datetime import date as date_module
-from decimal import Decimal
 
 from rest_framework import serializers
 
@@ -20,7 +19,6 @@ from hmis.apps.mch.models import (
     Vaccine,
     VitaminASupplement,
 )
-
 
 # =============================================================================
 # MCH Registration Serializers
