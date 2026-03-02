@@ -20,6 +20,7 @@ import {
   DeliverySchema,
   DeliveryListItemSchema,
   PaginatedDeliveryListSchema,
+  DeliveryDashboardSchema,
   PNCVisitSchema,
   PNCVisitListItemSchema,
   PaginatedPNCVisitListSchema,
@@ -55,6 +56,7 @@ import type {
   Delivery,
   DeliveryListItem,
   DeliveryCreateData,
+  DeliveryDashboard,
   PNCVisit,
   PNCVisitListItem,
   PNCVisitCreateData,
@@ -220,14 +222,18 @@ export const ancVisitsApi = {
 
 export const deliveriesApi = {
   /**
-   * List deliveries
+   * List deliveries (optionally filtered by registration, with search support)
    */
-  list: async (registrationId?: number, page = 1): Promise<PaginatedResponse<DeliveryListItem>> => {
-    const params: Record<string, unknown> = { page };
-    if (registrationId) params.registration = registrationId;
+  list: async (
+    registrationId?: number,
+    page = 1,
+    params?: { search?: string; status?: string; delivery_type?: string; delivery_outcome?: string; ordering?: string }
+  ): Promise<PaginatedResponse<DeliveryListItem>> => {
+    const queryParams: Record<string, unknown> = { page, ...params };
+    if (registrationId) queryParams.registration = registrationId;
     const response = await apiClient.get<PaginatedResponse<DeliveryListItem>>(
       `${BASE_URL}/deliveries/`,
-      { params }
+      { params: queryParams }
     );
     return parseResponse(PaginatedDeliveryListSchema, response.data, {
       context: 'deliveriesApi.list',
@@ -269,6 +275,18 @@ export const deliveriesApi = {
    */
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`${BASE_URL}/deliveries/${id}/`);
+  },
+
+  /**
+   * Get delivery dashboard stats (aggregated stats, upcoming EDDs, trends)
+   */
+  dashboard: async (): Promise<DeliveryDashboard> => {
+    const response = await apiClient.get<DeliveryDashboard>(
+      `${BASE_URL}/deliveries/dashboard/`
+    );
+    return parseResponse(DeliveryDashboardSchema, response.data, {
+      context: 'deliveriesApi.dashboard',
+    });
   },
 };
 

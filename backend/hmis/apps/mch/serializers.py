@@ -328,6 +328,12 @@ class DeliveryListSerializer(serializers.ModelSerializer):
     registration_mch_number = serializers.CharField(
         source="registration.mch_number", read_only=True
     )
+    mother_name = serializers.SerializerMethodField()
+    mother_mrn = serializers.CharField(
+        source="registration.mother.mrn", read_only=True
+    )
+    place_of_delivery = serializers.CharField(read_only=True)
+    delivered_by_name = serializers.SerializerMethodField()
     alerts = serializers.SerializerMethodField()
 
     class Meta:
@@ -336,15 +342,31 @@ class DeliveryListSerializer(serializers.ModelSerializer):
             "id",
             "registration",
             "registration_mch_number",
+            "mother_name",
+            "mother_mrn",
             "delivery_date",
             "delivery_type",
             "delivery_outcome",
+            "place_of_delivery",
             "status",
             "baby_gender",
             "birth_weight",
+            "delivered_by_name",
             "alerts",
             "created_at",
         ]
+
+    def get_mother_name(self, obj):
+        mother = obj.registration.mother
+        return f"{mother.first_name} {mother.last_name}"
+
+    def get_delivered_by_name(self, obj):
+        if obj.delivered_by:
+            return (
+                f"{obj.delivered_by.first_name} {obj.delivered_by.last_name}".strip()
+                or obj.delivered_by.username
+            )
+        return None
 
     def get_alerts(self, obj):
         return obj.get_alerts()

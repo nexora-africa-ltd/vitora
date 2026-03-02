@@ -282,12 +282,16 @@ export interface DeliveryListItem {
   id: number;
   registration: number;
   registration_mch_number: string;
+  mother_name: string;
+  mother_mrn: string;
   delivery_date: string;
   delivery_type: DeliveryType;
   delivery_outcome: DeliveryOutcome;
+  place_of_delivery: PlaceOfDelivery;
   status: DeliveryStatus;
   baby_gender: BabyGender;
   birth_weight: number | null;
+  delivered_by_name: string | null;
   alerts: string[];
   created_at: string;
 }
@@ -315,6 +319,100 @@ export interface DeliveryCreateData {
   blood_loss_ml?: number;
   placenta_complete?: boolean;
   notes?: string;
+}
+
+// =============================================================================
+// DELIVERY DASHBOARD TYPES
+// =============================================================================
+
+/**
+ * Upcoming delivery (active MCH registration with EDD)
+ */
+export interface UpcomingDelivery {
+  id: number;
+  mch_number: string;
+  mother_name: string;
+  mother_mrn: string;
+  edd: string;
+  days_until_edd: number;
+  gestation_display: string;
+  trimester: number | null;
+  is_high_risk: boolean;
+  risk_factors: string;
+  status: MCHRegistrationStatus;
+}
+
+/**
+ * Monthly trend data point
+ */
+export interface DeliveryMonthlyTrend {
+  month: string | null;
+  total: number;
+  live_births: number;
+  stillbirths: number;
+  cs_deliveries: number;
+}
+
+/**
+ * Delivery dashboard stats
+ */
+export interface DeliveryDashboardStats {
+  total_deliveries: number;
+  this_month: number;
+  today: number;
+  live_birth_rate: number;
+  cs_rate: number;
+  with_complications: number;
+  overdue: number;
+  due_7_days: number;
+  due_14_days: number;
+  due_30_days: number;
+  high_risk_due_soon: number;
+  active_pregnancies: number;
+}
+
+/**
+ * Delivery outcomes breakdown
+ */
+export interface DeliveryOutcomesBreakdown {
+  LIVE_BIRTH: number;
+  STILLBIRTH: number;
+  NEONATAL_DEATH: number;
+  MATERNAL_DEATH: number;
+}
+
+/**
+ * Delivery types breakdown
+ */
+export interface DeliveryTypesBreakdown {
+  SVD: number;
+  ASSISTED_VAGINAL: number;
+  ELECTIVE_CS: number;
+  EMERGENCY_CS: number;
+  VACUUM: number;
+  FORCEPS: number;
+}
+
+/**
+ * Delivery places breakdown
+ */
+export interface DeliveryPlacesBreakdown {
+  FACILITY: number;
+  HOME: number;
+  EN_ROUTE: number;
+}
+
+/**
+ * Full delivery dashboard response
+ */
+export interface DeliveryDashboard {
+  stats: DeliveryDashboardStats;
+  outcomes_breakdown: DeliveryOutcomesBreakdown;
+  types_breakdown: DeliveryTypesBreakdown;
+  places_breakdown: DeliveryPlacesBreakdown;
+  upcoming_deliveries: UpcomingDelivery[];
+  high_risk_due_soon: UpcomingDelivery[];
+  monthly_trend: DeliveryMonthlyTrend[];
 }
 
 // =============================================================================

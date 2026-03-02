@@ -117,6 +117,7 @@ const _allNavItems: NavItemType[] = [
     icon: Baby,
     children: [
       { label: 'Registrations', href: '/mch', icon: ClipboardList },
+      { label: 'Deliveries', href: '/mch/deliveries', icon: Baby },
       { label: 'Growth Charts', href: '/mch/growth', icon: BarChart3 },
       { label: 'Immunizations', href: '/mch/immunizations', icon: Syringe },
       { label: 'HEI Follow-up', href: '/mch/hei', icon: HeartPulse },
