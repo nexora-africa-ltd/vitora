@@ -3,6 +3,19 @@
  * Enhanced types for clinical encounters, diagnoses, and treatment plans.
  */
 
+/** Lightweight CDS alert embedded in encounter API responses (advisory-only). */
+export interface InlineCDSAlert {
+  id: number;
+  rule_code: string;
+  rule_name: string;
+  priority: string;
+  status: string;
+  message: string;
+  suggestion: string;
+  is_critical: boolean;
+  created_at: string;
+}
+
 export interface Encounter {
   id: number;
   patient: number;
@@ -39,6 +52,7 @@ export interface Encounter {
   diastolic_bp?: number | null;
   has_critical_vitals?: boolean;
   alerts?: string | null;
+  cds_alerts?: InlineCDSAlert[];
   vitals_summary?: string | null;
 
   // Vitals source tracking

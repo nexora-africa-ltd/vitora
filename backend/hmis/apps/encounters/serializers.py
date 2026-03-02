@@ -4,6 +4,8 @@ Serializers for the encounters app.
 
 from rest_framework import serializers
 
+from hmis.apps.cds.models import CDSAlert, CDSAlertStatus
+
 from .models import (
     Diagnosis,
     Encounter,
@@ -12,6 +14,28 @@ from .models import (
     TreatmentPlan,
     TreatmentPlanTemplate,
 )
+
+
+class InlineCDSAlertSerializer(serializers.ModelSerializer):
+    """Lightweight CDS alert embedded in encounter responses (advisory-only)."""
+
+    rule_code = serializers.CharField(read_only=True)
+    rule_name = serializers.CharField(read_only=True)
+    is_critical = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = CDSAlert
+        fields = [
+            "id",
+            "rule_code",
+            "rule_name",
+            "priority",
+            "status",
+            "message",
+            "suggestion",
+            "is_critical",
+            "created_at",
+        ]
 
 
 class ICD10CodeSerializer(serializers.ModelSerializer):
@@ -268,6 +292,7 @@ class EncounterSerializer(serializers.ModelSerializer):
     # Read-only computed fields
     has_critical_vitals = serializers.ReadOnlyField()
     alerts = serializers.SerializerMethodField()
+    cds_alerts = serializers.SerializerMethodField()
     bmi = serializers.SerializerMethodField()
     bmi_classification = serializers.SerializerMethodField()
     systolic_bp = serializers.SerializerMethodField()
@@ -375,6 +400,7 @@ class EncounterSerializer(serializers.ModelSerializer):
             "clinical_template_data",
             "has_critical_vitals",
             "alerts",
+            "cds_alerts",
             # Status workflow (Sprint 1.1-1.2)
             "status",
             "finalized_by",
@@ -437,6 +463,7 @@ class EncounterSerializer(serializers.ModelSerializer):
             "encounter_type_display",
             "has_critical_vitals",
             "alerts",
+            "cds_alerts",
             "bmi",
             "bmi_classification",
             "systolic_bp",
@@ -522,6 +549,18 @@ class EncounterSerializer(serializers.ModelSerializer):
     def get_alerts(self, obj: Encounter) -> str:
         """Get alerts for critical vital signs."""
         return obj.get_alerts()
+
+    def get_cds_alerts(self, obj: Encounter) -> list[dict]:
+        """Get pending CDS advisory alerts for this encounter.
+
+        Returns lightweight alert data embedded in the encounter response
+        so the frontend can render advisory banners without a second API call.
+        """
+        qs = CDSAlert.objects.filter(
+            encounter=obj,
+            status__in=[CDSAlertStatus.PENDING, CDSAlertStatus.ACKNOWLEDGED],
+        ).select_related("rule").order_by("-priority", "-created_at")[:20]
+        return InlineCDSAlertSerializer(qs, many=True).data
 
     def get_bmi_classification(self, obj: Encounter) -> str | None:
         """Get BMI classification."""
