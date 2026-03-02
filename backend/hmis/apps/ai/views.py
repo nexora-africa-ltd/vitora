@@ -45,6 +45,9 @@ from .serializers import (
 
 logger = logging.getLogger(__name__)
 
+# Accepted verbosity values — aligned with TibaBot's API.
+_VALID_VERBOSITY = {"brief", "concise", "standard", "detailed", "educational"}
+
 
 # =============================================================================
 # Helpers
@@ -57,6 +60,20 @@ def _get_client_ip(request: Request) -> str:
     if x_forwarded_for:
         return x_forwarded_for.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR", "")
+
+
+def _resolve_verbosity(request: Request, body_value: str | None) -> str:
+    """
+    Resolve verbosity with priority: query-param > body field > default.
+
+    Invalid / unknown values fall back to ``"standard"``.
+    """
+    qp = request.query_params.get("verbosity")
+    if qp and qp in _VALID_VERBOSITY:
+        return qp
+    if body_value and body_value in _VALID_VERBOSITY:
+        return body_value
+    return "standard"
 
 
 class ICD10SuggestView(AIFeatureGatedMixin, APIView):
@@ -221,6 +238,11 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
 
         data = serializer.validated_data
 
+        # Resolve verbosity: query-param > body > default
+        data["verbosity"] = _resolve_verbosity(
+            request, data.get("verbosity")
+        )
+
         # Enrich with server-side context (overrides any frontend-sent values)
         data["user_context"] = build_user_context(request)
         data["facility_context"] = build_facility_context()
@@ -294,6 +316,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
                 "message_length": len(data["message"]),
                 "session_id": str(session.id),
                 "user_role": data["user_context"].get("role"),
+                "verbosity": data.get("verbosity", "standard"),
             },
         )
 
@@ -392,6 +415,11 @@ class ClinicalAssistView(AIFeatureGatedMixin, APIView):
         serializer.is_valid(raise_exception=True)
 
         data = serializer.validated_data
+
+        # Resolve verbosity: query-param > body > default
+        data["verbosity"] = _resolve_verbosity(
+            request, data.get("verbosity")
+        )
 
         # Enrich with server-side context
         data["user_context"] = build_user_context(request)

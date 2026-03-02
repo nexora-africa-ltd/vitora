@@ -30,6 +30,7 @@ import type {
   AIPatientContext,
   AIEncounterContext,
   AIPageContext,
+  AIVerbosity,
 } from '@/lib/types/ai';
 
 // =============================================================================
@@ -89,6 +90,11 @@ export interface AIChatContextValue {
   /** Set the current page context (called by the usePageContextForAI hook) */
   setPageContext: (ctx: AIPageContext | null) => void;
 
+  /** Current verbosity preference for AI responses */
+  verbosity: AIVerbosity;
+  /** Update verbosity preference */
+  setVerbosity: (v: AIVerbosity) => void;
+
   /**
    * Store the URL to return to when minimizing from the full-page AI view.
    * Set when navigating from the widget to /ai, used to pop back.
@@ -129,6 +135,9 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
 
   // Page context — auto-populated from the current route
   const [pageContext, setPageContextState] = useState<AIPageContext | null>(null);
+
+  // Verbosity preference (persisted in-memory; resets to standard on reload)
+  const [verbosity, setVerbosity] = useState<AIVerbosity>('standard');
 
   // Return-to-widget flow: store URL before navigating to /ai
   const returnToUrlRef = useRef<string | null>(null);
@@ -236,6 +245,8 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       isEncounterAware,
       pageContext,
       setPageContext,
+      verbosity,
+      setVerbosity,
       returnToUrl,
       setReturnToUrl,
     }),
@@ -260,6 +271,8 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       isEncounterAware,
       pageContext,
       setPageContext,
+      verbosity,
+      setVerbosity,
       returnToUrl,
       setReturnToUrl,
     ]

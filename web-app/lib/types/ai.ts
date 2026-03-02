@@ -131,8 +131,17 @@ export interface AIPageContext {
   module: string;
 }
 
-/** Verbosity level for Clinical Assist responses */
-export type AIVerbosity = 'brief' | 'standard' | 'detailed';
+/** Verbosity level for AI responses */
+export type AIVerbosity = 'brief' | 'concise' | 'standard' | 'detailed' | 'educational';
+
+/** Human-readable labels for each verbosity level */
+export const AI_VERBOSITY_OPTIONS: { value: AIVerbosity; label: string; description: string }[] = [
+  { value: 'brief', label: 'Brief', description: 'Terse bullet points, <150 words' },
+  { value: 'concise', label: 'Concise', description: 'Same as brief — abbreviations OK' },
+  { value: 'standard', label: 'Standard', description: 'Balanced with context (default)' },
+  { value: 'detailed', label: 'Detailed', description: 'Full reasoning, step-by-step' },
+  { value: 'educational', label: 'Educational', description: 'Explains "why" — teaching mode' },
+];
 
 /** Request body for POST /api/ai/clinical/chat/ */
 export interface AIClinicalChatRequest {
@@ -148,6 +157,8 @@ export interface AIClinicalChatRequest {
   user_context?: AIUserContext;
   /** Facility context — injected automatically by the API layer */
   facility_context?: AIFacilityContext;
+  /** Response detail level */
+  verbosity?: AIVerbosity;
 }
 
 /** Response from POST /api/ai/clinical/chat/ (non-streaming) */

@@ -554,3 +554,192 @@ class TestClinicalAssistRequestSerializer:
         )
         assert not serializer.is_valid()
         assert "verbosity" in serializer.errors
+
+    def test_accepts_concise_verbosity(self):
+        from hmis.apps.ai.serializers import ClinicalAssistRequestSerializer
+
+        serializer = ClinicalAssistRequestSerializer(
+            data={"query": "DDx for cough", "verbosity": "concise"}
+        )
+        assert serializer.is_valid(), serializer.errors
+        assert serializer.validated_data["verbosity"] == "concise"
+
+    def test_accepts_educational_verbosity(self):
+        from hmis.apps.ai.serializers import ClinicalAssistRequestSerializer
+
+        serializer = ClinicalAssistRequestSerializer(
+            data={"query": "DDx for cough", "verbosity": "educational"}
+        )
+        assert serializer.is_valid(), serializer.errors
+        assert serializer.validated_data["verbosity"] == "educational"
+
+
+# =============================================================================
+# Verbosity on Clinical Chat serializer
+# =============================================================================
+
+
+class TestClinicalChatVerbosity:
+    """Tests for verbosity field on ClinicalChatRequestSerializer."""
+
+    def test_accepts_verbosity_in_chat_request(self):
+        from hmis.apps.ai.serializers import ClinicalChatRequestSerializer
+
+        serializer = ClinicalChatRequestSerializer(
+            data={"message": "DDx for chest pain?", "verbosity": "brief"}
+        )
+        assert serializer.is_valid(), serializer.errors
+        assert serializer.validated_data["verbosity"] == "brief"
+
+    def test_chat_verbosity_defaults_to_standard(self):
+        from hmis.apps.ai.serializers import ClinicalChatRequestSerializer
+
+        serializer = ClinicalChatRequestSerializer(
+            data={"message": "DDx for chest pain?"}
+        )
+        assert serializer.is_valid(), serializer.errors
+        assert serializer.validated_data["verbosity"] == "standard"
+
+    def test_chat_rejects_invalid_verbosity(self):
+        from hmis.apps.ai.serializers import ClinicalChatRequestSerializer
+
+        serializer = ClinicalChatRequestSerializer(
+            data={"message": "test", "verbosity": "super_detailed"}
+        )
+        assert not serializer.is_valid()
+        assert "verbosity" in serializer.errors
+
+    def test_chat_accepts_concise(self):
+        from hmis.apps.ai.serializers import ClinicalChatRequestSerializer
+
+        serializer = ClinicalChatRequestSerializer(
+            data={"message": "test", "verbosity": "concise"}
+        )
+        assert serializer.is_valid(), serializer.errors
+
+    def test_chat_accepts_educational(self):
+        from hmis.apps.ai.serializers import ClinicalChatRequestSerializer
+
+        serializer = ClinicalChatRequestSerializer(
+            data={"message": "test", "verbosity": "educational"}
+        )
+        assert serializer.is_valid(), serializer.errors
+
+
+# =============================================================================
+# Verbosity query-parameter priority tests
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestVerbosityQueryParam:
+    """Tests for ?verbosity= query parameter override on both endpoints."""
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_query_param_overrides_body_on_chat(self, authenticated_client):
+        """Query param verbosity should take priority over body value."""
+        mock_response = {
+            "session_id": "sess-v1",
+            "message": {"role": "assistant", "content": "ok"},
+        }
+        with patch(
+            "hmis.apps.ai.views.get_tibabot_client"
+        ) as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.clinical_chat.return_value = mock_response
+            mock_get_client.return_value = mock_client
+
+            authenticated_client.post(
+                "/api/ai/clinical/chat/?verbosity=brief",
+                {"message": "DDx for chest pain?", "verbosity": "detailed"},
+                format="json",
+            )
+
+            call_args = mock_client.clinical_chat.call_args[0][0]
+            assert call_args["verbosity"] == "brief"
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_query_param_overrides_body_on_assist(self, authenticated_client):
+        """Query param verbosity should take priority over body value."""
+        mock_response = {"response": "Consider...", "references": []}
+        with patch(
+            "hmis.apps.ai.views.get_tibabot_client"
+        ) as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.clinical_assist.return_value = mock_response
+            mock_get_client.return_value = mock_client
+
+            authenticated_client.post(
+                "/api/ai/clinical/assist/?verbosity=educational",
+                {"query": "DDx for cough", "verbosity": "standard"},
+                format="json",
+            )
+
+            call_args = mock_client.clinical_assist.call_args[0][0]
+            assert call_args["verbosity"] == "educational"
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_invalid_query_param_falls_back_to_body(self, authenticated_client):
+        """Invalid query param should fall back to body value."""
+        mock_response = {"response": "Consider...", "references": []}
+        with patch(
+            "hmis.apps.ai.views.get_tibabot_client"
+        ) as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.clinical_assist.return_value = mock_response
+            mock_get_client.return_value = mock_client
+
+            authenticated_client.post(
+                "/api/ai/clinical/assist/?verbosity=INVALID",
+                {"query": "DDx for cough", "verbosity": "detailed"},
+                format="json",
+            )
+
+            call_args = mock_client.clinical_assist.call_args[0][0]
+            assert call_args["verbosity"] == "detailed"
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_no_verbosity_defaults_to_standard(self, authenticated_client):
+        """No verbosity anywhere should default to standard."""
+        mock_response = {"response": "Consider...", "references": []}
+        with patch(
+            "hmis.apps.ai.views.get_tibabot_client"
+        ) as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.clinical_assist.return_value = mock_response
+            mock_get_client.return_value = mock_client
+
+            authenticated_client.post(
+                "/api/ai/clinical/assist/",
+                {"query": "DDx for cough"},
+                format="json",
+            )
+
+            call_args = mock_client.clinical_assist.call_args[0][0]
+            assert call_args["verbosity"] == "standard"
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_chat_audit_log_includes_verbosity(self, authenticated_client):
+        """Chat audit log should include the resolved verbosity."""
+        from hmis.apps.core.models import AuditLog
+
+        mock_response = {
+            "session_id": "sess-v2",
+            "message": {"role": "assistant", "content": "ok"},
+        }
+        with patch(
+            "hmis.apps.ai.views.get_tibabot_client"
+        ) as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.clinical_chat.return_value = mock_response
+            mock_get_client.return_value = mock_client
+
+            authenticated_client.post(
+                "/api/ai/clinical/chat/",
+                {"message": "test", "verbosity": "concise"},
+                format="json",
+            )
+
+            log = AuditLog.objects.filter(action="ai_clinical_chat").last()
+            assert log is not None
+            assert log.details["verbosity"] == "concise"

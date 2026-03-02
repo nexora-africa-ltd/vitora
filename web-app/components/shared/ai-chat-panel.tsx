@@ -23,6 +23,7 @@ import {
   Stethoscope,
   ExternalLink,
   Loader2,
+  Gauge,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -30,7 +31,8 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils/cn';
 import { useAIChatContext } from '@/lib/context/ai-chat-context';
 import { TibaBotStatusIndicator } from './tibabot-status-indicator';
-import type { AIChatMessage } from '@/lib/types/ai';
+import type { AIChatMessage, AIVerbosity } from '@/lib/types/ai';
+import { AI_VERBOSITY_OPTIONS } from '@/lib/types/ai';
 
 // =============================================================================
 // Types
@@ -156,6 +158,8 @@ export function AIChatPanel({
     activeSessionId,
     setActiveSessionId,
     clearMessages,
+    verbosity,
+    setVerbosity,
   } = useAIChatContext();
 
   const [inputValue, setInputValue] = useState('');
@@ -312,6 +316,32 @@ export function AIChatPanel({
 
       {/* Input area */}
       <div className="p-3">
+        {/* Verbosity selector */}
+        <div className="flex items-center gap-1.5 mb-2">
+          <Gauge className="h-3 w-3 text-muted-foreground shrink-0" />
+          <div className="flex gap-0.5 flex-wrap">
+            {(['brief', 'standard', 'detailed'] as AIVerbosity[]).map((v) => {
+              const opt = AI_VERBOSITY_OPTIONS.find((o) => o.value === v);
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setVerbosity(v)}
+                  className={cn(
+                    'px-2 py-0.5 rounded text-[10px] font-medium transition-colors',
+                    verbosity === v || (verbosity === 'concise' && v === 'brief') || (verbosity === 'educational' && v === 'detailed')
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  )}
+                  title={opt?.description}
+                >
+                  {opt?.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="flex items-end gap-2">
           <textarea
             ref={inputRef}

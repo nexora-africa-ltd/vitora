@@ -145,6 +145,8 @@ export default function AIPage() {
     setReturnToUrl,
   } = useAIChatContext();
 
+  const { verbosity } = useAIChatContext();
+
   const chatMutation = useAIClinicalChat();
   const assistMutation = useAIClinicalAssist();
   const { data: sessionsData, isLoading: sessionsLoading } = useAIChatSessions();
@@ -224,7 +226,7 @@ export default function AIPage() {
         query: 'Provide a differential diagnosis and recommended workup for this presentation.',
         patient_context: patientContext ?? undefined,
         encounter_context: encounterContext ?? undefined,
-        verbosity: 'standard',
+        verbosity,
       });
 
       addMessage({

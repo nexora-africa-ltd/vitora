@@ -53,6 +53,9 @@ export function AIChatWidget() {
     pageContext,
   } = useAIChatContext();
 
+  // Verbosity from context
+  const { verbosity } = useAIChatContext();
+
   // Chat mutation
   const chatMutation = useAIClinicalChat();
   const assistMutation = useAIClinicalAssist();
@@ -92,6 +95,7 @@ export function AIChatWidget() {
           patient_context: patientContext ?? undefined,
           encounter_context: encounterContext ?? undefined,
           page_context: pageContext ?? undefined,
+          verbosity,
         });
 
         // Set session ID if this is a new conversation
@@ -138,7 +142,7 @@ export function AIChatWidget() {
         patient_context: patientContext ?? undefined,
         encounter_context: encounterContext ?? undefined,
         page_context: pageContext ?? undefined,
-        verbosity: 'standard',
+        verbosity,
       });
 
       updateStreamingMessage(assistantMsgId, response.response, true);
@@ -149,7 +153,7 @@ export function AIChatWidget() {
         true,
       );
     }
-  }, [addMessage, updateStreamingMessage, assistMutation, patientContext, encounterContext]);
+  }, [addMessage, updateStreamingMessage, assistMutation, patientContext, encounterContext, verbosity]);
 
   // Open full view — store current URL so user can pop back to widget later
   const handleOpenFullView = useCallback(() => {
