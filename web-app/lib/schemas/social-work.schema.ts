@@ -9,13 +9,27 @@
 
 import { z } from 'zod';
 import {
-  AlliedHealthOrderStatusSchema,
   createPaginatedSchema,
 } from './allied-health.schema';
 
 // =============================================================================
 // ENUMS
 // =============================================================================
+
+/**
+ * Social Work Referral status — matches backend SocialWorkReferral.REFERRAL_STATUS.
+ * This differs from the shared AlliedHealthOrderStatusSchema (uses ACCEPTED, not APPROVED,
+ * and includes DRAFT + REFERRED_OUT).
+ */
+export const SWReferralStatusSchema = z.enum([
+  'DRAFT',
+  'PENDING',
+  'ACCEPTED',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CANCELLED',
+  'REFERRED_OUT',
+]);
 
 export const SWReferralReasonSchema = z.enum([
   'GBV',
@@ -145,7 +159,7 @@ export const SWReferralSchema = z.object({
   specific_requests: z.string().optional(),
   risk_factors: z.string().optional(),
   // Status & sensitivity
-  status: AlliedHealthOrderStatusSchema,
+  status: SWReferralStatusSchema,
   status_display: z.string().optional(),
   is_sensitive: z.boolean(),
   confidentiality_notes: z.string().optional(),
@@ -178,7 +192,7 @@ export const SWReferralListItemSchema = z.object({
   reason_display: z.string().optional(),
   urgency: z.string(),
   urgency_display: z.string().optional(),
-  status: AlliedHealthOrderStatusSchema,
+  status: SWReferralStatusSchema,
   status_display: z.string().optional(),
   assigned_worker: z.number().nullable(),
   assigned_worker_name: z.string().nullable(),
