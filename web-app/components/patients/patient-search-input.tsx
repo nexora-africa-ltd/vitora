@@ -96,7 +96,10 @@ export function PatientSearchInput({
       </div>
 
       {showDropdown && debouncedSearch.length >= 2 && (
-        <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-60 overflow-y-auto">
+        <div
+          className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-60 overflow-y-auto"
+          onMouseDown={(e) => e.preventDefault()}
+        >
           {isLoading ? (
             <div className="p-3 text-sm text-muted-foreground text-center">Searching...</div>
           ) : searchResults?.results?.length === 0 ? (
