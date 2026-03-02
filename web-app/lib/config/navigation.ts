@@ -59,6 +59,7 @@ import {
 
 import {
   ENABLE_THEATRE,
+  ENABLE_AI,
 } from '@/lib/utils/constants';
 
 export interface NavItem {
@@ -206,6 +207,12 @@ const _allNavItems: NavItemType[] = [
     ],
   },
   {
+    label: 'AI Assistant',
+    href: '/ai',
+    icon: BrainCircuit,
+    featureFlag: ENABLE_AI,
+  } as NavItem & { featureFlag?: boolean },
+  {
     label: 'Admin',
     icon: ShieldUser,
     children: [
@@ -222,7 +229,7 @@ const _allNavItems: NavItemType[] = [
  * Filtered navigation items — items gated by disabled feature flags are excluded.
  */
 export const mainNavItems: NavItemType[] = _allNavItems.filter((item) => {
-  if (hasChildren(item) && 'featureFlag' in item && item.featureFlag === false) {
+  if ('featureFlag' in item && item.featureFlag === false) {
     return false;
   }
   return true;

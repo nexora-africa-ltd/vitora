@@ -1,0 +1,241 @@
+/**
+ * AI Chat Widget
+ *
+ * Persistent floating widget for TibaBot clinical chat.
+ * Appears in the bottom-right corner of all dashboard pages.
+ *
+ * States:
+ * - **Minimized**: 56×56px floating button with status indicator
+ * - **Expanded**: ~400px wide sidebar panel with chat UI
+ *
+ * Access control:
+ * - Feature-gated by NEXT_PUBLIC_ENABLE_AI
+ * - Permission-gated by ai.use_clinical_chat
+ * - Hidden for non-clinical roles
+ */
+'use client';
+
+import React, { useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils/cn';
+import { useAIChatContext } from '@/lib/context/ai-chat-context';
+import { useAIEnabled } from '@/lib/hooks/use-ai';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { TibaBotStatusIndicator, TibaBotStatusStyles } from './tibabot-status-indicator';
+import { AIChatPanel } from './ai-chat-panel';
+import { useAIClinicalChat, useAIClinicalAssist } from '@/lib/hooks/use-ai';
+import type { AIChatMessage } from '@/lib/types/ai';
+
+// =============================================================================
+// Component
+// =============================================================================
+
+export function AIChatWidget() {
+  const aiEnabled = useAIEnabled();
+  const { hasPermission } = usePermissions();
+  const router = useRouter();
+
+  const {
+    widgetState,
+    toggleWidget,
+    minimizeWidget,
+    availability,
+    unreadCount,
+    activeSessionId,
+    setActiveSessionId,
+    addMessage,
+    incrementUnread,
+    patientContext,
+    encounterContext,
+  } = useAIChatContext();
+
+  // Chat mutation
+  const chatMutation = useAIClinicalChat();
+  const assistMutation = useAIClinicalAssist();
+
+  // Permission check — only show for users with clinical chat permission
+  const canUseChat = useMemo(
+    () => hasPermission('ai.use_clinical_chat'),
+    [hasPermission]
+  );
+
+  // Handle sending a message
+  const handleSendMessage = useCallback(
+    async (message: string) => {
+      // Add user message immediately
+      const userMsg: AIChatMessage = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: message,
+        timestamp: new Date().toISOString(),
+      };
+      addMessage(userMsg);
+
+      // Add placeholder assistant message
+      const assistantMsgId = `assistant-${Date.now()}`;
+      addMessage({
+        id: assistantMsgId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date().toISOString(),
+        isStreaming: true,
+      });
+
+      try {
+        const response = await chatMutation.mutateAsync({
+          message,
+          session_id: activeSessionId ?? undefined,
+        });
+
+        // Set session ID if this is a new conversation
+        if (!activeSessionId && response.session_id) {
+          setActiveSessionId(response.session_id);
+        }
+
+        // Replace placeholder with actual response
+        addMessage({
+          ...response.message,
+          id: assistantMsgId,
+          isStreaming: false,
+        });
+      } catch {
+        // Replace placeholder with error message
+        addMessage({
+          id: assistantMsgId,
+          role: 'assistant',
+          content: 'Sorry, I couldn\'t process your request. Please try again.',
+          timestamp: new Date().toISOString(),
+          isStreaming: false,
+        });
+      }
+    },
+    [activeSessionId, addMessage, chatMutation, setActiveSessionId]
+  );
+
+  // Handle "Ask about this patient"
+  const handleAskAboutPatient = useCallback(async () => {
+    const userMsg: AIChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: '🩺 Requesting clinical analysis for the current patient...',
+      timestamp: new Date().toISOString(),
+    };
+    addMessage(userMsg);
+
+    const assistantMsgId = `assistant-${Date.now()}`;
+    addMessage({
+      id: assistantMsgId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toISOString(),
+      isStreaming: true,
+    });
+
+    try {
+      const response = await assistMutation.mutateAsync({
+        query: 'Provide a differential diagnosis and recommended workup for this presentation.',
+        patient_context: patientContext ?? undefined,
+        encounter_context: encounterContext ?? undefined,
+        verbosity: 'standard',
+      });
+
+      addMessage({
+        id: assistantMsgId,
+        role: 'assistant',
+        content: response.response,
+        timestamp: new Date().toISOString(),
+        isStreaming: false,
+      });
+    } catch {
+      addMessage({
+        id: assistantMsgId,
+        role: 'assistant',
+        content: 'Sorry, I couldn\'t analyze this patient\'s data. Please try again.',
+        timestamp: new Date().toISOString(),
+        isStreaming: false,
+      });
+    }
+  }, [addMessage, assistMutation, patientContext, encounterContext]);
+
+  // Open full view
+  const handleOpenFullView = useCallback(() => {
+    minimizeWidget();
+    router.push('/ai');
+  }, [minimizeWidget, router]);
+
+  // Don't render if AI is disabled or user lacks permission
+  if (!aiEnabled || !canUseChat) return null;
+
+  const isExpanded = widgetState === 'expanded';
+
+  return (
+    <>
+      {/* Inject keyframe styles once */}
+      <TibaBotStatusStyles />
+
+      {/* Expanded panel */}
+      {isExpanded && (
+        <>
+          {/* Backdrop on mobile */}
+          <div
+            className="fixed inset-0 z-[59] bg-black/20 md:hidden"
+            onClick={minimizeWidget}
+            aria-hidden="true"
+          />
+
+          {/* Chat panel */}
+          <div
+            className={cn(
+              'fixed z-[60] bg-background border rounded-2xl shadow-2xl',
+              'flex flex-col overflow-hidden',
+              // Mobile: nearly full screen
+              'inset-x-3 bottom-3 top-16',
+              // Desktop: fixed width bottom-right
+              'md:inset-auto md:bottom-6 md:right-6 md:w-[400px] md:h-[600px] md:max-h-[80vh]'
+            )}
+            role="dialog"
+            aria-label="TibaBot Clinical Assistant"
+          >
+            <AIChatPanel
+              showHeader
+              onClose={minimizeWidget}
+              onOpenFullView={handleOpenFullView}
+              onSendMessage={handleSendMessage}
+              onAskAboutPatient={handleAskAboutPatient}
+              isSending={chatMutation.isPending || assistMutation.isPending}
+            />
+          </div>
+        </>
+      )}
+
+      {/* Floating button (minimized state) */}
+      {!isExpanded && (
+        <button
+          type="button"
+          onClick={toggleWidget}
+          className={cn(
+            'fixed z-[58] bottom-6 right-6',
+            'h-14 w-14 rounded-full',
+            'bg-background border-2',
+            'flex items-center justify-center',
+            'shadow-lg hover:shadow-xl transition-shadow',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+            availability === 'available' ? 'border-green-500/30' : 'border-red-500/30'
+          )}
+          aria-label={
+            unreadCount > 0
+              ? `Open TibaBot, ${unreadCount} unread`
+              : 'Open TibaBot'
+          }
+        >
+          <TibaBotStatusIndicator
+            availability={availability}
+            unreadCount={unreadCount}
+            size={26}
+            showHalo
+          />
+        </button>
+      )}
+    </>
+  );
+}

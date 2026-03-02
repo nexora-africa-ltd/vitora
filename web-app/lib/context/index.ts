@@ -37,3 +37,12 @@ export {
   useSyncStatus,
   formatLastSync,
 } from './sync-context';
+
+// AI Chat Context
+export {
+  AIChatProvider,
+  useAIChatContext,
+  useOptionalAIChatContext,
+  type AIChatContextValue,
+  type AIChatProviderProps,
+} from './ai-chat-context';
