@@ -528,7 +528,7 @@ export interface ClinicEnrollment {
   days_since_last_visit?: number | string | null;
   days_overdue?: number | string | null;
   enrollment_type?: string | null;
-  clinic_specific_summary?: string | null;
+  clinic_specific_summary?: string | Record<string, unknown> | null;
 
   // ===========================================
   // CCC (HIV/AIDS) FIELDS

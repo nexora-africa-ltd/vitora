@@ -326,7 +326,7 @@ export const ClinicEnrollmentSchema = z.object({
   days_since_last_visit: z.union([z.number(), z.string()]).nullable().optional(),
   days_overdue: z.union([z.number(), z.string()]).nullable().optional(),
   enrollment_type: z.string().nullable().optional(),
-  clinic_specific_summary: z.string().nullable().optional(),
+  clinic_specific_summary: z.union([z.string(), z.record(z.unknown())]).nullable().optional(),
 
   // ===========================================
   // CCC (HIV/AIDS) FIELDS
