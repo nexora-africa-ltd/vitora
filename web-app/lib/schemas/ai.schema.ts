@@ -53,7 +53,7 @@ export const AIClinicalChatResponseSchema = z.object({
 export const AIClinicalAssistResponseSchema = z.object({
   response: z.string(),
   references: z.array(z.string()).optional(),
-  error: z.string().optional(),
+  error: z.string().nullable().optional(),
 });
 
 /** Schema for a chat session summary */

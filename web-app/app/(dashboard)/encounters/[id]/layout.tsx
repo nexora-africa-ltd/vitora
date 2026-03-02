@@ -88,11 +88,14 @@ function EncounterLayoutContent({ children }: { children: React.ReactNode }) {
   const { encounter, error } = useEncounterContext();
   const { patient } = usePatientContext();
   const chatCtx = useOptionalAIChatContext();
+  // Extract the stable callback to avoid depending on the entire context object,
+  // which changes reference whenever state updates (infinite loop).
+  const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
 
   // Wire encounter + patient data into the AI chat context so TibaBot
   // can provide encounter-aware clinical assistance.
   useEffect(() => {
-    if (!chatCtx) return;
+    if (!setEncounterAwareContext) return;
 
     if (patient && encounter) {
       const allergies = encounter.allergies
@@ -108,7 +111,7 @@ function EncounterLayoutContent({ children }: { children: React.ReactNode }) {
         .map((s: string) => s.trim())
         .filter(Boolean) ?? [];
 
-      chatCtx.setEncounterAwareContext(
+      setEncounterAwareContext(
         {
           patient_age: calculateAge(patient.date_of_birth),
           patient_sex: patient.gender,
@@ -131,9 +134,9 @@ function EncounterLayoutContent({ children }: { children: React.ReactNode }) {
 
     // Clear encounter context when navigating away
     return () => {
-      chatCtx.setEncounterAwareContext(null, null);
+      setEncounterAwareContext(null, null);
     };
-  }, [patient, encounter, chatCtx]);
+  }, [patient, encounter, setEncounterAwareContext]);
 
   if (error) {
     return <EncounterLayoutError message={error.message} />;

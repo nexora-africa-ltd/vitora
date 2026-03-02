@@ -74,7 +74,7 @@ class TibaBotClient:
             }
         )
         if self.api_key:
-            self.session.headers["Authorization"] = f"Bearer {self.api_key}"
+            self.session.headers["X-API-Key"] = self.api_key
 
     def _request(
         self,
