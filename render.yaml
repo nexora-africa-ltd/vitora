@@ -49,6 +49,7 @@ services:
         python manage.py setup_allied_health_permissions &&
         python manage.py seed_allied_health_data &&
         poetry run python manage.py seed_quality_measures &&
+        poetry run python manage.py seed_cds_rules &&
         python manage.py seed_allied_health_demo
       fi
     startCommand: daphne -b 0.0.0.0 -p $PORT hmis.asgi:application

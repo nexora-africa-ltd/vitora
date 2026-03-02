@@ -54,6 +54,7 @@ import {
   HeartPlus,
   HeartHandshake,
   Venus,
+  BrainCircuit,
 } from 'lucide-react';
 
 import {
@@ -193,6 +194,15 @@ const _allNavItems: NavItemType[] = [
       { label: 'Measures', href: '/quality/measures', icon: Target },
       { label: 'Quarterly Reports', href: '/quality/reports/quarterly', icon: BarChart3 },
       { label: 'Annual Reports', href: '/quality/reports/annual', icon: FileText },
+    ],
+  },
+  {
+    label: 'CDS',
+    icon: BrainCircuit,
+    children: [
+      { label: 'Dashboard', href: '/cds', icon: LayoutDashboard },
+      { label: 'Rules', href: '/cds/rules', icon: Shield },
+      { label: 'Alerts', href: '/cds/alerts', icon: AlertTriangle },
     ],
   },
   {

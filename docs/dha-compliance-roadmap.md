@@ -484,18 +484,31 @@ Gaps are categorized into four tiers:
 
 ### Sprint 3.A — Clinical Decision Support (Weeks 1-8)
 
-#### 25. Evidence-Based CDS Engine `P3`
-- **Gap**: No rule-driven clinical decision support
+#### 25. Evidence-Based CDS Engine `P3` ✅ COMPLETE
+- **Gap**: ~~No rule-driven clinical decision support~~ **RESOLVED**
 - **Action**:
-  - [ ] Design CDS rule schema (condition, action, priority, evidence_level)
-  - [ ] Create `CDSRule` model with JSON logic storage
-  - [ ] Implement rule evaluation engine
-  - [ ] Initial rule set: drug-allergy interactions, critical lab values, vital sign alerts
-  - [ ] CDS alert integration in encounter workflow
-  - [ ] Tests: 40+ unit tests
-- **Owner**: Backend Team
-- **Effort**: 4 sprints (8 weeks)
-- **Deliverables**: `hmis/apps/cds/`, CDS rule editor UI
+  - [x] Design CDS rule schema (condition, action, priority, evidence_level)
+  - [x] Create `CDSRule` model with JSON logic storage
+  - [x] Implement rule evaluation engine (`engine.py` — condition evaluation for vitals, labs, allergies, age/gender)
+  - [x] Initial rule set: drug-allergy interactions, critical lab values, vital sign alerts (8 seed rules via `seed_cds_rules` command)
+  - [x] CDS alert integration in encounter workflow (`CDSAlert` model, per-patient/encounter evaluation API)
+  - [x] Alert lifecycle: PENDING → ACKNOWLEDGED → ACCEPTED/OVERRIDDEN/DISMISSED/AUTO_RESOLVED
+  - [x] Override audit trail (reason required, min 10 chars)
+  - [x] Tests: 78 unit tests (exceeded 40+ requirement)
+- **Owner**: Backend Team + Frontend Team
+- **Completed**: March 2, 2026
+- **Deliverables**:
+  - `hmis/apps/cds/` (models, engine, views, serializers, admin, management command)
+  - `CDSRule` model with JSON condition logic, 7 categories, 5 priority levels, 4 evidence levels
+  - `CDSAlert` model with 6 statuses and full lifecycle management
+  - Rule evaluation engine: `evaluate_rule()`, `evaluate_rules_for_encounter()`, `evaluate_rules_for_patient()`
+  - 4 custom actions: `evaluate`, `approve`, `activate`, `deactivate` (rules); `acknowledge`, `accept`, `override`, `dismiss`, `for_encounter`, `for_patient` (alerts)
+  - Dashboard API with category/priority breakdowns and override rates
+  - Management command: `seed_cds_rules` (8 initial clinical rules)
+  - Migration: `0001_initial.py`
+  - Frontend: dashboard, rules list/detail/create, alerts list/detail pages
+  - Sidebar navigation under "CDS" section
+  - Zod-validated API client with 17 methods
 
 #### 26. HPT Registry Integration `P3`
 - **Gap**: No HPT registry integration
