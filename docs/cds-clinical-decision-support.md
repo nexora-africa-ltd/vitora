@@ -633,4 +633,83 @@ CDS rules and alerts are manageable via Django admin at `/admin/cds/`:
 
 ---
 
+## AI Evolution Roadmap
+
+The current CDS module is a **deterministic rule engine** — hand-authored JSON conditions with fixed thresholds. This is the correct foundation (Epic BPA, Cerner Discern follow the same pattern) because it is fully auditable, explainable, and requires no training data. AI layers build on top progressively.
+
+### Current State: Rule-Based CDS (Level 1)
+
+- Fully auditable: "this alert fired because SpO2 < 95%"
+- Clinicians and regulators can review/approve every rule
+- No training data dependency
+- DHA-compliant — evidence levels and references are traceable
+- Override/accept data is already being collected as future training signal
+
+### Where AI Fits — Three Progressive Layers
+
+#### Layer 1: AI-Assisted Rule Authoring (Near-term, low risk)
+
+Use LLMs to **help create rules**, not to make clinical decisions directly.
+
+| Capability | Description |
+|------------|-------------|
+| **Guideline-to-rule translation** | Feed Kenya Clinical Guidelines PDF → LLM generates candidate `cds_rules.json` entries. Clinician reviews before activation (DRAFT → ACTIVE lifecycle already supports this). |
+| **Rule gap detection** | Analyze encounter data to find common vital patterns lacking rules. "200 encounters with RR > 30 but no CDS alert — suggest adding VITAL-RR-CRITICAL." |
+| **Natural language rule creation** | Clinician types "Alert when potassium is above 6.0 in patients on ACE inhibitors" → LLM generates the condition JSON. |
+
+**Risk**: Minimal — LLM is a tool for humans. Clinician approval gate (`DRAFT` status) prevents bad rules from going live.
+
+#### Layer 2: ML-Enhanced Alerting (Medium-term, moderate risk)
+
+Use ML models to **reduce alert fatigue** and **improve relevance**.
+
+| Capability | Description |
+|------------|-------------|
+| **Alert suppression/prioritization** | Train on accept vs. override vs. dismiss patterns. Auto-suppress or downgrade priority for rules with 90%+ override rate for specific demographics. `override_rate` property already tracks this signal. |
+| **Risk scoring** | Replace binary thresholds with composite models: SpO2 92% in a 25-year-old athlete = medium; SpO2 92% in a 70-year-old COPD patient = critical. |
+| **Vitals trend detection** | Time-series analysis on sequential encounter vitals: "Temperature rising 0.5°C/hour over 3 readings" even if no single reading crosses threshold. |
+| **Sepsis early warning** | MEWS/qSOFA-style composite scoring using vitals + lab results — proven clinical ML value. |
+
+**Architecture fit**: Plugs into the existing engine as a new evaluator type:
+```json
+{
+  "type": "ml_model",
+  "model_name": "sepsis_risk_v2",
+  "threshold": 0.75,
+  "input_features": ["temperature", "pulse", "respiratory_rate", "spo2", "wbc"]
+}
+```
+
+**Risk**: Moderate — requires validation datasets, bias testing, and clinical review board. Kenya DPA requires explainability for medical decisions.
+
+#### Layer 3: Predictive & Generative CDS (Long-term, high risk)
+
+| Capability | Description |
+|------------|-------------|
+| **Diagnostic suggestions** | Given chief complaint + vitals + history, suggest ranked differentials. Not to replace clinicians — to ensure nothing is missed (especially for rural health workers). |
+| **Treatment plan recommendations** | "For this presentation + ICD-10 codes, Kenya Clinical Guidelines recommend X, Y, Z" — auto-populating treatment templates. |
+| **Multi-drug interaction reasoning** | LLMs reason about complex multi-drug interactions with patient-specific context, beyond simple A+B pairs. |
+| **Patient-specific risk prediction** | 30-day readmission risk, deterioration prediction, adverse event forecasting. |
+
+**Risk**: High — regulatory, liability, explainability, and bias concerns. Would require MOH-level certification in Kenya.
+
+### Key Architectural Decisions
+
+1. **Keep the rule engine as the control plane.** AI models generate *candidate* rules or *score adjustments*, never bypass the rule evaluation pipeline. Every clinical recommendation passes through an auditable, explainable path.
+2. **The `CDSRule.condition` JSON format is extensible.** Adding `"type": "ml_model"` alongside `"type": "vital_range"` means AI and rules coexist in the same evaluation pipeline, alerts panel, and audit trail.
+3. **Override/accept data is training data.** Every clinician action on an alert (`CDSAlert.status` + `override_reason`) is a labeled example for Layer 2 alert suppression. Already being collected.
+4. **Don't skip Layer 1.** Most healthcare AI projects fail by jumping to ML before establishing the deterministic baseline. Get usage data, override patterns, and clinical feedback first.
+
+### Implementation Phases
+
+| Phase | Timeline | What | Risk |
+|-------|----------|------|------|
+| **Phase 0** ✅ | Current | Deterministic rules, JSON-defined, human-approved | None |
+| **Phase 1** | +6 months | LLM-assisted rule authoring from clinical guidelines | Low |
+| **Phase 2** | +12 months | Alert fatigue ML (suppress/prioritize based on override patterns) | Medium |
+| **Phase 3** | +18 months | Composite risk scoring (sepsis, deterioration) | Medium-High |
+| **Phase 4** | +24 months | Diagnostic/treatment suggestions with LLM reasoning | High — needs MOH alignment |
+
+---
+
 *Last updated: March 2, 2026*
