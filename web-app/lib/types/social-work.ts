@@ -7,13 +7,25 @@
  */
 
 import {
-  AlliedHealthOrderStatus,
   AlliedHealthOrderListParams,
 } from './allied-health';
 
 // =============================================================================
 // ENUMS
 // =============================================================================
+
+/**
+ * Social Work Referral status — matches backend SocialWorkReferral.REFERRAL_STATUS.
+ * Uses ACCEPTED (not APPROVED) and includes DRAFT + REFERRED_OUT.
+ */
+export type SWReferralStatus =
+  | 'DRAFT'
+  | 'PENDING'
+  | 'ACCEPTED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'REFERRED_OUT';
 
 export type SWReferralReason =
   | 'GBV'
@@ -137,7 +149,7 @@ export interface SWReferral {
   specific_requests?: string;
   risk_factors?: string;
   // Status & sensitivity
-  status: AlliedHealthOrderStatus;
+  status: SWReferralStatus;
   status_display?: string;
   is_sensitive: boolean;
   confidentiality_notes?: string;
@@ -166,7 +178,7 @@ export interface SWReferralListItem {
   reason_display?: string;
   urgency: string;
   urgency_display?: string;
-  status: AlliedHealthOrderStatus;
+  status: SWReferralStatus;
   status_display?: string;
   assigned_worker: number | null;
   assigned_worker_name: string | null;
@@ -386,7 +398,8 @@ export interface SWInterventionCreateData {
 // LIST PARAMS
 // =============================================================================
 
-export interface SWReferralListParams extends AlliedHealthOrderListParams {
+export interface SWReferralListParams extends Omit<AlliedHealthOrderListParams, 'status'> {
+  status?: SWReferralStatus;
   reason?: SWReferralReason;
   urgency?: CaseUrgency;
   is_sensitive?: boolean;

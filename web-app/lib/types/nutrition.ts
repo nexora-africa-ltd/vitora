@@ -22,19 +22,19 @@ import {
 export type NutritionReferralReason =
   | 'WEIGHT_MANAGEMENT'
   | 'DIABETES'
+  | 'CARDIOVASCULAR'
   | 'RENAL'
-  | 'CARDIAC'
-  | 'ONCOLOGY'
-  | 'PEDIATRIC_GROWTH'
-  | 'PREGNANCY'
-  | 'LACTATION'
-  | 'MALNUTRITION'
+  | 'GI_DISORDERS'
   | 'EATING_DISORDER'
+  | 'MALNUTRITION'
+  | 'PREGNANCY'
+  | 'PEDIATRIC'
+  | 'ONCOLOGY'
   | 'FOOD_ALLERGY'
-  | 'GI_DISORDER'
-  | 'LIVER_DISEASE'
-  | 'SPORTS_NUTRITION'
   | 'TUBE_FEEDING'
+  | 'TPN'
+  | 'SPORTS'
+  | 'GENERAL'
   | 'OTHER';
 
 /**
@@ -111,19 +111,19 @@ export const DIET_PLAN_STATUS_CONFIG: Record<
 export const REFERRAL_REASON_LABELS: Record<NutritionReferralReason, string> = {
   WEIGHT_MANAGEMENT: 'Weight Management',
   DIABETES: 'Diabetes Management',
-  RENAL: 'Renal Disease',
-  CARDIAC: 'Cardiac Disease',
-  ONCOLOGY: 'Oncology Support',
-  PEDIATRIC_GROWTH: 'Pediatric Growth',
-  PREGNANCY: 'Pregnancy Nutrition',
-  LACTATION: 'Lactation Support',
-  MALNUTRITION: 'Malnutrition',
+  CARDIOVASCULAR: 'Cardiovascular Disease',
+  RENAL: 'Renal Disease/CKD',
+  GI_DISORDERS: 'GI Disorders',
   EATING_DISORDER: 'Eating Disorder',
-  FOOD_ALLERGY: 'Food Allergy/Intolerance',
-  GI_DISORDER: 'GI Disorder',
-  LIVER_DISEASE: 'Liver Disease',
-  SPORTS_NUTRITION: 'Sports Nutrition',
-  TUBE_FEEDING: 'Tube Feeding/Enteral',
+  MALNUTRITION: 'Malnutrition (SAM/MAM)',
+  PREGNANCY: 'Pregnancy/Prenatal',
+  PEDIATRIC: 'Pediatric Nutrition',
+  ONCOLOGY: 'Oncology Support',
+  FOOD_ALLERGY: 'Food Allergy Management',
+  TUBE_FEEDING: 'Tube Feeding/Enteral Nutrition',
+  TPN: 'Total Parenteral Nutrition',
+  SPORTS: 'Sports Nutrition',
+  GENERAL: 'General Nutrition Counseling',
   OTHER: 'Other',
 };
 
