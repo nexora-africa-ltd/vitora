@@ -10,6 +10,7 @@ from rest_framework import serializers
 from .models import (
     IDSRDiseaseSummary,
     IDSRWeeklyReport,
+    IHRNotification,
     NotifiableCase,
     NotifiableDisease,
     OutbreakThreshold,
@@ -506,4 +507,228 @@ class IDSRDashboardSerializer(serializers.Serializer):
     pending_submission = serializers.IntegerField()
     submitted_this_month = serializers.IntegerField()
     outbreak_weeks = serializers.IntegerField()
+
+
+# ============================================================================
+# IHR Notification Serializers
+# ============================================================================
+
+
+class IHRNotificationSerializer(serializers.ModelSerializer):
+    """Full serializer for IHRNotification."""
+
+    disease_name = serializers.CharField(source="disease.name", read_only=True)
+    disease_category = serializers.CharField(source="disease.category", read_only=True)
+    case_id = serializers.IntegerField(source="case.id", read_only=True, allow_null=True)
+    patient_name = serializers.SerializerMethodField()
+    patient_mrn = serializers.SerializerMethodField()
+    county_name = serializers.CharField(source="county.name", read_only=True, allow_null=True)
+    sub_county_name = serializers.CharField(
+        source="sub_county.name", read_only=True, allow_null=True
+    )
+    reported_by_name = serializers.CharField(
+        source="reported_by.username", read_only=True, allow_null=True
+    )
+    county_reviewed_by_name = serializers.CharField(
+        source="county_reviewed_by.username", read_only=True, allow_null=True
+    )
+    national_reviewed_by_name = serializers.CharField(
+        source="national_reviewed_by.username", read_only=True, allow_null=True
+    )
+    notification_reference = serializers.CharField(read_only=True)
+    is_escalated = serializers.BooleanField(read_only=True)
+    is_who_notified = serializers.BooleanField(read_only=True)
+    hours_since_detection = serializers.IntegerField(read_only=True, allow_null=True)
+    is_overdue = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = IHRNotification
+        fields = [
+            "id",
+            "disease",
+            "disease_name",
+            "disease_category",
+            "case",
+            "case_id",
+            "patient",
+            "patient_name",
+            "patient_mrn",
+            "event_description",
+            "event_date",
+            "urgency",
+            "annex2_criteria",
+            "is_annex2_positive",
+            "cases_count",
+            "deaths_count",
+            "affected_area",
+            "county",
+            "county_name",
+            "sub_county",
+            "sub_county_name",
+            "status",
+            "notification_reference",
+            "is_escalated",
+            "is_who_notified",
+            "hours_since_detection",
+            "is_overdue",
+            "reported_by",
+            "reported_by_name",
+            "report_date",
+            "county_notified_at",
+            "county_reviewed_by",
+            "county_reviewed_by_name",
+            "county_notes",
+            "national_notified_at",
+            "national_reviewed_by",
+            "national_reviewed_by_name",
+            "national_notes",
+            "who_notified_at",
+            "who_reference_number",
+            "who_acknowledged_at",
+            "resolved_at",
+            "resolution_notes",
+            "risk_assessment",
+            "response_measures",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "notification_reference",
+            "is_escalated",
+            "is_who_notified",
+            "hours_since_detection",
+            "is_overdue",
+            "reported_by",
+            "report_date",
+            "county_notified_at",
+            "county_reviewed_by",
+            "national_notified_at",
+            "national_reviewed_by",
+            "who_notified_at",
+            "who_acknowledged_at",
+            "resolved_at",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_patient_name(self, obj) -> str | None:
+        """Return patient full name."""
+        if obj.patient:
+            return f"{obj.patient.first_name} {obj.patient.last_name}"
+        return None
+
+    def get_patient_mrn(self, obj) -> str | None:
+        """Return patient MRN."""
+        if obj.patient:
+            return obj.patient.mrn
+        return None
+
+    def validate_disease(self, value):
+        """Ensure disease is IHR-notifiable."""
+        if not value.is_ihr_notifiable:
+            raise serializers.ValidationError(
+                f"'{value.name}' is not marked as IHR-notifiable. "
+                "Only diseases with is_ihr_notifiable=True can have IHR notifications."
+            )
+        return value
+
+
+class IHRNotificationListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for IHR notification list views."""
+
+    disease_name = serializers.CharField(source="disease.name", read_only=True)
+    county_name = serializers.CharField(source="county.name", read_only=True, allow_null=True)
+    notification_reference = serializers.CharField(read_only=True)
+    is_overdue = serializers.BooleanField(read_only=True)
+    hours_since_detection = serializers.IntegerField(read_only=True, allow_null=True)
+
+    class Meta:
+        model = IHRNotification
+        fields = [
+            "id",
+            "disease",
+            "disease_name",
+            "urgency",
+            "status",
+            "notification_reference",
+            "cases_count",
+            "deaths_count",
+            "county_name",
+            "report_date",
+            "is_overdue",
+            "hours_since_detection",
+            "event_date",
+        ]
+
+
+class IHRNotificationCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating new IHR notifications."""
+
+    class Meta:
+        model = IHRNotification
+        fields = [
+            "id",
+            "disease",
+            "case",
+            "patient",
+            "event_description",
+            "event_date",
+            "urgency",
+            "annex2_criteria",
+            "is_annex2_positive",
+            "cases_count",
+            "deaths_count",
+            "affected_area",
+            "county",
+            "sub_county",
+            "risk_assessment",
+            "response_measures",
+        ]
+        read_only_fields = ["id"]
+
+    def validate_disease(self, value):
+        """Ensure disease is IHR-notifiable."""
+        if not value.is_ihr_notifiable:
+            raise serializers.ValidationError(
+                f"'{value.name}' is not marked as IHR-notifiable."
+            )
+        return value
+
+    def create(self, validated_data):
+        """Create notification with reported_by from request user."""
+        request = self.context.get("request")
+        if request and hasattr(request, "user"):
+            validated_data["reported_by"] = request.user
+        return super().create(validated_data)
+
+
+class IHRSubmitToCountySerializer(serializers.Serializer):
+    """Serializer for submitting IHR notification to county."""
+
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class IHREscalateToNationalSerializer(serializers.Serializer):
+    """Serializer for escalating IHR notification to MOH."""
+
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class IHRNotifyWHOSerializer(serializers.Serializer):
+    """Serializer for notifying WHO."""
+
+    reference_number = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class IHRRejectSerializer(serializers.Serializer):
+    """Serializer for rejecting an IHR notification."""
+
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class IHRCloseSerializer(serializers.Serializer):
+    """Serializer for closing an IHR notification."""
+
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
 

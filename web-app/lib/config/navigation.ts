@@ -45,6 +45,7 @@ import {
   CircleAlert,
   SquareActivity,
   Target,
+  Globe,
   // Allied Health icons
   Dumbbell,
   Apple,
@@ -97,6 +98,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Notifiable Cases', href: '/surveillance/cases', icon: AlertTriangle },
       { label: 'Alerts', href: '/surveillance/alerts', icon: CircleAlert },
       { label: 'IDSR Reports', href: '/surveillance/idsr', icon: BarChart3 },
+      { label: 'IHR Compliance', href: '/surveillance/ihr', icon: Globe },
       { label: 'Thresholds', href: '/surveillance/thresholds', icon: SquareActivity },
     ],
   },

@@ -11,6 +11,15 @@ export type IDSRReportStatus =
 
 export type NotifiableDiseaseCategory = 'IMMEDIATE' | 'WEEKLY' | 'MONTHLY';
 
+export interface NotifiableDiseaseListItem {
+  id: number;
+  name: string;
+  category: NotifiableDiseaseCategory;
+  reporting_hours: number;
+  is_immediate: boolean;
+  is_active: boolean;
+}
+
 export type NotifiableCaseSeverity = 'MILD' | 'MODERATE' | 'SEVERE' | 'CRITICAL';
 
 export type NotifiableCaseOutcome =
@@ -307,4 +316,130 @@ export interface IDSRDHIS2Preview {
 export interface IDSRSubmitResponse {
   report: IDSRWeeklyReport;
   dhis2_response: Record<string, unknown>;
+}
+
+// ============================================================================
+// IHR (International Health Regulations) Notification Types
+// ============================================================================
+
+export type IHRUrgency = 'EMERGENCY' | 'URGENT' | 'ROUTINE';
+
+export type IHRNotificationStatus =
+  | 'DRAFT'
+  | 'PENDING_REVIEW'
+  | 'SUBMITTED_COUNTY'
+  | 'ESCALATED_NATIONAL'
+  | 'NOTIFIED_WHO'
+  | 'ACKNOWLEDGED'
+  | 'CLOSED'
+  | 'REJECTED';
+
+export interface IHRNotificationListItem {
+  id: number;
+  disease: number;
+  disease_name: string;
+  urgency: IHRUrgency;
+  status: IHRNotificationStatus;
+  notification_reference: string;
+  cases_count: number;
+  deaths_count: number;
+  county_name: string | null;
+  report_date: string;
+  is_overdue: boolean;
+  hours_since_detection: number | null;
+  event_date: string;
+}
+
+export interface IHRNotificationDetail {
+  id: number;
+  disease: number;
+  disease_name: string;
+  disease_category: NotifiableDiseaseCategory;
+  case: number | null;
+  case_id: number | null;
+  patient: number | null;
+  patient_name: string | null;
+  patient_mrn: string | null;
+  event_description: string;
+  event_date: string;
+  urgency: IHRUrgency;
+  annex2_criteria: Record<string, unknown>;
+  is_annex2_positive: boolean;
+  cases_count: number;
+  deaths_count: number;
+  affected_area: string;
+  county: number | null;
+  county_name: string | null;
+  sub_county: number | null;
+  sub_county_name: string | null;
+  status: IHRNotificationStatus;
+  notification_reference: string;
+  is_escalated: boolean;
+  is_who_notified: boolean;
+  hours_since_detection: number | null;
+  is_overdue: boolean;
+  reported_by: number | null;
+  reported_by_name: string | null;
+  report_date: string;
+  county_notified_at: string | null;
+  county_reviewed_by: number | null;
+  county_reviewed_by_name: string | null;
+  county_notes: string;
+  national_notified_at: string | null;
+  national_reviewed_by: number | null;
+  national_reviewed_by_name: string | null;
+  national_notes: string;
+  who_notified_at: string | null;
+  who_reference_number: string;
+  who_acknowledged_at: string | null;
+  resolved_at: string | null;
+  resolution_notes: string;
+  risk_assessment: string;
+  response_measures: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface IHRNotificationListParams {
+  search?: string;
+  status?: IHRNotificationStatus;
+  urgency?: IHRUrgency;
+  disease?: number;
+  county?: number;
+  reported_after?: string;
+  reported_before?: string;
+  is_annex2_positive?: boolean;
+  page?: number;
+  page_size?: number;
+}
+
+export interface IHRNotificationCreateData {
+  disease: number;
+  case?: number | null;
+  patient?: number | null;
+  event_description: string;
+  event_date: string;
+  urgency: IHRUrgency;
+  annex2_criteria?: Record<string, unknown>;
+  is_annex2_positive?: boolean;
+  cases_count?: number;
+  deaths_count?: number;
+  affected_area?: string;
+  county?: number | null;
+  sub_county?: number | null;
+  risk_assessment?: string;
+  response_measures?: string;
+}
+
+export interface IHRDashboard {
+  total: number;
+  pending: number;
+  at_county: number;
+  at_national: number;
+  notified_who: number;
+  closed: number;
+  rejected: number;
+  overdue: number;
+  by_urgency: Array<{ urgency: IHRUrgency; count: number }>;
+  by_disease: Array<{ disease: string; count: number }>;
 }

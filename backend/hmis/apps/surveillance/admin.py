@@ -12,6 +12,8 @@ from .models import (
     DHIS2DataElementMapping,
     IDSRDiseaseSummary,
     IDSRWeeklyReport,
+    IHRNotification,
+    IHRNotificationStatus,
     NotifiableCase,
     NotifiableDisease,
     NotificationStatus,
@@ -519,4 +521,229 @@ class DHIS2DataElementMappingAdmin(admin.ModelAdmin):
         )
         response["Content-Disposition"] = 'attachment; filename="dhis2_mappings.json"'
         return response
+
+
+@admin.register(IHRNotification)
+class IHRNotificationAdmin(admin.ModelAdmin):
+    """Admin for IHRNotification model."""
+
+    list_display = [
+        "notification_reference",
+        "disease",
+        "urgency_badge",
+        "status_badge",
+        "cases_count",
+        "deaths_count",
+        "county_display",
+        "report_date",
+        "is_overdue_badge",
+    ]
+    list_filter = [
+        "status",
+        "urgency",
+        "disease",
+        "is_annex2_positive",
+        "county",
+    ]
+    search_fields = [
+        "disease__name",
+        "event_description",
+        "who_reference_number",
+        "patient__mrn",
+        "patient__first_name",
+        "patient__last_name",
+    ]
+    ordering = ["-report_date"]
+    readonly_fields = [
+        "notification_reference",
+        "is_escalated",
+        "is_who_notified",
+        "hours_since_detection",
+        "is_overdue",
+        "created_at",
+        "updated_at",
+    ]
+    raw_id_fields = [
+        "disease",
+        "case",
+        "patient",
+        "reported_by",
+        "county_reviewed_by",
+        "national_reviewed_by",
+    ]
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "notification_reference",
+                    "disease",
+                    "case",
+                    "patient",
+                )
+            },
+        ),
+        (
+            "Event Details",
+            {
+                "fields": (
+                    "event_description",
+                    "event_date",
+                    "urgency",
+                    "cases_count",
+                    "deaths_count",
+                    "affected_area",
+                )
+            },
+        ),
+        (
+            "WHO Annex 2 Assessment",
+            {
+                "fields": (
+                    "annex2_criteria",
+                    "is_annex2_positive",
+                )
+            },
+        ),
+        (
+            "Location",
+            {"fields": ("county", "sub_county")},
+        ),
+        (
+            "Status & Escalation",
+            {
+                "fields": (
+                    "status",
+                    "is_escalated",
+                    "is_who_notified",
+                    "hours_since_detection",
+                    "is_overdue",
+                )
+            },
+        ),
+        (
+            "Facility Reporting",
+            {
+                "fields": (
+                    "reported_by",
+                    "report_date",
+                )
+            },
+        ),
+        (
+            "County Escalation",
+            {
+                "fields": (
+                    "county_notified_at",
+                    "county_reviewed_by",
+                    "county_notes",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "National (MOH) Escalation",
+            {
+                "fields": (
+                    "national_notified_at",
+                    "national_reviewed_by",
+                    "national_notes",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "WHO Notification",
+            {
+                "fields": (
+                    "who_notified_at",
+                    "who_reference_number",
+                    "who_acknowledged_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Risk & Response",
+            {
+                "fields": (
+                    "risk_assessment",
+                    "response_measures",
+                )
+            },
+        ),
+        (
+            "Resolution",
+            {
+                "fields": (
+                    "resolved_at",
+                    "resolution_notes",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    def county_display(self, obj):
+        """Return county name or dash."""
+        return obj.county.name if obj.county else "-"
+
+    county_display.short_description = "County"
+
+    def urgency_badge(self, obj):
+        """Return colored badge for urgency."""
+        colors = {
+            "EMERGENCY": "#e74c3c",
+            "URGENT": "#f39c12",
+            "ROUTINE": "#3498db",
+        }
+        color = colors.get(obj.urgency, "#95a5a6")
+        return format_html(
+            '<span style="background-color: {}; color: white; padding: 3px 8px; '
+            'border-radius: 3px; font-size: 11px;">{}</span>',
+            color,
+            obj.get_urgency_display(),
+        )
+
+    urgency_badge.short_description = "Urgency"
+
+    def status_badge(self, obj):
+        """Return colored badge for status."""
+        colors = {
+            IHRNotificationStatus.DRAFT: "#95a5a6",
+            IHRNotificationStatus.PENDING_REVIEW: "#f39c12",
+            IHRNotificationStatus.SUBMITTED_COUNTY: "#3498db",
+            IHRNotificationStatus.ESCALATED_NATIONAL: "#9b59b6",
+            IHRNotificationStatus.NOTIFIED_WHO: "#27ae60",
+            IHRNotificationStatus.ACKNOWLEDGED: "#2ecc71",
+            IHRNotificationStatus.CLOSED: "#7f8c8d",
+            IHRNotificationStatus.REJECTED: "#e74c3c",
+        }
+        color = colors.get(obj.status, "#95a5a6")
+        return format_html(
+            '<span style="background-color: {}; color: white; padding: 3px 8px; '
+            'border-radius: 3px; font-size: 11px;">{}</span>',
+            color,
+            obj.get_status_display(),
+        )
+
+    status_badge.short_description = "Status"
+
+    def is_overdue_badge(self, obj):
+        """Return overdue badge."""
+        if obj.is_overdue:
+            return format_html(
+                '<span style="background-color: #e74c3c; color: white; padding: 3px 8px; '
+                'border-radius: 3px; font-size: 11px;">OVERDUE</span>'
+            )
+        return format_html('<span style="color: #27ae60;">✓</span>')
+
+    is_overdue_badge.short_description = "Overdue"
 

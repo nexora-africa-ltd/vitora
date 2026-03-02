@@ -18,6 +18,8 @@ from rest_framework.views import APIView
 from hmis.apps.core.models import AuditLog
 
 from .models import (
+    IHRNotification,
+    IHRNotificationStatus,
     NotifiableCase,
     NotifiableDisease,
     NotificationStatus,
@@ -25,6 +27,14 @@ from .models import (
     SurveillanceAlert,
 )
 from .serializers import (
+    IHRCloseSerializer,
+    IHREscalateToNationalSerializer,
+    IHRNotificationCreateSerializer,
+    IHRNotificationListSerializer,
+    IHRNotificationSerializer,
+    IHRNotifyWHOSerializer,
+    IHRRejectSerializer,
+    IHRSubmitToCountySerializer,
     NotifiableCaseCreateSerializer,
     NotifiableCaseListSerializer,
     NotifiableCaseSerializer,
@@ -861,4 +871,437 @@ class IDSRWeeklyReportViewSet(viewsets.ModelViewSet):
             "week_label": report.week_label,
             "payload": payload,
         })
+
+
+# ============================================================================
+# IHR Notification Views
+# ============================================================================
+
+
+class IHRNotificationFilter(filters.FilterSet):
+    """Filter for IHRNotification list endpoint."""
+
+    disease = filters.NumberFilter(field_name="disease__id")
+    status = filters.ChoiceFilter(choices=IHRNotificationStatus.choices)
+    urgency = filters.ChoiceFilter(
+        choices=[
+            ("EMERGENCY", "Emergency"),
+            ("URGENT", "Urgent"),
+            ("ROUTINE", "Routine"),
+        ]
+    )
+    county = filters.NumberFilter(field_name="county__id")
+    reported_after = filters.DateTimeFilter(field_name="report_date", lookup_expr="gte")
+    reported_before = filters.DateTimeFilter(field_name="report_date", lookup_expr="lte")
+    is_annex2_positive = filters.BooleanFilter()
+
+    class Meta:
+        model = IHRNotification
+        fields = [
+            "disease",
+            "status",
+            "urgency",
+            "county",
+            "reported_after",
+            "reported_before",
+            "is_annex2_positive",
+        ]
+
+
+class IHRNotificationViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for IHR Notification management.
+
+    Provides CRUD operations and escalation workflow actions for
+    International Health Regulations notifications.
+
+    Escalation pipeline:
+    DRAFT → PENDING_REVIEW → SUBMITTED_COUNTY → ESCALATED_NATIONAL → NOTIFIED_WHO → ACKNOWLEDGED → CLOSED
+
+    Actions:
+    - submit_to_county: Submit to County Disease Surveillance Coordinator
+    - escalate_to_national: Escalate to MOH National IHR Focal Point
+    - notify_who: Mark as notified to WHO
+    - acknowledge_who: Record WHO acknowledgement
+    - close: Close the notification
+    - reject: Reject (not IHR-reportable)
+    - overdue: List overdue notifications
+    - dashboard: IHR notification statistics
+    """
+
+    queryset = IHRNotification.objects.select_related(
+        "disease",
+        "case",
+        "patient",
+        "county",
+        "sub_county",
+        "reported_by",
+        "county_reviewed_by",
+        "national_reviewed_by",
+    ).all()
+    serializer_class = IHRNotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filterset_class = IHRNotificationFilter
+    search_fields = [
+        "disease__name",
+        "event_description",
+        "who_reference_number",
+        "patient__mrn",
+        "patient__first_name",
+        "patient__last_name",
+    ]
+    ordering_fields = ["report_date", "urgency", "status", "event_date"]
+    ordering = ["-report_date"]
+
+    def get_serializer_class(self):
+        """Use appropriate serializer based on action."""
+        if self.action == "list":
+            return IHRNotificationListSerializer
+        if self.action == "create":
+            return IHRNotificationCreateSerializer
+        if self.action == "submit_to_county":
+            return IHRSubmitToCountySerializer
+        if self.action == "escalate_to_national":
+            return IHREscalateToNationalSerializer
+        if self.action == "notify_who":
+            return IHRNotifyWHOSerializer
+        if self.action == "reject":
+            return IHRRejectSerializer
+        if self.action == "close":
+            return IHRCloseSerializer
+        return IHRNotificationSerializer
+
+    def perform_create(self, serializer):
+        """Set reported_by to current user and audit log."""
+        notification = serializer.save(reported_by=self.request.user)
+        AuditLog.log(
+            action="ihr_notification_create",
+            user=self.request.user,
+            resource_type="IHRNotification",
+            resource_id=notification.id,
+            details={
+                "disease": notification.disease.name,
+                "urgency": notification.urgency,
+                "event_date": str(notification.event_date),
+            },
+        )
+
+    @action(detail=True, methods=["post"])
+    def submit_to_county(self, request, pk=None):
+        """
+        Submit IHR notification to County Disease Surveillance Coordinator.
+
+        POST /api/surveillance/ihr/{id}/submit_to_county/
+        """
+        notification = self.get_object()
+
+        if notification.status not in [
+            IHRNotificationStatus.DRAFT,
+            IHRNotificationStatus.PENDING_REVIEW,
+        ]:
+            return Response(
+                {"error": f"Cannot submit from status: {notification.get_status_display()}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = IHRSubmitToCountySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        notes = serializer.validated_data.get("notes", "")
+        notification.submit_to_county(user=request.user, notes=notes)
+
+        AuditLog.log(
+            action="ihr_submit_county",
+            user=request.user,
+            resource_type="IHRNotification",
+            resource_id=notification.id,
+            details={
+                "disease": notification.disease.name,
+                "county": notification.county.name if notification.county else None,
+            },
+        )
+
+        return Response(IHRNotificationSerializer(notification).data)
+
+    @action(detail=True, methods=["post"])
+    def escalate_to_national(self, request, pk=None):
+        """
+        Escalate IHR notification to MOH National IHR Focal Point.
+
+        POST /api/surveillance/ihr/{id}/escalate_to_national/
+        """
+        notification = self.get_object()
+
+        if notification.status != IHRNotificationStatus.SUBMITTED_COUNTY:
+            return Response(
+                {
+                    "error": (
+                        "Notification must be at county level before national escalation. "
+                        f"Current status: {notification.get_status_display()}"
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = IHREscalateToNationalSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        notes = serializer.validated_data.get("notes", "")
+        notification.escalate_to_national(user=request.user, notes=notes)
+
+        AuditLog.log(
+            action="ihr_escalate_national",
+            user=request.user,
+            resource_type="IHRNotification",
+            resource_id=notification.id,
+            details={"disease": notification.disease.name},
+        )
+
+        return Response(IHRNotificationSerializer(notification).data)
+
+    @action(detail=True, methods=["post"])
+    def notify_who(self, request, pk=None):
+        """
+        Mark IHR notification as sent to WHO IHR Contact Point.
+
+        POST /api/surveillance/ihr/{id}/notify_who/
+        """
+        notification = self.get_object()
+
+        if notification.status != IHRNotificationStatus.ESCALATED_NATIONAL:
+            return Response(
+                {
+                    "error": (
+                        "Notification must be at national level before WHO notification. "
+                        f"Current status: {notification.get_status_display()}"
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = IHRNotifyWHOSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        ref = serializer.validated_data.get("reference_number", "")
+        notification.notify_who(reference_number=ref)
+
+        AuditLog.log(
+            action="ihr_notify_who",
+            user=request.user,
+            resource_type="IHRNotification",
+            resource_id=notification.id,
+            details={
+                "disease": notification.disease.name,
+                "who_reference": ref,
+            },
+        )
+
+        return Response(IHRNotificationSerializer(notification).data)
+
+    @action(detail=True, methods=["post"])
+    def acknowledge_who(self, request, pk=None):
+        """
+        Record WHO acknowledgement of notification.
+
+        POST /api/surveillance/ihr/{id}/acknowledge_who/
+        """
+        notification = self.get_object()
+
+        if notification.status != IHRNotificationStatus.NOTIFIED_WHO:
+            return Response(
+                {"error": f"Cannot acknowledge from status: {notification.get_status_display()}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        notification.acknowledge_who()
+
+        AuditLog.log(
+            action="ihr_who_acknowledge",
+            user=request.user,
+            resource_type="IHRNotification",
+            resource_id=notification.id,
+            details={"disease": notification.disease.name},
+        )
+
+        return Response(IHRNotificationSerializer(notification).data)
+
+    @action(detail=True, methods=["post"])
+    def close(self, request, pk=None):
+        """
+        Close an IHR notification.
+
+        POST /api/surveillance/ihr/{id}/close/
+        """
+        notification = self.get_object()
+
+        if notification.status in [
+            IHRNotificationStatus.CLOSED,
+            IHRNotificationStatus.REJECTED,
+        ]:
+            return Response(
+                {"error": f"Notification already {notification.get_status_display()}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = IHRCloseSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        notes = serializer.validated_data.get("notes", "")
+        notification.close(notes=notes)
+
+        AuditLog.log(
+            action="ihr_notification_close",
+            user=request.user,
+            resource_type="IHRNotification",
+            resource_id=notification.id,
+            details={"disease": notification.disease.name},
+        )
+
+        return Response(IHRNotificationSerializer(notification).data)
+
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        """
+        Reject an IHR notification (not IHR-reportable upon review).
+
+        POST /api/surveillance/ihr/{id}/reject/
+        """
+        notification = self.get_object()
+
+        if notification.status in [
+            IHRNotificationStatus.CLOSED,
+            IHRNotificationStatus.REJECTED,
+            IHRNotificationStatus.NOTIFIED_WHO,
+            IHRNotificationStatus.ACKNOWLEDGED,
+        ]:
+            return Response(
+                {"error": f"Cannot reject notification with status: {notification.get_status_display()}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = IHRRejectSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        notes = serializer.validated_data.get("notes", "")
+        notification.reject(user=request.user, notes=notes)
+
+        AuditLog.log(
+            action="ihr_notification_reject",
+            user=request.user,
+            resource_type="IHRNotification",
+            resource_id=notification.id,
+            details={
+                "disease": notification.disease.name,
+                "reason": notes,
+            },
+        )
+
+        return Response(IHRNotificationSerializer(notification).data)
+
+    @action(detail=False, methods=["get"])
+    def overdue(self, request):
+        """
+        Return IHR notifications that are overdue (>24h without WHO notification).
+
+        GET /api/surveillance/ihr/overdue/
+        """
+        from datetime import timedelta as td
+
+        cutoff = timezone.now() - td(hours=24)
+        overdue = self.get_queryset().filter(
+            report_date__lt=cutoff,
+        ).exclude(
+            status__in=[
+                IHRNotificationStatus.NOTIFIED_WHO,
+                IHRNotificationStatus.ACKNOWLEDGED,
+                IHRNotificationStatus.CLOSED,
+                IHRNotificationStatus.REJECTED,
+            ]
+        )
+        serializer = IHRNotificationListSerializer(overdue, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def dashboard(self, request):
+        """
+        IHR notification statistics dashboard.
+
+        GET /api/surveillance/ihr/dashboard/
+        """
+        notifications = IHRNotification.objects.all()
+
+        total = notifications.count()
+        pending = notifications.filter(
+            status__in=[
+                IHRNotificationStatus.DRAFT,
+                IHRNotificationStatus.PENDING_REVIEW,
+            ]
+        ).count()
+        at_county = notifications.filter(
+            status=IHRNotificationStatus.SUBMITTED_COUNTY
+        ).count()
+        at_national = notifications.filter(
+            status=IHRNotificationStatus.ESCALATED_NATIONAL
+        ).count()
+        notified_who = notifications.filter(
+            status__in=[
+                IHRNotificationStatus.NOTIFIED_WHO,
+                IHRNotificationStatus.ACKNOWLEDGED,
+            ]
+        ).count()
+        closed = notifications.filter(
+            status=IHRNotificationStatus.CLOSED
+        ).count()
+        rejected = notifications.filter(
+            status=IHRNotificationStatus.REJECTED
+        ).count()
+
+        # Overdue count (>24h without WHO notification)
+        cutoff = timezone.now() - timedelta(hours=24)
+        overdue = notifications.filter(
+            report_date__lt=cutoff,
+        ).exclude(
+            status__in=[
+                IHRNotificationStatus.NOTIFIED_WHO,
+                IHRNotificationStatus.ACKNOWLEDGED,
+                IHRNotificationStatus.CLOSED,
+                IHRNotificationStatus.REJECTED,
+            ]
+        ).count()
+
+        # By urgency
+        by_urgency = list(
+            notifications.exclude(
+                status__in=[IHRNotificationStatus.CLOSED, IHRNotificationStatus.REJECTED]
+            )
+            .values("urgency")
+            .annotate(count=Count("id"))
+            .order_by("urgency")
+        )
+
+        # By disease
+        by_disease = list(
+            notifications.values("disease__name")
+            .annotate(count=Count("id"))
+            .order_by("-count")[:10]
+        )
+
+        data = {
+            "total": total,
+            "pending": pending,
+            "at_county": at_county,
+            "at_national": at_national,
+            "notified_who": notified_who,
+            "closed": closed,
+            "rejected": rejected,
+            "overdue": overdue,
+            "by_urgency": [
+                {"urgency": u["urgency"], "count": u["count"]} for u in by_urgency
+            ],
+            "by_disease": [
+                {"disease": d["disease__name"], "count": d["count"]} for d in by_disease
+            ],
+        }
+
+        return Response(data)
 

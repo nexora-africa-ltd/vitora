@@ -875,6 +875,405 @@ class IDSRDiseaseSummary(models.Model):
         super().save(*args, **kwargs)
 
 
+class IHRUrgency(models.TextChoices):
+    """
+    IHR notification urgency level based on WHO IHR (2005) Article 12.
+
+    EMERGENCY: Public Health Emergency of International Concern (PHEIC)
+    URGENT: Requires urgent assessment and notification within 24 hours
+    ROUTINE: Requires notification but less time-critical
+    """
+
+    EMERGENCY = "EMERGENCY", "Public Health Emergency (PHEIC)"
+    URGENT = "URGENT", "Urgent (within 24 hours)"
+    ROUTINE = "ROUTINE", "Routine IHR Notification"
+
+
+class IHRNotificationStatus(models.TextChoices):
+    """
+    Status of an IHR notification through the escalation pipeline.
+
+    DRAFT: Initial assessment being prepared
+    PENDING_REVIEW: Awaiting senior clinical/epidemiological review
+    SUBMITTED_COUNTY: Submitted to County Disease Surveillance Coordinator
+    ESCALATED_NATIONAL: Escalated to MOH National IHR Focal Point
+    NOTIFIED_WHO: WHO IHR Contact Point notified
+    ACKNOWLEDGED: WHO has acknowledged receipt
+    CLOSED: Notification resolved/closed
+    REJECTED: Notification rejected (not IHR-reportable upon review)
+    """
+
+    DRAFT = "DRAFT", "Draft"
+    PENDING_REVIEW = "PENDING_REVIEW", "Pending Review"
+    SUBMITTED_COUNTY = "SUBMITTED_COUNTY", "Submitted to County"
+    ESCALATED_NATIONAL = "ESCALATED_NATIONAL", "Escalated to MOH"
+    NOTIFIED_WHO = "NOTIFIED_WHO", "Notified to WHO"
+    ACKNOWLEDGED = "ACKNOWLEDGED", "Acknowledged by WHO"
+    CLOSED = "CLOSED", "Closed"
+    REJECTED = "REJECTED", "Rejected"
+
+
+class IHRNotification(models.Model):
+    """
+    International Health Regulations (2005) notification record.
+
+    Tracks the lifecycle of IHR-notifiable events from detection
+    through facility → county → MOH → WHO escalation pathway.
+
+    Per WHO IHR Article 6, State Parties must assess and notify WHO
+    within 24 hours of events that may constitute a PHEIC using the
+    Annex 2 decision instrument.
+
+    Attributes:
+        disease: NotifiableDisease (must have is_ihr_notifiable=True)
+        case: Source NotifiableCase that triggered IHR assessment
+        event_description: Description of the public health event
+        urgency: IHR urgency classification
+        status: Notification workflow status
+        annex2_criteria: JSON storing Annex 2 decision instrument answers
+    """
+
+    # Source reference
+    disease = models.ForeignKey(
+        NotifiableDisease,
+        on_delete=models.PROTECT,
+        related_name="ihr_notifications",
+        help_text="IHR-notifiable disease",
+    )
+    case = models.ForeignKey(
+        NotifiableCase,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ihr_notifications",
+        help_text="Source notifiable case (if triggered by specific case)",
+    )
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ihr_notifications",
+        help_text="Index patient (if applicable)",
+    )
+
+    # Event details
+    event_description = models.TextField(
+        help_text="Description of the public health event",
+    )
+    event_date = models.DateField(
+        help_text="Date the event was detected/identified",
+    )
+    urgency = models.CharField(
+        max_length=20,
+        choices=IHRUrgency.choices,
+        default=IHRUrgency.URGENT,
+        help_text="IHR urgency classification",
+    )
+
+    # WHO IHR Annex 2 Decision Instrument
+    annex2_criteria = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Annex 2 decision instrument responses (JSON)",
+    )
+    is_annex2_positive = models.BooleanField(
+        default=False,
+        help_text="Whether event meets Annex 2 criteria for WHO notification",
+    )
+
+    # Epidemiological context
+    cases_count = models.PositiveIntegerField(
+        default=1,
+        help_text="Total cases associated with event",
+    )
+    deaths_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Deaths associated with event",
+    )
+    affected_area = models.TextField(
+        blank=True,
+        default="",
+        help_text="Description of affected geographic area",
+    )
+
+    # Location
+    county = models.ForeignKey(
+        "core.County",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ihr_notifications",
+        help_text="County where event detected",
+    )
+    sub_county = models.ForeignKey(
+        "core.SubCounty",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ihr_notifications",
+        help_text="Sub-county where event detected",
+    )
+
+    # Notification workflow status
+    status = models.CharField(
+        max_length=25,
+        choices=IHRNotificationStatus.choices,
+        default=IHRNotificationStatus.DRAFT,
+        help_text="Current notification pipeline status",
+    )
+
+    # Facility-level reporting
+    reported_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="ihr_notifications_reported",
+        help_text="Staff who initiated the IHR notification",
+    )
+    report_date = models.DateTimeField(
+        default=timezone.now,
+        help_text="When the notification was first reported",
+    )
+
+    # County-level escalation
+    county_notified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When County Disease Surveillance Coordinator was notified",
+    )
+    county_reviewed_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ihr_county_reviews",
+        help_text="County officer who reviewed",
+    )
+    county_notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="County review notes",
+    )
+
+    # National MOH escalation
+    national_notified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When MOH National IHR Focal Point was notified",
+    )
+    national_reviewed_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="ihr_national_reviews",
+        help_text="MOH officer who reviewed",
+    )
+    national_notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="MOH review notes",
+    )
+
+    # WHO notification
+    who_notified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When WHO IHR Contact Point was notified",
+    )
+    who_reference_number = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="WHO reference/event ID",
+    )
+    who_acknowledged_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When WHO acknowledged receipt",
+    )
+
+    # Resolution
+    resolved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When notification was resolved/closed",
+    )
+    resolution_notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Resolution summary",
+    )
+
+    # Risk assessment
+    risk_assessment = models.TextField(
+        blank=True,
+        default="",
+        help_text="Public health risk assessment summary",
+    )
+    response_measures = models.TextField(
+        blank=True,
+        default="",
+        help_text="Response measures taken",
+    )
+
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-report_date"]
+        verbose_name = "IHR Notification"
+        verbose_name_plural = "IHR Notifications"
+        indexes = [
+            models.Index(fields=["status"]),
+            models.Index(fields=["urgency", "status"]),
+            models.Index(fields=["disease", "status"]),
+            models.Index(fields=["report_date"]),
+        ]
+        permissions = [
+            ("escalate_ihr_to_county", "Can escalate IHR notification to county"),
+            ("escalate_ihr_to_national", "Can escalate IHR notification to MOH"),
+            ("notify_ihr_to_who", "Can notify WHO of IHR event"),
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"IHR-{self.id:04d}: {self.disease.name} - "
+            f"{self.get_status_display()} ({self.get_urgency_display()})"
+        )
+
+    def save(self, *args, **kwargs):
+        """Auto-populate county from case or patient on save."""
+        if not self.county:
+            if self.case and self.case.county:
+                self.county = self.case.county
+                self.sub_county = self.case.sub_county
+            elif self.patient and self.patient.county:
+                self.county = self.patient.county
+                self.sub_county = self.patient.sub_county
+        super().save(*args, **kwargs)
+
+    @property
+    def notification_reference(self) -> str:
+        """Return formatted IHR notification reference."""
+        return f"IHR-{self.id:04d}" if self.id else "IHR-DRAFT"
+
+    @property
+    def is_escalated(self) -> bool:
+        """Return True if notification has been escalated beyond facility."""
+        return self.status not in [
+            IHRNotificationStatus.DRAFT,
+            IHRNotificationStatus.PENDING_REVIEW,
+            IHRNotificationStatus.REJECTED,
+        ]
+
+    @property
+    def is_who_notified(self) -> bool:
+        """Return True if WHO has been notified."""
+        return self.status in [
+            IHRNotificationStatus.NOTIFIED_WHO,
+            IHRNotificationStatus.ACKNOWLEDGED,
+            IHRNotificationStatus.CLOSED,
+        ]
+
+    @property
+    def hours_since_detection(self) -> int | None:
+        """Return hours since event detection (for 24h compliance tracking)."""
+        if not self.report_date:
+            return None
+        delta = timezone.now() - self.report_date
+        return int(delta.total_seconds() / 3600)
+
+    @property
+    def is_overdue(self) -> bool:
+        """Return True if 24h notification window has passed without WHO notification."""
+        if self.is_who_notified or self.status == IHRNotificationStatus.REJECTED:
+            return False
+        if self.status == IHRNotificationStatus.CLOSED:
+            return False
+        hours = self.hours_since_detection
+        return hours is not None and hours > 24
+
+    def submit_to_county(self, user=None, notes: str = "") -> None:
+        """Submit notification to County Disease Surveillance Coordinator."""
+        self.status = IHRNotificationStatus.SUBMITTED_COUNTY
+        self.county_notified_at = timezone.now()
+        if user:
+            self.county_reviewed_by = user
+        if notes:
+            self.county_notes = notes
+        self.save(
+            update_fields=[
+                "status",
+                "county_notified_at",
+                "county_reviewed_by",
+                "county_notes",
+                "updated_at",
+            ]
+        )
+
+    def escalate_to_national(self, user=None, notes: str = "") -> None:
+        """Escalate notification to MOH National IHR Focal Point."""
+        self.status = IHRNotificationStatus.ESCALATED_NATIONAL
+        self.national_notified_at = timezone.now()
+        if user:
+            self.national_reviewed_by = user
+        if notes:
+            self.national_notes = notes
+        self.save(
+            update_fields=[
+                "status",
+                "national_notified_at",
+                "national_reviewed_by",
+                "national_notes",
+                "updated_at",
+            ]
+        )
+
+    def notify_who(self, reference_number: str = "") -> None:
+        """Mark as notified to WHO."""
+        self.status = IHRNotificationStatus.NOTIFIED_WHO
+        self.who_notified_at = timezone.now()
+        if reference_number:
+            self.who_reference_number = reference_number
+        self.save(
+            update_fields=[
+                "status",
+                "who_notified_at",
+                "who_reference_number",
+                "updated_at",
+            ]
+        )
+
+    def acknowledge_who(self) -> None:
+        """Mark WHO acknowledgement."""
+        self.status = IHRNotificationStatus.ACKNOWLEDGED
+        self.who_acknowledged_at = timezone.now()
+        self.save(update_fields=["status", "who_acknowledged_at", "updated_at"])
+
+    def close(self, notes: str = "") -> None:
+        """Close the IHR notification."""
+        self.status = IHRNotificationStatus.CLOSED
+        self.resolved_at = timezone.now()
+        if notes:
+            self.resolution_notes = notes
+        self.save(
+            update_fields=["status", "resolved_at", "resolution_notes", "updated_at"]
+        )
+
+    def reject(self, user=None, notes: str = "") -> None:
+        """Reject the IHR notification (not IHR-reportable upon review)."""
+        self.status = IHRNotificationStatus.REJECTED
+        self.resolved_at = timezone.now()
+        if notes:
+            self.resolution_notes = notes
+        self.save(
+            update_fields=["status", "resolved_at", "resolution_notes", "updated_at"]
+        )
+
+
 class IndicatorType(models.TextChoices):
     """DHIS2 indicator types for age/outcome disaggregation."""
 
