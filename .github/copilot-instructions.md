@@ -582,6 +582,131 @@ poetry run pytest -k "patient and create"
 
 ---
 
+## 🚀 Full-Stack Feature Implementation Pattern
+
+When implementing a new module or DHA compliance gap, follow this **single-pass full-stack approach**. It was proven efficient on the IHR Compliance Framework (gap #24: 15 files, 3953 lines, backend + frontend + docs in one session).
+
+### Implementation Order
+
+Execute these layers **sequentially in one pass** — do NOT implement backend and frontend in separate PRs:
+
+```
+1. BACKEND MODEL       → Model with TextChoices enums, state-transition methods, properties
+2. BACKEND SERIALIZER  → Create, List, Detail serializers + action serializers
+3. BACKEND VIEWS       → ViewSet with get_serializer_class(), filter class, custom @actions
+4. BACKEND URLS        → Register in app router + verify in main urls.py
+5. BACKEND MIGRATION   → makemigrations + migrate
+6. BACKEND ADMIN       → Admin class with colored badges, fieldsets, raw_id_fields
+7. BACKEND TESTS       → Comprehensive tests: model, workflow, serializer validation, API
+8. FRONTEND TYPES      → TypeScript interfaces in lib/types/{module}.ts
+9. FRONTEND SCHEMAS    → Zod schemas in lib/schemas/{module}.schema.ts
+10. FRONTEND API       → API client methods with parseResponse() in lib/api/{module}.ts
+11. FRONTEND PAGES     → List page, Detail page, Create/New page
+12. FRONTEND NAV       → Sidebar entry in lib/config/navigation.ts
+13. DOCS UPDATE        → Update DHA compliance roadmap status
+```
+
+### Key Principles
+
+**1. State-Transition Methods on the Model**
+
+Put workflow logic (status changes, timestamps, audit fields) directly on the model as methods. Views become thin — they just validate input and call the model method:
+
+```python
+# ✅ Model owns the workflow
+class IHRNotification(models.Model):
+    def submit_to_county(self, user=None, notes=""):
+        self.status = IHRNotificationStatus.SUBMITTED_COUNTY
+        self.county_notified_at = timezone.now()
+        if user: self.county_reviewed_by = user
+        if notes: self.county_notes = notes
+        self.save(update_fields=[...])
+
+# ✅ View is thin — validates then delegates
+@action(detail=True, methods=["post"])
+def submit_to_county(self, request, pk=None):
+    notification = self.get_object()
+    if notification.status not in VALID_STATUSES:
+        return Response({"error": "..."}, status=400)
+    serializer = IHRSubmitToCountySerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    notification.submit_to_county(user=request.user, notes=serializer.validated_data.get("notes", ""))
+    return Response(IHRNotificationSerializer(notification).data)
+```
+
+**2. Separate Serializers per Action**
+
+Use `get_serializer_class()` to return the right serializer for each ViewSet action:
+
+```python
+def get_serializer_class(self):
+    if self.action == "list": return ListSerializer
+    if self.action == "create": return CreateSerializer
+    if self.action == "submit_to_county": return SubmitSerializer
+    return DetailSerializer
+```
+
+**3. Computed Properties for Business Logic**
+
+Use `@property` on models for derived state (overdue checks, escalation status), then expose via read-only serializer fields:
+
+```python
+# Model
+@property
+def is_overdue(self) -> bool:
+    if self.is_who_notified: return False
+    hours = self.hours_since_detection
+    return hours is not None and hours > 24
+
+# Serializer
+is_overdue = serializers.BooleanField(read_only=True)
+```
+
+**4. Frontend Schema-First**
+
+Always define the Zod schema alongside the TypeScript type. The schema validates at runtime what the type checks at compile time:
+
+```typescript
+// schema file
+export const ItemListSchema = z.object({ id: z.number(), name: z.string(), ... });
+
+// api file
+async list(): Promise<Item[]> {
+  const response = await apiClient.get('/api/items/');
+  return parseResponse(ItemListSchema, response.data, { context: 'itemsApi.list' });
+}
+```
+
+**5. Three Pages per Module**
+
+Every module needs at minimum:
+- **List page** — with dashboard stats, filters, search, `ResponsiveTable`, pagination, `PullToRefresh`
+- **Detail page** — with summary bar, status badges, action buttons/dialogs, related data cards
+- **Create page** — with form cards, dropdowns fetched from API, validation, cancel/submit
+
+**6. Verify at Each Layer**
+
+After completing the backend (steps 1-7), verify with `poetry run pytest tests/test_{feature}.py --no-cov`.
+After completing the frontend (steps 8-12), verify with `npx tsc --noEmit`.
+Only then update docs (step 13) and commit.
+
+### Commit Convention
+
+One comprehensive commit per feature with a subject line and body:
+
+```
+feat({module}): implement {Feature Name} (gap #{N})
+
+Backend:
+- Model, serializers, views, migration, admin, tests
+Frontend:
+- Types, schemas, API client, pages, navigation
+Docs:
+- DHA compliance roadmap updated
+```
+
+---
+
 ## ⚠️ Critical Gotchas & Common Mistakes
 
 ### 1. Authentication Required on ALL Endpoints
@@ -1267,6 +1392,6 @@ Every commit must follow these rules:
 
 ---
 
-**Last Updated**: February 11, 2026
+**Last Updated**: March 2, 2026
 **Maintainer**: Engineering Lead
-**Version**: 2.5 (Added refresh wiring notes + responsive short-label pattern)
+**Version**: 2.6 (Added full-stack feature implementation pattern from IHR gap #24)
