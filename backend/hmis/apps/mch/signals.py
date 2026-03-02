@@ -71,6 +71,9 @@ def auto_create_anc_enrollment(sender, instance, created, **kwargs):
     If the registration is created WITHOUT a linked anc_enrollment,
     automatically finds/creates an active ANC clinic and creates the
     ClinicEnrollment record, then links it back to the MCH registration.
+
+    Note: This does NOT auto-queue the mother for today's ANC session.
+    Users can explicitly send to queue or schedule a future visit from the UI.
     """
     if not created or instance.anc_enrollment:
         return
