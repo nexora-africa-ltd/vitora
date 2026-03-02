@@ -14,6 +14,8 @@
 'use client';
 
 import React, { useCallback, useRef, useState, useEffect } from 'react';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Send,
   Plus,
@@ -68,7 +70,7 @@ function MessageBubble({ message }: { message: AIChatMessage }) {
     >
       <div
         className={cn(
-          'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
+          'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed overflow-hidden',
           isUser && 'bg-primary text-primary-foreground rounded-br-md',
           !isUser && !isSystem && 'bg-muted text-foreground rounded-bl-md',
           isSystem && 'bg-muted/50 text-muted-foreground text-xs italic text-center w-full'
@@ -80,7 +82,54 @@ function MessageBubble({ message }: { message: AIChatMessage }) {
             <Loader2 className="h-3 w-3 animate-spin" />
           </span>
         )}
-        <span className="whitespace-pre-wrap">{message.content}</span>
+        {isUser ? (
+          <span className="whitespace-pre-wrap break-words">{message.content}</span>
+        ) : (
+          <div className="tibabot-markdown break-words overflow-hidden">
+            <Markdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                // Ensure links open in new tab and are styled
+                a: ({ children, ...props }) => (
+                  <a
+                    {...props}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2"
+                  >
+                    {children}
+                  </a>
+                ),
+                // Prevent code blocks from overflowing
+                pre: ({ children, ...props }) => (
+                  <pre
+                    {...props}
+                    className="overflow-x-auto rounded bg-black/10 p-2 text-xs my-1"
+                  >
+                    {children}
+                  </pre>
+                ),
+                code: ({ children, className: codeClassName, ...props }) => {
+                  const isInline = !codeClassName;
+                  return isInline ? (
+                    <code
+                      {...props}
+                      className="rounded bg-black/10 px-1 py-0.5 text-xs"
+                    >
+                      {children}
+                    </code>
+                  ) : (
+                    <code {...props} className={codeClassName}>
+                      {children}
+                    </code>
+                  );
+                },
+              }}
+            >
+              {message.content}
+            </Markdown>
+          </div>
+        )}
       </div>
     </div>
   );
