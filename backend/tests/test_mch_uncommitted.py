@@ -947,3 +947,95 @@ class TestModelChanges:
     ):
         """Should not be sensitive by default."""
         assert mch_registration.is_sensitive is False
+
+
+@pytest.mark.django_db
+class TestDeliveryDashboardEndpoint:
+    """Tests for the delivery dashboard stats endpoint."""
+
+    def test_dashboard_returns_stats(self, authenticated_client, mch_registration):
+        """Should return dashboard stats with all expected keys."""
+        response = authenticated_client.get("/api/mch/deliveries/dashboard/")
+        assert response.status_code == 200
+
+        data = response.data
+        assert "stats" in data
+        assert "outcomes_breakdown" in data
+        assert "types_breakdown" in data
+        assert "places_breakdown" in data
+        assert "upcoming_deliveries" in data
+        assert "high_risk_due_soon" in data
+        assert "monthly_trend" in data
+
+        # Verify stats keys
+        stats = data["stats"]
+        assert "total_deliveries" in stats
+        assert "this_month" in stats
+        assert "today" in stats
+        assert "live_birth_rate" in stats
+        assert "cs_rate" in stats
+        assert "active_pregnancies" in stats
+        assert "due_7_days" in stats
+        assert "due_30_days" in stats
+        assert "overdue" in stats
+        assert "high_risk_due_soon" in stats
+
+    def test_dashboard_counts_active_pregnancies(
+        self, authenticated_client, mch_registration
+    ):
+        """Should count active MCH registrations."""
+        response = authenticated_client.get("/api/mch/deliveries/dashboard/")
+        assert response.status_code == 200
+        # At least 1 active pregnancy from the fixture
+        assert response.data["stats"]["active_pregnancies"] >= 1
+
+    def test_dashboard_counts_deliveries(
+        self, authenticated_client, delivery
+    ):
+        """Should count deliveries correctly."""
+        response = authenticated_client.get("/api/mch/deliveries/dashboard/")
+        assert response.status_code == 200
+        assert response.data["stats"]["total_deliveries"] >= 1
+        assert response.data["outcomes_breakdown"]["LIVE_BIRTH"] >= 1
+
+    def test_dashboard_unauthorized(self, api_client):
+        """Should reject unauthenticated requests."""
+        response = api_client.get("/api/mch/deliveries/dashboard/")
+        assert response.status_code == 401
+
+
+@pytest.mark.django_db
+class TestDeliveryListEnhanced:
+    """Tests for enhanced delivery list serializer with mother info."""
+
+    def test_list_includes_mother_name(self, authenticated_client, delivery):
+        """Should include mother_name in the list response."""
+        response = authenticated_client.get("/api/mch/deliveries/")
+        assert response.status_code == 200
+        results = response.data["results"]
+        assert len(results) >= 1
+        first = results[0]
+        assert "mother_name" in first
+        assert "mother_mrn" in first
+        assert len(first["mother_name"]) > 0
+
+    def test_list_includes_place_and_delivered_by(
+        self, authenticated_client, delivery
+    ):
+        """Should include place_of_delivery and delivered_by_name."""
+        response = authenticated_client.get("/api/mch/deliveries/")
+        assert response.status_code == 200
+        first = response.data["results"][0]
+        assert "place_of_delivery" in first
+        assert "delivered_by_name" in first
+
+    def test_list_search_by_mother_name(
+        self, authenticated_client, delivery
+    ):
+        """Should support search by mother name."""
+        mother_name = delivery.registration.mother.first_name
+        response = authenticated_client.get(
+            f"/api/mch/deliveries/?search={mother_name}"
+        )
+        assert response.status_code == 200
+        assert response.data["count"] >= 1
