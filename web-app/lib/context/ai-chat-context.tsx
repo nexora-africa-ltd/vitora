@@ -7,6 +7,7 @@
  * - Encounter context detection (for Clinical Assist mode)
  * - Unread message tracking
  * - TibaBot availability status
+ * - Return-to-widget flow (full-page → pop back to widget)
  *
  * Must be mounted inside <AuthGuard> in the dashboard layout.
  */
@@ -17,6 +18,7 @@ import React, {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -80,6 +82,14 @@ export interface AIChatContextValue {
   ) => void;
   /** Whether the widget is in encounter-aware mode */
   isEncounterAware: boolean;
+
+  /**
+   * Store the URL to return to when minimizing from the full-page AI view.
+   * Set when navigating from the widget to /ai, used to pop back.
+   */
+  returnToUrl: string | null;
+  /** Save the current URL before navigating to /ai full page */
+  setReturnToUrl: (url: string | null) => void;
 }
 
 // =============================================================================
@@ -110,6 +120,15 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   // Encounter-aware context
   const [patientContext, setPatientContext] = useState<AIPatientContext | null>(null);
   const [encounterContext, setEncounterContext] = useState<AIEncounterContext | null>(null);
+
+  // Return-to-widget flow: store URL before navigating to /ai
+  const returnToUrlRef = useRef<string | null>(null);
+  const [returnToUrl, setReturnToUrlState] = useState<string | null>(null);
+
+  const setReturnToUrl = useCallback((url: string | null) => {
+    returnToUrlRef.current = url;
+    setReturnToUrlState(url);
+  }, []);
 
   // TibaBot availability from status endpoint
   const { data: statusData, isLoading: statusLoading } = useAIStatus();
@@ -202,6 +221,8 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       encounterContext,
       setEncounterAwareContext,
       isEncounterAware,
+      returnToUrl,
+      setReturnToUrl,
     }),
     [
       widgetState,
@@ -222,6 +243,8 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       encounterContext,
       setEncounterAwareContext,
       isEncounterAware,
+      returnToUrl,
+      setReturnToUrl,
     ]
   );
 

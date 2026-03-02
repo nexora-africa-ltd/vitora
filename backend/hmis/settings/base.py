@@ -716,6 +716,30 @@ CHANNEL_LAYERS = {
 
 FACILITY_LEVEL = os.getenv("FACILITY_LEVEL", "L3")  # Default to Level 3
 
+# Facility capability flags (for AI context enrichment)
+# Set via env vars; null means "not yet configured"
+FACILITY_COUNTY = os.getenv("FACILITY_COUNTY", "")  # e.g., "Nairobi", "Mombasa"
+FACILITY_HAS_ICU = (
+    os.getenv("FACILITY_HAS_ICU", "").lower() == "true"
+    if os.getenv("FACILITY_HAS_ICU")
+    else None
+)
+FACILITY_HAS_LABORATORY = (
+    os.getenv("FACILITY_HAS_LABORATORY", "").lower() == "true"
+    if os.getenv("FACILITY_HAS_LABORATORY")
+    else None
+)
+FACILITY_HAS_IMAGING = (
+    os.getenv("FACILITY_HAS_IMAGING", "").lower() == "true"
+    if os.getenv("FACILITY_HAS_IMAGING")
+    else None
+)
+FACILITY_HAS_PHARMACY = (
+    os.getenv("FACILITY_HAS_PHARMACY", "").lower() == "true"
+    if os.getenv("FACILITY_HAS_PHARMACY")
+    else None
+)
+
 # =============================================================================
 # TIBABOT AI INTEGRATION
 # =============================================================================

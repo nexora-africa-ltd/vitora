@@ -190,6 +190,56 @@ class TibaBotClient:
             params={"q": sanitized, "limit": limit},
         )
 
+    # -----------------------------------------------------------------
+    # Phase 2 — Clinical Chat & Assist
+    # -----------------------------------------------------------------
+
+    def clinical_chat(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Send a message in a clinical chat session.
+
+        The payload is pre-enriched with user_context and facility_context
+        by the view layer.  The message content is sanitized.
+
+        Args:
+            payload: Dict containing message, session_id (optional),
+                     user_context, facility_context.
+
+        Returns:
+            Dict with session_id and assistant message.
+        """
+        # Sanitize the user message before forwarding
+        if "message" in payload:
+            payload["message"] = sanitize_clinical_text(payload["message"])
+        return self._request(
+            method="POST",
+            endpoint="/clinical/chat",
+            data=payload,
+        )
+
+    def clinical_assist(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Get encounter-aware clinical assistance.
+
+        The payload is pre-enriched with user_context and facility_context
+        by the view layer.
+
+        Args:
+            payload: Dict containing query, patient_context, encounter_context,
+                     user_context, facility_context, verbosity.
+
+        Returns:
+            Dict with response text and optional references.
+        """
+        # Sanitize the query before forwarding
+        if "query" in payload:
+            payload["query"] = sanitize_clinical_text(payload["query"])
+        return self._request(
+            method="POST",
+            endpoint="/clinical/assist",
+            data=payload,
+        )
+
 
 # Module-level singleton (created on first import — lazy via function)
 _client: TibaBotClient | None = None
