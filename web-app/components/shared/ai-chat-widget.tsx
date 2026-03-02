@@ -45,10 +45,12 @@ export function AIChatWidget() {
     activeSessionId,
     setActiveSessionId,
     addMessage,
+    updateStreamingMessage,
     incrementUnread,
     patientContext,
     encounterContext,
     setReturnToUrl,
+    pageContext,
   } = useAIChatContext();
 
   // Chat mutation
@@ -87,6 +89,9 @@ export function AIChatWidget() {
         const response = await chatMutation.mutateAsync({
           message,
           session_id: activeSessionId ?? undefined,
+          patient_context: patientContext ?? undefined,
+          encounter_context: encounterContext ?? undefined,
+          page_context: pageContext ?? undefined,
         });
 
         // Set session ID if this is a new conversation
@@ -94,24 +99,18 @@ export function AIChatWidget() {
           setActiveSessionId(response.session_id);
         }
 
-        // Replace placeholder with actual response
-        addMessage({
-          ...response.message,
-          id: assistantMsgId,
-          isStreaming: false,
-        });
+        // Update placeholder with actual response
+        updateStreamingMessage(assistantMsgId, response.message.content, true);
       } catch {
-        // Replace placeholder with error message
-        addMessage({
-          id: assistantMsgId,
-          role: 'assistant',
-          content: 'Sorry, I couldn\'t process your request. Please try again.',
-          timestamp: new Date().toISOString(),
-          isStreaming: false,
-        });
+        // Update placeholder with error message
+        updateStreamingMessage(
+          assistantMsgId,
+          'Sorry, I couldn\'t process your request. Please try again.',
+          true,
+        );
       }
     },
-    [activeSessionId, addMessage, chatMutation, setActiveSessionId]
+    [activeSessionId, addMessage, updateStreamingMessage, chatMutation, setActiveSessionId, patientContext, encounterContext, pageContext]
   );
 
   // Handle "Ask about this patient"
@@ -138,26 +137,19 @@ export function AIChatWidget() {
         query: 'Provide a differential diagnosis and recommended workup for this presentation.',
         patient_context: patientContext ?? undefined,
         encounter_context: encounterContext ?? undefined,
+        page_context: pageContext ?? undefined,
         verbosity: 'standard',
       });
 
-      addMessage({
-        id: assistantMsgId,
-        role: 'assistant',
-        content: response.response,
-        timestamp: new Date().toISOString(),
-        isStreaming: false,
-      });
+      updateStreamingMessage(assistantMsgId, response.response, true);
     } catch {
-      addMessage({
-        id: assistantMsgId,
-        role: 'assistant',
-        content: 'Sorry, I couldn\'t analyze this patient\'s data. Please try again.',
-        timestamp: new Date().toISOString(),
-        isStreaming: false,
-      });
+      updateStreamingMessage(
+        assistantMsgId,
+        'Sorry, I couldn\'t analyze this patient\'s data. Please try again.',
+        true,
+      );
     }
-  }, [addMessage, assistMutation, patientContext, encounterContext]);
+  }, [addMessage, updateStreamingMessage, assistMutation, patientContext, encounterContext]);
 
   // Open full view — store current URL so user can pop back to widget later
   const handleOpenFullView = useCallback(() => {

@@ -8,10 +8,15 @@ All TibaBot interactions are audit-logged.
 
 Phase 2 views (ClinicalChatView, ClinicalAssistView) auto-enrich requests
 with user and facility context before forwarding to TibaBot.
+
+Session management views (ClinicalChatSessionListView,
+ClinicalChatSessionDetailView) provide local session history.
 """
 
 import logging
+import uuid
 
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -22,8 +27,15 @@ from hmis.apps.core.models import AuditLog
 from .client import TibaBotError, TibaBotUnavailableError, get_tibabot_client
 from .context import build_facility_context, build_user_context
 from .feature_flags import AIFeatureGatedMixin, is_ai_enabled
+from .models import ChatMessage, ChatSession
 from .sanitizer import sanitize_clinical_text
 from .serializers import (
+    AIChatMessageSerializer,
+    AIChatSessionDetailResponseSerializer,
+    AIChatSessionListResponseSerializer,
+    AIChatSessionSerializer,
+    AIClinicalAssistResponseSerializer,
+    AIClinicalChatResponseSerializer,
     AIStatusResponseSerializer,
     ClinicalAssistRequestSerializer,
     ClinicalChatRequestSerializer,
@@ -184,6 +196,21 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
 
     Auto-enriches the request with user_context and facility_context
     before forwarding to TibaBot.
+
+    Persists both user and assistant messages locally so the session
+    management endpoints can list/retrieve/delete them.
+
+    Response shape (matches frontend AIClinicalChatResponseSchema):
+    {
+        "session_id": "<uuid>",
+        "message": {
+            "id": "<uuid>",
+            "role": "assistant",
+            "content": "...",
+            "timestamp": "<iso8601>"
+        },
+        "error": null  // optional
+    }
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -198,6 +225,63 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
         data["user_context"] = build_user_context(request)
         data["facility_context"] = build_facility_context()
 
+        # Add system instruction based on whether encounter context is present.
+        # This prevents TibaBot from hallucinating page content when the user
+        # asks about "the page we're on" without any clinical context.
+        has_encounter_context = bool(
+            data.get("patient_context") or data.get("encounter_context")
+        )
+        page_context = data.get("page_context")
+        if not has_encounter_context:
+            if page_context:
+                page_desc = (
+                    f"The user is currently on the '{page_context.get('page_title', 'Unknown')}' "
+                    f"page (route: {page_context.get('route', '/')}, "
+                    f"module: {page_context.get('module', 'unknown')})."
+                )
+                data["system_instruction"] = (
+                    "You are TibaBot, a clinical decision-support assistant. "
+                    f"{page_desc} "
+                    "You can see which page the user is on, but you do NOT have "
+                    "access to the specific data displayed on that page. "
+                    "If the user asks about 'this page', describe the page's "
+                    "purpose based on the module name. "
+                    "If the user asks about a specific patient or clinical data, "
+                    "respond with: \"I can see you're on the "
+                    f"{page_context.get('page_title', 'current')} page, but I "
+                    "don't have access to the patient data displayed here. "
+                    "Use the **Ask about this patient** button (🩺) on an "
+                    "encounter page for clinical analysis.\" "
+                    "Otherwise, answer general clinical questions normally."
+                )
+            else:
+                data["system_instruction"] = (
+                    "You are TibaBot, a clinical decision-support assistant. "
+                    "You do NOT have visibility into the user's current page or "
+                    "screen. If the user asks about 'this page', 'this patient', "
+                    "'the encounter', or any page-specific content, respond with: "
+                    "\"I don't have visibility into the page you're viewing. "
+                    "Use the **Ask about this patient** button (🩺) for "
+                    "encounter-aware assistance.\" "
+                    "Otherwise, answer general clinical questions normally."
+                )
+
+        # Resolve or create session
+        session = self._resolve_session(request.user, data)
+        data["session_id"] = str(session.id)
+
+        # Persist user message
+        user_msg = ChatMessage.objects.create(
+            session=session,
+            role="user",
+            content=data["message"],
+        )
+
+        # Auto-title: use the first user message (truncated)
+        if session.messages.filter(role="user").count() == 1:
+            session.title = data["message"][:120]
+            session.save(update_fields=["title"])
+
         # Audit log
         AuditLog.log(
             action="ai_clinical_chat",
@@ -208,7 +292,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
             user_agent=request.META.get("HTTP_USER_AGENT", ""),
             details={
                 "message_length": len(data["message"]),
-                "session_id": data.get("session_id"),
+                "session_id": str(session.id),
                 "user_role": data["user_context"].get("role"),
             },
         )
@@ -218,32 +302,76 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
             result = client.clinical_chat(data)
         except TibaBotUnavailableError:
             logger.warning("TibaBot unavailable for clinical chat")
-            return Response(
-                {
-                    "session_id": data.get("session_id", ""),
-                    "message": {
-                        "role": "assistant",
-                        "content": "TibaBot is currently unavailable. Please try again later.",
-                    },
-                    "error": "AI service temporarily unavailable.",
-                },
-                status=status.HTTP_200_OK,
+            return self._build_response(
+                session=session,
+                content="TibaBot is currently unavailable. Please try again later.",
+                error="AI service temporarily unavailable.",
             )
         except TibaBotError as e:
             logger.error("TibaBot error for clinical chat: %s", e)
-            return Response(
-                {
-                    "session_id": data.get("session_id", ""),
-                    "message": {
-                        "role": "assistant",
-                        "content": "An error occurred with the AI service.",
-                    },
-                    "error": "AI service error.",
-                },
-                status=status.HTTP_200_OK,
+            return self._build_response(
+                session=session,
+                content="An error occurred with the AI service.",
+                error="AI service error.",
             )
 
-        return Response(result)
+        # Extract assistant content from TibaBot response
+        assistant_content = ""
+        tibabot_msg = result.get("message", {})
+        if isinstance(tibabot_msg, dict):
+            assistant_content = tibabot_msg.get("content", "")
+        elif isinstance(tibabot_msg, str):
+            assistant_content = tibabot_msg
+
+        if not assistant_content:
+            assistant_content = result.get("response", result.get("content", ""))
+
+        return self._build_response(
+            session=session,
+            content=str(assistant_content) if assistant_content else "",
+        )
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _resolve_session(user, data: dict) -> ChatSession:
+        """Get existing session or create a new one."""
+        session_id = data.get("session_id")
+        if session_id:
+            try:
+                return ChatSession.objects.get(id=session_id, user=user)
+            except (ChatSession.DoesNotExist, ValueError):
+                pass  # fall through to create
+        return ChatSession.objects.create(user=user)
+
+    @staticmethod
+    def _build_response(
+        session: ChatSession,
+        content: str,
+        error: str | None = None,
+    ) -> Response:
+        """Persist assistant message and return schema-compliant response."""
+        assistant_msg = ChatMessage.objects.create(
+            session=session,
+            role="assistant",
+            content=content,
+        )
+
+        response_data: dict = {
+            "session_id": str(session.id),
+            "message": {
+                "id": str(assistant_msg.id),
+                "role": "assistant",
+                "content": content,
+                "timestamp": assistant_msg.timestamp.isoformat(),
+            },
+        }
+        if error:
+            response_data["error"] = error
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 class ClinicalAssistView(AIFeatureGatedMixin, APIView):
@@ -309,3 +437,125 @@ class ClinicalAssistView(AIFeatureGatedMixin, APIView):
             )
 
         return Response(result)
+
+
+# =============================================================================
+# Phase 2 — Session Management
+# =============================================================================
+
+
+class ClinicalChatSessionListView(AIFeatureGatedMixin, APIView):
+    """
+    List all chat sessions for the authenticated user.
+
+    GET /api/ai/clinical/chat/sessions/
+
+    Response shape (matches frontend AIChatSessionListResponseSchema):
+    {
+        "sessions": [
+            {
+                "id": "<uuid>",
+                "title": "...",
+                "created_at": "<iso8601>",
+                "updated_at": "<iso8601>",
+                "message_count": 5
+            }
+        ]
+    }
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        sessions = ChatSession.objects.filter(user=request.user)
+        sessions_data = [
+            {
+                "id": str(s.id),
+                "title": s.title,
+                "created_at": s.created_at.isoformat(),
+                "updated_at": s.updated_at.isoformat(),
+                "message_count": s.message_count,
+            }
+            for s in sessions
+        ]
+        return Response({"sessions": sessions_data})
+
+
+class ClinicalChatSessionDetailView(AIFeatureGatedMixin, APIView):
+    """
+    Retrieve or delete a specific chat session.
+
+    GET /api/ai/clinical/chat/session/{id}/
+    Response shape (matches frontend AIChatSessionDetailResponseSchema):
+    {
+        "session": { "id", "title", "created_at", "updated_at", "message_count" },
+        "messages": [
+            { "id", "role", "content", "timestamp" }
+        ]
+    }
+
+    DELETE /api/ai/clinical/chat/session/{id}/
+    Returns 204 No Content.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request, session_id: str) -> Response:
+        session = self._get_session(request.user, session_id)
+        if session is None:
+            return Response(
+                {"detail": "Session not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        messages = session.messages.all()
+        return Response(
+            {
+                "session": {
+                    "id": str(session.id),
+                    "title": session.title,
+                    "created_at": session.created_at.isoformat(),
+                    "updated_at": session.updated_at.isoformat(),
+                    "message_count": session.message_count,
+                },
+                "messages": [
+                    {
+                        "id": str(m.id),
+                        "role": m.role,
+                        "content": m.content,
+                        "timestamp": m.timestamp.isoformat(),
+                    }
+                    for m in messages
+                ],
+            }
+        )
+
+    def delete(self, request: Request, session_id: str) -> Response:
+        session = self._get_session(request.user, session_id)
+        if session is None:
+            return Response(
+                {"detail": "Session not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Audit log
+        AuditLog.log(
+            action="ai_chat_session_delete",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={"session_id": str(session.id), "title": session.title},
+        )
+
+        session.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    def _get_session(user, session_id: str) -> ChatSession | None:
+        """Look up a session owned by the user, or return None."""
+        try:
+            return ChatSession.objects.get(id=session_id, user=user)
+        except (ChatSession.DoesNotExist, ValueError):
+            return None

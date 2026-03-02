@@ -116,6 +116,21 @@ export interface AIFacilityContext {
   has_pharmacy: boolean | null;
 }
 
+/**
+ * Page context for TibaBot — tells the assistant which page the user is on.
+ *
+ * Lightweight descriptor sent with every chat message so TibaBot can
+ * provide contextually relevant responses even on non-clinical pages.
+ */
+export interface AIPageContext {
+  /** Current route path (e.g., "/patients/123", "/pharmacy") */
+  route: string;
+  /** Human-readable page title from navigation config (e.g., "Patient Detail", "Pharmacy") */
+  page_title: string;
+  /** Top-level module (e.g., "patients", "encounters", "pharmacy", "dashboard") */
+  module: string;
+}
+
 /** Verbosity level for Clinical Assist responses */
 export type AIVerbosity = 'brief' | 'standard' | 'detailed';
 
@@ -123,6 +138,12 @@ export type AIVerbosity = 'brief' | 'standard' | 'detailed';
 export interface AIClinicalChatRequest {
   message: string;
   session_id?: string;
+  /** Patient context for encounter-aware chat — no PII */
+  patient_context?: AIPatientContext;
+  /** Encounter context for encounter-aware chat */
+  encounter_context?: AIEncounterContext;
+  /** Page context — auto-populated by the chat widget from the current route */
+  page_context?: AIPageContext;
   /** User context — injected automatically by the API layer */
   user_context?: AIUserContext;
   /** Facility context — injected automatically by the API layer */
@@ -142,6 +163,8 @@ export interface AIClinicalAssistRequest {
   query: string;
   patient_context?: AIPatientContext;
   encounter_context?: AIEncounterContext;
+  /** Page context — auto-populated by the chat widget from the current route */
+  page_context?: AIPageContext;
   /** User context — injected automatically by the API layer */
   user_context?: AIUserContext;
   /** Facility context — injected automatically by the API layer */
