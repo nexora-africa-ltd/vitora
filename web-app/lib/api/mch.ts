@@ -156,6 +156,34 @@ export const mchRegistrationsApi = {
       context: 'mchRegistrationsApi.transitionStatus',
     });
   },
+
+  /**
+   * Route mother to today's ANC clinic queue
+   */
+  routeToANC: async (id: number, data?: { clinic_id?: number; notes?: string }): Promise<{
+    message: string;
+    clinic_visit_id: number;
+    queue_number: number;
+    clinic: string;
+    session_id: number;
+  }> => {
+    const response = await apiClient.post(`${BASE_URL}/registrations/${id}/route_to_anc/`, data || {});
+    return response.data;
+  },
+
+  /**
+   * Schedule a future ANC visit (creates appointment)
+   */
+  scheduleANCVisit: async (id: number, data: { date: string; notes?: string }): Promise<{
+    message: string;
+    appointment_id: number;
+    appointment_number: string;
+    scheduled_date: string;
+    resource: string;
+  }> => {
+    const response = await apiClient.post(`${BASE_URL}/registrations/${id}/schedule_anc_visit/`, data);
+    return response.data;
+  },
 };
 
 // =============================================================================

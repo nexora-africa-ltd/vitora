@@ -1,16 +1,27 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Baby, Calendar, FileText, Heart, Shield, Syringe, TrendingUp, Loader2 } from 'lucide-react';
+import { AlertTriangle, Baby, Calendar, CalendarPlus, FileText, Heart, Loader2, Shield, Stethoscope, Syringe, TrendingUp } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate } from '@/lib/utils/format';
@@ -75,6 +86,49 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
     },
   });
 
+  // --- ANC Queue & Scheduling ---
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleNotes, setScheduleNotes] = useState('');
+
+  const routeToANCMutation = useMutation({
+    mutationFn: () => mchRegistrationsApi.routeToANC(registrationId),
+    onSuccess: (data) => {
+      toast({
+        title: 'Sent to ANC Queue',
+        description: `Queue #${data.queue_number} at ${data.clinic}.`,
+      });
+    },
+    onError: (error: Error & { response?: { data?: { detail?: string } } }) => {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.detail || 'Failed to send to ANC queue.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const scheduleANCMutation = useMutation({
+    mutationFn: (data: { date: string; notes?: string }) =>
+      mchRegistrationsApi.scheduleANCVisit(registrationId, data),
+    onSuccess: (data) => {
+      setShowScheduleDialog(false);
+      setScheduleDate('');
+      setScheduleNotes('');
+      toast({
+        title: 'ANC Visit Scheduled',
+        description: `Appointment ${data.appointment_number} on ${formatDate(data.scheduled_date)}.`,
+      });
+    },
+    onError: (error: Error & { response?: { data?: { detail?: string } } }) => {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.detail || 'Failed to schedule ANC visit.',
+        variant: 'destructive',
+      });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -104,8 +158,37 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing} className="min-h-full">
       <div className="space-y-6">
         <PageHeader
-          title={`MCH ${registration.mch_number}`}
+          title={registration.mch_number}
           helpContent="View and manage maternal and child health registration details. Track ANC visits, delivery, PNC visits, growth, and immunizations."
+          actions={
+            registration.status === 'ACTIVE' ? (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowScheduleDialog(true)}
+                  disabled={scheduleANCMutation.isPending}
+                >
+                  <CalendarPlus className="h-4 w-4 mr-1.5" />
+                  <span className="sm:hidden">Schedule</span>
+                  <span className="hidden sm:inline">Schedule ANC Visit</span>
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => routeToANCMutation.mutate()}
+                  disabled={routeToANCMutation.isPending}
+                >
+                  {routeToANCMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                  ) : (
+                    <Stethoscope className="h-4 w-4 mr-1.5" />
+                  )}
+                  <span className="sm:hidden">ANC Queue</span>
+                  <span className="hidden sm:inline">Send to ANC Queue</span>
+                </Button>
+              </div>
+            ) : undefined
+          }
         />
 
         {/* Summary Bar */}
@@ -306,6 +389,63 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
           </Card>
         )}
       </div>
+
+      {/* Schedule ANC Visit Dialog */}
+      <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Schedule ANC Visit</DialogTitle>
+            <DialogDescription>
+              Schedule a future ANC appointment for {registration.mother_name}.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (scheduleDate) {
+                scheduleANCMutation.mutate({ date: scheduleDate, notes: scheduleNotes || undefined });
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="schedule-date">Visit Date *</Label>
+              <Input
+                id="schedule-date"
+                type="date"
+                value={scheduleDate}
+                onChange={(e) => setScheduleDate(e.target.value)}
+                min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="schedule-notes">Notes</Label>
+              <Textarea
+                id="schedule-notes"
+                value={scheduleNotes}
+                onChange={(e) => setScheduleNotes(e.target.value)}
+                placeholder="e.g. 2nd trimester check-up..."
+                rows={2}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowScheduleDialog(false)}
+                disabled={scheduleANCMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!scheduleDate || scheduleANCMutation.isPending}>
+                {scheduleANCMutation.isPending && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+                Schedule
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </PullToRefresh>
   );
 }

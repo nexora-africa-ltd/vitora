@@ -316,6 +316,115 @@ class MCHRegistrationViewSet(viewsets.ModelViewSet):
             )
 
     @action(detail=True, methods=["post"])
+    def schedule_anc_visit(self, request, pk=None):
+        """
+        Schedule a future ANC visit for this MCH registration.
+
+        Creates a scheduling Appointment for the mother on the given date.
+        Accepts: { "date": "2026-03-15", "notes": "..." }
+        """
+        registration = self.get_object()
+        visit_date_str = request.data.get("date")
+        notes = request.data.get("notes", "")
+
+        if not visit_date_str:
+            return Response(
+                {"detail": "date is required (YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from datetime import date as dt_date
+            from datetime import datetime, time, timedelta
+
+            visit_date = dt_date.fromisoformat(visit_date_str)
+        except ValueError:
+            return Response(
+                {"detail": "Invalid date format. Use YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from datetime import date as dt_date
+
+        if visit_date <= dt_date.today():
+            return Response(
+                {"detail": "Scheduled date must be in the future. Use 'Send to ANC Queue' for today's visit."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from datetime import datetime, time, timedelta
+
+            from hmis.apps.scheduling.models import Appointment, Resource
+
+            patient = registration.mother
+
+            # Check for existing appointment on same date
+            existing = Appointment.objects.filter(
+                patient=patient,
+                scheduled_start__date=visit_date,
+                appointment_type="FOLLOW_UP",
+                status__in=["CREATED", "CONFIRMED"],
+            ).exists()
+
+            if existing:
+                return Response(
+                    {"detail": f"An ANC appointment already exists for {visit_date_str}."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+
+            # Find ANC resource
+            resource = Resource.objects.filter(
+                resource_type="PLACE",
+                is_active=True,
+                code__icontains="ANC",
+            ).first()
+
+            if not resource:
+                resource = Resource.objects.filter(
+                    resource_type="PLACE",
+                    is_active=True,
+                ).first()
+
+            if not resource:
+                return Response(
+                    {"detail": "No scheduling resource found. Please configure an ANC resource first."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            import zoneinfo
+
+            tz = zoneinfo.ZoneInfo("Africa/Nairobi")
+            start_dt = datetime.combine(visit_date, time(8, 0), tzinfo=tz)
+            end_dt = start_dt + timedelta(minutes=30)
+
+            appointment = Appointment(
+                patient=patient,
+                resource=resource,
+                appointment_type="FOLLOW_UP",
+                scheduled_start=start_dt,
+                scheduled_end=end_dt,
+                reason=f"ANC visit - MCH: {registration.mch_number}",
+                notes=notes or f"Scheduled from MCH registration {registration.mch_number}",
+                priority="URGENT" if registration.is_high_risk else "ROUTINE",
+            )
+            appointment.save()
+
+            return Response({
+                "message": f"ANC visit scheduled for {visit_date_str}.",
+                "appointment_id": appointment.id,
+                "appointment_number": appointment.appointment_number,
+                "scheduled_date": visit_date_str,
+                "resource": resource.name,
+            })
+
+        except Exception as exc:
+            return Response(
+                {"detail": f"Failed to schedule ANC visit: {exc!s}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+    @action(detail=True, methods=["post"])
     def transition_status(self, request, pk=None):
         """
         Transition MCH registration to a new status.
