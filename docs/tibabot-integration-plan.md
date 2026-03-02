@@ -29,8 +29,8 @@
 
 1. **Advisory-only** — Match the CDS principle. AI suggestions never auto-apply; clinician confirms every action.
 2. **Audit everything** — Every TibaBot call logged to `AuditLog` with user, timestamp, request summary, and response metadata.
-3. **Feature-flagged** — `TIBABOT_ENABLED` / `NEXT_PUBLIC_ENABLE_AI` so facilities without connectivity or API keys get a clean experience.
-4. **Graceful degradation** — If TibaBot is down, the system works normally. Show "AI suggestions unavailable" inline, never break the workflow.
+3. **Feature-flagged from day one** — Every AI capability is gated behind `TIBABOT_ENABLED` (backend) / `NEXT_PUBLIC_ENABLE_AI` (frontend). When disabled: backend returns `404` on all `/api/ai/*` routes (via `AIFeatureGatedMixin`), frontend conditionally omits all AI components from the render tree (via `useAIEnabled()` hook). Facilities without connectivity or API keys get a completely clean experience with zero AI surface area.
+4. **Graceful degradation** — If TibaBot is down but the flag is enabled, the system works normally. Show "AI suggestions unavailable" inline, never break the workflow.
 5. **No patient PII to TibaBot** — Send only: age, sex, vitals, medication names, allergy substances, clinical text. Never send: name, MRN, national_id, phone_number.
 6. **Backend proxy pattern** — All TibaBot calls routed through Django backend to keep API keys server-side, log interactions, and rate-limit at the facility level.
 
@@ -66,11 +66,14 @@ hmis/apps/ai/
 ├── __init__.py
 ├── apps.py
 ├── client.py             # TibaBotClient class (retry/timeout/circuit-breaker)
+├── feature_flags.py      # Feature flag checks (TIBABOT_ENABLED gate)
 ├── views.py              # Proxy viewsets (validate input → call TibaBot → log → return)
 ├── serializers.py        # Request/response validation
 ├── urls.py               # /api/ai/ namespace
 └── sanitizer.py          # PII stripping utility
 ```
+
+> **Feature Flag Gate**: All AI views inherit from `AIFeatureGatedMixin` (defined in `feature_flags.py`). This mixin checks `settings.TIBABOT_ENABLED` and returns `404` immediately when disabled — no endpoint discovery or partial behavior. On the frontend, the `useAIEnabled()` hook reads `NEXT_PUBLIC_ENABLE_AI` and **conditionally skips** mounting all AI components (widget, ICD-10 suggestions, predictor panels). Components are not rendered at all when the flag is off, not just hidden with CSS.
 
 ### Frontend: `web-app/lib/api/ai.ts`
 
@@ -82,7 +85,6 @@ aiApi.clinicalAssist(context)            // Clinical recommendations
 aiApi.clinicalChat(message, sessionId)   // Multi-turn clinical chat
 aiApi.predictCondition(features)         // Condition prediction
 aiApi.predictICU(vitals, labs)           // ICU prediction
-aiApi.validatePractitioner(idType, id)   // SHA HWR lookup
 aiApi.triage(symptoms, age, sex)         // Symptom triage
 ```
 
@@ -225,11 +227,11 @@ When the clinician is on an encounter page (`/encounters/[id]` or `/encounters/[
 - ICD-10 suggestions in the diagnosis form (Phase 1 — those stay inline in the form)
 - Condition/ICU predictor results (Phases 4–5 — those stay in their respective pages)
 
-**Access control**: Restricted to authenticated clinicians only. Hidden for non-clinical roles. Gated by `NEXT_PUBLIC_ENABLE_AI` feature flag and `ai.use_clinical_chat` permission.
+**Access control**: Restricted to authenticated clinicians only. Hidden for non-clinical roles. Gated by `NEXT_PUBLIC_ENABLE_AI` feature flag (component not rendered when off), `TIBABOT_ENABLED` backend flag (returns 404 when off), and `ai.use_clinical_chat` permission.
 
 **Why Phase 2 (not later):**
 1. **Eliminates duplicate UI** — no separate `ai-clinical-assistant.tsx` sidebar; the widget handles Clinical Assist as a mode
-2. **Foundational infrastructure** — widget's context provider, SSE streaming, and chat panel become reusable for Phases 3–5 (e.g., slash commands: `/validate 12345678`, `/predict-risk`)
+2. **Foundational infrastructure** — widget's context provider, SSE streaming, and chat panel become reusable for Phases 3–4 (e.g., slash commands: `/predict-risk`)
 3. **Highest visibility feature** — the widget is the "face" of TibaBot; deploying early maximizes adoption and feedback
 4. **Low risk** — advisory only, no clinical automation, permission-gated
 
@@ -246,40 +248,7 @@ When the clinician is on an encounter page (`/encounters/[id]` or `/encounters/[
 
 ---
 
-### 3. Practitioner Validation in Staff + SHA Claims
-
-**Priority**: Low effort, high compliance value  
-**Where**: Admin > Staff management, and SHA claims submission flow. Also accessible via widget slash command: `/validate 12345678`  
-**TibaBot endpoint**: `POST /practitioner/validate`
-
-**What**: Verify practitioners against SHA Health Worker Registry before submitting claims. Prevents claims rejection due to invalid practitioner credentials.
-
-**Flow:**
-```
-Admin creates/edits staff member → clicks "Verify with SHA"
-        │
-        ▼
-Django: POST /api/ai/practitioner-validate/
-        │
-        ▼
-TibaBot: POST /practitioner/validate { id_type: "ID", id_number: "12345678" }
-        │
-        ▼
-Returns: { status: "valid", practitioner_details: { ... } }
-        │
-        ▼
-Display verification badge on staff profile
-Store validation status for SHA claim pre-checks
-```
-
-**Files to create/modify:**
-- Backend: `hmis/apps/ai/views.py` — `PractitionerValidateView`
-- Frontend: `lib/api/ai.ts` — `aiApi.validatePractitioner()`
-- Frontend: Staff management page — "Verify SHA" button
-
----
-
-### 4. Condition Predictor in Triage
+### 3. Condition Predictor in Triage
 
 **Priority**: High value, medium risk  
 **Where**: Triage page  
@@ -294,7 +263,7 @@ Store validation status for SHA claim pre-checks
 
 ---
 
-### 5. ICU Predictor in Inpatient + CDS `ml_model` Rule Type
+### 4. ICU Predictor in Inpatient + CDS `ml_model` Rule Type
 
 **Priority**: High clinical value, medium-high risk  
 **Where**: Inpatient ward views. Also accessible via widget slash command: `/icu-risk`  
@@ -321,7 +290,7 @@ Store validation status for SHA claim pre-checks
 - Frontend: `lib/api/ai.ts` — `aiApi.predictICU()`
 - Frontend: Inpatient ward view — "AI Risk" column/panel
 
-### 6. Symptom Checker (Patient Portal — Future)
+### 5. Symptom Checker (Patient Portal — Future)
 
 **Priority**: Future scope  
 **Where**: Patient-facing portal (not yet built)  
@@ -360,12 +329,11 @@ The CDS module documents a 4-layer AI evolution. TibaBot integration maps direct
 |-------|-------|--------|------|------------|
 | **Phase 1** | Backend proxy app (`hmis/apps/ai/`) + ICD-10 auto-coding in diagnosis form | 2–3 days | Low | API key from Nexora |
 | **Phase 2** | TibaBot floating widget + Clinical Assistant (chat, encounter-aware assist, slash commands) | 3–4 days | Low | Phase 1 |
-| **Phase 3** | Practitioner validation in staff + SHA claims (+ widget `/validate` command) | 1 day | Low | Phase 1 |
-| **Phase 4** | Condition predictor in triage | 2 days | Medium | Phase 1 |
-| **Phase 5** | ICU predictor in inpatient + CDS `ml_model` rule type (+ widget `/icu-risk` command) | 3–4 days | Medium | Phase 1, CDS engine update |
-| **Phase 6** | Symptom Checker patient portal | 3–4 days | Low | Patient portal (future) |
+| **Phase 3** | Condition predictor in triage | 2 days | Medium | Phase 1 |
+| **Phase 4** | ICU predictor in inpatient + CDS `ml_model` rule type (+ widget `/icu-risk` command) | 3–4 days | Medium | Phase 1, CDS engine update |
+| **Phase 5** | Symptom Checker patient portal | 3–4 days | Low | Patient portal (future) |
 
-**Total estimated effort**: ~15–18 days of implementation across all phases.
+**Total estimated effort**: ~13–16 days of implementation across all phases.
 
 ---
 
@@ -380,9 +348,10 @@ The CDS module documents a 4-layer AI evolution. TibaBot integration maps direct
 | `hmis/apps/ai/client.py` | `TibaBotClient` class with retry, timeout, circuit-breaker |
 | `hmis/apps/ai/views.py` | Proxy viewsets for each TibaBot capability |
 | `hmis/apps/ai/serializers.py` | Request/response DRF serializers |
+| `hmis/apps/ai/feature_flags.py` | `AIFeatureGatedMixin` — checks `settings.TIBABOT_ENABLED`, returns 404 when off |
 | `hmis/apps/ai/urls.py` | `/api/ai/` route namespace |
 | `hmis/apps/ai/sanitizer.py` | PII stripping utility (ensures no name/MRN/ID sent) |
-| `tests/test_ai.py` | Unit tests for proxy views + sanitizer |
+| `tests/test_ai.py` | Unit tests for proxy views, sanitizer, and feature flag gating |
 
 ### Backend (Modified)
 
@@ -390,7 +359,7 @@ The CDS module documents a 4-layer AI evolution. TibaBot integration maps direct
 |------|--------|
 | `hmis/settings/base.py` | Add `TIBABOT_*` settings from env vars, add `hmis.apps.ai` to `INSTALLED_APPS` |
 | `hmis/urls.py` | Include `ai.urls` at `/api/ai/` |
-| `hmis/apps/cds/engine.py` | Add `ml_model` evaluator type (Phase 5) |
+| `hmis/apps/cds/engine.py` | Add `ml_model` evaluator type (Phase 4) |
 | `.env.example` | Add `TIBABOT_API_URL`, `TIBABOT_API_KEY`, `TIBABOT_TIMEOUT`, `TIBABOT_ENABLED` |
 
 ### Frontend (New)
@@ -400,7 +369,7 @@ The CDS module documents a 4-layer AI evolution. TibaBot integration maps direct
 | `lib/types/ai.ts` | TypeScript interfaces for all TibaBot responses |
 | `lib/schemas/ai.schema.ts` | Zod validation schemas |
 | `lib/api/ai.ts` | API client with `parseResponse()` calling `/api/ai/*` |
-| `lib/hooks/use-ai.ts` | React Query hooks for all AI features |
+| `lib/hooks/use-ai.ts` | React Query hooks for all AI features + `useAIEnabled()` feature flag hook |
 | `components/encounters/ai-icd10-suggestions.tsx` | ICD-10 auto-coding chips in diagnosis form |
 | `components/shared/ai-chat-widget.tsx` | Floating chat widget (minimized + expanded states) |
 | `components/shared/ai-chat-panel.tsx` | Chat UI panel (shared between widget and full-page) |
@@ -412,7 +381,7 @@ The CDS module documents a 4-layer AI evolution. TibaBot integration maps direct
 | File | Change |
 |------|--------|
 | `components/encounters/diagnosis-form.tsx` | Add "AI Suggested" section above manual ICD search |
-| `app/(dashboard)/layout.tsx` | Mount `<AIChatWidget />` globally in dashboard layout |
+| `app/(dashboard)/layout.tsx` | Conditionally mount `<AIChatWidget />` when `useAIEnabled()` returns true |
 | `lib/config/navigation.ts` | Add "AI Assistant" nav entry (links to `/ai` full-page) |
 | `.env.example` | Add `NEXT_PUBLIC_ENABLE_AI` |
 
@@ -425,7 +394,7 @@ The CDS module documents a 4-layer AI evolution. TibaBot integration maps direct
 | TibaBot unreachable | Return `503` with `{ "error": "AI service unavailable" }` | Show "AI suggestions unavailable" muted text |
 | Rate limited (429) | Return `429` with retry-after header | Show "Try again in X seconds" |
 | Invalid API key | Return `502` with generic error | Hide AI features, log error |
-| `TIBABOT_ENABLED=false` | Return `404` on all `/api/ai/*` routes | Feature flag hides all AI UI elements |
+| `TIBABOT_ENABLED=false` | `AIFeatureGatedMixin` returns `404` on all `/api/ai/*` routes | `useAIEnabled()` returns `false`; all AI components omitted from render tree |
 | TibaBot returns low-confidence results | Pass through with confidence scores | Show results with amber "low confidence" badge |
 | Network timeout (>30s) | Cancel request, return `504` | Show "Request timed out, try again" |
 
@@ -496,7 +465,7 @@ AuditLog.log(
 | Proxy views — valid requests | Integration tests with mocked TibaBot responses |
 | Proxy views — error handling (429, 500, timeout) | Unit tests |
 | Audit logging on every AI call | Integration tests checking AuditLog records |
-| Feature flag (`TIBABOT_ENABLED=false`) | Return 404 on all endpoints |
+| Feature flag (`TIBABOT_ENABLED=false`) | `AIFeatureGatedMixin` returns 404 on all `/api/ai/*` endpoints |
 | Authentication required on all `/api/ai/*` | 401 without token |
 
 ### Frontend Tests
@@ -507,7 +476,7 @@ AuditLog.log(
 | Zod schema validation — response parsing | Unit tests |
 | `useAIICD10Suggest` hook — loading/error/success states | Hook tests |
 | ICD-10 suggestions component — render, select, dismiss | Component tests |
-| Feature flag — AI UI hidden when `NEXT_PUBLIC_ENABLE_AI=false` | Component tests |
+| Feature flag — AI components not rendered when `NEXT_PUBLIC_ENABLE_AI=false` (`useAIEnabled()` hook) | Component tests |
 | Graceful degradation — "unavailable" state rendering | Component tests |
 
 ---
