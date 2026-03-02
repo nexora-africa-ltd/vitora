@@ -8,7 +8,7 @@
  */
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Save, CheckCircle, Loader2, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -27,6 +27,9 @@ import { useEncounterLabOrders } from '@/lib/hooks/use-laboratory';
 import { useEncounterPrescriptions } from '@/lib/hooks/use-pharmacy';
 import { useAuth } from '@/lib/auth/context';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useEncounterCDSAlerts } from '@/lib/hooks/use-cds';
+import { CDSAlertsPanel } from '@/components/encounters/cds-alerts-panel';
+import { CDSCriticalDialog } from '@/components/encounters/cds-critical-dialog';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 import { AlertTriangle, CheckSquare } from 'lucide-react';
 
@@ -48,6 +51,17 @@ export default function EncounterEditReviewPage() {
 
   const session = getSession(encounterId);
   const completion = getSectionCompletion(encounterId);
+
+  // CDS alerts — check for unresolved critical/high alerts
+  const { data: cdsData } = useEncounterCDSAlerts(encounterId);
+  const [showCDSDialog, setShowCDSDialog] = useState(false);
+  const hasUnresolvedCritical = useMemo(() => {
+    const alerts = cdsData?.results || [];
+    return alerts.some((a) => {
+      const p = a.priority.toUpperCase();
+      return (p === 'CRITICAL' || p === 'HIGH') && a.is_pending;
+    });
+  }, [cdsData]);
 
   // Get provider name
   const providerName = user
@@ -142,9 +156,19 @@ export default function EncounterEditReviewPage() {
     }
   }, [formData, encounterId, updateEncounter, toast]);
 
-  // Finalize encounter
+  // Finalize encounter — if unresolved critical alerts exist, show dialog first
+  const handleFinalizeClick = useCallback(() => {
+    if (hasUnresolvedCritical) {
+      setShowCDSDialog(true);
+      return;
+    }
+    handleFinalize();
+  }, [hasUnresolvedCritical]);
+
+  // Actual finalize logic
   const handleFinalize = useCallback(async () => {
     if (!formData) return;
+    setShowCDSDialog(false);
 
     try {
       // First save all the data
@@ -263,6 +287,9 @@ export default function EncounterEditReviewPage() {
         </CardContent>
       </Card>
 
+      {/* CDS Alerts Panel — advisory alerts for this encounter */}
+      <CDSAlertsPanel encounterId={encounterId} />
+
       {/* SOAP Note Summary */}
       <Card>
         <CardHeader>
@@ -312,7 +339,7 @@ export default function EncounterEditReviewPage() {
               </Button>
               {isEditable && encounter?.status !== 'CLOSED' && (
                 <Button
-                  onClick={handleFinalize}
+                  onClick={handleFinalizeClick}
                   disabled={updateEncounter.isPending}
                   className="bg-green-600 hover:bg-green-700"
                 >
@@ -328,6 +355,15 @@ export default function EncounterEditReviewPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* CDS Critical Alert Resolution Dialog */}
+      <CDSCriticalDialog
+        encounterId={encounterId}
+        open={showCDSDialog}
+        onOpenChange={setShowCDSDialog}
+        onProceed={handleFinalize}
+        isFinalizePending={updateEncounter.isPending}
+      />
     </div>
   );
 }

@@ -98,6 +98,7 @@ export interface CDSAlertListItem {
   priority: string;
   status: string;
   message: string;
+  suggestion: string;
   category: string;
   is_pending: boolean;
   is_critical: boolean;

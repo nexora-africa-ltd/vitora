@@ -247,6 +247,7 @@ class CDSAlertListSerializer(serializers.ModelSerializer):
             "priority",
             "status",
             "message",
+            "suggestion",
             "category",
             "is_pending",
             "is_critical",

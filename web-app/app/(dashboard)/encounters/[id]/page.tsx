@@ -26,6 +26,7 @@ import {
 import { formatDate } from '@/lib/utils/format';
 import { ENCOUNTER_STATUS, ENCOUNTER_TYPES } from '@/lib/utils/constants';
 import { VitalsDisplay } from '@/components/encounters/vitals-display';
+import { CDSAlertsPanel } from '@/components/encounters/cds-alerts-panel';
 import { DiagnosesList } from '@/components/encounters/diagnoses-list';
 import { TreatmentPlanView } from '@/components/encounters/treatment-plan-view';
 import { MedicalHistoryView } from '@/components/encounters/medical-history-view';
@@ -225,6 +226,9 @@ export default function EncounterDetailPage() {
 
       {/* Vitals */}
       <VitalsDisplay encounter={encounter} />
+
+      {/* CDS Alerts Panel — tiered advisory alerts from clinical rules */}
+      <CDSAlertsPanel encounterId={encounterId} />
 
       {/* Tabs */}
       <Tabs defaultValue="soap" className="space-y-4">

@@ -71,6 +71,7 @@ export const CDSAlertListItemSchema = z.object({
   priority: z.string(),
   status: z.string(),
   message: z.string(),
+  suggestion: z.string(),
   category: z.string(),
   is_pending: z.boolean(),
   is_critical: z.boolean(),

@@ -1,8 +1,27 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Activity, Thermometer, Heart, Wind, Droplets, Scale, Ruler } from 'lucide-react';
+import { Activity, Thermometer, Heart, Wind, Droplets, Scale, Ruler, ShieldAlert } from 'lucide-react';
 import { Encounter, VitalSign } from '@/lib/types/encounter';
+import type { InlineCDSAlert } from '@/lib/types/encounter';
 import { cn } from '@/lib/utils/cn';
+
+// Map CDS rule code prefixes to vital field names for contextual callouts
+const RULE_CODE_TO_VITAL: Record<string, string> = {
+  'VITAL-TEMP': 'Temperature',
+  'VITAL-SPO2': 'SpO2',
+  'VITAL-PULSE': 'Pulse',
+  'VITAL-BP': 'Blood Pressure',
+  'VITAL-RR': 'Respiratory Rate',
+};
+
+/** Find matching CDS alerts for a vital sign name */
+function getVitalAlerts(vitalName: string, cdsAlerts: InlineCDSAlert[]): InlineCDSAlert[] {
+  return cdsAlerts.filter((alert) => {
+    return Object.entries(RULE_CODE_TO_VITAL).some(
+      ([prefix, name]) => name === vitalName && alert.rule_code.startsWith(prefix)
+    );
+  });
+}
 
 interface VitalsDisplayProps {
   encounter: Encounter;
@@ -92,6 +111,9 @@ export function VitalsDisplay({ encounter }: VitalsDisplayProps) {
 
   const hasCriticalVitals = vitals.some((v) => v.isCritical && v.value !== null);
 
+  // CDS alerts embedded in encounter response (advisory callouts)
+  const cdsAlerts = encounter.cds_alerts || [];
+
   return (
     <Card className={cn(hasCriticalVitals && 'border-destructive')}>
       <CardHeader className="pb-3">
@@ -109,6 +131,8 @@ export function VitalsDisplay({ encounter }: VitalsDisplayProps) {
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
           {vitals.map((vital) => {
             const Icon = icons[vital.name] || Activity;
+            const vitalCdsAlerts = getVitalAlerts(vital.name, cdsAlerts);
+            const hasCdsAlert = vitalCdsAlerts.length > 0;
 
             return (
               <div
@@ -141,6 +165,24 @@ export function VitalsDisplay({ encounter }: VitalsDisplayProps) {
                   <p className="text-xs text-muted-foreground mt-1">
                     Normal: {vital.normalRange}
                   </p>
+                )}
+                {/* Contextual CDS callout */}
+                {hasCdsAlert && (
+                  <div className="mt-2 pt-1.5 border-t border-dashed border-current/20">
+                    {vitalCdsAlerts.map((alert) => (
+                      <div
+                        key={alert.id}
+                        className={cn(
+                          'flex items-start gap-1 text-[10px] leading-tight',
+                          alert.is_critical ? 'text-destructive' : 'text-amber-600'
+                        )}
+                        title={alert.suggestion}
+                      >
+                        <ShieldAlert className="h-3 w-3 shrink-0 mt-0.5" />
+                        <span>{alert.message}</span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             );
