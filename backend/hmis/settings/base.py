@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     "hmis.apps.allied_health.apps.AlliedHealthConfig",
     "hmis.apps.referrals.apps.ReferralsConfig",
     "hmis.apps.quality.apps.QualityConfig",
+    "hmis.apps.cds.apps.CDSConfig",
 ]
 
 MIDDLEWARE = [

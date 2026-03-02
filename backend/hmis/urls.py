@@ -234,6 +234,8 @@ urlpatterns = [
     path("api/referrals/", include("hmis.apps.referrals.urls", namespace="referrals")),
     # Quality Measures & Reporting API
     path("api/quality/", include("hmis.apps.quality.urls", namespace="quality")),
+    # Clinical Decision Support (CDS) API
+    path("api/cds/", include("hmis.apps.cds.urls", namespace="cds")),
     # Core utilities API (PRC number generation, etc.)
     path("api/core/", include("hmis.apps.core.urls")),
     # MFA (Multi-Factor Authentication) API
