@@ -91,7 +91,13 @@ export function ANCVisitsTab({ registrationId }: ANCVisitsTabProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['anc-visits', registrationId] });
       queryClient.invalidateQueries({ queryKey: ['mch-registration', registrationId] });
-      toast({ title: 'ANC Visit Recorded' });
+      queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      toast({
+        title: 'ANC Visit Recorded',
+        description: nextVisitDate
+          ? 'Visit recorded. A follow-up appointment has been scheduled.'
+          : undefined,
+      });
       setDialogOpen(false);
       resetForm();
     },
@@ -284,6 +290,11 @@ export function ANCVisitsTab({ registrationId }: ANCVisitsTabProps) {
                     value={nextVisitDate}
                     onChange={(e) => setNextVisitDate(e.target.value)}
                   />
+                  {nextVisitDate && (
+                    <p className="text-xs text-blue-600">
+                      A scheduling appointment will be auto-created for this date.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -383,6 +394,12 @@ export function ANCVisitsTab({ registrationId }: ANCVisitsTabProps) {
                         {alert}
                       </Badge>
                     ))}
+                  </div>
+                )}
+                {visit.next_visit_date && (
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-blue-600">
+                    <Calendar className="h-3 w-3" />
+                    Next visit: {formatDate(visit.next_visit_date)}
                   </div>
                 )}
               </CardContent>

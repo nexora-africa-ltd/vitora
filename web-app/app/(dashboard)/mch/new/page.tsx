@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Info } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,9 +35,10 @@ export default function NewMCHRegistrationPage() {
     mutationFn: (data: MCHRegistrationCreateData) => mchRegistrationsApi.create(data),
     onSuccess: (registration) => {
       queryClient.invalidateQueries({ queryKey: ['mch-registrations'] });
+      queryClient.invalidateQueries({ queryKey: ['clinic-enrollments'] });
       toast({
         title: 'Registration Created',
-        description: `MCH registration ${registration.mch_number} has been created.`,
+        description: `MCH registration ${registration.mch_number} has been created${!enrollmentId ? ' with auto-generated ANC enrollment' : ''}.`,
       });
       router.push(`/mch/${registration.id}`);
     },
@@ -101,15 +102,18 @@ export default function NewMCHRegistrationPage() {
 
               {motherId && (
                 <div className="space-y-2">
-                  <Label htmlFor="enrollment">Link to ANC Enrollment (Optional)</Label>
+                  <Label htmlFor="enrollment">Link to Existing ANC Enrollment (Optional)</Label>
                   <EnrollmentSearchInput
                     patientId={motherId}
                     value={enrollmentId}
                     onChange={setEnrollmentId}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Linking to an ANC enrollment imports LMP, EDD, gravida, parity, and other pregnancy details.
-                  </p>
+                  <div className="flex items-start gap-2 p-3 rounded-md bg-blue-50 border border-blue-200 text-blue-800 text-xs">
+                    <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                    <p>
+                      If you don&apos;t link an existing ANC enrollment, one will be <strong>automatically created</strong> when you submit this registration, so the mother appears in the ANC clinic queue.
+                    </p>
+                  </div>
                 </div>
               )}
             </CardContent>

@@ -244,6 +244,7 @@ class ANCVisitListSerializer(serializers.ModelSerializer):
             "weight",
             "blood_pressure",
             "fetal_heart_rate",
+            "next_visit_date",
             "alerts",
             "created_at",
         ]
@@ -303,6 +304,9 @@ class DeliverySerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["baby_patient"]
+        extra_kwargs = {
+            "status": {"default": "COMPLETED"},
+        }
 
     def get_delivered_by_name(self, obj):
         if obj.delivered_by:
