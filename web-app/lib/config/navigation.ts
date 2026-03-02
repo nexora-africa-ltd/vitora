@@ -44,6 +44,7 @@ import {
   Flag,
   CircleAlert,
   SquareActivity,
+  Target,
   // Allied Health icons
   Dumbbell,
   Apple,
@@ -180,6 +181,16 @@ const _allNavItems: NavItemType[] = [
       { label: 'Insurance', href: '/insurance', icon: Shield },
       { label: 'Reports', href: '/transactions/reports', icon: BarChart3 },
       { label: 'Reconciliation', href: '/transactions/reconciliation', icon: Scale },
+    ],
+  },
+  {
+    label: 'Quality',
+    icon: CheckSquare,
+    children: [
+      { label: 'Dashboard', href: '/quality', icon: LayoutDashboard },
+      { label: 'Measures', href: '/quality/measures', icon: Target },
+      { label: 'Quarterly Reports', href: '/quality/reports/quarterly', icon: BarChart3 },
+      { label: 'Annual Reports', href: '/quality/reports/annual', icon: FileText },
     ],
   },
   {

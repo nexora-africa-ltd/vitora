@@ -382,40 +382,58 @@ Gaps are categorized into four tiers:
 
 ### Sprint 2.C — Quality Measures & Reporting (Weeks 11-16)
 
-#### 20. Quarterly & Annual Reports `P2`
-- **Gap**: Only monthly reports exist
+#### 20. Quarterly & Annual Reports `P2` ✅ COMPLETE
+- **Gap**: ~~Only monthly reports exist~~ **RESOLVED**
 - **Action**:
-  - [ ] Create `QuarterlyReport` model (aggregates 3 MonthlyClinicReports)
-  - [ ] Create `AnnualReport` model (aggregates 4 QuarterlyReports)
-  - [ ] Automated Celery tasks for quarterly/annual generation
-  - [ ] DHIS2 quarterly submission
-  - [ ] Tests: 15+ unit tests
+  - [x] Create `QuarterlyReport` model (aggregates 3 MonthlyClinicReports)
+  - [x] Create `AnnualReport` model (aggregates 4 QuarterlyReports)
+  - [x] Automated Celery tasks for quarterly/annual generation
+  - [x] DHIS2 quarterly submission (submission tracking fields)
+  - [x] Tests: 21 unit tests (exceeded 15+ requirement)
 - **Owner**: Backend Team
-- **Effort**: 1 sprint (2 weeks)
-- **Deliverables**: Quarterly/annual report models, Celery tasks
+- **Completed**: March 2, 2026
+- **Deliverables**:
+  - `hmis/apps/quality/` (models, views, serializers, services, tasks, admin)
+  - `QuarterlyReport` model with clinic-level quarterly aggregation
+  - `AnnualReport` model with quarterly-to-annual rollup (monthly fallback)
+  - Celery beat tasks: `generate_all_quarterly_reports`, `generate_all_annual_reports`
+  - API endpoints: `/api/quality/quarterly-reports/`, `/api/quality/annual-reports/`
+  - Custom actions: `generate`, `generate-all`
+  - Frontend pages: quarterly/annual report list + detail views
 
-#### 21. Standard Quality Measures (CQM) `P2`
-- **Gap**: No standard CQM definitions
+#### 21. Standard Quality Measures (CQM) `P2` ✅ COMPLETE
+- **Gap**: ~~No standard CQM definitions~~ **RESOLVED**
 - **Action**:
-  - [ ] Create `QualityMeasure` model (code, name, description, numerator_logic, denominator_logic)
-  - [ ] Seed with Kenya-specific quality indicators
-  - [ ] Implement measure calculation engine
-  - [ ] Quality dashboard with trends
-  - [ ] Tests: 20+ unit tests
-- **Owner**: Backend Team
-- **Effort**: 2 sprints (4 weeks)
-- **Deliverables**: Quality measures framework
+  - [x] Create `QualityMeasure` model (code, name, description, numerator_logic, denominator_logic)
+  - [x] Seed with Kenya-specific quality indicators (`seed_quality_measures` command, 20 measures)
+  - [x] Implement measure calculation engine (auto-calculated percentage, meets_target, low_threshold)
+  - [x] Quality dashboard with trends (domain summary, quarterly trends, compliance rates)
+  - [x] Tests: 38 unit tests (exceeded 20+ requirement)
+- **Owner**: Backend + Frontend Team
+- **Completed**: March 2, 2026
+- **Deliverables**:
+  - `QualityMeasure` model with 6 domains, 3 statuses, 3 reporting periods
+  - `QualityMeasureResult` model with auto-calculated percentage and target evaluation
+  - Quality dashboard API (`/api/quality/dashboard/`) with domain summaries and trend data
+  - Management command: `seed_quality_measures` (20 Kenya-specific CQM indicators)
+  - Frontend: quality dashboard page, measures list, measure detail, new measure form
+  - Zod schemas + TypeScript types aligned with backend serializers
+  - Sidebar navigation under "Quality" section
 
-#### 22. Quality Measure Import/Export `P2`
-- **Gap**: No import/export mechanism
+#### 22. Quality Measure Import/Export `P2` ✅ COMPLETE
+- **Gap**: ~~No import/export mechanism~~ **RESOLVED**
 - **Action**:
-  - [ ] CSV/JSON import for quality measure definitions
-  - [ ] QRDA-style export format (simplified)
-  - [ ] DHIS2 indicator mapping
-  - [ ] Tests: 10+ unit tests
+  - [x] CSV/JSON import for quality measure definitions
+  - [x] QRDA-style export format (simplified)
+  - [x] DHIS2 indicator mapping (`dhis2_indicator_id` field on QualityMeasure)
+  - [x] Tests: 16 unit tests (exceeded 10+ requirement)
 - **Owner**: Backend Team
-- **Effort**: 1 sprint (2 weeks)
-- **Deliverables**: Import/export endpoints
+- **Completed**: March 2, 2026
+- **Deliverables**:
+  - `QualityImportExportService` with CSV, JSON, and QRDA export formats
+  - Import endpoint: `POST /api/quality/measures/import/` (file upload, CSV/JSON)
+  - Export endpoint: `POST /api/quality/measures/export/` (format selection, optional measure IDs)
+  - Frontend API client with Zod-validated responses
 
 ### Sprint 2.D — Public Health Reporting (Weeks 17-20)
 
