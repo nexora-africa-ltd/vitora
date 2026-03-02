@@ -384,10 +384,25 @@ class ANCVisitViewSet(viewsets.ModelViewSet):
 class DeliveryViewSet(viewsets.ModelViewSet):
     """ViewSet for delivery records."""
 
-    queryset = Delivery.objects.select_related("registration", "delivered_by", "baby_patient")
+    queryset = Delivery.objects.select_related(
+        "registration",
+        "registration__mother",
+        "delivered_by",
+        "baby_patient",
+    )
     permission_classes = [IsAuthenticated]
-    filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
+    filter_backends = [
+        django_filters.DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
     filterset_class = DeliveryFilter
+    search_fields = [
+        "registration__mch_number",
+        "registration__mother__first_name",
+        "registration__mother__last_name",
+        "registration__mother__mrn",
+    ]
     ordering_fields = ["delivery_date", "created_at", "status"]
     ordering = ["-delivery_date"]
 
@@ -395,6 +410,182 @@ class DeliveryViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             return DeliveryListSerializer
         return DeliverySerializer
+
+    @action(detail=False, methods=["get"])
+    def dashboard(self, request):
+        """
+        Delivery dashboard stats.
+
+        Returns aggregated statistics for the delivery dashboard including:
+        - Summary counts (total, this month, today, live birth rate, CS rate)
+        - Upcoming EDDs (active MCH registrations sorted by EDD proximity)
+        - Delivery outcome breakdown
+        - Delivery type breakdown
+        - High-risk pregnancies nearing term
+        """
+        from datetime import date as dt_date
+        from datetime import timedelta
+
+        from django.db.models import Count, Q
+        from django.db.models.functions import TruncMonth
+
+        today = dt_date.today()
+        month_start = today.replace(day=1)
+        week_from_now = today + timedelta(days=7)
+        two_weeks = today + timedelta(days=14)
+        month_from_now = today + timedelta(days=30)
+
+        # --- Delivery stats ---
+        total_deliveries = Delivery.objects.count()
+        this_month = Delivery.objects.filter(delivery_date__gte=month_start).count()
+        today_count = Delivery.objects.filter(delivery_date=today).count()
+
+        # Outcome breakdown
+        outcomes = dict(
+            Delivery.objects.values_list("delivery_outcome")
+            .annotate(count=Count("id"))
+            .values_list("delivery_outcome", "count")
+        )
+        live_births = outcomes.get("LIVE_BIRTH", 0)
+        live_birth_rate = round(live_births / total_deliveries * 100, 1) if total_deliveries else 0
+
+        # Type breakdown
+        types = dict(
+            Delivery.objects.values_list("delivery_type")
+            .annotate(count=Count("id"))
+            .values_list("delivery_type", "count")
+        )
+        cs_count = types.get("ELECTIVE_CS", 0) + types.get("EMERGENCY_CS", 0)
+        cs_rate = round(cs_count / total_deliveries * 100, 1) if total_deliveries else 0
+
+        # Place of delivery breakdown
+        places = dict(
+            Delivery.objects.values_list("place_of_delivery")
+            .annotate(count=Count("id"))
+            .values_list("place_of_delivery", "count")
+        )
+
+        # Complications stats
+        with_complications = Delivery.objects.filter(
+            Q(maternal_complications__gt="") | Q(neonatal_complications__gt="")
+        ).count()
+
+        # --- Upcoming EDDs (active registrations with EDD data) ---
+        from hmis.apps.clinics.models import ClinicEnrollment
+
+        active_registrations = (
+            MCHRegistration.objects.filter(status="ACTIVE")
+            .select_related("mother", "anc_enrollment")
+            .order_by("anc_enrollment__edd")
+        )
+
+        upcoming_deliveries = []
+        overdue_count = 0
+        due_7_days = 0
+        due_14_days = 0
+        due_30_days = 0
+
+        for reg in active_registrations:
+            edd = reg.edd
+            if edd is None:
+                continue
+
+            days_until = (edd - today).days if isinstance(edd, dt_date) else None
+            if days_until is None:
+                continue
+
+            if days_until < 0:
+                overdue_count += 1
+            if days_until <= 7:
+                due_7_days += 1
+            if days_until <= 14:
+                due_14_days += 1
+            if days_until <= 30:
+                due_30_days += 1
+
+            upcoming_deliveries.append({
+                "id": reg.id,
+                "mch_number": reg.mch_number,
+                "mother_name": f"{reg.mother.first_name} {reg.mother.last_name}",
+                "mother_mrn": reg.mother.mrn,
+                "edd": str(edd),
+                "days_until_edd": days_until,
+                "gestation_display": reg.gestation_display,
+                "trimester": reg.trimester,
+                "is_high_risk": reg.is_high_risk,
+                "risk_factors": reg.risk_factors,
+                "status": reg.status,
+            })
+
+        # Sort: overdue first, then soonest EDD
+        upcoming_deliveries.sort(key=lambda x: x["days_until_edd"])
+
+        # High-risk due within 30 days
+        high_risk_due_soon = [
+            d for d in upcoming_deliveries
+            if d["is_high_risk"] and d["days_until_edd"] <= 30
+        ]
+
+        # --- Monthly trend (last 6 months) ---
+        six_months_ago = today - timedelta(days=180)
+        monthly_trend = list(
+            Delivery.objects.filter(delivery_date__gte=six_months_ago)
+            .annotate(month=TruncMonth("delivery_date"))
+            .values("month")
+            .annotate(
+                total=Count("id"),
+                live_births=Count("id", filter=Q(delivery_outcome="LIVE_BIRTH")),
+                stillbirths=Count("id", filter=Q(delivery_outcome="STILLBIRTH")),
+                cs_deliveries=Count(
+                    "id",
+                    filter=Q(delivery_type__in=["ELECTIVE_CS", "EMERGENCY_CS"]),
+                ),
+            )
+            .order_by("month")
+        )
+
+        # Serialize month as string
+        for item in monthly_trend:
+            item["month"] = item["month"].strftime("%Y-%m") if item["month"] else None
+
+        return Response({
+            "stats": {
+                "total_deliveries": total_deliveries,
+                "this_month": this_month,
+                "today": today_count,
+                "live_birth_rate": live_birth_rate,
+                "cs_rate": cs_rate,
+                "with_complications": with_complications,
+                "overdue": overdue_count,
+                "due_7_days": due_7_days,
+                "due_14_days": due_14_days,
+                "due_30_days": due_30_days,
+                "high_risk_due_soon": len(high_risk_due_soon),
+                "active_pregnancies": active_registrations.count(),
+            },
+            "outcomes_breakdown": {
+                "LIVE_BIRTH": outcomes.get("LIVE_BIRTH", 0),
+                "STILLBIRTH": outcomes.get("STILLBIRTH", 0),
+                "NEONATAL_DEATH": outcomes.get("NEONATAL_DEATH", 0),
+                "MATERNAL_DEATH": outcomes.get("MATERNAL_DEATH", 0),
+            },
+            "types_breakdown": {
+                "SVD": types.get("SVD", 0),
+                "ASSISTED_VAGINAL": types.get("ASSISTED_VAGINAL", 0),
+                "ELECTIVE_CS": types.get("ELECTIVE_CS", 0),
+                "EMERGENCY_CS": types.get("EMERGENCY_CS", 0),
+                "VACUUM": types.get("VACUUM", 0),
+                "FORCEPS": types.get("FORCEPS", 0),
+            },
+            "places_breakdown": {
+                "FACILITY": places.get("FACILITY", 0),
+                "HOME": places.get("HOME", 0),
+                "EN_ROUTE": places.get("EN_ROUTE", 0),
+            },
+            "upcoming_deliveries": upcoming_deliveries[:20],
+            "high_risk_due_soon": high_risk_due_soon[:10],
+            "monthly_trend": monthly_trend,
+        })
 
 
 class PNCVisitViewSet(viewsets.ModelViewSet):

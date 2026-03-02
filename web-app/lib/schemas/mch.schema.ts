@@ -226,12 +226,16 @@ export const DeliveryListItemSchema = z.object({
   id: z.number(),
   registration: z.number(),
   registration_mch_number: z.string(),
+  mother_name: z.string(),
+  mother_mrn: z.string(),
   delivery_date: z.string(),
   delivery_type: DeliveryTypeSchema,
   delivery_outcome: DeliveryOutcomeSchema,
+  place_of_delivery: PlaceOfDeliverySchema,
   status: DeliveryStatusSchema,
   baby_gender: BabyGenderSchema,
   birth_weight: z.number().nullable(),
+  delivered_by_name: z.string().nullable(),
   alerts: z.array(z.string()),
   created_at: z.string(),
 });
@@ -269,6 +273,71 @@ export const DeliverySchema = z.object({
 });
 
 export const PaginatedDeliveryListSchema = createPaginatedSchema(DeliveryListItemSchema);
+
+// =============================================================================
+// DELIVERY DASHBOARD SCHEMAS
+// =============================================================================
+
+export const UpcomingDeliverySchema = z.object({
+  id: z.number(),
+  mch_number: z.string(),
+  mother_name: z.string(),
+  mother_mrn: z.string(),
+  edd: z.string(),
+  days_until_edd: z.number(),
+  gestation_display: z.string(),
+  trimester: z.number().nullable(),
+  is_high_risk: z.boolean(),
+  risk_factors: z.string(),
+  status: MCHRegistrationStatusSchema,
+});
+
+export const DeliveryMonthlyTrendSchema = z.object({
+  month: z.string().nullable(),
+  total: z.number(),
+  live_births: z.number(),
+  stillbirths: z.number(),
+  cs_deliveries: z.number(),
+});
+
+export const DeliveryDashboardSchema = z.object({
+  stats: z.object({
+    total_deliveries: z.number(),
+    this_month: z.number(),
+    today: z.number(),
+    live_birth_rate: z.number(),
+    cs_rate: z.number(),
+    with_complications: z.number(),
+    overdue: z.number(),
+    due_7_days: z.number(),
+    due_14_days: z.number(),
+    due_30_days: z.number(),
+    high_risk_due_soon: z.number(),
+    active_pregnancies: z.number(),
+  }),
+  outcomes_breakdown: z.object({
+    LIVE_BIRTH: z.number(),
+    STILLBIRTH: z.number(),
+    NEONATAL_DEATH: z.number(),
+    MATERNAL_DEATH: z.number(),
+  }),
+  types_breakdown: z.object({
+    SVD: z.number(),
+    ASSISTED_VAGINAL: z.number(),
+    ELECTIVE_CS: z.number(),
+    EMERGENCY_CS: z.number(),
+    VACUUM: z.number(),
+    FORCEPS: z.number(),
+  }),
+  places_breakdown: z.object({
+    FACILITY: z.number(),
+    HOME: z.number(),
+    EN_ROUTE: z.number(),
+  }),
+  upcoming_deliveries: z.array(UpcomingDeliverySchema),
+  high_risk_due_soon: z.array(UpcomingDeliverySchema),
+  monthly_trend: z.array(DeliveryMonthlyTrendSchema),
+});
 
 // =============================================================================
 // PNC VISIT SCHEMAS
