@@ -1,6 +1,6 @@
 # TibaBot AI Integration Plan for Vitora HMIS
 
-> **Status**: 📋 Planned  
+> **Status**: � In Progress (Phase 1 complete)  
 > **Target**: Web App (`web-app/`) + Backend (`backend/`)  
 > **Dependency**: Existing CDS Module (DHA Gap #25 — ✅ Complete)  
 > **External Service**: TibaBot API (`https://tibabot.hmis.nexora.africa`)
@@ -11,16 +11,22 @@
 
 | Aspect | Status |
 |--------|--------|
-| TibaBot client code (backend) | ❌ None — only documentation |
-| TibaBot client code (frontend) | ❌ None |
-| TibaBot env vars | ❌ Not in any `.env` file |
+| TibaBot client code (backend) | ✅ `hmis/apps/ai/client.py` — `TibaBotClient` with retry, timeout, circuit-breaker |
+| TibaBot client code (frontend) | ✅ `lib/api/ai.ts` — `aiApi.suggestICD10()`, `aiApi.getStatus()` |
+| TibaBot env vars | ✅ `TIBABOT_ENABLED`, `TIBABOT_API_URL`, `TIBABOT_API_KEY`, `TIBABOT_TIMEOUT` in settings + `.env.example` |
 | CDS engine (backend) | ✅ Rule-based, 662-line engine, no AI |
 | CDS frontend (types/schemas/hooks/components) | ✅ Fully implemented, integrated into encounters |
 | CDS pages (dashboard/rules/alerts) | ✅ Complete |
 | ICD-10 backend model + API | ✅ `ICD10Code` model + read-only viewset |
 | ICD-10 frontend search | ✅ Manual search via `useICD10Search` hook |
 | ICD-11 frontend search | ✅ Via `ICD11Select` component (DHA proxy) |
-| AI-powered ICD-10 auto-coding | ❌ Not implemented |
+| AI-powered ICD-10 auto-coding | ✅ Implemented — backend proxy + frontend chips in diagnosis form (25 tests) |
+| AI feature flags | ✅ `TIBABOT_ENABLED` (backend) + `NEXT_PUBLIC_ENABLE_AI` / `ENABLE_AI` (frontend) |
+| AI feature gate mixin | ✅ `AIFeatureGatedMixin` — returns 404 when disabled |
+| PII sanitizer | ✅ `hmis/apps/ai/sanitizer.py` — strips MRN, phone, national ID |
+| AI audit logging | ✅ `ai_icd10_suggest` action logged to `AuditLog` |
+| Frontend AI hooks | ✅ `useAIEnabled()`, `useAIICD10Suggest()`, `useAIStatus()` |
+| Frontend Zod schemas | ✅ `lib/schemas/ai.schema.ts` — response validation |
 | TibaBot nav entry | ❌ Not in sidebar |
 
 ---
@@ -107,6 +113,7 @@ NEXT_PUBLIC_ENABLE_AI=true   # Feature flag for UI visibility
 
 ### 1. ICD-10 Auto-Coding in Diagnosis Form
 
+**Status**: ✅ **Complete** (March 2, 2026)  
 **Priority**: Highest value, lowest risk  
 **Where**: `components/encounters/diagnosis-form.tsx`, Step 5 of encounter edit  
 **TibaBot endpoints**: `POST /icd10/code`, `GET /icd10/suggest`
@@ -135,10 +142,19 @@ Clinician confirms/rejects each suggestion
 ```
 
 **Files to create/modify:**
-- Backend: `hmis/apps/ai/views.py` — `ICD10SuggestView`
-- Frontend: `lib/api/ai.ts` — `aiApi.suggestICD10()`
-- Frontend: `lib/hooks/use-ai.ts` — `useAIICD10Suggest()`
-- Frontend: `components/encounters/diagnosis-form.tsx` — "AI Suggested" section
+- Backend: `hmis/apps/ai/views.py` — `ICD10SuggestView` ✅
+- Backend: `hmis/apps/ai/client.py` — `TibaBotClient` ✅
+- Backend: `hmis/apps/ai/sanitizer.py` — PII stripping ✅
+- Backend: `hmis/apps/ai/feature_flags.py` — `AIFeatureGatedMixin` ✅
+- Backend: `hmis/apps/ai/serializers.py` — request/response validation ✅
+- Backend: `hmis/apps/ai/urls.py` — `/api/ai/` namespace ✅
+- Backend: `tests/test_ai.py` — 25 tests (feature gating, auth, validation, PII, audit) ✅
+- Frontend: `lib/types/ai.ts` — `AIICD10Suggestion`, `AIICD10SuggestResponse`, `AIStatus` ✅
+- Frontend: `lib/schemas/ai.schema.ts` — Zod validation schemas ✅
+- Frontend: `lib/api/ai.ts` — `aiApi.suggestICD10()`, `aiApi.getStatus()` ✅
+- Frontend: `lib/hooks/use-ai.ts` — `useAIICD10Suggest()`, `useAIEnabled()`, `useAIStatus()` ✅
+- Frontend: `components/encounters/diagnosis-form.tsx` — "AI Suggested" section ✅
+- Frontend: `lib/utils/constants.ts` — `ENABLE_AI` feature flag ✅
 
 ---
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Search, Plus, Trash2, AlertCircle, Check, X, ChevronLeft, Pencil } from 'lucide-react';
+import { Search, Plus, Trash2, AlertCircle, Check, X, ChevronLeft, Pencil, Sparkles, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,8 +14,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { ICD11Select } from '@/components/terminology';
 import { useICD10Search } from '@/lib/hooks/use-encounter-form';
+import { useAIEnabled, useAIICD10Suggest } from '@/lib/hooks/use-ai';
 import { cn } from '@/lib/utils/cn';
 import type { DiagnosisFormData, ICD10SearchResult } from '@/lib/types/encounter-form';
+import type { AIICD10Suggestion } from '@/lib/types/ai';
 
 interface DiagnosisEntryProps {
   onAdd: (diagnosis: DiagnosisFormData) => void;
@@ -50,6 +52,56 @@ export function DiagnosisEntry({
   });
 
   const { data: searchResults, isLoading: isSearching } = useICD10Search(searchQuery);
+
+  // AI ICD-10 suggestions
+  const aiEnabled = useAIEnabled();
+  const {
+    mutate: suggestICD10,
+    data: aiSuggestions,
+    isPending: isAISuggesting,
+    reset: resetAISuggestions,
+  } = useAIICD10Suggest();
+  const [dismissedAISuggestions, setDismissedAISuggestions] = useState<Set<string>>(new Set());
+
+  const handleAISuggest = useCallback(() => {
+    const text = formData.free_text_diagnosis.trim();
+    if (text.length >= 3) {
+      setDismissedAISuggestions(new Set());
+      suggestICD10(text);
+    }
+  }, [formData.free_text_diagnosis, suggestICD10]);
+
+  const handleDismissAISuggestion = useCallback((code: string) => {
+    setDismissedAISuggestions(prev => new Set([...prev, code]));
+  }, []);
+
+  const handleAcceptAISuggestion = useCallback((suggestion: AIICD10Suggestion) => {
+    // Convert AI suggestion to ICD10SearchResult-like selection
+    const asResult: ICD10SearchResult = {
+      id: 0, // Will be resolved via manual search or kept as code-only
+      code: suggestion.code,
+      description: suggestion.description,
+      short_description: suggestion.description,
+      category: '',
+    };
+    setSelectedCode(asResult);
+    setIcd11Value(null);
+    setFormData(prev => ({
+      ...prev,
+      icd10_code: null, // No DB id from AI — code-based selection
+      icd10_display: `${suggestion.code} - ${suggestion.description}`,
+      icd11_code: undefined,
+      icd11_display: undefined,
+    }));
+    setSearchQuery('');
+    setIsSearchOpen(false);
+    setUseICD11(false);
+  }, []);
+
+  // Filter out dismissed suggestions
+  const visibleAISuggestions = aiSuggestions?.suggestions?.filter(
+    s => !dismissedAISuggestions.has(s.code)
+  ) || [];
 
   // Populate form when editing an existing diagnosis
   useEffect(() => {
@@ -211,6 +263,101 @@ export function DiagnosisEntry({
                 <span className={cn("text-sm", useICD11 && "font-medium")}>ICD-11</span>
               </div>
             </div>
+
+            {/* AI-Powered ICD-10 Suggestions */}
+            {aiEnabled && !useICD11 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAISuggest}
+                    disabled={disabled || isAISuggesting || formData.free_text_diagnosis.trim().length < 3}
+                    className="gap-1.5 text-xs"
+                  >
+                    {isAISuggesting ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5" />
+                    )}
+                    <span className="hidden sm:inline">
+                      {isAISuggesting ? 'Suggesting...' : 'AI Suggest ICD-10'}
+                    </span>
+                    <span className="sm:hidden">
+                      {isAISuggesting ? '...' : 'AI Suggest'}
+                    </span>
+                  </Button>
+                  {formData.free_text_diagnosis.trim().length < 3 && (
+                    <span className="text-xs text-muted-foreground">
+                      Type a diagnosis description below first
+                    </span>
+                  )}
+                </div>
+
+                {/* AI Suggestion Results */}
+                {visibleAISuggestions.length > 0 && (
+                  <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20 p-3 space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-purple-700 dark:text-purple-400">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      AI Suggested Codes
+                      <span className="text-muted-foreground font-normal">(click to accept)</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {visibleAISuggestions.map((suggestion) => (
+                        <div
+                          key={suggestion.code}
+                          className="group flex items-center gap-1 rounded-md border border-purple-200 dark:border-purple-700 bg-white dark:bg-purple-950/40 px-2 py-1 text-sm transition-colors hover:border-purple-400 dark:hover:border-purple-500"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleAcceptAISuggestion(suggestion)}
+                            className="flex items-center gap-1.5 text-left"
+                            disabled={disabled}
+                          >
+                            <Badge variant="outline" className="font-mono text-xs shrink-0">
+                              {suggestion.code}
+                            </Badge>
+                            <span className="text-xs truncate max-w-[180px]">
+                              {suggestion.description}
+                            </span>
+                            <Badge
+                              variant="secondary"
+                              className={cn(
+                                "text-[10px] shrink-0",
+                                suggestion.confidence >= 0.8
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+                                  : suggestion.confidence >= 0.5
+                                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                                    : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                              )}
+                            >
+                              {Math.round(suggestion.confidence * 100)}%
+                            </Badge>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDismissAISuggestion(suggestion.code)}
+                            className="ml-0.5 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-muted transition-opacity"
+                            title="Dismiss suggestion"
+                          >
+                            <X className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Error/Unavailable Message */}
+                {aiSuggestions?.error && visibleAISuggestions.length === 0 && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {aiSuggestions.error}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* ICD-10 Search */}
             {!useICD11 && (

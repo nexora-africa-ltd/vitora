@@ -24,6 +24,16 @@ export const ENABLE_THEATRE =
   (process.env.NEXT_PUBLIC_ENV !== 'production' &&
     process.env.NEXT_PUBLIC_ENABLE_THEATRE !== 'false');
 
+/**
+ * AI / TibaBot feature flag.
+ * Set NEXT_PUBLIC_ENABLE_AI=true to show AI-powered features (ICD-10 suggestions, etc.).
+ * Default: true in development, must be explicitly enabled in production/staging.
+ */
+export const ENABLE_AI =
+  process.env.NEXT_PUBLIC_ENABLE_AI === 'true' ||
+  (process.env.NEXT_PUBLIC_ENV !== 'production' &&
+    process.env.NEXT_PUBLIC_ENABLE_AI !== 'false');
+
 // Gender options
 export const GENDER_OPTIONS = [
   { value: 'M', label: 'Male' },

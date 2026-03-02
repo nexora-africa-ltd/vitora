@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     "hmis.apps.referrals.apps.ReferralsConfig",
     "hmis.apps.quality.apps.QualityConfig",
     "hmis.apps.cds.apps.CDSConfig",
+    "hmis.apps.ai.apps.AIConfig",
 ]
 
 MIDDLEWARE = [
@@ -714,6 +715,16 @@ CHANNEL_LAYERS = {
 }
 
 FACILITY_LEVEL = os.getenv("FACILITY_LEVEL", "L3")  # Default to Level 3
+
+# =============================================================================
+# TIBABOT AI INTEGRATION
+# =============================================================================
+# Feature flag: Set to true to enable AI proxy endpoints (/api/ai/*).
+# When false, all /api/ai/* endpoints return 404.
+TIBABOT_ENABLED = os.getenv("TIBABOT_ENABLED", "false").lower() == "true"
+TIBABOT_API_URL = os.getenv("TIBABOT_API_URL", "https://tibabot.hmis.nexora.africa")
+TIBABOT_API_KEY = os.getenv("TIBABOT_API_KEY", "")
+TIBABOT_TIMEOUT = int(os.getenv("TIBABOT_TIMEOUT", "30"))
 
 # ============================================================================
 # SMART on FHIR OAuth2 Configuration (Phase 5)
