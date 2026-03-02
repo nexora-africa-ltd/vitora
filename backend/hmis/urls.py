@@ -236,6 +236,8 @@ urlpatterns = [
     path("api/quality/", include("hmis.apps.quality.urls", namespace="quality")),
     # Clinical Decision Support (CDS) API
     path("api/cds/", include("hmis.apps.cds.urls", namespace="cds")),
+    # AI / TibaBot proxy API
+    path("api/ai/", include("hmis.apps.ai.urls", namespace="ai")),
     # Core utilities API (PRC number generation, etc.)
     path("api/core/", include("hmis.apps.core.urls")),
     # MFA (Multi-Factor Authentication) API
