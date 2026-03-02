@@ -218,10 +218,9 @@ class MCHRegistrationViewSet(viewsets.ModelViewSet):
         # Re-serialize with the full detail serializer
         instance = serializer.instance
         # Re-fetch with select_related to ensure computed fields work
-        instance = self.get_queryset().annotate(
-            anc_visit_count=models.Count("anc_visits", distinct=True),
-            pnc_visit_count=models.Count("pnc_visits", distinct=True),
-        ).get(pk=instance.pk)
+        # Note: skip annotate here — the model already has anc_visit_count/pnc_visit_count
+        # properties. Annotating would clash with the property setters.
+        instance = self.get_queryset().get(pk=instance.pk)
         output_serializer = MCHRegistrationSerializer(instance)
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
@@ -360,11 +359,8 @@ class MCHRegistrationViewSet(viewsets.ModelViewSet):
 
         registration.save(update_fields=["status", "completed_at"] if new_status == "COMPLETED" else ["status"])
 
-        # Re-fetch with annotations
-        instance = self.get_queryset().annotate(
-            anc_visit_count=models.Count("anc_visits", distinct=True),
-            pnc_visit_count=models.Count("pnc_visits", distinct=True),
-        ).get(pk=registration.pk)
+        # Re-fetch instance (model properties provide anc_visit_count/pnc_visit_count)
+        instance = self.get_queryset().get(pk=registration.pk)
 
         return Response(MCHRegistrationSerializer(instance).data)
 

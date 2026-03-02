@@ -162,6 +162,7 @@ export interface ANCVisitListItem {
   weight: number | null;
   blood_pressure: string;
   fetal_heart_rate: number | null;
+  next_visit_date: string | null;
   alerts: string[];
   created_at: string;
 }

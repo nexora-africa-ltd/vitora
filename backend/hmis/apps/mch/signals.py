@@ -1,12 +1,12 @@
 """Signals for the MCH module."""
 
 import logging
-from datetime import date
+from datetime import date, datetime, time, timedelta
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from hmis.apps.mch.models import ANCVisit, Delivery, HEIFollowUp, PNCVisit
+from hmis.apps.mch.models import ANCVisit, Delivery, HEIFollowUp, MCHRegistration, PNCVisit
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +58,186 @@ def auto_generate_immunization_schedule(sender, instance, created, **kwargs):
         # Don't prevent patient creation if immunization scheduling fails
         logger.warning(
             "Failed to auto-generate immunization schedule for patient %s: %s",
+            instance.id,
+            exc,
+        )
+
+
+@receiver(post_save, sender=MCHRegistration)
+def auto_create_anc_enrollment(sender, instance, created, **kwargs):
+    """
+    Auto-create ANC ClinicEnrollment when MCH registration is created.
+
+    If the registration is created WITHOUT a linked anc_enrollment,
+    automatically finds/creates an active ANC clinic and creates the
+    ClinicEnrollment record, then links it back to the MCH registration.
+    """
+    if not created or instance.anc_enrollment:
+        return
+
+    try:
+        from hmis.apps.clinics.models import Clinic, ClinicEnrollment
+
+        # Find an active ANC clinic
+        anc_clinic = Clinic.objects.filter(
+            clinic_type="ANC",
+            status="ACTIVE",
+        ).first()
+
+        if not anc_clinic:
+            logger.warning(
+                "No active ANC clinic found for auto-enrollment of MCH %s",
+                instance.mch_number,
+            )
+            return
+
+        # Create ANC enrollment linked to the mother
+        enrollment = ClinicEnrollment.objects.create(
+            clinic=anc_clinic,
+            patient=instance.mother,
+            enrollment_date=instance.registration_date or date.today(),
+            status="ACTIVE",
+            enrolled_by=instance.registered_by,
+            enrollment_data={
+                "source": "MCH_AUTO_ENROLLMENT",
+                "mch_number": instance.mch_number,
+            },
+            high_risk_pregnancy=instance.is_high_risk,
+            high_risk_factors=instance.risk_factors or "",
+        )
+
+        # Link enrollment back to MCH registration
+        instance.anc_enrollment = enrollment
+        instance.save(update_fields=["anc_enrollment"])
+
+        logger.info(
+            "Auto-created ANC enrollment %s for MCH registration %s (mother %s)",
+            enrollment.id,
+            instance.mch_number,
+            instance.mother.id,
+        )
+
+    except Exception as exc:
+        # Don't prevent MCH registration if ANC enrollment fails
+        logger.error(
+            "Failed to auto-create ANC enrollment for MCH %s: %s",
+            instance.mch_number,
+            exc,
+        )
+
+
+@receiver(post_save, sender=Delivery)
+def auto_transition_mch_to_delivered(sender, instance, created, **kwargs):
+    """
+    Auto-transition MCH registration status to DELIVERED when delivery is completed.
+
+    Only transitions if the registration is currently ACTIVE.
+    """
+    if instance.status != "COMPLETED":
+        return
+
+    try:
+        registration = instance.registration
+        if registration.status == "ACTIVE":
+            registration.status = "DELIVERED"
+            registration.save(update_fields=["status"])
+            logger.info(
+                "Auto-transitioned MCH %s to DELIVERED after delivery %s",
+                registration.mch_number,
+                instance.id,
+            )
+    except Exception as exc:
+        logger.error(
+            "Failed to auto-transition MCH registration for delivery %s: %s",
+            instance.id,
+            exc,
+        )
+
+
+@receiver(post_save, sender=ANCVisit)
+def auto_create_anc_appointment(sender, instance, **kwargs):
+    """
+    Auto-create a scheduling Appointment when an ANC visit has next_visit_date.
+
+    Creates a FOLLOW_UP appointment for the mother so antenatal visits
+    appear on the facility-wide scheduling calendar.
+    """
+    if not instance.next_visit_date:
+        return
+
+    try:
+        from hmis.apps.scheduling.models import Appointment, Resource
+
+        patient = instance.registration.mother
+
+        # Skip if an appointment already exists for this patient on this date
+        existing = Appointment.objects.filter(
+            patient=patient,
+            scheduled_start__date=instance.next_visit_date,
+            appointment_type="FOLLOW_UP",
+            status__in=["CREATED", "CONFIRMED"],
+        ).exists()
+
+        if existing:
+            return
+
+        # Find an ANC resource (PLACE type) or any available resource
+        resource = Resource.objects.filter(
+            resource_type="PLACE",
+            is_active=True,
+            code__icontains="ANC",
+        ).first()
+
+        if not resource:
+            resource = Resource.objects.filter(
+                resource_type="PLACE",
+                is_active=True,
+            ).first()
+
+        if not resource:
+            logger.warning(
+                "No scheduling resource found for ANC appointment (MCH %s)",
+                instance.registration.mch_number,
+            )
+            return
+
+        # Create appointment at 08:00 with 30-min slot
+        import zoneinfo
+
+        tz = zoneinfo.ZoneInfo("Africa/Nairobi")
+        start_dt = datetime.combine(
+            instance.next_visit_date, time(8, 0), tzinfo=tz
+        )
+        end_dt = start_dt + timedelta(minutes=30)
+
+        appointment = Appointment(
+            patient=patient,
+            resource=resource,
+            appointment_type="FOLLOW_UP",
+            scheduled_start=start_dt,
+            scheduled_end=end_dt,
+            reason=(
+                f"ANC follow-up visit - MCH: {instance.registration.mch_number}, "
+                f"Visit {instance.visit_number + 1}"
+            ),
+            notes=f"Auto-created from ANC visit {instance.visit_number}",
+            priority="ROUTINE",
+            status="CREATED",
+            created_by=instance.conducted_by,
+        )
+        appointment.save()
+
+        logger.info(
+            "Auto-created appointment %s for ANC next visit on %s (MCH %s)",
+            appointment.appointment_number,
+            instance.next_visit_date,
+            instance.registration.mch_number,
+        )
+
+    except Exception as exc:
+        # Don't prevent ANC visit save if appointment creation fails
+        logger.warning(
+            "Failed to auto-create ANC appointment for visit %s: %s",
             instance.id,
             exc,
         )
@@ -277,6 +457,109 @@ def auto_create_delivery_invoice(sender, instance, created, **kwargs):
         # Don't prevent delivery save if billing fails
         logger.warning(
             "Failed to auto-create invoice for delivery %s: %s",
+            instance.id,
+            exc,
+        )
+
+
+# =============================================================================
+# Immunization → Scheduling Integration
+# =============================================================================
+
+
+@receiver(post_save, sender="mch.ImmunizationRecord")
+def auto_create_immunization_appointment(sender, instance, created, **kwargs):
+    """
+    Auto-create a scheduling Appointment for scheduled immunizations.
+
+    When an ImmunizationRecord is created (or updated) with SCHEDULED status
+    and a scheduled_date, creates a VACCINATION appointment so it appears
+    on the facility-wide scheduling calendar.
+    """
+    if instance.status != "SCHEDULED" or not instance.scheduled_date:
+        return
+
+    # Only create for future dates
+    if instance.scheduled_date <= date.today():
+        return
+
+    try:
+        from hmis.apps.scheduling.models import Appointment, Resource
+
+        patient = instance.patient
+
+        # Skip if appointment already exists
+        existing = Appointment.objects.filter(
+            patient=patient,
+            scheduled_start__date=instance.scheduled_date,
+            appointment_type="VACCINATION",
+            reason__icontains=instance.vaccine.name if instance.vaccine else "",
+            status__in=["CREATED", "CONFIRMED"],
+        ).exists()
+
+        if existing:
+            return
+
+        # Find a suitable resource
+        resource = Resource.objects.filter(
+            resource_type="PLACE",
+            is_active=True,
+            code__icontains="IMM",
+        ).first()
+
+        if not resource:
+            resource = Resource.objects.filter(
+                resource_type="PLACE",
+                is_active=True,
+                code__icontains="CWC",
+            ).first()
+
+        if not resource:
+            resource = Resource.objects.filter(
+                resource_type="PLACE",
+                is_active=True,
+            ).first()
+
+        if not resource:
+            logger.warning(
+                "No scheduling resource found for immunization appointment (patient %s)",
+                patient.id,
+            )
+            return
+
+        import zoneinfo
+
+        tz = zoneinfo.ZoneInfo("Africa/Nairobi")
+        start_dt = datetime.combine(
+            instance.scheduled_date, time(8, 0), tzinfo=tz
+        )
+        end_dt = start_dt + timedelta(minutes=15)
+
+        vaccine_name = instance.vaccine.name if instance.vaccine else "Vaccination"
+        appointment = Appointment(
+            patient=patient,
+            resource=resource,
+            appointment_type="VACCINATION",
+            scheduled_start=start_dt,
+            scheduled_end=end_dt,
+            reason=f"{vaccine_name} (Dose {instance.dose_number or ''})",
+            notes=f"Auto-created from KEPI immunization schedule",
+            priority="ROUTINE",
+            status="CREATED",
+        )
+        appointment.save()
+
+        logger.info(
+            "Auto-created vaccination appointment %s for %s on %s (patient %s)",
+            appointment.appointment_number,
+            vaccine_name,
+            instance.scheduled_date,
+            patient.id,
+        )
+
+    except Exception as exc:
+        logger.warning(
+            "Failed to auto-create immunization appointment for record %s: %s",
             instance.id,
             exc,
         )

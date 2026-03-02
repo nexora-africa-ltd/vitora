@@ -112,7 +112,11 @@ export function DeliveryTab({ registrationId }: DeliveryTabProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveries', registrationId] });
       queryClient.invalidateQueries({ queryKey: ['mch-registration', registrationId] });
-      toast({ title: 'Delivery Recorded' });
+      queryClient.invalidateQueries({ queryKey: ['mch-registrations'] });
+      toast({
+        title: 'Delivery Recorded',
+        description: 'Delivery recorded successfully. MCH status has been updated to Delivered and baby patient record has been created.',
+      });
       setDialogOpen(false);
     },
     onError: () => {

@@ -176,6 +176,7 @@ export const ANCVisitListItemSchema = z.object({
   weight: z.number().nullable(),
   blood_pressure: z.string(),
   fetal_heart_rate: z.number().nullable(),
+  next_visit_date: z.string().nullable(),
   alerts: z.array(z.string()),
   created_at: z.string(),
 });
