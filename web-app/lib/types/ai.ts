@@ -73,6 +73,49 @@ export interface AIEncounterContext {
   };
 }
 
+/**
+ * User context for TibaBot — no PII (no name/email).
+ *
+ * Allows TibaBot to calibrate response depth and style:
+ * - A clinical officer at an L2 needs step-by-step guidance
+ * - A consultant at a referral hospital needs concise differentials
+ *
+ * Fields are nullable to support incremental modelling — add values as the
+ * backend User model gains seniority/specialization fields.
+ */
+export interface AIUserContext {
+  /** User role (DOCTOR, NURSE, CLINICAL_OFFICER, PHARMACIST, etc.) */
+  role: string | null;
+  /** Seniority level — null until modelled on the User model */
+  seniority: string | null;
+  /** Clinical specialization — null until modelled on the User model */
+  specialization: string | null;
+}
+
+/**
+ * Facility context for TibaBot.
+ *
+ * Enables epidemiologically-appropriate and capability-aware suggestions:
+ * - An L2 dispensary cannot do CT scans → TibaBot should recommend referral
+ * - Malaria prevalence differs by county → differentials should reflect region
+ *
+ * Fields are nullable to support incremental modelling.
+ */
+export interface AIFacilityContext {
+  /** KEPH level (L1–L6) from settings.FACILITY_LEVEL */
+  keph_level: string | null;
+  /** County for epidemiological context — null until exposed via API */
+  county: string | null;
+  /** Whether facility has an ICU */
+  has_icu: boolean | null;
+  /** Whether facility has a laboratory */
+  has_laboratory: boolean | null;
+  /** Whether facility has imaging (X-ray, CT, MRI) */
+  has_imaging: boolean | null;
+  /** Whether facility has a pharmacy */
+  has_pharmacy: boolean | null;
+}
+
 /** Verbosity level for Clinical Assist responses */
 export type AIVerbosity = 'brief' | 'standard' | 'detailed';
 
@@ -80,6 +123,10 @@ export type AIVerbosity = 'brief' | 'standard' | 'detailed';
 export interface AIClinicalChatRequest {
   message: string;
   session_id?: string;
+  /** User context — injected automatically by the API layer */
+  user_context?: AIUserContext;
+  /** Facility context — injected automatically by the API layer */
+  facility_context?: AIFacilityContext;
 }
 
 /** Response from POST /api/ai/clinical/chat/ (non-streaming) */
@@ -95,6 +142,10 @@ export interface AIClinicalAssistRequest {
   query: string;
   patient_context?: AIPatientContext;
   encounter_context?: AIEncounterContext;
+  /** User context — injected automatically by the API layer */
+  user_context?: AIUserContext;
+  /** Facility context — injected automatically by the API layer */
+  facility_context?: AIFacilityContext;
   verbosity?: AIVerbosity;
 }
 

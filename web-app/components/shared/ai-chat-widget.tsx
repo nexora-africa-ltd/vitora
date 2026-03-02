@@ -16,7 +16,7 @@
 'use client';
 
 import React, { useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
 import { useAIChatContext } from '@/lib/context/ai-chat-context';
 import { useAIEnabled } from '@/lib/hooks/use-ai';
@@ -34,6 +34,7 @@ export function AIChatWidget() {
   const aiEnabled = useAIEnabled();
   const { hasPermission } = usePermissions();
   const router = useRouter();
+  const pathname = usePathname();
 
   const {
     widgetState,
@@ -47,6 +48,7 @@ export function AIChatWidget() {
     incrementUnread,
     patientContext,
     encounterContext,
+    setReturnToUrl,
   } = useAIChatContext();
 
   // Chat mutation
@@ -157,14 +159,17 @@ export function AIChatWidget() {
     }
   }, [addMessage, assistMutation, patientContext, encounterContext]);
 
-  // Open full view
+  // Open full view — store current URL so user can pop back to widget later
   const handleOpenFullView = useCallback(() => {
+    setReturnToUrl(pathname);
     minimizeWidget();
     router.push('/ai');
-  }, [minimizeWidget, router]);
+  }, [minimizeWidget, router, pathname, setReturnToUrl]);
 
   // Don't render if AI is disabled or user lacks permission
-  if (!aiEnabled || !canUseChat) return null;
+  // Also hide the widget entirely when already on the full-page /ai view
+  const isOnAIPage = pathname?.startsWith('/ai');
+  if (!aiEnabled || !canUseChat || isOnAIPage) return null;
 
   const isExpanded = widgetState === 'expanded';
 

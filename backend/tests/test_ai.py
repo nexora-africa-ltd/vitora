@@ -23,8 +23,9 @@ from rest_framework import status
 class TestAIFeatureGating:
     """Tests that AI endpoints respect TIBABOT_ENABLED feature flag."""
 
+    @override_settings(TIBABOT_ENABLED=False)
     def test_icd10_suggest_returns_404_when_disabled(self, authenticated_client):
-        """Should return 404 when TIBABOT_ENABLED is False (default)."""
+        """Should return 404 when TIBABOT_ENABLED is False."""
         response = authenticated_client.post(
             "/api/ai/icd10-suggest/",
             {"clinical_text": "malaria symptoms"},
@@ -329,6 +330,7 @@ class TestAIStatusEndpoint:
         response = api_client.get("/api/ai/status/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+    @override_settings(TIBABOT_ENABLED=False)
     def test_returns_disabled_when_flag_off(self, authenticated_client):
         """Should report disabled when TIBABOT_ENABLED is False."""
         response = authenticated_client.get("/api/ai/status/")
