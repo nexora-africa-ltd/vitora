@@ -178,6 +178,29 @@ class AIEncounterContextSerializer(serializers.Serializer):
     vitals = AIVitalsSerializer(required=False, allow_null=True)
 
 
+class AIPageContextSerializer(serializers.Serializer):
+    """
+    Page context sent to TibaBot.
+
+    Tells TibaBot which page the user is currently viewing so it can
+    provide contextually relevant responses. No PII — just route,
+    page title, and module name.
+    """
+
+    route = serializers.CharField(
+        max_length=500,
+        help_text="Current route path (e.g., '/patients/123', '/pharmacy').",
+    )
+    page_title = serializers.CharField(
+        max_length=200,
+        help_text="Human-readable page title from navigation config.",
+    )
+    module = serializers.CharField(
+        max_length=100,
+        help_text="Top-level module (e.g., 'patients', 'encounters', 'pharmacy').",
+    )
+
+
 class ClinicalChatRequestSerializer(serializers.Serializer):
     """Request body for POST /api/ai/clinical/chat/."""
 
@@ -191,6 +214,11 @@ class ClinicalChatRequestSerializer(serializers.Serializer):
         allow_null=True,
         help_text="Existing session ID to continue a conversation.",
     )
+    # Encounter-aware context (optional — forwarded when clinician is on encounter page)
+    patient_context = AIPatientContextSerializer(required=False, allow_null=True)
+    encounter_context = AIEncounterContextSerializer(required=False, allow_null=True)
+    # Page context — auto-populated by the frontend from the current route
+    page_context = AIPageContextSerializer(required=False, allow_null=True)
     # Context — auto-enriched by the view, but accepted if sent by frontend
     user_context = AIUserContextSerializer(required=False, allow_null=True)
     facility_context = AIFacilityContextSerializer(required=False, allow_null=True)
@@ -206,6 +234,7 @@ class ClinicalAssistRequestSerializer(serializers.Serializer):
     )
     patient_context = AIPatientContextSerializer(required=False, allow_null=True)
     encounter_context = AIEncounterContextSerializer(required=False, allow_null=True)
+    page_context = AIPageContextSerializer(required=False, allow_null=True)
     user_context = AIUserContextSerializer(required=False, allow_null=True)
     facility_context = AIFacilityContextSerializer(required=False, allow_null=True)
     verbosity = serializers.ChoiceField(
@@ -214,3 +243,95 @@ class ClinicalAssistRequestSerializer(serializers.Serializer):
         required=False,
         help_text="Response detail level.",
     )
+
+
+# =============================================================================
+# Phase 2 — Response Serializers (match frontend Zod schemas exactly)
+# =============================================================================
+
+
+class AIChatMessageSerializer(serializers.Serializer):
+    """
+    A single chat message — matches frontend ``AIChatMessageSchema``.
+
+    Fields:
+        id: string (UUID)
+        role: 'user' | 'assistant' | 'system'
+        content: string
+        timestamp: string (ISO 8601)
+
+    Note: ``isStreaming`` is frontend-only UI state; the backend never sends it.
+    """
+
+    id = serializers.CharField(help_text="Message UUID.")
+    role = serializers.ChoiceField(
+        choices=["user", "assistant", "system"],
+        help_text="Message author role.",
+    )
+    content = serializers.CharField(help_text="Message text content.")
+    timestamp = serializers.CharField(help_text="ISO 8601 timestamp.")
+
+
+class AIClinicalChatResponseSerializer(serializers.Serializer):
+    """
+    Response from POST /api/ai/clinical/chat/ — matches
+    frontend ``AIClinicalChatResponseSchema``.
+    """
+
+    session_id = serializers.CharField(help_text="Chat session UUID.")
+    message = AIChatMessageSerializer(help_text="Assistant reply message.")
+    error = serializers.CharField(
+        required=False,
+        allow_null=True,
+        help_text="Error message when TibaBot is unreachable.",
+    )
+
+
+class AIClinicalAssistResponseSerializer(serializers.Serializer):
+    """
+    Response from POST /api/ai/clinical/assist/ — matches
+    frontend ``AIClinicalAssistResponseSchema``.
+    """
+
+    response = serializers.CharField(help_text="Clinical reasoning text.")
+    references = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        help_text="Clinical references / guideline citations.",
+    )
+    error = serializers.CharField(
+        required=False,
+        allow_null=True,
+        help_text="Error message when TibaBot is unreachable.",
+    )
+
+
+class AIChatSessionSerializer(serializers.Serializer):
+    """
+    Chat session summary — matches frontend ``AIChatSessionSchema``.
+    """
+
+    id = serializers.CharField(help_text="Session UUID.")
+    title = serializers.CharField(help_text="Session title.")
+    created_at = serializers.CharField(help_text="ISO 8601 creation timestamp.")
+    updated_at = serializers.CharField(help_text="ISO 8601 last-update timestamp.")
+    message_count = serializers.IntegerField(help_text="Number of messages.")
+
+
+class AIChatSessionListResponseSerializer(serializers.Serializer):
+    """
+    Response from GET /api/ai/clinical/chat/sessions/ — matches
+    frontend ``AIChatSessionListResponseSchema``.
+    """
+
+    sessions = AIChatSessionSerializer(many=True)
+
+
+class AIChatSessionDetailResponseSerializer(serializers.Serializer):
+    """
+    Response from GET /api/ai/clinical/chat/session/{id}/ — matches
+    frontend ``AIChatSessionDetailResponseSchema``.
+    """
+
+    session = AIChatSessionSerializer()
+    messages = AIChatMessageSerializer(many=True)

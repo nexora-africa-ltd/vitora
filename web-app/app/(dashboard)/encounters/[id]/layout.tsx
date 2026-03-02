@@ -17,11 +17,14 @@
  */
 'use client';
 
+import { useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { encountersApi } from '@/lib/api/encounters';
-import { PatientProvider } from '@/lib/context/patient-context';
+import { PatientProvider, usePatientContext } from '@/lib/context/patient-context';
 import { EncounterProvider, useEncounterContext } from '@/lib/context/encounter-context';
+import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
+import { calculateAge } from '@/lib/utils/format';
 import { PatientShellHeader } from '@/components/layout/patient-shell-header';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -82,7 +85,55 @@ function EncounterLayoutLoading() {
 // =============================================================================
 
 function EncounterLayoutContent({ children }: { children: React.ReactNode }) {
-  const { error } = useEncounterContext();
+  const { encounter, error } = useEncounterContext();
+  const { patient } = usePatientContext();
+  const chatCtx = useOptionalAIChatContext();
+
+  // Wire encounter + patient data into the AI chat context so TibaBot
+  // can provide encounter-aware clinical assistance.
+  useEffect(() => {
+    if (!chatCtx) return;
+
+    if (patient && encounter) {
+      const allergies = encounter.allergies
+        ?.split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean) ?? [];
+      const comorbidities = encounter.chronic_conditions
+        ?.split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean) ?? [];
+      const currentMeds = encounter.current_medications
+        ?.split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean) ?? [];
+
+      chatCtx.setEncounterAwareContext(
+        {
+          patient_age: calculateAge(patient.date_of_birth),
+          patient_sex: patient.gender,
+          allergies,
+          comorbidities,
+          current_medications: currentMeds,
+        },
+        {
+          chief_complaint: encounter.chief_complaint ?? undefined,
+          vitals: {
+            spo2: encounter.spo2 != null ? Number(encounter.spo2) : undefined,
+            pulse: encounter.pulse ?? undefined,
+            temperature: encounter.temperature != null ? Number(encounter.temperature) : undefined,
+            rr: encounter.respiratory_rate ?? undefined,
+            bp: encounter.blood_pressure ?? undefined,
+          },
+        }
+      );
+    }
+
+    // Clear encounter context when navigating away
+    return () => {
+      chatCtx.setEncounterAwareContext(null, null);
+    };
+  }, [patient, encounter, chatCtx]);
 
   if (error) {
     return <EncounterLayoutError message={error.message} />;

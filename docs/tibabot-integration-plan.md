@@ -1,6 +1,6 @@
 # TibaBot AI Integration Plan for Vitora HMIS
 
-> **Status**: 🔧 In Progress (Phase 1 complete, Phase 2 frontend complete — backend pending)
+> **Status**: 🔧 In Progress (Phase 1 complete, Phase 2 complete)
 > **Target**: Web App (`web-app/`) + Backend (`backend/`)  
 > **Dependency**: Existing CDS Module (DHA Gap #25 — ✅ Complete)  
 > **External Service**: TibaBot API (`https://tibabot.hmis.nexora.africa`)
@@ -34,9 +34,14 @@
 | Full-page AI chat view | ✅ `app/(dashboard)/ai/page.tsx` — session sidebar + chat panel |
 | TibaBot nav entry | ✅ "AI Assistant" in sidebar (feature-gated by `ENABLE_AI`) |
 | Widget mounted in layout | ✅ `app/(dashboard)/layout.tsx` — `<AIChatProvider>` + `<AIChatWidget />` |
-| Phase 2 backend views | ❌ `ClinicalChatView`, `ClinicalAssistView`, `ClinicalChatSessionView` not yet created |
-| Phase 2 backend URLs | ❌ `/api/ai/clinical/chat/`, `/api/ai/clinical/assist/`, `/api/ai/clinical/chat/sessions/`, `/api/ai/clinical/chat/session/{id}/` not yet registered |
-| Phase 2 backend serializers | ❌ Chat/assist/session serializers not yet created |
+| Phase 2 backend views | ✅ `ClinicalChatView`, `ClinicalAssistView`, `ClinicalChatSessionListView`, `ClinicalChatSessionDetailView` in `views.py` |
+| Phase 2 backend URLs | ✅ `/api/ai/clinical/chat/`, `/api/ai/clinical/assist/`, `/api/ai/clinical/chat/sessions/`, `/api/ai/clinical/chat/session/{id}/` registered |
+| Phase 2 backend serializers | ✅ `ClinicalChatRequestSerializer`, `ClinicalAssistRequestSerializer`, `AIPageContextSerializer`, response serializers, session serializers |
+| Phase 2 backend models | ✅ `ChatSession`, `ChatMessage` in `models.py` — local session persistence |
+| Phase 2 backend context enrichment | ✅ `context.py` — `build_user_context()`, `build_facility_context()` auto-injected server-side |
+| Page context (frontend → backend → TibaBot) | ✅ `AIPageContext` type, `usePageContextForAI` hook auto-syncs route/title/module to chat context |
+| Encounter-aware context wiring | ✅ `encounters/[id]/layout.tsx` calls `setEncounterAwareContext()` with patient age/sex/allergies + vitals |
+| System instruction for page awareness | ✅ Backend `ClinicalChatView` injects page-aware or no-visibility system instruction based on context |
 
 ---
 
@@ -169,10 +174,10 @@ Clinician confirms/rejects each suggestion
 
 ### 2. TibaBot Floating Widget + Clinical Assistant
 
-**Status**: 🔧 **Frontend complete** (March 2, 2026) — Backend pending
+**Status**: ✅ **Complete** (March 3, 2026)
 **Priority**: High value, high visibility — the "face" of TibaBot in the app  
 **Where**: Global floating widget (all dashboard pages) + optional `/ai` full-page view  
-**TibaBot endpoints**: `POST /clinical/chat` (SSE streaming), `POST /clinical/assist`, session management
+**TibaBot endpoints**: `POST /clinical/chat`, `POST /clinical/assist`, session management
 
 **What**: A persistent floating widget that provides multi-turn clinical chat and encounter-aware Clinical Assist — all without leaving the current page. This replaces the original plan of a standalone Clinical Assistant sidebar + a separate Phase 6 chat widget. **One unified AI surface, not two.**
 
@@ -261,28 +266,33 @@ When the clinician is on an encounter page (`/encounters/[id]` or `/encounters/[
 3. **Highest visibility feature** — the widget is the "face" of TibaBot; deploying early maximizes adoption and feedback
 4. **Low risk** — advisory only, no clinical automation, permission-gated
 
-**Files to create/modify:**
-- Backend: `hmis/apps/ai/views.py` — `ClinicalAssistView`, `ClinicalChatView`, `ClinicalChatSessionView`
-- Backend: `hmis/apps/ai/serializers.py` — `ClinicalChatRequestSerializer`, `ClinicalChatResponseSerializer`, `ClinicalAssistRequestSerializer`, `ClinicalAssistResponseSerializer`, `ChatSessionSerializer`
-- Backend: `hmis/apps/ai/urls.py` — register `/clinical/chat/`, `/clinical/assist/`, `/clinical/chat/sessions/`, `/clinical/chat/session/<id>/`
+**Files created/modified:**
+- Backend: `hmis/apps/ai/views.py` — `ClinicalChatView`, `ClinicalAssistView`, `ClinicalChatSessionListView`, `ClinicalChatSessionDetailView` ✅
+- Backend: `hmis/apps/ai/serializers.py` — `ClinicalChatRequestSerializer`, `ClinicalAssistRequestSerializer`, `AIPageContextSerializer`, response serializers ✅
+- Backend: `hmis/apps/ai/models.py` — `ChatSession`, `ChatMessage` ✅
+- Backend: `hmis/apps/ai/context.py` — `build_user_context()`, `build_facility_context()` ✅
+- Backend: `hmis/apps/ai/urls.py` — register `/clinical/chat/`, `/clinical/assist/`, `/clinical/chat/sessions/`, `/clinical/chat/session/<id>/` ✅
 - Frontend: `lib/api/ai.ts` — `aiApi.clinicalAssist()`, `aiApi.clinicalChat()`, `aiApi.getChatSession()`, `aiApi.deleteChatSession()` ✅
-- Frontend: `lib/types/ai.ts` — `AIClinicalChatRequest`, `AIClinicalChatResponse`, `AIClinicalAssistRequest`, `AIClinicalAssistResponse`, `AIChatSession`, `AIChatMessage` ✅
+- Frontend: `lib/types/ai.ts` — `AIClinicalChatRequest`, `AIClinicalChatResponse`, `AIClinicalAssistRequest`, `AIClinicalAssistResponse`, `AIChatSession`, `AIChatMessage`, `AIPageContext` ✅
 - Frontend: `lib/schemas/ai.schema.ts` — `AIClinicalChatResponseSchema`, `AIClinicalAssistResponseSchema`, `AIChatSessionSchema`, `AIChatMessageSchema` ✅
 - Frontend: `lib/hooks/use-ai.ts` — `useAIClinicalAssist()`, `useAIClinicalChat()`, `useAIChatSessions()`, `useAIChatSession()`, `useDeleteAIChatSession()` ✅
-- Frontend: `components/shared/ai-chat-widget.tsx` — floating widget (minimized + expanded states) ✅
+- Frontend: `lib/hooks/use-page-context-for-ai.ts` — `usePageContextForAI()` auto-syncs current route/title/module into AI chat context ✅
+- Frontend: `components/shared/ai-chat-widget.tsx` — floating widget (minimized + expanded states), sends `page_context` ✅
 - Frontend: `components/shared/ai-chat-panel.tsx` — chat UI (shared between widget and full-page) ✅
 - Frontend: `components/shared/tibabot-status-indicator.tsx` — 3-state status icon (available/unread/unavailable) ✅
-- Frontend: `lib/context/ai-chat-context.tsx` — global state: widget open/closed, active session, encounter context detection ✅
+- Frontend: `lib/context/ai-chat-context.tsx` — global state: widget open/closed, active session, encounter context, page context ✅
 - Frontend: `app/(dashboard)/ai/page.tsx` — full-page chat view with session management ✅
-- Frontend: `app/(dashboard)/layout.tsx` — mount `<AIChatProvider>` + `<AIChatWidget />` globally in dashboard layout ✅
+- Frontend: `app/(dashboard)/layout.tsx` — mount `<AIChatProvider>` + `<AIChatWidget />` + `<AIPageContextSync />` globally ✅
+- Frontend: `app/(dashboard)/encounters/[id]/layout.tsx` — wires `setEncounterAwareContext()` with patient/encounter data ✅
 - Frontend: `lib/config/navigation.ts` — "AI Assistant" nav entry (links to `/ai` full-page view) ✅
 - Frontend: `components/shared/index.ts` — export new shared components ✅
 - Frontend: `lib/context/index.ts` — export `AIChatProvider`, `useAIChatContext`, `useOptionalAIChatContext` ✅
 
-**Schema alignment audit** (March 2, 2026):
+**Schema alignment audit** (March 3, 2026):
 - Phase 1 (`icd10-suggest`, `status`): ✅ Frontend types, Zod schemas, and API URLs are **perfectly aligned** with backend serializers and URL routes
-- Phase 2 (`clinical/chat`, `clinical/assist`, `clinical/chat/sessions`, `clinical/chat/session/{id}`): Frontend types and schemas are **defined ahead** of backend — backend views/URLs/serializers still need to be created to match
+- Phase 2 (`clinical/chat`, `clinical/assist`, `clinical/chat/sessions`, `clinical/chat/session/{id}`): ✅ Frontend types and Zod schemas are **aligned** with backend serializers and URL routes
 - `AIChatMessage.isStreaming` is a frontend-only field (client-side UI state), correctly marked as `z.boolean().optional()` in the Zod schema so it won't break when the backend omits it
+- `AIPageContext` (`route`, `page_title`, `module`) is sent from frontend → backend and included in the system instruction to TibaBot
 
 ---
 
@@ -366,7 +376,7 @@ The CDS module documents a 4-layer AI evolution. TibaBot integration maps direct
 | Phase | Scope | Effort | Risk | Depends On |
 |-------|-------|--------|------|------------|
 | **Phase 1** ✅ | Backend proxy app (`hmis/apps/ai/`) + ICD-10 auto-coding in diagnosis form | 2–3 days | Low | API key from Nexora |
-| **Phase 2** 🔧 | TibaBot floating widget + Clinical Assistant (chat, encounter-aware assist, slash commands) — **Frontend ✅, Backend pending** | 3–4 days | Low | Phase 1 |
+| **Phase 2** ✅ | TibaBot floating widget + Clinical Assistant (chat, encounter-aware assist, page context, session management) | 3–4 days | Low | Phase 1 |
 | **Phase 3** | Condition predictor in triage | 2 days | Medium | Phase 1 |
 | **Phase 4** | ICU predictor in inpatient + CDS `ml_model` rule type (+ widget `/icu-risk` command) | 3–4 days | Medium | Phase 1, CDS engine update |
 | **Phase 5** | Symptom Checker patient portal | 3–4 days | Low | Patient portal (future) |
@@ -384,8 +394,10 @@ The CDS module documents a 4-layer AI evolution. TibaBot integration maps direct
 | `hmis/apps/ai/__init__.py` | App init |
 | `hmis/apps/ai/apps.py` | Django app config |
 | `hmis/apps/ai/client.py` | `TibaBotClient` class with retry, timeout, circuit-breaker |
-| `hmis/apps/ai/views.py` | Proxy viewsets for each TibaBot capability |
-| `hmis/apps/ai/serializers.py` | Request/response DRF serializers |
+| `hmis/apps/ai/views.py` | Proxy views: `ICD10SuggestView`, `AIStatusView`, `ClinicalChatView`, `ClinicalAssistView`, `ClinicalChatSessionListView`, `ClinicalChatSessionDetailView` |
+| `hmis/apps/ai/serializers.py` | Request/response DRF serializers incl. `AIPageContextSerializer` |
+| `hmis/apps/ai/models.py` | `ChatSession`, `ChatMessage` for local session persistence |
+| `hmis/apps/ai/context.py` | `build_user_context()`, `build_facility_context()` server-side enrichment |
 | `hmis/apps/ai/feature_flags.py` | `AIFeatureGatedMixin` — checks `settings.TIBABOT_ENABLED`, returns 404 when off |
 | `hmis/apps/ai/urls.py` | `/api/ai/` route namespace |
 | `hmis/apps/ai/sanitizer.py` | PII stripping utility (ensures no name/MRN/ID sent) |
@@ -404,15 +416,16 @@ The CDS module documents a 4-layer AI evolution. TibaBot integration maps direct
 
 | File | Description |
 |------|-------------|
-| `lib/types/ai.ts` | TypeScript interfaces for all TibaBot responses (Phase 1 + Phase 2) |
+| `lib/types/ai.ts` | TypeScript interfaces for all TibaBot responses incl. `AIPageContext` |
 | `lib/schemas/ai.schema.ts` | Zod validation schemas (Phase 1 + Phase 2) |
 | `lib/api/ai.ts` | API client with `parseResponse()` calling `/api/ai/*` (Phase 1 + Phase 2) |
-| `lib/hooks/use-ai.ts` | React Query hooks for all AI features + `useAIEnabled()` feature flag hook (Phase 1 + Phase 2) |
+| `lib/hooks/use-ai.ts` | React Query hooks for all AI features + `useAIEnabled()` feature flag hook |
+| `lib/hooks/use-page-context-for-ai.ts` | `usePageContextForAI()` — auto-resolves route → page title/module, syncs to AI chat context |
 | `components/encounters/ai-icd10-suggestions.tsx` | ICD-10 auto-coding chips in diagnosis form |
 | `components/shared/ai-chat-widget.tsx` | Floating chat widget (minimized + expanded states) |
 | `components/shared/ai-chat-panel.tsx` | Chat UI panel (shared between widget and full-page) |
 | `components/shared/tibabot-status-indicator.tsx` | Reusable 3-state status icon: green `Bot` (available), green `BotMessageSquare` + dot (unread), red `BotOff` + dot (unavailable) |
-| `lib/context/ai-chat-context.tsx` | Global state: widget open/closed, active session, encounter context |
+| `lib/context/ai-chat-context.tsx` | Global state: widget open/closed, active session, encounter context, page context |
 | `app/(dashboard)/ai/page.tsx` | Full-page chat view with session management |
 
 ### Frontend (Modified)
@@ -420,7 +433,8 @@ The CDS module documents a 4-layer AI evolution. TibaBot integration maps direct
 | File | Change |
 |------|--------|
 | `components/encounters/diagnosis-form.tsx` | Add "AI Suggested" section above manual ICD search |
-| `app/(dashboard)/layout.tsx` | Mount `<AIChatProvider>` + `<AIChatWidget />` when `useAIEnabled()` returns true |
+| `app/(dashboard)/layout.tsx` | Mount `<AIChatProvider>` + `<AIChatWidget />` + `<AIPageContextSync />` when `useAIEnabled()` returns true |
+| `app/(dashboard)/encounters/[id]/layout.tsx` | Wire `setEncounterAwareContext()` with patient/encounter data for encounter-aware AI assistance |
 | `lib/config/navigation.ts` | Add "AI Assistant" nav entry (feature-gated by `ENABLE_AI`, links to `/ai`) |
 | `components/shared/index.ts` | Export `TibaBotStatusIndicator`, `AIChatPanel`, `AIChatWidget` |
 | `lib/context/index.ts` | Export `AIChatProvider`, `useAIChatContext`, `useOptionalAIChatContext` |
@@ -522,4 +536,4 @@ AuditLog.log(
 
 ---
 
-*Last updated: March 2, 2026*
+*Last updated: March 3, 2026*

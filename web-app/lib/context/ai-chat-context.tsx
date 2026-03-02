@@ -29,6 +29,7 @@ import type {
   TibaBotAvailability,
   AIPatientContext,
   AIEncounterContext,
+  AIPageContext,
 } from '@/lib/types/ai';
 
 // =============================================================================
@@ -83,6 +84,11 @@ export interface AIChatContextValue {
   /** Whether the widget is in encounter-aware mode */
   isEncounterAware: boolean;
 
+  /** Page context — auto-populated from the current route */
+  pageContext: AIPageContext | null;
+  /** Set the current page context (called by the usePageContextForAI hook) */
+  setPageContext: (ctx: AIPageContext | null) => void;
+
   /**
    * Store the URL to return to when minimizing from the full-page AI view.
    * Set when navigating from the widget to /ai, used to pop back.
@@ -120,6 +126,9 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   // Encounter-aware context
   const [patientContext, setPatientContext] = useState<AIPatientContext | null>(null);
   const [encounterContext, setEncounterContext] = useState<AIEncounterContext | null>(null);
+
+  // Page context — auto-populated from the current route
+  const [pageContext, setPageContextState] = useState<AIPageContext | null>(null);
 
   // Return-to-widget flow: store URL before navigating to /ai
   const returnToUrlRef = useRef<string | null>(null);
@@ -200,6 +209,10 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
 
   const isEncounterAware = patientContext !== null || encounterContext !== null;
 
+  const setPageContext = useCallback((ctx: AIPageContext | null) => {
+    setPageContextState(ctx);
+  }, []);
+
   const value = useMemo<AIChatContextValue>(
     () => ({
       widgetState,
@@ -221,6 +234,8 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       encounterContext,
       setEncounterAwareContext,
       isEncounterAware,
+      pageContext,
+      setPageContext,
       returnToUrl,
       setReturnToUrl,
     }),
@@ -243,6 +258,8 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       encounterContext,
       setEncounterAwareContext,
       isEncounterAware,
+      pageContext,
+      setPageContext,
       returnToUrl,
       setReturnToUrl,
     ]

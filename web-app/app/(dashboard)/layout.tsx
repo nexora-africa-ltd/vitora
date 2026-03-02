@@ -9,6 +9,13 @@ import { AIChatWidget } from '@/components/shared/ai-chat-widget';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { cn } from '@/lib/utils/cn';
+import { usePageContextForAI } from '@/lib/hooks/use-page-context-for-ai';
+
+/** Invisible component that syncs the current route into AI chat context. */
+function AIPageContextSync() {
+  usePageContextForAI();
+  return null;
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -73,6 +80,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
               {/* TibaBot AI floating widget */}
               <AIChatWidget />
+              {/* Sync current page route into AI chat context */}
+              <AIPageContextSync />
             </div>
           </IdleTimerProvider>
         </AIChatProvider>
