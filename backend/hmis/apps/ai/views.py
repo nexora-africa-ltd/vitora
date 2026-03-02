@@ -436,7 +436,25 @@ class ClinicalAssistView(AIFeatureGatedMixin, APIView):
                 status=status.HTTP_200_OK,
             )
 
-        return Response(result)
+        # Normalize — TibaBot may return "recommendation" instead of "response"
+        if isinstance(result, dict):
+            if "recommendation" in result and "response" not in result:
+                result["response"] = result.pop("recommendation")
+
+        # Validate outbound response
+        response_data = {
+            "response": result.get("response", "") if isinstance(result, dict) else str(result),
+            "references": result.get("references", []) if isinstance(result, dict) else [],
+        }
+        response_serializer = AIClinicalAssistResponseSerializer(data=response_data)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+
+        logger.warning(
+            "TibaBot returned unexpected clinical assist response shape: %s",
+            response_serializer.errors,
+        )
+        return Response(response_data)
 
 
 # =============================================================================
