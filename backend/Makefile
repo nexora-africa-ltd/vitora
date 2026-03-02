@@ -289,6 +289,10 @@ seed-quality-measures:
 	@echo "Seeding quality measures..."
 	poetry run python manage.py seed_quality_measures
 
+# Seed CDS rules
+seed-cds-rules:
+	@echo "Seeding CDS rules..."
+	poetry run python manage.py seed_cds_rules
 
 
 # ============================================================================
