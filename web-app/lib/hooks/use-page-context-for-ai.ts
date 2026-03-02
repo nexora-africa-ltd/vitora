@@ -108,9 +108,9 @@ export function resolvePageContext(pathname: string): AIPageContext {
   }
 
   // 2. Try dynamic route patterns
-  for (const { pattern, title, module } of DYNAMIC_ROUTE_PATTERNS) {
+  for (const { pattern, title, module: moduleName } of DYNAMIC_ROUTE_PATTERNS) {
     if (pattern.test(pathname)) {
-      return { route: pathname, page_title: title, module };
+      return { route: pathname, page_title: title, module: moduleName };
     }
   }
 
@@ -133,12 +133,12 @@ export function resolvePageContext(pathname: string): AIPageContext {
   }
 
   // 4. Fallback — capitalize the first path segment
-  const module = extractModule(pathname);
-  const fallbackTitle = module.charAt(0).toUpperCase() + module.slice(1);
+  const moduleName = extractModule(pathname);
+  const fallbackTitle = moduleName.charAt(0).toUpperCase() + moduleName.slice(1);
   return {
     route: pathname,
     page_title: fallbackTitle,
-    module,
+    module: moduleName,
   };
 }
 
@@ -156,13 +156,16 @@ export function resolvePageContext(pathname: string): AIPageContext {
 export function usePageContextForAI(): void {
   const pathname = usePathname();
   const chatCtx = useOptionalAIChatContext();
+  // Extract the stable callback to avoid depending on the entire context object,
+  // which changes reference whenever pageContext state updates (infinite loop).
+  const setPageContext = chatCtx?.setPageContext;
 
   useEffect(() => {
-    if (!chatCtx || !pathname) return;
+    if (!setPageContext || !pathname) return;
 
     const ctx = resolvePageContext(pathname);
-    chatCtx.setPageContext(ctx);
+    setPageContext(ctx);
 
     // No cleanup needed — the context updates on every navigation
-  }, [pathname, chatCtx]);
+  }, [pathname, setPageContext]);
 }
