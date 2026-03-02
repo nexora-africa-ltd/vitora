@@ -232,6 +232,8 @@ urlpatterns = [
     path("api/allied-health/", include("hmis.apps.allied_health.urls", namespace="allied_health")),
     # Referrals API
     path("api/referrals/", include("hmis.apps.referrals.urls", namespace="referrals")),
+    # Quality Measures & Reporting API
+    path("api/quality/", include("hmis.apps.quality.urls", namespace="quality")),
     # Core utilities API (PRC number generation, etc.)
     path("api/core/", include("hmis.apps.core.urls")),
     # MFA (Multi-Factor Authentication) API

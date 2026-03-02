@@ -279,6 +279,16 @@ setup-db: migrate import-all createsuperuser
 setup-db-quick: migrate import-all create-test-user
 	@echo "Database setup complete with test user (admin/voXOQkM4Tn6qCNQTy)!"
 
+# Seed surveillance demo data with optional clearing and regeneration
+seed-surveillance-demo:
+	@echo "Seeding surveillance demo data for DHIS2 testing..."
+	poetry run python manage.py seed_surveillance_demo $(if $(clear),--clear) $(if $(regenerate),--regenerate)
+
+# Seed quality measures
+seed-quality-measures:
+	@echo "Seeding quality measures..."
+	poetry run python manage.py seed_quality_measures
+
 
 
 # ============================================================================

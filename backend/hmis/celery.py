@@ -45,6 +45,9 @@ app.conf.task_routes = {
     "hmis.apps.surveillance.tasks.check_overdue_notifications": {"queue": "monitoring"},
     "hmis.apps.surveillance.tasks.check_outbreak_thresholds": {"queue": "monitoring"},
     "hmis.apps.surveillance.tasks.submit_idsr_to_dhis2": {"queue": "reporting"},
+    # Quality reporting tasks
+    "hmis.apps.quality.tasks.generate_quarterly_reports": {"queue": "reporting"},
+    "hmis.apps.quality.tasks.generate_annual_reports": {"queue": "reporting"},
 }
 
 # Configure periodic tasks (Celery Beat)
@@ -84,6 +87,16 @@ app.conf.beat_schedule = {
     "check-outbreak-thresholds": {
         "task": "hmis.apps.surveillance.tasks.check_outbreak_thresholds",
         "schedule": crontab(minute=0, hour="6,18"),
+    },
+    # Quarterly reports - 1st day of each quarter at 2 AM
+    "generate-quarterly-reports": {
+        "task": "hmis.apps.quality.tasks.generate_quarterly_reports",
+        "schedule": crontab(minute=0, hour=2, day_of_month=1, month_of_year="1,4,7,10"),
+    },
+    # Annual reports - January 2nd at 3 AM
+    "generate-annual-reports": {
+        "task": "hmis.apps.quality.tasks.generate_annual_reports",
+        "schedule": crontab(minute=0, hour=3, day_of_month=2, month_of_year=1),
     },
 }
 
