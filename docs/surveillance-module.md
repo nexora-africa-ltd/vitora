@@ -1,17 +1,17 @@
 # Disease Surveillance Module
 
-> **MOH 502 Notifiable Disease Reporting for Kenya**
+> **MOH 502 Notifiable Disease Reporting & IHR Compliance for Kenya**
 >
-> Version: 2.4
+> Version: 3.0
 > Created: February 22, 2026
-> Updated: February 23, 2026
-> Sprint: Phase 1, Sprint 1.B
+> Updated: March 2, 2026
+> Sprint: Phase 1, Sprint 1.B / Phase 2, Sprint 2.D
 
 ---
 
 ## Overview
 
-The Disease Surveillance module implements Kenya's Ministry of Health (MOH) 502 notifiable disease reporting requirements. It provides automated disease detection from clinical diagnoses, real-time alerts for immediate reportable diseases, and reporting endpoints for county health offices.
+The Disease Surveillance module implements Kenya's Ministry of Health (MOH) 502 notifiable disease reporting requirements and **WHO International Health Regulations (IHR, 2005) compliance**. It provides automated disease detection from clinical diagnoses, real-time alerts for immediate reportable diseases, reporting endpoints for county health offices, and an IHR notification pipeline for escalating public health events from facility level through County → MOH National → WHO.
 
 ### Key Features
 
@@ -27,36 +27,53 @@ The Disease Surveillance module implements Kenya's Ministry of Health (MOH) 502 
 - **County Reporting**: Reports endpoint for county health offices
 - **Extensible JSON Data**: Easy maintenance and expansion via `data/notifiable_diseases.json`
 - **DHIS2/KHIS Integration**: Hybrid mapping system (JSON + Django admin) for data element UIDs with multi-environment support (local/staging/production)
+- **IHR Notification Pipeline**: Full WHO IHR 2005 compliance with 8-status escalation workflow (Draft → County → MOH → WHO → Acknowledged → Closed)
+- **WHO Annex 2 Decision Instrument**: Structured assessment of public health events against IHR Annex 2 criteria
+- **24-Hour Overdue Tracking**: Automatic detection of IHR notifications exceeding the 24-hour compliance deadline
+- **IHR Dashboard**: Real-time statistics for IHR compliance monitoring with urgency/disease breakdowns
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Surveillance Architecture                     │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────────┐    ┌──────────────────┐                   │
-│  │  Encounter App   │    │  Surveillance    │                   │
-│  │  (Diagnosis)     │───▶│  Signal Handler  │                   │
-│  └──────────────────┘    └────────┬─────────┘                   │
-│                                   │                              │
-│                          ┌────────▼─────────┐                   │
-│                          │ SurveillanceService│                  │
-│                          │ - Check ICD-10   │                   │
-│                          │ - Create Case    │                   │
-│                          │ - Generate Alert │                   │
-│                          └────────┬─────────┘                   │
-│                                   │                              │
-│           ┌───────────────────────┼───────────────────────┐     │
-│           │                       │                       │     │
-│  ┌────────▼────────┐    ┌────────▼────────┐    ┌────────▼────┐ │
-│  │   WebSocket     │    │    SMS/Email    │    │  Database   │ │
-│  │   Broadcast     │    │    Alerts       │    │  (Cases)    │ │
-│  └─────────────────┘    └─────────────────┘    └─────────────┘ │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                      Surveillance Architecture                          │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────────┐    ┌──────────────────┐                            │
+│  │  Encounter App   │    │  Surveillance    │                            │
+│  │  (Diagnosis)     │───▶│  Signal Handler  │                            │
+│  └──────────────────┘    └────────┬─────────┘                            │
+│                                   │                                      │
+│                          ┌────────▼─────────┐                            │
+│                          │ SurveillanceService│                           │
+│                          │ - Check ICD-10   │                            │
+│                          │ - Create Case    │                            │
+│                          │ - Generate Alert │                            │
+│                          └────────┬─────────┘                            │
+│                                   │                                      │
+│           ┌───────────────────────┼───────────────────────┐              │
+│           │                       │                       │              │
+│  ┌────────▼────────┐    ┌────────▼────────┐    ┌────────▼────────┐      │
+│  │   WebSocket     │    │    SMS/Email    │    │  Database       │      │
+│  │   Broadcast     │    │    Alerts       │    │  (Cases)        │      │
+│  └─────────────────┘    └─────────────────┘    └────────┬────────┘      │
+│                                                          │               │
+│                    ┌─────────────────────────────────────┘               │
+│                    │                                                     │
+│           ┌────────▼──────────────────────────────────────────┐          │
+│           │            IHR Notification Pipeline              │          │
+│           │                                                    │          │
+│           │  DRAFT → COUNTY → MOH NATIONAL → WHO → CLOSED    │          │
+│           │                                                    │          │
+│           │  • WHO Annex 2 Decision Instrument                │          │
+│           │  • 24-hour overdue tracking                       │          │
+│           │  • State-transition methods on model              │          │
+│           │  • Audit logging at every escalation step         │          │
+│           └───────────────────────────────────────────────────┘          │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -146,6 +163,133 @@ uid = get_data_element_uid("Cholera", "cases_under_5", "local")
 
 See [IDSR Weekly Reporting](idsr-weekly-reporting.md#data-element-mapping-hybrid-system) for full documentation.
 
+### IHRNotification
+
+WHO International Health Regulations (2005) notification tracking with full escalation pipeline.
+
+#### Enums
+
+**IHRUrgency:**
+
+| Value | Label | Description |
+|-------|-------|-------------|
+| `EMERGENCY` | Public Health Emergency (PHEIC) | Immediate notification required |
+| `URGENT` | Urgent (within 24 hours) | Standard IHR 24h deadline |
+| `ROUTINE` | Routine IHR Notification | Less time-critical |
+
+**IHRNotificationStatus:**
+
+| Value | Label |
+|-------|-------|
+| `DRAFT` | Draft |
+| `PENDING_REVIEW` | Pending Review |
+| `SUBMITTED_COUNTY` | Submitted to County |
+| `ESCALATED_NATIONAL` | Escalated to MOH |
+| `NOTIFIED_WHO` | Notified to WHO |
+| `ACKNOWLEDGED` | Acknowledged by WHO |
+| `CLOSED` | Closed |
+| `REJECTED` | Rejected |
+
+#### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `disease` | ForeignKey | NotifiableDisease (must have `is_ihr_notifiable=True`) |
+| `case` | ForeignKey | Source NotifiableCase (optional) |
+| `patient` | ForeignKey | Index patient (optional) |
+| `event_description` | TextField | Description of the public health event |
+| `event_date` | DateField | Date event was detected |
+| `urgency` | CharField | EMERGENCY / URGENT / ROUTINE (default: URGENT) |
+| `annex2_criteria` | JSONField | WHO Annex 2 decision instrument responses |
+| `is_annex2_positive` | BooleanField | Whether event meets Annex 2 criteria |
+| `cases_count` | PositiveIntegerField | Total number of cases (default: 1) |
+| `deaths_count` | PositiveIntegerField | Number of deaths (default: 0) |
+| `affected_area` | TextField | Affected geographic area |
+| `county` | ForeignKey | Auto-populated from case/patient |
+| `sub_county` | ForeignKey | Auto-populated from case/patient |
+| `status` | CharField | Pipeline status (default: DRAFT) |
+| `reported_by` | ForeignKey | Staff who initiated notification |
+| `report_date` | DateTimeField | When first reported |
+| `county_notified_at` | DateTimeField | When county was notified |
+| `county_reviewed_by` | ForeignKey | County reviewer |
+| `county_notes` | TextField | County review notes |
+| `national_notified_at` | DateTimeField | When MOH was notified |
+| `national_reviewed_by` | ForeignKey | MOH reviewer |
+| `national_notes` | TextField | MOH review notes |
+| `who_notified_at` | DateTimeField | When WHO was notified |
+| `who_reference_number` | CharField | WHO reference/event ID |
+| `who_acknowledged_at` | DateTimeField | When WHO acknowledged |
+| `resolved_at` | DateTimeField | When resolved/closed |
+| `resolution_notes` | TextField | Resolution summary |
+| `risk_assessment` | TextField | Risk assessment summary |
+| `response_measures` | TextField | Response measures taken |
+
+#### Computed Properties
+
+| Property | Return Type | Logic |
+|----------|-------------|-------|
+| `notification_reference` | `str` | `"IHR-{id:04d}"` or `"IHR-DRAFT"` |
+| `is_escalated` | `bool` | True if status NOT in `{DRAFT, PENDING_REVIEW, REJECTED}` |
+| `is_who_notified` | `bool` | True if status in `{NOTIFIED_WHO, ACKNOWLEDGED, CLOSED}` |
+| `hours_since_detection` | `int \| None` | `(now - report_date)` in hours |
+| `is_overdue` | `bool` | True if >24 hours since detection AND not WHO-notified/rejected/closed |
+
+#### State-Transition Methods
+
+| Method | Sets Status To | Updates Fields |
+|--------|---------------|----------------|
+| `submit_to_county(user, notes)` | `SUBMITTED_COUNTY` | `county_notified_at`, `county_reviewed_by`, `county_notes` |
+| `escalate_to_national(user, notes)` | `ESCALATED_NATIONAL` | `national_notified_at`, `national_reviewed_by`, `national_notes` |
+| `notify_who(reference_number)` | `NOTIFIED_WHO` | `who_notified_at`, `who_reference_number` |
+| `acknowledge_who()` | `ACKNOWLEDGED` | `who_acknowledged_at` |
+| `close(notes)` | `CLOSED` | `resolved_at`, `resolution_notes` |
+| `reject(user, notes)` | `REJECTED` | `resolved_at`, `resolution_notes` |
+
+#### Status Workflow
+
+```
+                ┌──────────┐
+                │  DRAFT   │
+                └────┬─────┘
+                     │ submit_to_county()
+                     ▼
+           ┌─────────────────┐
+           │ SUBMITTED_COUNTY│
+           └────────┬────────┘
+                    │ escalate_to_national()
+                    ▼
+          ┌──────────────────────┐
+          │ ESCALATED_NATIONAL   │
+          └─────────┬────────────┘
+                    │ notify_who()
+                    ▼
+           ┌─────────────────┐
+           │  NOTIFIED_WHO   │
+           └────────┬────────┘
+                    │ acknowledge_who()
+                    ▼
+           ┌────────────────┐
+           │  ACKNOWLEDGED  │
+           └────────┬───────┘
+                    │ close()
+                    ▼
+           ┌────────────┐
+           │   CLOSED   │
+           └────────────┘
+
+  At any non-terminal stage:
+  close()  → CLOSED
+  reject() → REJECTED (cannot reject NOTIFIED_WHO, ACKNOWLEDGED, CLOSED, REJECTED)
+```
+
+#### Custom Permissions
+
+| Codename | Description |
+|----------|-------------|
+| `escalate_ihr_to_county` | Can escalate IHR notifications to county |
+| `escalate_ihr_to_national` | Can escalate IHR notifications to MOH |
+| `notify_ihr_to_who` | Can notify WHO of IHR events |
+
 ---
 
 ## API Endpoints
@@ -196,6 +340,54 @@ GET    /api/surveillance/thresholds/exceeded/    # All exceeded thresholds
 ```
 GET    /api/surveillance/dashboard/          # Dashboard statistics
 GET    /api/surveillance/reports/county/{id}/ # County disease report
+```
+
+### IHR Notifications
+
+```
+GET    /api/surveillance/ihr/                         # List IHR notifications (paginated, filterable)
+POST   /api/surveillance/ihr/                         # Create IHR notification
+GET    /api/surveillance/ihr/{id}/                    # Get notification detail
+PATCH  /api/surveillance/ihr/{id}/                    # Update notification
+DELETE /api/surveillance/ihr/{id}/                    # Delete notification
+POST   /api/surveillance/ihr/{id}/submit_to_county/   # Submit to County DSC
+POST   /api/surveillance/ihr/{id}/escalate_to_national/ # Escalate to MOH National
+POST   /api/surveillance/ihr/{id}/notify_who/          # Mark WHO notified
+POST   /api/surveillance/ihr/{id}/acknowledge_who/     # Record WHO acknowledgement
+POST   /api/surveillance/ihr/{id}/close/               # Close notification
+POST   /api/surveillance/ihr/{id}/reject/              # Reject notification
+GET    /api/surveillance/ihr/overdue/                  # List overdue (>24h)
+GET    /api/surveillance/ihr/dashboard/                # IHR dashboard statistics
+```
+
+#### IHR Filters & Search
+
+| Filter | Description |
+|--------|-------------|
+| `disease` | Filter by NotifiableDisease ID |
+| `status` | Filter by IHR status |
+| `urgency` | Filter by urgency level |
+| `county` | Filter by county |
+| `reported_after` | Notifications reported after date |
+| `reported_before` | Notifications reported before date |
+| `is_annex2_positive` | Filter by Annex 2 assessment result |
+| `search` | Search disease name, description, WHO reference, patient MRN/name |
+
+#### IHR Dashboard Response
+
+```json
+{
+  "total": 10,
+  "pending": 3,
+  "at_county": 2,
+  "at_national": 1,
+  "notified_who": 2,
+  "closed": 1,
+  "rejected": 1,
+  "overdue": 2,
+  "by_urgency": [{"urgency": "URGENT", "count": 5}],
+  "by_disease": [{"disease": "Cholera", "count": 4}]
+}
 ```
 
 ---
@@ -443,6 +635,19 @@ poetry run pytest tests/test_surveillance.py --cov=hmis.apps.surveillance
   - Dashboard and county reporting endpoints
   - WebSocket alert broadcasting
 
+### IHR Notification Tests
+
+```bash
+# Run IHR notification tests
+poetry run pytest tests/test_ihr_notification.py -v
+```
+
+- ~40 tests across 4 test classes:
+  - **TestIHRNotificationModel** (13 tests): Model creation, `notification_reference`, default status, auto-populate county, `is_escalated`, `is_who_notified`, `hours_since_detection`, `is_overdue` scenarios
+  - **TestIHRWorkflow** (7 tests): All state transitions including full pipeline test (DRAFT → COUNTY → NATIONAL → WHO → ACKNOWLEDGED → CLOSED)
+  - **TestIHRSerializerValidation** (4 tests): Non-IHR disease rejection, IHR disease acceptance, list/detail serializer field verification
+  - **TestIHRNotificationAPI** (16 tests): CRUD, auth enforcement, all 6 action endpoints, invalid status transitions, overdue listing, dashboard, filtering, search
+
 ---
 
 ## Future Enhancements
@@ -453,7 +658,7 @@ poetry run pytest tests/test_surveillance.py --cov=hmis.apps.surveillance
 - [x] Frontend WebSocket real-time updates ✅ (February 23, 2026)
 - [ ] Contact tracing workflow
 - [ ] Outbreak investigation module
-- [ ] IHR notification workflow for international diseases
+- [x] IHR notification workflow for international diseases ✅ (March 2, 2026)
 - [ ] Mobile app push notifications
 - [ ] Automated outbreak clustering detection
 
@@ -472,6 +677,9 @@ The surveillance dashboard is implemented in `web-app/app/(dashboard)/surveillan
 | Alerts | `/surveillance/alerts` | Alert list with acknowledge, tabs for all/unacknowledged |
 | Thresholds | `/surveillance/thresholds` | Outbreak threshold configuration |
 | IDSR Reports | `/surveillance/idsr` | Weekly report list, generation, DHIS2 submission |
+| IHR Notifications | `/surveillance/ihr` | IHR notification list with dashboard stats, filters, overdue tracking |
+| IHR Detail | `/surveillance/ihr/[id]` | Escalation pipeline, action buttons, history timeline |
+| IHR Create | `/surveillance/ihr/new` | New IHR notification form with Annex 2 assessment |
 
 ### WebSocket Integration
 
@@ -513,6 +721,12 @@ export const PaginatedNotifiableCaseSchema = z.object({ ... });
 export const PaginatedSurveillanceAlertSchema = z.object({ ... });
 export const SurveillanceAlertListArraySchema = z.array(...);
 export const ExceededThresholdListSchema = z.array(...);
+
+// IHR Notification schemas
+export const IHRNotificationListSchema = z.object({ ... });
+export const IHRNotificationDetailSchema = z.object({ ... });
+export const PaginatedIHRNotificationSchema = z.object({ ... });
+export const IHRDashboardSchema = z.object({ ... });
 ```
 
 **Note**: The `/unacknowledged/` and `/exceeded/` endpoints return plain arrays (not paginated), matching backend implementation.
@@ -520,6 +734,25 @@ export const ExceededThresholdListSchema = z.array(...);
 ---
 
 ## Changelog
+
+### Version 3.0 (March 2, 2026)
+- **IHR Notification Pipeline** — Full WHO IHR 2005 compliance implementation (DHA compliance gap #24)
+  - `IHRNotification` model with 30+ fields, 8-status escalation workflow, 6 state-transition methods, 4 computed properties
+  - 7 serializers: detail, list, create, + 4 action serializers (submit, escalate, notify WHO, reject, close)
+  - `IHRNotificationViewSet` with 8 custom actions and 14 total endpoints
+  - `IHRNotificationFilter` with 7 filter fields + search across disease, description, WHO reference, patient MRN/name
+  - Django Admin with colored urgency/status/overdue badges, 11 fieldsets
+  - Migration `0004_add_ihr_notification.py` with custom permissions (`escalate_ihr_to_county`, `escalate_ihr_to_national`, `notify_ihr_to_who`)
+  - ~40 backend tests across 4 test classes covering model, workflow, serializer validation, and API
+- **IHR Frontend** — 3 full pages in `web-app/app/(dashboard)/surveillance/ihr/`
+  - **List page**: Dashboard summary cards (total, pending, WHO notified, overdue), status/urgency filters, `ResponsiveTable`, pagination, `PullToRefresh`
+  - **Detail page**: Visual escalation pipeline with step indicator, context-sensitive action buttons, escalation history timeline, action dialogs with notes input
+  - **Create page**: Disease dropdown (IHR-only), urgency selector, WHO Annex 2 decision instrument (4 questions with auto-positive detection), county/sub-county cascading selects, risk assessment
+- **Frontend schemas**: `IHRNotificationListSchema`, `IHRNotificationDetailSchema`, `PaginatedIHRNotificationSchema`, `IHRDashboardSchema` with Zod validation
+- **Frontend API client**: 12 methods with `parseResponse()` validation
+- **Navigation**: Added "IHR Compliance" under Surveillance sidebar group
+- **24-hour overdue tracking**: Automatic detection of notifications exceeding IHR Article 6 deadline
+- **Audit logging**: All mutating IHR operations logged to AuditLog
 
 ### Version 2.3 (February 23, 2026)
 - **Frontend WebSocket integration** with polling fallback
@@ -584,6 +817,7 @@ export const ExceededThresholdListSchema = z.array(...);
 
 ## Related Documents
 
-- [DHA Compliance Roadmap](dha-compliance-roadmap.md) - Gap 5: Immediate Reportable Diseases
+- [DHA Compliance Roadmap](dha-compliance-roadmap.md) - Gap 5: Immediate Reportable Diseases, Gap 24: IHR Compliance Framework
 - [DPIA](dpia.md) - Data Protection Impact Assessment
 - [Disaster Recovery](disaster-recovery.md) - Backup & DR procedures
+- [IDSR Weekly Reporting](idsr-weekly-reporting.md) - IDSR report generation and DHIS2 submission
