@@ -2,6 +2,7 @@
  * Surveillance API client.
  */
 
+import { z } from 'zod';
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
@@ -11,12 +12,17 @@ import {
   IDSRDHIS2PreviewSchema,
   IDSRSubmitResponseSchema,
   IDSRWeeklyReportSchema,
+  IHRDashboardSchema,
+  IHRNotificationDetailSchema,
+  IHRNotificationListSchema,
   NotifiableCaseDetailSchema,
+  NotifiableDiseaseListItemSchema,
   OutbreakThresholdSchema,
   PaginatedNotifiableCaseSchema,
   PaginatedOutbreakThresholdSchema,
   PaginatedSurveillanceAlertSchema,
   PaginatedIDSRWeeklyReportSchema,
+  PaginatedIHRNotificationSchema,
   SurveillanceAlertListArraySchema,
   SurveillanceDashboardSchema,
 } from '@/lib/schemas/surveillance.schema';
@@ -29,9 +35,14 @@ import type {
   IDSRSubmitResponse,
   IDSRWeeklyReport,
   IDSRWeeklyReportListItem,
+  IHRDashboard,
+  IHRNotificationDetail,
+  IHRNotificationListItem,
+  IHRNotificationListParams,
   NotifiableCaseDetail,
   NotifiableCaseListItem,
   NotifiableCaseListParams,
+  NotifiableDiseaseListItem,
   OutbreakThreshold,
   SurveillanceAlertListItem,
   SurveillanceDashboard,
@@ -271,6 +282,149 @@ export const surveillanceApi = {
     );
     return parseResponse(IDSRDHIS2PreviewSchema, response.data, {
       context: 'surveillanceApi.getDHIS2Preview',
+    });
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // IHR Notifications
+  // ─────────────────────────────────────────────────────────────────────────
+  async listIHRNotifiableDiseases(): Promise<NotifiableDiseaseListItem[]> {
+    const response = await apiClient.get<NotifiableDiseaseListItem[]>(
+      '/api/surveillance/diseases/',
+      { params: { is_ihr_notifiable: true, is_active: true } }
+    );
+    return parseResponse(
+      z.array(NotifiableDiseaseListItemSchema),
+      response.data,
+      { context: 'surveillanceApi.listIHRNotifiableDiseases' }
+    );
+  },
+
+  async listIHRNotifications(
+    params?: IHRNotificationListParams
+  ): Promise<PaginatedResponse<IHRNotificationListItem>> {
+    const response = await apiClient.get<PaginatedResponse<IHRNotificationListItem>>(
+      '/api/surveillance/ihr/',
+      { params }
+    );
+    return parseResponse(PaginatedIHRNotificationSchema, response.data, {
+      context: 'surveillanceApi.listIHRNotifications',
+    });
+  },
+
+  async getIHRNotification(id: number): Promise<IHRNotificationDetail> {
+    const response = await apiClient.get<IHRNotificationDetail>(
+      `/api/surveillance/ihr/${id}/`
+    );
+    return parseResponse(IHRNotificationDetailSchema, response.data, {
+      context: 'surveillanceApi.getIHRNotification',
+    });
+  },
+
+  async createIHRNotification(
+    data: Partial<IHRNotificationDetail>
+  ): Promise<IHRNotificationDetail> {
+    const response = await apiClient.post<IHRNotificationDetail>(
+      '/api/surveillance/ihr/',
+      data
+    );
+    return parseResponse(IHRNotificationDetailSchema, response.data, {
+      context: 'surveillanceApi.createIHRNotification',
+    });
+  },
+
+  async submitIHRToCounty(
+    id: number,
+    notes?: string
+  ): Promise<IHRNotificationDetail> {
+    const response = await apiClient.post<IHRNotificationDetail>(
+      `/api/surveillance/ihr/${id}/submit_to_county/`,
+      { notes: notes ?? '' }
+    );
+    return parseResponse(IHRNotificationDetailSchema, response.data, {
+      context: 'surveillanceApi.submitIHRToCounty',
+    });
+  },
+
+  async escalateIHRToNational(
+    id: number,
+    notes?: string
+  ): Promise<IHRNotificationDetail> {
+    const response = await apiClient.post<IHRNotificationDetail>(
+      `/api/surveillance/ihr/${id}/escalate_to_national/`,
+      { notes: notes ?? '' }
+    );
+    return parseResponse(IHRNotificationDetailSchema, response.data, {
+      context: 'surveillanceApi.escalateIHRToNational',
+    });
+  },
+
+  async notifyIHRToWHO(
+    id: number,
+    referenceNumber?: string
+  ): Promise<IHRNotificationDetail> {
+    const response = await apiClient.post<IHRNotificationDetail>(
+      `/api/surveillance/ihr/${id}/notify_who/`,
+      { reference_number: referenceNumber ?? '' }
+    );
+    return parseResponse(IHRNotificationDetailSchema, response.data, {
+      context: 'surveillanceApi.notifyIHRToWHO',
+    });
+  },
+
+  async acknowledgeIHRWHO(id: number): Promise<IHRNotificationDetail> {
+    const response = await apiClient.post<IHRNotificationDetail>(
+      `/api/surveillance/ihr/${id}/acknowledge_who/`,
+      {}
+    );
+    return parseResponse(IHRNotificationDetailSchema, response.data, {
+      context: 'surveillanceApi.acknowledgeIHRWHO',
+    });
+  },
+
+  async closeIHRNotification(
+    id: number,
+    notes?: string
+  ): Promise<IHRNotificationDetail> {
+    const response = await apiClient.post<IHRNotificationDetail>(
+      `/api/surveillance/ihr/${id}/close/`,
+      { notes: notes ?? '' }
+    );
+    return parseResponse(IHRNotificationDetailSchema, response.data, {
+      context: 'surveillanceApi.closeIHRNotification',
+    });
+  },
+
+  async rejectIHRNotification(
+    id: number,
+    notes?: string
+  ): Promise<IHRNotificationDetail> {
+    const response = await apiClient.post<IHRNotificationDetail>(
+      `/api/surveillance/ihr/${id}/reject/`,
+      { notes: notes ?? '' }
+    );
+    return parseResponse(IHRNotificationDetailSchema, response.data, {
+      context: 'surveillanceApi.rejectIHRNotification',
+    });
+  },
+
+  async listOverdueIHRNotifications(): Promise<IHRNotificationListItem[]> {
+    const response = await apiClient.get<IHRNotificationListItem[]>(
+      '/api/surveillance/ihr/overdue/'
+    );
+    return parseResponse(
+      z.array(IHRNotificationListSchema),
+      response.data,
+      { context: 'surveillanceApi.listOverdueIHRNotifications' }
+    );
+  },
+
+  async getIHRDashboard(): Promise<IHRDashboard> {
+    const response = await apiClient.get<IHRDashboard>(
+      '/api/surveillance/ihr/dashboard/'
+    );
+    return parseResponse(IHRDashboardSchema, response.data, {
+      context: 'surveillanceApi.getIHRDashboard',
     });
   },
 };

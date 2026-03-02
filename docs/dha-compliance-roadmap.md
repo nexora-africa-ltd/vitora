@@ -455,18 +455,26 @@ Gaps are categorized into four tiers:
   - Celery task: `check_outbreak_thresholds` (automated monitoring)
   - WebSocket integration for real-time outbreak notifications
 
-#### 24. IHR Compliance Framework `P2` ⏳ PARTIAL
-- **Gap**: No IHR implementation — **partially addressed**
+#### 24. IHR Compliance Framework `P2` ✅ COMPLETE
+- **Gap**: ~~No IHR implementation~~ **RESOLVED**
 - **Action**:
   - [x] Define IHR notifiable conditions (`is_ihr_notifiable` field on `NotifiableDisease`)
-  - [ ] Create `IHRNotification` model (condition, report_date, who_notified)
-  - [ ] Escalation workflow to MOH
-  - [ ] IHR-compliant reporting templates
-  - [ ] Tests: 15+ unit tests
-- **Owner**: Backend Team
-- **Effort**: 1 sprint (2 weeks)
-- **Status**: IHR notifiability flag implemented; dedicated reporting pipeline pending
-- **Deliverables**: IHR notification workflow
+  - [x] Create `IHRNotification` model (disease, urgency, WHO Annex 2 criteria, escalation status)
+  - [x] Escalation workflow to MOH (DRAFT → County → National → WHO → Acknowledged → Closed)
+  - [x] IHR-compliant reporting templates (Annex 2 decision instrument, overdue tracking)
+  - [x] Frontend: list, detail, and create pages with sidebar navigation
+  - [x] Tests: 44 unit tests (exceeded 15+ requirement)
+- **Owner**: Backend Team + Frontend Team
+- **Completed**: March 2, 2026
+- **Deliverables**:
+  - `IHRNotification` model with full escalation pipeline (8 statuses)
+  - `IHRNotificationViewSet` with 8 custom actions (submit_to_county, escalate_to_national, notify_who, acknowledge_who, close, reject, overdue, dashboard)
+  - WHO Annex 2 decision instrument (annex2_criteria JSONField, is_annex2_positive flag)
+  - 24-hour overdue tracking (`hours_since_detection`, `is_overdue` properties)
+  - Migration: `0004_add_ihr_notification.py`
+  - Frontend pages: list (filters, dashboard stats), detail (escalation pipeline UI), create (Annex 2 form)
+  - Sidebar navigation under Surveillance → IHR Compliance
+  - Zod-validated API client with 10 methods
 
 ---
 
@@ -704,7 +712,7 @@ Gaps are categorized into four tiers:
 | Standard Quality Measures (CQM) | P2 | 2.C | ⬜ |
 | Quality Measure Import/Export | P2 | 2.C | ⬜ |
 | Public Health Event Detection | P2 | 2.D | ✅ |
-| IHR Compliance Framework | P2 | 2.D | ⏳ |
+| IHR Compliance Framework | P2 | 2.D | ✅ |
 | Evidence-Based CDS Engine | P3 | 3.A | ⬜ |
 | HPT Registry Integration | P3 | 3.A | ⬜ |
 | Active Kenya HIE Integration | P3 | 3.B | ⬜ |

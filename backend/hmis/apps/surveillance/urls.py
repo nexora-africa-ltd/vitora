@@ -11,6 +11,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     CountyReportView,
     IDSRWeeklyReportViewSet,
+    IHRNotificationViewSet,
     NotifiableCaseViewSet,
     NotifiableDiseaseViewSet,
     OutbreakThresholdViewSet,
@@ -26,6 +27,7 @@ router.register(r"cases", NotifiableCaseViewSet, basename="case")
 router.register(r"alerts", SurveillanceAlertViewSet, basename="alert")
 router.register(r"thresholds", OutbreakThresholdViewSet, basename="threshold")
 router.register(r"idsr", IDSRWeeklyReportViewSet, basename="idsr")
+router.register(r"ihr", IHRNotificationViewSet, basename="ihr")
 
 urlpatterns = [
     path("", include(router.urls)),
