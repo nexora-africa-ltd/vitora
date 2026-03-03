@@ -240,6 +240,40 @@ class TibaBotClient:
             data=payload,
         )
 
+    # -----------------------------------------------------------------
+    # Phase 3 — Feedback
+    # -----------------------------------------------------------------
+
+    def submit_feedback(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Submit thumbs-up/down feedback on a TibaBot response.
+
+        Args:
+            payload: Dict with message_id, feedback ("up"/"down"),
+                     and optional conversation_id, user_query,
+                     bot_response, risk_level.
+
+        Returns:
+            Dict with status, message, and feedback_id.
+        """
+        return self._request(
+            method="POST",
+            endpoint="/feedback",
+            data=payload,
+        )
+
+    def get_feedback_stats(self) -> dict[str, Any]:
+        """
+        Get aggregate feedback statistics.
+
+        Returns:
+            Dict with total_up, total_down, recent_negatives.
+        """
+        return self._request(
+            method="GET",
+            endpoint="/feedback/stats",
+        )
+
 
 # Module-level singleton (created on first import — lazy via function)
 _client: TibaBotClient | None = None

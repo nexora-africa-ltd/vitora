@@ -351,3 +351,76 @@ class AIChatSessionDetailResponseSerializer(serializers.Serializer):
 
     session = AIChatSessionSerializer()
     messages = AIChatMessageSerializer(many=True)
+
+
+# =============================================================================
+# Phase 3 — Feedback
+# =============================================================================
+
+
+class AIFeedbackRequestSerializer(serializers.Serializer):
+    """
+    Request body for POST /api/ai/feedback/.
+
+    Submits thumbs-up/down feedback on a TibaBot response.
+    Proxied to TibaBot's ``POST /feedback`` endpoint.
+    """
+
+    message_id = serializers.CharField(
+        max_length=200,
+        help_text=(
+            "Unique ID for the response being rated. "
+            "Vitora uses its own scheme (e.g., 'enc-88-assist-1')."
+        ),
+    )
+    conversation_id = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=200,
+        help_text="Group feedback by encounter/session.",
+    )
+    feedback = serializers.ChoiceField(
+        choices=["up", "down"],
+        help_text="Thumbs up or down.",
+    )
+    user_query = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=10000,
+        help_text="Original query text (for analysis).",
+    )
+    bot_response = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=10000,
+        help_text="The response being rated (truncated to 500 chars server-side by TibaBot).",
+    )
+    risk_level = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=50,
+        help_text="Echo back the risk_level from the /clinical/assist response.",
+    )
+
+
+class AIFeedbackResponseSerializer(serializers.Serializer):
+    """Response from POST /api/ai/feedback/ — proxied from TibaBot."""
+
+    status = serializers.CharField(help_text="Acknowledgement status (e.g. 'received').")
+    message = serializers.CharField(help_text="Human-readable confirmation.")
+    feedback_id = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Server-assigned feedback ID.",
+    )
+
+
+class AIFeedbackStatsResponseSerializer(serializers.Serializer):
+    """Response from GET /api/ai/feedback/stats/ — aggregate feedback counts."""
+
+    total_up = serializers.IntegerField(help_text="Total thumbs-up count.")
+    total_down = serializers.IntegerField(help_text="Total thumbs-down count.")
+    recent_negatives = serializers.IntegerField(
+        required=False,
+        help_text="Thumbs-down in the last 7 days.",
+    )

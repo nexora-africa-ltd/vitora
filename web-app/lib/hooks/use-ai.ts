@@ -18,6 +18,9 @@ import type {
   AIClinicalAssistResponse,
   AIChatSessionListResponse,
   AIChatSessionDetailResponse,
+  AIFeedbackRequest,
+  AIFeedbackResponse,
+  AIFeedbackStats,
 } from '@/lib/types/ai';
 
 // =============================================================================
@@ -29,6 +32,7 @@ export const aiKeys = {
   status: () => [...aiKeys.all, 'status'] as const,
   sessions: () => [...aiKeys.all, 'sessions'] as const,
   session: (id: string) => [...aiKeys.all, 'session', id] as const,
+  feedbackStats: () => [...aiKeys.all, 'feedback-stats'] as const,
 };
 
 // =============================================================================
@@ -183,5 +187,39 @@ export function useDeleteAIChatSession() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: aiKeys.sessions() });
     },
+  });
+}
+
+// =============================================================================
+// Phase 3 Hooks — Feedback
+// =============================================================================
+
+/**
+ * Hook for submitting feedback (thumbs up/down) on a TibaBot response.
+ *
+ * @example
+ * ```tsx
+ * const { mutate } = useAIFeedback();
+ * mutate({ message_id: "enc-88-assist-1", feedback: "up" });
+ * ```
+ */
+export function useAIFeedback() {
+  return useMutation<AIFeedbackResponse, Error, AIFeedbackRequest>({
+    mutationFn: (data) => aiApi.submitFeedback(data),
+    retry: false,
+  });
+}
+
+/**
+ * Hook for fetching aggregate feedback statistics.
+ *
+ * Useful for admin dashboards showing thumbs-up/down totals.
+ */
+export function useAIFeedbackStats() {
+  return useQuery<AIFeedbackStats, Error>({
+    queryKey: aiKeys.feedbackStats(),
+    queryFn: () => aiApi.getFeedbackStats(),
+    enabled: ENABLE_AI,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 }
