@@ -1,5 +1,5 @@
 """
-Tests for AI context enrichment and Phase 2 clinical chat/assist endpoints.
+Tests for AI context enrichment, Phase 2 clinical chat/assist, and Phase 3 feedback.
 
 Tests cover:
 - Context enrichment helper (build_user_context, build_facility_context)
@@ -9,6 +9,7 @@ Tests cover:
 - Graceful degradation when TibaBot is unavailable
 - Audit logging for clinical chat/assist
 - Serializer validation for new serializers
+- Feedback submission and stats endpoints
 """
 
 from datetime import date
@@ -743,3 +744,255 @@ class TestVerbosityQueryParam:
             log = AuditLog.objects.filter(action="ai_clinical_chat").last()
             assert log is not None
             assert log.details["verbosity"] == "concise"
+
+
+# =============================================================================
+# Phase 3 — Feedback serializer tests
+# =============================================================================
+
+
+class TestAIFeedbackRequestSerializer:
+    """Tests for AIFeedbackRequestSerializer."""
+
+    def test_valid_minimal_feedback(self):
+        from hmis.apps.ai.serializers import AIFeedbackRequestSerializer
+
+        serializer = AIFeedbackRequestSerializer(
+            data={"message_id": "enc-88-assist-1", "feedback": "up"}
+        )
+        assert serializer.is_valid(), serializer.errors
+
+    def test_valid_full_feedback(self):
+        from hmis.apps.ai.serializers import AIFeedbackRequestSerializer
+
+        serializer = AIFeedbackRequestSerializer(
+            data={
+                "message_id": "enc-88-assist-1",
+                "conversation_id": "encounter-88",
+                "feedback": "down",
+                "user_query": "DDx for chest pain?",
+                "bot_response": "77-year-old female presenting with...",
+                "risk_level": "critical",
+            }
+        )
+        assert serializer.is_valid(), serializer.errors
+
+    def test_rejects_missing_message_id(self):
+        from hmis.apps.ai.serializers import AIFeedbackRequestSerializer
+
+        serializer = AIFeedbackRequestSerializer(data={"feedback": "up"})
+        assert not serializer.is_valid()
+        assert "message_id" in serializer.errors
+
+    def test_rejects_missing_feedback(self):
+        from hmis.apps.ai.serializers import AIFeedbackRequestSerializer
+
+        serializer = AIFeedbackRequestSerializer(
+            data={"message_id": "msg-1"}
+        )
+        assert not serializer.is_valid()
+        assert "feedback" in serializer.errors
+
+    def test_rejects_invalid_feedback_value(self):
+        from hmis.apps.ai.serializers import AIFeedbackRequestSerializer
+
+        serializer = AIFeedbackRequestSerializer(
+            data={"message_id": "msg-1", "feedback": "neutral"}
+        )
+        assert not serializer.is_valid()
+        assert "feedback" in serializer.errors
+
+
+# =============================================================================
+# Phase 3 — Feedback endpoint tests
+# =============================================================================
+
+
+@pytest.mark.django_db
+class TestAIFeedbackEndpoint:
+    """Tests for POST /api/ai/feedback/."""
+
+    @override_settings(TIBABOT_ENABLED=False)
+    def test_returns_404_when_disabled(self, authenticated_client):
+        """Should return 404 when TIBABOT_ENABLED is False."""
+        response = authenticated_client.post(
+            "/api/ai/feedback/",
+            {"message_id": "msg-1", "feedback": "up"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_requires_authentication(self, api_client):
+        """Should reject unauthenticated requests."""
+        response = api_client.post(
+            "/api/ai/feedback/",
+            {"message_id": "msg-1", "feedback": "up"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_validates_required_fields(self, authenticated_client):
+        """Should reject requests without required fields."""
+        response = authenticated_client.post(
+            "/api/ai/feedback/",
+            {},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "message_id" in response.data
+        assert "feedback" in response.data
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_submits_feedback_successfully(self, authenticated_client):
+        """Should proxy feedback to TibaBot and return response."""
+        mock_response = {
+            "status": "received",
+            "message": "Thank you for your feedback!",
+            "feedback_id": "fb_abc123",
+        }
+        with patch(
+            "hmis.apps.ai.views.get_tibabot_client"
+        ) as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.submit_feedback.return_value = mock_response
+            mock_get_client.return_value = mock_client
+
+            response = authenticated_client.post(
+                "/api/ai/feedback/",
+                {
+                    "message_id": "enc-88-assist-1",
+                    "conversation_id": "encounter-88",
+                    "feedback": "up",
+                    "user_query": "DDx for cough?",
+                    "bot_response": "Consider pneumonia...",
+                    "risk_level": "moderate",
+                },
+                format="json",
+            )
+
+            assert response.status_code == status.HTTP_200_OK
+            assert response.data["status"] == "received"
+            assert response.data["feedback_id"] == "fb_abc123"
+
+            # Verify the payload forwarded to TibaBot
+            call_args = mock_client.submit_feedback.call_args[0][0]
+            assert call_args["message_id"] == "enc-88-assist-1"
+            assert call_args["feedback"] == "up"
+            assert call_args["conversation_id"] == "encounter-88"
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_graceful_degradation_when_unavailable(self, authenticated_client):
+        """Should return 'queued' status when TibaBot is down."""
+        from hmis.apps.ai.client import TibaBotUnavailableError
+
+        with patch(
+            "hmis.apps.ai.views.get_tibabot_client"
+        ) as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.submit_feedback.side_effect = TibaBotUnavailableError(
+                "unavailable"
+            )
+            mock_get_client.return_value = mock_client
+
+            response = authenticated_client.post(
+                "/api/ai/feedback/",
+                {"message_id": "msg-1", "feedback": "down"},
+                format="json",
+            )
+
+            assert response.status_code == status.HTTP_200_OK
+            assert response.data["status"] == "queued"
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_audit_log_created(self, authenticated_client):
+        """Should create audit log for feedback submissions."""
+        from hmis.apps.core.models import AuditLog
+
+        mock_response = {
+            "status": "received",
+            "message": "Thanks!",
+            "feedback_id": "fb_xyz",
+        }
+        with patch(
+            "hmis.apps.ai.views.get_tibabot_client"
+        ) as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.submit_feedback.return_value = mock_response
+            mock_get_client.return_value = mock_client
+
+            authenticated_client.post(
+                "/api/ai/feedback/",
+                {
+                    "message_id": "enc-99-assist-1",
+                    "feedback": "down",
+                    "risk_level": "critical",
+                },
+                format="json",
+            )
+
+            log = AuditLog.objects.filter(action="ai_feedback_submit").first()
+            assert log is not None
+            assert log.details["message_id"] == "enc-99-assist-1"
+            assert log.details["feedback"] == "down"
+            assert log.details["risk_level"] == "critical"
+
+
+@pytest.mark.django_db
+class TestAIFeedbackStatsEndpoint:
+    """Tests for GET /api/ai/feedback/stats/."""
+
+    @override_settings(TIBABOT_ENABLED=False)
+    def test_returns_404_when_disabled(self, authenticated_client):
+        """Should return 404 when TIBABOT_ENABLED is False."""
+        response = authenticated_client.get("/api/ai/feedback/stats/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_requires_authentication(self, api_client):
+        """Should reject unauthenticated requests."""
+        response = api_client.get("/api/ai/feedback/stats/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_returns_stats(self, authenticated_client):
+        """Should return aggregate feedback counts."""
+        mock_response = {
+            "total_up": 42,
+            "total_down": 7,
+            "recent_negatives": 3,
+        }
+        with patch(
+            "hmis.apps.ai.views.get_tibabot_client"
+        ) as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.get_feedback_stats.return_value = mock_response
+            mock_get_client.return_value = mock_client
+
+            response = authenticated_client.get("/api/ai/feedback/stats/")
+
+            assert response.status_code == status.HTTP_200_OK
+            assert response.data["total_up"] == 42
+            assert response.data["total_down"] == 7
+            assert response.data["recent_negatives"] == 3
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_graceful_degradation_when_unavailable(self, authenticated_client):
+        """Should return zeroes when TibaBot is down."""
+        from hmis.apps.ai.client import TibaBotUnavailableError
+
+        with patch(
+            "hmis.apps.ai.views.get_tibabot_client"
+        ) as mock_get_client:
+            mock_client = MagicMock()
+            mock_client.get_feedback_stats.side_effect = TibaBotUnavailableError(
+                "unavailable"
+            )
+            mock_get_client.return_value = mock_client
+
+            response = authenticated_client.get("/api/ai/feedback/stats/")
+
+            assert response.status_code == status.HTTP_200_OK
+            assert response.data["total_up"] == 0
+            assert response.data["total_down"] == 0

@@ -24,14 +24,17 @@ import {
   ExternalLink,
   Loader2,
   Gauge,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils/cn';
 import { useAIChatContext } from '@/lib/context/ai-chat-context';
+import { useAIFeedback } from '@/lib/hooks/use-ai';
 import { TibaBotStatusIndicator } from './tibabot-status-indicator';
-import type { AIChatMessage, AIVerbosity } from '@/lib/types/ai';
+import type { AIChatMessage, AIVerbosity, AIFeedbackDirection } from '@/lib/types/ai';
 import { AI_VERBOSITY_OPTIONS } from '@/lib/types/ai';
 
 // =============================================================================
@@ -59,9 +62,19 @@ export interface AIChatPanelProps {
 // Message Bubble
 // =============================================================================
 
-function MessageBubble({ message }: { message: AIChatMessage }) {
+interface MessageBubbleProps {
+  message: AIChatMessage;
+  /** Current feedback state for this message (null = not rated) */
+  feedbackGiven?: AIFeedbackDirection | null;
+  /** Called when user clicks thumbs up or down */
+  onFeedback?: (direction: AIFeedbackDirection) => void;
+}
+
+function MessageBubble({ message, feedbackGiven, onFeedback }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
+  const isAssistant = message.role === 'assistant';
+  const showFeedback = isAssistant && !message.isStreaming && onFeedback;
 
   return (
     <div
@@ -70,66 +83,109 @@ function MessageBubble({ message }: { message: AIChatMessage }) {
         isUser ? 'justify-end' : 'justify-start'
       )}
     >
-      <div
-        className={cn(
-          'max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed overflow-hidden',
-          isUser && 'bg-primary text-primary-foreground rounded-br-md',
-          !isUser && !isSystem && 'bg-muted text-foreground rounded-bl-md',
-          isSystem && 'bg-muted/50 text-muted-foreground text-xs italic text-center w-full'
-        )}
-      >
-        {/* Streaming indicator */}
-        {message.isStreaming && (
-          <span className="inline-flex items-center gap-1 text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin" />
-          </span>
-        )}
-        {isUser ? (
-          <span className="whitespace-pre-wrap break-words">{message.content}</span>
-        ) : (
-          <div className="tibabot-markdown break-words overflow-hidden">
-            <Markdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                // Ensure links open in new tab and are styled
-                a: ({ children, ...props }) => (
-                  <a
-                    {...props}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-2"
-                  >
-                    {children}
-                  </a>
-                ),
-                // Prevent code blocks from overflowing
-                pre: ({ children, ...props }) => (
-                  <pre
-                    {...props}
-                    className="overflow-x-auto rounded bg-black/10 p-2 text-xs my-1"
-                  >
-                    {children}
-                  </pre>
-                ),
-                code: ({ children, className: codeClassName, ...props }) => {
-                  const isInline = !codeClassName;
-                  return isInline ? (
-                    <code
+      <div className="max-w-[85%]">
+        <div
+          className={cn(
+            'rounded-2xl px-4 py-2.5 text-sm leading-relaxed overflow-hidden',
+            isUser && 'bg-primary text-primary-foreground rounded-br-md',
+            !isUser && !isSystem && 'bg-muted text-foreground rounded-bl-md',
+            isSystem && 'bg-muted/50 text-muted-foreground text-xs italic text-center w-full'
+          )}
+        >
+          {/* Streaming indicator */}
+          {message.isStreaming && (
+            <span className="inline-flex items-center gap-1 text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+            </span>
+          )}
+          {isUser ? (
+            <span className="whitespace-pre-wrap break-words">{message.content}</span>
+          ) : (
+            <div className="tibabot-markdown break-words overflow-hidden">
+              <Markdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  a: ({ children, ...props }) => (
+                    <a
                       {...props}
-                      className="rounded bg-black/10 px-1 py-0.5 text-xs"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2"
                     >
                       {children}
-                    </code>
-                  ) : (
-                    <code {...props} className={codeClassName}>
+                    </a>
+                  ),
+                  pre: ({ children, ...props }) => (
+                    <pre
+                      {...props}
+                      className="overflow-x-auto rounded bg-black/10 p-2 text-xs my-1"
+                    >
                       {children}
-                    </code>
-                  );
-                },
-              }}
+                    </pre>
+                  ),
+                  code: ({ children, className: codeClassName, ...props }) => {
+                    const isInline = !codeClassName;
+                    return isInline ? (
+                      <code
+                        {...props}
+                        className="rounded bg-black/10 px-1 py-0.5 text-xs"
+                      >
+                        {children}
+                      </code>
+                    ) : (
+                      <code {...props} className={codeClassName}>
+                        {children}
+                      </code>
+                    );
+                  },
+                }}
+              >
+                {message.content}
+              </Markdown>
+            </div>
+          )}
+        </div>
+
+        {/* Feedback buttons — only on assistant messages that are done streaming */}
+        {showFeedback && (
+          <div className="flex items-center gap-1 mt-1 ml-1">
+            <button
+              type="button"
+              onClick={() => onFeedback('up')}
+              disabled={feedbackGiven != null}
+              className={cn(
+                'p-1 rounded transition-colors',
+                feedbackGiven === 'up'
+                  ? 'text-green-600 dark:text-green-400'
+                  : feedbackGiven != null
+                    ? 'text-muted-foreground/30 cursor-default'
+                    : 'text-muted-foreground hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-950/20'
+              )}
+              title={feedbackGiven === 'up' ? 'You rated this helpful' : 'Helpful'}
             >
-              {message.content}
-            </Markdown>
+              <ThumbsUp className={cn('h-3 w-3', feedbackGiven === 'up' && 'fill-current')} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onFeedback('down')}
+              disabled={feedbackGiven != null}
+              className={cn(
+                'p-1 rounded transition-colors',
+                feedbackGiven === 'down'
+                  ? 'text-red-600 dark:text-red-400'
+                  : feedbackGiven != null
+                    ? 'text-muted-foreground/30 cursor-default'
+                    : 'text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20'
+              )}
+              title={feedbackGiven === 'down' ? 'You rated this unhelpful' : 'Not helpful'}
+            >
+              <ThumbsDown className={cn('h-3 w-3', feedbackGiven === 'down' && 'fill-current')} />
+            </button>
+            {feedbackGiven && (
+              <span className="text-[10px] text-muted-foreground ml-1">
+                Thanks for the feedback
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -163,8 +219,11 @@ export function AIChatPanel({
   } = useAIChatContext();
 
   const [inputValue, setInputValue] = useState('');
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, AIFeedbackDirection>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const feedbackMutation = useAIFeedback();
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -194,8 +253,30 @@ export function AIChatPanel({
   const handleNewSession = useCallback(() => {
     setActiveSessionId(null);
     clearMessages();
+    setFeedbackMap({});
     inputRef.current?.focus();
   }, [setActiveSessionId, clearMessages]);
+
+  // Handle feedback on a message
+  const handleFeedback = useCallback(
+    (msg: AIChatMessage, direction: AIFeedbackDirection) => {
+      // Find the preceding user message to include as user_query
+      const msgIndex = messages.findIndex((m) => m.id === msg.id);
+      const userMsg = msgIndex > 0
+        ? messages.slice(0, msgIndex).reverse().find((m) => m.role === 'user')
+        : undefined;
+
+      setFeedbackMap((prev) => ({ ...prev, [msg.id]: direction }));
+      feedbackMutation.mutate({
+        message_id: msg.id,
+        conversation_id: activeSessionId ?? undefined,
+        feedback: direction,
+        user_query: userMsg?.content,
+        bot_response: msg.content.slice(0, 500),
+      });
+    },
+    [messages, activeSessionId, feedbackMutation]
+  );
 
   const isAvailable = availability === 'available';
 
@@ -290,7 +371,12 @@ export function AIChatPanel({
           )}
 
           {messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} />
+            <MessageBubble
+              key={msg.id}
+              message={msg}
+              feedbackGiven={feedbackMap[msg.id] ?? null}
+              onFeedback={(dir) => handleFeedback(msg, dir)}
+            />
           ))}
           <div ref={messagesEndRef} />
         </div>

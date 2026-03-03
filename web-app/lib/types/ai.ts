@@ -188,7 +188,7 @@ export interface AIClinicalAssistResponse {
   response: string;
   references?: string[];
   /** Set when TibaBot is unreachable */
-  error?: string;
+  error?: string | null;
 }
 
 /** A chat session summary */
@@ -220,3 +220,40 @@ export type AIWidgetState = 'minimized' | 'expanded' | 'full-page';
 
 /** TibaBot availability status for the widget indicator */
 export type TibaBotAvailability = 'available' | 'unavailable' | 'loading';
+
+// =============================================================================
+// Phase 3 — Feedback
+// =============================================================================
+
+/** Feedback direction */
+export type AIFeedbackDirection = 'up' | 'down';
+
+/** Request body for POST /api/ai/feedback/ */
+export interface AIFeedbackRequest {
+  /** Unique ID for the response being rated (e.g., "enc-88-assist-1") */
+  message_id: string;
+  /** Group feedback by encounter/session */
+  conversation_id?: string;
+  /** Thumbs up or down */
+  feedback: AIFeedbackDirection;
+  /** Original query text (for analysis) */
+  user_query?: string;
+  /** The response being rated */
+  bot_response?: string;
+  /** Echo back the risk_level from the /clinical/assist response */
+  risk_level?: string;
+}
+
+/** Response from POST /api/ai/feedback/ */
+export interface AIFeedbackResponse {
+  status: string;
+  message: string;
+  feedback_id?: string;
+}
+
+/** Response from GET /api/ai/feedback/stats/ */
+export interface AIFeedbackStats {
+  total_up: number;
+  total_down: number;
+  recent_negatives?: number;
+}

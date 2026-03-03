@@ -5,6 +5,8 @@ URL configuration for AI proxy endpoints.
 from django.urls import path
 
 from .views import (
+    AIFeedbackStatsView,
+    AIFeedbackView,
     AIStatusView,
     ClinicalAssistView,
     ClinicalChatSessionDetailView,
@@ -32,4 +34,7 @@ urlpatterns = [
         ClinicalChatSessionDetailView.as_view(),
         name="clinical-chat-session-detail",
     ),
+    # Phase 3 — Feedback
+    path("feedback/", AIFeedbackView.as_view(), name="feedback"),
+    path("feedback/stats/", AIFeedbackStatsView.as_view(), name="feedback-stats"),
 ]

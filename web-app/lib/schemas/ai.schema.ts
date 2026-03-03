@@ -75,3 +75,21 @@ export const AIChatSessionDetailResponseSchema = z.object({
   session: AIChatSessionSchema,
   messages: z.array(AIChatMessageSchema),
 });
+
+// =============================================================================
+// Phase 3 — Feedback
+// =============================================================================
+
+/** Schema for POST /api/ai/feedback/ response */
+export const AIFeedbackResponseSchema = z.object({
+  status: z.string(),
+  message: z.string(),
+  feedback_id: z.string().optional(),
+});
+
+/** Schema for GET /api/ai/feedback/stats/ response */
+export const AIFeedbackStatsSchema = z.object({
+  total_up: z.number(),
+  total_down: z.number(),
+  recent_negatives: z.number().optional(),
+});

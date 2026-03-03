@@ -13,6 +13,8 @@ import {
   AIClinicalAssistResponseSchema,
   AIChatSessionListResponseSchema,
   AIChatSessionDetailResponseSchema,
+  AIFeedbackResponseSchema,
+  AIFeedbackStatsSchema,
 } from '@/lib/schemas/ai.schema';
 import { parseResponse } from '@/lib/schemas/validation';
 import type {
@@ -24,6 +26,9 @@ import type {
   AIClinicalAssistResponse,
   AIChatSessionListResponse,
   AIChatSessionDetailResponse,
+  AIFeedbackRequest,
+  AIFeedbackResponse,
+  AIFeedbackStats,
 } from '@/lib/types/ai';
 
 export const aiApi = {
@@ -132,5 +137,34 @@ export const aiApi = {
    */
   deleteChatSession: async (sessionId: string): Promise<void> => {
     await apiClient.delete(`/api/ai/clinical/chat/session/${sessionId}/`);
+  },
+
+  // ===========================================================================
+  // Phase 3 — Feedback
+  // ===========================================================================
+
+  /**
+   * Submit thumbs-up/down feedback on a TibaBot response.
+   *
+   * @param data - Feedback payload with message_id and "up" or "down"
+   * @returns Acknowledgement with feedback_id
+   */
+  submitFeedback: async (data: AIFeedbackRequest): Promise<AIFeedbackResponse> => {
+    const response = await apiClient.post('/api/ai/feedback/', data);
+    return parseResponse(AIFeedbackResponseSchema, response.data, {
+      context: 'aiApi.submitFeedback',
+    });
+  },
+
+  /**
+   * Get aggregate feedback statistics (admin dashboard).
+   *
+   * @returns Counts of thumbs up/down and recent negatives
+   */
+  getFeedbackStats: async (): Promise<AIFeedbackStats> => {
+    const response = await apiClient.get('/api/ai/feedback/stats/');
+    return parseResponse(AIFeedbackStatsSchema, response.data, {
+      context: 'aiApi.getFeedbackStats',
+    });
   },
 };

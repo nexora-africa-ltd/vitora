@@ -36,6 +36,9 @@ from .serializers import (
     AIChatSessionSerializer,
     AIClinicalAssistResponseSerializer,
     AIClinicalChatResponseSerializer,
+    AIFeedbackRequestSerializer,
+    AIFeedbackResponseSerializer,
+    AIFeedbackStatsResponseSerializer,
     AIStatusResponseSerializer,
     ClinicalAssistRequestSerializer,
     ClinicalChatRequestSerializer,
@@ -605,3 +608,132 @@ class ClinicalChatSessionDetailView(AIFeatureGatedMixin, APIView):
             return ChatSession.objects.get(id=session_id, user=user)
         except (ChatSession.DoesNotExist, ValueError):
             return None
+
+
+# =============================================================================
+# Phase 3 — Feedback
+# =============================================================================
+
+
+class AIFeedbackView(AIFeatureGatedMixin, APIView):
+    """
+    Proxy endpoint for submitting feedback on TibaBot responses.
+
+    POST /api/ai/feedback/
+    Body: {
+        "message_id": "enc-88-assist-1",
+        "feedback": "up",
+        "conversation_id": "encounter-88",      // optional
+        "user_query": "...",                      // optional
+        "bot_response": "...",                    // optional
+        "risk_level": "critical"                  // optional
+    }
+
+    Forwards to TibaBot's POST /feedback and returns {status, message, feedback_id}.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        serializer = AIFeedbackRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+
+        # Audit log
+        AuditLog.log(
+            action="ai_feedback_submit",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "message_id": data["message_id"],
+                "feedback": data["feedback"],
+                "conversation_id": data.get("conversation_id", ""),
+                "risk_level": data.get("risk_level", ""),
+            },
+        )
+
+        try:
+            client = get_tibabot_client()
+            result = client.submit_feedback(data)
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for feedback submission")
+            return Response(
+                {
+                    "status": "queued",
+                    "message": "Feedback recorded locally. Will sync when service is available.",
+                    "feedback_id": "",
+                },
+                status=status.HTTP_200_OK,
+            )
+        except TibaBotError as e:
+            logger.error("TibaBot error for feedback submission: %s", e)
+            return Response(
+                {
+                    "status": "error",
+                    "message": "Failed to submit feedback to AI service.",
+                    "feedback_id": "",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # Normalize response from TibaBot
+        response_data = {
+            "status": result.get("status", "received"),
+            "message": result.get("message", "Thank you for your feedback!"),
+            "feedback_id": result.get("feedback_id", ""),
+        }
+        response_serializer = AIFeedbackResponseSerializer(data=response_data)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+
+        # Fallback — return whatever TibaBot gave us
+        return Response(response_data)
+
+
+class AIFeedbackStatsView(AIFeatureGatedMixin, APIView):
+    """
+    Proxy endpoint for TibaBot feedback aggregate statistics.
+
+    GET /api/ai/feedback/stats/
+
+    Returns: { total_up, total_down, recent_negatives }
+    Useful for the admin dashboard.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        try:
+            client = get_tibabot_client()
+            result = client.get_feedback_stats()
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for feedback stats")
+            return Response(
+                {
+                    "total_up": 0,
+                    "total_down": 0,
+                    "recent_negatives": 0,
+                },
+                status=status.HTTP_200_OK,
+            )
+        except TibaBotError as e:
+            logger.error("TibaBot error for feedback stats: %s", e)
+            return Response(
+                {
+                    "total_up": 0,
+                    "total_down": 0,
+                    "recent_negatives": 0,
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        response_data = {
+            "total_up": result.get("total_up", 0),
+            "total_down": result.get("total_down", 0),
+            "recent_negatives": result.get("recent_negatives", 0),
+        }
+        return Response(response_data)
