@@ -198,9 +198,11 @@ export function TriageDashboardStats({
   }
 
   const totalVolume = volumeData?.total ?? waitTimeStats?.total_assessments ?? 0;
+  const queueCount = waitTimeStats?.current_queue?.count ?? 0;
   const longestWait = waitTimeStats?.current_queue?.max_wait_minutes ?? 0;
   const avgDuration = waitTimeStats?.triage_duration?.avg_minutes ?? 0;
   const durationCount = waitTimeStats?.triage_duration?.count ?? 0;
+  const hasDurationData = durationCount > 0;
   const totalBreaches = breachSummary?.total_active ?? 0;
 
   return (
@@ -218,10 +220,10 @@ export function TriageDashboardStats({
       <MiniStat
         icon={<Stethoscope className="h-4 w-4 shrink-0" />}
         title="Avg Triage Time"
-        value={avgDuration > 0 ? Math.round(avgDuration) : '—'}
-        unit={avgDuration > 0 ? 'min' : ''}
+        value={hasDurationData ? (avgDuration < 1 ? '< 1' : Math.round(avgDuration)) : '—'}
+        unit={hasDurationData ? 'min' : ''}
         footer={
-          durationCount > 0 ? (
+          hasDurationData ? (
             <span className="text-xs text-muted-foreground">
               From {durationCount} completed
             </span>
@@ -235,13 +237,13 @@ export function TriageDashboardStats({
       <MiniStat
         icon={<Timer className="h-4 w-4 shrink-0" />}
         title="Longest Wait"
-        value={longestWait > 0 ? longestWait : '—'}
-        unit={longestWait > 0 ? 'min' : ''}
+        value={queueCount > 0 ? longestWait : '—'}
+        unit={queueCount > 0 ? 'min' : ''}
         variant={longestWait > 60 ? 'destructive' : longestWait > 30 ? 'warning' : 'default'}
         footer={
-          (waitTimeStats?.current_queue?.count ?? 0) > 0 ? (
+          queueCount > 0 ? (
             <span className="text-xs text-muted-foreground">
-              {waitTimeStats?.current_queue?.count} in queue now
+              {queueCount} in queue now
             </span>
           ) : (
             <span className="text-xs text-muted-foreground">Queue empty</span>
