@@ -13,7 +13,7 @@
  */
 'use client';
 
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -26,6 +26,9 @@ import {
   Gauge,
   ThumbsUp,
   ThumbsDown,
+  AlertCircle,
+  CheckCircle2,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -34,6 +37,8 @@ import { cn } from '@/lib/utils/cn';
 import { useAIChatContext } from '@/lib/context/ai-chat-context';
 import { useAIFeedback } from '@/lib/hooks/use-ai';
 import { TibaBotStatusIndicator } from './tibabot-status-indicator';
+import { assessContextSufficiency, mergeContextWithEnrichment } from '@/lib/utils/ai-context-sufficiency';
+import { AIContextEnrichmentForm } from './ai-context-enrichment';
 import type { AIChatMessage, AIVerbosity, AIFeedbackDirection, AIQuickAction } from '@/lib/types/ai';
 import { AI_VERBOSITY_OPTIONS } from '@/lib/types/ai';
 
@@ -220,6 +225,10 @@ export function AIChatPanel({
     verbosity,
     setVerbosity,
     quickActions,
+    patientContext,
+    encounterContext,
+    contextEnrichment,
+    setContextEnrichment,
   } = useAIChatContext();
 
   const [inputValue, setInputValue] = useState('');
@@ -228,6 +237,17 @@ export function AIChatPanel({
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const feedbackMutation = useAIFeedback();
+
+  // Merge base context with user-provided enrichment, then assess sufficiency
+  const { mergedPatient, mergedEncounter } = useMemo(
+    () => mergeContextWithEnrichment(patientContext, encounterContext, contextEnrichment),
+    [patientContext, encounterContext, contextEnrichment]
+  );
+
+  const contextSufficiency = useMemo(
+    () => assessContextSufficiency(mergedPatient, mergedEncounter),
+    [mergedPatient, mergedEncounter]
+  );
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -388,18 +408,60 @@ export function AIChatPanel({
 
       <Separator />
 
-      {/* Clinical Assist CTA (encounter-aware) */}
+      {/* Clinical Assist CTA (encounter-aware) + context indicator */}
       {isEncounterAware && isAvailable && (
         <>
-          <button
-            type="button"
-            className="flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-primary hover:bg-primary/5 transition-colors w-full text-left"
-            onClick={onAskAboutPatient}
-            disabled={isSending}
-          >
-            <Stethoscope className="h-3.5 w-3.5" />
-            Ask about this patient
-          </button>
+          <div className="px-3 pt-2 pb-1.5 space-y-1.5">
+            {/* Context sufficiency indicator */}
+            <div
+              className={cn(
+                'flex items-start gap-2 rounded-lg px-3 py-2 text-xs',
+                contextSufficiency.level === 'sufficient' && 'bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400',
+                contextSufficiency.level === 'partial' && 'bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400',
+                contextSufficiency.level === 'insufficient' && 'bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400'
+              )}
+            >
+              {contextSufficiency.level === 'sufficient' && (
+                <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              )}
+              {contextSufficiency.level === 'partial' && (
+                <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              )}
+              {contextSufficiency.level === 'insufficient' && (
+                <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              )}
+              <div className="min-w-0">
+                <span className="font-medium">
+                  {contextSufficiency.level === 'sufficient' && 'Good context'}
+                  {contextSufficiency.level === 'partial' && 'Limited context'}
+                  {contextSufficiency.level === 'insufficient' && 'Missing data'}
+                </span>
+                {' — '}
+                {contextSufficiency.presentFields.length > 0
+                  ? contextSufficiency.presentFields.join(', ')
+                  : 'no clinical data entered yet'}
+              </div>
+            </div>
+
+            {/* Ask about patient button */}
+            <button
+              type="button"
+              className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-primary hover:bg-primary/5 transition-colors w-full text-left rounded-lg"
+              onClick={onAskAboutPatient}
+              disabled={isSending}
+            >
+              <Stethoscope className="h-3.5 w-3.5" />
+              Ask about this patient
+            </button>
+          </div>
+
+          {/* Inline enrichment form for missing fields */}
+          <AIContextEnrichmentForm
+            sufficiency={contextSufficiency}
+            currentEnrichment={contextEnrichment}
+            onEnrich={setContextEnrichment}
+          />
+
           <Separator />
         </>
       )}
