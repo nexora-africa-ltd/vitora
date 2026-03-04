@@ -67,6 +67,13 @@ const STATUS_ICONS: Record<ERBedStatus, React.ReactNode> = {
 };
 
 function StatusLegend() {
+  const legendIcons: Record<ERBedStatus, React.ReactNode> = {
+    AVAILABLE: <BedDouble className="h-3.5 w-3.5 text-green-500" />,
+    OCCUPIED: <BedDouble className="h-3.5 w-3.5 text-destructive" />,
+    CLEANING: <BedDouble className="h-3.5 w-3.5 text-yellow-500" />,
+    OUT_OF_SERVICE: <BedDouble className="h-3.5 w-3.5 text-muted-foreground/50" />,
+  };
+
   return (
     <div className="flex flex-wrap gap-3 text-xs sm:text-sm">
       {(Object.entries(ER_BED_STATUS_CONFIG) as [ERBedStatus, typeof ER_BED_STATUS_CONFIG[ERBedStatus]][]).map(
@@ -74,13 +81,12 @@ function StatusLegend() {
           <div key={status} className="flex items-center gap-1.5">
             <div
               className={cn(
-                'h-4 w-4 rounded border flex items-center justify-center',
+                'h-5 w-5 rounded border flex items-center justify-center',
                 config.bgClass,
                 config.borderClass,
-                config.textClass
               )}
             >
-              {STATUS_ICONS[status]}
+              {legendIcons[status]}
             </div>
             <span className="text-muted-foreground">{config.label}</span>
           </div>
@@ -112,11 +118,11 @@ function BedCell({ bed, onClick }: BedCellProps) {
           <button
             onClick={() => onClick(bed)}
             className={cn(
-              'relative flex flex-col items-center justify-center',
-              'w-full aspect-square rounded-lg border-2 transition-all',
-              'hover:shadow-md hover:scale-[1.02] active:scale-[0.98]',
+              'relative flex flex-col items-center justify-center gap-0.5',
+              'w-full rounded-xl border-2 transition-all p-2',
+              'hover:shadow-lg hover:scale-[1.03] active:scale-[0.97]',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              'min-h-[72px] sm:min-h-[80px]',
+              'min-h-[88px] sm:min-h-[96px]',
               config.bgClass,
               config.borderClass,
               bed.status === 'OCCUPIED' && categoryColor
@@ -124,55 +130,74 @@ function BedCell({ bed, onClick }: BedCellProps) {
                 : config.borderClass
             )}
           >
-            {/* Bed number */}
+            {/* Bed icon — the visual anchor */}
+            <BedDouble
+              className={cn(
+                'h-7 w-7 sm:h-8 sm:w-8 shrink-0',
+                bed.status === 'AVAILABLE' && 'text-green-400 dark:text-green-500',
+                bed.status === 'OCCUPIED' && 'text-destructive/70',
+                bed.status === 'CLEANING' && 'text-yellow-400 dark:text-yellow-500',
+                bed.status === 'OUT_OF_SERVICE' && 'text-muted-foreground/40',
+              )}
+            />
+
+            {/* Bed number label */}
             <span
               className={cn(
-                'text-xs font-bold',
+                'text-[11px] sm:text-xs font-bold leading-tight',
                 config.textClass
               )}
             >
               {bed.bed_number}
             </span>
 
-            {/* Patient name or status icon */}
+            {/* Patient name (occupied) or status label (others) */}
             {bed.status === 'OCCUPIED' && bed.patient_name ? (
               <span
                 className={cn(
-                  'text-[10px] sm:text-xs mt-0.5 truncate max-w-full px-1',
+                  'text-[9px] sm:text-[10px] font-medium truncate max-w-full px-0.5 leading-tight',
                   config.textClass
                 )}
               >
                 {bed.patient_name.split(' ')[0]}
               </span>
             ) : (
-              <span className={cn('mt-0.5', config.textClass)}>
-                {STATUS_ICONS[bed.status]}
+              <span className={cn('text-[9px] sm:text-[10px] leading-tight opacity-70', config.textClass)}>
+                {config.label}
               </span>
             )}
 
-            {/* Duration for occupied beds */}
+            {/* Duration badge for occupied beds */}
             {bed.status === 'OCCUPIED' && bed.occupied_duration_minutes != null && (
               <span
                 className={cn(
-                  'text-[9px] sm:text-[10px] mt-0.5 opacity-75',
+                  'inline-flex items-center gap-0.5 text-[8px] sm:text-[9px] mt-0.5 px-1.5 py-0.5 rounded-full',
+                  'bg-background/60 border border-current/10 font-medium tabular-nums',
                   config.textClass
                 )}
               >
+                <Clock className="h-2.5 w-2.5" />
                 {bed.occupied_duration_minutes < 60
                   ? `${bed.occupied_duration_minutes}m`
-                  : `${Math.floor(bed.occupied_duration_minutes / 60)}h ${bed.occupied_duration_minutes % 60}m`}
+                  : `${Math.floor(bed.occupied_duration_minutes / 60)}h${bed.occupied_duration_minutes % 60}m`}
               </span>
             )}
 
             {/* Triage category indicator dot */}
             {bed.triage_category && categoryColor && (
               <div
-                className={cn(
-                  'absolute top-1 right-1 h-2.5 w-2.5 rounded-full',
-                  categoryColor.bg
-                )}
+                className="absolute top-1.5 right-1.5 h-3 w-3 rounded-full ring-2 ring-background"
                 style={{ backgroundColor: getCategoryDotColor(bed.triage_category as TriageCategory) }}
               />
+            )}
+
+            {/* Small status icon in top-left for cleaning/OOS */}
+            {(bed.status === 'CLEANING' || bed.status === 'OUT_OF_SERVICE') && (
+              <div className={cn('absolute top-1.5 left-1.5', config.textClass)}>
+                {bed.status === 'CLEANING'
+                  ? <SparklesIcon className="h-3 w-3" />
+                  : <WrenchIcon className="h-3 w-3" />}
+              </div>
             )}
           </button>
         </TooltipTrigger>
