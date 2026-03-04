@@ -1466,6 +1466,7 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
         frozenset(
             {
                 "id",
+                "triage_assessment",
                 "patient_id",
                 "patient_name",
                 "patient_mrn",
@@ -1476,12 +1477,15 @@ CONTRACTS: list[tuple[type, frozenset[str]]] = [
                 "chief_complaint",
                 "assigned_area",
                 "assigned_area_display",
+                "assigned_area_label",
                 "assigned_clinic",
                 "assigned_clinic_name",
                 "routing_destination",
                 "arrival_time",
                 "triage_time",
                 "wait_time_minutes",
+                "is_wait_exceeded",
+                "alerts",
                 "alerts_count",
                 "status",
                 "position",

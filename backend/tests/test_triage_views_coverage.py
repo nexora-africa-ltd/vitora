@@ -330,10 +330,11 @@ class TestTriageVitalThresholdViewSet:
             format="json",
         )
 
-        # May be read-only viewset (405), or succeed (201), or validation error (400)
+        # Write requires admin; non-admin gets 403, admin gets 201/400
         assert response.status_code in [
             status.HTTP_201_CREATED,
             status.HTTP_400_BAD_REQUEST,
+            status.HTTP_403_FORBIDDEN,
             status.HTTP_405_METHOD_NOT_ALLOWED,
         ]
 
