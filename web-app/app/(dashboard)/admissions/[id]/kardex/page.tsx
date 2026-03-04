@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ClipboardList, Plus, Save, AlertTriangle, FileText } from 'lucide-react';
+import { ClipboardList, Plus, AlertTriangle, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
@@ -75,7 +75,7 @@ export default function KardexPage() {
   const updateCarePlanEntry = useUpdateCarePlanEntry();
 
   // Edit state
-  const [isEditing, setIsEditing] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [mobilityStatus, setMobilityStatus] = useState('');
   const [dietaryRequirements, setDietaryRequirements] = useState('');
   const [allergies, setAllergies] = useState('');
@@ -139,7 +139,7 @@ export default function KardexPage() {
       setIsolationRequired(kardex.isolation_required || false);
       setIsolationType(kardex.isolation_type || '');
     }
-    setIsEditing(true);
+    setEditDialogOpen(true);
   };
 
   const handleSave = async () => {
@@ -163,7 +163,7 @@ export default function KardexPage() {
         title: 'Success',
         description: 'Kardex updated successfully',
       });
-      setIsEditing(false);
+      setEditDialogOpen(false);
       refetch();
     } catch (error) {
       toast({
@@ -387,22 +387,12 @@ export default function KardexPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          {isEditing ? (
-            <>
-              <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
-              <Button onClick={handleSave} disabled={updateKardex.isPending}>
-                <Save className="h-4 w-4 mr-2" />
-                {updateKardex.isPending ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </>
-          ) : (
-            <Button onClick={initEditForm}>Edit Kardex</Button>
-          )}
+          <Button variant="outline" onClick={initEditForm}>Edit Kardex</Button>
         </div>
         }
       />
 
-      {/* Quick Summary - Always Visible */}
+      {/* Quick Summary Cards - Always Visible */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
         {/* Allergies */}
         <Card className="border-destructive/50">
@@ -431,6 +421,33 @@ export default function KardexPage() {
           </CardContent>
         </Card>
 
+        {/* Mobility */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Mobility</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="font-medium">
+              {kardex.mobility_status || 'Not specified'}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* IV Access */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">IV Access</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="font-medium">
+              {kardex.iv_access || 'None'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Risk Assessment Cards */}
+      <div className="grid gap-3 sm:gap-4 grid-cols-3">
         {/* Fall Risk */}
         <Card>
           <CardHeader className="pb-2">
@@ -457,7 +474,112 @@ export default function KardexPage() {
             </Badge>
           </CardContent>
         </Card>
+
+        {/* Isolation */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Isolation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Badge variant={kardex.isolation_required ? 'destructive' : 'secondary'}>
+              {kardex.isolation_required ? 'Required' : 'Not Required'}
+            </Badge>
+            {kardex.isolation_required && kardex.isolation_type && (
+              <p className="text-xs text-muted-foreground mt-1">{kardex.isolation_type}</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Edit Kardex Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Kardex</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Mobility Status</Label>
+                <Input
+                  value={mobilityStatus}
+                  onChange={(e) => setMobilityStatus(e.target.value)}
+                  placeholder="e.g., Ambulatory, Wheelchair"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Dietary Requirements</Label>
+                <Input
+                  value={dietaryRequirements}
+                  onChange={(e) => setDietaryRequirements(e.target.value)}
+                  placeholder="e.g., Regular, Diabetic, NPO"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Allergies</Label>
+                <Input
+                  value={allergies}
+                  onChange={(e) => setAllergies(e.target.value)}
+                  placeholder="e.g., Penicillin, Latex"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>IV Access</Label>
+                <Input
+                  value={ivAccess}
+                  onChange={(e) => setIvAccess(e.target.value)}
+                  placeholder="e.g., Right arm IV cannula"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Fall Risk</Label>
+                <Select value={fallRisk} onValueChange={(v) => setFallRisk(v as RiskLevel)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {RISK_LEVELS.map((level) => (
+                      <SelectItem key={level.value} value={level.value}>{level.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Pressure Sore Risk</Label>
+                <Select value={pressureSoreRisk} onValueChange={(v) => setPressureSoreRisk(v as RiskLevel)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {RISK_LEVELS.map((level) => (
+                      <SelectItem key={level.value} value={level.value}>{level.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Isolation Required</Label>
+                <Switch checked={isolationRequired} onCheckedChange={setIsolationRequired} />
+              </div>
+              {isolationRequired && (
+                <Input
+                  value={isolationType}
+                  onChange={(e) => setIsolationType(e.target.value)}
+                  placeholder="e.g., Contact, Droplet, Airborne"
+                />
+              )}
+            </div>
+          </div>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave} disabled={updateKardex.isPending}>
+              {updateKardex.isPending ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
 
 
@@ -489,17 +611,10 @@ export default function KardexPage() {
       )}
 
       <Tabs defaultValue="care-plan" className="space-y-4">
-        <TabsList className="w-full grid grid-cols-5 h-auto">
+        <TabsList className="w-full grid grid-cols-3 h-auto">
           <TabsTrigger value="care-plan" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Plan</span>
             <span className="hidden sm:inline">Care Plan</span>
-          </TabsTrigger>
-          <TabsTrigger value="care" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
-            <span className="sm:hidden">Care</span>
-            <span className="hidden sm:inline">Care Info</span>
-          </TabsTrigger>
-          <TabsTrigger value="risks" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
-            Risks
           </TabsTrigger>
           <TabsTrigger value="notes" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Notes</span>
@@ -746,178 +861,6 @@ export default function KardexPage() {
           )}
         </TabsContent>
 
-        {/* Care Information Tab */}
-        <TabsContent value="care" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Basic Care</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isEditing ? (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Mobility Status</Label>
-                      <Input
-                        value={mobilityStatus}
-                        onChange={(e) => setMobilityStatus(e.target.value)}
-                        placeholder="e.g., Ambulatory, Wheelchair, Bedridden"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Dietary Requirements</Label>
-                      <Input
-                        value={dietaryRequirements}
-                        onChange={(e) => setDietaryRequirements(e.target.value)}
-                        placeholder="e.g., Regular, Diabetic, NPO"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Allergies</Label>
-                      <Input
-                        value={allergies}
-                        onChange={(e) => setAllergies(e.target.value)}
-                        placeholder="e.g., Penicillin, Latex"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>IV Access</Label>
-                      <Input
-                        value={ivAccess}
-                        onChange={(e) => setIvAccess(e.target.value)}
-                        placeholder="e.g., Right arm IV cannula"
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <InfoItem label="Mobility Status" value={kardex.mobility_status || 'Not specified'} />
-                    <InfoItem label="Dietary Requirements" value={kardex.dietary_requirements || 'Regular'} />
-                    <InfoItem label="Allergies" value={kardex.allergies || 'None known'} />
-                    <InfoItem label="IV Access" value={kardex.iv_access || 'None'} />
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Risk Assessment Tab */}
-        <TabsContent value="risks" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            {/* Fall Risk */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5" />
-                  Fall Risk
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isEditing ? (
-                  <div className="space-y-2">
-                    <Label>Risk Level</Label>
-                    <Select value={fallRisk} onValueChange={(v) => setFallRisk(v as RiskLevel)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {RISK_LEVELS.map((level) => (
-                          <SelectItem key={level.value} value={level.value}>
-                            {level.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Badge variant={kardex.fall_risk !== 'LOW' ? 'destructive' : 'secondary'}>
-                      {kardex.fall_risk}
-                    </Badge>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Pressure Sore Risk */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5" />
-                  Pressure Sore Risk
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isEditing ? (
-                  <div className="space-y-2">
-                    <Label>Risk Level</Label>
-                    <Select value={pressureSoreRisk} onValueChange={(v) => setPressureSoreRisk(v as RiskLevel)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {RISK_LEVELS.map((level) => (
-                          <SelectItem key={level.value} value={level.value}>
-                            {level.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Badge variant={kardex.pressure_sore_risk !== 'LOW' ? 'destructive' : 'secondary'}>
-                      {kardex.pressure_sore_risk}
-                    </Badge>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Isolation */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5" />
-                  Isolation
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isEditing ? (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <Label>Isolation Required</Label>
-                      <Switch checked={isolationRequired} onCheckedChange={setIsolationRequired} />
-                    </div>
-                    {isolationRequired && (
-                      <div className="space-y-2">
-                        <Label>Isolation Type</Label>
-                        <Input
-                          value={isolationType}
-                          onChange={(e) => setIsolationType(e.target.value)}
-                          placeholder="e.g., Contact, Droplet, Airborne"
-                        />
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="space-y-2">
-                    <Badge variant={kardex.isolation_required ? 'destructive' : 'secondary'}>
-                      {kardex.isolation_required ? 'Required' : 'Not Required'}
-                    </Badge>
-                    {kardex.isolation_required && kardex.isolation_type && (
-                      <p className="text-sm text-muted-foreground">
-                        Type: {kardex.isolation_type}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
         {/* Shift Notes Tab */}
         <TabsContent value="notes" className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
@@ -1131,15 +1074,6 @@ export default function KardexPage() {
           )}
         </TabsContent>
       </Tabs>
-    </div>
-  );
-}
-
-function InfoItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="font-medium">{value}</p>
     </div>
   );
 }
