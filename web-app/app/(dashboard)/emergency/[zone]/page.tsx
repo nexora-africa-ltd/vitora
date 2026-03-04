@@ -26,6 +26,7 @@ import {
   AlertTriangle,
   Filter,
   X,
+  Shield,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -55,6 +56,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { TriageCategoryBadge } from '@/components/triage/triage-category-badge';
 import { ViewToggle, type ViewMode } from '@/components/ui/view-toggle';
 import { EntityCard, EntityGrid } from '@/components/shared/entity-card';
+import { EscalationDialog } from '@/components/emergency';
 import { useTriageQueue, useTriageQueueActions } from '@/lib/hooks/use-triage';
 import { useZonesSummary } from '@/lib/hooks/use-triage';
 import { useEmergencySocket } from '@/lib/hooks/use-websocket';
@@ -107,10 +109,11 @@ interface QueueCardProps {
   onWithClinician: () => void;
   onComplete: () => void;
   onLWBS: () => void;
+  onEscalate: () => void;
   onSelect: () => void;
 }
 
-function QueueCard({ item, onCall, onWithClinician, onComplete, onLWBS, onSelect }: QueueCardProps) {
+function QueueCard({ item, onCall, onWithClinician, onComplete, onLWBS, onEscalate, onSelect }: QueueCardProps) {
   const waitTimeClass = getWaitTimeClass(item.triage_category, item.wait_time_minutes);
   const genderDisplay = item.patient_gender === 'M' ? 'M' : item.patient_gender === 'F' ? 'F' : 'O';
 
@@ -210,6 +213,10 @@ function QueueCard({ item, onCall, onWithClinician, onComplete, onLWBS, onSelect
               Complete
             </Button>
           )}
+          <Button size="sm" variant="outline" onClick={onEscalate} title="Escalate patient">
+            <Shield className="h-3 w-3 mr-1" />
+            <span className="hidden sm:inline">Escalate</span>
+          </Button>
           <Button size="sm" variant="ghost" className="ml-auto" onClick={onSelect}>
             View Details
             <ChevronRight className="h-3 w-3 ml-1" />
@@ -305,6 +312,10 @@ export default function ZoneQueuePage() {
   const [lwbsItemId, setLwbsItemId] = useState<number | null>(null);
   const [lwbsReason, setLwbsReason] = useState('');
 
+  // Escalation dialog state
+  const [escalationDialogOpen, setEscalationDialogOpen] = useState(false);
+  const [escalationItem, setEscalationItem] = useState<TriageQueueEntry | null>(null);
+
   // Get queue items from paginated response
   const queueItems = useMemo(() => {
     if (!queueData?.results) return [];
@@ -375,6 +386,11 @@ export default function ZoneQueuePage() {
     setLwbsItemId(itemId);
     setLwbsReason('');
     setLwbsDialogOpen(true);
+  };
+
+  const handleEscalate = (item: TriageQueueEntry) => {
+    setEscalationItem(item);
+    setEscalationDialogOpen(true);
   };
 
   const confirmLWBS = async () => {
@@ -580,6 +596,7 @@ export default function ZoneQueuePage() {
                 onWithClinician={() => markWithClinician(item.id).then(() => refetch())}
                 onComplete={() => markComplete(item.id).then(() => refetch())}
                 onLWBS={() => handleLWBS(item.id)}
+                onEscalate={() => handleEscalate(item)}
                 onSelect={() => handleSelectPatient(item)}
               />
             ))}
@@ -638,6 +655,7 @@ export default function ZoneQueuePage() {
                     ...(item.status === 'WITH_CLINICIAN'
                       ? [{ label: 'Complete', onClick: () => markComplete(item.id).then(() => refetch()) }]
                       : []),
+                    { label: 'Escalate', onClick: () => handleEscalate(item) },
                   ]}
                 />
               );
@@ -682,6 +700,20 @@ export default function ZoneQueuePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Escalation Dialog */}
+      <EscalationDialog
+        open={escalationDialogOpen}
+        onOpenChange={setEscalationDialogOpen}
+        queueEntryId={escalationItem?.id ?? 0}
+        patientName={escalationItem?.patient_name ?? ''}
+        patientMrn={escalationItem?.patient_mrn ?? ''}
+        waitMinutes={escalationItem?.wait_time_minutes}
+        onSuccess={() => {
+          setEscalationItem(null);
+          refetch();
+        }}
+      />
     </PullToRefresh>
   );
 }

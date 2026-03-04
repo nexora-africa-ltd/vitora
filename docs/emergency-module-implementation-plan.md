@@ -3,7 +3,7 @@
 > **Purpose**: Plan for implementing a dedicated Emergency Department module in Vitora HMIS
 > **Created**: February 20, 2026
 > **Updated**: March 4, 2026
-> **Status**: Phase 3 Complete ✅
+> **Status**: Phase 4 Complete ✅
 
 ---
 
@@ -50,7 +50,7 @@ EMERGENCY_AREA_OPTIONS = [
 | No ER bed board | No visual bed/bay status | MEDIUM | ✅ **Done** |
 | No door-to-doctor metrics | Cannot measure ER efficiency | LOW | 📋 Planned |
 | No EMS handoff workflow | No ambulance pre-arrival alerts | LOW | 📋 Future |
-| No auto-escalation | No alerts when wait times breached | MEDIUM | 📋 Planned |
+| No auto-escalation | No alerts when wait times breached | MEDIUM | ✅ **Done** |
 
 ---
 
@@ -305,29 +305,62 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 
 ---
 
-### Phase 4: Auto-Escalation & Alerts (MEDIUM PRIORITY)
+### Phase 4: Auto-Escalation & Alerts (MEDIUM PRIORITY) ✅ COMPLETE
 
-**Estimated Effort**: 2 days
+**Estimated Effort**: 2 days | **Actual**: 1 day
 
-#### 4.1 Wait Time Breach Alerts
+#### 4.1 Wait Time Breach Alerts ✅
 
-**Backend**:
-- [ ] Celery task to check queue every minute
-- [ ] Generate alert when wait time exceeds KETA target:
-  - RED: > 0 min
-  - ORANGE: > 10 min
-  - YELLOW: > 60 min
+**Backend** (`WaitTimeBreach` model in `hmis/apps/triage/models.py`):
+- [x] Celery task `check_wait_time_breaches` scans queue every minute
+- [x] Generates breach alert when wait time exceeds KETA target:
+  - RED: > 0 min (severity: CRITICAL)
+  - ORANGE: > 10 min (severity: URGENT)
+  - YELLOW: > 60 min (severity: WARNING)
+  - GREEN: > 120 min, BLUE: > 240 min (severity: INFO)
+- [x] Severity levels: CRITICAL, URGENT, WARNING, INFO
+- [x] Status workflow: ACTIVE → ACKNOWLEDGED → ESCALATED → RESOLVED
+- [x] Auto-resolve task `auto_resolve_breaches` clears breaches for completed/LWBS patients
+- [x] No duplicate breaches for the same patient
+
+**API Endpoints** (registered under `/api/triage/breaches/`):
+- `GET  /api/triage/breaches/` — List breaches (paginated, filterable by severity/status/active_only)
+- `POST /api/triage/breaches/{id}/acknowledge/` — Acknowledge a breach with optional notes
+- `POST /api/triage/breaches/{id}/resolve/` — Resolve a breach
+- `GET  /api/triage/breaches/summary/` — Breach counts by severity
 
 **Frontend**:
-- [ ] WebSocket push for real-time alerts
-- [ ] Toast notification with link to patient
-- [ ] audio alert (configurable in settings)
+- [x] `WaitTimeBreachBanner` component on ER dashboard showing active breaches
+- [x] Severity-coded items with acknowledge action
+- [x] WebSocket push via `EmergencyAlertsProvider` for real-time breach notifications
+- [x] Toast notifications with severity-appropriate styling
+- [x] Audio alerts via Web Audio API (configurable via localStorage toggle)
+  - CRITICAL: 3 rapid high beeps (880 Hz)
+  - URGENT: 2 medium beeps (660 Hz)
+  - WARNING: 1 low beep (440 Hz)
+  - INFO: no sound
+- [x] Zod schemas with `parseResponse()` validation
 
-#### 4.2 Escalation Actions
+#### 4.2 Escalation Actions ✅
 
-- [ ] Button to escalate to charge nurse
-- [ ] Button to request additional staff
-- [ ] Audit log entry for escalations
+**Backend** (`Escalation` model in `hmis/apps/triage/models.py`):
+- [x] Escalation types: CHARGE_NURSE, ADDITIONAL_STAFF, SUPERVISOR
+- [x] Status workflow: PENDING → IN_PROGRESS → RESOLVED / DISMISSED
+- [x] State-transition methods: `mark_in_progress()`, `resolve()`, `dismiss()`
+- [x] Audit log entry on escalation creation
+
+**API Endpoints** (registered under `/api/triage/escalations/`):
+- `GET  /api/triage/escalations/` — List escalations (filterable by active_only/type)
+- `POST /api/triage/queue/{id}/escalate/` — Escalate a queue entry
+- `POST /api/triage/escalations/{id}/mark_in_progress/` — Mark escalation in progress
+- `POST /api/triage/escalations/{id}/resolve_escalation/` — Resolve with notes
+- `POST /api/triage/escalations/{id}/dismiss/` — Dismiss with reason
+
+**Frontend**:
+- [x] Self-contained `EscalationDialog` component with card-based type selection
+- [x] Escalate button on every patient card in zone queue (list & grid views)
+- [x] Internal mutation + toast notifications (parent just provides queueEntryId + onSuccess)
+- [x] WebSocket event handling for `escalation_created` events
 
 ---
 
@@ -381,7 +414,12 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 | POST | `/api/triage/er-beds/{id}/assign/` | Assign patient to bed | ✅ Done |
 | POST | `/api/triage/er-beds/{id}/release/` | Release patient from bed | ✅ Done |
 | POST | `/api/triage/er-beds/{id}/update-status/` | Mark available/OOS | ✅ Done |
-| POST | `/api/triage/assessments/{id}/escalate/` | Escalate patient | 📋 Phase 4 |
+| POST | `/api/triage/queue/{id}/escalate/` | Escalate queue entry | ✅ Done |
+| GET | `/api/triage/breaches/` | Wait time breaches (paginated) | ✅ Done |
+| POST | `/api/triage/breaches/{id}/acknowledge/` | Acknowledge breach | ✅ Done |
+| GET | `/api/triage/breaches/summary/` | Breach counts by severity | ✅ Done |
+| GET | `/api/triage/escalations/` | Escalation records (filterable) | ✅ Done |
+| POST | `/api/triage/escalations/{id}/resolve_escalation/` | Resolve escalation | ✅ Done |
 | GET | `/api/triage/metrics/` | ER performance metrics | 📋 Phase 5 |
 
 ### Example: Zone Summary Response
@@ -455,8 +493,13 @@ state-transition methods, and computed properties. Migration: `triage/0009_add_e
 - [x] ERBed API CRUD and custom actions (assign, release, update-status, summary, board) (`TestERBedAPI`)
 - [x] ERBed unique constraint on zone + bed_number
 - [x] ERBed computed properties (patient_name, patient_mrn, triage_category, occupied_duration)
-- [ ] Escalation creates audit log entry
-- [ ] Wait time breach detection logic
+- [x] Escalation creates audit log entry (`TestEscalationAPI::test_escalate_creates_audit_log`)
+- [x] Wait time breach detection logic (`TestWaitTimeBreachTask` — 5 tests)
+- [x] Wait time breach model CRUD and workflow (`TestWaitTimeBreachModel` — 5 tests)
+- [x] Escalation model state transitions (`TestEscalationModel` — 4 tests)
+- [x] Auto-resolve breaches for completed/LWBS patients (`TestAutoResolveBreaches` — 3 tests)
+- [x] Breach API endpoints and filtering (`TestWaitTimeBreachAPI` — 7 tests)
+- [x] Escalation API endpoints and actions (`TestEscalationAPI` — 9 tests)
 
 ### E2E Tests (Playwright)
 
@@ -503,7 +546,7 @@ Feature: Emergency Department Dashboard
 | 3 | Sidebar Navigation | HIGH | 0.5 days | None | ✅ Complete |
 | 4 | Zone-Specific Views | MEDIUM | 2 days | Phase 1 | 📋 Next |
 | 5 | Zone Tabs Layout | MEDIUM | 0.5 days | Phase 4 | 📋 Planned |
-| 6 | Auto-Escalation | MEDIUM | 2 days | Celery setup | 📋 Planned |
+| 6 | Auto-Escalation | MEDIUM | 2 days | Celery setup | ✅ Complete |
 | 7 | ER Bed Board | MEDIUM | 1 day | ERBed model | ✅ Complete |
 | 8 | Metrics Dashboard | LOW | 2 days | Historical data |
 | 9 | EMS Handoff | LOW | 4 days | External integration |
@@ -528,7 +571,7 @@ Feature: Emergency Department Dashboard
 
 1. ~~**Bed Board Priority**: Is visual bed assignment needed for MVP, or can we defer?~~ ✅ Implemented
 2. **Zone Capacity Source**: Should capacity be configurable per facility or hardcoded?
-3. **Audio Alerts**: Should critical alerts have sound? User preference setting?
+3. ~~**Audio Alerts**: Should critical alerts have sound? User preference setting?~~ ✅ Implemented with Web Audio API, toggleable via localStorage
 4. **Mobile ER View**: Dedicated mobile layout or responsive desktop?
 5. **EMS Integration**: Any existing ambulance dispatch systems to integrate with?
 
@@ -544,7 +587,8 @@ Feature: Emergency Department Dashboard
 6. [x] ~~Implement Zone-Specific Views (Phase 2)~~
 7. [x] ~~Add Zone Tabs Layout~~
 8. [x] ~~Implement ER Bed Board (Phase 3)~~
-9. [ ] Create E2E tests for emergency dashboard
+9. [x] ~~Implement Auto-Escalation & Alerts (Phase 4)~~
+10. [ ] Create E2E tests for emergency dashboard
 
 ---
 
@@ -600,5 +644,32 @@ Feature: Emergency Department Dashboard
 - `app/(dashboard)/emergency/page.tsx` - Added `BedBoardPanel` section below ER Zones
 - `app/(dashboard)/emergency/layout.tsx` - Added Bed Board tab to zone navigation
 
-**Document Version**: 1.2
+---
+
+### Phase 4 Files (March 4, 2026)
+
+**Backend:**
+- `hmis/apps/triage/models.py` - Added `WaitTimeBreach` and `Escalation` models with state-transition methods
+- `hmis/apps/triage/serializers.py` - Added breach/escalation serializers (list, detail, action serializers)
+- `hmis/apps/triage/views.py` - Added `WaitTimeBreachViewSet` and `EscalationViewSet` with custom actions
+- `hmis/apps/triage/urls.py` - Registered `breaches` and `escalations` routers
+- `hmis/apps/triage/admin.py` - Added admin classes with colored severity/status badges
+- `hmis/apps/triage/tasks.py` - Added `check_wait_time_breaches` and `auto_resolve_breaches` Celery tasks
+- `hmis/apps/triage/migrations/0010_waittimebreach_escalation.py` - **NEW** - Breach & escalation migration
+- `tests/test_escalation_alerts.py` - **NEW** - 33 tests (5 model breach + 4 model escalation + 5 task + 3 auto-resolve + 7 breach API + 9 escalation API)
+
+**Frontend:**
+- `lib/types/triage.ts` - Added `BreachSeverity`, `BreachStatus`, `EscalationType`, `EscalationStatus`, config objects
+- `lib/schemas/triage.schema.ts` - Added `WaitTimeBreachSchema`, `EscalationSchema`, `BreachSummarySchema`
+- `lib/api/triage.ts` - Added 8 API client methods (breaches + escalations) with `parseResponse()`
+- `lib/hooks/use-triage.ts` - Added `useWaitTimeBreaches`, `useBreachSummary`, `useBreachActions`, `useEscalatePatient`, `useEscalations`, `useEscalationActions` hooks
+- `components/emergency/alerts-provider.tsx` - **NEW** - WebSocket context provider for breach/escalation events with audio alerts
+- `components/emergency/escalation-dialog.tsx` - **NEW** - Self-contained escalation dialog with card-based type selection
+- `components/emergency/breach-alert-banner.tsx` - Updated with acknowledge action wiring
+- `components/emergency/index.ts` - Updated exports
+- `app/(dashboard)/emergency/layout.tsx` - Wrapped children in `EmergencyAlertsProvider`
+- `app/(dashboard)/emergency/page.tsx` - Added `WaitTimeBreachBanner` section
+- `app/(dashboard)/emergency/[zone]/page.tsx` - Added escalate button + `EscalationDialog` to queue cards
+
+**Document Version**: 1.3
 **Last Updated**: March 4, 2026

@@ -7,6 +7,7 @@ Sprint 1.5-1.6 Track E: Triage Module MVP - Phase 5
 import logging
 
 from django.db.models import Count
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -19,7 +20,7 @@ from rest_framework.views import APIView
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
-from .models import ERBed, TriageAssessment, TriageQueue, TriageVitalThreshold, WaitingQueue
+from .models import ERBed, Escalation, TriageAssessment, TriageQueue, TriageVitalThreshold, WaitTimeBreach, WaitingQueue
 from .serializers import (
     ERBedAssignPatientSerializer,
     ERBedBoardSummarySerializer,
@@ -28,11 +29,16 @@ from .serializers import (
     ERBedReleaseSerializer,
     ERBedSerializer,
     ERBedUpdateStatusSerializer,
+    EscalationCreateSerializer,
+    EscalationResolveSerializer,
+    EscalationSerializer,
     TriageAssessmentCreateSerializer,
     TriageAssessmentSerializer,
     TriageCategoryCalculationSerializer,
     TriageQueueSerializer,
     TriageVitalThresholdSerializer,
+    WaitTimeBreachAcknowledgeSerializer,
+    WaitTimeBreachSerializer,
     WaitingQueueCreateSerializer,
     WaitingQueueSerializer,
 )
@@ -537,6 +543,63 @@ class TriageQueueViewSet(viewsets.ReadOnlyModelViewSet):
         queue_entry.mark_lwbs(reason)
 
         return Response({"status": "left_without_being_seen", "reason": reason})
+
+    @extend_schema(
+        request=EscalationCreateSerializer,
+        responses={201: EscalationSerializer},
+        description="Escalate a patient's queue entry to charge nurse or request additional staff.",
+    )
+    @action(detail=True, methods=["post"], url_path="escalate")
+    def escalate(self, request, pk=None):
+        """
+        Escalate a patient queue entry.
+
+        Creates an Escalation record and logs the action for audit.
+        Broadcasts an escalation event via WebSocket.
+        """
+        queue_entry = self.get_object()
+        serializer = EscalationCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        assessment = queue_entry.triage_assessment
+        patient = assessment.encounter.patient
+
+        escalation = Escalation.objects.create(
+            queue_entry=queue_entry,
+            triage_assessment=assessment,
+            patient=patient,
+            escalation_type=serializer.validated_data["escalation_type"],
+            reason=serializer.validated_data["reason"],
+            wait_time_at_escalation=assessment.get_wait_time_minutes(),
+            triage_category=assessment.triage_category,
+            assigned_area=assessment.assigned_area or "",
+            escalated_by=request.user,
+        )
+
+        # Audit log
+        AuditLog.log(
+            action="patient_escalation",
+            user=request.user,
+            resource_type="TriageQueue",
+            resource_id=queue_entry.id,
+            ip_address=get_client_ip(request),
+            details={
+                "escalation_id": escalation.id,
+                "escalation_type": escalation.escalation_type,
+                "reason": escalation.reason,
+                "triage_category": escalation.triage_category,
+                "patient_mrn": patient.mrn,
+                "wait_time_minutes": escalation.wait_time_at_escalation,
+            },
+        )
+
+        # Broadcast escalation via WebSocket
+        _broadcast_escalation(escalation)
+
+        return Response(
+            EscalationSerializer(escalation).data,
+            status=status.HTTP_201_CREATED,
+        )
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT},
@@ -1159,3 +1222,218 @@ class ERBedViewSet(viewsets.ModelViewSet):
             )
 
         return Response(ERBedSerializer(bed).data)
+
+
+# =============================================================================
+# Phase 4: Wait Time Breach & Escalation ViewSets
+# =============================================================================
+
+
+def _broadcast_escalation(escalation: Escalation) -> None:
+    """Broadcast escalation event to emergency WebSocket clients (fire-and-forget)."""
+    try:
+        import asyncio
+
+        from channels.layers import get_channel_layer
+
+        channel_layer = get_channel_layer()
+        if channel_layer is None:
+            return
+
+        message = {
+            "type": "emergency.escalation.event",
+            "event_type": "escalation_event",
+            "data": {
+                "escalation": EscalationSerializer(escalation).data,
+                "timestamp": timezone.now().isoformat(),
+            },
+        }
+
+        loop = None
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            pass
+
+        if loop and loop.is_running():
+            asyncio.ensure_future(
+                channel_layer.group_send("emergency_queue", message)
+            )
+        else:
+            new_loop = asyncio.new_event_loop()
+            try:
+                new_loop.run_until_complete(
+                    channel_layer.group_send("emergency_queue", message)
+                )
+            finally:
+                new_loop.close()
+    except Exception:
+        logger.exception("Failed to broadcast escalation event")
+
+
+class WaitTimeBreachViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for wait time breach alerts.
+
+    Read-only listing with acknowledge and resolve actions.
+    """
+
+    queryset = WaitTimeBreach.objects.all().select_related(
+        "queue_entry", "triage_assessment", "patient", "acknowledged_by"
+    )
+    serializer_class = WaitTimeBreachSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["status", "severity", "triage_category", "assigned_area"]
+    ordering_fields = ["created_at", "severity", "actual_wait_minutes"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        """Optionally filter to active-only breaches."""
+        queryset = super().get_queryset()
+        active_only = self.request.query_params.get("active_only", "").lower()
+        if active_only in ("true", "1", "yes"):
+            queryset = queryset.filter(status__in=["ACTIVE", "ACKNOWLEDGED", "ESCALATED"])
+        return queryset
+
+    @extend_schema(
+        request=WaitTimeBreachAcknowledgeSerializer,
+        responses={200: WaitTimeBreachSerializer},
+        description="Acknowledge a wait time breach alert.",
+    )
+    @action(detail=True, methods=["post"], url_path="acknowledge")
+    def acknowledge(self, request, pk=None):
+        """Acknowledge a wait time breach."""
+        breach = self.get_object()
+        if breach.status not in ["ACTIVE"]:
+            return Response(
+                {"error": f"Cannot acknowledge breach in status '{breach.status}'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = WaitTimeBreachAcknowledgeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        breach.acknowledge(request.user, notes=serializer.validated_data.get("notes", ""))
+        return Response(WaitTimeBreachSerializer(breach).data)
+
+    @action(detail=True, methods=["post"], url_path="resolve")
+    def resolve(self, request, pk=None):
+        """Resolve a wait time breach."""
+        breach = self.get_object()
+        if breach.status == "RESOLVED":
+            return Response(
+                {"error": "Breach is already resolved."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        breach.resolve()
+        return Response(WaitTimeBreachSerializer(breach).data)
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT},
+        description="Get summary of active wait time breaches.",
+    )
+    @action(detail=False, methods=["get"], url_path="summary")
+    def summary(self, request):
+        """Get breach summary (counts by severity and status)."""
+        active = WaitTimeBreach.objects.filter(
+            status__in=["ACTIVE", "ACKNOWLEDGED", "ESCALATED"]
+        )
+        by_severity = (
+            active.values("severity")
+            .annotate(count=Count("id"))
+            .order_by("severity")
+        )
+        by_category = (
+            active.values("triage_category")
+            .annotate(count=Count("id"))
+            .order_by("triage_category")
+        )
+        return Response({
+            "total_active": active.count(),
+            "by_severity": {item["severity"]: item["count"] for item in by_severity},
+            "by_category": {item["triage_category"]: item["count"] for item in by_category},
+        })
+
+
+class EscalationViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for escalation records.
+
+    Read-only listing with resolve and dismiss actions.
+    """
+
+    queryset = Escalation.objects.all().select_related(
+        "queue_entry", "triage_assessment", "patient",
+        "escalated_by", "resolved_by",
+    )
+    serializer_class = EscalationSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["status", "escalation_type", "triage_category", "assigned_area"]
+    ordering_fields = ["created_at", "escalation_type"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        """Optionally filter to active-only escalations."""
+        queryset = super().get_queryset()
+        active_only = self.request.query_params.get("active_only", "").lower()
+        if active_only in ("true", "1", "yes"):
+            queryset = queryset.filter(status__in=["PENDING", "IN_PROGRESS"])
+        return queryset
+
+    @extend_schema(
+        request=EscalationResolveSerializer,
+        responses={200: EscalationSerializer},
+        description="Resolve an escalation.",
+    )
+    @action(detail=True, methods=["post"], url_path="resolve")
+    def resolve(self, request, pk=None):
+        """Resolve an escalation."""
+        escalation = self.get_object()
+        if escalation.status in ["RESOLVED", "DISMISSED"]:
+            return Response(
+                {"error": f"Escalation already '{escalation.status}'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = EscalationResolveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        escalation.resolve(
+            user=request.user,
+            notes=serializer.validated_data.get("resolution_notes", ""),
+        )
+
+        AuditLog.log(
+            action="escalation_resolved",
+            user=request.user,
+            resource_type="Escalation",
+            resource_id=escalation.id,
+            ip_address=get_client_ip(request),
+            details={
+                "escalation_type": escalation.escalation_type,
+                "patient_mrn": escalation.patient.mrn,
+                "resolution_notes": escalation.resolution_notes,
+            },
+        )
+
+        return Response(EscalationSerializer(escalation).data)
+
+    @extend_schema(
+        request=EscalationResolveSerializer,
+        responses={200: EscalationSerializer},
+        description="Dismiss an escalation.",
+    )
+    @action(detail=True, methods=["post"], url_path="dismiss")
+    def dismiss(self, request, pk=None):
+        """Dismiss an escalation."""
+        escalation = self.get_object()
+        if escalation.status in ["RESOLVED", "DISMISSED"]:
+            return Response(
+                {"error": f"Escalation already '{escalation.status}'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = EscalationResolveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        escalation.dismiss(
+            user=request.user,
+            notes=serializer.validated_data.get("resolution_notes", ""),
+        )
+        return Response(EscalationSerializer(escalation).data)

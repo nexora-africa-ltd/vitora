@@ -878,3 +878,160 @@ export function useSuggestedERBed(zone?: string) {
     staleTime: 10_000,
   });
 }
+
+// =============================================================================
+// Phase 4: Auto-Escalation & Alerts Hooks
+// =============================================================================
+
+/**
+ * Fetch active wait time breach alerts.
+ *
+ * @param options - Query options
+ * @param options.activeOnly - Only return active (unresolved) breaches
+ * @param options.severity - Filter by severity level
+ * @param options.refetchInterval - Polling interval in ms (default: 30s)
+ */
+export function useWaitTimeBreaches(options?: {
+  activeOnly?: boolean;
+  severity?: string;
+  triageCategory?: string;
+  refetchInterval?: number;
+}) {
+  const {
+    activeOnly = true,
+    severity,
+    triageCategory,
+    refetchInterval = 30_000,
+  } = options ?? {};
+
+  return useQuery({
+    queryKey: [...triageKeys.all, 'breaches', { activeOnly, severity, triageCategory }] as const,
+    queryFn: () =>
+      triageApi.getBreaches({
+        active_only: activeOnly,
+        severity,
+        triage_category: triageCategory,
+      }),
+    refetchInterval,
+  });
+}
+
+/**
+ * Fetch breach summary (counts by severity and category).
+ */
+export function useBreachSummary(options?: { refetchInterval?: number }) {
+  const { refetchInterval = 30_000 } = options ?? {};
+
+  return useQuery({
+    queryKey: [...triageKeys.all, 'breaches', 'summary'] as const,
+    queryFn: () => triageApi.getBreachSummary(),
+    refetchInterval,
+  });
+}
+
+/**
+ * Actions for wait time breaches (acknowledge, resolve).
+ */
+export function useBreachActions() {
+  const queryClient = useQueryClient();
+
+  const invalidateBreaches = () => {
+    queryClient.invalidateQueries({ queryKey: [...triageKeys.all, 'breaches'] });
+  };
+
+  const acknowledge = useMutation({
+    mutationFn: ({ breachId, notes }: { breachId: number; notes?: string }) =>
+      triageApi.acknowledgeBreach(breachId, notes),
+    onSuccess: invalidateBreaches,
+  });
+
+  const resolve = useMutation({
+    mutationFn: (breachId: number) => triageApi.resolveBreach(breachId),
+    onSuccess: invalidateBreaches,
+  });
+
+  return {
+    acknowledgeBreach: acknowledge.mutateAsync,
+    resolveBreach: resolve.mutateAsync,
+    isLoading: acknowledge.isPending || resolve.isPending,
+  };
+}
+
+/**
+ * Fetch escalation records.
+ *
+ * @param options - Query options
+ */
+export function useEscalations(options?: {
+  activeOnly?: boolean;
+  escalationType?: string;
+  refetchInterval?: number;
+}) {
+  const {
+    activeOnly = true,
+    escalationType,
+    refetchInterval = 30_000,
+  } = options ?? {};
+
+  return useQuery({
+    queryKey: [...triageKeys.all, 'escalations', { activeOnly, escalationType }] as const,
+    queryFn: () =>
+      triageApi.getEscalations({
+        active_only: activeOnly,
+        escalation_type: escalationType,
+      }),
+    refetchInterval,
+  });
+}
+
+/**
+ * Queue escalation action (creates escalation from queue entry).
+ */
+export function useEscalatePatient() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      queueEntryId,
+      escalationType,
+      reason,
+    }: {
+      queueEntryId: number;
+      escalationType: string;
+      reason: string;
+    }) => triageApi.escalateQueueEntry(queueEntryId, { escalation_type: escalationType, reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: triageKeys.queue() });
+      queryClient.invalidateQueries({ queryKey: [...triageKeys.all, 'escalations'] });
+    },
+  });
+}
+
+/**
+ * Actions for escalation management (resolve, dismiss).
+ */
+export function useEscalationActions() {
+  const queryClient = useQueryClient();
+
+  const invalidateEscalations = () => {
+    queryClient.invalidateQueries({ queryKey: [...triageKeys.all, 'escalations'] });
+  };
+
+  const resolveEsc = useMutation({
+    mutationFn: ({ escalationId, notes }: { escalationId: number; notes?: string }) =>
+      triageApi.resolveEscalation(escalationId, notes),
+    onSuccess: invalidateEscalations,
+  });
+
+  const dismissEsc = useMutation({
+    mutationFn: ({ escalationId, notes }: { escalationId: number; notes?: string }) =>
+      triageApi.dismissEscalation(escalationId, notes),
+    onSuccess: invalidateEscalations,
+  });
+
+  return {
+    resolveEscalation: resolveEsc.mutateAsync,
+    dismissEscalation: dismissEsc.mutateAsync,
+    isLoading: resolveEsc.isPending || dismissEsc.isPending,
+  };
+}

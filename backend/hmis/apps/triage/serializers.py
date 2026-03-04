@@ -14,7 +14,7 @@ from rest_framework import serializers
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.patients.models import Patient
 
-from .models import ERBed, TriageAssessment, TriageQueue, TriageVitalThreshold, WaitingQueue
+from .models import ERBed, Escalation, TriageAssessment, TriageQueue, TriageVitalThreshold, WaitTimeBreach, WaitingQueue
 from .services import TriageCategoryCalculator
 
 # =============================================================================
@@ -1023,3 +1023,128 @@ class ERBedBoardSummarySerializer(serializers.Serializer):
     cleaning = serializers.IntegerField()
     out_of_service = serializers.IntegerField()
     occupancy_rate = serializers.FloatField()
+
+
+# =============================================================================
+# Phase 4: Auto-Escalation & Alerts Serializers
+# =============================================================================
+
+
+class WaitTimeBreachSerializer(serializers.ModelSerializer):
+    """Read serializer for wait time breach alerts."""
+
+    patient_name = serializers.SerializerMethodField()
+    patient_mrn = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WaitTimeBreach
+        fields = [
+            "id",
+            "queue_entry",
+            "triage_assessment",
+            "patient",
+            "patient_name",
+            "patient_mrn",
+            "triage_category",
+            "severity",
+            "target_wait_minutes",
+            "actual_wait_minutes",
+            "assigned_area",
+            "status",
+            "acknowledged_by",
+            "acknowledged_at",
+            "notes",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_patient_name(self, obj) -> str:
+        return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+    def get_patient_mrn(self, obj) -> str:
+        return obj.patient.mrn
+
+
+class WaitTimeBreachAcknowledgeSerializer(serializers.Serializer):
+    """Serializer for acknowledging a wait time breach."""
+
+    notes = serializers.CharField(
+        required=False,
+        default="",
+        help_text="Optional notes when acknowledging",
+    )
+
+
+class EscalationSerializer(serializers.ModelSerializer):
+    """Read serializer for escalation records."""
+
+    patient_name = serializers.SerializerMethodField()
+    patient_mrn = serializers.SerializerMethodField()
+    escalated_by_name = serializers.SerializerMethodField()
+    escalation_type_display = serializers.CharField(
+        source="get_escalation_type_display", read_only=True
+    )
+    status_display = serializers.CharField(
+        source="get_status_display", read_only=True
+    )
+
+    class Meta:
+        model = Escalation
+        fields = [
+            "id",
+            "queue_entry",
+            "triage_assessment",
+            "patient",
+            "patient_name",
+            "patient_mrn",
+            "escalation_type",
+            "escalation_type_display",
+            "reason",
+            "status",
+            "status_display",
+            "wait_time_at_escalation",
+            "triage_category",
+            "assigned_area",
+            "escalated_by",
+            "escalated_by_name",
+            "resolved_by",
+            "resolved_at",
+            "resolution_notes",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_patient_name(self, obj) -> str:
+        return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+    def get_patient_mrn(self, obj) -> str:
+        return obj.patient.mrn
+
+    def get_escalated_by_name(self, obj) -> str:
+        if obj.escalated_by:
+            return f"{obj.escalated_by.first_name} {obj.escalated_by.last_name}".strip() or obj.escalated_by.username
+        return ""
+
+
+class EscalationCreateSerializer(serializers.Serializer):
+    """Serializer for creating an escalation from a queue entry."""
+
+    escalation_type = serializers.ChoiceField(
+        choices=Escalation.ESCALATION_TYPE_CHOICES,
+        help_text="Type of escalation",
+    )
+    reason = serializers.CharField(
+        help_text="Reason for escalation",
+    )
+
+
+class EscalationResolveSerializer(serializers.Serializer):
+    """Serializer for resolving an escalation."""
+
+    resolution_notes = serializers.CharField(
+        required=False,
+        default="",
+        help_text="Optional resolution notes",
+    )

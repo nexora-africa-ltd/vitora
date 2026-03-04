@@ -754,7 +754,9 @@ export type EmergencyEventType =
   | 'zones_update'
   | 'patient_added'
   | 'patient_moved'
-  | 'bed_update';
+  | 'bed_update'
+  | 'wait_time_breach'
+  | 'escalation_event';
 
 /**
  * Critical patient data from WebSocket
@@ -819,6 +821,10 @@ export interface UseEmergencySocketOptions extends Omit<UseWebSocketOptions, 'on
   onCriticalUpdate?: (data: { count: number; patients: EmergencyCriticalPatient[] }) => void;
   /** Callback for zone updates */
   onZonesUpdate?: (data: { zones: EmergencyZoneSummary[]; total_patients: number }) => void;
+  /** Callback for wait time breach alerts (Phase 4) */
+  onWaitTimeBreach?: (data: { breaches: unknown[]; count: number; timestamp: string }) => void;
+  /** Callback for escalation events (Phase 4) */
+  onEscalationEvent?: (data: { escalation: unknown; timestamp: string }) => void;
 }
 
 /**
@@ -891,6 +897,22 @@ export function useEmergencySocket(
           // Bed status changed — invalidate bed board and summary caches
           setLastUpdate(new Date());
           queryClient.invalidateQueries({ queryKey: ['triage', 'er-beds'] });
+          break;
+        }
+        case 'wait_time_breach': {
+          // Wait time breach detected — invalidate breach caches and notify
+          const breachData = emergencyMessage.data as { breaches: unknown[]; count: number; timestamp: string };
+          setLastUpdate(new Date());
+          queryClient.invalidateQueries({ queryKey: ['triage', 'breaches'] });
+          options.onWaitTimeBreach?.(breachData);
+          break;
+        }
+        case 'escalation_event': {
+          // Escalation raised — invalidate escalation caches and notify
+          const escData = emergencyMessage.data as { escalation: unknown; timestamp: string };
+          setLastUpdate(new Date());
+          queryClient.invalidateQueries({ queryKey: ['triage', 'escalations'] });
+          options.onEscalationEvent?.(escData);
           break;
         }
         default:

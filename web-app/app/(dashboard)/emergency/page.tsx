@@ -33,10 +33,11 @@ import {
   CriticalAlertSkeleton,
   ZoneCard,
   ZoneCardSkeleton,
+  WaitTimeBreachBanner,
 } from '@/components/emergency';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useZonesSummary, useCriticalPatients, useERBedSummary } from '@/lib/hooks/use-triage';
+import { useZonesSummary, useCriticalPatients, useERBedSummary, useWaitTimeBreaches, useBreachActions } from '@/lib/hooks/use-triage';
 import { ER_BED_STATUS_CONFIG } from '@/lib/types/triage';
 import type { ERBedStatus } from '@/lib/types/triage';
 import { useEmergencySocket } from '@/lib/hooks/use-websocket';
@@ -172,6 +173,14 @@ export default function EmergencyDashboardPage() {
     enabled: !isConnected,
   });
 
+  // Breach data
+  const {
+    data: breachesData,
+    isLoading: breachesLoading,
+  } = useWaitTimeBreaches({ activeOnly: true, refetchInterval: 30_000 });
+
+  const { acknowledgeBreach, isLoading: ackLoading } = useBreachActions();
+
   // Use WebSocket data when available, fall back to polled data
   const zonesData = useMemo(() => {
     if (isConnected && wsZonesData) {
@@ -240,6 +249,29 @@ export default function EmergencyDashboardPage() {
           <CriticalAlertBanner
             patients={criticalData.patients}
             onViewPatient={handleViewPatient}
+          />
+        )}
+
+        {/* Wait Time Breach Banner */}
+        {breachesLoading ? null : breachesData && breachesData.results.length > 0 && (
+          <WaitTimeBreachBanner
+            breaches={breachesData.results.map((b) => ({
+              id: b.id,
+              triage_assessment: b.triage_assessment,
+              patient_name: b.patient_name,
+              patient_mrn: b.patient_mrn,
+              triage_category: b.triage_category,
+              severity: b.severity as import('@/lib/types/triage').BreachSeverity,
+              target_wait_minutes: b.target_wait_minutes,
+              actual_wait_minutes: b.actual_wait_minutes,
+              assigned_area: b.assigned_area,
+              assigned_area_display: b.assigned_area_display || '',
+              acknowledged: !!b.acknowledged_at,
+            }))}
+            isLoading={breachesLoading}
+            onViewPatient={(triageId) => router.push(`/triage/${triageId}`)}
+            onAcknowledge={(breachId) => acknowledgeBreach({ breachId, notes: 'Acknowledged from dashboard' })}
+            acknowledgeLoading={ackLoading}
           />
         )}
 

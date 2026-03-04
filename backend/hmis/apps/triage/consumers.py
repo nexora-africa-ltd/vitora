@@ -248,6 +248,20 @@ class EmergencyQueueConsumer(AsyncJsonWebsocketConsumer):
             "data": event["data"],
         })
 
+    async def emergency_wait_breach(self, event):
+        """Handle wait time breach alert broadcasts."""
+        await self.send_json({
+            "type": "wait_time_breach",
+            "data": event["data"],
+        })
+
+    async def emergency_escalation_event(self, event):
+        """Handle escalation event broadcasts."""
+        await self.send_json({
+            "type": "escalation_event",
+            "data": event["data"],
+        })
+
 
 # =============================================================================
 # Utility function to broadcast updates from signals/views

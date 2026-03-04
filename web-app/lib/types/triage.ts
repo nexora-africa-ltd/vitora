@@ -715,3 +715,165 @@ export const ER_BED_STATUS_CONFIG: Record<ERBedStatus, {
     borderClass: 'border-muted',
   },
 };
+
+// =============================================================================
+// PHASE 4: AUTO-ESCALATION & ALERTS
+// =============================================================================
+
+/**
+ * Wait time breach severity levels, mapped from KETA categories
+ */
+export type BreachSeverity = 'CRITICAL' | 'URGENT' | 'WARNING' | 'INFO';
+
+/**
+ * Wait time breach status
+ */
+export type BreachStatus = 'ACTIVE' | 'ACKNOWLEDGED' | 'ESCALATED' | 'RESOLVED';
+
+/**
+ * Escalation type choices
+ */
+export type EscalationType = 'CHARGE_NURSE' | 'ADDITIONAL_STAFF' | 'SUPERVISOR';
+
+/**
+ * Escalation status
+ */
+export type EscalationStatus = 'PENDING' | 'IN_PROGRESS' | 'RESOLVED' | 'DISMISSED';
+
+/**
+ * Wait time breach alert record.
+ * Created by Celery task when a patient's wait time exceeds KETA target.
+ */
+export interface WaitTimeBreach {
+  id: number;
+  queue_entry: number;
+  triage_assessment: number;
+  patient: number;
+  patient_name: string;
+  patient_mrn: string;
+  triage_category: TriageCategory;
+  severity: BreachSeverity;
+  target_wait_minutes: number;
+  actual_wait_minutes: number;
+  assigned_area: string;
+  status: BreachStatus;
+  acknowledged_by: number | null;
+  acknowledged_at: string | null;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Wait time breach summary (from /api/triage/breaches/summary/)
+ */
+export interface BreachSummary {
+  total_active: number;
+  by_severity: Partial<Record<BreachSeverity, number>>;
+  by_category: Partial<Record<TriageCategory, number>>;
+}
+
+/**
+ * Escalation record.
+ * Created when staff escalates a patient's care.
+ */
+export interface Escalation {
+  id: number;
+  queue_entry: number;
+  triage_assessment: number;
+  patient: number;
+  patient_name: string;
+  patient_mrn: string;
+  escalation_type: EscalationType;
+  escalation_type_display: string;
+  reason: string;
+  status: EscalationStatus;
+  status_display: string;
+  wait_time_at_escalation: number | null;
+  triage_category: string;
+  assigned_area: string;
+  escalated_by: number | null;
+  escalated_by_name: string;
+  resolved_by: number | null;
+  resolved_at: string | null;
+  resolution_notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Data required to create an escalation
+ */
+export interface EscalationCreateData {
+  escalation_type: EscalationType;
+  reason: string;
+}
+
+/**
+ * Escalation type configuration for UI display
+ */
+export const ESCALATION_TYPE_CONFIG: Record<EscalationType, {
+  label: string;
+  shortLabel: string;
+  description: string;
+  icon: string;
+}> = {
+  CHARGE_NURSE: {
+    label: 'Escalate to Charge Nurse',
+    shortLabel: 'Charge Nurse',
+    description: 'Request charge nurse for priority re-assessment',
+    icon: 'user-check',
+  },
+  ADDITIONAL_STAFF: {
+    label: 'Request Additional Staff',
+    shortLabel: 'More Staff',
+    description: 'Request additional staff to reduce queue load',
+    icon: 'users',
+  },
+  SUPERVISOR: {
+    label: 'Escalate to Supervisor',
+    shortLabel: 'Supervisor',
+    description: 'Escalate to on-duty supervisor for urgent intervention',
+    icon: 'shield',
+  },
+};
+
+/**
+ * Breach severity configuration for UI display
+ */
+export const BREACH_SEVERITY_CONFIG: Record<BreachSeverity, {
+  label: string;
+  color: string;
+  bgClass: string;
+  textClass: string;
+  borderClass: string;
+}> = {
+  CRITICAL: {
+    label: 'Critical',
+    color: '#ef4444',
+    bgClass: 'bg-destructive/10',
+    textClass: 'text-destructive',
+    borderClass: 'border-destructive/50',
+  },
+  URGENT: {
+    label: 'Urgent',
+    color: '#f97316',
+    bgClass: 'bg-orange-100 dark:bg-orange-950/50',
+    textClass: 'text-orange-700 dark:text-orange-300',
+    borderClass: 'border-orange-300 dark:border-orange-700',
+  },
+  WARNING: {
+    label: 'Warning',
+    color: '#eab308',
+    bgClass: 'bg-yellow-100 dark:bg-yellow-950/50',
+    textClass: 'text-yellow-700 dark:text-yellow-300',
+    borderClass: 'border-yellow-300 dark:border-yellow-700',
+  },
+  INFO: {
+    label: 'Info',
+    color: '#6b7280',
+    bgClass: 'bg-muted',
+    textClass: 'text-muted-foreground',
+    borderClass: 'border-muted',
+  },
+};

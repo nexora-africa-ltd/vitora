@@ -48,6 +48,9 @@ app.conf.task_routes = {
     # Quality reporting tasks
     "hmis.apps.quality.tasks.generate_quarterly_reports": {"queue": "reporting"},
     "hmis.apps.quality.tasks.generate_annual_reports": {"queue": "reporting"},
+    # Triage escalation tasks
+    "hmis.apps.triage.tasks.check_wait_time_breaches": {"queue": "monitoring"},
+    "hmis.apps.triage.tasks.auto_resolve_breaches": {"queue": "monitoring"},
 }
 
 # Configure periodic tasks (Celery Beat)
@@ -97,6 +100,16 @@ app.conf.beat_schedule = {
     "generate-annual-reports": {
         "task": "hmis.apps.quality.tasks.generate_annual_reports",
         "schedule": crontab(minute=0, hour=3, day_of_month=2, month_of_year=1),
+    },
+    # Triage: Check for KETA wait time breaches every minute
+    "check-wait-time-breaches-every-minute": {
+        "task": "hmis.apps.triage.tasks.check_wait_time_breaches",
+        "schedule": 60.0,  # Every 60 seconds
+    },
+    # Triage: Auto-resolve breaches for completed/LWBS patients every 5 minutes
+    "auto-resolve-breaches-every-5-minutes": {
+        "task": "hmis.apps.triage.tasks.auto_resolve_breaches",
+        "schedule": 300.0,  # Every 5 minutes
     },
 }
 
