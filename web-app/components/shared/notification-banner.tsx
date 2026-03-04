@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { AlertCircle, Info, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,12 @@ interface NotificationBannerProps {
   icon?: ReactNode;
   /** Additional class names */
   className?: string;
+  /**
+   * When provided, the banner gets a "Don't show again" checkbox.
+   * Dismissing with the checkbox checked persists the choice in localStorage
+   * under `banner-dismissed:{persistKey}` so the banner never shows again.
+   */
+  persistKey?: string;
 }
 
 const variantStyles: Record<BannerVariant, {
@@ -83,8 +89,38 @@ export function NotificationBanner({
   action,
   icon,
   className,
+  persistKey,
 }: NotificationBannerProps) {
-  if (!show) return null;
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [persistHidden, setPersistHidden] = useState(false);
+
+  // On mount, check localStorage for permanent dismissal
+  useEffect(() => {
+    if (persistKey) {
+      try {
+        const stored = localStorage.getItem(`banner-dismissed:${persistKey}`);
+        if (stored === 'true') {
+          setPersistHidden(true);
+        }
+      } catch {
+        // localStorage unavailable (SSR, private browsing)
+      }
+    }
+  }, [persistKey]);
+
+  const handleDismiss = useCallback(() => {
+    if (persistKey && dontShowAgain) {
+      try {
+        localStorage.setItem(`banner-dismissed:${persistKey}`, 'true');
+      } catch {
+        // ignore
+      }
+      setPersistHidden(true);
+    }
+    onDismiss?.();
+  }, [persistKey, dontShowAgain, onDismiss]);
+
+  if (!show || persistHidden) return null;
 
   const styles = variantStyles[variant];
   const IconComponent = variantIcons[variant];
@@ -117,7 +153,7 @@ export function NotificationBanner({
               className="h-6 w-6 sm:hidden shrink-0"
               size="icon"
               variant="ghost"
-              onClick={onDismiss}
+              onClick={handleDismiss}
               aria-label="Dismiss notification"
             >
               <X className="h-3.5 w-3.5" />
@@ -125,6 +161,20 @@ export function NotificationBanner({
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+          {/* "Don't show again" checkbox */}
+          {persistKey && onDismiss && (
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={dontShowAgain}
+                onChange={(e) => setDontShowAgain(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-current accent-current"
+              />
+              <span className={cn('text-xs whitespace-nowrap', styles.description)}>
+                Don&apos;t show again
+              </span>
+            </label>
+          )}
           {action && (
             <Button 
               size="sm" 
@@ -141,7 +191,7 @@ export function NotificationBanner({
               className="h-8 w-8 hidden sm:flex"
               size="icon"
               variant="ghost"
-              onClick={onDismiss}
+              onClick={handleDismiss}
               aria-label="Dismiss notification"
             >
               <X className="h-4 w-4" />
