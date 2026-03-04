@@ -1,0 +1,40 @@
+{
+  "description": "Default ER bed configuration for Vitora HMIS. Edit counts per zone to match your facility.",
+  "zones": [
+    {
+      "zone": "ER_RESUS",
+      "prefix": "R",
+      "count": 4
+    },
+    {
+      "zone": "ER_ACUTE",
+      "prefix": "A",
+      "count": 10
+    },
+    {
+      "zone": "TRAUMA",
+      "prefix": "T",
+      "count": 3
+    },
+    {
+      "zone": "ER_FAST_TRACK",
+      "prefix": "FT",
+      "count": 8
+    },
+    {
+      "zone": "OBSERVATION",
+      "prefix": "OB",
+      "count": 6
+    },
+    {
+      "zone": "PEDIATRIC_ER",
+      "prefix": "P",
+      "count": 4
+    },
+    {
+      "zone": "MATERNITY",
+      "prefix": "M",
+      "count": 4
+    }
+  ]
+}
