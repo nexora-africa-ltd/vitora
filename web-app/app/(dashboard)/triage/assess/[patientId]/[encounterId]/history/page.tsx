@@ -9,7 +9,7 @@
  */
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Calendar, History, ExternalLink } from 'lucide-react';
@@ -67,7 +67,16 @@ export default function TriageHistoryPage() {
   const patientId = params.patientId as string;
   const encounterId = params.encounterId as string;
 
-  const { markSectionComplete } = useTriageAssessStore();
+  const { markSectionComplete, markSectionVisited } = useTriageAssessStore();
+
+  // Mark history as visited when leaving the tab
+  const encounterIdNum = parseInt(encounterId, 10);
+  useEffect(() => {
+    return () => {
+      markSectionVisited(encounterIdNum, 'history');
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [encounterIdNum]);
 
   // Fetch patient's past encounters
   const { data: encountersData, isLoading: isEncountersLoading } = usePatientEncounters(

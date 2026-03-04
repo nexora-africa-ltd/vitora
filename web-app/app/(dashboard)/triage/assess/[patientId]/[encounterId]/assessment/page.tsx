@@ -129,12 +129,21 @@ export default function TriageAssessmentPage() {
   const encounterId = params.encounterId as string;
 
   // Get triage store data
-  const { getVitals, getAssessment, setAssessment, markSectionComplete } = useTriageAssessStore();
+  const { getVitals, getAssessment, setAssessment, markSectionComplete, markSectionVisited } = useTriageAssessStore();
   const currentVitals = getVitals(parseInt(encounterId, 10));
   const currentAssessment = getAssessment(parseInt(encounterId, 10));
 
   // Triage calculation mutation
   const calculateCategoryMutation = useCalculateTriageCategory();
+
+  // Mark assessment as visited when leaving the tab
+  const encounterIdNum = parseInt(encounterId, 10);
+  useEffect(() => {
+    return () => {
+      markSectionVisited(encounterIdNum, 'assessment');
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [encounterIdNum]);
 
   // Local state
   const [calculatedCategory, setCalculatedCategory] = useState<TriageCategory | null>(
