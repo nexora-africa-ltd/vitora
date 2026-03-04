@@ -1447,18 +1447,22 @@ class NursingKardex(models.Model):
         max_length=200, blank=True, help_text="IV access details (e.g., Right arm IV cannula)"
     )
 
-    # Nursing care plan (editable sections)
+    # Legacy nursing care plan fields (deprecated - use care_plan_entries instead)
     nursing_problems = models.TextField(
-        blank=True, help_text="Identified nursing problems/diagnoses"
+        blank=True,
+        help_text="DEPRECATED: Use care_plan_entries. Identified nursing problems/diagnoses",
     )
     interventions = models.TextField(
-        blank=True, help_text="Nursing interventions and care activities"
+        blank=True,
+        help_text="DEPRECATED: Use care_plan_entries. Nursing interventions and care activities",
     )
     monitoring_requirements = models.TextField(
-        blank=True, help_text="What to monitor and how often"
+        blank=True,
+        help_text="DEPRECATED: Use care_plan_entries. What to monitor and how often",
     )
     care_task_frequency = models.TextField(
-        blank=True, help_text="Frequency of care tasks (e.g., 'Wound dressing BD')"
+        blank=True,
+        help_text="DEPRECATED: Use care_plan_entries. Frequency of care tasks",
     )
 
     # Risk assessments (CharFields with choices)
@@ -1489,6 +1493,105 @@ class NursingKardex(models.Model):
 
     def __str__(self):
         return f"Kardex for {self.admission.patient} - Admission {self.admission.admission_number}"
+
+
+class NursingCarePlanEntry(models.Model):
+    """
+    Individual nursing care plan entry (one row on the 24-hour care plan form).
+
+    Follows the ADPIE nursing process structure matching the Kenya physical form:
+    Assessment → Diagnosis → Planning → Implementation → Evaluation.
+
+    Each entry represents a single nursing problem/diagnosis with its complete
+    care plan, tracked with date/time and the recording nurse.
+    """
+
+    STATUS_CHOICES = [
+        ("ACTIVE", "Active"),
+        ("RESOLVED", "Resolved"),
+        ("ONGOING", "Ongoing"),
+    ]
+
+    kardex = models.ForeignKey(
+        NursingKardex,
+        on_delete=models.CASCADE,
+        related_name="care_plan_entries",
+        help_text="Parent Kardex for this care plan entry",
+    )
+
+    # DATE & TIME
+    recorded_at = models.DateTimeField(
+        help_text="Date and time the entry was recorded"
+    )
+    recorded_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="nursing_care_plan_entries",
+        help_text="Nurse who recorded this entry",
+    )
+
+    # ASSESSMENT (cluster of cues)
+    assessment = models.TextField(
+        help_text="Assessment findings / cluster of cues observed"
+    )
+
+    # NURSING DIAGNOSIS
+    nursing_diagnosis = models.TextField(
+        help_text="Nursing diagnosis derived from assessment"
+    )
+
+    # GOAL AND OUTCOME CRITERIA
+    goal_and_outcome_criteria = models.TextField(
+        help_text="Expected goals and measurable outcome criteria"
+    )
+
+    # NURSING PLAN OF ACTION/INTERVENTION
+    plan_of_action = models.TextField(
+        help_text="Nursing plan of action / planned interventions"
+    )
+
+    # SCIENTIFIC RATIONALE
+    scientific_rationale = models.TextField(
+        help_text="Scientific rationale for the planned interventions"
+    )
+
+    # IMPLEMENTATION
+    implementation = models.TextField(
+        blank=True,
+        help_text="What was actually implemented / carried out",
+    )
+
+    # EVALUATION
+    evaluation = models.TextField(
+        blank=True,
+        help_text="Evaluation of whether goals and outcomes were met",
+    )
+
+    # Status tracking
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="ACTIVE",
+        help_text="Current status of this care plan entry",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Nursing Care Plan Entry"
+        verbose_name_plural = "Nursing Care Plan Entries"
+        ordering = ["-recorded_at"]
+        indexes = [
+            models.Index(fields=["kardex", "-recorded_at"]),
+            models.Index(fields=["status"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"Care Plan: {self.nursing_diagnosis[:50]} "
+            f"({self.get_status_display()}) - {self.recorded_at:%Y-%m-%d %H:%M}"
+        )
 
 
 class KardexShiftNote(models.Model):
@@ -1755,6 +1858,424 @@ class SupervisorAlertAcknowledgment(TimeStampedModel):
 
     def __str__(self):
         return f"Alert acknowledged for {self.admission.admission_number} by {self.acknowledged_by.username}"
+
+
+# ============================================================================
+# Observation Charts
+# ============================================================================
+
+
+class TemperatureReading(TimeStampedModel):
+    """
+    Individual temperature reading for an inpatient's temperature chart.
+
+    Based on the Kenya hospital temperature chart form, this tracks:
+    - Temperature (°C)
+    - Pulse rate (BPM)
+    - Respiratory rate (breaths/min)
+    - Bowels and urine output
+
+    Readings are plotted on a chart over days of disease/admission.
+    """
+
+    admission = models.ForeignKey(
+        Admission,
+        on_delete=models.CASCADE,
+        related_name="temperature_readings",
+        help_text="Admission this reading belongs to",
+    )
+    recorded_at = models.DateTimeField(
+        help_text="When the reading was taken",
+    )
+    recorded_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="temperature_readings",
+        help_text="Nurse/clinician who recorded the reading",
+    )
+
+    # Vital signs
+    temperature = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        help_text="Temperature in °C (e.g., 36.5)",
+        validators=[MinValueValidator(Decimal("30.0"))],
+    )
+    pulse = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Pulse rate in BPM",
+        validators=[MinValueValidator(0)],
+    )
+    respiratory_rate = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Respiratory rate in breaths/min",
+        validators=[MinValueValidator(0)],
+    )
+
+    # Additional observations (from the physical chart)
+    bowels = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Bowel movement status (e.g., Normal, Constipated, Diarrhoea)",
+    )
+    urine_output = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Urine output (e.g., Normal, Reduced, Nil)",
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Additional observations or notes",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-recorded_at"]
+        verbose_name = "Temperature Reading"
+        verbose_name_plural = "Temperature Readings"
+        indexes = [
+            models.Index(fields=["admission", "-recorded_at"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"Temp {self.temperature}°C at {self.recorded_at:%Y-%m-%d %H:%M} "
+            f"for {self.admission.patient}"
+        )
+
+    @property
+    def is_febrile(self) -> bool:
+        """Temperature >= 37.5°C is considered febrile."""
+        return self.temperature >= Decimal("37.5")
+
+    @property
+    def is_hypothermic(self) -> bool:
+        """Temperature <= 35.0°C is considered hypothermic."""
+        return self.temperature <= Decimal("35.0")
+
+
+class BloodTransfusionObservation(TimeStampedModel):
+    """
+    Blood transfusion observation chart for monitoring patient during transfusion.
+
+    Based on the Kenya hospital blood transfusion observation form, this tracks:
+    - Patient info (linked via admission)
+    - Blood product details
+    - Periodic vital sign observations (before, during, and after transfusion)
+    - Transfusion reactions
+    """
+
+    BLOOD_PRODUCT_CHOICES = [
+        ("WHOLE", "Whole Blood"),
+        ("PACKED_RED_CELLS", "Packed Red Cells"),
+        ("FFP", "Fresh Frozen Plasma"),
+        ("PLATELETS", "Platelets"),
+        ("CRYOPRECIPITATE", "Cryoprecipitate"),
+        ("OTHER", "Other"),
+    ]
+
+    STATUS_CHOICES = [
+        ("IN_PROGRESS", "In Progress"),
+        ("COMPLETED", "Completed"),
+        ("STOPPED", "Stopped - Reaction"),
+        ("CANCELLED", "Cancelled"),
+    ]
+
+    admission = models.ForeignKey(
+        Admission,
+        on_delete=models.CASCADE,
+        related_name="blood_transfusions",
+        help_text="Admission this transfusion belongs to",
+    )
+
+    # Blood product details
+    blood_product = models.CharField(
+        max_length=30,
+        choices=BLOOD_PRODUCT_CHOICES,
+        help_text="Type of blood product transfused",
+    )
+    blood_product_other = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Specify if blood product is 'Other'",
+    )
+    blood_unit_number = models.CharField(
+        max_length=50,
+        help_text="Blood unit/bag number",
+    )
+    blood_group = models.CharField(
+        max_length=10,
+        blank=True,
+        help_text="Blood group of the product (e.g., A+, O-)",
+    )
+    amount_ml = models.PositiveIntegerField(
+        help_text="Amount to be transfused in mL",
+    )
+
+    # Timing
+    transfusion_date = models.DateField(
+        help_text="Date of transfusion",
+    )
+    time_started = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Time transfusion started",
+    )
+    time_ended = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Time transfusion ended",
+    )
+
+    # Staff
+    started_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="transfusions_started",
+        help_text="Staff who started the transfusion",
+    )
+    counter_checked_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="transfusions_counter_checked",
+        help_text="Staff who counter-checked the blood product",
+    )
+
+    # Diagnosis context
+    diagnosis = models.TextField(
+        blank=True,
+        help_text="Diagnosis/indication for transfusion",
+    )
+
+    # Status
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="IN_PROGRESS",
+        help_text="Current status of the transfusion",
+    )
+
+    # Reaction
+    reaction_occurred = models.BooleanField(
+        default=False,
+        help_text="Whether a transfusion reaction occurred",
+    )
+    reaction_type = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Type of reaction (if any)",
+    )
+    reaction_action_taken = models.TextField(
+        blank=True,
+        help_text="Action taken in response to the reaction",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-transfusion_date", "-time_started"]
+        verbose_name = "Blood Transfusion"
+        verbose_name_plural = "Blood Transfusions"
+        indexes = [
+            models.Index(fields=["admission", "-transfusion_date"]),
+        ]
+
+    def __str__(self):
+        product_display: str = self.get_blood_product_display()  # type: ignore[attr-defined]
+        return (
+            f"{product_display} ({self.amount_ml}ml) - "
+            f"{self.transfusion_date} for {self.admission.patient}"
+        )
+
+
+class TransfusionObservationEntry(TimeStampedModel):
+    """
+    Individual observation entry during a blood transfusion.
+
+    Based on the physical form, observations are taken at:
+    Before transfusion, 00 min, 15 min, 45 min, 1hr 15min, 1hr 45min,
+    2hr 15min, 2hr 45min, 3hr 15min, 3hr 45min, 4hr 15min, 4hr after.
+    """
+
+    OBSERVATION_INTERVAL_CHOICES = [
+        ("BEFORE", "Before Transfusion"),
+        ("00_MIN", "00 Minutes"),
+        ("15_MIN", "15 Minutes"),
+        ("45_MIN", "45 Minutes"),
+        ("1HR_15MIN", "1hr 15 Minutes"),
+        ("1HR_45MIN", "1hr 45 Minutes"),
+        ("2HR_15MIN", "2hr 15 Minutes"),
+        ("2HR_45MIN", "2hr 45 Minutes"),
+        ("3HR_15MIN", "3hr 15 Minutes"),
+        ("3HR_45MIN", "3hr 45 Minutes"),
+        ("4HR_15MIN", "4hr 15 Minutes"),
+        ("4HR_AFTER", "4hr After Transfusion"),
+    ]
+
+    transfusion = models.ForeignKey(
+        BloodTransfusionObservation,
+        on_delete=models.CASCADE,
+        related_name="observations",
+        help_text="Parent transfusion record",
+    )
+    observation_interval = models.CharField(
+        max_length=20,
+        choices=OBSERVATION_INTERVAL_CHOICES,
+        help_text="Observation timing interval",
+    )
+    exact_time = models.TimeField(
+        help_text="Exact time the observation was taken",
+    )
+    recorded_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="transfusion_observations",
+        help_text="Staff who recorded this observation",
+    )
+
+    # Vital signs
+    blood_pressure = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Blood pressure (e.g., '120/80')",
+    )
+    temperature = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        help_text="Temperature in °C",
+    )
+    pulse = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Pulse rate in BPM",
+    )
+    respiratory_rate = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Respiratory rate in breaths/min",
+    )
+    remarks = models.TextField(
+        blank=True,
+        help_text="Additional remarks or observations",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["exact_time"]
+        verbose_name = "Transfusion Observation Entry"
+        verbose_name_plural = "Transfusion Observation Entries"
+        unique_together = ["transfusion", "observation_interval"]
+        indexes = [
+            models.Index(fields=["transfusion", "observation_interval"]),
+        ]
+
+    def __str__(self):
+        interval_display: str = self.get_observation_interval_display()  # type: ignore[attr-defined]
+        return f"{interval_display} at {self.exact_time}"
+
+
+class BPMonitoringReading(TimeStampedModel):
+    """
+    Blood pressure monitoring record for inpatients.
+
+    Tracks periodic BP readings with associated vitals for
+    patients requiring close BP monitoring (e.g., hypertension,
+    pre-eclampsia, post-operative).
+    """
+
+    POSITION_CHOICES = [
+        ("SITTING", "Sitting"),
+        ("STANDING", "Standing"),
+        ("LYING", "Lying/Supine"),
+        ("LEFT_LATERAL", "Left Lateral"),
+    ]
+
+    admission = models.ForeignKey(
+        Admission,
+        on_delete=models.CASCADE,
+        related_name="bp_readings",
+        help_text="Admission this reading belongs to",
+    )
+    recorded_at = models.DateTimeField(
+        help_text="When the reading was taken",
+    )
+    recorded_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="bp_readings",
+        help_text="Nurse/clinician who recorded the reading",
+    )
+
+    # Blood pressure
+    systolic = models.IntegerField(
+        help_text="Systolic blood pressure (mmHg)",
+        validators=[MinValueValidator(0)],
+    )
+    diastolic = models.IntegerField(
+        help_text="Diastolic blood pressure (mmHg)",
+        validators=[MinValueValidator(0)],
+    )
+
+    # Associated vitals
+    pulse = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Pulse rate in BPM",
+        validators=[MinValueValidator(0)],
+    )
+    position = models.CharField(
+        max_length=20,
+        choices=POSITION_CHOICES,
+        default="SITTING",
+        help_text="Patient position when reading was taken",
+    )
+
+    # Context
+    arm = models.CharField(
+        max_length=10,
+        blank=True,
+        help_text="Which arm was used (e.g., Left, Right)",
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Additional notes (e.g., medication taken, symptoms)",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-recorded_at"]
+        verbose_name = "BP Monitoring Reading"
+        verbose_name_plural = "BP Monitoring Readings"
+        indexes = [
+            models.Index(fields=["admission", "-recorded_at"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"BP {self.systolic}/{self.diastolic} at {self.recorded_at:%Y-%m-%d %H:%M} "
+            f"for {self.admission.patient}"
+        )
+
+    @property
+    def mean_arterial_pressure(self) -> int:
+        """Calculate Mean Arterial Pressure (MAP)."""
+        return round(self.diastolic + (self.systolic - self.diastolic) / 3)
+
+    @property
+    def bp_display(self) -> str:
+        """Display blood pressure as string."""
+        return f"{self.systolic}/{self.diastolic}"
+
+    @property
+    def is_hypertensive(self) -> bool:
+        """Systolic >= 140 or diastolic >= 90."""
+        return self.systolic >= 140 or self.diastolic >= 90
+
+    @property
+    def is_hypotensive(self) -> bool:
+        """Systolic < 90 or diastolic < 60."""
+        return self.systolic < 90 or self.diastolic < 60
 
 
 # ============================================================================

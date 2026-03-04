@@ -449,12 +449,6 @@ export interface NursingKardex {
   diet?: string; // Legacy alias
   allergies?: string;
   iv_access?: string;
-  // Nursing care plan
-  nursing_problems?: string;
-  nursing_notes?: string; // Legacy alias
-  interventions?: string;
-  monitoring_requirements?: string;
-  care_task_frequency?: string;
   // Risk assessments (CharFields with LOW/MODERATE/HIGH choices)
   fall_risk: RiskLevel;
   fall_risk_display?: string;
@@ -463,9 +457,10 @@ export interface NursingKardex {
   // Isolation
   isolation_required: boolean;
   isolation_type?: string;
-  // Related notes
+  // Related notes and care plan entries
   shift_notes?: KardexShiftNote[];
   handover_notes?: KardexHandoverNote[];
+  care_plan_entries?: NursingCarePlanEntry[];
   created_at?: string;
   updated_at?: string;
 }
@@ -475,10 +470,6 @@ export interface KardexUpdateData {
   dietary_requirements?: string;
   allergies?: string;
   iv_access?: string;
-  nursing_problems?: string;
-  interventions?: string;
-  monitoring_requirements?: string;
-  care_task_frequency?: string;
   fall_risk?: RiskLevel;
   pressure_sore_risk?: RiskLevel;
   isolation_required?: boolean;
@@ -495,6 +486,49 @@ export interface KardexHandoverNoteCreateData {
   shift_ending: ShiftType;
   pending_tasks: string;
   escalations?: string;
+}
+
+// ============================================================================
+// Nursing Care Plan Entry Types (ADPIE structure)
+// ============================================================================
+
+export type CarePlanEntryStatus = 'ACTIVE' | 'RESOLVED' | 'ONGOING';
+
+export interface NursingCarePlanEntry {
+  id: number;
+  kardex: number;
+  recorded_at: string;
+  recorded_by: number;
+  recorded_by_username?: string;
+  assessment: string;
+  nursing_diagnosis: string;
+  goal_and_outcome_criteria: string;
+  plan_of_action: string;
+  scientific_rationale: string;
+  implementation: string;
+  evaluation: string;
+  status: CarePlanEntryStatus;
+  status_display?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface NursingCarePlanEntryCreateData {
+  recorded_at: string;
+  assessment: string;
+  nursing_diagnosis: string;
+  goal_and_outcome_criteria: string;
+  plan_of_action: string;
+  scientific_rationale: string;
+  implementation?: string;
+  evaluation?: string;
+  status?: CarePlanEntryStatus;
+}
+
+export interface NursingCarePlanEntryUpdateData {
+  implementation?: string;
+  evaluation?: string;
+  status?: CarePlanEntryStatus;
 }
 
 // ============================================================================
@@ -803,3 +837,165 @@ export interface AdmissionOrdersResponse {
   imaging_orders: ImagingOrder[];
   prescriptions: Prescription[];
 }
+
+// ============================================================================
+// Observation Chart Types
+// ============================================================================
+
+export interface TemperatureReading {
+  id: number;
+  admission: number;
+  recorded_at: string;
+  recorded_by: number;
+  recorded_by_username?: string;
+  temperature: string; // Decimal comes as string from API
+  pulse?: number | null;
+  respiratory_rate?: number | null;
+  bowels?: string;
+  urine_output?: string;
+  notes?: string;
+  is_febrile?: boolean;
+  is_hypothermic?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TemperatureReadingCreateData {
+  admission: number;
+  recorded_at: string;
+  temperature: number | string;
+  pulse?: number | null;
+  respiratory_rate?: number | null;
+  bowels?: string;
+  urine_output?: string;
+  notes?: string;
+}
+
+export type TransfusionObservationInterval =
+  | 'BEFORE'
+  | '00_MIN'
+  | '15_MIN'
+  | '45_MIN'
+  | '1HR_15MIN'
+  | '1HR_45MIN'
+  | '2HR_15MIN'
+  | '2HR_45MIN'
+  | '3HR_15MIN'
+  | '3HR_45MIN'
+  | '4HR_15MIN'
+  | '4HR_AFTER';
+
+export type BloodProduct =
+  | 'WHOLE'
+  | 'PACKED_RED_CELLS'
+  | 'FFP'
+  | 'PLATELETS'
+  | 'CRYOPRECIPITATE'
+  | 'OTHER';
+
+export type TransfusionStatus = 'IN_PROGRESS' | 'COMPLETED' | 'STOPPED' | 'CANCELLED';
+
+export interface TransfusionObservationEntry {
+  id: number;
+  transfusion: number;
+  observation_interval: TransfusionObservationInterval;
+  observation_interval_display?: string;
+  exact_time: string;
+  recorded_by: number;
+  recorded_by_username?: string;
+  blood_pressure?: string;
+  temperature?: string | null;
+  pulse?: number | null;
+  respiratory_rate?: number | null;
+  remarks?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TransfusionObservationEntryCreateData {
+  observation_interval: TransfusionObservationInterval;
+  exact_time: string;
+  blood_pressure?: string;
+  temperature?: number | string | null;
+  pulse?: number | null;
+  respiratory_rate?: number | null;
+  remarks?: string;
+}
+
+export interface BloodTransfusion {
+  id: number;
+  admission: number;
+  patient_name?: string;
+  blood_product: BloodProduct;
+  blood_product_display?: string;
+  blood_product_other?: string;
+  blood_unit_number: string;
+  blood_group?: string;
+  amount_ml: number;
+  transfusion_date: string;
+  time_started?: string | null;
+  time_ended?: string | null;
+  started_by: number;
+  started_by_username?: string;
+  counter_checked_by?: number | null;
+  counter_checked_by_username?: string | null;
+  diagnosis?: string;
+  status: TransfusionStatus;
+  status_display?: string;
+  reaction_occurred: boolean;
+  reaction_type?: string;
+  reaction_action_taken?: string;
+  observations?: TransfusionObservationEntry[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BloodTransfusionCreateData {
+  admission: number;
+  blood_product: BloodProduct;
+  blood_product_other?: string;
+  blood_unit_number: string;
+  blood_group?: string;
+  amount_ml: number;
+  transfusion_date: string;
+  time_started?: string;
+  diagnosis?: string;
+}
+
+export type BPPosition = 'SITTING' | 'STANDING' | 'LYING' | 'LEFT_LATERAL';
+
+export interface BPMonitoringReading {
+  id: number;
+  admission: number;
+  recorded_at: string;
+  recorded_by: number;
+  recorded_by_username?: string;
+  systolic: number;
+  diastolic: number;
+  pulse?: number | null;
+  position: BPPosition;
+  position_display?: string;
+  arm?: string;
+  notes?: string;
+  mean_arterial_pressure?: number;
+  bp_display?: string;
+  is_hypertensive?: boolean;
+  is_hypotensive?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BPMonitoringReadingCreateData {
+  admission: number;
+  recorded_at: string;
+  systolic: number;
+  diastolic: number;
+  pulse?: number | null;
+  position?: BPPosition;
+  arm?: string;
+  notes?: string;
+}
+
+export type TemperatureReadingListResponse = PaginatedResponse<TemperatureReading>;
+export type BloodTransfusionListResponse = PaginatedResponse<BloodTransfusion>;
+export type BPMonitoringReadingListResponse = PaginatedResponse<BPMonitoringReading>;

@@ -9,11 +9,14 @@ from .views import (
     AdmissionRecommendationViewSet,
     AdmissionViewSet,
     BedViewSet,
+    BloodTransfusionViewSet,
+    BPMonitoringViewSet,
     DischargeViewSet,
     NursingKardexViewSet,
     ReviewRequestViewSet,
     ShiftHandoverViewSet,
     SupervisorAlertViewSet,
+    TemperatureReadingViewSet,
     TransferViewSet,
     WardRoundViewSet,
     WardViewSet,
@@ -37,6 +40,9 @@ router.register(r"ward-rounds", WardRoundViewSet, basename="ward-round")
 router.register(r"review-requests", ReviewRequestViewSet, basename="review-request")
 router.register(r"kardex", NursingKardexViewSet, basename="kardex")
 router.register(r"shift-handovers", ShiftHandoverViewSet, basename="shift-handover")
+router.register(r"temperature-readings", TemperatureReadingViewSet, basename="temperature-reading")
+router.register(r"blood-transfusions", BloodTransfusionViewSet, basename="blood-transfusion")
+router.register(r"bp-readings", BPMonitoringViewSet, basename="bp-reading")
 
 urlpatterns = [
     path("", include(router.urls)),

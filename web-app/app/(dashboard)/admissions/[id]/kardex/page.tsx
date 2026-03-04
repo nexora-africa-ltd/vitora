@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ClipboardList, Plus, Save, AlertTriangle } from 'lucide-react';
+import { ClipboardList, Plus, Save, AlertTriangle, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
@@ -35,12 +35,14 @@ import {
   useKardexByAdmission,
   useUpdateKardex,
   useAddKardexShiftNote,
-  useAddKardexHandoverNote
+  useAddKardexHandoverNote,
+  useAddCarePlanEntry,
+  useUpdateCarePlanEntry,
 } from '@/lib/hooks/use-inpatient';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
-import type { RiskLevel, ShiftType } from '@/lib/types/inpatient';
+import type { RiskLevel, ShiftType, CarePlanEntryStatus } from '@/lib/types/inpatient';
 
 const RISK_LEVELS: { value: RiskLevel; label: string }[] = [
   { value: 'LOW', label: 'Low Risk' },
@@ -69,6 +71,8 @@ export default function KardexPage() {
   const updateKardex = useUpdateKardex();
   const addShiftNote = useAddKardexShiftNote();
   const addHandoverNote = useAddKardexHandoverNote();
+  const addCarePlanEntry = useAddCarePlanEntry();
+  const updateCarePlanEntry = useUpdateCarePlanEntry();
 
   // Edit state
   const [isEditing, setIsEditing] = useState(false);
@@ -76,13 +80,28 @@ export default function KardexPage() {
   const [dietaryRequirements, setDietaryRequirements] = useState('');
   const [allergies, setAllergies] = useState('');
   const [ivAccess, setIvAccess] = useState('');
-  const [nursingProblems, setNursingProblems] = useState('');
-  const [interventions, setInterventions] = useState('');
-  const [monitoringRequirements, setMonitoringRequirements] = useState('');
+
   const [fallRisk, setFallRisk] = useState<RiskLevel>('LOW');
   const [pressureSoreRisk, setPressureSoreRisk] = useState<RiskLevel>('LOW');
   const [isolationRequired, setIsolationRequired] = useState(false);
   const [isolationType, setIsolationType] = useState('');
+
+  // Care plan entry dialog state
+  const [carePlanDialogOpen, setCarePlanDialogOpen] = useState(false);
+  const [cpAssessment, setCpAssessment] = useState('');
+  const [cpDiagnosis, setCpDiagnosis] = useState('');
+  const [cpGoal, setCpGoal] = useState('');
+  const [cpPlanOfAction, setCpPlanOfAction] = useState('');
+  const [cpRationale, setCpRationale] = useState('');
+  const [cpImplementation, setCpImplementation] = useState('');
+  const [cpEvaluation, setCpEvaluation] = useState('');
+
+  // Update care plan entry dialog state
+  const [updateCpDialogOpen, setUpdateCpDialogOpen] = useState(false);
+  const [updateCpEntryId, setUpdateCpEntryId] = useState<number | null>(null);
+  const [updateCpImplementation, setUpdateCpImplementation] = useState('');
+  const [updateCpEvaluation, setUpdateCpEvaluation] = useState('');
+  const [updateCpStatus, setUpdateCpStatus] = useState<CarePlanEntryStatus>('ACTIVE');
 
   // New note dialogs
   const [shiftNoteOpen, setShiftNoteOpen] = useState(false);
@@ -114,9 +133,7 @@ export default function KardexPage() {
       setDietaryRequirements(kardex.dietary_requirements || '');
       setAllergies(kardex.allergies || '');
       setIvAccess(kardex.iv_access || '');
-      setNursingProblems(kardex.nursing_problems || '');
-      setInterventions(kardex.interventions || '');
-      setMonitoringRequirements(kardex.monitoring_requirements || '');
+
       setFallRisk(kardex.fall_risk || 'LOW');
       setPressureSoreRisk(kardex.pressure_sore_risk || 'LOW');
       setIsolationRequired(kardex.isolation_required || false);
@@ -135,9 +152,7 @@ export default function KardexPage() {
           dietary_requirements: dietaryRequirements || undefined,
           allergies: allergies || undefined,
           iv_access: ivAccess || undefined,
-          nursing_problems: nursingProblems || undefined,
-          interventions: interventions || undefined,
-          monitoring_requirements: monitoringRequirements || undefined,
+
           fall_risk: fallRisk,
           pressure_sore_risk: pressureSoreRisk,
           isolation_required: isolationRequired,
@@ -214,6 +229,68 @@ export default function KardexPage() {
         description: 'Failed to add handover note',
         variant: 'destructive',
       });
+      console.error(error);
+    }
+  };
+
+  const handleAddCarePlanEntry = async () => {
+    if (!kardex || !cpAssessment.trim() || !cpDiagnosis.trim() || !cpGoal.trim() || !cpPlanOfAction.trim() || !cpRationale.trim()) return;
+    try {
+      await addCarePlanEntry.mutateAsync({
+        kardexId: kardex.id,
+        data: {
+          recorded_at: new Date().toISOString(),
+          assessment: cpAssessment.trim(),
+          nursing_diagnosis: cpDiagnosis.trim(),
+          goal_and_outcome_criteria: cpGoal.trim(),
+          plan_of_action: cpPlanOfAction.trim(),
+          scientific_rationale: cpRationale.trim(),
+          implementation: cpImplementation.trim() || undefined,
+          evaluation: cpEvaluation.trim() || undefined,
+        },
+      });
+      toast({ title: 'Success', description: 'Care plan entry added' });
+      setCarePlanDialogOpen(false);
+      setCpAssessment('');
+      setCpDiagnosis('');
+      setCpGoal('');
+      setCpPlanOfAction('');
+      setCpRationale('');
+      setCpImplementation('');
+      setCpEvaluation('');
+      refetch();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to add care plan entry', variant: 'destructive' });
+      console.error(error);
+    }
+  };
+
+  const openUpdateCarePlanEntry = (entry: { id: number; implementation: string; evaluation: string; status: CarePlanEntryStatus }) => {
+    setUpdateCpEntryId(entry.id);
+    setUpdateCpImplementation(entry.implementation || '');
+    setUpdateCpEvaluation(entry.evaluation || '');
+    setUpdateCpStatus(entry.status);
+    setUpdateCpDialogOpen(true);
+  };
+
+  const handleUpdateCarePlanEntry = async () => {
+    if (!kardex || !updateCpEntryId) return;
+    try {
+      await updateCarePlanEntry.mutateAsync({
+        kardexId: kardex.id,
+        entryId: updateCpEntryId,
+        data: {
+          implementation: updateCpImplementation.trim() || undefined,
+          evaluation: updateCpEvaluation.trim() || undefined,
+          status: updateCpStatus,
+        },
+      });
+      toast({ title: 'Success', description: 'Care plan entry updated' });
+      setUpdateCpDialogOpen(false);
+      setUpdateCpEntryId(null);
+      refetch();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to update care plan entry', variant: 'destructive' });
       console.error(error);
     }
   };
@@ -382,17 +459,7 @@ export default function KardexPage() {
         </Card>
       </div>
 
-      {/* Nursing Diagnosis Summary */}
-      {kardex.nursing_problems && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Nursing Diagnosis</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm">{kardex.nursing_problems}</p>
-          </CardContent>
-        </Card>
-      )}
+
 
       {/* Recent Shift Notes - Always Visible */}
       {(kardex.shift_notes?.length ?? 0) > 0 && (
@@ -421,22 +488,263 @@ export default function KardexPage() {
         </Card>
       )}
 
-      <Tabs defaultValue="care" className="space-y-4">
-        <TabsList className="w-full grid grid-cols-4 h-auto">
+      <Tabs defaultValue="care-plan" className="space-y-4">
+        <TabsList className="w-full grid grid-cols-5 h-auto">
+          <TabsTrigger value="care-plan" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
+            <span className="sm:hidden">Plan</span>
+            <span className="hidden sm:inline">Care Plan</span>
+          </TabsTrigger>
           <TabsTrigger value="care" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Care</span>
             <span className="hidden sm:inline">Care Info</span>
           </TabsTrigger>
           <TabsTrigger value="risks" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
-            <span className="sm:hidden">Risks</span>
-            <span className="hidden sm:inline">Risks</span>
+            Risks
           </TabsTrigger>
           <TabsTrigger value="notes" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Notes</span>
             <span className="hidden sm:inline">Shift Notes</span>
           </TabsTrigger>
-          <TabsTrigger value="handover" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">Handover</TabsTrigger>
+          <TabsTrigger value="handover" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
+            Handover
+          </TabsTrigger>
         </TabsList>
+
+        {/* Nursing Care Plan Tab (ADPIE structure) */}
+        <TabsContent value="care-plan" className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold">Nursing Care Plan (24 Hours)</h3>
+              <HelpPopover content="Structured nursing care plan following the ADPIE process: Assessment, Diagnosis, Planning, Implementation, Evaluation. Each row represents one nursing problem and its care plan." />
+            </div>
+            <Dialog open={carePlanDialogOpen} onOpenChange={setCarePlanDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="w-full sm:w-auto" size="sm">
+                  <Plus className="h-4 w-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Add Entry</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <div className="flex items-center gap-2">
+                    <DialogTitle>New Care Plan Entry</DialogTitle>
+                    <HelpPopover content="Document a nursing care plan entry following the ADPIE process. Assessment and Diagnosis are required. Implementation and Evaluation can be added later." />
+                  </div>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Assessment (Cluster of Cues) <span className="text-destructive">*</span></Label>
+                    <Textarea
+                      value={cpAssessment}
+                      onChange={(e) => setCpAssessment(e.target.value)}
+                      placeholder="Patient assessment findings, signs and symptoms observed..."
+                      className="min-h-[80px] resize-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Nursing Diagnosis <span className="text-destructive">*</span></Label>
+                    <Textarea
+                      value={cpDiagnosis}
+                      onChange={(e) => setCpDiagnosis(e.target.value)}
+                      placeholder="e.g., Risk for infection related to..."
+                      className="min-h-[60px] resize-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Goal &amp; Outcome Criteria <span className="text-destructive">*</span></Label>
+                    <Textarea
+                      value={cpGoal}
+                      onChange={(e) => setCpGoal(e.target.value)}
+                      placeholder="Expected goals and measurable outcomes..."
+                      className="min-h-[60px] resize-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Plan of Action / Intervention <span className="text-destructive">*</span></Label>
+                    <Textarea
+                      value={cpPlanOfAction}
+                      onChange={(e) => setCpPlanOfAction(e.target.value)}
+                      placeholder="Nursing interventions to be carried out..."
+                      className="min-h-[60px] resize-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Scientific Rationale <span className="text-destructive">*</span></Label>
+                    <Textarea
+                      value={cpRationale}
+                      onChange={(e) => setCpRationale(e.target.value)}
+                      placeholder="Scientific basis for the planned interventions..."
+                      className="min-h-[60px] resize-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Implementation (optional)</Label>
+                    <Textarea
+                      value={cpImplementation}
+                      onChange={(e) => setCpImplementation(e.target.value)}
+                      placeholder="What has been implemented so far..."
+                      className="min-h-[60px] resize-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Evaluation (optional)</Label>
+                    <Textarea
+                      value={cpEvaluation}
+                      onChange={(e) => setCpEvaluation(e.target.value)}
+                      placeholder="Evaluation of outcomes..."
+                      className="min-h-[60px] resize-none"
+                    />
+                  </div>
+                </div>
+                <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
+                  <Button variant="outline" onClick={() => setCarePlanDialogOpen(false)} className="w-full sm:w-auto">
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleAddCarePlanEntry}
+                    disabled={!cpAssessment.trim() || !cpDiagnosis.trim() || !cpGoal.trim() || !cpPlanOfAction.trim() || !cpRationale.trim() || addCarePlanEntry.isPending}
+                    className="w-full sm:w-auto"
+                  >
+                    {addCarePlanEntry.isPending ? 'Saving...' : 'Save Entry'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/* Update Care Plan Entry Dialog */}
+          <Dialog open={updateCpDialogOpen} onOpenChange={setUpdateCpDialogOpen}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <div className="flex items-center gap-2">
+                  <DialogTitle>Update Care Plan Entry</DialogTitle>
+                  <HelpPopover content="Add implementation details and evaluation. Update the status to Resolved when goals are met." />
+                </div>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Implementation</Label>
+                  <Textarea
+                    value={updateCpImplementation}
+                    onChange={(e) => setUpdateCpImplementation(e.target.value)}
+                    placeholder="What was actually carried out..."
+                    className="min-h-[80px] resize-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Evaluation</Label>
+                  <Textarea
+                    value={updateCpEvaluation}
+                    onChange={(e) => setUpdateCpEvaluation(e.target.value)}
+                    placeholder="Were goals and outcomes met?"
+                    className="min-h-[80px] resize-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Status</Label>
+                  <Select value={updateCpStatus} onValueChange={(v) => setUpdateCpStatus(v as CarePlanEntryStatus)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ACTIVE">Active</SelectItem>
+                      <SelectItem value="ONGOING">Ongoing</SelectItem>
+                      <SelectItem value="RESOLVED">Resolved</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
+                <Button variant="outline" onClick={() => setUpdateCpDialogOpen(false)} className="w-full sm:w-auto">
+                  Cancel
+                </Button>
+                <Button onClick={handleUpdateCarePlanEntry} disabled={updateCarePlanEntry.isPending} className="w-full sm:w-auto">
+                  {updateCarePlanEntry.isPending ? 'Saving...' : 'Update'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {(kardex.care_plan_entries?.length ?? 0) === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <FileText className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                <p className="text-muted-foreground">No care plan entries recorded yet.</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Click &quot;Add Entry&quot; to document a nursing care plan following the ADPIE process.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {kardex.care_plan_entries?.map((entry) => (
+                <Card key={entry.id} className={entry.status === 'RESOLVED' ? 'opacity-75' : ''}>
+                  <CardHeader className="pb-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge
+                          variant={entry.status === 'ACTIVE' ? 'default' : entry.status === 'RESOLVED' ? 'success' : 'warning'}
+                          className="shrink-0 w-fit"
+                        >
+                          {entry.status_display || entry.status}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {formatDateTime(entry.recorded_at)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          By {entry.recorded_by_username}
+                        </span>
+                        {entry.status !== 'RESOLVED' && (
+                          <Button variant="outline" size="sm" onClick={() => openUpdateCarePlanEntry(entry)}>
+                            Update
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Assessment</p>
+                        <p className="text-sm whitespace-pre-wrap break-words">{entry.assessment}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Nursing Diagnosis</p>
+                        <p className="text-sm whitespace-pre-wrap break-words">{entry.nursing_diagnosis}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Goal &amp; Outcome Criteria</p>
+                        <p className="text-sm whitespace-pre-wrap break-words">{entry.goal_and_outcome_criteria}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Plan of Action</p>
+                        <p className="text-sm whitespace-pre-wrap break-words">{entry.plan_of_action}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Scientific Rationale</p>
+                        <p className="text-sm whitespace-pre-wrap break-words">{entry.scientific_rationale}</p>
+                      </div>
+                      {entry.implementation && (
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Implementation</p>
+                          <p className="text-sm whitespace-pre-wrap break-words">{entry.implementation}</p>
+                        </div>
+                      )}
+                      {entry.evaluation && (
+                        <div className="md:col-span-2">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Evaluation</p>
+                          <p className="text-sm whitespace-pre-wrap break-words">{entry.evaluation}</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
 
         {/* Care Information Tab */}
         <TabsContent value="care" className="space-y-4">
@@ -487,66 +795,6 @@ export default function KardexPage() {
                     <InfoItem label="Dietary Requirements" value={kardex.dietary_requirements || 'Regular'} />
                     <InfoItem label="Allergies" value={kardex.allergies || 'None known'} />
                     <InfoItem label="IV Access" value={kardex.iv_access || 'None'} />
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Nursing Care Plan</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isEditing ? (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Nursing Problems</Label>
-                      <Textarea
-                        value={nursingProblems}
-                        onChange={(e) => setNursingProblems(e.target.value)}
-                        placeholder="Current nursing problems..."
-                        rows={3}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Interventions</Label>
-                      <Textarea
-                        value={interventions}
-                        onChange={(e) => setInterventions(e.target.value)}
-                        placeholder="Planned nursing interventions..."
-                        rows={3}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Monitoring Requirements</Label>
-                      <Textarea
-                        value={monitoringRequirements}
-                        onChange={(e) => setMonitoringRequirements(e.target.value)}
-                        placeholder="Monitoring requirements..."
-                        rows={3}
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div>
-                      <p className="text-sm font-medium">Nursing Problems</p>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {kardex.nursing_problems || 'None documented.'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Interventions</p>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {kardex.interventions || 'None documented.'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Monitoring Requirements</p>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {kardex.monitoring_requirements || 'None documented.'}
-                      </p>
-                    </div>
                   </>
                 )}
               </CardContent>

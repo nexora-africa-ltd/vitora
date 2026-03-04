@@ -10,14 +10,19 @@ from .models import (
     Admission,
     AdmissionRecommendation,
     Bed,
+    BloodTransfusionObservation,
+    BPMonitoringReading,
     Discharge,
     KardexHandoverNote,
     KardexShiftNote,
+    NursingCarePlanEntry,
     NursingKardex,
     ReviewRequest,
     ShiftHandover,
     SupervisorAlertAcknowledgment,
+    TemperatureReading,
     Transfer,
+    TransfusionObservationEntry,
     Ward,
     WardRound,
 )
@@ -503,6 +508,53 @@ class ReviewRequestCreateSerializer(serializers.ModelSerializer):
         ]
 
 
+class NursingCarePlanEntrySerializer(serializers.ModelSerializer):
+    """Serializer for NursingCarePlanEntry model."""
+
+    recorded_by_username = serializers.CharField(source="recorded_by.username", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = NursingCarePlanEntry
+        fields = [
+            "id",
+            "kardex",
+            "recorded_at",
+            "recorded_by",
+            "recorded_by_username",
+            "assessment",
+            "nursing_diagnosis",
+            "goal_and_outcome_criteria",
+            "plan_of_action",
+            "scientific_rationale",
+            "implementation",
+            "evaluation",
+            "status",
+            "status_display",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "recorded_by", "created_at", "updated_at"]
+
+
+class NursingCarePlanEntryCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating a NursingCarePlanEntry."""
+
+    class Meta:
+        model = NursingCarePlanEntry
+        fields = [
+            "recorded_at",
+            "assessment",
+            "nursing_diagnosis",
+            "goal_and_outcome_criteria",
+            "plan_of_action",
+            "scientific_rationale",
+            "implementation",
+            "evaluation",
+            "status",
+        ]
+
+
 class KardexShiftNoteSerializer(serializers.ModelSerializer):
     """Serializer for KardexShiftNote model."""
 
@@ -561,6 +613,7 @@ class NursingKardexSerializer(serializers.ModelSerializer):
     bed_number = serializers.CharField(source="admission.bed.bed_number", read_only=True)
     shift_notes = KardexShiftNoteSerializer(many=True, read_only=True)
     handover_notes = KardexHandoverNoteSerializer(many=True, read_only=True)
+    care_plan_entries = NursingCarePlanEntrySerializer(many=True, read_only=True)
     fall_risk_display = serializers.CharField(source="get_fall_risk_display", read_only=True)
     pressure_sore_risk_display = serializers.CharField(
         source="get_pressure_sore_risk_display", read_only=True
@@ -580,7 +633,7 @@ class NursingKardexSerializer(serializers.ModelSerializer):
             "dietary_requirements",
             "allergies",
             "iv_access",
-            # Nursing care plan
+            # Legacy nursing care plan fields (deprecated)
             "nursing_problems",
             "interventions",
             "monitoring_requirements",
@@ -593,9 +646,10 @@ class NursingKardexSerializer(serializers.ModelSerializer):
             # Isolation
             "isolation_required",
             "isolation_type",
-            # Related notes
+            # Related notes and care plan entries
             "shift_notes",
             "handover_notes",
+            "care_plan_entries",
             "created_at",
             "updated_at",
         ]
@@ -834,3 +888,230 @@ class ConstraintOverrideMetricsSerializer(serializers.Serializer):
         child=serializers.DictField(),
         help_text="Most common override reasons with counts",
     )
+
+
+# =============================================================================
+# Observation Chart Serializers
+# =============================================================================
+
+
+class TemperatureReadingSerializer(serializers.ModelSerializer):
+    """Serializer for temperature chart readings."""
+
+    recorded_by_username = serializers.CharField(
+        source="recorded_by.username", read_only=True
+    )
+    is_febrile = serializers.BooleanField(read_only=True)
+    is_hypothermic = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = TemperatureReading
+        fields = [
+            "id",
+            "admission",
+            "recorded_at",
+            "recorded_by",
+            "recorded_by_username",
+            "temperature",
+            "pulse",
+            "respiratory_rate",
+            "bowels",
+            "urine_output",
+            "notes",
+            "is_febrile",
+            "is_hypothermic",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class TemperatureReadingCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating temperature readings."""
+
+    class Meta:
+        model = TemperatureReading
+        fields = [
+            "admission",
+            "recorded_at",
+            "temperature",
+            "pulse",
+            "respiratory_rate",
+            "bowels",
+            "urine_output",
+            "notes",
+        ]
+
+
+class TransfusionObservationEntrySerializer(serializers.ModelSerializer):
+    """Serializer for individual transfusion observation entries."""
+
+    observation_interval_display = serializers.CharField(
+        source="get_observation_interval_display", read_only=True
+    )
+    recorded_by_username = serializers.CharField(
+        source="recorded_by.username", read_only=True
+    )
+
+    class Meta:
+        model = TransfusionObservationEntry
+        fields = [
+            "id",
+            "transfusion",
+            "observation_interval",
+            "observation_interval_display",
+            "exact_time",
+            "recorded_by",
+            "recorded_by_username",
+            "blood_pressure",
+            "temperature",
+            "pulse",
+            "respiratory_rate",
+            "remarks",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class TransfusionObservationEntryCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating transfusion observation entries."""
+
+    class Meta:
+        model = TransfusionObservationEntry
+        fields = [
+            "transfusion",
+            "observation_interval",
+            "exact_time",
+            "blood_pressure",
+            "temperature",
+            "pulse",
+            "respiratory_rate",
+            "remarks",
+        ]
+
+
+class BloodTransfusionSerializer(serializers.ModelSerializer):
+    """Serializer for blood transfusion observation chart."""
+
+    blood_product_display = serializers.CharField(
+        source="get_blood_product_display", read_only=True
+    )
+    status_display = serializers.CharField(
+        source="get_status_display", read_only=True
+    )
+    started_by_username = serializers.CharField(
+        source="started_by.username", read_only=True
+    )
+    counter_checked_by_username = serializers.CharField(
+        source="counter_checked_by.username", read_only=True, default=None
+    )
+    patient_name = serializers.CharField(
+        source="admission.patient.__str__", read_only=True
+    )
+    observations = TransfusionObservationEntrySerializer(many=True, read_only=True)
+
+    class Meta:
+        model = BloodTransfusionObservation
+        fields = [
+            "id",
+            "admission",
+            "patient_name",
+            "blood_product",
+            "blood_product_display",
+            "blood_product_other",
+            "blood_unit_number",
+            "blood_group",
+            "amount_ml",
+            "transfusion_date",
+            "time_started",
+            "time_ended",
+            "started_by",
+            "started_by_username",
+            "counter_checked_by",
+            "counter_checked_by_username",
+            "diagnosis",
+            "status",
+            "status_display",
+            "reaction_occurred",
+            "reaction_type",
+            "reaction_action_taken",
+            "observations",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class BloodTransfusionCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating blood transfusion records."""
+
+    class Meta:
+        model = BloodTransfusionObservation
+        fields = [
+            "admission",
+            "blood_product",
+            "blood_product_other",
+            "blood_unit_number",
+            "blood_group",
+            "amount_ml",
+            "transfusion_date",
+            "time_started",
+            "diagnosis",
+        ]
+
+
+class BPMonitoringReadingSerializer(serializers.ModelSerializer):
+    """Serializer for BP monitoring readings."""
+
+    recorded_by_username = serializers.CharField(
+        source="recorded_by.username", read_only=True
+    )
+    mean_arterial_pressure = serializers.IntegerField(read_only=True)
+    bp_display = serializers.CharField(read_only=True)
+    is_hypertensive = serializers.BooleanField(read_only=True)
+    is_hypotensive = serializers.BooleanField(read_only=True)
+    position_display = serializers.CharField(
+        source="get_position_display", read_only=True
+    )
+
+    class Meta:
+        model = BPMonitoringReading
+        fields = [
+            "id",
+            "admission",
+            "recorded_at",
+            "recorded_by",
+            "recorded_by_username",
+            "systolic",
+            "diastolic",
+            "pulse",
+            "position",
+            "position_display",
+            "arm",
+            "notes",
+            "mean_arterial_pressure",
+            "bp_display",
+            "is_hypertensive",
+            "is_hypotensive",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class BPMonitoringReadingCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating BP monitoring readings."""
+
+    class Meta:
+        model = BPMonitoringReading
+        fields = [
+            "admission",
+            "recorded_at",
+            "systolic",
+            "diastolic",
+            "pulse",
+            "position",
+            "arm",
+            "notes",
+        ]

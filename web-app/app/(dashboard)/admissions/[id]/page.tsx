@@ -50,6 +50,9 @@ import {
   useAdmissionReviewRequests,
 } from '@/lib/hooks/use-inpatient';
 import { AdmissionOrdersTab, ICURiskAssessmentPanel } from '@/components/inpatient';
+import { TemperatureChart } from '@/components/inpatient/temperature-chart';
+import { BloodTransfusionChart } from '@/components/inpatient/blood-transfusion-chart';
+import { BPMonitoringChart } from '@/components/inpatient/bp-monitoring-chart';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -502,7 +505,7 @@ export default function AdmissionDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="w-full grid grid-cols-4 h-auto">
+        <TabsList className="w-full grid grid-cols-5 h-auto">
           <TabsTrigger value="overview" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Info</span>
             <span className="hidden sm:inline">Overview</span>
@@ -510,6 +513,10 @@ export default function AdmissionDetailPage() {
           <TabsTrigger value="ward-rounds" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Rounds</span>
             <span className="hidden sm:inline">Ward Rounds</span>
+          </TabsTrigger>
+          <TabsTrigger value="charts" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
+            <span className="sm:hidden">Charts</span>
+            <span className="hidden sm:inline">Obs Charts</span>
           </TabsTrigger>
           <TabsTrigger value="kardex" className="text-xs sm:text-sm md:text-base md:data-[state=active]:text-lg md:data-[state=active]:font-semibold transition-all">
             <span className="sm:hidden">Kardex</span>
@@ -787,12 +794,20 @@ export default function AdmissionDetailPage() {
 
                 <Card className="hover:bg-muted/50 transition-colors">
                   <CardHeader>
-                    <CardTitle className="text-lg">Nursing Notes</CardTitle>
+                    <CardTitle className="text-lg">Latest Shift Notes</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-accent-foreground whitespace-pre-wrap line-clamp-6">
-                      {kardex.nursing_notes || 'No nursing notes recorded.'}
-                    </p>
+                    {kardex.shift_notes && kardex.shift_notes.length > 0 ? (
+                      <div className="space-y-2">
+                        {kardex.shift_notes.slice(0, 2).map((note) => (
+                          <p key={note.id} className="text-sm text-accent-foreground line-clamp-2">
+                            <span className="font-medium">{note.nurse_username}:</span> {note.content || note.notes}
+                          </p>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-accent-foreground">No shift notes recorded.</p>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -805,6 +820,24 @@ export default function AdmissionDetailPage() {
           <AdmissionOrdersTab
             admissionId={admission.id}
             patientId={admission.patient}
+            isActive={admission.admission_status === 'ACTIVE'}
+          />
+        </TabsContent>
+
+        {/* Observation Charts Tab */}
+        <TabsContent value="charts" className="space-y-6">
+          <TemperatureChart
+            admissionId={admission.id}
+            isActive={admission.admission_status === 'ACTIVE'}
+          />
+          <Separator />
+          <BPMonitoringChart
+            admissionId={admission.id}
+            isActive={admission.admission_status === 'ACTIVE'}
+          />
+          <Separator />
+          <BloodTransfusionChart
+            admissionId={admission.id}
             isActive={admission.admission_status === 'ACTIVE'}
           />
         </TabsContent>

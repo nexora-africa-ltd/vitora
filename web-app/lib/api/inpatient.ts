@@ -15,6 +15,7 @@ import {
   ReviewRequestSchema,
   PaginatedReviewRequestSchema,
   NursingKardexSchema,
+  NursingCarePlanEntrySchema,
   KardexShiftNoteSchema,
   KardexHandoverNoteSchema,
   ShiftHandoverSchema,
@@ -30,6 +31,13 @@ import {
   BedArraySchema,
   BulkCompatibilityResultSchema,
   CompatibilityCheckResultSchema,
+  TemperatureReadingSchema,
+  PaginatedTemperatureReadingSchema,
+  BloodTransfusionSchema,
+  PaginatedBloodTransfusionSchema,
+  TransfusionObservationEntrySchema,
+  BPMonitoringReadingSchema,
+  PaginatedBPMonitoringReadingSchema,
 } from '@/lib/schemas/inpatient.schema';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { ImagingOrder } from '@/lib/types/imaging';
@@ -60,6 +68,9 @@ import type {
   KardexShiftNoteCreateData,
   KardexUpdateData,
   NursingKardex,
+  NursingCarePlanEntry,
+  NursingCarePlanEntryCreateData,
+  NursingCarePlanEntryUpdateData,
   ReviewRequest,
   ReviewRequestCreateData,
   ReviewRequestListParams,
@@ -81,6 +92,17 @@ import type {
   AdmissionOrdersResponse,
   AcknowledgeAlertRequest,
   AcknowledgeAlertResponse,
+  TemperatureReading,
+  TemperatureReadingCreateData,
+  TemperatureReadingListResponse,
+  BloodTransfusion,
+  BloodTransfusionCreateData,
+  BloodTransfusionListResponse,
+  TransfusionObservationEntry,
+  TransfusionObservationEntryCreateData,
+  BPMonitoringReading,
+  BPMonitoringReadingCreateData,
+  BPMonitoringReadingListResponse,
 } from '@/lib/types/inpatient';
 
 type Paginated<T> = { count: number; next: string | null; previous: string | null; results: T[] };
@@ -367,6 +389,22 @@ export const inpatientApi = {
     return parseResponse(KardexHandoverNoteSchema, response.data, { context: 'inpatientApi.addKardexHandoverNote' });
   },
 
+  async addCarePlanEntry(kardexId: number, data: NursingCarePlanEntryCreateData): Promise<NursingCarePlanEntry> {
+    const response = await apiClient.post<NursingCarePlanEntry>(
+      `/api/inpatient/kardex/${kardexId}/add-care-plan-entry/`,
+      data
+    );
+    return parseResponse(NursingCarePlanEntrySchema, response.data, { context: 'inpatientApi.addCarePlanEntry' });
+  },
+
+  async updateCarePlanEntry(kardexId: number, entryId: number, data: NursingCarePlanEntryUpdateData): Promise<NursingCarePlanEntry> {
+    const response = await apiClient.patch<NursingCarePlanEntry>(
+      `/api/inpatient/kardex/${kardexId}/update-care-plan-entry/${entryId}/`,
+      data
+    );
+    return parseResponse(NursingCarePlanEntrySchema, response.data, { context: 'inpatientApi.updateCarePlanEntry' });
+  },
+
   // ============================================================================
   // Shift Handovers
   // ============================================================================
@@ -537,5 +575,111 @@ export const inpatientApi = {
       { params }
     );
     return response.data;
+  },
+
+  // ============================================================================
+  // Temperature Readings
+  // ============================================================================
+
+  async listTemperatureReadings(
+    params?: { admission?: number; page?: number; page_size?: number }
+  ): Promise<TemperatureReadingListResponse> {
+    const response = await apiClient.get('/api/inpatient/temperature-readings/', { params });
+    return parseResponse(PaginatedTemperatureReadingSchema, response.data, {
+      context: 'inpatientApi.listTemperatureReadings',
+    });
+  },
+
+  async createTemperatureReading(data: TemperatureReadingCreateData): Promise<TemperatureReading> {
+    const response = await apiClient.post('/api/inpatient/temperature-readings/', data);
+    return parseResponse(TemperatureReadingSchema, response.data, {
+      context: 'inpatientApi.createTemperatureReading',
+    });
+  },
+
+  // ============================================================================
+  // Blood Transfusions
+  // ============================================================================
+
+  async listBloodTransfusions(
+    params?: { admission?: number; status?: string; page?: number; page_size?: number }
+  ): Promise<BloodTransfusionListResponse> {
+    const response = await apiClient.get('/api/inpatient/blood-transfusions/', { params });
+    return parseResponse(PaginatedBloodTransfusionSchema, response.data, {
+      context: 'inpatientApi.listBloodTransfusions',
+    });
+  },
+
+  async getBloodTransfusion(id: number): Promise<BloodTransfusion> {
+    const response = await apiClient.get(`/api/inpatient/blood-transfusions/${id}/`);
+    return parseResponse(BloodTransfusionSchema, response.data, {
+      context: 'inpatientApi.getBloodTransfusion',
+    });
+  },
+
+  async createBloodTransfusion(data: BloodTransfusionCreateData): Promise<BloodTransfusion> {
+    const response = await apiClient.post('/api/inpatient/blood-transfusions/', data);
+    return parseResponse(BloodTransfusionSchema, response.data, {
+      context: 'inpatientApi.createBloodTransfusion',
+    });
+  },
+
+  async addTransfusionObservation(
+    transfusionId: number,
+    data: TransfusionObservationEntryCreateData
+  ): Promise<TransfusionObservationEntry> {
+    const response = await apiClient.post(
+      `/api/inpatient/blood-transfusions/${transfusionId}/add-observation/`,
+      data
+    );
+    return parseResponse(TransfusionObservationEntrySchema, response.data, {
+      context: 'inpatientApi.addTransfusionObservation',
+    });
+  },
+
+  async markTransfusionReaction(
+    transfusionId: number,
+    data: { reaction_type: string; action_taken?: string }
+  ): Promise<BloodTransfusion> {
+    const response = await apiClient.post(
+      `/api/inpatient/blood-transfusions/${transfusionId}/mark-reaction/`,
+      data
+    );
+    return parseResponse(BloodTransfusionSchema, response.data, {
+      context: 'inpatientApi.markTransfusionReaction',
+    });
+  },
+
+  async completeTransfusion(
+    transfusionId: number,
+    data?: { time_ended?: string }
+  ): Promise<BloodTransfusion> {
+    const response = await apiClient.post(
+      `/api/inpatient/blood-transfusions/${transfusionId}/complete/`,
+      data ?? {}
+    );
+    return parseResponse(BloodTransfusionSchema, response.data, {
+      context: 'inpatientApi.completeTransfusion',
+    });
+  },
+
+  // ============================================================================
+  // BP Monitoring
+  // ============================================================================
+
+  async listBPReadings(
+    params?: { admission?: number; page?: number; page_size?: number }
+  ): Promise<BPMonitoringReadingListResponse> {
+    const response = await apiClient.get('/api/inpatient/bp-readings/', { params });
+    return parseResponse(PaginatedBPMonitoringReadingSchema, response.data, {
+      context: 'inpatientApi.listBPReadings',
+    });
+  },
+
+  async createBPReading(data: BPMonitoringReadingCreateData): Promise<BPMonitoringReading> {
+    const response = await apiClient.post('/api/inpatient/bp-readings/', data);
+    return parseResponse(BPMonitoringReadingSchema, response.data, {
+      context: 'inpatientApi.createBPReading',
+    });
   },
 };

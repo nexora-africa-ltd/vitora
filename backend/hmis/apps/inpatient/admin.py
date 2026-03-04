@@ -13,6 +13,7 @@ from .models import (
     Discharge,
     KardexHandoverNote,
     KardexShiftNote,
+    NursingCarePlanEntry,
     NursingKardex,
     ShiftHandover,
     Transfer,
@@ -485,7 +486,9 @@ class NursingKardexAdmin(admin.ModelAdmin):
                     "interventions",
                     "monitoring_requirements",
                     "care_task_frequency",
-                )
+                ),
+                "classes": ("collapse",),
+                "description": "Legacy fields (deprecated). Use Care Plan Entries instead.",
             },
         ),
         (
@@ -514,6 +517,26 @@ class KardexShiftNoteInline(admin.TabularInline):
     extra = 0
     readonly_fields = ["nurse", "shift", "content", "timestamp"]
     can_delete = False  # Append-only design
+
+
+class NursingCarePlanEntryInline(admin.TabularInline):
+    """Inline admin for care plan entries in Kardex."""
+
+    model = NursingCarePlanEntry
+    extra = 0
+    readonly_fields = ["recorded_at", "recorded_by", "created_at", "updated_at"]
+    fields = [
+        "recorded_at",
+        "recorded_by",
+        "assessment",
+        "nursing_diagnosis",
+        "goal_and_outcome_criteria",
+        "plan_of_action",
+        "scientific_rationale",
+        "implementation",
+        "evaluation",
+        "status",
+    ]
 
 
 class KardexHandoverNoteInline(admin.TabularInline):
@@ -561,6 +584,61 @@ class KardexShiftNoteAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         """Shift notes are append-only and cannot be deleted."""
         return False
+
+
+@admin.register(NursingCarePlanEntry)
+class NursingCarePlanEntryAdmin(admin.ModelAdmin):
+    """Admin interface for NursingCarePlanEntry model."""
+
+    list_display = [
+        "kardex",
+        "nursing_diagnosis_short",
+        "status",
+        "recorded_by",
+        "recorded_at",
+    ]
+    list_filter = ["status", "recorded_at"]
+    search_fields = [
+        "kardex__admission__admission_number",
+        "kardex__admission__patient__first_name",
+        "kardex__admission__patient__last_name",
+        "nursing_diagnosis",
+        "assessment",
+    ]
+    readonly_fields = ["kardex", "recorded_by", "created_at", "updated_at"]
+    ordering = ["-recorded_at"]
+
+    fieldsets = (
+        (
+            "Entry Info",
+            {"fields": ("kardex", "recorded_at", "recorded_by", "status")},
+        ),
+        (
+            "Assessment & Diagnosis",
+            {"fields": ("assessment", "nursing_diagnosis")},
+        ),
+        (
+            "Planning",
+            {"fields": ("goal_and_outcome_criteria", "plan_of_action", "scientific_rationale")},
+        ),
+        (
+            "Implementation & Evaluation",
+            {"fields": ("implementation", "evaluation")},
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    def nursing_diagnosis_short(self, obj):
+        """Truncated nursing diagnosis for list display."""
+        return obj.nursing_diagnosis[:60] + "..." if len(obj.nursing_diagnosis) > 60 else obj.nursing_diagnosis
+
+    nursing_diagnosis_short.short_description = "Nursing Diagnosis"
 
 
 @admin.register(KardexHandoverNote)
