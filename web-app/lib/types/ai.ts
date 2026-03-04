@@ -69,7 +69,8 @@ export interface AIEncounterContext {
     pulse?: number;
     temperature?: number;
     rr?: number;
-    bp?: string;
+    /** Mean Arterial Pressure (MAP) in mmHg - calculated from BP */
+    map?: number;
   };
 }
 

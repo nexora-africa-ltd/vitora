@@ -26,6 +26,7 @@ import { usePatient, usePatients } from '@/lib/hooks/use-patients';
 import { useEncounter, useCreateEncounter } from '@/lib/hooks/use-encounters';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { calculateAge } from '@/lib/utils/format';
+import { parseBPAndCalculateMAP } from '@/lib/vitals';
 import { toast } from '@/lib/hooks/use-toast';
 import { useIdempotencyKey } from '@/lib/utils';
 import { LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
@@ -302,7 +303,7 @@ export default function NewTriagePage() {
                 ? Number(encounter.temperature)
                 : undefined,
             rr: encounter.respiratory_rate ?? undefined,
-            bp: encounter.blood_pressure ?? undefined,
+            map: parseBPAndCalculateMAP(encounter.blood_pressure) ?? undefined,
           },
         }
       );

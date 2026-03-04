@@ -23,6 +23,7 @@ import { PatientProvider, usePatientContext } from '@/lib/context/patient-contex
 import { EncounterProvider, useEncounterContext } from '@/lib/context/encounter-context';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { calculateAge } from '@/lib/utils/format';
+import { parseBPAndCalculateMAP } from '@/lib/vitals';
 import { PatientShellHeader } from '@/components/layout/patient-shell-header';
 import { TriageAssessTabs } from '@/components/triage/triage-assess-tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -171,7 +172,7 @@ function TriageLayoutContent({ children }: { children: React.ReactNode }) {
                 ? Number(encounter.temperature)
                 : undefined,
             rr: encounter.respiratory_rate ?? undefined,
-            bp: encounter.blood_pressure ?? undefined,
+            map: parseBPAndCalculateMAP(encounter.blood_pressure) ?? undefined,
           },
         }
       );
