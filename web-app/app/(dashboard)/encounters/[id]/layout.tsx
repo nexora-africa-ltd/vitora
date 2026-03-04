@@ -25,6 +25,7 @@ import { PatientProvider, usePatientContext } from '@/lib/context/patient-contex
 import { EncounterProvider, useEncounterContext } from '@/lib/context/encounter-context';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { calculateAge } from '@/lib/utils/format';
+import { parseBPAndCalculateMAP } from '@/lib/vitals';
 import { PatientShellHeader } from '@/components/layout/patient-shell-header';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -126,7 +127,7 @@ function EncounterLayoutContent({ children }: { children: React.ReactNode }) {
             pulse: encounter.pulse ?? undefined,
             temperature: encounter.temperature != null ? Number(encounter.temperature) : undefined,
             rr: encounter.respiratory_rate ?? undefined,
-            bp: encounter.blood_pressure ?? undefined,
+            map: parseBPAndCalculateMAP(encounter.blood_pressure) ?? undefined,
           },
         }
       );

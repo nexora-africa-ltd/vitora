@@ -65,4 +65,5 @@ export {
   generateVitalAlerts,
   getFieldStatus,
   calculateMAP,
+  parseBPAndCalculateMAP,
 } from './alerts';

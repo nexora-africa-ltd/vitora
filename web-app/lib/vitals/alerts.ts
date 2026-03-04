@@ -243,6 +243,34 @@ export function calculateMAP(systolic: number | null | undefined, diastolic: num
 }
 
 /**
+ * Parse blood pressure string (e.g., "120/80") and calculate MAP.
+ *
+ * @param bp - Blood pressure string in "systolic/diastolic" format
+ * @returns MAP value or null if BP is invalid/missing
+ *
+ * @example
+ * ```ts
+ * parseBPAndCalculateMAP("120/80") // → 93
+ * parseBPAndCalculateMAP("140/90") // → 107
+ * parseBPAndCalculateMAP("") // → null
+ * parseBPAndCalculateMAP(null) // → null
+ * ```
+ */
+export function parseBPAndCalculateMAP(bp: string | null | undefined): number | null {
+  if (!bp || typeof bp !== 'string') return null;
+
+  const parts = bp.split('/');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
+
+  const systolic = parseInt(parts[0].trim(), 10);
+  const diastolic = parseInt(parts[1].trim(), 10);
+
+  if (isNaN(systolic) || isNaN(diastolic)) return null;
+
+  return calculateMAP(systolic, diastolic);
+}
+
+/**
  * Get MAP status and alert
  */
 function getMAPAlert(

@@ -151,7 +151,11 @@ class AIVitalsSerializer(serializers.Serializer):
     pulse = serializers.IntegerField(required=False, allow_null=True)
     temperature = serializers.FloatField(required=False, allow_null=True)
     rr = serializers.IntegerField(required=False, allow_null=True)
-    bp = serializers.CharField(required=False, allow_null=True)
+    map = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        help_text="Mean Arterial Pressure (MAP) in mmHg - calculated from BP",
+    )
 
 
 class AIPatientContextSerializer(serializers.Serializer):
