@@ -72,6 +72,25 @@ export interface AIEncounterContext {
     /** Mean Arterial Pressure (MAP) in mmHg - calculated from BP */
     map?: number;
   };
+
+  // --- Inpatient fields (optional — only set on admission/ward round pages) ---
+
+  /** Admitting diagnosis text (no PII) */
+  admission_diagnosis?: string;
+  /** Ward name (e.g., "Medical Ward 1") */
+  ward_name?: string;
+  /** Bed number (e.g., "B-005") */
+  bed_number?: string;
+  /** Admission status (ACTIVE, DISCHARGED, etc.) */
+  admission_status?: string;
+  /** Days since admission */
+  length_of_stay_days?: number;
+  /** Latest ward round condition (STABLE, IMPROVING, DETERIORATING, CRITICAL) */
+  condition_status?: string;
+  /** Diet orders for the patient */
+  diet?: string;
+  /** Special nursing instructions */
+  special_instructions?: string;
 }
 
 /**

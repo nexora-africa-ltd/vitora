@@ -176,10 +176,48 @@ class AIPatientContextSerializer(serializers.Serializer):
 
 
 class AIEncounterContextSerializer(serializers.Serializer):
-    """Encounter context for Clinical Assist."""
+    """Encounter context for Clinical Assist.
+
+    Includes optional inpatient fields that are populated when the
+    clinician is on an admission or ward round page.
+    """
 
     chief_complaint = serializers.CharField(required=False, allow_null=True)
     vitals = AIVitalsSerializer(required=False, allow_null=True)
+
+    # Inpatient fields (optional — only set on admission/ward round pages)
+    admission_diagnosis = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True,
+        help_text="Admitting diagnosis text (no PII).",
+    )
+    ward_name = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True,
+        help_text="Ward name (e.g., 'Medical Ward 1').",
+    )
+    bed_number = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True,
+        help_text="Bed number (e.g., 'B-005').",
+    )
+    admission_status = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True,
+        help_text="Admission status (ACTIVE, DISCHARGED, etc.).",
+    )
+    length_of_stay_days = serializers.IntegerField(
+        required=False, allow_null=True,
+        help_text="Days since admission.",
+    )
+    condition_status = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True,
+        help_text="Latest ward round condition (STABLE, IMPROVING, DETERIORATING, CRITICAL).",
+    )
+    diet = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True,
+        help_text="Diet orders for the patient.",
+    )
+    special_instructions = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True,
+        help_text="Special nursing instructions.",
+    )
 
 
 class AIPageContextSerializer(serializers.Serializer):

@@ -441,7 +441,7 @@ class TestTibaBotClient:
         assert client.api_key == "test-key-123"
         assert client.timeout == 10
         assert (
-            client.session.headers["Authorization"] == "Bearer test-key-123"
+            client.session.headers["X-API-Key"] == "test-key-123"
         )
 
     @override_settings(TIBABOT_API_URL="https://test.example.com")

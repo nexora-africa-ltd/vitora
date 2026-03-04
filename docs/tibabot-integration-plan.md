@@ -402,7 +402,7 @@ The CDS module documents a 4-layer AI evolution. TibaBot integration maps direct
 | **Phase 1** ✅ | Backend proxy app (`hmis/apps/ai/`) + ICD-10 auto-coding in diagnosis form | 2–3 days | Low | API key from Nexora |
 | **Phase 2** ✅ | TibaBot floating widget + Clinical Assistant (chat, encounter-aware assist, page context, session management) | 3–4 days | Low | Phase 1 |
 | **Phase 3** ✅ | Condition predictor in triage + AI feedback | 2 days | Medium | Phase 1 |
-| **Phase 4** | ICU predictor in inpatient + CDS `ml_model` rule type (+ widget `/icu-risk` command) | 3–4 days | Medium | Phase 1, CDS engine update |
+| **Phase 4** ✅ | ICU predictor in inpatient + CDS `ml_model` rule type (+ widget `/icu-risk` command) | 3–4 days | Medium | Phase 1, CDS engine update |
 | **Phase 5** | Symptom Checker patient portal | 3–4 days | Low | Patient portal (future) |
 
 **Total estimated effort**: ~13–16 days of implementation across all phases.

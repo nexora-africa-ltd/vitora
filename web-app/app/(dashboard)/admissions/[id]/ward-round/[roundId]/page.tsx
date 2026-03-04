@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Stethoscope, Activity, Calendar, User, FileText, AlertCircle } from 'lucide-react';
@@ -9,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAdmission, useWardRound } from '@/lib/hooks/use-inpatient';
+import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import type { WardRound } from '@/lib/types/inpatient';
 
 // Map condition status to semantic Badge variants
@@ -46,6 +48,69 @@ export default function WardRoundDetailPage() {
   const { data: wardRound, isLoading: wardRoundLoading } = useWardRound(roundId);
 
   const isLoading = admissionLoading || wardRoundLoading;
+
+  // =========================================================================
+  // AI Chat Widget — ward round context wiring
+  // =========================================================================
+
+  const chatCtx = useOptionalAIChatContext();
+  const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
+
+  // Helper: parse BP string to MAP
+  function parseBPToMAP(bp: string | undefined | null): number | undefined {
+    if (!bp) return undefined;
+    const match = bp.match(/^(\d+)\/(\d+)$/);
+    if (!match) return undefined;
+    const sys = Number(match[1]);
+    const dia = Number(match[2]);
+    if (isNaN(sys) || isNaN(dia)) return undefined;
+    return Math.round(dia + (sys - dia) / 3);
+  }
+
+  // Wire completed ward round data into AI context.
+  // The ward round detail is a read-only view, so no in-progress updates.
+  useEffect(() => {
+    if (!setEncounterAwareContext) return;
+
+    if (admission && wardRound) {
+      const daysLOS = Math.ceil(
+        (Date.now() - new Date(admission.admission_date).getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      const vs = wardRound.vital_signs ?? wardRound;
+
+      setEncounterAwareContext(
+        {
+          patient_age: admission.patient_age ?? 0,
+          patient_sex: admission.patient_gender ?? 'O',
+        },
+        {
+          chief_complaint:
+            wardRound.subjective || admission.admitting_diagnosis_text || admission.admitting_diagnosis || undefined,
+          vitals: {
+            spo2: vs.spo2 != null ? Number(vs.spo2) : undefined,
+            pulse: vs.pulse ?? undefined,
+            temperature: vs.temperature != null ? Number(vs.temperature) : undefined,
+            rr: vs.respiratory_rate ?? undefined,
+            map: parseBPToMAP(typeof vs.blood_pressure === 'string' ? vs.blood_pressure : undefined),
+          },
+          admission_diagnosis:
+            admission.admitting_diagnosis_text || admission.admitting_diagnosis || undefined,
+          ward_name: admission.ward_name ?? undefined,
+          bed_number: admission.bed_number ?? undefined,
+          admission_status: admission.admission_status ?? undefined,
+          length_of_stay_days: daysLOS,
+          condition_status: wardRound.condition_status ?? undefined,
+          diet: admission.diet ?? undefined,
+          special_instructions: admission.special_instructions ?? undefined,
+        }
+      );
+    }
+
+    return () => {
+      setEncounterAwareContext(null, null);
+    };
+  }, [admission, wardRound, setEncounterAwareContext]);
 
   if (isLoading) {
     return <WardRoundDetailSkeleton />;

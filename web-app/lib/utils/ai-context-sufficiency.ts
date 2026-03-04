@@ -279,6 +279,8 @@ export function mergeContextWithEnrichment(
   };
 
   const mergedEncounter: AIEncounterContext = {
+    // Preserve any inpatient-specific fields from the base context
+    ...encounterContext,
     chief_complaint: enrichment.chief_complaint || encounterContext?.chief_complaint,
     vitals: mergedVitals,
   };
