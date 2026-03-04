@@ -51,7 +51,7 @@ from .serializers import (
 logger = logging.getLogger(__name__)
 
 # Accepted verbosity values — aligned with TibaBot's API.
-_VALID_VERBOSITY = {"brief", "concise", "standard", "detailed", "educational"}
+_VALID_VERBOSITY = {"concise", "standard", "educational"}
 
 
 # =============================================================================

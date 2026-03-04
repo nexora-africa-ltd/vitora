@@ -227,14 +227,14 @@ class ClinicalChatRequestSerializer(serializers.Serializer):
     user_context = AIUserContextSerializer(required=False, allow_null=True)
     facility_context = AIFacilityContextSerializer(required=False, allow_null=True)
     verbosity = serializers.ChoiceField(
-        choices=["brief", "concise", "standard", "detailed", "educational"],
+        choices=["concise", "standard", "educational"],
         default="standard",
         required=False,
         help_text=(
             "Response detail level. "
-            "'brief'/'concise' → terse bullet points (<150 words); "
+            "'concise' → terse bullet points (<150 words); "
             "'standard' → balanced with context (default); "
-            "'detailed'/'educational' → full reasoning, step-by-step."
+            "'educational' → full reasoning, explains 'why'."
         ),
     )
 
@@ -253,14 +253,14 @@ class ClinicalAssistRequestSerializer(serializers.Serializer):
     user_context = AIUserContextSerializer(required=False, allow_null=True)
     facility_context = AIFacilityContextSerializer(required=False, allow_null=True)
     verbosity = serializers.ChoiceField(
-        choices=["brief", "concise", "standard", "detailed", "educational"],
+        choices=["concise", "standard", "educational"],
         default="standard",
         required=False,
         help_text=(
             "Response detail level. "
-            "'brief'/'concise' → terse bullet points (<150 words); "
+            "'concise' → terse bullet points (<150 words); "
             "'standard' → balanced with context (default); "
-            "'detailed'/'educational' → full reasoning, step-by-step."
+            "'educational' → full reasoning, explains 'why'."
         ),
     )
 

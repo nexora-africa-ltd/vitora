@@ -492,7 +492,7 @@ export function AIChatPanel({
         <div className="flex items-center gap-1.5 mb-2">
           <Gauge className="h-3 w-3 text-muted-foreground shrink-0" />
           <div className="flex gap-0.5 flex-wrap">
-            {(['brief', 'standard', 'detailed'] as AIVerbosity[]).map((v) => {
+            {(['concise', 'standard', 'educational'] as AIVerbosity[]).map((v) => {
               const opt = AI_VERBOSITY_OPTIONS.find((o) => o.value === v);
               return (
                 <button
@@ -501,7 +501,7 @@ export function AIChatPanel({
                   onClick={() => setVerbosity(v)}
                   className={cn(
                     'px-2 py-0.5 rounded text-[10px] font-medium transition-colors',
-                    verbosity === v || (verbosity === 'concise' && v === 'brief') || (verbosity === 'educational' && v === 'detailed')
+                    verbosity === v
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-muted-foreground hover:bg-muted/80'
                   )}

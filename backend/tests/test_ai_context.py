@@ -368,7 +368,7 @@ class TestClinicalAssistEndpoint:
                         "patient_age": 35,
                         "patient_sex": "M",
                     },
-                    "verbosity": "detailed",
+                    "verbosity": "educational",
                 },
                 format="json",
             )
@@ -379,7 +379,7 @@ class TestClinicalAssistEndpoint:
             call_args = mock_client.clinical_assist.call_args[0][0]
             assert call_args["user_context"] is not None
             assert call_args["facility_context"]["keph_level"] == "L2"
-            assert call_args["verbosity"] == "detailed"
+            assert call_args["verbosity"] == "educational"
 
     @override_settings(TIBABOT_ENABLED=True)
     def test_graceful_degradation_when_unavailable(self, authenticated_client):
@@ -512,7 +512,7 @@ class TestClinicalAssistRequestSerializer:
                     "has_imaging": True,
                     "has_pharmacy": True,
                 },
-                "verbosity": "detailed",
+                "verbosity": "educational",
             }
         )
         assert serializer.is_valid(), serializer.errors
@@ -587,10 +587,10 @@ class TestClinicalChatVerbosity:
         from hmis.apps.ai.serializers import ClinicalChatRequestSerializer
 
         serializer = ClinicalChatRequestSerializer(
-            data={"message": "DDx for chest pain?", "verbosity": "brief"}
+            data={"message": "DDx for chest pain?", "verbosity": "concise"}
         )
         assert serializer.is_valid(), serializer.errors
-        assert serializer.validated_data["verbosity"] == "brief"
+        assert serializer.validated_data["verbosity"] == "concise"
 
     def test_chat_verbosity_defaults_to_standard(self):
         from hmis.apps.ai.serializers import ClinicalChatRequestSerializer
@@ -606,6 +606,26 @@ class TestClinicalChatVerbosity:
 
         serializer = ClinicalChatRequestSerializer(
             data={"message": "test", "verbosity": "super_detailed"}
+        )
+        assert not serializer.is_valid()
+        assert "verbosity" in serializer.errors
+
+    def test_chat_rejects_brief(self):
+        """'brief' is not a valid TibaBot verbosity level."""
+        from hmis.apps.ai.serializers import ClinicalChatRequestSerializer
+
+        serializer = ClinicalChatRequestSerializer(
+            data={"message": "test", "verbosity": "brief"}
+        )
+        assert not serializer.is_valid()
+        assert "verbosity" in serializer.errors
+
+    def test_chat_rejects_detailed(self):
+        """'detailed' is not a valid TibaBot verbosity level."""
+        from hmis.apps.ai.serializers import ClinicalChatRequestSerializer
+
+        serializer = ClinicalChatRequestSerializer(
+            data={"message": "test", "verbosity": "detailed"}
         )
         assert not serializer.is_valid()
         assert "verbosity" in serializer.errors
@@ -651,13 +671,13 @@ class TestVerbosityQueryParam:
             mock_get_client.return_value = mock_client
 
             authenticated_client.post(
-                "/api/ai/clinical/chat/?verbosity=brief",
-                {"message": "DDx for chest pain?", "verbosity": "detailed"},
+                "/api/ai/clinical/chat/?verbosity=concise",
+                {"message": "DDx for chest pain?", "verbosity": "educational"},
                 format="json",
             )
 
             call_args = mock_client.clinical_chat.call_args[0][0]
-            assert call_args["verbosity"] == "brief"
+            assert call_args["verbosity"] == "concise"
 
     @override_settings(TIBABOT_ENABLED=True)
     def test_query_param_overrides_body_on_assist(self, authenticated_client):
@@ -692,12 +712,12 @@ class TestVerbosityQueryParam:
 
             authenticated_client.post(
                 "/api/ai/clinical/assist/?verbosity=INVALID",
-                {"query": "DDx for cough", "verbosity": "detailed"},
+                {"query": "DDx for cough", "verbosity": "educational"},
                 format="json",
             )
 
             call_args = mock_client.clinical_assist.call_args[0][0]
-            assert call_args["verbosity"] == "detailed"
+            assert call_args["verbosity"] == "educational"
 
     @override_settings(TIBABOT_ENABLED=True)
     def test_no_verbosity_defaults_to_standard(self, authenticated_client):
