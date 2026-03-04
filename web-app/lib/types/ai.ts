@@ -132,16 +132,14 @@ export interface AIPageContext {
   module: string;
 }
 
-/** Verbosity level for AI responses */
-export type AIVerbosity = 'brief' | 'concise' | 'standard' | 'detailed' | 'educational';
+/** Verbosity level for AI responses — must match TibaBot accepted values */
+export type AIVerbosity = 'concise' | 'standard' | 'educational';
 
 /** Human-readable labels for each verbosity level */
 export const AI_VERBOSITY_OPTIONS: { value: AIVerbosity; label: string; description: string }[] = [
-  { value: 'brief', label: 'Brief', description: 'Terse bullet points, <150 words' },
-  { value: 'concise', label: 'Concise', description: 'Same as brief — abbreviations OK' },
+  { value: 'concise', label: 'Concise', description: 'Terse bullet points, <150 words' },
   { value: 'standard', label: 'Standard', description: 'Balanced with context (default)' },
-  { value: 'detailed', label: 'Detailed', description: 'Full reasoning, step-by-step' },
-  { value: 'educational', label: 'Educational', description: 'Explains "why" — teaching mode' },
+  { value: 'educational', label: 'Educational', description: 'Full reasoning, explains "why"' },
 ];
 
 /** Request body for POST /api/ai/clinical/chat/ */
