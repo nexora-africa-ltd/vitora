@@ -267,6 +267,57 @@ class TibaBotClient:
         )
 
     # -----------------------------------------------------------------
+    # Phase 4 — ICU Predictor
+    # -----------------------------------------------------------------
+
+    def predict_icu(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Predict ICU admission risk for an admitted patient.
+
+        Sends patient clinical data (vitals, labs, clinical context) to
+        TibaBot's ``POST /predict/icu/predict`` endpoint for SOFA/qSOFA
+        scoring and ICU risk assessment.
+
+        Args:
+            payload: Dict containing patient_data with age, gender,
+                     vitals, lab values, clinical context, plus
+                     user_context and facility_context.
+
+        Returns:
+            Dict with risk_level, risk_score, sofa_score, qsofa_score,
+            critical_alerts, escalation recommendations.
+        """
+        return self._request(
+            method="POST",
+            endpoint="/predict/icu/predict",
+            data=payload,
+        )
+
+    def predict_icu_risk_stratify(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Get composite risk stratification for sepsis, AKI, and deterioration.
+
+        Sends patient clinical data to TibaBot's
+        ``POST /predict/icu/risk-stratify`` endpoint for multi-condition
+        probability scoring.
+
+        Args:
+            payload: Dict containing patient_data with age, gender,
+                     vitals, lab values, clinical context, plus
+                     user_context and facility_context.
+
+        Returns:
+            Dict with risk_level, risk_score, sepsis_probability,
+            aki_probability, deterioration_probability, plus
+            SOFA/qSOFA scores and recommendations.
+        """
+        return self._request(
+            method="POST",
+            endpoint="/predict/icu/risk-stratify",
+            data=payload,
+        )
+
+    # -----------------------------------------------------------------
     # Phase 3 — Feedback
     # -----------------------------------------------------------------
 

@@ -263,6 +263,94 @@ export interface AIConditionPredictResponse {
 }
 
 // =============================================================================
+// Phase 4 — ICU Predictor
+// =============================================================================
+
+/** Patient clinical data for ICU risk prediction — no PII */
+export interface AIICUPredictPatientData {
+  age: number;
+  gender: 'M' | 'F' | 'O';
+  // Vital signs
+  temperature?: number | null;
+  heart_rate?: number | null;
+  systolic_bp?: number | null;
+  diastolic_bp?: number | null;
+  respiratory_rate?: number | null;
+  spo2?: number | null;
+  mean_arterial_pressure?: number | null;
+  // Lab values (for SOFA scoring)
+  wbc?: number | null;
+  platelets?: number | null;
+  creatinine?: number | null;
+  bilirubin?: number | null;
+  lactate?: number | null;
+  pao2_fio2_ratio?: number | null;
+  gcs?: number | null;
+  // Clinical context
+  urine_output_ml_day?: number | null;
+  on_vasopressors?: boolean;
+  on_mechanical_ventilation?: boolean;
+  admission_diagnosis?: string;
+  length_of_stay_days?: number | null;
+}
+
+/** ICU prediction type */
+export type AIICUPredictionType = 'predict' | 'risk-stratify';
+
+/** Request body for POST /api/ai/predict/icu/ */
+export interface AIICUPredictRequest {
+  patient_data: AIICUPredictPatientData;
+  prediction_type?: AIICUPredictionType;
+}
+
+/** SOFA score component breakdown */
+export interface AISOFAScoreBreakdown {
+  respiratory?: number | null;
+  coagulation?: number | null;
+  liver?: number | null;
+  cardiovascular?: number | null;
+  neurological?: number | null;
+  renal?: number | null;
+}
+
+/** A critical alert from ICU prediction */
+export interface AIICUCriticalAlert {
+  alert_type: string;
+  severity: 'warning' | 'critical';
+  message: string;
+  recommendation?: string;
+}
+
+/** Escalation recommendation from ICU prediction */
+export interface AIICUEscalation {
+  recommended: boolean;
+  urgency?: 'routine' | 'urgent' | 'immediate';
+  reasoning?: string;
+}
+
+/** Response from POST /api/ai/predict/icu/ */
+export interface AIICUPredictResponse {
+  // Overall risk assessment
+  risk_level: 'low' | 'moderate' | 'high' | 'critical';
+  risk_score: number;
+  // Scoring systems
+  sofa_score?: number | null;
+  sofa_breakdown?: AISOFAScoreBreakdown | null;
+  qsofa_score?: number | null;
+  qsofa_criteria?: string[];
+  // Alerts and recommendations
+  critical_alerts?: AIICUCriticalAlert[];
+  escalation?: AIICUEscalation | null;
+  recommendations?: string[];
+  // Risk stratification probabilities
+  sepsis_probability?: number | null;
+  aki_probability?: number | null;
+  deterioration_probability?: number | null;
+  // Error
+  error?: string | null;
+}
+
+// =============================================================================
 // Widget State
 // =============================================================================
 

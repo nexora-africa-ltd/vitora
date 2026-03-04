@@ -46,6 +46,8 @@ from .serializers import (
     ConditionPredictResponseSerializer,
     ICD10SuggestRequestSerializer,
     ICD10SuggestResponseSerializer,
+    ICUPredictRequestSerializer,
+    ICUPredictResponseSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -861,4 +863,143 @@ class AIFeedbackStatsView(AIFeatureGatedMixin, APIView):
             "total_down": result.get("total_down", 0),
             "recent_negatives": result.get("recent_negatives", 0),
         }
+        return Response(response_data)
+
+
+# =============================================================================
+# Phase 4 — ICU Predictor
+# =============================================================================
+
+
+class ICUPredictView(AIFeatureGatedMixin, APIView):
+    """
+    Proxy endpoint for ICU risk prediction via TibaBot.
+
+    POST /api/ai/predict/icu/
+    Body: {
+        "patient_data": {
+            "age": 65, "gender": "M",
+            "temperature": 38.5, "heart_rate": 110, "spo2": 91,
+            "systolic_bp": 90, "respiratory_rate": 24,
+            "wbc": 15.2, "platelets": 120, "creatinine": 2.1, ...
+        },
+        "prediction_type": "predict" | "risk-stratify"
+    }
+
+    Returns SOFA/qSOFA scores, critical alerts, escalation recommendations.
+    Advisory only — clinician must review and confirm.
+
+    Supports two prediction types:
+    - ``predict``: ICU admission risk with SOFA/qSOFA scores
+    - ``risk-stratify``: Sepsis/AKI/deterioration composite risk scores
+
+    Both types are forwarded to TibaBot's respective endpoints:
+    - POST /predict/icu/predict
+    - POST /predict/icu/risk-stratify
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    # Default empty response structure for graceful degradation
+    _EMPTY_RESPONSE: dict = {
+        "risk_level": "low",
+        "risk_score": 0.0,
+        "sofa_score": None,
+        "sofa_breakdown": None,
+        "qsofa_score": None,
+        "qsofa_criteria": [],
+        "critical_alerts": [],
+        "escalation": None,
+        "recommendations": [],
+        "sepsis_probability": None,
+        "aki_probability": None,
+        "deterioration_probability": None,
+    }
+
+    def post(self, request: Request) -> Response:
+        # Validate input
+        serializer = ICUPredictRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        patient_data = serializer.validated_data["patient_data"]
+        prediction_type = serializer.validated_data.get("prediction_type", "predict")
+
+        # Sanitize free-text fields
+        if patient_data.get("admission_diagnosis"):
+            patient_data["admission_diagnosis"] = sanitize_clinical_text(
+                patient_data["admission_diagnosis"]
+            )
+
+        # Enrich with user and facility context
+        payload = {
+            "patient_data": patient_data,
+            "user_context": build_user_context(request),
+            "facility_context": build_facility_context(),
+        }
+
+        # Audit log
+        AuditLog.log(
+            action="ai_icu_predict",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            details={
+                "age": patient_data.get("age"),
+                "gender": patient_data.get("gender"),
+                "prediction_type": prediction_type,
+                "has_lab_data": any(
+                    patient_data.get(k) is not None
+                    for k in ("wbc", "platelets", "creatinine", "bilirubin", "lactate")
+                ),
+            },
+        )
+
+        try:
+            client = get_tibabot_client()
+            if prediction_type == "risk-stratify":
+                result = client.predict_icu_risk_stratify(payload)
+            else:
+                result = client.predict_icu(payload)
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for ICU prediction")
+            return Response(
+                {
+                    **self._EMPTY_RESPONSE,
+                    "error": "AI service is temporarily unavailable. "
+                    "Please proceed with clinical assessment.",
+                },
+                status=status.HTTP_200_OK,
+            )
+        except TibaBotError as e:
+            logger.error("TibaBot error for ICU prediction: %s", e)
+            return Response(
+                {
+                    **self._EMPTY_RESPONSE,
+                    "error": "AI service error. Please proceed with clinical assessment.",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # Validate and normalize the response
+        response_data = {
+            "risk_level": result.get("risk_level", "low"),
+            "risk_score": result.get("risk_score", 0.0),
+            "sofa_score": result.get("sofa_score"),
+            "sofa_breakdown": result.get("sofa_breakdown"),
+            "qsofa_score": result.get("qsofa_score"),
+            "qsofa_criteria": result.get("qsofa_criteria", []),
+            "critical_alerts": result.get("critical_alerts", []),
+            "escalation": result.get("escalation"),
+            "recommendations": result.get("recommendations", []),
+            "sepsis_probability": result.get("sepsis_probability"),
+            "aki_probability": result.get("aki_probability"),
+            "deterioration_probability": result.get("deterioration_probability"),
+        }
+
+        response_serializer = ICUPredictResponseSerializer(data=response_data)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+
+        # Fallback — return whatever TibaBot gave us
         return Response(response_data)

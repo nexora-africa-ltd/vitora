@@ -92,6 +92,8 @@ export interface Admission {
   admission_number: string;
   patient: number;
   patient_name?: string;
+  patient_age?: number | null;
+  patient_gender?: 'M' | 'F' | 'O' | null;
   opd_encounter?: number | null;
   ipd_encounter?: number;
   source_encounter?: number | null; // Source OPD encounter ID

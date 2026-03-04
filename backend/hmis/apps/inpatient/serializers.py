@@ -158,6 +158,8 @@ class AdmissionSerializer(serializers.ModelSerializer):
     """
 
     patient_name = serializers.SerializerMethodField()
+    patient_age = serializers.SerializerMethodField()
+    patient_gender = serializers.SerializerMethodField()
     admitting_officer_username = serializers.CharField(
         source="admitting_officer.username", read_only=True
     )
@@ -187,6 +189,8 @@ class AdmissionSerializer(serializers.ModelSerializer):
             "admission_number",
             "patient",
             "patient_name",
+            "patient_age",
+            "patient_gender",
             "opd_encounter",
             "ipd_encounter",
             "recommendation",
@@ -227,6 +231,20 @@ class AdmissionSerializer(serializers.ModelSerializer):
     def get_patient_name(self, obj) -> str:
         """Get patient full name."""
         return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+    def get_patient_age(self, obj) -> int | None:
+        """Get patient age in years from date of birth."""
+        dob = getattr(obj.patient, "date_of_birth", None)
+        if not dob:
+            return None
+        from datetime import date
+
+        today = date.today()
+        return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+
+    def get_patient_gender(self, obj) -> str | None:
+        """Get patient gender (M, F, O)."""
+        return getattr(obj.patient, "gender", None)
 
     def create(self, validated_data):
         """Create an admission and auto-create the linked IPD encounter."""

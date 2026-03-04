@@ -14,6 +14,7 @@ import {
   AIChatSessionListResponseSchema,
   AIChatSessionDetailResponseSchema,
   AIConditionPredictResponseSchema,
+  AIICUPredictResponseSchema,
   AIFeedbackResponseSchema,
   AIFeedbackStatsSchema,
 } from '@/lib/schemas/ai.schema';
@@ -29,6 +30,8 @@ import type {
   AIChatSessionDetailResponse,
   AIConditionPredictRequest,
   AIConditionPredictResponse,
+  AIICUPredictRequest,
+  AIICUPredictResponse,
   AIFeedbackRequest,
   AIFeedbackResponse,
   AIFeedbackStats,
@@ -160,6 +163,31 @@ export const aiApi = {
     const response = await apiClient.post('/api/ai/predict/condition/', data);
     return parseResponse(AIConditionPredictResponseSchema, response.data, {
       context: 'aiApi.predictCondition',
+    });
+  },
+
+  // ===========================================================================
+  // Phase 4 — ICU Predictor
+  // ===========================================================================
+
+  /**
+   * Predict ICU admission risk for an admitted patient.
+   *
+   * Sends patient clinical data (vitals, labs, clinical context) to the
+   * backend AI proxy for SOFA/qSOFA scoring and ICU risk assessment.
+   * Advisory only — clinician must review and confirm.
+   *
+   * Supports two prediction types:
+   * - "predict": ICU admission risk with SOFA/qSOFA scores
+   * - "risk-stratify": Sepsis/AKI/deterioration composite risk scores
+   *
+   * @param data - Patient data (age, gender, vitals, labs, clinical context)
+   * @returns ICU risk assessment with SOFA/qSOFA, alerts, escalation
+   */
+  predictICU: async (data: AIICUPredictRequest): Promise<AIICUPredictResponse> => {
+    const response = await apiClient.post('/api/ai/predict/icu/', data);
+    return parseResponse(AIICUPredictResponseSchema, response.data, {
+      context: 'aiApi.predictICU',
     });
   },
 

@@ -504,6 +504,87 @@ def _evaluate_custom(
     )
 
 
+def _evaluate_ml_model(
+    rule: Any,
+    condition: dict[str, Any],
+    context: EvaluationContext,
+) -> EvaluationResult:
+    """
+    Evaluate ML model prediction rules.
+
+    These rules integrate with TibaBot AI predictions (ICU risk, sepsis,
+    deterioration) that have been cached in the evaluation context's ``extra``
+    dict under the key ``"ml_predictions"``.
+
+    The view layer is responsible for calling TibaBot and injecting the
+    prediction results into ``context.extra["ml_predictions"]`` before
+    calling the engine.  This keeps the engine synchronous and testable.
+
+    Condition format::
+
+        {
+            "type": "ml_model",
+            "model_name": "sepsis_risk_v2",
+            "threshold": 0.75,
+            "input_features": ["temperature", "pulse", "respiratory_rate", "spo2", "wbc"],
+            "score_field": "sepsis_probability"
+        }
+
+    - ``model_name``: Identifies which ML model produced the score.
+    - ``threshold``: Minimum score to trigger the alert (0.0–1.0).
+    - ``score_field``: Key in the prediction result dict that holds the
+      score.  Defaults to ``"risk_score"`` if not specified.
+    - ``input_features``: Informational — lists the features fed to the
+      model.  Not used for evaluation (the model already ran).
+    """
+    model_name = condition.get("model_name", "")
+    threshold = condition.get("threshold", 0.5)
+    score_field = condition.get("score_field", "risk_score")
+
+    if not model_name:
+        logger.warning("Rule %s: ml_model condition missing model_name", rule.code)
+        return EvaluationResult(triggered=False, rule_id=rule.id, rule_code=rule.code)
+
+    # Look up cached prediction from context.extra
+    ml_predictions = context.extra.get("ml_predictions", {})
+    prediction = ml_predictions.get(model_name)
+
+    if prediction is None:
+        # No prediction available — model wasn't run or is unavailable
+        return EvaluationResult(triggered=False, rule_id=rule.id, rule_code=rule.code)
+
+    score = prediction.get(score_field)
+    if score is None:
+        return EvaluationResult(triggered=False, rule_id=rule.id, rule_code=rule.code)
+
+    try:
+        score = float(score)
+        threshold = float(threshold)
+    except (TypeError, ValueError):
+        return EvaluationResult(triggered=False, rule_id=rule.id, rule_code=rule.code)
+
+    triggered = score >= threshold
+
+    details: dict[str, Any] = {
+        "model_name": model_name,
+        "score_field": score_field,
+        "score": score,
+        "threshold": threshold,
+        "risk_level": prediction.get("risk_level", ""),
+        "input_features": condition.get("input_features", []),
+    }
+
+    message = _render_message(rule.action_message, details) if triggered else ""
+
+    return EvaluationResult(
+        triggered=triggered,
+        rule_id=rule.id,
+        rule_code=rule.code,
+        message=message,
+        details=details,
+    )
+
+
 # ──────────────────────────── Helpers ────────────────────────────
 
 _EVALUATORS = {
@@ -512,6 +593,7 @@ _EVALUATORS = {
     "drug_drug": _evaluate_drug_drug,
     "lab_range": _evaluate_lab_range,
     "custom": _evaluate_custom,
+    "ml_model": _evaluate_ml_model,
 }
 
 

@@ -49,7 +49,7 @@ import {
   useCreateReviewRequest,
   useAdmissionReviewRequests,
 } from '@/lib/hooks/use-inpatient';
-import { AdmissionOrdersTab } from '@/components/inpatient';
+import { AdmissionOrdersTab, ICURiskAssessmentPanel } from '@/components/inpatient';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
@@ -512,6 +512,18 @@ export default function AdmissionDetailPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* AI ICU Risk Assessment (Phase 4) */}
+          {admission.admission_status === 'ACTIVE' && (
+            <ICURiskAssessmentPanel
+              patientAge={admission.patient_age ?? 0}
+              patientGender={admission.patient_gender ?? 'O'}
+              admissionDiagnosis={
+                admission.admitting_diagnosis_text || admission.admitting_diagnosis
+              }
+              lengthOfStayDays={daysAdmitted}
+            />
+          )}
         </TabsContent>
 
         {/* Ward Rounds Tab */}
