@@ -820,6 +820,7 @@ export default function AdmissionDetailPage() {
           <AdmissionOrdersTab
             admissionId={admission.id}
             patientId={admission.patient}
+            encounterId={admission.ipd_encounter}
             isActive={admission.admission_status === 'ACTIVE'}
           />
         </TabsContent>

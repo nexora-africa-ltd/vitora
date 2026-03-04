@@ -20,6 +20,7 @@ import type { Prescription, PrescriptionStatus } from '@/lib/types/pharmacy';
 interface AdmissionOrdersTabProps {
   admissionId: number;
   patientId: number;
+  encounterId?: number;
   isActive?: boolean;
 }
 
@@ -65,7 +66,7 @@ const PRIORITY_CONFIG: Record<LabPriority, { label: string; color: string }> = {
 // Main Component
 // ============================================================================
 
-export function AdmissionOrdersTab({ admissionId, patientId, isActive = true }: AdmissionOrdersTabProps) {
+export function AdmissionOrdersTab({ admissionId, patientId, encounterId, isActive = true }: AdmissionOrdersTabProps) {
   const { data: orders, isLoading, error } = useAdmissionOrders(admissionId);
 
   if (isLoading) {
@@ -92,21 +93,21 @@ export function AdmissionOrdersTab({ admissionId, patientId, isActive = true }: 
       {isActive && (
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" asChild>
-            <Link href={`/laboratory/orders/new?admission=${admissionId}&patient=${patientId}`}>
+            <Link href={`/laboratory/orders/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`}>
               <Beaker className="h-4 w-4 mr-1.5" />
               <span className="hidden sm:inline">New Lab Order</span>
               <span className="sm:hidden">Lab</span>
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link href={`/imaging/orders/new?admission=${admissionId}&patient=${patientId}`}>
+            <Link href={`/imaging/orders/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`}>
               <ImageIcon className="h-4 w-4 mr-1.5" />
               <span className="hidden sm:inline">New Imaging</span>
               <span className="sm:hidden">Imaging</span>
             </Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link href={`/pharmacy/prescriptions/new?admission=${admissionId}&patient=${patientId}`}>
+            <Link href={`/pharmacy/prescriptions/new?admission=${admissionId}&patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`}>
               <Pill className="h-4 w-4 mr-1.5" />
               <span className="hidden sm:inline">New Prescription</span>
               <span className="sm:hidden">Rx</span>
