@@ -107,7 +107,8 @@ def update_encounter_triage_status(sender, instance, created, **kwargs):
         triage_chief = getattr(instance, "chief_complaint", "") or ""
         if triage_chief and (
             not encounter_chief.strip()
-            or encounter_chief.strip().lower() in ("check-in", "triage", "pending")
+            or encounter_chief.strip().lower()
+            in ("check-in", "triage", "pending", "triage assessment", "pending triage")
         ):
             encounter.chief_complaint = triage_chief
             updated_fields.add("chief_complaint")

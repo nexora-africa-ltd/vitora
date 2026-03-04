@@ -102,7 +102,7 @@ export default function NewTriagePage() {
         patient: patientToSelect.id,
         encounter_type: 'OPD',
         encounter_date: new Date().toISOString().split('T')[0],
-        chief_complaint: 'Triage assessment',
+        chief_complaint: 'Pending triage',
       });
       setSelectedEncounterId(newEncounter.id);
 
