@@ -8,7 +8,7 @@
  */
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -102,12 +102,22 @@ export default function TriageRoutePage() {
     getRouting,
     setRouting,
     markSectionComplete,
+    markSectionVisited,
     clearSession,
   } = useTriageAssessStore();
 
   const currentVitals = getVitals(parseInt(encounterId, 10));
   const currentAssessment = getAssessment(parseInt(encounterId, 10));
   const currentRouting = getRouting(parseInt(encounterId, 10));
+
+  // Mark route as visited when leaving the tab
+  const encounterIdNum = parseInt(encounterId, 10);
+  useEffect(() => {
+    return () => {
+      markSectionVisited(encounterIdNum, 'route');
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [encounterIdNum]);
 
   // Hooks
   const { mutateAsync: createAssessment, isPending: isCreating } = useCreateTriageAssessment();

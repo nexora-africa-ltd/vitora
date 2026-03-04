@@ -142,10 +142,19 @@ export default function TriageVitalsPage() {
   const encounterId = params.encounterId as string;
 
   // Get triage store for persisting vitals across tabs
-  const { setVitals, getVitals, markSectionComplete } = useTriageAssessStore();
+  const { setVitals, getVitals, markSectionComplete, markSectionVisited } = useTriageAssessStore();
   const currentVitals = getVitals(parseInt(encounterId, 10));
 
   const [alerts, setAlerts] = useState<TriageAlert[]>([]);
+
+  // Mark vitals as visited when leaving the tab
+  const encounterIdNum = parseInt(encounterId, 10);
+  useEffect(() => {
+    return () => {
+      markSectionVisited(encounterIdNum, 'vitals');
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [encounterIdNum]);
 
   // Parse blood pressure from string format if separate fields not available
   const getEncounterBP = (): { systolic: number | null; diastolic: number | null } => {

@@ -71,6 +71,13 @@ export interface TriageAssessSession {
     assessment: boolean;
     route: boolean;
   };
+  /** Tracks which tabs the user has navigated to (and then left). */
+  visitedSections: {
+    vitals: boolean;
+    history: boolean;
+    assessment: boolean;
+    route: boolean;
+  };
 }
 
 interface TriageAssessState {
@@ -106,6 +113,10 @@ interface TriageAssessState {
   markSectionComplete: (encounterId: number, section: keyof TriageAssessSession['completedSections']) => void;
   getSectionCompletion: (encounterId: number) => TriageAssessSession['completedSections'] | null;
 
+  // Actions - Section Visited
+  markSectionVisited: (encounterId: number, section: keyof TriageAssessSession['visitedSections']) => void;
+  getVisitedSections: (encounterId: number) => TriageAssessSession['visitedSections'] | null;
+
   // Actions - Complete Assessment
   getCompleteAssessment: (encounterId: number) => TriageAssessSession | null;
 }
@@ -134,6 +145,12 @@ export const useTriageAssessStore = create<TriageAssessState>()((set, get) => ({
           startedAt: now,
           lastUpdatedAt: now,
           completedSections: {
+            vitals: false,
+            history: false,
+            assessment: false,
+            route: false,
+          },
+          visitedSections: {
             vitals: false,
             history: false,
             assessment: false,
@@ -183,6 +200,12 @@ export const useTriageAssessStore = create<TriageAssessState>()((set, get) => ({
               startedAt: new Date(),
               lastUpdatedAt: new Date(),
               completedSections: {
+                vitals: false,
+                history: false,
+                assessment: false,
+                route: false,
+              },
+              visitedSections: {
                 vitals: false,
                 history: false,
                 assessment: false,
@@ -305,6 +328,33 @@ export const useTriageAssessStore = create<TriageAssessState>()((set, get) => ({
     return session?.completedSections || null;
   },
 
+  // Section Visited
+  markSectionVisited: (encounterId, section) => {
+    set((state) => {
+      const session = state.sessions[encounterId];
+      if (!session) return state;
+      // Don't mark as visited if already completed
+      if (session.completedSections[section]) return state;
+      return {
+        sessions: {
+          ...state.sessions,
+          [encounterId]: {
+            ...session,
+            visitedSections: {
+              ...session.visitedSections,
+              [section]: true,
+            },
+          },
+        },
+      };
+    });
+  },
+
+  getVisitedSections: (encounterId) => {
+    const session = get().sessions[encounterId];
+    return session?.visitedSections || null;
+  },
+
   // Complete Assessment
   getCompleteAssessment: (encounterId) => {
     return get().sessions[encounterId] || null;
@@ -316,3 +366,65 @@ export const useTriageAssessStore = create<TriageAssessState>()((set, get) => ({
 // =============================================================================
 
 export default useTriageAssessStore;
+
+// =============================================================================
+// Section Validation (pure functions)
+// =============================================================================
+
+export type SectionStatus = 'not-started' | 'incomplete' | 'complete';
+
+/**
+ * Check whether a section has the minimum required fields populated.
+ * Returns:
+ * - 'complete'    — section was submitted via markSectionComplete
+ * - 'incomplete'  — section was visited but required fields are missing
+ * - 'not-started' — section hasn't been visited yet
+ */
+export function getSectionStatus(
+  section: 'vitals' | 'history' | 'assessment' | 'route',
+  session: TriageAssessSession | null,
+): SectionStatus {
+  if (!session) return 'not-started';
+  if (session.completedSections[section]) return 'complete';
+  if (!session.visitedSections[section]) return 'not-started';
+
+  // Visited but not completed — check if required fields are populated
+  switch (section) {
+    case 'vitals':
+      return isVitalsAdequate(session.vitals) ? 'not-started' : 'incomplete';
+    case 'history':
+      // History is read-only review — always adequate once visited
+      return 'not-started';
+    case 'assessment':
+      return isAssessmentAdequate(session.assessment) ? 'not-started' : 'incomplete';
+    case 'route':
+      return isRoutingAdequate(session.routing) ? 'not-started' : 'incomplete';
+    default:
+      return 'not-started';
+  }
+}
+
+/** Vitals: at least 2 of the core 5 (HR, SpO2, Temp, RR, BP) must be entered. */
+function isVitalsAdequate(vitals: TriageVitals): boolean {
+  let count = 0;
+  if (vitals.heart_rate != null) count++;
+  if (vitals.spo2 != null) count++;
+  if (vitals.temperature != null) count++;
+  if (vitals.respiratory_rate != null) count++;
+  if (vitals.systolic_bp != null && vitals.diastolic_bp != null) count++;
+  return count >= 2;
+}
+
+/** Assessment: chief complaint + mental status + triage category required. */
+function isAssessmentAdequate(assessment: TriageAssessmentData): boolean {
+  return (
+    !!assessment.chief_complaint?.trim() &&
+    !!assessment.mental_status &&
+    !!assessment.triage_category
+  );
+}
+
+/** Route: assigned area must be selected. */
+function isRoutingAdequate(routing: TriageRouting): boolean {
+  return !!routing.assigned_area;
+}

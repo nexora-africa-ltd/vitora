@@ -23,7 +23,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useEncounterContext } from '@/lib/context/encounter-context';
-import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
+import { useTriageAssessStore, getSectionStatus } from '@/lib/stores/triage-assess-store';
+import type { TriageAssessSession } from '@/lib/stores/triage-assess-store';
 import { Badge } from '@/components/ui/badge';
 
 // =============================================================================
@@ -87,12 +88,14 @@ export function TriageAssessTabs() {
   const params = useParams();
   const pathname = usePathname();
   const { triageStatus } = useEncounterContext();
-  const { getSectionCompletion } = useTriageAssessStore();
+  const { getSectionCompletion, getSession } = useTriageAssessStore();
 
   const patientId = params.patientId as string;
   const encounterId = params.encounterId as string;
+  const encounterIdNum = parseInt(encounterId, 10);
 
-  const completion = getSectionCompletion(parseInt(encounterId, 10));
+  const completion = getSectionCompletion(encounterIdNum);
+  const session = getSession(encounterIdNum);
 
   // Base path for tab links
   const basePath = `/triage/assess/${patientId}/${encounterId}`;
@@ -123,13 +126,17 @@ export function TriageAssessTabs() {
           const isActive = activeTab === tab.id;
           const href = tab.id === 'vitals' ? basePath : `${basePath}${tab.path}`;
           const isComplete = tab.sectionKey && completion?.[tab.sectionKey];
+          const sectionStatus = tab.sectionKey
+            ? getSectionStatus(tab.sectionKey, session)
+            : 'not-started';
+          const isIncomplete = sectionStatus === 'incomplete';
 
           return (
             <Link
               key={tab.id}
               href={href}
               className={cn(
-                'flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 sm:py-3 text-sm font-medium',
+                'relative flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 sm:py-3 text-sm font-medium',
                 'border-b-2 transition-colors whitespace-nowrap',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 isActive
@@ -138,7 +145,18 @@ export function TriageAssessTabs() {
               )}
               aria-current={isActive ? 'page' : undefined}
             >
-              {/* Step number — green tick when complete */}
+              {/* Amber pulsing dot for incomplete sections */}
+              {isIncomplete && !isActive && (
+                <span
+                  className="absolute -top-0.5 right-1 sm:right-2 flex h-2.5 w-2.5"
+                  title="This section has missing required fields"
+                >
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
+                </span>
+              )}
+
+              {/* Step number — green tick when complete, amber outline when incomplete */}
               <span
                 className={cn(
                   'hidden sm:flex items-center justify-center w-5 h-5 rounded-full text-xs',
@@ -146,15 +164,23 @@ export function TriageAssessTabs() {
                     ? 'bg-primary text-primary-foreground'
                     : isComplete
                       ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                      : 'bg-muted text-muted-foreground'
+                      : isIncomplete
+                        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 ring-1 ring-amber-400/50'
+                        : 'bg-muted text-muted-foreground'
                 )}
               >
                 {isComplete ? <Check className="h-3 w-3" /> : index + 1}
               </span>
 
-              {/* Icon — green when complete */}
+              {/* Icon — green when complete, amber when incomplete */}
               <span className={cn(
-                isActive ? 'text-primary' : isComplete ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+                isActive
+                  ? 'text-primary'
+                  : isComplete
+                    ? 'text-green-600 dark:text-green-400'
+                    : isIncomplete
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-muted-foreground'
               )}>
                 {tab.icon}
               </span>
