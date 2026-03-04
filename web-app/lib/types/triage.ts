@@ -369,7 +369,7 @@ export const QUEUE_STATUS_CONFIG: Record<
 };
 
 // =============================================================================
-// VITAL THRESHOLD TYPES
+// VITAL THRESHOLD TYPES (derived from Zod schema — single source of truth)
 // =============================================================================
 
 export type VitalType =
@@ -383,20 +383,10 @@ export type VitalType =
   | 'PAIN_SCORE'
   | 'GENERAL';
 
-export interface TriageVitalThreshold {
-  id: number;
-  vital_type: VitalType;
-  critical_low: number | null;
-  warning_low: number | null;
-  warning_high: number | null;
-  critical_high: number | null;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+export type { TriageVitalThreshold } from '@/lib/schemas/triage.schema';
 
 // =============================================================================
-// ALERT TYPES
+// ALERT TYPES (derived from Zod schema — single source of truth)
 // =============================================================================
 
 export type AlertSeverity = 'CRITICAL' | 'WARNING';
@@ -404,79 +394,13 @@ export type AlertSeverity = 'CRITICAL' | 'WARNING';
 /** Where the alert originated from. */
 export type AlertSource = 'vitals' | 'cds' | 'ai';
 
-export interface TriageAlert {
-  id: string;
-  severity: AlertSeverity;
-  vital_type: VitalType;
-  message: string;
-  value: number | null;
-  threshold: number | null;
-  clinical_note?: string | null;
-  actions?: string[] | null;
-  /** Origin of the alert – defaults to 'vitals' when absent. */
-  source?: AlertSource;
-}
+export type { TriageAlert } from '@/lib/schemas/triage.schema';
 
 // =============================================================================
-// TRIAGE ASSESSMENT
+// TRIAGE ASSESSMENT (derived from Zod schema — single source of truth)
 // =============================================================================
 
-export interface TriageAssessment {
-  id: number;
-  encounter: number;
-  encounter_mrn?: string | null;
-  patient_name?: string | null;
-  patient_age?: number | null;
-  patient_gender?: string | null;
-
-  // Arrival information
-  arrival_mode: ArrivalMode;
-  referring_facility_name?: string | null;
-  arrival_time: string;
-
-  // Clinical assessment
-  chief_complaint_category: ChiefComplaintCategory;
-  chief_complaint: string;
-  pain_score: number | null;
-  mental_status: AVPUStatus;
-  mobility: MobilityStatus;
-  allergies_noted: string;
-
-  // Vital signs (captured at triage)
-  spo2?: number | null;
-  heart_rate?: number | null;
-  systolic_bp?: number | null;
-  diastolic_bp?: number | null;
-  temperature?: number | null;
-  respiratory_rate?: number | null;
-
-  // Triage decision
-  triage_category: TriageCategory;
-  auto_calculated_category: TriageCategory;
-  category_override_reason: string | null;
-
-  // Routing - either assigned_area (ER zones) OR assigned_clinic (clinics)
-  assigned_area: AssignedArea;
-  assigned_clinic?: number | null;
-  assigned_clinic_name?: string | null;
-  routing_destination?: string | null; // Human-readable destination
-  assigned_clinician: number | null;
-  assigned_clinician_name?: string | null;
-
-  // Timestamps
-  triage_start_time: string;
-  triage_end_time: string | null;
-  seen_by_clinician_time: string | null;
-
-  // Generated data
-  alerts: TriageAlert[];
-
-  // Audit
-  triaged_by: number;
-  triaged_by_name?: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export type { TriageAssessment } from '@/lib/schemas/triage.schema';
 
 export interface TriageAssessmentCreateData {
   encounter: number;
@@ -510,40 +434,10 @@ export interface TriageAssessmentCreateData {
 }
 
 // =============================================================================
-// TRIAGE QUEUE
+// TRIAGE QUEUE (derived from Zod schema — single source of truth)
 // =============================================================================
 
-export interface TriageQueueEntry {
-  id: number;
-  triage_assessment: number;
-  patient_id: number;
-  patient_name: string;
-  patient_mrn: string;
-  patient_age: number;
-  patient_gender: string;
-  triage_category: TriageCategory;
-  chief_complaint_category: ChiefComplaintCategory;
-  chief_complaint: string;
-  assigned_area: AssignedArea;
-  assigned_area_label: string;
-  assigned_area_display: string;
-  assigned_clinic?: number | null;
-  assigned_clinic_name?: string | null;
-  routing_destination?: string | null;
-  arrival_time: string;
-  triage_time: string;
-  wait_time_minutes: number;
-  is_wait_exceeded: boolean;
-  status: QueueStatus;
-  called_at: string | null;
-  called_by: number | null;
-  called_by_name: string | null;
-  position: number;
-  alerts: TriageAlert[];
-  alerts_count: number;
-  created_at: string;
-  updated_at: string;
-}
+export type { TriageQueueEntry } from '@/lib/schemas/triage.schema';
 
 /**
  * Queue item for dashboard display (enriched view)

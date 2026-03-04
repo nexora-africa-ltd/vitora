@@ -510,14 +510,6 @@ export const triageApi = {
   // ============ Reports ============
 
   /**
-   * Get triage report summary.
-   */
-  async getReports(params: TriageReportParams): Promise<TriageReportSummary> {
-    const response = await apiClient.get<TriageReportSummary>('/api/triage/reports/', { params });
-    return parseResponse(TriageReportSummarySchema, response.data, { context: 'triageApi.getReports' });
-  },
-
-  /**
    * Get wait time statistics.
    */
   async getWaitTimeStats(dateRange: string): Promise<WaitTimeStatsResponse> {

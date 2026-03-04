@@ -11,6 +11,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     ERBedViewSet,
     EscalationViewSet,
+    ReportExportView,
     TriageAssessmentViewSet,
     TriageQueueViewSet,
     VitalThresholdsViewSet,
@@ -35,5 +36,6 @@ urlpatterns = [
     # Report endpoints
     path("reports/wait-times/", WaitTimesReportView.as_view(), name="wait-times-report"),
     path("reports/volume/", VolumeReportView.as_view(), name="volume-report"),
+    path("reports/export/", ReportExportView.as_view(), name="report-export"),
     path("", include(router.urls)),
 ]
