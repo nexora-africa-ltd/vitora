@@ -14,7 +14,7 @@ from rest_framework import serializers
 from hmis.apps.encounters.models import Encounter
 from hmis.apps.patients.models import Patient
 
-from .models import TriageAssessment, TriageQueue, TriageVitalThreshold, WaitingQueue
+from .models import ERBed, TriageAssessment, TriageQueue, TriageVitalThreshold, WaitingQueue
 from .services import TriageCategoryCalculator
 
 # =============================================================================
@@ -895,3 +895,131 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
             "alerts": alerts,
             "vitals": vitals,
         }
+
+
+# =============================================================================
+# ER BED BOARD SERIALIZERS (Phase 3)
+# =============================================================================
+
+
+class ERBedSerializer(serializers.ModelSerializer):
+    """Full ER bed detail serializer."""
+
+    zone_display = serializers.CharField(source="get_zone_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    patient_name = serializers.CharField(read_only=True)
+    patient_mrn = serializers.CharField(read_only=True)
+    triage_category = serializers.CharField(read_only=True)
+    occupied_duration_minutes = serializers.IntegerField(read_only=True)
+    is_available = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = ERBed
+        fields = [
+            "id",
+            "zone",
+            "zone_display",
+            "bed_number",
+            "status",
+            "status_display",
+            "current_patient",
+            "patient_name",
+            "patient_mrn",
+            "current_triage_assessment",
+            "triage_category",
+            "occupied_duration_minutes",
+            "is_available",
+            "notes",
+            "status_changed_at",
+            "status_changed_by",
+            "created_at",
+        ]
+        read_only_fields = [
+            "status_changed_at",
+            "status_changed_by",
+            "created_at",
+        ]
+
+
+class ERBedListSerializer(serializers.ModelSerializer):
+    """Compact serializer for bed board grid display."""
+
+    patient_name = serializers.CharField(read_only=True)
+    patient_mrn = serializers.CharField(read_only=True)
+    triage_category = serializers.CharField(read_only=True)
+    occupied_duration_minutes = serializers.IntegerField(read_only=True)
+    is_available = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = ERBed
+        fields = [
+            "id",
+            "zone",
+            "bed_number",
+            "status",
+            "current_patient",
+            "patient_name",
+            "patient_mrn",
+            "triage_category",
+            "occupied_duration_minutes",
+            "is_available",
+        ]
+
+
+class ERBedCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating ER beds."""
+
+    class Meta:
+        model = ERBed
+        fields = ["zone", "bed_number", "status", "notes"]
+
+
+class ERBedAssignPatientSerializer(serializers.Serializer):
+    """Serializer for assigning a patient to an ER bed."""
+
+    patient = serializers.PrimaryKeyRelatedField(
+        queryset=Patient.objects.all(),
+        help_text="Patient ID to assign to this bed",
+    )
+    triage_assessment = serializers.PrimaryKeyRelatedField(
+        queryset=TriageAssessment.objects.all(),
+        required=False,
+        allow_null=True,
+        help_text="Optional triage assessment ID for the patient",
+    )
+
+
+class ERBedReleaseSerializer(serializers.Serializer):
+    """Serializer for releasing a patient from an ER bed."""
+
+    mark_cleaning = serializers.BooleanField(
+        default=True,
+        help_text="If true, transition bed to CLEANING; otherwise mark AVAILABLE immediately",
+    )
+
+
+class ERBedUpdateStatusSerializer(serializers.Serializer):
+    """Serializer for updating bed status (mark available, out of service)."""
+
+    status = serializers.ChoiceField(
+        choices=["AVAILABLE", "OUT_OF_SERVICE"],
+        help_text="New bed status",
+    )
+    reason = serializers.CharField(
+        required=False,
+        default="",
+        help_text="Reason for status change (used for OUT_OF_SERVICE)",
+    )
+
+
+class ERBedBoardSummarySerializer(serializers.Serializer):
+    """Serializer for the bed board summary response."""
+
+    zone = serializers.CharField()
+    zone_display = serializers.CharField()
+    total_beds = serializers.IntegerField()
+    available = serializers.IntegerField()
+    occupied = serializers.IntegerField()
+    cleaning = serializers.IntegerField()
+    out_of_service = serializers.IntegerField()
+    occupancy_rate = serializers.FloatField()

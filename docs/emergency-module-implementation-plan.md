@@ -3,7 +3,7 @@
 > **Purpose**: Plan for implementing a dedicated Emergency Department module in Vitora HMIS
 > **Created**: February 20, 2026
 > **Updated**: March 4, 2026
-> **Status**: Phase 2 Complete ✅
+> **Status**: Phase 3 Complete ✅
 
 ---
 
@@ -47,7 +47,7 @@ EMERGENCY_AREA_OPTIONS = [
 | No dedicated ER dashboard | Staff must navigate to triage and filter | HIGH | ✅ **Done** |
 | No zone-specific views | Cannot focus on single ER zone | MEDIUM | ✅ **Done** |
 | No critical alert banner | RED patients not immediately visible | HIGH | ✅ **Done** |
-| No ER bed board | No visual bed/bay status | MEDIUM | 📋 Planned |
+| No ER bed board | No visual bed/bay status | MEDIUM | ✅ **Done** |
 | No door-to-doctor metrics | Cannot measure ER efficiency | LOW | 📋 Planned |
 | No EMS handoff workflow | No ambulance pre-arrival alerts | LOW | 📋 Future |
 | No auto-escalation | No alerts when wait times breached | MEDIUM | 📋 Planned |
@@ -240,28 +240,51 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 
 ---
 
-### Phase 3: ER Bed Board (MEDIUM PRIORITY)
+### Phase 3: ER Bed Board (MEDIUM PRIORITY) ✅ COMPLETE
 
-**Estimated Effort**: 3 days
+**Estimated Effort**: 3 days | **Actual**: 1 day
 
-#### 3.1 Visual Bed Grid
+#### 3.1 Visual Bed Grid ✅
 
 **Route**: `/emergency/bed-board`
 
 **Features**:
-- [ ] Visual grid of all ER bays/beds
-- [ ] Color-coded by status (available, occupied, cleaning, out of service)
-- [ ] Patient info on hover/click
-- [ ] Drag-and-drop patient assignment (stretch)
+- [x] Visual grid of all ER bays/beds organized by zone
+- [x] Color-coded by status (available, occupied, cleaning, out of service)
+- [x] Patient info on hover (tooltip) and click (detail dialog)
+- [x] Bed board summary panel on ER dashboard overview with per-zone occupancy bars
+- [ ] Drag-and-drop patient assignment (stretch — deferred)
 
-**Backend Requirements**:
-- [ ] New model: `ERBed` (or reuse inpatient `Bed` model, but it is preferred to keep a separate model)
-- [ ] Fields: `zone`, `bed_number`, `status`, `current_patient`
+**Backend** (`ERBed` model in `hmis/apps/triage/models.py`):
+- [x] New model: `ERBed` (separate from inpatient `Bed` — different workflow, zone-based)
+- [x] Fields: `zone`, `bed_number`, `status`, `current_patient`, `current_triage_assessment`, `notes`, `status_changed_at/by`
+- [x] State-transition methods: `assign_patient()`, `release()`, `mark_available()`, `mark_out_of_service()`
+- [x] Computed properties: `is_available`, `patient_name`, `patient_mrn`, `triage_category`, `occupied_duration_minutes`
+- [x] Admin with colored status badges
+- [x] 34 tests (15 model + 19 API) — all passing
+
+**API Endpoints** (registered under `/api/triage/er-beds/`):
+- `GET  /api/triage/er-beds/` — List beds (paginated, filterable by zone/status)
+- `POST /api/triage/er-beds/` — Create bed
+- `GET  /api/triage/er-beds/{id}/` — Bed detail
+- `POST /api/triage/er-beds/{id}/assign/` — Assign patient to bed
+- `POST /api/triage/er-beds/{id}/release/` — Release patient (→ CLEANING or AVAILABLE)
+- `POST /api/triage/er-beds/{id}/update-status/` — Mark available or out of service
+- `GET  /api/triage/er-beds/summary/` — Per-zone occupancy stats
+- `GET  /api/triage/er-beds/board/` — Beds grouped by zone for grid display
+
+**Frontend**:
+- [x] Types & Zod schemas in `lib/types/triage.ts` and `lib/schemas/triage.schema.ts`
+- [x] API client methods with `parseResponse()` in `lib/api/triage.ts`
+- [x] React Query hooks: `useERBedBoard()`, `useERBedSummary()`, `useERBedActions()`
+- [x] Full bed board page at `/emergency/bed-board` with zone sections, bed cells, detail dialog
+- [x] Bed board summary panel on ER dashboard overview with mini occupancy bars
+- [x] Tab in emergency layout for quick navigation
 
 **Wireframe**:
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│ 🛏️ ER BED BOARD                                     [🔄 Live] [Legend] │
+│ 🛏️ ER BED BOARD                                     [🔄 Live] [Legend]  │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  RESUSCITATION (2/4 occupied)                                          │
@@ -352,8 +375,12 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 | GET | `/api/triage/queue/zones-summary/` | Zone counts and capacity | ✅ Done |
 | WS | `ws://host/ws/emergency/queue/` | Real-time ER updates | ✅ Done |
 | GET | `/api/triage/queue/by-zone/` | Get queue grouped by zone | 📋 Planned |
-| GET | `/api/emergency/beds/` | ER bed status (if bed board implemented) | 📋 Phase 3 |
-| PATCH | `/api/emergency/beds/{id}/` | Update bed status | 📋 Phase 3 |
+| GET | `/api/triage/er-beds/` | ER bed list (paginated, filterable) | ✅ Done |
+| GET | `/api/triage/er-beds/board/` | Beds grouped by zone for grid | ✅ Done |
+| GET | `/api/triage/er-beds/summary/` | Per-zone occupancy stats | ✅ Done |
+| POST | `/api/triage/er-beds/{id}/assign/` | Assign patient to bed | ✅ Done |
+| POST | `/api/triage/er-beds/{id}/release/` | Release patient from bed | ✅ Done |
+| POST | `/api/triage/er-beds/{id}/update-status/` | Mark available/OOS | ✅ Done |
 | POST | `/api/triage/assessments/{id}/escalate/` | Escalate patient | 📋 Phase 4 |
 | GET | `/api/triage/metrics/` | ER performance metrics | 📋 Phase 5 |
 
@@ -409,25 +436,10 @@ class ERZoneConfig(models.Model):
         verbose_name = "ER Zone Configuration"
 ```
 
-### Option B: ER Beds (for Bed Board)
+### Option B: ER Beds (for Bed Board) ✅ IMPLEMENTED
 
-```python
-class ERBed(models.Model):
-    STATUS_CHOICES = [
-        ("AVAILABLE", "Available"),
-        ("OCCUPIED", "Occupied"),
-        ("CLEANING", "Cleaning"),
-        ("OUT_OF_SERVICE", "Out of Service"),
-    ]
-    
-    zone = models.CharField(max_length=20, choices=ASSIGNED_AREA_CHOICES)
-    bed_number = models.CharField(max_length=10)  # e.g., "R-01", "A-05"
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="AVAILABLE")
-    current_patient = models.ForeignKey("triage.TriageQueue", null=True, blank=True, on_delete=models.SET_NULL)
-    
-    class Meta:
-        unique_together = ("zone", "bed_number")
-```
+See `hmis/apps/triage/models.py` — `ERBed` model with 7 zone choices, 4 status states,
+state-transition methods, and computed properties. Migration: `triage/0009_add_er_bed_model.py`.
 
 ---
 
@@ -439,6 +451,10 @@ class ERBed(models.Model):
 - [x] Critical patients endpoint filters RED only (`TestEmergencyModuleEndpoints`)
 - [x] Critical patients endpoint requires authentication
 - [x] Zones summary includes all 7 ER zones
+- [x] ERBed model state transitions (assign, release, mark_available, mark_out_of_service) (`TestERBedModel`)
+- [x] ERBed API CRUD and custom actions (assign, release, update-status, summary, board) (`TestERBedAPI`)
+- [x] ERBed unique constraint on zone + bed_number
+- [x] ERBed computed properties (patient_name, patient_mrn, triage_category, occupied_duration)
 - [ ] Escalation creates audit log entry
 - [ ] Wait time breach detection logic
 
@@ -488,7 +504,7 @@ Feature: Emergency Department Dashboard
 | 4 | Zone-Specific Views | MEDIUM | 2 days | Phase 1 | 📋 Next |
 | 5 | Zone Tabs Layout | MEDIUM | 0.5 days | Phase 4 | 📋 Planned |
 | 6 | Auto-Escalation | MEDIUM | 2 days | Celery setup | 📋 Planned |
-| 7 | ER Bed Board | MEDIUM | 3 days | ERBed model | 📋 Planned |
+| 7 | ER Bed Board | MEDIUM | 1 day | ERBed model | ✅ Complete |
 | 8 | Metrics Dashboard | LOW | 2 days | Historical data |
 | 9 | EMS Handoff | LOW | 4 days | External integration |
 
@@ -510,7 +526,7 @@ Feature: Emergency Department Dashboard
 
 ## Open Questions
 
-1. **Bed Board Priority**: Is visual bed assignment needed for MVP, or can we defer?
+1. ~~**Bed Board Priority**: Is visual bed assignment needed for MVP, or can we defer?~~ ✅ Implemented
 2. **Zone Capacity Source**: Should capacity be configurable per facility or hardcoded?
 3. **Audio Alerts**: Should critical alerts have sound? User preference setting?
 4. **Mobile ER View**: Dedicated mobile layout or responsive desktop?
@@ -525,9 +541,10 @@ Feature: Emergency Department Dashboard
 3. [x] ~~Implement Critical Patients API endpoint~~
 4. [x] ~~Build ER Dashboard landing page~~
 5. [x] ~~Add WebSocket support with polling fallback~~
-6. [ ] Implement Zone-Specific Views (Phase 2)
-7. [ ] Add Zone Tabs Layout
-8. [ ] Create E2E tests for emergency dashboard
+6. [x] ~~Implement Zone-Specific Views (Phase 2)~~
+7. [x] ~~Add Zone Tabs Layout~~
+8. [x] ~~Implement ER Bed Board (Phase 3)~~
+9. [ ] Create E2E tests for emergency dashboard
 
 ---
 
@@ -563,5 +580,25 @@ Feature: Emergency Department Dashboard
 
 ---
 
-**Document Version**: 1.1
-**Last Updated**: February 21, 2026
+### Phase 3 Files (March 4, 2026)
+
+**Backend:**
+- `hmis/apps/triage/models.py` - Added `ERBed` model with state-transition methods
+- `hmis/apps/triage/serializers.py` - Added 7 serializers (detail, list, create, assign, release, update-status, summary)
+- `hmis/apps/triage/views.py` - Added `ERBedViewSet` with custom actions (assign, release, update-status, summary, board)
+- `hmis/apps/triage/urls.py` - Registered `er-beds` router
+- `hmis/apps/triage/admin.py` - **NEW** - Admin with colored status badges
+- `hmis/apps/triage/migrations/0009_add_er_bed_model.py` - **NEW** - ERBed migration
+- `tests/test_er_bed_board.py` - **NEW** - 34 tests (15 model + 19 API)
+
+**Frontend:**
+- `lib/types/triage.ts` - Added `ERBed`, `ERBedStatus`, `ERZone`, `ERBedZoneSummary`, `ER_BED_STATUS_CONFIG`
+- `lib/schemas/triage.schema.ts` - Added Zod schemas for all ER bed types
+- `lib/api/triage.ts` - Added 8 API client methods with `parseResponse()`
+- `lib/hooks/use-triage.ts` - Added `useERBedBoard`, `useERBedSummary`, `useERBedActions` hooks
+- `app/(dashboard)/emergency/bed-board/page.tsx` - **NEW** - Full bed board page
+- `app/(dashboard)/emergency/page.tsx` - Added `BedBoardPanel` section below ER Zones
+- `app/(dashboard)/emergency/layout.tsx` - Added Bed Board tab to zone navigation
+
+**Document Version**: 1.2
+**Last Updated**: March 4, 2026

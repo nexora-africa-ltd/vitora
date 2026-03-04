@@ -17,8 +17,15 @@ from rest_framework.views import APIView
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
-from .models import TriageAssessment, TriageQueue, TriageVitalThreshold, WaitingQueue
+from .models import ERBed, TriageAssessment, TriageQueue, TriageVitalThreshold, WaitingQueue
 from .serializers import (
+    ERBedAssignPatientSerializer,
+    ERBedBoardSummarySerializer,
+    ERBedCreateSerializer,
+    ERBedListSerializer,
+    ERBedReleaseSerializer,
+    ERBedSerializer,
+    ERBedUpdateStatusSerializer,
     TriageAssessmentCreateSerializer,
     TriageAssessmentSerializer,
     TriageCategoryCalculationSerializer,
@@ -810,3 +817,240 @@ class VolumeReportView(APIView):
                 "by_area": list(volume_by_area),
             }
         )
+
+
+# =============================================================================
+# ER BED BOARD (Phase 3)
+# =============================================================================
+
+
+class ERBedViewSet(viewsets.ModelViewSet):
+    """
+    ER Bed management for the bed board.
+
+    Provides CRUD for ER beds plus custom actions for
+    assigning/releasing patients and updating bed status.
+    """
+
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["zone", "status"]
+    ordering_fields = ["zone", "bed_number", "status_changed_at"]
+    ordering = ["zone", "bed_number"]
+
+    def get_queryset(self):
+        """Return ER beds with related patient/assessment data."""
+        return ERBed.objects.select_related(
+            "current_patient",
+            "current_triage_assessment",
+            "status_changed_by",
+        ).all()
+
+    def get_serializer_class(self):
+        """Return appropriate serializer for each action."""
+        if self.action == "list":
+            return ERBedListSerializer
+        if self.action == "create":
+            return ERBedCreateSerializer
+        if self.action == "assign_patient":
+            return ERBedAssignPatientSerializer
+        if self.action == "release":
+            return ERBedReleaseSerializer
+        if self.action == "update_status":
+            return ERBedUpdateStatusSerializer
+        if self.action == "summary":
+            return ERBedBoardSummarySerializer
+        return ERBedSerializer
+
+    def perform_create(self, serializer):
+        """Set status_changed_by on creation."""
+        serializer.save(status_changed_by=self.request.user)
+
+    @extend_schema(
+        request=ERBedAssignPatientSerializer,
+        responses={200: ERBedSerializer},
+        description="Assign a patient to this ER bed.",
+    )
+    @action(detail=True, methods=["post"], url_path="assign")
+    def assign_patient(self, request, pk=None):
+        """Assign a patient to this bed."""
+        bed = self.get_object()
+        serializer = ERBedAssignPatientSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            bed.assign_patient(
+                patient=serializer.validated_data["patient"],
+                triage_assessment=serializer.validated_data.get("triage_assessment"),
+                user=request.user,
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Audit log
+        AuditLog.log(
+            action="er_bed_assign",
+            user=request.user,
+            resource_type="ERBed",
+            resource_id=bed.id,
+            ip_address=get_client_ip(request),
+            details={
+                "bed_number": bed.bed_number,
+                "zone": bed.zone,
+                "patient_id": serializer.validated_data["patient"].id,
+            },
+        )
+
+        return Response(ERBedSerializer(bed).data)
+
+    @extend_schema(
+        request=ERBedReleaseSerializer,
+        responses={200: ERBedSerializer},
+        description="Release a patient from this ER bed.",
+    )
+    @action(detail=True, methods=["post"], url_path="release")
+    def release(self, request, pk=None):
+        """Release a patient from this bed."""
+        bed = self.get_object()
+        serializer = ERBedReleaseSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        patient_id = bed.current_patient_id
+
+        try:
+            bed.release(
+                user=request.user,
+                mark_cleaning=serializer.validated_data.get("mark_cleaning", True),
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        AuditLog.log(
+            action="er_bed_release",
+            user=request.user,
+            resource_type="ERBed",
+            resource_id=bed.id,
+            ip_address=get_client_ip(request),
+            details={
+                "bed_number": bed.bed_number,
+                "zone": bed.zone,
+                "patient_id": patient_id,
+                "mark_cleaning": serializer.validated_data.get("mark_cleaning", True),
+            },
+        )
+
+        return Response(ERBedSerializer(bed).data)
+
+    @extend_schema(
+        request=ERBedUpdateStatusSerializer,
+        responses={200: ERBedSerializer},
+        description="Update bed status (mark available or out of service).",
+    )
+    @action(detail=True, methods=["post"], url_path="update-status")
+    def update_status(self, request, pk=None):
+        """Update bed status."""
+        bed = self.get_object()
+        serializer = ERBedUpdateStatusSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        new_status = serializer.validated_data["status"]
+        reason = serializer.validated_data.get("reason", "")
+
+        try:
+            if new_status == "AVAILABLE":
+                bed.mark_available(user=request.user)
+            elif new_status == "OUT_OF_SERVICE":
+                bed.mark_out_of_service(user=request.user, reason=reason)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        AuditLog.log(
+            action="er_bed_status_change",
+            user=request.user,
+            resource_type="ERBed",
+            resource_id=bed.id,
+            ip_address=get_client_ip(request),
+            details={
+                "bed_number": bed.bed_number,
+                "zone": bed.zone,
+                "new_status": new_status,
+                "reason": reason,
+            },
+        )
+
+        return Response(ERBedSerializer(bed).data)
+
+    @extend_schema(
+        responses={200: ERBedBoardSummarySerializer(many=True)},
+        description="Get bed board summary with counts per zone.",
+    )
+    @action(detail=False, methods=["get"], url_path="summary")
+    def summary(self, request):
+        """Get bed board summary with occupancy stats per zone."""
+        zone_summaries = []
+
+        for zone_code, zone_display in ERBed.ZONE_CHOICES:
+            zone_beds = ERBed.objects.filter(zone=zone_code)
+            total = zone_beds.count()
+
+            if total == 0:
+                continue
+
+            available = zone_beds.filter(status="AVAILABLE").count()
+            occupied = zone_beds.filter(status="OCCUPIED").count()
+            cleaning = zone_beds.filter(status="CLEANING").count()
+            out_of_service = zone_beds.filter(status="OUT_OF_SERVICE").count()
+
+            zone_summaries.append({
+                "zone": zone_code,
+                "zone_display": zone_display,
+                "total_beds": total,
+                "available": available,
+                "occupied": occupied,
+                "cleaning": cleaning,
+                "out_of_service": out_of_service,
+                "occupancy_rate": round((occupied / total) * 100, 1) if total > 0 else 0,
+            })
+
+        return Response(zone_summaries)
+
+    @extend_schema(
+        responses={200: ERBedSerializer(many=True)},
+        parameters=[
+            OpenApiParameter(
+                name="zone",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="Filter beds by ER zone code",
+            ),
+        ],
+        description="Get all beds for the bed board grid display.",
+    )
+    @action(detail=False, methods=["get"], url_path="board")
+    def board(self, request):
+        """
+        Get all beds grouped by zone for the visual bed board.
+
+        Returns beds organized by zone with full patient info.
+        """
+        queryset = self.get_queryset()
+        zone = request.query_params.get("zone")
+        if zone:
+            queryset = queryset.filter(zone=zone)
+
+        serializer = ERBedSerializer(queryset, many=True)
+
+        # Group by zone for frontend convenience
+        grouped: dict = {}
+        for bed_data in serializer.data:
+            zone_code = bed_data["zone"]
+            if zone_code not in grouped:
+                zone_display = dict(ERBed.ZONE_CHOICES).get(zone_code, zone_code)
+                grouped[zone_code] = {
+                    "zone": zone_code,
+                    "zone_display": zone_display,
+                    "beds": [],
+                }
+            grouped[zone_code]["beds"].append(bed_data)
+
+        return Response(list(grouped.values()))

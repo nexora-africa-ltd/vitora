@@ -20,6 +20,8 @@ import { useRouter } from 'next/navigation';
 import {
   Users,
   AlertCircle,
+  BedDouble,
+  ArrowRight,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -32,10 +34,118 @@ import {
   ZoneCard,
   ZoneCardSkeleton,
 } from '@/components/emergency';
-import { useZonesSummary, useCriticalPatients } from '@/lib/hooks/use-triage';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useZonesSummary, useCriticalPatients, useERBedSummary } from '@/lib/hooks/use-triage';
+import { ER_BED_STATUS_CONFIG } from '@/lib/types/triage';
+import type { ERBedStatus } from '@/lib/types/triage';
 import { useEmergencySocket } from '@/lib/hooks/use-websocket';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { cn } from '@/lib/utils/cn';
 import { ZONE_ROUTES } from '@/lib/config/emergency';
+
+// =============================================================================
+// BED BOARD PANEL (inline overview section)
+// =============================================================================
+
+function BedBoardPanel() {
+  const router = useRouter();
+  const { data: summaryData, isLoading } = useERBedSummary();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-5" />
+          <Skeleton className="h-5 w-28" />
+          <Skeleton className="h-5 w-16 ml-auto" />
+        </div>
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!summaryData || summaryData.length === 0) return null;
+
+  const totals = summaryData.reduce(
+    (acc, z) => ({
+      beds: acc.beds + z.total_beds,
+      available: acc.available + z.available,
+      occupied: acc.occupied + z.occupied,
+      cleaning: acc.cleaning + z.cleaning,
+      oos: acc.oos + z.out_of_service,
+    }),
+    { beds: 0, available: 0, occupied: 0, cleaning: 0, oos: 0 }
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <BedDouble className="h-5 w-5 text-muted-foreground" />
+        <h2 className="text-lg font-semibold">Bed Board</h2>
+        <Badge variant="secondary" className="ml-1 tabular-nums">
+          {totals.occupied}/{totals.beds}
+        </Badge>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ml-auto gap-1 text-xs"
+          onClick={() => router.push('/emergency/bed-board')}
+        >
+          <span className="hidden sm:inline">View full board</span>
+          <span className="sm:hidden">View</span>
+          <ArrowRight className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      {/* Per-zone occupancy bars */}
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+        {summaryData.map((zone) => {
+          const pct = zone.total_beds > 0 ? Math.round((zone.occupied / zone.total_beds) * 100) : 0;
+          return (
+            <Card
+              key={zone.zone}
+              className="p-3 cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => router.push('/emergency/bed-board')}
+            >
+              <p className="text-xs font-medium truncate">{zone.zone_display}</p>
+              <div className="flex items-end justify-between mt-1.5">
+                <span className="text-lg font-bold tabular-nums leading-none">
+                  {zone.occupied}<span className="text-xs font-normal text-muted-foreground">/{zone.total_beds}</span>
+                </span>
+                <span className="text-[10px] text-muted-foreground tabular-nums">{pct}%</span>
+              </div>
+              {/* Mini bar */}
+              <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all',
+                    pct >= 90 ? 'bg-destructive' : pct >= 70 ? 'bg-yellow-500' : 'bg-green-500'
+                  )}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              {/* Status chips */}
+              <div className="flex gap-1.5 mt-1.5 text-[10px] text-muted-foreground">
+                <span>{zone.available} free</span>
+                {zone.cleaning > 0 && <span>· {zone.cleaning} clean</span>}
+                {zone.out_of_service > 0 && <span>· {zone.out_of_service} OOS</span>}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// MAIN PAGE
+// =============================================================================
 
 export default function EmergencyDashboardPage() {
   const router = useRouter();
@@ -163,6 +273,9 @@ export default function EmergencyDashboardPage() {
             </div>
           )}
         </div>
+
+        {/* ER Bed Board Panel */}
+        <BedBoardPanel />
 
         {/* Empty state when no zones data */}
         {!zonesLoading && (!zonesData || zonesData.zones.length === 0) && (

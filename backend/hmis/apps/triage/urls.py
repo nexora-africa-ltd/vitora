@@ -8,6 +8,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .views import (
+    ERBedViewSet,
     TriageAssessmentViewSet,
     TriageQueueViewSet,
     VitalThresholdsViewSet,
@@ -21,6 +22,7 @@ router.register(r"assessments", TriageAssessmentViewSet, basename="triageassessm
 router.register(r"queue", TriageQueueViewSet, basename="triagequeue")
 router.register(r"waiting", WaitingQueueViewSet, basename="waitingqueue")
 router.register(r"vital-thresholds", VitalThresholdsViewSet, basename="vitalthreshold")
+router.register(r"er-beds", ERBedViewSet, basename="erbed")
 
 app_name = "triage"
 

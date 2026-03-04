@@ -23,6 +23,10 @@ import {
   PaginatedTriageAssessmentSchema,
   PaginatedTriageQueueSchema,
   PaginatedWaitingQueueSchema,
+  ERBedSchema,
+  ERBedBoardResponseSchema,
+  ERBedSummaryResponseSchema,
+  PaginatedERBedSchema,
 } from '@/lib/schemas/triage.schema';
 import type {
   TriageAssessment,
@@ -585,6 +589,77 @@ export const triageApi = {
       { reason }
     );
     return parseResponse(WaitingQueueEntrySchema, response.data, { context: 'triageApi.cancelWaitingEntry' });
+  },
+
+  // ===========================================================================
+  // ER BED BOARD (Phase 3)
+  // ===========================================================================
+
+  /**
+   * Get all ER beds (paginated, filterable by zone/status).
+   */
+  async getERBeds(params?: { zone?: string; status?: string }) {
+    const response = await apiClient.get('/api/triage/er-beds/', { params });
+    return parseResponse(PaginatedERBedSchema, response.data, { context: 'triageApi.getERBeds' });
+  },
+
+  /**
+   * Get a single ER bed detail.
+   */
+  async getERBed(id: number) {
+    const response = await apiClient.get(`/api/triage/er-beds/${id}/`);
+    return parseResponse(ERBedSchema, response.data, { context: 'triageApi.getERBed' });
+  },
+
+  /**
+   * Create a new ER bed.
+   */
+  async createERBed(data: { zone: string; bed_number: string; status?: string; notes?: string }) {
+    const response = await apiClient.post('/api/triage/er-beds/', data);
+    return parseResponse(ERBedSchema, response.data, { context: 'triageApi.createERBed' });
+  },
+
+  /**
+   * Get bed board grouped by zone (for visual grid display).
+   */
+  async getERBedBoard(zone?: string) {
+    const params = zone ? { zone } : undefined;
+    const response = await apiClient.get('/api/triage/er-beds/board/', { params });
+    return parseResponse(ERBedBoardResponseSchema, response.data, { context: 'triageApi.getERBedBoard' });
+  },
+
+  /**
+   * Get bed board summary (occupancy stats per zone).
+   */
+  async getERBedSummary() {
+    const response = await apiClient.get('/api/triage/er-beds/summary/');
+    return parseResponse(ERBedSummaryResponseSchema, response.data, { context: 'triageApi.getERBedSummary' });
+  },
+
+  /**
+   * Assign a patient to an ER bed.
+   */
+  async assignERBedPatient(bedId: number, data: { patient: number; triage_assessment?: number }) {
+    const response = await apiClient.post(`/api/triage/er-beds/${bedId}/assign/`, data);
+    return parseResponse(ERBedSchema, response.data, { context: 'triageApi.assignERBedPatient' });
+  },
+
+  /**
+   * Release a patient from an ER bed.
+   */
+  async releaseERBed(bedId: number, markCleaning: boolean = true) {
+    const response = await apiClient.post(`/api/triage/er-beds/${bedId}/release/`, {
+      mark_cleaning: markCleaning,
+    });
+    return parseResponse(ERBedSchema, response.data, { context: 'triageApi.releaseERBed' });
+  },
+
+  /**
+   * Update ER bed status (mark available or out of service).
+   */
+  async updateERBedStatus(bedId: number, data: { status: 'AVAILABLE' | 'OUT_OF_SERVICE'; reason?: string }) {
+    const response = await apiClient.post(`/api/triage/er-beds/${bedId}/update-status/`, data);
+    return parseResponse(ERBedSchema, response.data, { context: 'triageApi.updateERBedStatus' });
   },
 };
 

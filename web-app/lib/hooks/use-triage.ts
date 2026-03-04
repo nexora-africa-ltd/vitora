@@ -45,6 +45,10 @@ export const triageKeys = {
   // Emergency module keys
   criticalPatients: () => [...triageKeys.all, 'critical'] as const,
   zonesSummary: () => [...triageKeys.all, 'zones'] as const,
+  // ER Bed Board keys
+  erBeds: () => [...triageKeys.all, 'er-beds'] as const,
+  erBedBoard: (zone?: string) => [...triageKeys.erBeds(), 'board', zone] as const,
+  erBedSummary: () => [...triageKeys.erBeds(), 'summary'] as const,
 };
 
 // =============================================================================
@@ -790,4 +794,72 @@ export function useZonesSummary(options?: { enabled?: boolean }) {
     refetchInterval: 15000, // Refresh every 15 seconds
     enabled: options?.enabled ?? true,
   });
+}
+
+// =============================================================================
+// ER BED BOARD HOOKS (Phase 3)
+// =============================================================================
+
+/**
+ * Get ER bed board data grouped by zone.
+ * Auto-refreshes every 10 seconds for near real-time display.
+ */
+export function useERBedBoard(zone?: string) {
+  return useQuery({
+    queryKey: triageKeys.erBedBoard(zone),
+    queryFn: () => triageApi.getERBedBoard(zone),
+    refetchInterval: 10000,
+  });
+}
+
+/**
+ * Get ER bed summary (occupancy stats per zone).
+ * Auto-refreshes every 15 seconds.
+ */
+export function useERBedSummary() {
+  return useQuery({
+    queryKey: triageKeys.erBedSummary(),
+    queryFn: () => triageApi.getERBedSummary(),
+    refetchInterval: 15000,
+  });
+}
+
+/**
+ * Mutations for ER bed actions (assign, release, update status).
+ */
+export function useERBedActions() {
+  const queryClient = useQueryClient();
+
+  const invalidateBeds = () => {
+    queryClient.invalidateQueries({ queryKey: triageKeys.erBeds() });
+  };
+
+  const assignPatient = useMutation({
+    mutationFn: (data: { bedId: number; patient: number; triage_assessment?: number }) =>
+      triageApi.assignERBedPatient(data.bedId, {
+        patient: data.patient,
+        triage_assessment: data.triage_assessment,
+      }),
+    onSuccess: invalidateBeds,
+  });
+
+  const releaseBed = useMutation({
+    mutationFn: (data: { bedId: number; markCleaning?: boolean }) =>
+      triageApi.releaseERBed(data.bedId, data.markCleaning ?? true),
+    onSuccess: invalidateBeds,
+  });
+
+  const updateStatus = useMutation({
+    mutationFn: (data: { bedId: number; status: 'AVAILABLE' | 'OUT_OF_SERVICE'; reason?: string }) =>
+      triageApi.updateERBedStatus(data.bedId, { status: data.status, reason: data.reason }),
+    onSuccess: invalidateBeds,
+  });
+
+  const createBed = useMutation({
+    mutationFn: (data: { zone: string; bed_number: string }) =>
+      triageApi.createERBed(data),
+    onSuccess: invalidateBeds,
+  });
+
+  return { assignPatient, releaseBed, updateStatus, createBed };
 }

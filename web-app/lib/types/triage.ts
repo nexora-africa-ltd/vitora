@@ -606,3 +606,112 @@ export type {
 
 // Legacy alias for backwards compatibility
 export type PaginatedTriageAssessments = import('@/lib/schemas/triage.schema').PaginatedTriageAssessment;
+
+// =============================================================================
+// ER BED BOARD (Phase 3)
+// =============================================================================
+
+/** ER bed status */
+export type ERBedStatus = 'AVAILABLE' | 'OCCUPIED' | 'CLEANING' | 'OUT_OF_SERVICE';
+
+/** ER zone code (subset of AssignedArea for ER zones only) */
+export type ERZone =
+  | 'ER_RESUS'
+  | 'ER_ACUTE'
+  | 'ER_FAST_TRACK'
+  | 'OBSERVATION'
+  | 'TRAUMA'
+  | 'PEDIATRIC_ER'
+  | 'MATERNITY';
+
+/** Full ER bed detail */
+export interface ERBed {
+  id: number;
+  zone: ERZone;
+  zone_display: string;
+  bed_number: string;
+  status: ERBedStatus;
+  status_display: string;
+  current_patient: number | null;
+  patient_name: string;
+  patient_mrn: string;
+  current_triage_assessment: number | null;
+  triage_category: TriageCategory | '';
+  occupied_duration_minutes: number | null;
+  is_available: boolean;
+  notes: string;
+  status_changed_at: string;
+  status_changed_by: number | null;
+  created_at: string;
+}
+
+/** Compact ER bed for list/grid display */
+export interface ERBedListItem {
+  id: number;
+  zone: ERZone;
+  bed_number: string;
+  status: ERBedStatus;
+  current_patient: number | null;
+  patient_name: string;
+  patient_mrn: string;
+  triage_category: TriageCategory | '';
+  occupied_duration_minutes: number | null;
+  is_available: boolean;
+}
+
+/** Zone group in bed board response */
+export interface ERBedZoneGroup {
+  zone: ERZone;
+  zone_display: string;
+  beds: ERBed[];
+}
+
+/** Zone summary for bed board */
+export interface ERBedZoneSummary {
+  zone: ERZone;
+  zone_display: string;
+  total_beds: number;
+  available: number;
+  occupied: number;
+  cleaning: number;
+  out_of_service: number;
+  occupancy_rate: number;
+}
+
+/** Status display configuration for bed board */
+export const ER_BED_STATUS_CONFIG: Record<ERBedStatus, {
+  label: string;
+  color: string;
+  bgClass: string;
+  textClass: string;
+  borderClass: string;
+}> = {
+  AVAILABLE: {
+    label: 'Available',
+    color: '#22c55e',
+    bgClass: 'bg-green-100 dark:bg-green-950/50',
+    textClass: 'text-green-700 dark:text-green-300',
+    borderClass: 'border-green-300 dark:border-green-700',
+  },
+  OCCUPIED: {
+    label: 'Occupied',
+    color: '#ef4444',
+    bgClass: 'bg-destructive/10',
+    textClass: 'text-destructive',
+    borderClass: 'border-destructive/50',
+  },
+  CLEANING: {
+    label: 'Cleaning',
+    color: '#f59e0b',
+    bgClass: 'bg-yellow-100 dark:bg-yellow-950/50',
+    textClass: 'text-yellow-700 dark:text-yellow-300',
+    borderClass: 'border-yellow-300 dark:border-yellow-700',
+  },
+  OUT_OF_SERVICE: {
+    label: 'Out of Service',
+    color: '#6b7280',
+    bgClass: 'bg-muted',
+    textClass: 'text-muted-foreground',
+    borderClass: 'border-muted',
+  },
+};
