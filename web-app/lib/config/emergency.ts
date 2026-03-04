@@ -5,7 +5,7 @@
  * Used by zone cards, dashboards, and patient routing.
  */
 
-import type { TriageCategory } from '@/lib/types/triage';
+import type { TriageCategory, AssignedArea } from '@/lib/types/triage';
 
 // =============================================================================
 // ZONE ROUTING
@@ -24,6 +24,47 @@ export const ZONE_ROUTES: Record<string, string> = {
   PEDIATRIC_ER: 'pediatric',
   MATERNITY: 'maternity',
 };
+
+/**
+ * Reverse mapping: URL route segment → zone code (AssignedArea).
+ */
+export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
+  resus: 'ER_RESUS',
+  acute: 'ER_ACUTE',
+  trauma: 'TRAUMA',
+  'fast-track': 'ER_FAST_TRACK',
+  observation: 'OBSERVATION',
+  pediatric: 'PEDIATRIC_ER',
+  maternity: 'MATERNITY',
+};
+
+/**
+ * Zone metadata: labels, short labels for tabs, and primary categories.
+ */
+export interface ZoneMetadata {
+  /** Full display name */
+  label: string;
+  /** Short label for tabs and mobile */
+  shortLabel: string;
+  /** Route segment for URL */
+  route: string;
+  /** Area code for API filtering */
+  code: AssignedArea;
+  /** Primary triage category associated with this zone */
+  primaryCategory: TriageCategory;
+  /** Default capacity */
+  defaultCapacity: number;
+}
+
+export const ZONE_METADATA: ZoneMetadata[] = [
+  { label: 'Resuscitation', shortLabel: 'Resus', route: 'resus', code: 'ER_RESUS', primaryCategory: 'RED', defaultCapacity: 4 },
+  { label: 'Acute Care', shortLabel: 'Acute', route: 'acute', code: 'ER_ACUTE', primaryCategory: 'ORANGE', defaultCapacity: 10 },
+  { label: 'Trauma Bay', shortLabel: 'Trauma', route: 'trauma', code: 'TRAUMA', primaryCategory: 'RED', defaultCapacity: 2 },
+  { label: 'Fast Track', shortLabel: 'Fast Trk', route: 'fast-track', code: 'ER_FAST_TRACK', primaryCategory: 'GREEN', defaultCapacity: 12 },
+  { label: 'Observation', shortLabel: 'Obs', route: 'observation', code: 'OBSERVATION', primaryCategory: 'YELLOW', defaultCapacity: 8 },
+  { label: 'Pediatric ER', shortLabel: 'Peds', route: 'pediatric', code: 'PEDIATRIC_ER', primaryCategory: 'ORANGE', defaultCapacity: 6 },
+  { label: 'Maternity', shortLabel: 'Maternity', route: 'maternity', code: 'MATERNITY', primaryCategory: 'ORANGE', defaultCapacity: 4 },
+];
 
 // =============================================================================
 // TRIAGE CATEGORY STYLING
