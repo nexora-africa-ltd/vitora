@@ -91,7 +91,14 @@ const _allNavItems: NavItemType[] = [
   { label: 'Check-in', href: '/patients/checkin', icon: UserCheck },
   { label: 'Patients', href: '/patients', icon: Users },
   { label: 'Triage', href: '/triage', icon: AlertTriangle },
-  { label: 'Emergency', href: '/emergency', icon: Siren },
+  {
+    label: 'Emergency',
+    icon: Siren,
+    children: [
+      { label: 'Dashboard', href: '/emergency', icon: LayoutDashboard },
+      { label: 'Bed Board', href: '/emergency/bed-board', icon: BedDouble },
+    ],
+  },
   {
     label: 'Surveillance',
     icon: Flag,
