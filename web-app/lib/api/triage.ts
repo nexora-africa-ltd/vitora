@@ -661,6 +661,20 @@ export const triageApi = {
     const response = await apiClient.post(`/api/triage/er-beds/${bedId}/update-status/`, data);
     return parseResponse(ERBedSchema, response.data, { context: 'triageApi.updateERBedStatus' });
   },
+
+  /**
+   * Suggest an available bed for a given ER zone.
+   * Returns the first available bed (ordered by bed number), or null if none free.
+   */
+  async suggestERBed(zone: string) {
+    try {
+      const response = await apiClient.get('/api/triage/er-beds/suggest/', { params: { zone } });
+      return parseResponse(ERBedSchema, response.data, { context: 'triageApi.suggestERBed' });
+    } catch {
+      // 404 = no beds available — not an error
+      return null;
+    }
+  },
 };
 
 export default triageApi;

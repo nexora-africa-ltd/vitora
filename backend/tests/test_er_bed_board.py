@@ -461,3 +461,168 @@ class TestERBedAPI:
         assert len(response.data) == 1
         assert response.data[0]["zone"] == "TRAUMA"
         assert len(response.data[0]["beds"]) == 2
+
+    # -------------------------------------------------------------------------
+    # SUGGEST BED ENDPOINT
+    # -------------------------------------------------------------------------
+
+    def test_suggest_bed_returns_available(self, authenticated_client, er_beds):
+        """Should return the first available bed in the requested zone."""
+        response = authenticated_client.get("/api/triage/er-beds/suggest/?zone=ER_RESUS")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["zone"] == "ER_RESUS"
+        assert response.data["bed_number"] == "R-01"
+        assert response.data["is_available"] is True
+
+    def test_suggest_bed_skips_occupied(self, authenticated_client, er_beds, sample_patient):
+        """Should skip occupied beds and return next available."""
+        # Occupy R-01
+        bed_r01 = ERBed.objects.get(zone="ER_RESUS", bed_number="R-01")
+        bed_r01.assign_patient(patient=sample_patient)
+
+        response = authenticated_client.get("/api/triage/er-beds/suggest/?zone=ER_RESUS")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["bed_number"] == "R-02"
+
+    def test_suggest_bed_zone_required(self, authenticated_client, er_beds):
+        """Should return 400 if zone is missing."""
+        response = authenticated_client.get("/api/triage/er-beds/suggest/")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "zone" in response.data["error"].lower()
+
+    def test_suggest_bed_invalid_zone(self, authenticated_client, er_beds):
+        """Should return 400 for invalid zone code."""
+        response = authenticated_client.get("/api/triage/er-beds/suggest/?zone=INVALID")
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "invalid" in response.data["error"].lower()
+
+    def test_suggest_bed_none_available(self, authenticated_client, sample_patient, db):
+        """Should return 404 when no beds are available in zone."""
+        bed = ERBed.objects.create(zone="TRAUMA", bed_number="T-01", status="AVAILABLE")
+        bed.assign_patient(patient=sample_patient)
+
+        response = authenticated_client.get("/api/triage/er-beds/suggest/?zone=TRAUMA")
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.data["available"] == 0
+
+    def test_suggest_bed_skips_out_of_service(self, authenticated_client, db):
+        """Should not suggest OOS beds."""
+        ERBed.objects.create(zone="ER_ACUTE", bed_number="A-01", status="OUT_OF_SERVICE")
+        ERBed.objects.create(zone="ER_ACUTE", bed_number="A-02", status="AVAILABLE")
+
+        response = authenticated_client.get("/api/triage/er-beds/suggest/?zone=ER_ACUTE")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["bed_number"] == "A-02"
+
+
+# =============================================================================
+# AUTO-RELEASE ON ENCOUNTER CLOSE / CANCEL
+# =============================================================================
+
+
+class TestERBedAutoRelease:
+    """Tests for automatic ER bed release when encounters are closed/cancelled."""
+
+    @pytest.fixture
+    def occupied_bed_with_encounter(self, db, sample_patient, test_user):
+        """Create an occupied bed linked to a patient with an active encounter."""
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            encounter_date=timezone.now().date(),
+            chief_complaint="Trauma",
+            status="IN_PROGRESS",
+        )
+        bed = ERBed.objects.create(
+            zone="ER_RESUS",
+            bed_number="R-01",
+            status="AVAILABLE",
+        )
+        bed.assign_patient(patient=sample_patient, user=test_user)
+        return bed, encounter
+
+    def test_auto_release_on_encounter_closed(self, occupied_bed_with_encounter):
+        """Should auto-release ER bed when encounter status changes to CLOSED."""
+        bed, encounter = occupied_bed_with_encounter
+
+        # Close the encounter — the signal should fire
+        encounter.status = "CLOSED"
+        encounter.save()
+
+        bed.refresh_from_db()
+        assert bed.status == "CLEANING"
+        assert bed.current_patient is None
+
+    def test_auto_release_on_encounter_cancelled(self, occupied_bed_with_encounter):
+        """Should auto-release ER bed when encounter status changes to CANCELLED."""
+        bed, encounter = occupied_bed_with_encounter
+
+        encounter.status = "CANCELLED"
+        encounter.save()
+
+        bed.refresh_from_db()
+        assert bed.status == "CLEANING"
+        assert bed.current_patient is None
+
+    def test_no_release_on_non_terminal_status(self, occupied_bed_with_encounter):
+        """Should NOT release bed for non-terminal status transitions."""
+        bed, encounter = occupied_bed_with_encounter
+
+        encounter.status = "ON_HOLD"
+        encounter.save()
+
+        bed.refresh_from_db()
+        assert bed.status == "OCCUPIED"
+        assert bed.current_patient is not None
+
+    def test_no_release_when_no_occupied_bed(self, db, sample_patient, test_user):
+        """Should gracefully do nothing if patient has no occupied ER bed."""
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="EMERGENCY",
+            encounter_date=timezone.now().date(),
+            chief_complaint="Minor injury",
+            status="IN_PROGRESS",
+        )
+
+        # Close without any bed — should not raise
+        encounter.status = "CLOSED"
+        encounter.save()
+
+    def test_idempotent_on_already_closed(self, occupied_bed_with_encounter):
+        """Should not fail if encounter is saved again while already CLOSED."""
+        bed, encounter = occupied_bed_with_encounter
+
+        encounter.status = "CLOSED"
+        encounter.save()
+
+        bed.refresh_from_db()
+        assert bed.status == "CLEANING"
+
+        # Save again — should not attempt double-release
+        encounter.chief_complaint = "Updated complaint"
+        encounter.save()
+
+        bed.refresh_from_db()
+        assert bed.status == "CLEANING"
+
+    def test_creates_audit_log(self, occupied_bed_with_encounter):
+        """Should create an audit log entry for the auto-release."""
+        from hmis.apps.core.models import AuditLog
+
+        bed, encounter = occupied_bed_with_encounter
+        initial_count = AuditLog.objects.filter(action="er_bed_auto_release").count()
+
+        encounter.status = "CLOSED"
+        encounter.save()
+
+        assert AuditLog.objects.filter(action="er_bed_auto_release").count() == initial_count + 1
+        log = AuditLog.objects.filter(action="er_bed_auto_release").latest("timestamp")
+        assert log.resource_id == encounter.pk
+        assert log.details["beds_released"] == 1

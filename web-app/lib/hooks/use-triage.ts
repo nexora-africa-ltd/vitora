@@ -863,3 +863,18 @@ export function useERBedActions() {
 
   return { assignPatient, releaseBed, updateStatus, createBed };
 }
+
+/**
+ * Suggest an available ER bed for a given zone.
+ *
+ * Returns the first available bed in the zone or null if none are free.
+ * Disabled when zone is empty/undefined.
+ */
+export function useSuggestedERBed(zone?: string) {
+  return useQuery({
+    queryKey: [...triageKeys.erBeds(), 'suggest', zone] as const,
+    queryFn: () => triageApi.suggestERBed(zone!),
+    enabled: !!zone,
+    staleTime: 10_000,
+  });
+}

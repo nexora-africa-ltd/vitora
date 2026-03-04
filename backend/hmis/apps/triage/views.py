@@ -4,6 +4,8 @@ Views for triage app.
 Sprint 1.5-1.6 Track E: Triage Module MVP - Phase 5
 """
 
+import logging
+
 from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
@@ -34,6 +36,54 @@ from .serializers import (
     WaitingQueueCreateSerializer,
     WaitingQueueSerializer,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _broadcast_bed_update(bed: ERBed, action_name: str) -> None:
+    """Broadcast bed status change to emergency WebSocket clients (fire-and-forget)."""
+    try:
+        import asyncio
+
+        from channels.layers import get_channel_layer
+
+        channel_layer = get_channel_layer()
+        if channel_layer is None:
+            return
+
+        bed_data = ERBedSerializer(bed).data
+
+        message = {
+            "type": "emergency.bed.update",
+            "event_type": "bed_update",
+            "data": {
+                "action": action_name,
+                "bed": bed_data,
+            },
+        }
+
+        # Fire-and-forget async send from synchronous context
+        loop = None
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            pass
+
+        if loop and loop.is_running():
+            asyncio.ensure_future(
+                channel_layer.group_send("emergency_queue", message)
+            )
+        else:
+            new_loop = asyncio.new_event_loop()
+            try:
+                new_loop.run_until_complete(
+                    channel_layer.group_send("emergency_queue", message)
+                )
+            finally:
+                new_loop.close()
+    except Exception:
+        # Never let broadcast failures break the HTTP response
+        logger.exception("Failed to broadcast bed update")
 
 
 class HasPerformTriagePermission(BasePermission):
@@ -901,6 +951,7 @@ class ERBedViewSet(viewsets.ModelViewSet):
             },
         )
 
+        _broadcast_bed_update(bed, "assign")
         return Response(ERBedSerializer(bed).data)
 
     @extend_schema(
@@ -939,6 +990,7 @@ class ERBedViewSet(viewsets.ModelViewSet):
             },
         )
 
+        _broadcast_bed_update(bed, "release")
         return Response(ERBedSerializer(bed).data)
 
     @extend_schema(
@@ -978,6 +1030,7 @@ class ERBedViewSet(viewsets.ModelViewSet):
             },
         )
 
+        _broadcast_bed_update(bed, "status_change")
         return Response(ERBedSerializer(bed).data)
 
     @extend_schema(
@@ -1054,3 +1107,55 @@ class ERBedViewSet(viewsets.ModelViewSet):
             grouped[zone_code]["beds"].append(bed_data)
 
         return Response(list(grouped.values()))
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="zone",
+                type=str,
+                location=OpenApiParameter.QUERY,
+                description="Zone code to suggest a bed for (required)",
+                required=True,
+            ),
+        ],
+        responses={200: ERBedSerializer},
+        description=(
+            "Suggest the best available bed in the given ER zone. "
+            "Returns the first available bed ordered by bed number, "
+            "or 404 if no beds are free."
+        ),
+    )
+    @action(detail=False, methods=["get"], url_path="suggest")
+    def suggest(self, request):
+        """Suggest an available bed for a given zone."""
+        zone = request.query_params.get("zone")
+        if not zone:
+            return Response(
+                {"error": "'zone' query parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        valid_zones = {code for code, _ in ERBed.ZONE_CHOICES}
+        if zone not in valid_zones:
+            return Response(
+                {"error": f"Invalid zone '{zone}'. Valid: {sorted(valid_zones)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        bed = (
+            ERBed.objects.filter(zone=zone, status="AVAILABLE")
+            .order_by("bed_number")
+            .first()
+        )
+
+        if not bed:
+            return Response(
+                {
+                    "error": f"No available beds in {dict(ERBed.ZONE_CHOICES).get(zone, zone)}.",
+                    "zone": zone,
+                    "available": 0,
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(ERBedSerializer(bed).data)
