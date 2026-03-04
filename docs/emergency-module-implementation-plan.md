@@ -321,7 +321,7 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 **Frontend**:
 - [ ] WebSocket push for real-time alerts
 - [ ] Toast notification with link to patient
-- [ ] Optional audio alert (configurable in settings)
+- [ ] audio alert (configurable in settings)
 
 #### 4.2 Escalation Actions
 

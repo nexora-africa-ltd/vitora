@@ -753,7 +753,8 @@ export type EmergencyEventType =
   | 'critical_update'
   | 'zones_update'
   | 'patient_added'
-  | 'patient_moved';
+  | 'patient_moved'
+  | 'bed_update';
 
 /**
  * Critical patient data from WebSocket
@@ -884,6 +885,12 @@ export function useEmergencySocket(
           setLastUpdate(new Date());
           options.onZonesUpdate?.(data);
           queryClient.invalidateQueries({ queryKey: ['triage', 'zones'] });
+          break;
+        }
+        case 'bed_update': {
+          // Bed status changed — invalidate bed board and summary caches
+          setLastUpdate(new Date());
+          queryClient.invalidateQueries({ queryKey: ['triage', 'er-beds'] });
           break;
         }
         default:

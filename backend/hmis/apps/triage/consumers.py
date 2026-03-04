@@ -241,6 +241,13 @@ class EmergencyQueueConsumer(AsyncJsonWebsocketConsumer):
             "data": event["data"],
         })
 
+    async def emergency_bed_update(self, event):
+        """Handle ER bed status change broadcasts."""
+        await self.send_json({
+            "type": "bed_update",
+            "data": event["data"],
+        })
+
 
 # =============================================================================
 # Utility function to broadcast updates from signals/views
