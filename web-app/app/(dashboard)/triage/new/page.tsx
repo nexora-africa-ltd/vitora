@@ -24,11 +24,14 @@ import { CheckinSuccessModal, type CheckinSuccessData } from '@/components/patie
 import { useCreateTriageAssessment, useCompleteTriageAssessment, useWaitingQueue, useCheckInPatient, useTriageAssessmentByEncounter } from '@/lib/hooks/use-triage';
 import { usePatient, usePatients } from '@/lib/hooks/use-patients';
 import { useEncounter, useCreateEncounter } from '@/lib/hooks/use-encounters';
+import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
+import { calculateAge } from '@/lib/utils/format';
 import { toast } from '@/lib/hooks/use-toast';
 import { useIdempotencyKey } from '@/lib/utils';
 import { LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
 import type { TriageAssessmentCreateData } from '@/lib/types/triage';
 import type { Patient } from '@/lib/types/patient';
+import type { AIQuickAction } from '@/lib/types/ai';
 
 export default function NewTriagePage() {
   const router = useRouter();
@@ -227,6 +230,97 @@ export default function NewTriagePage() {
       router.replace(`/triage/assess/${selectedPatientId}/${selectedEncounterId}/vitals`);
     }
   }, [selectedPatientId, selectedEncounterId, isCheckingExisting, router]);
+
+  // Wire AI chat context — encounter-aware context + triage quick actions
+  const chatCtx = useOptionalAIChatContext();
+  const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
+  const setQuickActions = chatCtx?.setQuickActions;
+
+  const TRIAGE_QUICK_ACTIONS: AIQuickAction[] = [
+    {
+      id: 'triage-priority',
+      label: 'Suggest triage priority',
+      query:
+        'Based on this patient\'s current vital signs, chief complaint, and clinical presentation, what KETA triage category (RED/ORANGE/YELLOW/GREEN/BLUE) would you recommend and why?',
+      userMessage: '🚦 Requesting triage priority recommendation...',
+    },
+    {
+      id: 'triage-red-flags',
+      label: 'Red flags to watch',
+      query:
+        'What are the critical red flags and warning signs I should watch for with this patient\'s presentation? Include any vital sign trends that would require immediate escalation.',
+      userMessage: '🚩 Checking for clinical red flags...',
+    },
+    {
+      id: 'triage-ddx',
+      label: 'Differential diagnosis',
+      query:
+        'Provide a differential diagnosis for this patient\'s triage presentation. Consider the chief complaint, vital signs, age, and any risk factors. Rank by likelihood.',
+      userMessage: '🩺 Requesting differential diagnosis...',
+    },
+    {
+      id: 'triage-workup',
+      label: 'Recommended workup',
+      query:
+        'What initial investigations and workup would you recommend for this patient based on their triage presentation? Include labs, imaging, and point-of-care tests.',
+      userMessage: '🔬 Requesting recommended initial workup...',
+    },
+  ];
+
+  useEffect(() => {
+    if (!setEncounterAwareContext) return;
+
+    if (patient && encounter) {
+      const allergies = encounter.allergies
+        ?.split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean) ?? [];
+      const comorbidities = encounter.chronic_conditions
+        ?.split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean) ?? [];
+      const currentMeds = encounter.current_medications
+        ?.split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean) ?? [];
+
+      setEncounterAwareContext(
+        {
+          patient_age: calculateAge(patient.date_of_birth),
+          patient_sex: patient.gender,
+          allergies,
+          comorbidities,
+          current_medications: currentMeds,
+        },
+        {
+          chief_complaint: encounter.chief_complaint ?? undefined,
+          vitals: {
+            spo2: encounter.spo2 != null ? Number(encounter.spo2) : undefined,
+            pulse: encounter.pulse ?? undefined,
+            temperature:
+              encounter.temperature != null
+                ? Number(encounter.temperature)
+                : undefined,
+            rr: encounter.respiratory_rate ?? undefined,
+            bp: encounter.blood_pressure ?? undefined,
+          },
+        }
+      );
+    }
+
+    return () => {
+      setEncounterAwareContext(null, null);
+    };
+  }, [patient, encounter, setEncounterAwareContext]);
+
+  useEffect(() => {
+    if (!setQuickActions) return;
+    setQuickActions(TRIAGE_QUICK_ACTIONS);
+    return () => {
+      setQuickActions([]);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- TRIAGE_QUICK_ACTIONS is stable
+  }, [setQuickActions]);
 
   // If using new flow, don't render legacy page content while redirecting
   if (!LEGACY_TRIAGE_FLOW && selectedPatientId && selectedEncounterId) {

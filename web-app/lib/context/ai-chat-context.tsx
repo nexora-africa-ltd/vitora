@@ -31,6 +31,7 @@ import type {
   AIEncounterContext,
   AIPageContext,
   AIVerbosity,
+  AIQuickAction,
 } from '@/lib/types/ai';
 
 // =============================================================================
@@ -90,6 +91,11 @@ export interface AIChatContextValue {
   /** Set the current page context (called by the usePageContextForAI hook) */
   setPageContext: (ctx: AIPageContext | null) => void;
 
+  /** Context-sensitive quick action buttons (set by page layouts) */
+  quickActions: AIQuickAction[];
+  /** Register quick actions for the current page (cleared on navigation) */
+  setQuickActions: (actions: AIQuickAction[]) => void;
+
   /** Current verbosity preference for AI responses */
   verbosity: AIVerbosity;
   /** Update verbosity preference */
@@ -135,6 +141,9 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
 
   // Page context — auto-populated from the current route
   const [pageContext, setPageContextState] = useState<AIPageContext | null>(null);
+
+  // Quick actions — context-sensitive buttons registered by page layouts
+  const [quickActions, setQuickActionsState] = useState<AIQuickAction[]>([]);
 
   // Verbosity preference (persisted in-memory; resets to standard on reload)
   const [verbosity, setVerbosity] = useState<AIVerbosity>('standard');
@@ -222,6 +231,10 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     setPageContextState(ctx);
   }, []);
 
+  const setQuickActions = useCallback((actions: AIQuickAction[]) => {
+    setQuickActionsState(actions);
+  }, []);
+
   const value = useMemo<AIChatContextValue>(
     () => ({
       widgetState,
@@ -245,6 +258,8 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       isEncounterAware,
       pageContext,
       setPageContext,
+      quickActions,
+      setQuickActions,
       verbosity,
       setVerbosity,
       returnToUrl,
@@ -271,6 +286,8 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       isEncounterAware,
       pageContext,
       setPageContext,
+      quickActions,
+      setQuickActions,
       verbosity,
       setVerbosity,
       returnToUrl,

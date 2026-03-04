@@ -241,6 +241,32 @@ class TibaBotClient:
         )
 
     # -----------------------------------------------------------------
+    # Phase 3 — Condition Predictor
+    # -----------------------------------------------------------------
+
+    def predict_condition(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Predict probable conditions from patient features.
+
+        Sends age, gender, vitals, chief complaint, and lifestyle factors
+        to TibaBot's ``POST /predict/condition`` endpoint for ML-based
+        risk assessment.
+
+        Args:
+            payload: Dict containing patient_features with age, gender,
+                     vitals, chief_complaint, etc.
+
+        Returns:
+            Dict with primary_condition, confidence, risk_factors, and
+            differential_conditions.
+        """
+        return self._request(
+            method="POST",
+            endpoint="/predict/condition",
+            data=payload,
+        )
+
+    # -----------------------------------------------------------------
     # Phase 3 — Feedback
     # -----------------------------------------------------------------
 

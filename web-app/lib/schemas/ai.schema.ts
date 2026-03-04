@@ -77,6 +77,35 @@ export const AIChatSessionDetailResponseSchema = z.object({
 });
 
 // =============================================================================
+// Phase 3 — Condition Predictor
+// =============================================================================
+
+/** Schema for a single risk factor in condition prediction */
+export const AIConditionRiskFactorSchema = z.object({
+  factor: z.string(),
+  severity: z.enum(['low', 'moderate', 'high', 'critical']),
+  description: z.string().optional(),
+});
+
+/** Schema for a differential condition */
+export const AIDifferentialConditionSchema = z.object({
+  condition: z.string(),
+  confidence: z.number().min(0).max(1),
+  icd10_code: z.string().optional(),
+});
+
+/** Schema for POST /api/ai/predict/condition/ response */
+export const AIConditionPredictResponseSchema = z.object({
+  primary_condition: z.string(),
+  confidence: z.number().min(0).max(1),
+  risk_level: z.enum(['low', 'moderate', 'high', 'critical']),
+  risk_factors: z.array(AIConditionRiskFactorSchema).optional(),
+  differential_conditions: z.array(AIDifferentialConditionSchema).optional(),
+  recommendations: z.array(z.string()).optional(),
+  error: z.string().nullable().optional(),
+});
+
+// =============================================================================
 // Phase 3 — Feedback
 // =============================================================================
 

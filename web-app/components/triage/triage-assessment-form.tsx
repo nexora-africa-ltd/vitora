@@ -67,6 +67,7 @@ import {
 } from '@/lib/types/triage';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { calculateBMI, getBMIColorClass } from '@/lib/utils/bmi';
+import { AIRiskAssessmentPanel } from './ai-risk-assessment-panel';
 
 // =============================================================================
 // VALIDATION SCHEMA
@@ -2085,6 +2086,27 @@ export function TriageAssessmentForm({
           )}
         </CardContent>
       </Card>
+
+      {/* AI Risk Assessment */}
+      <AIRiskAssessmentPanel
+        patientAge={patientAge}
+        patientGender={patient.gender}
+        chiefComplaint={watchedValues.chief_complaint}
+        chiefComplaintCategory={watchedValues.chief_complaint_category}
+        vitals={{
+          spo2: spo2,
+          heart_rate: heartRate,
+          systolic_bp: systolicBp,
+          diastolic_bp: diastolicBp,
+          temperature: temperature,
+          respiratory_rate: respiratoryRate,
+        }}
+        painScore={painScore}
+        mentalStatus={mentalStatus}
+        mobility={watchedValues.mobility}
+        allergies={watchedValues.allergies_noted}
+        disabled={disabled}
+      />
 
       {/* Care Area Routing */}
       <Card>
