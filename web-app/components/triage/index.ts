@@ -58,3 +58,5 @@ export type {
   VitalThresholds,
   AlertSeverity,
 } from './vital-input-with-alert';
+
+export { TriageDashboardStats } from './triage-dashboard-stats';

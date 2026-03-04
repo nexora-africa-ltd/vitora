@@ -42,6 +42,7 @@ export const triageKeys = {
   reports: () => [...triageKeys.all, 'reports'] as const,
   reportsFiltered: (filters: ReportFilters) => [...triageKeys.reports(), filters] as const,
   waitTimeStats: (dateRange: string) => [...triageKeys.all, 'waitTimeStats', dateRange] as const,
+  volumeStats: (dateRange: string) => [...triageKeys.all, 'volumeStats', dateRange] as const,
   // Emergency module keys
   criticalPatients: () => [...triageKeys.all, 'critical'] as const,
   zonesSummary: () => [...triageKeys.all, 'zones'] as const,
@@ -639,6 +640,17 @@ export function useTriageWaitTimeStats(params: { dateRange: string }) {
       return response.data;
     },
     refetchInterval: 30000, // Refresh every 30 seconds for more real-time updates
+  });
+}
+
+/**
+ * Fetch triage volume report (by category and area).
+ */
+export function useTriageVolumeReport(params: { dateRange: string }) {
+  return useQuery({
+    queryKey: triageKeys.volumeStats(params.dateRange),
+    queryFn: () => triageApi.getVolumeReport({ date_range: params.dateRange }),
+    refetchInterval: 30000,
   });
 }
 

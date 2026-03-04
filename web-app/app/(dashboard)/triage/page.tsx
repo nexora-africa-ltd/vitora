@@ -40,13 +40,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { TriageCategoryBadge } from '@/components/triage';
+import { TriageCategoryBadge, TriageDashboardStats } from '@/components/triage';
 import {
   useTriageWaitTimeStats,
+  useTriageVolumeReport,
   useWaitingQueue,
   useStartTriage,
   useCancelWaitingEntry,
   useTriageHistory,
+  useBreachSummary,
   type TriageHistoryFilters,
 } from '@/lib/hooks/use-triage';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -73,9 +75,17 @@ export default function TriageQueuePage() {
   } = useWaitingQueue({});
 
   // Fetch wait time stats for the KPI cards
-  const { data: waitTimeStats } = useTriageWaitTimeStats({
+  const { data: waitTimeStats, isLoading: isStatsLoading } = useTriageWaitTimeStats({
     dateRange: 'today',
   });
+
+  // Fetch volume report for category breakdown
+  const { data: volumeData, isLoading: isVolumeLoading } = useTriageVolumeReport({
+    dateRange: 'today',
+  });
+
+  // Fetch breach summary for active alerts
+  const { data: breachSummary } = useBreachSummary();
 
   // Calculate trend for target met percentage (comparing to 85% KETA target)
   const targetMetTrend = useMemo(() => {
@@ -327,6 +337,14 @@ export default function TriageQueuePage() {
                 description="KETA compliance"
               />
             </div>
+
+            {/* Operational Stats — second row */}
+            <TriageDashboardStats
+              waitTimeStats={waitTimeStats}
+              volumeData={volumeData}
+              breachSummary={breachSummary}
+              isLoading={isStatsLoading || isVolumeLoading}
+            />
 
             {/* Patients Awaiting Triage */}
             <Card>
