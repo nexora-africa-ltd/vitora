@@ -2,8 +2,8 @@
 
 > **Purpose**: Plan for implementing a dedicated Emergency Department module in Vitora HMIS
 > **Created**: February 20, 2026
-> **Updated**: February 21, 2026
-> **Status**: Phase 1 Complete ✅
+> **Updated**: March 4, 2026
+> **Status**: Phase 2 Complete ✅
 
 ---
 
@@ -45,7 +45,7 @@ EMERGENCY_AREA_OPTIONS = [
 | Gap | Impact | Priority | Status |
 |-----|--------|----------|--------|
 | No dedicated ER dashboard | Staff must navigate to triage and filter | HIGH | ✅ **Done** |
-| No zone-specific views | Cannot focus on single ER zone | MEDIUM | 📋 Planned |
+| No zone-specific views | Cannot focus on single ER zone | MEDIUM | ✅ **Done** |
 | No critical alert banner | RED patients not immediately visible | HIGH | ✅ **Done** |
 | No ER bed board | No visual bed/bay status | MEDIUM | 📋 Planned |
 | No door-to-doctor metrics | Cannot measure ER efficiency | LOW | 📋 Planned |
@@ -192,23 +192,30 @@ Added to sidebar:
 
 ---
 
-### Phase 2: Zone-Specific Views (MEDIUM PRIORITY)
+### Phase 2: Zone-Specific Views (MEDIUM PRIORITY) ✅ COMPLETE
 
-**Estimated Effort**: 2 days
+**Estimated Effort**: 2 days | **Actual**: 1 day
 
-#### 2.1 Zone Queue Page
+#### 2.1 Zone Queue Page ✅
 
 **Route**: `/emergency/[zone]`
 
-**Features**:
-- [ ] Filtered queue for single zone only
-- [ ] Zone-specific header with capacity info
-- [ ] Same actions as triage queue (call, mark with clinician, complete, LWBS)
-- [ ] Zone-specific target wait times
+**Implementation**: `app/(dashboard)/emergency/[zone]/page.tsx`
 
-**Zone Mapping**:
+**Features**:
+- [x] Filtered queue for single zone only (uses `useTriageQueue({ area })` filter)
+- [x] Zone-specific header with capacity info and category breakdown
+- [x] Same actions as triage queue (call, mark with clinician, complete, LWBS)
+- [x] Zone-specific KETA target wait times reference card
+- [x] Search by patient name/MRN and filter by category/status
+- [x] List/grid view toggle (leverages `ViewToggle` + `EntityCard`)
+- [x] LWBS confirmation dialog with reason input
+- [x] Pull-to-refresh on mobile
+- [x] Empty states for no patients and no filter matches
+
+**Zone Mapping** (implemented in `lib/config/emergency.ts`):
 ```typescript
-const ZONE_ROUTES: Record<string, AssignedArea> = {
+export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
   'resus': 'ER_RESUS',
   'acute': 'ER_ACUTE',
   'trauma': 'TRAUMA',
@@ -219,15 +226,17 @@ const ZONE_ROUTES: Record<string, AssignedArea> = {
 };
 ```
 
-#### 2.2 Zone Layout with Tabs
+#### 2.2 Zone Layout with Tabs ✅
 
 **File**: `app/(dashboard)/emergency/layout.tsx`
 
 **Features**:
-- [ ] Horizontal tabs for quick zone switching
-- [ ] Badge counts per zone
-- [ ] Highlight current zone
-- [ ] Mobile: horizontal scroll or dropdown
+- [x] Horizontal tabs for quick zone switching
+- [x] Badge counts per zone (from WebSocket or polling fallback)
+- [x] Highlight current zone with primary background
+- [x] Mobile: horizontal scroll with short labels (e.g., "Resus", "Peds")
+- [x] Overview tab linking back to dashboard with total patient count
+- [x] Tabs only visible when on a zone sub-page (not on dashboard itself)
 
 ---
 
@@ -265,7 +274,7 @@ const ZONE_ROUTES: Record<string, AssignedArea> = {
 │  ACUTE CARE (5/10 occupied)                                            │
 │  ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ┌─────┐ ...          │
 │  │ A-01│ │ A-02│ │ A-03│ │ A-04│ │ A-05│ │ A-06│ │ A-07│              │
-│  │ 🟠  │ │ 🟠  │ │ 🟠  │ │ 🟠  │ │ 🟠  │ │ ⬜  │ │ ⬜  │              │
+│  │  🟠  │ │  🟠  │ │  🟠  │ │  🟠  │ │  🟠  │ │  ⬜  │ │ ⬜  │              │
 │  └─────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘ └─────┘              │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘

@@ -1,6 +1,6 @@
 # TibaBot AI Integration Plan for Vitora HMIS
 
-> **Status**: 🔧 In Progress (Phase 1 complete, Phase 2 complete)
+> **Status**: 🔧 In Progress (Phase 1 complete, Phase 2 complete, Phase 3 complete)
 > **Target**: Web App (`web-app/`) + Backend (`backend/`)  
 > **Dependency**: Existing CDS Module (DHA Gap #25 — ✅ Complete)  
 > **External Service**: TibaBot API (`https://tibabot.hmis.nexora.africa`)
@@ -42,6 +42,7 @@
 | Page context (frontend → backend → TibaBot) | ✅ `AIPageContext` type, `usePageContextForAI` hook auto-syncs route/title/module to chat context |
 | Encounter-aware context wiring | ✅ `encounters/[id]/layout.tsx` calls `setEncounterAwareContext()` with patient age/sex/allergies + vitals |
 | System instruction for page awareness | ✅ Backend `ClinicalChatView` injects page-aware or no-visibility system instruction based on context |
+| Verbosity levels aligned to TibaBot | ✅ 3 levels: `concise`, `standard`, `educational` — frontend type, UI buttons, backend serializers, views, and tests all updated (March 4, 2026) |
 
 ---
 
@@ -298,16 +299,26 @@ When the clinician is on an encounter page (`/encounters/[id]` or `/encounters/[
 
 ### 3. Condition Predictor in Triage
 
+**Status**: ✅ **Complete** (March 4, 2026)
 **Priority**: High value, medium risk  
-**Where**: Triage page  
+**Where**: Triage assessment form  
 **TibaBot endpoint**: `POST /predict/condition`
 
-**What**: During triage, submit patient features (age, gender, vitals, labs, lifestyle factors) to flag high-risk patients early. Display primary condition with confidence score and identified risk factors.
+**What**: During triage, submit patient features (age, gender, vitals, chief complaint, clinical assessment) to flag high-risk patients early. Display primary condition with confidence score, risk factors, differential conditions, and recommendations.
 
-**Files to create/modify:**
-- Backend: `hmis/apps/ai/views.py` — `ConditionPredictView`
-- Frontend: `lib/api/ai.ts` — `aiApi.predictCondition()`
-- Frontend: Triage form — "AI Risk Assessment" section
+**Files created/modified:**
+- Backend: `hmis/apps/ai/views.py` — `ConditionPredictView` (auth, PII sanitization, context enrichment, audit logging, graceful degradation) ✅
+- Backend: `hmis/apps/ai/client.py` — `TibaBotClient.predict_condition()` ✅
+- Backend: `hmis/apps/ai/serializers.py` — `ConditionPredictRequestSerializer`, `ConditionPredictPatientFeaturesSerializer`, `ConditionPredictResponseSerializer`, `ConditionRiskFactorSerializer`, `DifferentialConditionSerializer` ✅
+- Backend: `hmis/apps/ai/urls.py` — `predict/condition/` route ✅
+- Backend: `tests/test_ai_condition_predict.py` — feature gating, auth, validation, response, graceful degradation, audit logging, PII sanitization tests ✅
+- Frontend: `lib/types/ai.ts` — `AIConditionPredictFeatures`, `AIConditionPredictRequest`, `AIConditionPredictResponse`, `AIConditionRiskFactor`, `AIDifferentialCondition` ✅
+- Frontend: `lib/schemas/ai.schema.ts` — `AIConditionPredictResponseSchema`, `AIConditionRiskFactorSchema`, `AIDifferentialConditionSchema` ✅
+- Frontend: `lib/api/ai.ts` — `aiApi.predictCondition()` with Zod-validated response ✅
+- Frontend: `lib/hooks/use-ai.ts` — `useAIConditionPredict()` React Query mutation hook ✅
+- Frontend: `components/triage/ai-risk-assessment-panel.tsx` — 444-line "AI Risk Assessment" panel with risk level banner, risk factors, differentials, recommendations, expandable details, re-run, retry on error ✅
+- Frontend: `components/triage/triage-assessment-form.tsx` — `<AIRiskAssessmentPanel>` wired with patient vitals/demographics ✅
+- Frontend: `components/triage/index.ts` — exports `AIRiskAssessmentPanel` + props type ✅
 
 ---
 
@@ -377,7 +388,7 @@ The CDS module documents a 4-layer AI evolution. TibaBot integration maps direct
 |-------|-------|--------|------|------------|
 | **Phase 1** ✅ | Backend proxy app (`hmis/apps/ai/`) + ICD-10 auto-coding in diagnosis form | 2–3 days | Low | API key from Nexora |
 | **Phase 2** ✅ | TibaBot floating widget + Clinical Assistant (chat, encounter-aware assist, page context, session management) | 3–4 days | Low | Phase 1 |
-| **Phase 3** | Condition predictor in triage | 2 days | Medium | Phase 1 |
+| **Phase 3** ✅ | Condition predictor in triage + AI feedback | 2 days | Medium | Phase 1 |
 | **Phase 4** | ICU predictor in inpatient + CDS `ml_model` rule type (+ widget `/icu-risk` command) | 3–4 days | Medium | Phase 1, CDS engine update |
 | **Phase 5** | Symptom Checker patient portal | 3–4 days | Low | Patient portal (future) |
 
@@ -394,14 +405,15 @@ The CDS module documents a 4-layer AI evolution. TibaBot integration maps direct
 | `hmis/apps/ai/__init__.py` | App init |
 | `hmis/apps/ai/apps.py` | Django app config |
 | `hmis/apps/ai/client.py` | `TibaBotClient` class with retry, timeout, circuit-breaker |
-| `hmis/apps/ai/views.py` | Proxy views: `ICD10SuggestView`, `AIStatusView`, `ClinicalChatView`, `ClinicalAssistView`, `ClinicalChatSessionListView`, `ClinicalChatSessionDetailView` |
-| `hmis/apps/ai/serializers.py` | Request/response DRF serializers incl. `AIPageContextSerializer` |
+| `hmis/apps/ai/views.py` | Proxy views: `ICD10SuggestView`, `AIStatusView`, `ClinicalChatView`, `ClinicalAssistView`, `ClinicalChatSessionListView`, `ClinicalChatSessionDetailView`, `ConditionPredictView`, `AIFeedbackView`, `AIFeedbackStatsView` |
+| `hmis/apps/ai/serializers.py` | Request/response DRF serializers incl. `AIPageContextSerializer`, `ConditionPredictRequestSerializer`, `AIFeedbackRequestSerializer` |
 | `hmis/apps/ai/models.py` | `ChatSession`, `ChatMessage` for local session persistence |
 | `hmis/apps/ai/context.py` | `build_user_context()`, `build_facility_context()` server-side enrichment |
 | `hmis/apps/ai/feature_flags.py` | `AIFeatureGatedMixin` — checks `settings.TIBABOT_ENABLED`, returns 404 when off |
 | `hmis/apps/ai/urls.py` | `/api/ai/` route namespace |
 | `hmis/apps/ai/sanitizer.py` | PII stripping utility (ensures no name/MRN/ID sent) |
 | `tests/test_ai.py` | Unit tests for proxy views, sanitizer, and feature flag gating |
+| `tests/test_ai_condition_predict.py` | Condition predictor tests: feature gating, auth, validation, response, degradation, audit, PII |
 
 ### Backend (Modified)
 
@@ -417,11 +429,12 @@ The CDS module documents a 4-layer AI evolution. TibaBot integration maps direct
 | File | Description |
 |------|-------------|
 | `lib/types/ai.ts` | TypeScript interfaces for all TibaBot responses incl. `AIPageContext` |
-| `lib/schemas/ai.schema.ts` | Zod validation schemas (Phase 1 + Phase 2) |
-| `lib/api/ai.ts` | API client with `parseResponse()` calling `/api/ai/*` (Phase 1 + Phase 2) |
+| `lib/schemas/ai.schema.ts` | Zod validation schemas (Phase 1 + Phase 2 + Phase 3) |
+| `lib/api/ai.ts` | API client with `parseResponse()` calling `/api/ai/*` (Phase 1 + Phase 2 + Phase 3) |
 | `lib/hooks/use-ai.ts` | React Query hooks for all AI features + `useAIEnabled()` feature flag hook |
 | `lib/hooks/use-page-context-for-ai.ts` | `usePageContextForAI()` — auto-resolves route → page title/module, syncs to AI chat context |
 | `components/encounters/ai-icd10-suggestions.tsx` | ICD-10 auto-coding chips in diagnosis form |
+| `components/triage/ai-risk-assessment-panel.tsx` | AI Risk Assessment panel for triage (condition predictor + risk factors + differentials) |
 | `components/shared/ai-chat-widget.tsx` | Floating chat widget (minimized + expanded states) |
 | `components/shared/ai-chat-panel.tsx` | Chat UI panel (shared between widget and full-page) |
 | `components/shared/tibabot-status-indicator.tsx` | Reusable 3-state status icon: green `Bot` (available), green `BotMessageSquare` + dot (unread), red `BotOff` + dot (unavailable) |
@@ -433,6 +446,7 @@ The CDS module documents a 4-layer AI evolution. TibaBot integration maps direct
 | File | Change |
 |------|--------|
 | `components/encounters/diagnosis-form.tsx` | Add "AI Suggested" section above manual ICD search |
+| `components/triage/triage-assessment-form.tsx` | Wire `<AIRiskAssessmentPanel>` with patient features during triage assessment |
 | `app/(dashboard)/layout.tsx` | Mount `<AIChatProvider>` + `<AIChatWidget />` + `<AIPageContextSync />` when `useAIEnabled()` returns true |
 | `app/(dashboard)/encounters/[id]/layout.tsx` | Wire `setEncounterAwareContext()` with patient/encounter data for encounter-aware AI assistance |
 | `lib/config/navigation.ts` | Add "AI Assistant" nav entry (feature-gated by `ENABLE_AI`, links to `/ai`) |
@@ -536,4 +550,4 @@ AuditLog.log(
 
 ---
 
-*Last updated: March 3, 2026*
+*Last updated: March 4, 2026*
