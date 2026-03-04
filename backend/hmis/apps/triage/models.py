@@ -839,3 +839,249 @@ class TriageQueue(models.Model):
         if reason:
             self.notes = f"{self.notes}\nLWBS Reason: {reason}".strip()
         self.save(update_fields=["status", "notes"])
+
+
+class ERBed(models.Model):
+    """
+    Emergency Room bed/bay.
+
+    Represents a physical bed or bay in the emergency department,
+    organized by zone. Separate from the inpatient Bed model because
+    ER beds have zone-based organization, shorter stays, and different
+    workflow (rapid turnover, cleaning states).
+
+    Phase 3: ER Bed Board
+    """
+
+    ZONE_CHOICES = [
+        ("ER_RESUS", "ER - Resuscitation"),
+        ("ER_ACUTE", "ER - Acute Care"),
+        ("ER_FAST_TRACK", "ER - Fast Track"),
+        ("OBSERVATION", "Observation Unit"),
+        ("TRAUMA", "Trauma Bay"),
+        ("PEDIATRIC_ER", "Pediatric ER"),
+        ("MATERNITY", "Maternity/Labor"),
+    ]
+
+    BED_STATUS_CHOICES = [
+        ("AVAILABLE", "Available"),
+        ("OCCUPIED", "Occupied"),
+        ("CLEANING", "Cleaning"),
+        ("OUT_OF_SERVICE", "Out of Service"),
+    ]
+
+    zone = models.CharField(
+        max_length=20,
+        choices=ZONE_CHOICES,
+        help_text="ER zone this bed belongs to",
+    )
+    bed_number = models.CharField(
+        max_length=20,
+        help_text="Bed/bay identifier within zone (e.g., 'R-01', 'A-05')",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=BED_STATUS_CHOICES,
+        default="AVAILABLE",
+        help_text="Current bed status",
+    )
+    current_patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="er_beds",
+        help_text="Patient currently occupying this bed",
+    )
+    current_triage_assessment = models.ForeignKey(
+        TriageAssessment,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="er_bed_assignment",
+        help_text="Triage assessment for current occupant",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Additional notes (cleaning reason, out-of-service reason, etc.)",
+    )
+    status_changed_at = models.DateTimeField(
+        auto_now=True,
+        help_text="When the bed status last changed",
+    )
+    status_changed_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="er_bed_status_changes",
+        help_text="User who last changed the bed status",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ["zone", "bed_number"]
+        ordering = ["zone", "bed_number"]
+        verbose_name = "ER Bed"
+        verbose_name_plural = "ER Beds"
+
+    def __str__(self) -> str:
+        zone_display = dict(self.ZONE_CHOICES).get(self.zone, self.zone)
+        return f"{zone_display} - {self.bed_number} ({self.get_status_display()})"
+
+    # -------------------------------------------------------------------------
+    # State-transition methods
+    # -------------------------------------------------------------------------
+
+    def assign_patient(self, patient, triage_assessment=None, user=None):
+        """
+        Assign a patient to this bed, transitioning to OCCUPIED.
+
+        Args:
+            patient: Patient instance to assign
+            triage_assessment: Optional TriageAssessment for the patient
+            user: User performing the assignment
+
+        Raises:
+            ValueError: If bed is not available
+        """
+        if self.status != "AVAILABLE":
+            raise ValueError(
+                f"Cannot assign patient to bed {self.bed_number}: "
+                f"status is {self.status}, must be AVAILABLE"
+            )
+        self.status = "OCCUPIED"
+        self.current_patient = patient
+        self.current_triage_assessment = triage_assessment
+        self.status_changed_by = user
+        self.save(
+            update_fields=[
+                "status",
+                "current_patient",
+                "current_triage_assessment",
+                "status_changed_by",
+                "status_changed_at",
+            ]
+        )
+
+    def release(self, user=None, mark_cleaning=True):
+        """
+        Release a patient from this bed.
+
+        Args:
+            user: User performing the release
+            mark_cleaning: If True, transition to CLEANING; otherwise AVAILABLE
+
+        Raises:
+            ValueError: If bed is not occupied
+        """
+        if self.status != "OCCUPIED":
+            raise ValueError(
+                f"Cannot release bed {self.bed_number}: "
+                f"status is {self.status}, must be OCCUPIED"
+            )
+        self.status = "CLEANING" if mark_cleaning else "AVAILABLE"
+        self.current_patient = None
+        self.current_triage_assessment = None
+        self.status_changed_by = user
+        self.notes = ""
+        self.save(
+            update_fields=[
+                "status",
+                "current_patient",
+                "current_triage_assessment",
+                "status_changed_by",
+                "status_changed_at",
+                "notes",
+            ]
+        )
+
+    def mark_available(self, user=None):
+        """
+        Mark bed as available (e.g., after cleaning).
+
+        Raises:
+            ValueError: If bed is currently occupied
+        """
+        if self.status == "OCCUPIED":
+            raise ValueError(
+                f"Cannot mark bed {self.bed_number} as available: "
+                "still occupied — release patient first"
+            )
+        self.status = "AVAILABLE"
+        self.current_patient = None
+        self.current_triage_assessment = None
+        self.status_changed_by = user
+        self.notes = ""
+        self.save(
+            update_fields=[
+                "status",
+                "current_patient",
+                "current_triage_assessment",
+                "status_changed_by",
+                "status_changed_at",
+                "notes",
+            ]
+        )
+
+    def mark_out_of_service(self, user=None, reason=""):
+        """
+        Mark bed as out of service.
+
+        Args:
+            user: User performing the action
+            reason: Reason for taking out of service
+
+        Raises:
+            ValueError: If bed is currently occupied
+        """
+        if self.status == "OCCUPIED":
+            raise ValueError(
+                f"Cannot take bed {self.bed_number} out of service: "
+                "still occupied — release patient first"
+            )
+        self.status = "OUT_OF_SERVICE"
+        self.status_changed_by = user
+        self.notes = reason
+        self.save(
+            update_fields=["status", "status_changed_by", "status_changed_at", "notes"]
+        )
+
+    # -------------------------------------------------------------------------
+    # Properties
+    # -------------------------------------------------------------------------
+
+    @property
+    def is_available(self) -> bool:
+        """Whether the bed is available for patient assignment."""
+        return self.status == "AVAILABLE"
+
+    @property
+    def patient_name(self) -> str:
+        """Display name of the current patient, or empty string."""
+        if self.current_patient:
+            return f"{self.current_patient.first_name} {self.current_patient.last_name}"
+        return ""
+
+    @property
+    def patient_mrn(self) -> str:
+        """MRN of the current patient, or empty string."""
+        if self.current_patient:
+            return self.current_patient.mrn
+        return ""
+
+    @property
+    def triage_category(self) -> str:
+        """Triage category of the current occupant, or empty string."""
+        if self.current_triage_assessment:
+            return self.current_triage_assessment.triage_category
+        return ""
+
+    @property
+    def occupied_duration_minutes(self) -> int | None:
+        """Minutes since bed was occupied (None if not occupied)."""
+        if self.status != "OCCUPIED":
+            return None
+        delta = timezone.now() - self.status_changed_at
+        return int(delta.total_seconds() / 60)

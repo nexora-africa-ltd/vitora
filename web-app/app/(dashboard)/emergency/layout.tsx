@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils/cn';
 import { ZONE_METADATA, CATEGORY_COLORS } from '@/lib/config/emergency';
 import { useZonesSummary } from '@/lib/hooks/use-triage';
 import { useEmergencySocket } from '@/lib/hooks/use-websocket';
+import { BedDouble } from 'lucide-react';
 import type { TriageCategory } from '@/lib/types/triage';
 
 export default function EmergencyLayout({
@@ -126,6 +127,21 @@ export default function EmergencyLayout({
                   </button>
                 );
               })}
+
+              {/* Bed Board tab */}
+              <button
+                onClick={() => router.push('/emergency/bed-board')}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap',
+                  activeSegment === 'bed-board'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                )}
+              >
+                <BedDouble className="h-3.5 w-3.5" />
+                <span className="sm:hidden">Beds</span>
+                <span className="hidden sm:inline">Bed Board</span>
+              </button>
             </nav>
           </div>
         </div>

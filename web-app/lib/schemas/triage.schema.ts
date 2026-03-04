@@ -457,3 +457,86 @@ export type VolumeReportResponse = z.infer<typeof VolumeReportResponseSchema>;
 export type PaginatedTriageAssessment = z.infer<typeof PaginatedTriageAssessmentSchema>;
 export type PaginatedTriageQueue = z.infer<typeof PaginatedTriageQueueSchema>;
 export type PaginatedWaitingQueue = z.infer<typeof PaginatedWaitingQueueSchema>;
+
+// =============================================================================
+// ER BED BOARD SCHEMAS (Phase 3)
+// =============================================================================
+
+export const ERBedStatusSchema = z.enum(['AVAILABLE', 'OCCUPIED', 'CLEANING', 'OUT_OF_SERVICE']);
+
+export const ERZoneSchema = z.enum([
+  'ER_RESUS',
+  'ER_ACUTE',
+  'ER_FAST_TRACK',
+  'OBSERVATION',
+  'TRAUMA',
+  'PEDIATRIC_ER',
+  'MATERNITY',
+]);
+
+export const ERBedSchema = z.object({
+  id: z.number(),
+  zone: ERZoneSchema,
+  zone_display: z.string(),
+  bed_number: z.string(),
+  status: ERBedStatusSchema,
+  status_display: z.string(),
+  current_patient: z.number().nullable(),
+  patient_name: z.string(),
+  patient_mrn: z.string(),
+  current_triage_assessment: z.number().nullable(),
+  triage_category: z.union([TriageCategorySchema, z.literal('')]),
+  occupied_duration_minutes: z.number().nullable(),
+  is_available: z.boolean(),
+  notes: z.string(),
+  status_changed_at: z.string(),
+  status_changed_by: z.number().nullable(),
+  created_at: z.string(),
+});
+
+export const ERBedListItemSchema = z.object({
+  id: z.number(),
+  zone: ERZoneSchema,
+  bed_number: z.string(),
+  status: ERBedStatusSchema,
+  current_patient: z.number().nullable(),
+  patient_name: z.string(),
+  patient_mrn: z.string(),
+  triage_category: z.union([TriageCategorySchema, z.literal('')]),
+  occupied_duration_minutes: z.number().nullable(),
+  is_available: z.boolean(),
+});
+
+export const ERBedZoneGroupSchema = z.object({
+  zone: ERZoneSchema,
+  zone_display: z.string(),
+  beds: z.array(ERBedSchema),
+});
+
+export const ERBedZoneSummarySchema = z.object({
+  zone: ERZoneSchema,
+  zone_display: z.string(),
+  total_beds: z.number(),
+  available: z.number(),
+  occupied: z.number(),
+  cleaning: z.number(),
+  out_of_service: z.number(),
+  occupancy_rate: z.number(),
+});
+
+export const ERBedBoardResponseSchema = z.array(ERBedZoneGroupSchema);
+export const ERBedSummaryResponseSchema = z.array(ERBedZoneSummarySchema);
+export const PaginatedERBedSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(ERBedListItemSchema),
+});
+
+// ER Bed types
+export type ERBedStatus = z.infer<typeof ERBedStatusSchema>;
+export type ERZone = z.infer<typeof ERZoneSchema>;
+export type ERBed = z.infer<typeof ERBedSchema>;
+export type ERBedListItem = z.infer<typeof ERBedListItemSchema>;
+export type ERBedZoneGroup = z.infer<typeof ERBedZoneGroupSchema>;
+export type ERBedZoneSummary = z.infer<typeof ERBedZoneSummarySchema>;
