@@ -734,6 +734,7 @@ class TriageQueueSerializer(serializers.ModelSerializer):
     )
     assigned_area = serializers.CharField(source="triage_assessment.assigned_area", read_only=True)
     assigned_area_display = serializers.SerializerMethodField()
+    assigned_area_label = serializers.SerializerMethodField()
     assigned_clinic = serializers.IntegerField(source="triage_assessment.assigned_clinic_id", read_only=True, allow_null=True)
     assigned_clinic_name = serializers.CharField(source="triage_assessment.assigned_clinic.name", read_only=True, allow_null=True)
     routing_destination = serializers.CharField(source="triage_assessment.routing_destination", read_only=True)
@@ -744,7 +745,14 @@ class TriageQueueSerializer(serializers.ModelSerializer):
         source="triage_assessment.triage_start_time", read_only=True
     )
     wait_time_minutes = serializers.SerializerMethodField()
+    is_wait_exceeded = serializers.SerializerMethodField()
     alerts_count = serializers.SerializerMethodField()
+    alerts = serializers.SerializerMethodField()
+
+    # FK to triage assessment (numeric ID for frontend)
+    triage_assessment = serializers.IntegerField(
+        source="triage_assessment.id", read_only=True
+    )
 
     # Queue-specific fields
     called_by_name = serializers.CharField(
@@ -755,6 +763,7 @@ class TriageQueueSerializer(serializers.ModelSerializer):
         model = TriageQueue
         fields = [
             "id",
+            "triage_assessment",
             "patient_id",
             "patient_name",
             "patient_mrn",
@@ -765,12 +774,15 @@ class TriageQueueSerializer(serializers.ModelSerializer):
             "chief_complaint",
             "assigned_area",
             "assigned_area_display",
+            "assigned_area_label",
             "assigned_clinic",
             "assigned_clinic_name",
             "routing_destination",
             "arrival_time",
             "triage_time",
             "wait_time_minutes",
+            "is_wait_exceeded",
+            "alerts",
             "alerts_count",
             "status",
             "position",
@@ -826,6 +838,20 @@ class TriageQueueSerializer(serializers.ModelSerializer):
             "SPECIALTY": "Specialty",
         }
         return area_labels.get(area, area or "Not assigned")
+
+    def get_assigned_area_label(self, obj) -> str:
+        """Alias for assigned_area_display (frontend contract)."""
+        return self.get_assigned_area_display(obj)
+
+    def get_is_wait_exceeded(self, obj) -> bool:
+        """Check if wait time exceeded KETA target."""
+        return obj.triage_assessment.is_wait_time_exceeded()
+
+    def get_alerts(self, obj) -> list:
+        """Get structured alerts from the triage assessment."""
+        # Reuse the TriageAssessmentSerializer's alert conversion logic
+        assessment_serializer = TriageAssessmentSerializer()
+        return assessment_serializer.get_alerts(obj.triage_assessment)
 
     def get_wait_time_minutes(self, obj) -> int:
         """Calculate wait time in minutes since arrival."""
@@ -1035,6 +1061,7 @@ class WaitTimeBreachSerializer(serializers.ModelSerializer):
 
     patient_name = serializers.SerializerMethodField()
     patient_mrn = serializers.SerializerMethodField()
+    assigned_area_display = serializers.SerializerMethodField()
 
     class Meta:
         model = WaitTimeBreach
@@ -1050,6 +1077,7 @@ class WaitTimeBreachSerializer(serializers.ModelSerializer):
             "target_wait_minutes",
             "actual_wait_minutes",
             "assigned_area",
+            "assigned_area_display",
             "status",
             "acknowledged_by",
             "acknowledged_at",
@@ -1064,6 +1092,11 @@ class WaitTimeBreachSerializer(serializers.ModelSerializer):
 
     def get_patient_mrn(self, obj) -> str:
         return obj.patient.mrn
+
+    def get_assigned_area_display(self, obj) -> str:
+        """Get human-readable area name."""
+        area_labels = dict(TriageAssessment.ASSIGNED_AREA_CHOICES)
+        return area_labels.get(obj.assigned_area, obj.assigned_area or "")
 
 
 class WaitTimeBreachAcknowledgeSerializer(serializers.Serializer):

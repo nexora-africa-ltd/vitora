@@ -83,6 +83,8 @@ export const WaitingQueueStatusSchema = z.enum(['WAITING_TRIAGE', 'IN_TRIAGE', '
 // TRIAGE ALERT SCHEMA
 // =============================================================================
 
+export const AlertSourceSchema = z.enum(['vitals', 'cds', 'ai']);
+
 export const TriageAlertSchema = z.object({
   id: z.string(),
   severity: AlertSeveritySchema,
@@ -92,6 +94,8 @@ export const TriageAlertSchema = z.object({
   threshold: z.number().nullable(),
   clinical_note: z.string().optional().nullable(),
   actions: z.array(z.string()).optional().nullable(),
+  /** Origin of the alert – defaults to 'vitals' when absent. */
+  source: AlertSourceSchema.optional(),
 });
 
 export type TriageAlertSchemaType = z.infer<typeof TriageAlertSchema>;
@@ -100,9 +104,15 @@ export type TriageAlertSchemaType = z.infer<typeof TriageAlertSchema>;
 // TRIAGE VITAL THRESHOLD SCHEMA
 // =============================================================================
 
+/** Strict vital type schema for threshold records (backend has only 6 types) */
+export const ThresholdVitalTypeSchema = z.enum([
+  'SPO2', 'SYSTOLIC_BP', 'DIASTOLIC_BP',
+  'HEART_RATE', 'TEMPERATURE', 'RESPIRATORY_RATE',
+]);
+
 export const TriageVitalThresholdSchema = z.object({
   id: z.number(),
-  vital_type: VitalTypeSchema,
+  vital_type: ThresholdVitalTypeSchema,
   critical_low: z.number().nullable(),
   warning_low: z.number().nullable(),
   warning_high: z.number().nullable(),
@@ -144,6 +154,9 @@ export const TriageAssessmentSchema = z.object({
   diastolic_bp: z.number().optional().nullable(),
   temperature: z.number().optional().nullable(),
   respiratory_rate: z.number().optional().nullable(),
+  weight: z.number().optional().nullable(),
+  height: z.number().optional().nullable(),
+  referring_facility_name: z.string().optional().default(''),
   vitals: z.record(z.unknown()).optional(),
 
   // Triage decision
@@ -206,7 +219,6 @@ export const TriageQueueEntrySchema = z.object({
   is_wait_exceeded: z.boolean(),
   status: QueueStatusSchema,
   called_at: z.string().nullable(),
-  called_by: z.number().nullable(),
   called_by_name: z.string().nullable(),
   position: z.number(),
   alerts: z.array(TriageAlertSchema),
@@ -360,6 +372,25 @@ export const WaitTimeStatsResponseSchema = z.object({
   median_wait_minutes: z.number(),
   target_met_percentage: z.number(),
   by_category: z.array(WaitTimeStatsSchema),
+  // Additional backend fields (optional)
+  total_assessments: z.number().optional(),
+  max_wait_minutes: z.number().optional(),
+  min_wait_minutes: z.number().optional(),
+  current_queue: z.object({
+    count: z.number(),
+    avg_wait_minutes: z.number(),
+    max_wait_minutes: z.number(),
+    longest_waiting_patient: z.number(),
+  }).optional(),
+  completion_time: z.object({
+    count: z.number(),
+    avg_minutes: z.number(),
+    median_minutes: z.number(),
+  }).optional(),
+  triage_duration: z.object({
+    count: z.number(),
+    avg_minutes: z.number(),
+  }).optional(),
 });
 
 export type WaitTimeStatsResponseSchemaType = z.infer<typeof WaitTimeStatsResponseSchema>;
@@ -434,9 +465,11 @@ export type ChiefComplaintCategory = z.infer<typeof ChiefComplaintCategorySchema
 export type QueueStatus = z.infer<typeof QueueStatusSchema>;
 export type VitalType = z.infer<typeof VitalTypeSchema>;
 export type AlertSeverity = z.infer<typeof AlertSeveritySchema>;
+export type AlertSource = z.infer<typeof AlertSourceSchema>;
 export type WaitingQueueStatus = z.infer<typeof WaitingQueueStatusSchema>;
 
 // Entity types
+export type TriageAlert = z.infer<typeof TriageAlertSchema>;
 export type TriageVitalThreshold = z.infer<typeof TriageVitalThresholdSchema>;
 export type TriageAssessment = z.infer<typeof TriageAssessmentSchema>;
 export type TriageQueueEntry = z.infer<typeof TriageQueueEntrySchema>;

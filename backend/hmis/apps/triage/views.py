@@ -441,16 +441,110 @@ class WaitingQueueViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class VitalThresholdsViewSet(viewsets.ReadOnlyModelViewSet):
+class VitalThresholdsViewSet(viewsets.ModelViewSet):
     """
     ViewSet for vital thresholds.
 
-    Read-only for regular users, admin can update via admin panel.
+    Full CRUD + reset/export/import for vital thresholds.
+    Read access for all authenticated users, write access requires admin.
     """
 
-    queryset = TriageVitalThreshold.objects.filter(is_active=True)
+    queryset = TriageVitalThreshold.objects.all()
     serializer_class = TriageVitalThresholdSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """By default show only active thresholds; admins can see all."""
+        queryset = super().get_queryset()
+        show_inactive = self.request.query_params.get("show_inactive", "false").lower() == "true"
+        if not show_inactive:
+            queryset = queryset.filter(is_active=True)
+        return queryset
+
+    def get_permissions(self):
+        """Require admin for write operations."""
+        permissions = super().get_permissions()
+        if self.action not in ["list", "retrieve"]:
+            permissions.append(IsAdminUser())
+        return permissions
+
+    @action(detail=True, methods=["post"])
+    def reset(self, request, pk=None):
+        """Reset a single threshold to system defaults."""
+        threshold = self.get_object()
+        defaults = TriageVitalThreshold.get_defaults()
+        vital_defaults = defaults.get(threshold.vital_type)
+        if not vital_defaults:
+            return Response(
+                {"error": f"No defaults found for vital type '{threshold.vital_type}'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        threshold.critical_low = vital_defaults.get("critical_low")
+        threshold.warning_low = vital_defaults.get("warning_low")
+        threshold.warning_high = vital_defaults.get("warning_high")
+        threshold.critical_high = vital_defaults.get("critical_high")
+        threshold.is_active = True
+        threshold.save()
+        return Response(TriageVitalThresholdSerializer(threshold).data)
+
+    @action(detail=False, methods=["post"], url_path="reset-all")
+    def reset_all(self, request):
+        """Reset all thresholds to system defaults."""
+        defaults = TriageVitalThreshold.get_defaults()
+        for vital_type, values in defaults.items():
+            threshold, _ = TriageVitalThreshold.objects.get_or_create(
+                vital_type=vital_type,
+                defaults={**values, "is_active": True},
+            )
+            if not _:
+                threshold.critical_low = values.get("critical_low")
+                threshold.warning_low = values.get("warning_low")
+                threshold.warning_high = values.get("warning_high")
+                threshold.critical_high = values.get("critical_high")
+                threshold.is_active = True
+                threshold.save()
+        thresholds = TriageVitalThreshold.objects.filter(is_active=True)
+        return Response(TriageVitalThresholdSerializer(thresholds, many=True).data)
+
+    @action(detail=False, methods=["get"], url_path="export")
+    def export_thresholds(self, request):
+        """Export thresholds configuration as JSON."""
+        import json
+
+        thresholds = TriageVitalThreshold.objects.all()
+        data = TriageVitalThresholdSerializer(thresholds, many=True).data
+
+        response = Response(data, content_type="application/json")
+        response["Content-Disposition"] = 'attachment; filename="vital-thresholds.json"'
+        return response
+
+    @action(detail=False, methods=["post"], url_path="import")
+    def import_thresholds(self, request):
+        """Import thresholds configuration from JSON."""
+        import_data = request.data
+        if not isinstance(import_data, list):
+            return Response(
+                {"error": "Expected a list of threshold objects."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        for item in import_data:
+            vital_type = item.get("vital_type")
+            if not vital_type:
+                continue
+            threshold, _ = TriageVitalThreshold.objects.get_or_create(
+                vital_type=vital_type,
+                defaults={"is_active": True},
+            )
+            threshold.critical_low = item.get("critical_low")
+            threshold.warning_low = item.get("warning_low")
+            threshold.warning_high = item.get("warning_high")
+            threshold.critical_high = item.get("critical_high")
+            threshold.is_active = item.get("is_active", True)
+            threshold.save()
+
+        thresholds = TriageVitalThreshold.objects.filter(is_active=True)
+        return Response(TriageVitalThresholdSerializer(thresholds, many=True).data)
 
 
 class TriageQueueViewSet(viewsets.ReadOnlyModelViewSet):
@@ -533,7 +627,8 @@ class TriageQueueViewSet(viewsets.ReadOnlyModelViewSet):
         queue_entry = self.get_object()
         queue_entry.mark_completed()
 
-        return Response({"status": "completed"})
+        serializer = self.get_serializer(queue_entry)
+        return Response(serializer.data)
 
     @action(detail=True, methods=["post"])
     def lwbs(self, request, pk=None):
@@ -542,7 +637,8 @@ class TriageQueueViewSet(viewsets.ReadOnlyModelViewSet):
         reason = request.data.get("reason", "")
         queue_entry.mark_lwbs(reason)
 
-        return Response({"status": "left_without_being_seen", "reason": reason})
+        serializer = self.get_serializer(queue_entry)
+        return Response(serializer.data)
 
     @extend_schema(
         request=EscalationCreateSerializer,
@@ -840,21 +936,27 @@ class WaitTimesReportView(APIView):
             ]
 
             target_time = self.KETA_TARGETS.get(category, 240)
-            met_count = sum(1 for wt in category_wait_times if wt <= target_time)
+            exceeded = [wt for wt in category_wait_times if wt > target_time]
 
             category_stats.append(
                 {
                     "category": category,
-                    "count": len(category_assessments),
+                    "target_minutes": target_time,
                     "avg_wait_minutes": round(
                         sum(category_wait_times) / len(category_wait_times), 1
                     )
                     if category_wait_times
                     else 0,
-                    "target_minutes": target_time,
-                    "target_met_percentage": round(met_count / len(category_wait_times) * 100, 1)
+                    "median_wait_minutes": round(statistics.median(category_wait_times), 1)
                     if category_wait_times
-                    else 100,
+                    else 0,
+                    "exceeded_count": len(exceeded),
+                    "exceeded_percentage": round(
+                        (len(exceeded) / len(category_wait_times)) * 100, 1
+                    )
+                    if category_wait_times
+                    else 0,
+                    "total_count": len(category_assessments),
                 }
             )
 
@@ -894,6 +996,75 @@ class WaitTimesReportView(APIView):
         )
 
 
+class ReportExportView(APIView):
+    """
+    Export triage report data as CSV.
+
+    Supports exporting wait-time and volume reports for a given date range.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(name="format", type=str, location=OpenApiParameter.QUERY, description="Export format: csv"),
+            OpenApiParameter(name="date_range", type=str, location=OpenApiParameter.QUERY, description="Date range: today, week, month"),
+        ],
+        responses={200: OpenApiTypes.BINARY},
+    )
+    def get(self, request):
+        """Export triage report as CSV."""
+        import csv
+        import io
+
+        from django.http import HttpResponse
+        from django.utils import timezone
+
+        export_format = request.query_params.get("format", "csv")
+        date_range = request.query_params.get("date_range", "today")
+
+        if date_range == "today":
+            start_date = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        elif date_range == "week":
+            start_date = timezone.now() - timezone.timedelta(days=7)
+        elif date_range == "month":
+            start_date = timezone.now() - timezone.timedelta(days=30)
+        else:
+            start_date = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+        assessments = TriageAssessment.objects.filter(
+            arrival_time__gte=start_date
+        ).select_related("encounter__patient", "triaged_by").order_by("-arrival_time")
+
+        # Build CSV
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "MRN", "Patient Name", "Category", "Chief Complaint",
+            "Assigned Area", "Arrival Time", "Triage Start",
+            "Triage End", "Wait (min)", "Triaged By",
+        ])
+
+        for a in assessments:
+            patient = a.encounter.patient
+            writer.writerow([
+                patient.mrn,
+                f"{patient.first_name} {patient.last_name}",
+                a.triage_category,
+                a.chief_complaint[:50],
+                a.get_assigned_area_display() if a.assigned_area else (a.assigned_clinic.name if a.assigned_clinic else ""),
+                a.arrival_time.strftime("%Y-%m-%d %H:%M"),
+                a.triage_start_time.strftime("%Y-%m-%d %H:%M") if a.triage_start_time else "",
+                a.triage_end_time.strftime("%Y-%m-%d %H:%M") if a.triage_end_time else "",
+                a.get_wait_time_minutes(),
+                a.triaged_by.get_full_name() if a.triaged_by else "",
+            ])
+
+        response = HttpResponse(output.getvalue(), content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="triage-report-{date_range}.csv"'
+        return response
+
+
 class VolumeReportView(APIView):
     """
     Report endpoint for volume by category.
@@ -912,22 +1083,44 @@ class VolumeReportView(APIView):
         today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
         assessments = TriageAssessment.objects.filter(arrival_time__gte=today_start)
+        total = assessments.count()
 
-        # Count by category
-        volume_by_category = (
-            assessments.values("triage_category").annotate(count=Count("id")).order_by("-count")
+        # Count by category — reshape keys to match frontend schema
+        by_category_qs = (
+            assessments.values("triage_category")
+            .annotate(count=Count("id"))
+            .order_by("-count")
         )
+        by_category = [
+            {
+                "category": item["triage_category"],
+                "count": item["count"],
+                "percentage": round(item["count"] / total * 100, 1) if total else 0,
+            }
+            for item in by_category_qs
+        ]
 
-        # Count by area
-        volume_by_area = (
-            assessments.values("assigned_area").annotate(count=Count("id")).order_by("-count")
+        # Count by area — reshape keys to match frontend schema
+        area_labels = dict(TriageAssessment.ASSIGNED_AREA_CHOICES)
+        by_area_qs = (
+            assessments.values("assigned_area")
+            .annotate(count=Count("id"))
+            .order_by("-count")
         )
+        by_area = [
+            {
+                "area": item["assigned_area"],
+                "area_label": area_labels.get(item["assigned_area"], item["assigned_area"] or "Not assigned"),
+                "count": item["count"],
+            }
+            for item in by_area_qs
+        ]
 
         return Response(
             {
-                "total": assessments.count(),
-                "by_category": list(volume_by_category),
-                "by_area": list(volume_by_area),
+                "total": total,
+                "by_category": by_category,
+                "by_area": by_area,
             }
         )
 
