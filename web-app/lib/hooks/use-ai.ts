@@ -20,6 +20,8 @@ import type {
   AIChatSessionDetailResponse,
   AIConditionPredictRequest,
   AIConditionPredictResponse,
+  AIICUPredictRequest,
+  AIICUPredictResponse,
   AIFeedbackRequest,
   AIFeedbackResponse,
   AIFeedbackStats,
@@ -216,6 +218,38 @@ export function useDeleteAIChatSession() {
 export function useAIConditionPredict() {
   return useMutation<AIConditionPredictResponse, Error, AIConditionPredictRequest>({
     mutationFn: (data) => aiApi.predictCondition(data),
+    retry: false,
+  });
+}
+
+// =============================================================================
+// Phase 4 Hooks — ICU Predictor
+// =============================================================================
+
+/**
+ * Hook for AI-powered ICU risk prediction for admitted patients.
+ *
+ * Sends patient clinical data (vitals, labs, clinical context) to the
+ * backend AI proxy for SOFA/qSOFA scoring and ICU risk assessment.
+ *
+ * Supports two prediction types:
+ * - "predict": ICU admission risk with SOFA/qSOFA scores (default)
+ * - "risk-stratify": Sepsis/AKI/deterioration composite risk scores
+ *
+ * Advisory only — clinician must review and confirm.
+ *
+ * @example
+ * ```tsx
+ * const { mutate, data, isPending } = useAIICUPredict();
+ * mutate({
+ *   patient_data: { age: 65, gender: 'M', spo2: 90, heart_rate: 115, wbc: 18.5, ... },
+ *   prediction_type: 'predict',
+ * });
+ * ```
+ */
+export function useAIICUPredict() {
+  return useMutation<AIICUPredictResponse, Error, AIICUPredictRequest>({
+    mutationFn: (data) => aiApi.predictICU(data),
     retry: false,
   });
 }

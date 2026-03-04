@@ -14,6 +14,7 @@ from .views import (
     ClinicalChatView,
     ConditionPredictView,
     ICD10SuggestView,
+    ICUPredictView,
 )
 
 app_name = "ai"
@@ -44,4 +45,10 @@ urlpatterns = [
     # Phase 3 — Feedback
     path("feedback/", AIFeedbackView.as_view(), name="feedback"),
     path("feedback/stats/", AIFeedbackStatsView.as_view(), name="feedback-stats"),
+    # Phase 4 — ICU Predictor
+    path(
+        "predict/icu/",
+        ICUPredictView.as_view(),
+        name="predict-icu",
+    ),
 ]

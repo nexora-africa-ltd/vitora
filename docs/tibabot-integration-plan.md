@@ -324,8 +324,9 @@ When the clinician is on an encounter page (`/encounters/[id]` or `/encounters/[
 
 ### 4. ICU Predictor in Inpatient + CDS `ml_model` Rule Type
 
+**Status**: ✅ **Complete** (March 5, 2026)
 **Priority**: High clinical value, medium-high risk  
-**Where**: Inpatient ward views. Also accessible via widget slash command: `/icu-risk`  
+**Where**: Inpatient admission detail view (overview tab). Also accessible via widget slash command: `/icu-risk`  
 **TibaBot endpoints**: `POST /predict/icu/predict`, `POST /predict/icu/risk-stratify`
 
 **What**: For admitted patients, run sepsis/AKI early warning predictions. Display SOFA and qSOFA scores, critical alerts, and escalation recommendations.
@@ -339,15 +340,27 @@ When the clinician is on an encounter page (`/encounters/[id]` or `/encounters/[
   "type": "ml_model",
   "model_name": "sepsis_risk_v2",
   "threshold": 0.75,
-  "input_features": ["temperature", "pulse", "respiratory_rate", "spo2", "wbc"]
+  "input_features": ["temperature", "pulse", "respiratory_rate", "spo2", "wbc"],
+  "score_field": "sepsis_probability"
 }
 ```
 
-**Files to create/modify:**
-- Backend: `hmis/apps/ai/views.py` — `ICUPredictView`
-- Backend: `hmis/apps/cds/engine.py` — new `ml_model` evaluator type
-- Frontend: `lib/api/ai.ts` — `aiApi.predictICU()`
-- Frontend: Inpatient ward view — "AI Risk" column/panel
+**Files created/modified:**
+- Backend: `hmis/apps/ai/serializers.py` — `ICUPredictRequestSerializer`, `ICUPredictPatientDataSerializer`, `ICUPredictResponseSerializer`, `SOFAScoreBreakdownSerializer`, `ICUCriticalAlertSerializer`, `ICUEscalationSerializer` ✅
+- Backend: `hmis/apps/ai/views.py` — `ICUPredictView` (auth, PII sanitization, context enrichment, audit logging, graceful degradation) ✅
+- Backend: `hmis/apps/ai/client.py` — `TibaBotClient.predict_icu()`, `TibaBotClient.predict_icu_risk_stratify()` ✅
+- Backend: `hmis/apps/ai/urls.py` — `predict/icu/` route ✅
+- Backend: `hmis/apps/cds/engine.py` — new `_evaluate_ml_model()` evaluator type registered in `_EVALUATORS` dict ✅
+- Backend: `hmis/apps/inpatient/serializers.py` — `AdmissionSerializer` now includes `patient_age` and `patient_gender` computed fields ✅
+- Backend: `tests/test_ai_icu_predict.py` — 25 tests covering feature gating, auth, validation, response structure, SOFA/qSOFA, risk-stratify, graceful degradation, audit logging, PII sanitization ✅
+- Backend: `tests/test_cds_ml_model.py` — 11 tests covering ml_model evaluator: threshold triggers, missing predictions, custom score_field, metadata details, message rendering ✅
+- Frontend: `lib/types/ai.ts` — `AIICUPredictPatientData`, `AIICUPredictRequest`, `AIICUPredictResponse`, `AISOFAScoreBreakdown`, `AIICUCriticalAlert`, `AIICUEscalation`, `AIICUPredictionType` ✅
+- Frontend: `lib/schemas/ai.schema.ts` — `AIICUPredictResponseSchema`, `AISOFAScoreBreakdownSchema`, `AIICUCriticalAlertSchema`, `AIICUEscalationSchema` ✅
+- Frontend: `lib/api/ai.ts` — `aiApi.predictICU()` with Zod-validated response ✅
+- Frontend: `lib/hooks/use-ai.ts` — `useAIICUPredict()` React Query mutation hook ✅
+- Frontend: `components/inpatient/icu-risk-assessment-panel.tsx` — ICU Risk Assessment panel with risk level banner, SOFA breakdown chart, qSOFA criteria, critical alerts, escalation banner, risk probability bars, recommendations, re-run/retry, advisory disclaimer ✅
+- Frontend: `components/inpatient/index.ts` — exports `ICURiskAssessmentPanel` + props type ✅
+- Frontend: `app/(dashboard)/admissions/[id]/page.tsx` — wired `<ICURiskAssessmentPanel>` in overview tab for active admissions ✅
 
 ### 5. Symptom Checker (Patient Portal — Future)
 

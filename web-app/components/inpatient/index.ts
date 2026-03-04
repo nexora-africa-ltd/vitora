@@ -6,3 +6,5 @@ export type { BedWithCompatibility, BedCompatibilityStatus } from './bed-selecti
 export { AdmissionOrdersTab } from './admission-orders-tab';
 export { SupervisorAlertsPanel } from './supervisor-alerts-panel';
 export { ConstraintOverrideMetrics } from './constraint-override-metrics';
+export { ICURiskAssessmentPanel } from './icu-risk-assessment-panel';
+export type { ICURiskAssessmentPanelProps } from './icu-risk-assessment-panel';

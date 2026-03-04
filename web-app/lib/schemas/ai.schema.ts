@@ -106,6 +106,52 @@ export const AIConditionPredictResponseSchema = z.object({
 });
 
 // =============================================================================
+// Phase 4 — ICU Predictor
+// =============================================================================
+
+/** Schema for SOFA score component breakdown */
+export const AISOFAScoreBreakdownSchema = z.object({
+  respiratory: z.number().min(0).max(4).nullable().optional(),
+  coagulation: z.number().min(0).max(4).nullable().optional(),
+  liver: z.number().min(0).max(4).nullable().optional(),
+  cardiovascular: z.number().min(0).max(4).nullable().optional(),
+  neurological: z.number().min(0).max(4).nullable().optional(),
+  renal: z.number().min(0).max(4).nullable().optional(),
+});
+
+/** Schema for a critical alert from ICU prediction */
+export const AIICUCriticalAlertSchema = z.object({
+  alert_type: z.string(),
+  severity: z.enum(['warning', 'critical']),
+  message: z.string(),
+  recommendation: z.string().optional(),
+});
+
+/** Schema for escalation recommendation */
+export const AIICUEscalationSchema = z.object({
+  recommended: z.boolean(),
+  urgency: z.enum(['routine', 'urgent', 'immediate']).optional(),
+  reasoning: z.string().optional(),
+});
+
+/** Schema for POST /api/ai/predict/icu/ response */
+export const AIICUPredictResponseSchema = z.object({
+  risk_level: z.enum(['low', 'moderate', 'high', 'critical']),
+  risk_score: z.number().min(0).max(1),
+  sofa_score: z.number().min(0).max(24).nullable().optional(),
+  sofa_breakdown: AISOFAScoreBreakdownSchema.nullable().optional(),
+  qsofa_score: z.number().min(0).max(3).nullable().optional(),
+  qsofa_criteria: z.array(z.string()).optional(),
+  critical_alerts: z.array(AIICUCriticalAlertSchema).optional(),
+  escalation: AIICUEscalationSchema.nullable().optional(),
+  recommendations: z.array(z.string()).optional(),
+  sepsis_probability: z.number().min(0).max(1).nullable().optional(),
+  aki_probability: z.number().min(0).max(1).nullable().optional(),
+  deterioration_probability: z.number().min(0).max(1).nullable().optional(),
+  error: z.string().nullable().optional(),
+});
+
+// =============================================================================
 // Phase 3 — Feedback
 // =============================================================================
 
