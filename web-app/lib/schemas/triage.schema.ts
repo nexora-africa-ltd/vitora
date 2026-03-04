@@ -154,8 +154,8 @@ export const TriageAssessmentSchema = z.object({
   diastolic_bp: z.number().optional().nullable(),
   temperature: z.number().optional().nullable(),
   respiratory_rate: z.number().optional().nullable(),
-  weight: z.number().optional().nullable(),
-  height: z.number().optional().nullable(),
+  weight: z.union([z.coerce.number(), z.null()]).optional().nullable(),
+  height: z.union([z.coerce.number(), z.null()]).optional().nullable(),
   referring_facility_name: z.string().optional().default(''),
   vitals: z.record(z.unknown()).optional(),
 
