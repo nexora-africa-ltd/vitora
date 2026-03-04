@@ -245,10 +245,78 @@ export default function TriageQueuePage() {
           title="Consultation Queue Relocated"
           description="Patients awaiting consultation after triage are now managed on the Encounters page."
           variant="info"
+          persistKey="triage-consultation-queue-relocated"
           action={{
             label: 'Go to Encounters',
             onClick: () => router.push('/encounters'),
           }}
+        />
+
+        {/* KPI Stats Cards — visible on all tabs */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <KPICard
+            id="waiting-triage"
+            title="In Queue"
+            value={waitingCount}
+            description="Awaiting triage"
+            variant={waitingCount > 5 ? 'warning' : 'default'}
+          />
+          <KPICard
+            id="current-wait"
+            title="Current Wait"
+            value={waitTimeStats?.current_queue?.avg_wait_minutes ?? 0}
+            unit="min"
+            description="Avg queue wait now"
+            variant={
+              (waitTimeStats?.current_queue?.avg_wait_minutes ?? 0) > 30
+                ? 'destructive'
+                : (waitTimeStats?.current_queue?.avg_wait_minutes ?? 0) > 15
+                  ? 'warning'
+                  : 'default'
+            }
+            valueClassName={
+              (waitTimeStats?.current_queue?.avg_wait_minutes ?? 0) > 30
+                ? 'text-destructive'
+                : (waitTimeStats?.current_queue?.avg_wait_minutes ?? 0) > 15
+                  ? 'text-warning'
+                  : undefined
+            }
+          />
+          <KPICard
+            id="completion-time"
+            title="Avg Completion"
+            value={waitTimeStats?.completion_time?.avg_minutes ?? 0}
+            unit="min"
+            description={
+              <span className="flex items-center gap-1.5 flex-wrap">
+                <span>Arrival → done</span>
+                {(waitTimeStats?.completion_time?.count ?? 0) > 0 && (
+                  <span className="text-muted-foreground">
+                    ({waitTimeStats?.completion_time?.count} today)
+                  </span>
+                )}
+              </span>
+            }
+          />
+          <KPICard
+            id="target-met"
+            title="Target Met"
+            value={waitTimeStats?.target_met_percentage ?? 100}
+            unit="%"
+            trend={targetMetTrend.direction}
+            change={Math.abs(targetMetTrend.change)}
+            changeType={targetMetTrend.direction === 'up' ? 'increase' : 'decrease'}
+            variant={(waitTimeStats?.target_met_percentage ?? 100) >= 85 ? 'success' : 'warning'}
+            description="KETA compliance"
+          />
+        </div>
+
+        {/* Operational Stats — second row */}
+        <TriageDashboardStats
+          waitTimeStats={waitTimeStats}
+          volumeData={volumeData}
+          breachSummary={breachSummary}
+          isLoading={isStatsLoading || isVolumeLoading}
         />
 
         {/* Tabs: Queue and History */}
@@ -279,73 +347,6 @@ export default function TriageQueuePage() {
               QUEUE TAB
               ================================================================ */}
           <TabsContent value="queue" className="space-y-4 sm:space-y-6 mt-0">
-            {/* KPI Stats Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <KPICard
-                id="waiting-triage"
-                title="In Queue"
-                value={waitingCount}
-                description="Awaiting triage"
-                variant={waitingCount > 5 ? 'warning' : 'default'}
-              />
-              <KPICard
-                id="current-wait"
-                title="Current Wait"
-                value={waitTimeStats?.current_queue?.avg_wait_minutes ?? 0}
-                unit="min"
-                description="Avg queue wait now"
-                variant={
-                  (waitTimeStats?.current_queue?.avg_wait_minutes ?? 0) > 30
-                    ? 'destructive'
-                    : (waitTimeStats?.current_queue?.avg_wait_minutes ?? 0) > 15
-                      ? 'warning'
-                      : 'default'
-                }
-                valueClassName={
-                  (waitTimeStats?.current_queue?.avg_wait_minutes ?? 0) > 30
-                    ? 'text-destructive'
-                    : (waitTimeStats?.current_queue?.avg_wait_minutes ?? 0) > 15
-                      ? 'text-warning'
-                      : undefined
-                }
-              />
-              <KPICard
-                id="completion-time"
-                title="Avg Completion"
-                value={waitTimeStats?.completion_time?.avg_minutes ?? 0}
-                unit="min"
-                description={
-                  <span className="flex items-center gap-1.5 flex-wrap">
-                    <span>Arrival → done</span>
-                    {(waitTimeStats?.completion_time?.count ?? 0) > 0 && (
-                      <span className="text-muted-foreground">
-                        ({waitTimeStats?.completion_time?.count} today)
-                      </span>
-                    )}
-                  </span>
-                }
-              />
-              <KPICard
-                id="target-met"
-                title="Target Met"
-                value={waitTimeStats?.target_met_percentage ?? 100}
-                unit="%"
-                trend={targetMetTrend.direction}
-                change={Math.abs(targetMetTrend.change)}
-                changeType={targetMetTrend.direction === 'up' ? 'increase' : 'decrease'}
-                variant={(waitTimeStats?.target_met_percentage ?? 100) >= 85 ? 'success' : 'warning'}
-                description="KETA compliance"
-              />
-            </div>
-
-            {/* Operational Stats — second row */}
-            <TriageDashboardStats
-              waitTimeStats={waitTimeStats}
-              volumeData={volumeData}
-              breachSummary={breachSummary}
-              isLoading={isStatsLoading || isVolumeLoading}
-            />
-
             {/* Patients Awaiting Triage */}
             <Card>
               <CardHeader className="px-4 sm:px-6 pb-3">
