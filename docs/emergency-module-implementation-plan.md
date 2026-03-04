@@ -255,7 +255,7 @@ export const ROUTE_TO_ZONE: Record<string, AssignedArea> = {
 - [ ] Drag-and-drop patient assignment (stretch)
 
 **Backend Requirements**:
-- [ ] New model: `ERBed` (or reuse inpatient `Bed` model)
+- [ ] New model: `ERBed` (or reuse inpatient `Bed` model, but it is preferred to keep a separate model)
 - [ ] Fields: `zone`, `bed_number`, `status`, `current_patient`
 
 **Wireframe**:

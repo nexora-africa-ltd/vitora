@@ -400,7 +400,7 @@ export function useTriageQueue(filters: QueueFilters = {}) {
     queryKey: triageKeys.queueFiltered(filters),
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (filters.area) params.append('assigned_area', filters.area);
+      if (filters.area) params.append('area', filters.area);
       if (filters.category) params.append('triage_category', filters.category);
       if (filters.status) params.append('status', filters.status);
 
