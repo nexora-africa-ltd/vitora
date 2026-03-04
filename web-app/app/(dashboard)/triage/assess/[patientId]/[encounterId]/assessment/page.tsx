@@ -129,7 +129,7 @@ export default function TriageAssessmentPage() {
   const encounterId = params.encounterId as string;
 
   // Get triage store data
-  const { getVitals, getAssessment, setAssessment } = useTriageAssessStore();
+  const { getVitals, getAssessment, setAssessment, markSectionComplete } = useTriageAssessStore();
   const currentVitals = getVitals(parseInt(encounterId, 10));
   const currentAssessment = getAssessment(parseInt(encounterId, 10));
 
@@ -286,10 +286,13 @@ export default function TriageAssessmentPage() {
         category_override_reason: data.category_override_reason,
       });
 
+      // Mark assessment section as complete
+      markSectionComplete(parseInt(encounterId, 10), 'assessment');
+
       // Navigate to next tab
       router.push(`/triage/assess/${patientId}/${encounterId}/route`);
     },
-    [router, patientId, encounterId, setAssessment, isOverridden]
+    [router, patientId, encounterId, setAssessment, isOverridden, markSectionComplete]
   );
 
   const handleBack = useCallback(() => {

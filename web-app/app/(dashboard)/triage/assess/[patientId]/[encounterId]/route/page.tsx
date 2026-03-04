@@ -101,6 +101,7 @@ export default function TriageRoutePage() {
     getAssessment,
     getRouting,
     setRouting,
+    markSectionComplete,
     clearSession,
   } = useTriageAssessStore();
 
@@ -210,6 +211,9 @@ export default function TriageRoutePage() {
 
         // Complete the assessment (sets triage_end_time, status = COMPLETED)
         await completeAssessment(assessment.id);
+
+        // Mark route section as complete before clearing session
+        markSectionComplete(parseInt(encounterId, 10), 'route');
 
         // Clear triage session
         clearSession(parseInt(encounterId, 10));

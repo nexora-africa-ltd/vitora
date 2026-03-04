@@ -19,9 +19,11 @@ import {
   History,
   ClipboardCheck,
   ArrowRightCircle,
+  Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useEncounterContext } from '@/lib/context/encounter-context';
+import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
 import { Badge } from '@/components/ui/badge';
 
 // =============================================================================
@@ -35,6 +37,7 @@ interface TabConfig {
   icon: React.ReactNode;
   path: string;
   description: string;
+  sectionKey?: 'vitals' | 'history' | 'assessment' | 'route';
 }
 
 const TABS: TabConfig[] = [
@@ -45,6 +48,7 @@ const TABS: TabConfig[] = [
     icon: <Activity className="h-4 w-4" />,
     path: '/vitals',
     description: 'Record vital signs',
+    sectionKey: 'vitals',
   },
   {
     id: 'history',
@@ -53,6 +57,7 @@ const TABS: TabConfig[] = [
     icon: <History className="h-4 w-4" />,
     path: '/history',
     description: 'Review patient history',
+    sectionKey: 'history',
   },
   {
     id: 'assessment',
@@ -61,6 +66,7 @@ const TABS: TabConfig[] = [
     icon: <ClipboardCheck className="h-4 w-4" />,
     path: '/assessment',
     description: 'Triage category assessment',
+    sectionKey: 'assessment',
   },
   {
     id: 'route',
@@ -69,6 +75,7 @@ const TABS: TabConfig[] = [
     icon: <ArrowRightCircle className="h-4 w-4" />,
     path: '/route',
     description: 'Route to clinic or area',
+    sectionKey: 'route',
   },
 ];
 
@@ -80,9 +87,12 @@ export function TriageAssessTabs() {
   const params = useParams();
   const pathname = usePathname();
   const { triageStatus } = useEncounterContext();
+  const { getSectionCompletion } = useTriageAssessStore();
 
   const patientId = params.patientId as string;
   const encounterId = params.encounterId as string;
+
+  const completion = getSectionCompletion(parseInt(encounterId, 10));
 
   // Base path for tab links
   const basePath = `/triage/assess/${patientId}/${encounterId}`;
@@ -112,6 +122,7 @@ export function TriageAssessTabs() {
         {TABS.map((tab, index) => {
           const isActive = activeTab === tab.id;
           const href = tab.id === 'vitals' ? basePath : `${basePath}${tab.path}`;
+          const isComplete = tab.sectionKey && completion?.[tab.sectionKey];
 
           return (
             <Link
@@ -127,20 +138,24 @@ export function TriageAssessTabs() {
               )}
               aria-current={isActive ? 'page' : undefined}
             >
-              {/* Step number for workflow visualization */}
+              {/* Step number — green tick when complete */}
               <span
                 className={cn(
                   'hidden sm:flex items-center justify-center w-5 h-5 rounded-full text-xs',
                   isActive
                     ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground'
+                    : isComplete
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                      : 'bg-muted text-muted-foreground'
                 )}
               >
-                {index + 1}
+                {isComplete ? <Check className="h-3 w-3" /> : index + 1}
               </span>
 
-              {/* Icon */}
-              <span className={cn(isActive ? 'text-primary' : 'text-muted-foreground')}>
+              {/* Icon — green when complete */}
+              <span className={cn(
+                isActive ? 'text-primary' : isComplete ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
+              )}>
                 {tab.icon}
               </span>
 

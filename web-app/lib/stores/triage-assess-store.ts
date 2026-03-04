@@ -65,6 +65,12 @@ export interface TriageAssessSession {
   routing: TriageRouting;
   startedAt: Date;
   lastUpdatedAt: Date;
+  completedSections: {
+    vitals: boolean;
+    history: boolean;
+    assessment: boolean;
+    route: boolean;
+  };
 }
 
 interface TriageAssessState {
@@ -96,6 +102,10 @@ interface TriageAssessState {
   setRouting: (encounterId: number, routing: TriageRouting) => void;
   getRouting: (encounterId: number) => TriageRouting | null;
 
+  // Actions - Section Completion
+  markSectionComplete: (encounterId: number, section: keyof TriageAssessSession['completedSections']) => void;
+  getSectionCompletion: (encounterId: number) => TriageAssessSession['completedSections'] | null;
+
   // Actions - Complete Assessment
   getCompleteAssessment: (encounterId: number) => TriageAssessSession | null;
 }
@@ -123,6 +133,12 @@ export const useTriageAssessStore = create<TriageAssessState>()((set, get) => ({
           routing: {},
           startedAt: now,
           lastUpdatedAt: now,
+          completedSections: {
+            vitals: false,
+            history: false,
+            assessment: false,
+            route: false,
+          },
         },
       },
       activeEncounterId: encounterId,
@@ -166,6 +182,12 @@ export const useTriageAssessStore = create<TriageAssessState>()((set, get) => ({
               routing: {},
               startedAt: new Date(),
               lastUpdatedAt: new Date(),
+              completedSections: {
+                vitals: false,
+                history: false,
+                assessment: false,
+                route: false,
+              },
             },
           },
         };
@@ -255,6 +277,32 @@ export const useTriageAssessStore = create<TriageAssessState>()((set, get) => ({
   getRouting: (encounterId) => {
     const session = get().sessions[encounterId];
     return session?.routing || null;
+  },
+
+  // Section Completion
+  markSectionComplete: (encounterId, section) => {
+    set((state) => {
+      const session = state.sessions[encounterId];
+      if (!session) return state;
+      return {
+        sessions: {
+          ...state.sessions,
+          [encounterId]: {
+            ...session,
+            completedSections: {
+              ...session.completedSections,
+              [section]: true,
+            },
+            lastUpdatedAt: new Date(),
+          },
+        },
+      };
+    });
+  },
+
+  getSectionCompletion: (encounterId) => {
+    const session = get().sessions[encounterId];
+    return session?.completedSections || null;
   },
 
   // Complete Assessment

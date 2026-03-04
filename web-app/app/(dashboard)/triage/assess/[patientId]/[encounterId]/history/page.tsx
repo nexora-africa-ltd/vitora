@@ -21,6 +21,7 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { ClinicalSnapshotBanner } from '@/components/encounters/clinical-snapshot-banner';
 import { usePatientContext } from '@/lib/context/patient-context';
 import { usePatientEncounters } from '@/lib/hooks/use-patients';
+import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
 import { formatDate } from '@/lib/utils/format';
 import type { PatientEncounter } from '@/lib/types/patient';
 
@@ -66,6 +67,8 @@ export default function TriageHistoryPage() {
   const patientId = params.patientId as string;
   const encounterId = params.encounterId as string;
 
+  const { markSectionComplete } = useTriageAssessStore();
+
   // Fetch patient's past encounters
   const { data: encountersData, isLoading: isEncountersLoading } = usePatientEncounters(
     parseInt(patientId, 10)
@@ -77,8 +80,10 @@ export default function TriageHistoryPage() {
     .slice(0, 5);
 
   const handleContinue = useCallback(() => {
+    // History is read-only in triage — mark as reviewed when user proceeds
+    markSectionComplete(parseInt(encounterId, 10), 'history');
     router.push(`/triage/assess/${patientId}/${encounterId}/assessment`);
-  }, [router, patientId, encounterId]);
+  }, [router, patientId, encounterId, markSectionComplete]);
 
   const handleBack = useCallback(() => {
     router.push(`/triage/assess/${patientId}/${encounterId}/vitals`);

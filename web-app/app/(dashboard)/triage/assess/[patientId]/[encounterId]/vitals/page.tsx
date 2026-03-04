@@ -142,7 +142,7 @@ export default function TriageVitalsPage() {
   const encounterId = params.encounterId as string;
 
   // Get triage store for persisting vitals across tabs
-  const { setVitals, getVitals } = useTriageAssessStore();
+  const { setVitals, getVitals, markSectionComplete } = useTriageAssessStore();
   const currentVitals = getVitals(parseInt(encounterId, 10));
 
   const [alerts, setAlerts] = useState<TriageAlert[]>([]);
@@ -259,10 +259,13 @@ export default function TriageVitalsPage() {
         height: data.height ?? undefined,
       });
 
+      // Mark vitals section as complete
+      markSectionComplete(parseInt(encounterId, 10), 'vitals');
+
       // Navigate to next tab
       router.push(`/triage/assess/${patientId}/${encounterId}/history`);
     },
-    [router, patientId, encounterId, setVitals]
+    [router, patientId, encounterId, setVitals, markSectionComplete]
   );
 
   // Parse number input helper

@@ -401,6 +401,9 @@ export interface TriageVitalThreshold {
 
 export type AlertSeverity = 'CRITICAL' | 'WARNING';
 
+/** Where the alert originated from. */
+export type AlertSource = 'vitals' | 'cds' | 'ai';
+
 export interface TriageAlert {
   id: string;
   severity: AlertSeverity;
@@ -410,6 +413,8 @@ export interface TriageAlert {
   threshold: number | null;
   clinical_note?: string | null;
   actions?: string[] | null;
+  /** Origin of the alert – defaults to 'vitals' when absent. */
+  source?: AlertSource;
 }
 
 // =============================================================================
