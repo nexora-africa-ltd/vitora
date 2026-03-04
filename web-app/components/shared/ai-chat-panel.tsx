@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils/cn';
 import { useAIChatContext } from '@/lib/context/ai-chat-context';
 import { useAIFeedback } from '@/lib/hooks/use-ai';
 import { TibaBotStatusIndicator } from './tibabot-status-indicator';
-import type { AIChatMessage, AIVerbosity, AIFeedbackDirection } from '@/lib/types/ai';
+import type { AIChatMessage, AIVerbosity, AIFeedbackDirection, AIQuickAction } from '@/lib/types/ai';
 import { AI_VERBOSITY_OPTIONS } from '@/lib/types/ai';
 
 // =============================================================================
@@ -54,6 +54,8 @@ export interface AIChatPanelProps {
   onSendMessage: (message: string) => void;
   /** Called when user clicks "Ask about this patient" */
   onAskAboutPatient?: () => void;
+  /** Called when user clicks a quick action button */
+  onQuickAction?: (action: AIQuickAction) => void;
   /** Whether a message is currently being sent/streamed */
   isSending?: boolean;
 }
@@ -204,6 +206,7 @@ export function AIChatPanel({
   onClose,
   onSendMessage,
   onAskAboutPatient,
+  onQuickAction,
   isSending = false,
 }: AIChatPanelProps) {
   const {
@@ -216,6 +219,7 @@ export function AIChatPanel({
     clearMessages,
     verbosity,
     setVerbosity,
+    quickActions,
   } = useAIChatContext();
 
   const [inputValue, setInputValue] = useState('');
@@ -396,6 +400,26 @@ export function AIChatPanel({
             <Stethoscope className="h-3.5 w-3.5" />
             Ask about this patient
           </button>
+          <Separator />
+        </>
+      )}
+
+      {/* Quick Actions (context-sensitive) */}
+      {quickActions.length > 0 && isAvailable && (
+        <>
+          <div className="flex flex-wrap gap-1.5 px-3 py-2">
+            {quickActions.map((action) => (
+              <button
+                key={action.id}
+                type="button"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border border-primary/20 text-primary bg-primary/5 hover:bg-primary/10 transition-colors disabled:opacity-50"
+                onClick={() => onQuickAction?.(action)}
+                disabled={isSending}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
           <Separator />
         </>
       )}

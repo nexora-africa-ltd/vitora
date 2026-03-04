@@ -17,9 +17,12 @@
  */
 'use client';
 
+import { useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { PatientProvider } from '@/lib/context/patient-context';
+import { PatientProvider, usePatientContext } from '@/lib/context/patient-context';
 import { EncounterProvider, useEncounterContext } from '@/lib/context/encounter-context';
+import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
+import { calculateAge } from '@/lib/utils/format';
 import { PatientShellHeader } from '@/components/layout/patient-shell-header';
 import { TriageAssessTabs } from '@/components/triage/triage-assess-tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -27,6 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import type { AIQuickAction } from '@/lib/types/ai';
 
 // =============================================================================
 // Error Component
@@ -86,11 +90,106 @@ function TriageLayoutLoading() {
 }
 
 // =============================================================================
+// Triage Quick Actions
+// =============================================================================
+
+const TRIAGE_QUICK_ACTIONS: AIQuickAction[] = [
+  {
+    id: 'triage-priority',
+    label: 'Suggest triage priority',
+    query:
+      'Based on this patient\'s current vital signs, chief complaint, and clinical presentation, what KETA triage category (RED/ORANGE/YELLOW/GREEN/BLUE) would you recommend and why?',
+    userMessage: '🚦 Requesting triage priority recommendation...',
+  },
+  {
+    id: 'triage-red-flags',
+    label: 'Red flags to watch',
+    query:
+      'What are the critical red flags and warning signs I should watch for with this patient\'s presentation? Include any vital sign trends that would require immediate escalation.',
+    userMessage: '🚩 Checking for clinical red flags...',
+  },
+  {
+    id: 'triage-ddx',
+    label: 'Differential diagnosis',
+    query:
+      'Provide a differential diagnosis for this patient\'s triage presentation. Consider the chief complaint, vital signs, age, and any risk factors. Rank by likelihood.',
+    userMessage: '🩺 Requesting differential diagnosis...',
+  },
+  {
+    id: 'triage-workup',
+    label: 'Recommended workup',
+    query:
+      'What initial investigations and workup would you recommend for this patient based on their triage presentation? Include labs, imaging, and point-of-care tests.',
+    userMessage: '🔬 Requesting recommended initial workup...',
+  },
+];
+
+// =============================================================================
 // Layout Content (wrapped in providers)
 // =============================================================================
 
 function TriageLayoutContent({ children }: { children: React.ReactNode }) {
-  const { error, isLoading } = useEncounterContext();
+  const { encounter, error, isLoading } = useEncounterContext();
+  const { patient } = usePatientContext();
+  const chatCtx = useOptionalAIChatContext();
+  const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
+  const setQuickActions = chatCtx?.setQuickActions;
+
+  // Wire encounter + patient data into the AI chat context for triage
+  useEffect(() => {
+    if (!setEncounterAwareContext) return;
+
+    if (patient && encounter) {
+      const allergies = encounter.allergies
+        ?.split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean) ?? [];
+      const comorbidities = encounter.chronic_conditions
+        ?.split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean) ?? [];
+      const currentMeds = encounter.current_medications
+        ?.split(',')
+        .map((s: string) => s.trim())
+        .filter(Boolean) ?? [];
+
+      setEncounterAwareContext(
+        {
+          patient_age: calculateAge(patient.date_of_birth),
+          patient_sex: patient.gender,
+          allergies,
+          comorbidities,
+          current_medications: currentMeds,
+        },
+        {
+          chief_complaint: encounter.chief_complaint ?? undefined,
+          vitals: {
+            spo2: encounter.spo2 != null ? Number(encounter.spo2) : undefined,
+            pulse: encounter.pulse ?? undefined,
+            temperature:
+              encounter.temperature != null
+                ? Number(encounter.temperature)
+                : undefined,
+            rr: encounter.respiratory_rate ?? undefined,
+            bp: encounter.blood_pressure ?? undefined,
+          },
+        }
+      );
+    }
+
+    return () => {
+      setEncounterAwareContext(null, null);
+    };
+  }, [patient, encounter, setEncounterAwareContext]);
+
+  // Register triage-specific quick actions
+  useEffect(() => {
+    if (!setQuickActions) return;
+    setQuickActions(TRIAGE_QUICK_ACTIONS);
+    return () => {
+      setQuickActions([]);
+    };
+  }, [setQuickActions]);
 
   if (isLoading) {
     return <TriageLayoutLoading />;

@@ -18,6 +18,8 @@ import type {
   AIClinicalAssistResponse,
   AIChatSessionListResponse,
   AIChatSessionDetailResponse,
+  AIConditionPredictRequest,
+  AIConditionPredictResponse,
   AIFeedbackRequest,
   AIFeedbackResponse,
   AIFeedbackStats,
@@ -187,6 +189,34 @@ export function useDeleteAIChatSession() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: aiKeys.sessions() });
     },
+  });
+}
+
+// =============================================================================
+// Phase 3 Hooks — Condition Predictor
+// =============================================================================
+
+/**
+ * Hook for AI-powered condition prediction during triage.
+ *
+ * Sends patient features (age, gender, vitals, chief complaint) to the
+ * backend AI proxy for ML-based risk assessment. Returns predicted
+ * conditions with confidence scores, risk factors, and recommendations.
+ *
+ * Advisory only — clinician must review and confirm.
+ *
+ * @example
+ * ```tsx
+ * const { mutate, data, isPending } = useAIConditionPredict();
+ * mutate({
+ *   patient_features: { age: 45, gender: 'M', spo2: 92, heart_rate: 110, ... }
+ * });
+ * ```
+ */
+export function useAIConditionPredict() {
+  return useMutation<AIConditionPredictResponse, Error, AIConditionPredictRequest>({
+    mutationFn: (data) => aiApi.predictCondition(data),
+    retry: false,
   });
 }
 

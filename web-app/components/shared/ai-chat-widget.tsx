@@ -24,7 +24,7 @@ import { usePermissions } from '@/lib/hooks/use-permissions';
 import { TibaBotStatusIndicator, TibaBotStatusStyles } from './tibabot-status-indicator';
 import { AIChatPanel } from './ai-chat-panel';
 import { useAIClinicalChat, useAIClinicalAssist } from '@/lib/hooks/use-ai';
-import type { AIChatMessage } from '@/lib/types/ai';
+import type { AIChatMessage, AIQuickAction } from '@/lib/types/ai';
 
 // =============================================================================
 // Component
@@ -114,7 +114,7 @@ export function AIChatWidget() {
         );
       }
     },
-    [activeSessionId, addMessage, updateStreamingMessage, chatMutation, setActiveSessionId, patientContext, encounterContext, pageContext]
+    [activeSessionId, addMessage, updateStreamingMessage, chatMutation, setActiveSessionId, patientContext, encounterContext, pageContext, verbosity]
   );
 
   // Handle "Ask about this patient"
@@ -153,7 +153,45 @@ export function AIChatWidget() {
         true,
       );
     }
-  }, [addMessage, updateStreamingMessage, assistMutation, patientContext, encounterContext, verbosity]);
+  }, [addMessage, updateStreamingMessage, assistMutation, patientContext, encounterContext, pageContext, verbosity]);
+
+  // Handle quick action click
+  const handleQuickAction = useCallback(async (action: AIQuickAction) => {
+    const userMsg: AIChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: action.userMessage || action.label,
+      timestamp: new Date().toISOString(),
+    };
+    addMessage(userMsg);
+
+    const assistantMsgId = `assistant-${Date.now()}`;
+    addMessage({
+      id: assistantMsgId,
+      role: 'assistant',
+      content: '',
+      timestamp: new Date().toISOString(),
+      isStreaming: true,
+    });
+
+    try {
+      const response = await assistMutation.mutateAsync({
+        query: action.query,
+        patient_context: patientContext ?? undefined,
+        encounter_context: encounterContext ?? undefined,
+        page_context: pageContext ?? undefined,
+        verbosity,
+      });
+
+      updateStreamingMessage(assistantMsgId, response.response, true);
+    } catch {
+      updateStreamingMessage(
+        assistantMsgId,
+        'Sorry, I couldn\'t process that request. Please try again.',
+        true,
+      );
+    }
+  }, [addMessage, updateStreamingMessage, assistMutation, patientContext, encounterContext, pageContext, verbosity]);
 
   // Open full view — store current URL so user can pop back to widget later
   const handleOpenFullView = useCallback(() => {
@@ -203,6 +241,7 @@ export function AIChatWidget() {
               onOpenFullView={handleOpenFullView}
               onSendMessage={handleSendMessage}
               onAskAboutPatient={handleAskAboutPatient}
+              onQuickAction={handleQuickAction}
               isSending={chatMutation.isPending || assistMutation.isPending}
             />
           </div>

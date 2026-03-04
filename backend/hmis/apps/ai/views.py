@@ -42,6 +42,8 @@ from .serializers import (
     AIStatusResponseSerializer,
     ClinicalAssistRequestSerializer,
     ClinicalChatRequestSerializer,
+    ConditionPredictRequestSerializer,
+    ConditionPredictResponseSerializer,
     ICD10SuggestRequestSerializer,
     ICD10SuggestResponseSerializer,
 )
@@ -608,6 +610,129 @@ class ClinicalChatSessionDetailView(AIFeatureGatedMixin, APIView):
             return ChatSession.objects.get(id=session_id, user=user)
         except (ChatSession.DoesNotExist, ValueError):
             return None
+
+
+# =============================================================================
+# Phase 3 — Condition Predictor
+# =============================================================================
+
+
+class ConditionPredictView(AIFeatureGatedMixin, APIView):
+    """
+    Proxy endpoint for TibaBot condition prediction.
+
+    POST /api/ai/predict/condition/
+    Body: {
+        "patient_features": {
+            "age": 45,
+            "gender": "M",
+            "chief_complaint": "chest pain and shortness of breath",
+            "chief_complaint_category": "CHEST_PAIN",
+            "spo2": 92,
+            "heart_rate": 110,
+            "temperature": 38.5,
+            "respiratory_rate": 28,
+            "pain_score": 7,
+            "mental_status": "A",
+            "mobility": "AMBULATORY"
+        }
+    }
+
+    Returns predicted conditions with confidence scores and risk factors.
+    Advisory only — clinician must review and confirm.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        # Validate input
+        serializer = ConditionPredictRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        patient_features = serializer.validated_data["patient_features"]
+
+        # Sanitize free-text fields
+        if patient_features.get("chief_complaint"):
+            patient_features["chief_complaint"] = sanitize_clinical_text(
+                patient_features["chief_complaint"]
+            )
+        if patient_features.get("allergies"):
+            patient_features["allergies"] = sanitize_clinical_text(
+                patient_features["allergies"]
+            )
+
+        # Enrich with user and facility context
+        payload = {
+            "patient_features": patient_features,
+            "user_context": build_user_context(request),
+            "facility_context": build_facility_context(),
+        }
+
+        # Audit log
+        AuditLog.log(
+            action="ai_condition_predict",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            details={
+                "age": patient_features.get("age"),
+                "gender": patient_features.get("gender"),
+                "chief_complaint_category": patient_features.get(
+                    "chief_complaint_category", ""
+                ),
+            },
+        )
+
+        try:
+            client = get_tibabot_client()
+            result = client.predict_condition(payload)
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for condition prediction")
+            return Response(
+                {
+                    "primary_condition": "",
+                    "confidence": 0.0,
+                    "risk_level": "low",
+                    "risk_factors": [],
+                    "differential_conditions": [],
+                    "recommendations": [],
+                    "error": "AI service is temporarily unavailable. "
+                    "Please proceed with clinical assessment.",
+                },
+                status=status.HTTP_200_OK,
+            )
+        except TibaBotError as e:
+            logger.error("TibaBot error for condition prediction: %s", e)
+            return Response(
+                {
+                    "primary_condition": "",
+                    "confidence": 0.0,
+                    "risk_level": "low",
+                    "risk_factors": [],
+                    "differential_conditions": [],
+                    "recommendations": [],
+                    "error": "AI service error. Please proceed with clinical assessment.",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # Validate and normalize the response
+        response_data = {
+            "primary_condition": result.get("primary_condition", ""),
+            "confidence": result.get("confidence", 0.0),
+            "risk_level": result.get("risk_level", "low"),
+            "risk_factors": result.get("risk_factors", []),
+            "differential_conditions": result.get("differential_conditions", []),
+            "recommendations": result.get("recommendations", []),
+        }
+
+        response_serializer = ConditionPredictResponseSerializer(data=response_data)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+
+        # Fallback — return whatever TibaBot gave us
+        return Response(response_data)
 
 
 # =============================================================================

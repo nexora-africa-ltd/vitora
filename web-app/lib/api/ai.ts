@@ -13,6 +13,7 @@ import {
   AIClinicalAssistResponseSchema,
   AIChatSessionListResponseSchema,
   AIChatSessionDetailResponseSchema,
+  AIConditionPredictResponseSchema,
   AIFeedbackResponseSchema,
   AIFeedbackStatsSchema,
 } from '@/lib/schemas/ai.schema';
@@ -26,6 +27,8 @@ import type {
   AIClinicalAssistResponse,
   AIChatSessionListResponse,
   AIChatSessionDetailResponse,
+  AIConditionPredictRequest,
+  AIConditionPredictResponse,
   AIFeedbackRequest,
   AIFeedbackResponse,
   AIFeedbackStats,
@@ -137,6 +140,27 @@ export const aiApi = {
    */
   deleteChatSession: async (sessionId: string): Promise<void> => {
     await apiClient.delete(`/api/ai/clinical/chat/session/${sessionId}/`);
+  },
+
+  // ===========================================================================
+  // Phase 3 — Condition Predictor
+  // ===========================================================================
+
+  /**
+   * Predict probable conditions from patient features during triage.
+   *
+   * Sends patient demographics, vitals, chief complaint, and clinical
+   * assessment data to TibaBot for ML-based risk assessment.
+   * Advisory only — clinician must review and confirm.
+   *
+   * @param data - Patient features (age, gender, vitals, complaint, etc.)
+   * @returns Predicted condition with confidence, risk factors, and differentials
+   */
+  predictCondition: async (data: AIConditionPredictRequest): Promise<AIConditionPredictResponse> => {
+    const response = await apiClient.post('/api/ai/predict/condition/', data);
+    return parseResponse(AIConditionPredictResponseSchema, response.data, {
+      context: 'aiApi.predictCondition',
+    });
   },
 
   // ===========================================================================

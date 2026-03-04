@@ -354,6 +354,144 @@ class AIChatSessionDetailResponseSerializer(serializers.Serializer):
 
 
 # =============================================================================
+# Phase 3 — Condition Predictor
+# =============================================================================
+
+
+class ConditionPredictPatientFeaturesSerializer(serializers.Serializer):
+    """Patient features for condition prediction — no PII."""
+
+    age = serializers.IntegerField(
+        min_value=0,
+        max_value=150,
+        help_text="Patient age in years.",
+    )
+    gender = serializers.ChoiceField(
+        choices=["M", "F", "O"],
+        help_text="Patient gender (M, F, O).",
+    )
+    chief_complaint = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=2000,
+        help_text="Chief complaint text.",
+    )
+    chief_complaint_category = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=100,
+        help_text="Chief complaint category (e.g., CHEST_PAIN, FEVER).",
+    )
+
+    # Vital signs
+    spo2 = serializers.FloatField(required=False, allow_null=True)
+    heart_rate = serializers.IntegerField(required=False, allow_null=True)
+    systolic_bp = serializers.IntegerField(required=False, allow_null=True)
+    diastolic_bp = serializers.IntegerField(required=False, allow_null=True)
+    temperature = serializers.FloatField(required=False, allow_null=True)
+    respiratory_rate = serializers.IntegerField(required=False, allow_null=True)
+
+    # Clinical assessment
+    pain_score = serializers.IntegerField(
+        required=False, allow_null=True, min_value=0, max_value=10
+    )
+    mental_status = serializers.ChoiceField(
+        choices=["A", "V", "P", "U"],
+        required=False,
+        allow_blank=True,
+        help_text="AVPU mental status.",
+    )
+    mobility = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=50,
+        help_text="Mobility status.",
+    )
+    allergies = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=2000,
+        help_text="Known allergies.",
+    )
+
+
+class ConditionPredictRequestSerializer(serializers.Serializer):
+    """Request body for POST /api/ai/predict/condition/."""
+
+    patient_features = ConditionPredictPatientFeaturesSerializer(
+        help_text="Patient features for condition prediction.",
+    )
+
+
+class ConditionRiskFactorSerializer(serializers.Serializer):
+    """A single identified risk factor."""
+
+    factor = serializers.CharField(help_text="Risk factor name.")
+    severity = serializers.ChoiceField(
+        choices=["low", "moderate", "high", "critical"],
+        help_text="Severity level of this risk factor.",
+    )
+    description = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Explanation of why this is a risk factor.",
+    )
+
+
+class DifferentialConditionSerializer(serializers.Serializer):
+    """A differential condition with confidence score."""
+
+    condition = serializers.CharField(help_text="Condition name.")
+    confidence = serializers.FloatField(
+        min_value=0.0,
+        max_value=1.0,
+        help_text="Confidence score (0.0 to 1.0).",
+    )
+    icd10_code = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="ICD-10 code if available.",
+    )
+
+
+class ConditionPredictResponseSerializer(serializers.Serializer):
+    """Response from POST /api/ai/predict/condition/."""
+
+    primary_condition = serializers.CharField(
+        help_text="Most likely condition.",
+    )
+    confidence = serializers.FloatField(
+        min_value=0.0,
+        max_value=1.0,
+        help_text="Confidence score for primary condition.",
+    )
+    risk_level = serializers.ChoiceField(
+        choices=["low", "moderate", "high", "critical"],
+        help_text="Overall risk level assessment.",
+    )
+    risk_factors = ConditionRiskFactorSerializer(
+        many=True,
+        required=False,
+        help_text="Identified risk factors.",
+    )
+    differential_conditions = DifferentialConditionSerializer(
+        many=True,
+        required=False,
+        help_text="Other possible conditions.",
+    )
+    recommendations = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        help_text="Clinical recommendations.",
+    )
+    error = serializers.CharField(
+        required=False,
+        allow_null=True,
+        help_text="Error message when TibaBot is unreachable.",
+    )
+
+
+# =============================================================================
 # Phase 3 — Feedback
 # =============================================================================
 

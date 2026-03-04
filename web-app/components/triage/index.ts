@@ -14,6 +14,9 @@ export type { VitalAlertsPanelProps, AlertItemProps } from './vital-alerts-panel
 export { TriageAssessmentForm } from './triage-assessment-form';
 export type { TriageAssessmentFormProps } from './triage-assessment-form';
 
+export { AIRiskAssessmentPanel } from './ai-risk-assessment-panel';
+export type { AIRiskAssessmentPanelProps } from './ai-risk-assessment-panel';
+
 export { TriageAssessmentEditForm } from './triage-assessment-edit-form';
 export type { TriageEditPermissions } from './triage-assessment-edit-form';
 

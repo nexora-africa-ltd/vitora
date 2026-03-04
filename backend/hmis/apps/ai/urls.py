@@ -12,6 +12,7 @@ from .views import (
     ClinicalChatSessionDetailView,
     ClinicalChatSessionListView,
     ClinicalChatView,
+    ConditionPredictView,
     ICD10SuggestView,
 )
 
@@ -33,6 +34,12 @@ urlpatterns = [
         "clinical/chat/session/<str:session_id>/",
         ClinicalChatSessionDetailView.as_view(),
         name="clinical-chat-session-detail",
+    ),
+    # Phase 3 — Condition Predictor
+    path(
+        "predict/condition/",
+        ConditionPredictView.as_view(),
+        name="predict-condition",
     ),
     # Phase 3 — Feedback
     path("feedback/", AIFeedbackView.as_view(), name="feedback"),

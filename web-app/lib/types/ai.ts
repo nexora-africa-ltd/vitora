@@ -212,6 +212,58 @@ export interface AIChatSessionDetailResponse {
 }
 
 // =============================================================================
+// Phase 3 — Condition Predictor
+// =============================================================================
+
+/** Patient features for condition prediction — no PII */
+export interface AIConditionPredictFeatures {
+  age: number;
+  gender: 'M' | 'F' | 'O';
+  chief_complaint?: string;
+  chief_complaint_category?: string;
+  spo2?: number | null;
+  heart_rate?: number | null;
+  systolic_bp?: number | null;
+  diastolic_bp?: number | null;
+  temperature?: number | null;
+  respiratory_rate?: number | null;
+  pain_score?: number | null;
+  mental_status?: string;
+  mobility?: string;
+  allergies?: string;
+}
+
+/** Request body for POST /api/ai/predict/condition/ */
+export interface AIConditionPredictRequest {
+  patient_features: AIConditionPredictFeatures;
+}
+
+/** A single identified risk factor */
+export interface AIConditionRiskFactor {
+  factor: string;
+  severity: 'low' | 'moderate' | 'high' | 'critical';
+  description?: string;
+}
+
+/** A differential condition with confidence score */
+export interface AIDifferentialCondition {
+  condition: string;
+  confidence: number;
+  icd10_code?: string;
+}
+
+/** Response from POST /api/ai/predict/condition/ */
+export interface AIConditionPredictResponse {
+  primary_condition: string;
+  confidence: number;
+  risk_level: 'low' | 'moderate' | 'high' | 'critical';
+  risk_factors?: AIConditionRiskFactor[];
+  differential_conditions?: AIDifferentialCondition[];
+  recommendations?: string[];
+  error?: string | null;
+}
+
+// =============================================================================
 // Widget State
 // =============================================================================
 
@@ -220,6 +272,26 @@ export type AIWidgetState = 'minimized' | 'expanded' | 'full-page';
 
 /** TibaBot availability status for the widget indicator */
 export type TibaBotAvailability = 'available' | 'unavailable' | 'loading';
+
+/**
+ * A quick action button displayed in the chat widget.
+ *
+ * Quick actions are context-sensitive shortcuts that appear in the widget
+ * when the user is on specific pages (encounter, triage, etc.).
+ * Each page registers its own quick actions via setQuickActions().
+ */
+export interface AIQuickAction {
+  /** Unique key for this action */
+  id: string;
+  /** Button label displayed in the widget */
+  label: string;
+  /** Lucide icon name — rendered by the parent component */
+  icon?: string;
+  /** The query to send to clinical assist */
+  query: string;
+  /** Optional user-visible message shown in chat when clicked */
+  userMessage?: string;
+}
 
 // =============================================================================
 // Phase 3 — Feedback
