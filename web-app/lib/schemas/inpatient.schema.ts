@@ -91,6 +91,8 @@ export const ShiftEndingTypeSchema = z.enum(['DAY', 'EVENING', 'NIGHT']);
 
 export const GenderRestrictionSchema = z.enum(['ANY', 'MALE_ONLY', 'FEMALE_ONLY']);
 
+export const CarePlanEntryStatusSchema = z.enum(['ACTIVE', 'RESOLVED', 'ONGOING']);
+
 // =============================================================================
 // WARD SCHEMAS
 // =============================================================================
@@ -432,6 +434,27 @@ export const KardexHandoverNoteSchema = z.object({
 
 export type KardexHandoverNoteSchemaType = z.infer<typeof KardexHandoverNoteSchema>;
 
+export const NursingCarePlanEntrySchema = z.object({
+  id: z.number(),
+  kardex: z.number(),
+  recorded_at: z.string(),
+  recorded_by: z.number(),
+  recorded_by_username: z.string().optional(),
+  assessment: z.string(),
+  nursing_diagnosis: z.string(),
+  goal_and_outcome_criteria: z.string(),
+  plan_of_action: z.string(),
+  scientific_rationale: z.string(),
+  implementation: z.string(),
+  evaluation: z.string(),
+  status: CarePlanEntryStatusSchema,
+  status_display: z.string().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export type NursingCarePlanEntrySchemaType = z.infer<typeof NursingCarePlanEntrySchema>;
+
 export const NursingKardexSchema = z.object({
   id: z.number(),
   admission: z.number(),
@@ -445,12 +468,6 @@ export const NursingKardexSchema = z.object({
   diet: z.string().optional(),
   allergies: z.string().optional(),
   iv_access: z.string().optional(),
-  // Nursing care plan
-  nursing_problems: z.string().optional(),
-  nursing_notes: z.string().optional(),
-  interventions: z.string().optional(),
-  monitoring_requirements: z.string().optional(),
-  care_task_frequency: z.string().optional(),
   // Risk assessments
   fall_risk: RiskLevelSchema,
   fall_risk_display: z.string().optional(),
@@ -459,9 +476,10 @@ export const NursingKardexSchema = z.object({
   // Isolation
   isolation_required: z.boolean(),
   isolation_type: z.string().optional(),
-  // Related notes
+  // Related notes and care plan entries
   shift_notes: z.array(KardexShiftNoteSchema).optional(),
   handover_notes: z.array(KardexHandoverNoteSchema).optional(),
+  care_plan_entries: z.array(NursingCarePlanEntrySchema).optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });
@@ -751,3 +769,128 @@ export const BulkCompatibilityResultSchema = z.object({
 });
 
 export type BulkCompatibilityResultSchemaType = z.infer<typeof BulkCompatibilityResultSchema>;
+
+// =============================================================================
+// OBSERVATION CHART SCHEMAS
+// =============================================================================
+
+export const TemperatureReadingSchema = z.object({
+  id: z.number(),
+  admission: z.number(),
+  recorded_at: z.string(),
+  recorded_by: z.number(),
+  recorded_by_username: z.string().optional(),
+  temperature: z.string(),
+  pulse: z.number().nullable().optional(),
+  respiratory_rate: z.number().nullable().optional(),
+  bowels: z.string().optional(),
+  urine_output: z.string().optional(),
+  notes: z.string().optional(),
+  is_febrile: z.boolean().optional(),
+  is_hypothermic: z.boolean().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export const PaginatedTemperatureReadingSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(TemperatureReadingSchema),
+});
+
+export const TransfusionObservationIntervalSchema = z.enum([
+  'BEFORE', '00_MIN', '15_MIN', '45_MIN',
+  '1HR_15MIN', '1HR_45MIN', '2HR_15MIN', '2HR_45MIN',
+  '3HR_15MIN', '3HR_45MIN', '4HR_15MIN', '4HR_AFTER',
+]);
+
+export const BloodProductSchema = z.enum([
+  'WHOLE', 'PACKED_RED_CELLS', 'FFP', 'PLATELETS', 'CRYOPRECIPITATE', 'OTHER',
+]);
+
+export const TransfusionStatusSchema = z.enum([
+  'IN_PROGRESS', 'COMPLETED', 'STOPPED', 'CANCELLED',
+]);
+
+export const TransfusionObservationEntrySchema = z.object({
+  id: z.number(),
+  transfusion: z.number(),
+  observation_interval: TransfusionObservationIntervalSchema,
+  observation_interval_display: z.string().optional(),
+  exact_time: z.string(),
+  recorded_by: z.number(),
+  recorded_by_username: z.string().optional(),
+  blood_pressure: z.string().optional(),
+  temperature: z.string().nullable().optional(),
+  pulse: z.number().nullable().optional(),
+  respiratory_rate: z.number().nullable().optional(),
+  remarks: z.string().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export const BloodTransfusionSchema = z.object({
+  id: z.number(),
+  admission: z.number(),
+  patient_name: z.string().optional(),
+  blood_product: BloodProductSchema,
+  blood_product_display: z.string().optional(),
+  blood_product_other: z.string().optional(),
+  blood_unit_number: z.string(),
+  blood_group: z.string().optional(),
+  amount_ml: z.number(),
+  transfusion_date: z.string(),
+  time_started: z.string().nullable().optional(),
+  time_ended: z.string().nullable().optional(),
+  started_by: z.number(),
+  started_by_username: z.string().optional(),
+  counter_checked_by: z.number().nullable().optional(),
+  counter_checked_by_username: z.string().nullable().optional(),
+  diagnosis: z.string().optional(),
+  status: TransfusionStatusSchema,
+  status_display: z.string().optional(),
+  reaction_occurred: z.boolean(),
+  reaction_type: z.string().optional(),
+  reaction_action_taken: z.string().optional(),
+  observations: z.array(TransfusionObservationEntrySchema).optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export const PaginatedBloodTransfusionSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(BloodTransfusionSchema),
+});
+
+export const BPPositionSchema = z.enum(['SITTING', 'STANDING', 'LYING', 'LEFT_LATERAL']);
+
+export const BPMonitoringReadingSchema = z.object({
+  id: z.number(),
+  admission: z.number(),
+  recorded_at: z.string(),
+  recorded_by: z.number(),
+  recorded_by_username: z.string().optional(),
+  systolic: z.number(),
+  diastolic: z.number(),
+  pulse: z.number().nullable().optional(),
+  position: BPPositionSchema,
+  position_display: z.string().optional(),
+  arm: z.string().optional(),
+  notes: z.string().optional(),
+  mean_arterial_pressure: z.number().optional(),
+  bp_display: z.string().optional(),
+  is_hypertensive: z.boolean().optional(),
+  is_hypotensive: z.boolean().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export const PaginatedBPMonitoringReadingSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(BPMonitoringReadingSchema),
+});

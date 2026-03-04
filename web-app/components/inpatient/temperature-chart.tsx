@@ -1,0 +1,349 @@
+'use client';
+
+import { useState } from 'react';
+import { Plus, Thermometer } from 'lucide-react';
+import {
+  Line,
+  LineChart,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  ReferenceLine,
+  ResponsiveContainer,
+} from 'recharts';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  type ChartConfig,
+} from '@/components/ui/chart';
+import { HelpPopover } from '@/components/shared/help-popover';
+import {
+  useTemperatureReadings,
+  useCreateTemperatureReading,
+} from '@/lib/hooks/use-inpatient';
+import { useToast } from '@/lib/hooks/use-toast';
+import { formatDateTime } from '@/lib/utils/format';
+import type { TemperatureReading } from '@/lib/types/inpatient';
+
+const chartConfig: ChartConfig = {
+  temperature: { label: 'Temperature (°C)', color: 'hsl(var(--chart-1))' },
+  pulse: { label: 'Pulse (BPM)', color: 'hsl(var(--chart-2))' },
+  respiratory_rate: { label: 'Resp Rate', color: 'hsl(var(--chart-3))' },
+};
+
+interface TemperatureChartProps {
+  admissionId: number;
+  isActive: boolean;
+}
+
+export function TemperatureChart({ admissionId, isActive }: TemperatureChartProps) {
+  const { toast } = useToast();
+  const { data, isLoading } = useTemperatureReadings(admissionId);
+  const createReading = useCreateTemperatureReading();
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Form state
+  const [temperature, setTemperature] = useState('');
+  const [pulse, setPulse] = useState('');
+  const [respiratoryRate, setRespiratoryRate] = useState('');
+  const [bowels, setBowels] = useState('');
+  const [urineOutput, setUrineOutput] = useState('');
+  const [notes, setNotes] = useState('');
+
+  const readings = data?.results ?? [];
+
+  // Chart data: reverse to show chronological order (oldest first)
+  const chartData = [...readings].reverse().map((r) => ({
+    time: formatDateTime(r.recorded_at),
+    temperature: Number(r.temperature),
+    pulse: r.pulse ?? undefined,
+    respiratory_rate: r.respiratory_rate ?? undefined,
+  }));
+
+  const handleSubmit = async () => {
+    const tempValue = parseFloat(temperature);
+    if (isNaN(tempValue) || tempValue < 30 || tempValue > 45) {
+      toast({ title: 'Invalid temperature', description: 'Enter a value between 30°C and 45°C', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      await createReading.mutateAsync({
+        admission: admissionId,
+        recorded_at: new Date().toISOString(),
+        temperature: tempValue,
+        pulse: pulse ? parseInt(pulse) : undefined,
+        respiratory_rate: respiratoryRate ? parseInt(respiratoryRate) : undefined,
+        bowels: bowels || undefined,
+        urine_output: urineOutput || undefined,
+        notes: notes || undefined,
+      });
+      toast({ title: 'Temperature recorded' });
+      setDialogOpen(false);
+      resetForm();
+    } catch {
+      toast({ title: 'Error', description: 'Failed to record temperature', variant: 'destructive' });
+    }
+  };
+
+  const resetForm = () => {
+    setTemperature('');
+    setPulse('');
+    setRespiratoryRate('');
+    setBowels('');
+    setUrineOutput('');
+    setNotes('');
+  };
+
+  if (isLoading) {
+    return <Skeleton className="h-96" />;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold">Temperature Chart</h3>
+          <HelpPopover content="Track temperature, pulse, and respiratory rate trends over time. Based on the Kenya hospital temperature chart form." />
+        </div>
+        {isActive && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="w-full sm:w-auto">
+                <Plus className="h-4 w-4 mr-1.5" />
+                Record Temperature
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Record Temperature</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="temp">Temperature (°C) *</Label>
+                    <Input
+                      id="temp"
+                      type="number"
+                      step="0.1"
+                      min="30"
+                      max="45"
+                      placeholder="36.5"
+                      value={temperature}
+                      onChange={(e) => setTemperature(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pulse">Pulse (BPM)</Label>
+                    <Input
+                      id="pulse"
+                      type="number"
+                      min="0"
+                      max="250"
+                      placeholder="72"
+                      value={pulse}
+                      onChange={(e) => setPulse(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="rr">Respiratory Rate</Label>
+                    <Input
+                      id="rr"
+                      type="number"
+                      min="0"
+                      max="80"
+                      placeholder="16"
+                      value={respiratoryRate}
+                      onChange={(e) => setRespiratoryRate(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bowels">Bowels</Label>
+                    <Input
+                      id="bowels"
+                      placeholder="Normal"
+                      value={bowels}
+                      onChange={(e) => setBowels(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="urine">Urine Output</Label>
+                    <Input
+                      id="urine"
+                      placeholder="Normal"
+                      value={urineOutput}
+                      onChange={(e) => setUrineOutput(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notes</Label>
+                    <Input
+                      id="notes"
+                      placeholder="Additional observations"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSubmit} disabled={createReading.isPending || !temperature}>
+                  {createReading.isPending ? 'Saving...' : 'Save Reading'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+
+      {readings.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <Thermometer className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">No temperature readings recorded yet.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Chart */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Temperature Trend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="min-h-[300px] w-full">
+                <LineChart accessibilityLayer data={chartData}>
+                  <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis
+                    dataKey="time"
+                    tickLine={false}
+                    tickMargin={10}
+                    axisLine={false}
+                    className="text-xs fill-muted-foreground"
+                    tickFormatter={(v) => {
+                      const parts = v.split(' ');
+                      return parts.length > 1 ? parts[1] : v;
+                    }}
+                  />
+                  <YAxis
+                    yAxisId="temp"
+                    tickLine={false}
+                    axisLine={false}
+                    domain={[35, 42]}
+                    className="text-xs fill-muted-foreground"
+                    width={40}
+                    tickFormatter={(v: number) => `${v}°`}
+                  />
+                  <YAxis
+                    yAxisId="vitals"
+                    orientation="right"
+                    tickLine={false}
+                    axisLine={false}
+                    domain={[0, 'auto']}
+                    className="text-xs fill-muted-foreground"
+                    width={40}
+                  />
+                  <ReferenceLine yAxisId="temp" y={37.5} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label="Febrile" />
+                  <ReferenceLine yAxisId="temp" y={36.1} stroke="hsl(var(--chart-4))" strokeDasharray="3 3" label="Low" />
+                  <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  <Line
+                    yAxisId="temp"
+                    dataKey="temperature"
+                    type="monotone"
+                    stroke="var(--color-temperature)"
+                    strokeWidth={2}
+                    dot={{ fill: 'var(--color-temperature)', r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                  <Line
+                    yAxisId="vitals"
+                    dataKey="pulse"
+                    type="monotone"
+                    stroke="var(--color-pulse)"
+                    strokeWidth={2}
+                    dot={{ fill: 'var(--color-pulse)', r: 3 }}
+                    connectNulls
+                  />
+                  <Line
+                    yAxisId="vitals"
+                    dataKey="respiratory_rate"
+                    type="monotone"
+                    stroke="var(--color-respiratory_rate)"
+                    strokeWidth={2}
+                    dot={{ fill: 'var(--color-respiratory_rate)', r: 3 }}
+                    connectNulls
+                  />
+                </LineChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          {/* Recent Readings Table */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Recent Readings</CardTitle>
+            </CardHeader>
+            <CardContent className="px-0 sm:px-6">
+              <div className="overflow-x-auto">
+                <table className="min-w-[500px] w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left">
+                      <th className="p-2 font-medium">Date/Time</th>
+                      <th className="p-2 font-medium">Temp (°C)</th>
+                      <th className="p-2 font-medium">Pulse</th>
+                      <th className="p-2 font-medium">RR</th>
+                      <th className="p-2 font-medium">Bowels</th>
+                      <th className="p-2 font-medium">Urine</th>
+                      <th className="p-2 font-medium">By</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {readings.slice(0, 10).map((r) => (
+                      <tr key={r.id} className="border-b last:border-0">
+                        <td className="p-2 whitespace-nowrap">{formatDateTime(r.recorded_at)}</td>
+                        <td className="p-2">
+                          <span className={r.is_febrile ? 'text-destructive font-semibold' : r.is_hypothermic ? 'text-blue-600 font-semibold' : ''}>
+                            {Number(r.temperature).toFixed(1)}°C
+                          </span>
+                          {r.is_febrile && <Badge variant="destructive" className="ml-1 text-xs">Febrile</Badge>}
+                        </td>
+                        <td className="p-2">{r.pulse ?? '—'}</td>
+                        <td className="p-2">{r.respiratory_rate ?? '—'}</td>
+                        <td className="p-2">{r.bowels || '—'}</td>
+                        <td className="p-2">{r.urine_output || '—'}</td>
+                        <td className="p-2 text-muted-foreground">{r.recorded_by_username}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </div>
+  );
+}

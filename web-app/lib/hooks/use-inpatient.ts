@@ -12,6 +12,10 @@ import type {
   AdmissionRecommendationListParams,
   Bed,
   BedListParams,
+  BloodTransfusion,
+  BloodTransfusionCreateData,
+  BPMonitoringReading,
+  BPMonitoringReadingCreateData,
   Discharge,
   DischargeCreateData,
   DischargeListParams,
@@ -21,15 +25,21 @@ import type {
   KardexShiftNoteCreateData,
   KardexUpdateData,
   NursingKardex,
+  NursingCarePlanEntry,
+  NursingCarePlanEntryCreateData,
+  NursingCarePlanEntryUpdateData,
   ReviewRequest,
   ReviewRequestCreateData,
   ReviewRequestListParams,
   ShiftHandover,
   ShiftHandoverCreateData,
   ShiftHandoverListParams,
+  TemperatureReading,
+  TemperatureReadingCreateData,
   Transfer,
   TransferCreateData,
   TransferListParams,
+  TransfusionObservationEntryCreateData,
   WardRound,
   WardRoundCreateData,
   WardRoundListParams,
@@ -73,6 +83,14 @@ export const inpatientQueryKeys = {
   shiftHandovers: (params?: ShiftHandoverListParams) =>
     [...inpatientQueryKeys.all, 'shift-handovers', params] as const,
   shiftHandover: (id: number) => [...inpatientQueryKeys.all, 'shift-handovers', id] as const,
+  temperatureReadings: (admissionId: number) =>
+    [...inpatientQueryKeys.all, 'temperature-readings', admissionId] as const,
+  bloodTransfusions: (admissionId: number) =>
+    [...inpatientQueryKeys.all, 'blood-transfusions', admissionId] as const,
+  bloodTransfusion: (id: number) =>
+    [...inpatientQueryKeys.all, 'blood-transfusions', 'detail', id] as const,
+  bpReadings: (admissionId: number) =>
+    [...inpatientQueryKeys.all, 'bp-readings', admissionId] as const,
 };
 
 // ============================================================================
@@ -549,6 +567,28 @@ export function useAddKardexHandoverNote() {
   });
 }
 
+export function useAddCarePlanEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ kardexId, data }: { kardexId: number; data: NursingCarePlanEntryCreateData }) =>
+      inpatientApi.addCarePlanEntry(kardexId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+    },
+  });
+}
+
+export function useUpdateCarePlanEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ kardexId, entryId, data }: { kardexId: number; entryId: number; data: NursingCarePlanEntryUpdateData }) =>
+      inpatientApi.updateCarePlanEntry(kardexId, entryId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+    },
+  });
+}
+
 // ============================================================================
 // Shift Handover Hooks
 // ============================================================================
@@ -632,5 +672,118 @@ export function useAdmissionPrescriptions(admissionId: number | undefined) {
     queryKey: [...inpatientQueryKeys.admission(admissionId!), 'prescriptions'] as const,
     queryFn: () => inpatientApi.getAdmissionPrescriptions(admissionId!),
     enabled: typeof admissionId === 'number',
+  });
+}
+
+// ============================================================================
+// Temperature Chart Hooks
+// ============================================================================
+
+export function useTemperatureReadings(admissionId: number | undefined, pageSize = 100) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.temperatureReadings(admissionId!),
+    queryFn: () => inpatientApi.listTemperatureReadings({ admission: admissionId!, page_size: pageSize }),
+    enabled: typeof admissionId === 'number',
+  });
+}
+
+export function useCreateTemperatureReading() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: TemperatureReadingCreateData) => inpatientApi.createTemperatureReading(data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.temperatureReadings(variables.admission),
+      });
+    },
+  });
+}
+
+// ============================================================================
+// Blood Transfusion Hooks
+// ============================================================================
+
+export function useBloodTransfusions(admissionId: number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.bloodTransfusions(admissionId!),
+    queryFn: () => inpatientApi.listBloodTransfusions({ admission: admissionId! }),
+    enabled: typeof admissionId === 'number',
+  });
+}
+
+export function useBloodTransfusion(id: number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.bloodTransfusion(id!),
+    queryFn: () => inpatientApi.getBloodTransfusion(id!),
+    enabled: typeof id === 'number',
+  });
+}
+
+export function useCreateBloodTransfusion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BloodTransfusionCreateData) => inpatientApi.createBloodTransfusion(data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.bloodTransfusions(variables.admission),
+      });
+    },
+  });
+}
+
+export function useAddTransfusionObservation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { transfusionId: number; data: TransfusionObservationEntryCreateData }) =>
+      inpatientApi.addTransfusionObservation(args.transfusionId, args.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
+    },
+  });
+}
+
+export function useMarkTransfusionReaction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { transfusionId: number; data: { reaction_type: string; action_taken?: string } }) =>
+      inpatientApi.markTransfusionReaction(args.transfusionId, args.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
+    },
+  });
+}
+
+export function useCompleteTransfusion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { transfusionId: number; data?: { time_ended?: string } }) =>
+      inpatientApi.completeTransfusion(args.transfusionId, args.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
+    },
+  });
+}
+
+// ============================================================================
+// BP Monitoring Hooks
+// ============================================================================
+
+export function useBPReadings(admissionId: number | undefined, pageSize = 100) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.bpReadings(admissionId!),
+    queryFn: () => inpatientApi.listBPReadings({ admission: admissionId!, page_size: pageSize }),
+    enabled: typeof admissionId === 'number',
+  });
+}
+
+export function useCreateBPReading() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BPMonitoringReadingCreateData) => inpatientApi.createBPReading(data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.bpReadings(variables.admission),
+      });
+    },
   });
 }

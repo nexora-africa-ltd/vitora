@@ -19,13 +19,18 @@ from .models import (
     Admission,
     AdmissionRecommendation,
     Bed,
+    BloodTransfusionObservation,
+    BPMonitoringReading,
     Discharge,
     KardexHandoverNote,
     KardexShiftNote,
+    NursingCarePlanEntry,
     NursingKardex,
     ReviewRequest,
     ShiftHandover,
+    TemperatureReading,
     Transfer,
+    TransfusionObservationEntry,
     Ward,
     WardRound,
 )
@@ -33,17 +38,27 @@ from .serializers import (
     AdmissionRecommendationSerializer,
     AdmissionSerializer,
     BedSerializer,
+    BloodTransfusionCreateSerializer,
+    BloodTransfusionSerializer,
+    BPMonitoringReadingCreateSerializer,
+    BPMonitoringReadingSerializer,
     ConstraintOverrideMetricsSerializer,
     DischargeSerializer,
     InpatientWardSerializer,
     KardexHandoverNoteSerializer,
     KardexShiftNoteSerializer,
+    NursingCarePlanEntryCreateSerializer,
+    NursingCarePlanEntrySerializer,
     NursingKardexSerializer,
     ReviewRequestCreateSerializer,
     ReviewRequestSerializer,
     ShiftHandoverSerializer,
     SupervisorAlertsResponseSerializer,
+    TemperatureReadingCreateSerializer,
+    TemperatureReadingSerializer,
     TransferSerializer,
+    TransfusionObservationEntryCreateSerializer,
+    TransfusionObservationEntrySerializer,
     WardRoundSerializer,
     WardUpdatesResponseSerializer,
 )
@@ -1584,6 +1599,95 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
         serializer = KardexHandoverNoteSerializer(note)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @action(detail=True, methods=["post"], url_path="add-care-plan-entry")
+    def add_care_plan_entry(self, request, pk=None):
+        """
+        Add a nursing care plan entry to the kardex.
+
+        Request body:
+        - recorded_at: Date/time of the entry
+        - assessment: Assessment findings / cluster of cues
+        - nursing_diagnosis: Nursing diagnosis
+        - goal_and_outcome_criteria: Goals and outcome criteria
+        - plan_of_action: Nursing plan of action / interventions
+        - scientific_rationale: Scientific rationale
+        - implementation: What was implemented (optional)
+        - evaluation: Evaluation of outcomes (optional)
+        - status: ACTIVE / RESOLVED / ONGOING (default: ACTIVE)
+        """
+        kardex = self.get_object()
+        serializer = NursingCarePlanEntryCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        entry = NursingCarePlanEntry.objects.create(
+            kardex=kardex,
+            recorded_by=request.user,
+            **serializer.validated_data,
+        )
+
+        # Log care plan entry creation
+        AuditLog.log(
+            action="kardex_care_plan_entry_create",
+            user=request.user,
+            resource_type="NursingCarePlanEntry",
+            resource_id=entry.id,
+            details={
+                "kardex_id": kardex.id,
+                "admission_number": kardex.admission.admission_number,
+                "nursing_diagnosis": entry.nursing_diagnosis[:100],
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        result_serializer = NursingCarePlanEntrySerializer(entry)
+        return Response(result_serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["patch"], url_path=r"update-care-plan-entry/(?P<entry_id>\d+)")
+    def update_care_plan_entry(self, request, pk=None, entry_id=None):
+        """
+        Update a nursing care plan entry (e.g., add implementation/evaluation).
+
+        Only the following fields can be updated:
+        - implementation, evaluation, status
+        """
+        kardex = self.get_object()
+        try:
+            entry = kardex.care_plan_entries.get(id=entry_id)
+        except NursingCarePlanEntry.DoesNotExist:
+            return Response(
+                {"error": "Care plan entry not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        allowed_fields = {"implementation", "evaluation", "status"}
+        update_data = {k: v for k, v in request.data.items() if k in allowed_fields}
+
+        if not update_data:
+            return Response(
+                {"error": "No valid fields to update. Allowed: implementation, evaluation, status"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        for field, value in update_data.items():
+            setattr(entry, field, value)
+        entry.save(update_fields=list(update_data.keys()) + ["updated_at"])
+
+        # Log care plan entry update
+        AuditLog.log(
+            action="kardex_care_plan_entry_update",
+            user=request.user,
+            resource_type="NursingCarePlanEntry",
+            resource_id=entry.id,
+            details={
+                "kardex_id": kardex.id,
+                "admission_number": kardex.admission.admission_number,
+                "updated_fields": list(update_data.keys()),
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        result_serializer = NursingCarePlanEntrySerializer(entry)
+        return Response(result_serializer.data)
+
 
 class ShiftHandoverViewSet(viewsets.ModelViewSet):
     """
@@ -1677,3 +1781,218 @@ class ShiftHandoverViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(handover)
         return Response(serializer.data)
+
+
+# =============================================================================
+# Observation Chart ViewSets
+# =============================================================================
+
+
+class TemperatureReadingViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for temperature chart readings.
+
+    Provides CRUD for temperature readings linked to admissions.
+    Supports filtering by admission.
+    """
+
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["admission"]
+    ordering_fields = ["recorded_at"]
+    ordering = ["-recorded_at"]
+
+    def get_queryset(self):
+        return TemperatureReading.objects.select_related(
+            "admission", "admission__patient", "recorded_by"
+        )
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return TemperatureReadingCreateSerializer
+        return TemperatureReadingSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save(recorded_by=self.request.user)
+        AuditLog.log(
+            action="temperature_reading_create",
+            user=self.request.user,
+            resource_type="TemperatureReading",
+            resource_id=instance.id,
+            details={
+                "admission_id": instance.admission_id,
+                "temperature": str(instance.temperature),
+            },
+            ip_address=get_client_ip(self.request),
+        )
+
+
+class BloodTransfusionViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for blood transfusion observation charts.
+
+    Provides CRUD for transfusion records and nested observation entries.
+    Supports filtering by admission.
+    """
+
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["admission", "status"]
+    ordering_fields = ["transfusion_date"]
+    ordering = ["-transfusion_date"]
+
+    def get_queryset(self):
+        return BloodTransfusionObservation.objects.select_related(
+            "admission", "admission__patient", "started_by", "counter_checked_by"
+        ).prefetch_related("observations", "observations__recorded_by")
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return BloodTransfusionCreateSerializer
+        if self.action == "add_observation":
+            return TransfusionObservationEntryCreateSerializer
+        return BloodTransfusionSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save(started_by=self.request.user)
+        AuditLog.log(
+            action="blood_transfusion_create",
+            user=self.request.user,
+            resource_type="BloodTransfusionObservation",
+            resource_id=instance.id,
+            details={
+                "admission_id": instance.admission_id,
+                "blood_product": instance.blood_product,
+                "amount_ml": instance.amount_ml,
+            },
+            ip_address=get_client_ip(self.request),
+        )
+
+    @action(detail=True, methods=["post"], url_path="add-observation")
+    def add_observation(self, request, pk=None):
+        """
+        Add an observation entry to a transfusion record.
+        """
+        transfusion = self.get_object()
+        serializer = TransfusionObservationEntryCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        entry = serializer.save(
+            transfusion=transfusion,
+            recorded_by=request.user,
+        )
+        AuditLog.log(
+            action="transfusion_observation_create",
+            user=request.user,
+            resource_type="TransfusionObservationEntry",
+            resource_id=entry.id,
+            details={
+                "transfusion_id": transfusion.id,
+                "interval": entry.observation_interval,
+            },
+            ip_address=get_client_ip(request),
+        )
+        return Response(
+            TransfusionObservationEntrySerializer(entry).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["post"], url_path="mark-reaction")
+    def mark_reaction(self, request, pk=None):
+        """
+        Record a transfusion reaction.
+        """
+        transfusion = self.get_object()
+        reaction_type = request.data.get("reaction_type", "")
+        action_taken = request.data.get("action_taken", "")
+
+        if not reaction_type:
+            return Response(
+                {"error": "reaction_type is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        transfusion.reaction_occurred = True
+        transfusion.reaction_type = reaction_type
+        transfusion.reaction_action_taken = action_taken
+        transfusion.status = "STOPPED"
+        transfusion.save()
+
+        AuditLog.log(
+            action="transfusion_reaction_recorded",
+            user=request.user,
+            resource_type="BloodTransfusionObservation",
+            resource_id=transfusion.id,
+            details={
+                "reaction_type": reaction_type,
+                "action_taken": action_taken,
+            },
+            ip_address=get_client_ip(request),
+        )
+        return Response(BloodTransfusionSerializer(transfusion).data)
+
+    @action(detail=True, methods=["post"], url_path="complete")
+    def complete_transfusion(self, request, pk=None):
+        """
+        Mark a transfusion as completed.
+        """
+        transfusion = self.get_object()
+        from django.utils import timezone as tz
+        import datetime
+
+        transfusion.status = "COMPLETED"
+        transfusion.time_ended = request.data.get(
+            "time_ended", tz.localtime().time()
+        )
+        if isinstance(transfusion.time_ended, str):
+            transfusion.time_ended = datetime.time.fromisoformat(transfusion.time_ended)
+        transfusion.save()
+
+        AuditLog.log(
+            action="blood_transfusion_complete",
+            user=request.user,
+            resource_type="BloodTransfusionObservation",
+            resource_id=transfusion.id,
+            details={"admission_id": transfusion.admission_id},
+            ip_address=get_client_ip(request),
+        )
+        return Response(BloodTransfusionSerializer(transfusion).data)
+
+
+class BPMonitoringViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for blood pressure monitoring readings.
+
+    Provides CRUD for BP readings linked to admissions.
+    Supports filtering by admission.
+    """
+
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["admission"]
+    ordering_fields = ["recorded_at"]
+    ordering = ["-recorded_at"]
+
+    def get_queryset(self):
+        return BPMonitoringReading.objects.select_related(
+            "admission", "admission__patient", "recorded_by"
+        )
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return BPMonitoringReadingCreateSerializer
+        return BPMonitoringReadingSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save(recorded_by=self.request.user)
+        AuditLog.log(
+            action="bp_reading_create",
+            user=self.request.user,
+            resource_type="BPMonitoringReading",
+            resource_id=instance.id,
+            details={
+                "admission_id": instance.admission_id,
+                "systolic": instance.systolic,
+                "diastolic": instance.diastolic,
+            },
+            ip_address=get_client_ip(self.request),
+        )
