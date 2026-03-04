@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -50,9 +50,11 @@ import {
   useAdmissionReviewRequests,
 } from '@/lib/hooks/use-inpatient';
 import { AdmissionOrdersTab, ICURiskAssessmentPanel } from '@/components/inpatient';
+import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
+import type { AIQuickAction } from '@/lib/types/ai';
 
 const REVIEW_REQUEST_TYPES: { value: Exclude<ReviewType, 'WARD_ROUND'>; label: string }[] = [
   { value: 'URGENT_REVIEW', label: 'Urgent Review' },
@@ -67,6 +69,55 @@ const URGENCY_LEVELS: { value: ReviewUrgency; label: string; description: string
   { value: 'ROUTINE', label: 'Routine', description: 'Within 24 hours' },
 ];
 
+// =============================================================================
+// Inpatient Quick Actions for AI Chat Widget
+// =============================================================================
+
+const INPATIENT_QUICK_ACTIONS: AIQuickAction[] = [
+  {
+    id: 'inpatient-icu-risk',
+    label: 'ICU escalation risk',
+    query:
+      'Based on this admitted patient\'s current vitals, ward round condition status, diagnosis, and length of stay, assess the risk of requiring ICU escalation. Consider SOFA/qSOFA criteria and provide early warning signs to monitor.',
+    userMessage: '🏥 Assessing ICU escalation risk...',
+  },
+  {
+    id: 'inpatient-discharge-readiness',
+    label: 'Discharge readiness',
+    query:
+      'Assess whether this inpatient is ready for discharge. Consider their current condition status, latest ward round findings, vitals trends, diagnosis, and length of stay. Identify any criteria that should be met before discharge.',
+    userMessage: '🏠 Evaluating discharge readiness...',
+  },
+  {
+    id: 'inpatient-complications',
+    label: 'Anticipated complications',
+    query:
+      'Based on this patient\'s admitting diagnosis, current condition, length of stay, and vital signs, what complications should we anticipate? Include hospital-acquired infection risk, DVT risk, and condition-specific complications.',
+    userMessage: '⚠️ Reviewing anticipated complications...',
+  },
+  {
+    id: 'inpatient-care-plan',
+    label: 'Suggest care plan',
+    query:
+      'Suggest a comprehensive inpatient care plan for this patient. Include medication review recommendations, nursing observations frequency, diet considerations, mobilization plan, and investigation priorities based on the current clinical picture.',
+    userMessage: '📋 Generating care plan suggestions...',
+  },
+];
+
+// =============================================================================
+// Helper: parse BP string to MAP
+// =============================================================================
+
+function parseBPToMAP(bp: string | undefined | null): number | undefined {
+  if (!bp) return undefined;
+  const match = bp.match(/^(\d+)\/(\d+)$/);
+  if (!match) return undefined;
+  const systolic = Number(match[1]);
+  const diastolic = Number(match[2]);
+  if (isNaN(systolic) || isNaN(diastolic)) return undefined;
+  return Math.round(diastolic + (systolic - diastolic) / 3);
+}
+
 export default function AdmissionDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -78,6 +129,90 @@ export default function AdmissionDetailPage() {
   const { data: kardex, isLoading: kardexLoading } = useKardexByAdmission(admissionId);
   const { data: reviewRequests, isLoading: reviewRequestsLoading } = useAdmissionReviewRequests(admissionId);
   const createReviewRequest = useCreateReviewRequest();
+
+  // =========================================================================
+  // AI Chat Widget — encounter-aware context wiring
+  // =========================================================================
+
+  const chatCtx = useOptionalAIChatContext();
+  const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
+  const setQuickActions = chatCtx?.setQuickActions;
+
+  // Derive the latest ward round (most recent by date) for vitals + condition
+  const latestWardRound = useMemo(() => {
+    const rounds = wardRounds?.results;
+    if (!rounds || rounds.length === 0) return null;
+    return [...rounds].sort(
+      (a, b) => new Date(b.round_date).getTime() - new Date(a.round_date).getTime()
+    )[0] ?? null;
+  }, [wardRounds]);
+
+  // Wire admission + patient data into the AI chat context so TibaBot
+  // can provide inpatient-aware clinical assistance.
+  useEffect(() => {
+    if (!setEncounterAwareContext) return;
+
+    if (admission) {
+      const daysLOS = Math.ceil(
+        (Date.now() - new Date(admission.admission_date).getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      // Extract latest vitals from most recent ward round
+      const vitalSource = latestWardRound?.vital_signs ?? latestWardRound;
+      const bp = vitalSource?.blood_pressure;
+
+      setEncounterAwareContext(
+        // Patient context — no PII
+        {
+          patient_age: admission.patient_age ?? 0,
+          patient_sex: admission.patient_gender ?? 'O',
+        },
+        // Encounter context — enriched with inpatient fields
+        {
+          chief_complaint:
+            admission.admitting_diagnosis_text
+            || admission.admitting_diagnosis
+            || undefined,
+          vitals: vitalSource
+            ? {
+                spo2: vitalSource.spo2 != null ? Number(vitalSource.spo2) : undefined,
+                pulse: vitalSource.pulse ?? undefined,
+                temperature: vitalSource.temperature != null
+                  ? Number(vitalSource.temperature)
+                  : undefined,
+                rr: vitalSource.respiratory_rate ?? undefined,
+                map: parseBPToMAP(typeof bp === 'string' ? bp : undefined),
+              }
+            : undefined,
+          // Inpatient-specific context
+          admission_diagnosis:
+            admission.admitting_diagnosis_text
+            || admission.admitting_diagnosis
+            || undefined,
+          ward_name: admission.ward_name ?? undefined,
+          bed_number: admission.bed_number ?? undefined,
+          admission_status: admission.admission_status ?? undefined,
+          length_of_stay_days: daysLOS,
+          condition_status: latestWardRound?.condition_status ?? undefined,
+          diet: admission.diet ?? undefined,
+          special_instructions: admission.special_instructions ?? undefined,
+        }
+      );
+    }
+
+    return () => {
+      setEncounterAwareContext(null, null);
+    };
+  }, [admission, latestWardRound, setEncounterAwareContext]);
+
+  // Register inpatient-specific quick actions
+  useEffect(() => {
+    if (!setQuickActions) return;
+    setQuickActions(INPATIENT_QUICK_ACTIONS);
+    return () => {
+      setQuickActions([]);
+    };
+  }, [setQuickActions]);
 
   // Filter pending review requests
   const pendingReviews = reviewRequests?.results?.filter(

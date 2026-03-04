@@ -20,9 +20,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAdmission, useCreateWardRound } from '@/lib/hooks/use-inpatient';
+import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { ConditionStatus, ReviewType } from '@/lib/types/inpatient';
+import type { AIQuickAction } from '@/lib/types/ai';
 
 const CONDITION_STATUSES: { value: ConditionStatus; label: string; description: string }[] = [
   { value: 'STABLE', label: 'Stable', description: 'Patient condition is stable' },
@@ -91,6 +93,129 @@ export default function NewWardRoundPage() {
 
   // Track if form was submitted (to show validation errors)
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+
+  // =========================================================================
+  // AI Chat Widget — ward-round-aware context wiring
+  // =========================================================================
+
+  const chatCtx = useOptionalAIChatContext();
+  const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
+  const setQuickActions = chatCtx?.setQuickActions;
+
+  // Ward round quick actions — context-aware during charting
+  const WARD_ROUND_QUICK_ACTIONS: AIQuickAction[] = useMemo(() => [
+    {
+      id: 'ward-round-assessment',
+      label: 'Assessment guidance',
+      query:
+        'Based on this patient\'s current vitals, condition status, admission diagnosis, and SOAP notes so far, help me formulate a clinical assessment. What key findings should I document?',
+      userMessage: '📝 Requesting assessment guidance...',
+    },
+    {
+      id: 'ward-round-plan',
+      label: 'Suggest treatment plan',
+      query:
+        'Based on the current clinical picture (vitals, condition status, diagnosis, length of stay), suggest a treatment plan for today\'s ward round. Include medication adjustments, investigations, and disposition considerations.',
+      userMessage: '💊 Generating treatment plan suggestions...',
+    },
+    {
+      id: 'ward-round-deterioration',
+      label: 'Deterioration signs',
+      query:
+        'For this patient\'s current diagnosis and condition, what signs of deterioration should I specifically look for and document? Include early warning score triggers and escalation thresholds.',
+      userMessage: '⚠️ Reviewing deterioration warning signs...',
+    },
+    {
+      id: 'ward-round-icu-risk',
+      label: 'ICU escalation risk',
+      query:
+        'Based on the latest vitals and clinical observations, assess the risk of this patient requiring ICU escalation. Consider SOFA/qSOFA criteria, modified early warning scores, and the admitting diagnosis.',
+      userMessage: '🏥 Assessing ICU escalation risk...',
+    },
+  ], []);
+
+  // Helper: parse BP string to MAP
+  function parseBPToMAP(bp: string | undefined | null): number | undefined {
+    if (!bp) return undefined;
+    const match = bp.match(/^(\d+)\/(\d+)$/);
+    if (!match) return undefined;
+    const sys = Number(match[1]);
+    const dia = Number(match[2]);
+    if (isNaN(sys) || isNaN(dia)) return undefined;
+    return Math.round(dia + (sys - dia) / 3);
+  }
+
+  // Wire in-progress ward round data into AI context so TibaBot sees
+  // the latest values even before submission — same pattern as triage assess.
+  useEffect(() => {
+    if (!setEncounterAwareContext) return;
+
+    if (admission) {
+      const daysLOS = Math.ceil(
+        (Date.now() - new Date(admission.admission_date).getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      // In-progress vitals from form state (typed but not yet submitted)
+      const inProgressSpo2 = spo2 ? parseFloat(spo2) : undefined;
+      const inProgressPulse = pulse ? parseInt(pulse) : undefined;
+      const inProgressTemp = temperature ? parseFloat(temperature) : undefined;
+      const inProgressRR = respiratoryRate ? parseInt(respiratoryRate) : undefined;
+      const inProgressMAP = parseBPToMAP(bloodPressure);
+
+      // Chief complaint = SOAP subjective (in-progress) or admission diagnosis
+      const chiefComplaint =
+        subjective.trim()
+        || admission.admitting_diagnosis_text
+        || admission.admitting_diagnosis
+        || undefined;
+
+      setEncounterAwareContext(
+        {
+          patient_age: admission.patient_age ?? 0,
+          patient_sex: admission.patient_gender ?? 'O',
+        },
+        {
+          chief_complaint: chiefComplaint,
+          vitals: {
+            spo2: inProgressSpo2,
+            pulse: inProgressPulse,
+            temperature: inProgressTemp,
+            rr: inProgressRR,
+            map: inProgressMAP,
+          },
+          // Inpatient context
+          admission_diagnosis:
+            admission.admitting_diagnosis_text
+            || admission.admitting_diagnosis
+            || undefined,
+          ward_name: admission.ward_name ?? undefined,
+          bed_number: admission.bed_number ?? undefined,
+          admission_status: admission.admission_status ?? undefined,
+          length_of_stay_days: daysLOS,
+          condition_status: conditionStatus,
+        }
+      );
+    }
+
+    return () => {
+      setEncounterAwareContext(null, null);
+    };
+  // Include form fields so context updates as the clinician types —
+  // TibaBot sees the latest in-progress data just like triage assess.
+  }, [
+    admission, setEncounterAwareContext,
+    spo2, pulse, temperature, respiratoryRate, bloodPressure,
+    subjective, conditionStatus,
+  ]);
+
+  // Register ward-round-specific quick actions
+  useEffect(() => {
+    if (!setQuickActions) return;
+    setQuickActions(WARD_ROUND_QUICK_ACTIONS);
+    return () => {
+      setQuickActions([]);
+    };
+  }, [setQuickActions, WARD_ROUND_QUICK_ACTIONS]);
 
   // Validation: Either clinical notes OR all SOAP fields must be filled (SHA/FHIR compliance)
   const hasSOAPNotes = subjective.trim() && objective.trim() && assessment.trim() && plan.trim();
