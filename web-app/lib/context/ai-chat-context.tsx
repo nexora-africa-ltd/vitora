@@ -33,6 +33,7 @@ import type {
   AIVerbosity,
   AIQuickAction,
 } from '@/lib/types/ai';
+import type { AIContextEnrichment } from '@/lib/utils/ai-context-sufficiency';
 
 // =============================================================================
 // Types
@@ -96,6 +97,11 @@ export interface AIChatContextValue {
   /** Register quick actions for the current page (cleared on navigation) */
   setQuickActions: (actions: AIQuickAction[]) => void;
 
+  /** User-provided context enrichment from the chat inline form */
+  contextEnrichment: AIContextEnrichment | null;
+  /** Update context enrichment (merged with base context for API calls) */
+  setContextEnrichment: (data: AIContextEnrichment | null) => void;
+
   /** Current verbosity preference for AI responses */
   verbosity: AIVerbosity;
   /** Update verbosity preference */
@@ -144,6 +150,13 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
 
   // Quick actions — context-sensitive buttons registered by page layouts
   const [quickActions, setQuickActionsState] = useState<AIQuickAction[]>([]);
+
+  // Context enrichment — user-provided data from the chat inline form
+  const [contextEnrichment, setContextEnrichmentState] = useState<AIContextEnrichment | null>(null);
+
+  const setContextEnrichment = useCallback((data: AIContextEnrichment | null) => {
+    setContextEnrichmentState(data);
+  }, []);
 
   // Verbosity preference (persisted in-memory; resets to standard on reload)
   const [verbosity, setVerbosity] = useState<AIVerbosity>('standard');
@@ -221,6 +234,10 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
     (patient: AIPatientContext | null, encounter: AIEncounterContext | null) => {
       setPatientContext(patient);
       setEncounterContext(encounter);
+      // Clear enrichment when the base context changes (e.g., navigation to
+      // a different patient/encounter). The enrichment was specific to the
+      // previous context.
+      setContextEnrichmentState(null);
     },
     []
   );
@@ -258,6 +275,8 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       isEncounterAware,
       pageContext,
       setPageContext,
+      contextEnrichment,
+      setContextEnrichment,
       quickActions,
       setQuickActions,
       verbosity,
@@ -286,6 +305,8 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       isEncounterAware,
       pageContext,
       setPageContext,
+      contextEnrichment,
+      setContextEnrichment,
       quickActions,
       setQuickActions,
       verbosity,

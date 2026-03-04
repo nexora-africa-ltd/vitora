@@ -24,6 +24,11 @@ import { usePermissions } from '@/lib/hooks/use-permissions';
 import { TibaBotStatusIndicator, TibaBotStatusStyles } from './tibabot-status-indicator';
 import { AIChatPanel } from './ai-chat-panel';
 import { useAIClinicalChat, useAIClinicalAssist } from '@/lib/hooks/use-ai';
+import {
+  assessContextSufficiency,
+  buildContextGuidanceMessage,
+  mergeContextWithEnrichment,
+} from '@/lib/utils/ai-context-sufficiency';
 import type { AIChatMessage, AIQuickAction } from '@/lib/types/ai';
 
 // =============================================================================
@@ -49,12 +54,19 @@ export function AIChatWidget() {
     incrementUnread,
     patientContext,
     encounterContext,
+    contextEnrichment,
     setReturnToUrl,
     pageContext,
   } = useAIChatContext();
 
   // Verbosity from context
   const { verbosity } = useAIChatContext();
+
+  // Merge base context with user-provided enrichment
+  const { mergedPatient, mergedEncounter } = useMemo(
+    () => mergeContextWithEnrichment(patientContext, encounterContext, contextEnrichment),
+    [patientContext, encounterContext, contextEnrichment]
+  );
 
   // Chat mutation
   const chatMutation = useAIClinicalChat();
@@ -92,8 +104,8 @@ export function AIChatWidget() {
         const response = await chatMutation.mutateAsync({
           message,
           session_id: activeSessionId ?? undefined,
-          patient_context: patientContext ?? undefined,
-          encounter_context: encounterContext ?? undefined,
+          patient_context: mergedPatient ?? undefined,
+          encounter_context: mergedEncounter ?? undefined,
           page_context: pageContext ?? undefined,
           verbosity,
         });
@@ -114,11 +126,25 @@ export function AIChatWidget() {
         );
       }
     },
-    [activeSessionId, addMessage, updateStreamingMessage, chatMutation, setActiveSessionId, patientContext, encounterContext, pageContext, verbosity]
+    [activeSessionId, addMessage, updateStreamingMessage, chatMutation, setActiveSessionId, mergedPatient, mergedEncounter, pageContext, verbosity]
   );
 
   // Handle "Ask about this patient"
   const handleAskAboutPatient = useCallback(async () => {
+    // Check context sufficiency using merged context (base + enrichment)
+    const sufficiency = assessContextSufficiency(mergedPatient, mergedEncounter);
+
+    if (!sufficiency.canProceed) {
+      // Insufficient context — show guidance instead of a hollow API call
+      addMessage({
+        id: `system-${Date.now()}`,
+        role: 'assistant',
+        content: buildContextGuidanceMessage(sufficiency),
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
     const userMsg: AIChatMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -126,6 +152,16 @@ export function AIChatWidget() {
       timestamp: new Date().toISOString(),
     };
     addMessage(userMsg);
+
+    // If partial context, prepend a brief note so the clinician knows
+    if (sufficiency.level === 'partial') {
+      addMessage({
+        id: `system-ctx-${Date.now()}`,
+        role: 'assistant',
+        content: buildContextGuidanceMessage(sufficiency),
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     const assistantMsgId = `assistant-${Date.now()}`;
     addMessage({
@@ -139,8 +175,8 @@ export function AIChatWidget() {
     try {
       const response = await assistMutation.mutateAsync({
         query: 'Provide a differential diagnosis and recommended workup for this presentation.',
-        patient_context: patientContext ?? undefined,
-        encounter_context: encounterContext ?? undefined,
+        patient_context: mergedPatient ?? undefined,
+        encounter_context: mergedEncounter ?? undefined,
         page_context: pageContext ?? undefined,
         verbosity,
       });
@@ -153,10 +189,30 @@ export function AIChatWidget() {
         true,
       );
     }
-  }, [addMessage, updateStreamingMessage, assistMutation, patientContext, encounterContext, pageContext, verbosity]);
+  }, [addMessage, updateStreamingMessage, assistMutation, mergedPatient, mergedEncounter, pageContext, verbosity]);
 
   // Handle quick action click
   const handleQuickAction = useCallback(async (action: AIQuickAction) => {
+    // Check context sufficiency using merged context (base + enrichment)
+    const sufficiency = assessContextSufficiency(mergedPatient, mergedEncounter);
+
+    if (!sufficiency.canProceed) {
+      // Insufficient context — show guidance instead of a hollow API call
+      addMessage({
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: action.userMessage || action.label,
+        timestamp: new Date().toISOString(),
+      });
+      addMessage({
+        id: `system-${Date.now()}`,
+        role: 'assistant',
+        content: buildContextGuidanceMessage(sufficiency),
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
     const userMsg: AIChatMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -164,6 +220,16 @@ export function AIChatWidget() {
       timestamp: new Date().toISOString(),
     };
     addMessage(userMsg);
+
+    // If partial context, prepend a brief note so the clinician knows
+    if (sufficiency.level === 'partial') {
+      addMessage({
+        id: `system-ctx-${Date.now()}`,
+        role: 'assistant',
+        content: buildContextGuidanceMessage(sufficiency),
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     const assistantMsgId = `assistant-${Date.now()}`;
     addMessage({
@@ -177,8 +243,8 @@ export function AIChatWidget() {
     try {
       const response = await assistMutation.mutateAsync({
         query: action.query,
-        patient_context: patientContext ?? undefined,
-        encounter_context: encounterContext ?? undefined,
+        patient_context: mergedPatient ?? undefined,
+        encounter_context: mergedEncounter ?? undefined,
         page_context: pageContext ?? undefined,
         verbosity,
       });
@@ -191,7 +257,7 @@ export function AIChatWidget() {
         true,
       );
     }
-  }, [addMessage, updateStreamingMessage, assistMutation, patientContext, encounterContext, pageContext, verbosity]);
+  }, [addMessage, updateStreamingMessage, assistMutation, mergedPatient, mergedEncounter, pageContext, verbosity]);
 
   // Open full view — store current URL so user can pop back to widget later
   const handleOpenFullView = useCallback(() => {

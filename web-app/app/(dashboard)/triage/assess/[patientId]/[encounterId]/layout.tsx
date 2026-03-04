@@ -22,8 +22,9 @@ import { useParams } from 'next/navigation';
 import { PatientProvider, usePatientContext } from '@/lib/context/patient-context';
 import { EncounterProvider, useEncounterContext } from '@/lib/context/encounter-context';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
+import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
 import { calculateAge } from '@/lib/utils/format';
-import { parseBPAndCalculateMAP } from '@/lib/vitals';
+import { calculateMAP, parseBPAndCalculateMAP } from '@/lib/vitals';
 import { PatientShellHeader } from '@/components/layout/patient-shell-header';
 import { TriageAssessTabs } from '@/components/triage/triage-assess-tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -136,23 +137,68 @@ function TriageLayoutContent({ children }: { children: React.ReactNode }) {
   const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
   const setQuickActions = chatCtx?.setQuickActions;
 
-  // Wire encounter + patient data into the AI chat context for triage
+  // Subscribe to in-progress triage data from the Zustand store.
+  // This updates on every field change so TibaBot sees the latest input
+  // even before the triage assessment is submitted.
+  const encounterId = encounter?.id;
+  const triageSession = useTriageAssessStore((s) =>
+    encounterId ? s.sessions[encounterId] ?? null : null
+  );
+
+  // Wire encounter + patient + in-progress triage data into AI chat context.
+  // In-progress Zustand store values take priority over saved encounter values
+  // because the nurse may have entered fresher data that hasn't been submitted yet.
   useEffect(() => {
     if (!setEncounterAwareContext) return;
 
     if (patient && encounter) {
-      const allergies = encounter.allergies
+      // --- Patient context: merge saved encounter data + in-progress history ---
+      const savedAllergies = encounter.allergies
         ?.split(',')
         .map((s: string) => s.trim())
         .filter(Boolean) ?? [];
-      const comorbidities = encounter.chronic_conditions
+      const savedComorbidities = encounter.chronic_conditions
         ?.split(',')
         .map((s: string) => s.trim())
         .filter(Boolean) ?? [];
-      const currentMeds = encounter.current_medications
+      const savedMeds = encounter.current_medications
         ?.split(',')
         .map((s: string) => s.trim())
         .filter(Boolean) ?? [];
+
+      // In-progress history from triage store overrides saved data when present
+      const triageHistory = triageSession?.history;
+      const allergies = triageHistory?.allergies_noted
+        ? triageHistory.allergies_noted.split(',').map((s) => s.trim()).filter(Boolean)
+        : savedAllergies;
+      const comorbidities = triageHistory?.past_medical_history
+        ? triageHistory.past_medical_history.split(',').map((s) => s.trim()).filter(Boolean)
+        : savedComorbidities;
+      const currentMeds = triageHistory?.current_medications
+        ? triageHistory.current_medications.split(',').map((s) => s.trim()).filter(Boolean)
+        : savedMeds;
+
+      // --- Encounter context: merge saved vitals + in-progress vitals ---
+      const triageVitals = triageSession?.vitals;
+      const triageAssessment = triageSession?.assessment;
+
+      // In-progress vitals override saved encounter vitals when present
+      const spo2 = triageVitals?.spo2
+        ?? (encounter.spo2 != null ? Number(encounter.spo2) : undefined);
+      const pulse = triageVitals?.heart_rate ?? encounter.pulse ?? undefined;
+      const temperature = triageVitals?.temperature
+        ?? (encounter.temperature != null ? Number(encounter.temperature) : undefined);
+      const rr = triageVitals?.respiratory_rate ?? encounter.respiratory_rate ?? undefined;
+
+      // Calculate MAP: prefer in-progress BP, fall back to saved BP string
+      const map = (triageVitals?.systolic_bp != null && triageVitals?.diastolic_bp != null)
+        ? (calculateMAP(triageVitals.systolic_bp, triageVitals.diastolic_bp) ?? undefined)
+        : (parseBPAndCalculateMAP(encounter.blood_pressure) ?? undefined);
+
+      // Chief complaint: prefer in-progress assessment, fall back to saved
+      const chiefComplaint = triageAssessment?.chief_complaint
+        ?? encounter.chief_complaint
+        ?? undefined;
 
       setEncounterAwareContext(
         {
@@ -163,17 +209,8 @@ function TriageLayoutContent({ children }: { children: React.ReactNode }) {
           current_medications: currentMeds,
         },
         {
-          chief_complaint: encounter.chief_complaint ?? undefined,
-          vitals: {
-            spo2: encounter.spo2 != null ? Number(encounter.spo2) : undefined,
-            pulse: encounter.pulse ?? undefined,
-            temperature:
-              encounter.temperature != null
-                ? Number(encounter.temperature)
-                : undefined,
-            rr: encounter.respiratory_rate ?? undefined,
-            map: parseBPAndCalculateMAP(encounter.blood_pressure) ?? undefined,
-          },
+          chief_complaint: chiefComplaint,
+          vitals: { spo2, pulse, temperature, rr, map },
         }
       );
     }
@@ -181,7 +218,7 @@ function TriageLayoutContent({ children }: { children: React.ReactNode }) {
     return () => {
       setEncounterAwareContext(null, null);
     };
-  }, [patient, encounter, setEncounterAwareContext]);
+  }, [patient, encounter, triageSession, setEncounterAwareContext]);
 
   // Register triage-specific quick actions
   useEffect(() => {
