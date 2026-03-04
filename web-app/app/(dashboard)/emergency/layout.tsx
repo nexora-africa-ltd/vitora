@@ -18,6 +18,7 @@ import { useZonesSummary } from '@/lib/hooks/use-triage';
 import { useEmergencySocket } from '@/lib/hooks/use-websocket';
 import { BedDouble } from 'lucide-react';
 import type { TriageCategory } from '@/lib/types/triage';
+import { EmergencyAlertsProvider } from '@/components/emergency';
 
 export default function EmergencyLayout({
   children,
@@ -149,7 +150,9 @@ export default function EmergencyLayout({
 
       {/* Page content */}
       <div className={cn(isOnZonePage && 'pt-4')}>
-        {children}
+        <EmergencyAlertsProvider>
+          {children}
+        </EmergencyAlertsProvider>
       </div>
     </div>
   );

@@ -27,6 +27,11 @@ import {
   ERBedBoardResponseSchema,
   ERBedSummaryResponseSchema,
   PaginatedERBedSchema,
+  WaitTimeBreachSchema,
+  PaginatedWaitTimeBreachSchema,
+  BreachSummarySchema,
+  EscalationSchema,
+  PaginatedEscalationSchema,
 } from '@/lib/schemas/triage.schema';
 import type {
   TriageAssessment,
@@ -674,6 +679,94 @@ export const triageApi = {
       // 404 = no beds available — not an error
       return null;
     }
+  },
+
+  // ===========================================================================
+  // Phase 4: Wait Time Breaches & Escalations
+  // ===========================================================================
+
+  /**
+   * List wait time breach alerts.
+   * @param params - Optional filters: active_only, severity, status, triage_category
+   */
+  async getBreaches(params?: {
+    active_only?: boolean;
+    severity?: string;
+    status?: string;
+    triage_category?: string;
+    assigned_area?: string;
+  }) {
+    const response = await apiClient.get('/api/triage/breaches/', { params });
+    return parseResponse(PaginatedWaitTimeBreachSchema, response.data, { context: 'triageApi.getBreaches' });
+  },
+
+  /**
+   * Get breach summary (counts by severity and category).
+   */
+  async getBreachSummary() {
+    const response = await apiClient.get('/api/triage/breaches/summary/');
+    return parseResponse(BreachSummarySchema, response.data, { context: 'triageApi.getBreachSummary' });
+  },
+
+  /**
+   * Acknowledge a wait time breach.
+   */
+  async acknowledgeBreach(breachId: number, notes?: string) {
+    const response = await apiClient.post(`/api/triage/breaches/${breachId}/acknowledge/`, {
+      notes: notes || '',
+    });
+    return parseResponse(WaitTimeBreachSchema, response.data, { context: 'triageApi.acknowledgeBreach' });
+  },
+
+  /**
+   * Resolve a wait time breach.
+   */
+  async resolveBreach(breachId: number) {
+    const response = await apiClient.post(`/api/triage/breaches/${breachId}/resolve/`);
+    return parseResponse(WaitTimeBreachSchema, response.data, { context: 'triageApi.resolveBreach' });
+  },
+
+  /**
+   * Escalate a queue entry (to charge nurse, additional staff, or supervisor).
+   */
+  async escalateQueueEntry(queueEntryId: number, data: { escalation_type: string; reason: string }) {
+    const response = await apiClient.post(`/api/triage/queue/${queueEntryId}/escalate/`, data);
+    return parseResponse(EscalationSchema, response.data, { context: 'triageApi.escalateQueueEntry' });
+  },
+
+  /**
+   * List escalation records.
+   * @param params - Optional filters: active_only, escalation_type, status
+   */
+  async getEscalations(params?: {
+    active_only?: boolean;
+    escalation_type?: string;
+    status?: string;
+    triage_category?: string;
+    assigned_area?: string;
+  }) {
+    const response = await apiClient.get('/api/triage/escalations/', { params });
+    return parseResponse(PaginatedEscalationSchema, response.data, { context: 'triageApi.getEscalations' });
+  },
+
+  /**
+   * Resolve an escalation.
+   */
+  async resolveEscalation(escalationId: number, notes?: string) {
+    const response = await apiClient.post(`/api/triage/escalations/${escalationId}/resolve/`, {
+      resolution_notes: notes || '',
+    });
+    return parseResponse(EscalationSchema, response.data, { context: 'triageApi.resolveEscalation' });
+  },
+
+  /**
+   * Dismiss an escalation.
+   */
+  async dismissEscalation(escalationId: number, notes?: string) {
+    const response = await apiClient.post(`/api/triage/escalations/${escalationId}/dismiss/`, {
+      resolution_notes: notes || '',
+    });
+    return parseResponse(EscalationSchema, response.data, { context: 'triageApi.dismissEscalation' });
   },
 };
 

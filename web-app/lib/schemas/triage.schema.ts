@@ -540,3 +540,78 @@ export type ERBed = z.infer<typeof ERBedSchema>;
 export type ERBedListItem = z.infer<typeof ERBedListItemSchema>;
 export type ERBedZoneGroup = z.infer<typeof ERBedZoneGroupSchema>;
 export type ERBedZoneSummary = z.infer<typeof ERBedZoneSummarySchema>;
+
+
+// =============================================================================
+// PHASE 4: AUTO-ESCALATION & ALERTS
+// =============================================================================
+
+export const BreachSeveritySchema = z.enum(['CRITICAL', 'URGENT', 'WARNING', 'INFO']);
+export const BreachStatusSchema = z.enum(['ACTIVE', 'ACKNOWLEDGED', 'ESCALATED', 'RESOLVED']);
+export const EscalationTypeSchema = z.enum(['CHARGE_NURSE', 'ADDITIONAL_STAFF', 'SUPERVISOR']);
+export const EscalationStatusSchema = z.enum(['PENDING', 'IN_PROGRESS', 'RESOLVED', 'DISMISSED']);
+
+export const WaitTimeBreachSchema = z.object({
+  id: z.number(),
+  queue_entry: z.number(),
+  triage_assessment: z.number(),
+  patient: z.number(),
+  patient_name: z.string(),
+  patient_mrn: z.string(),
+  triage_category: TriageCategorySchema,
+  severity: BreachSeveritySchema,
+  target_wait_minutes: z.number(),
+  actual_wait_minutes: z.number(),
+  assigned_area: z.string(),
+  assigned_area_display: z.string().optional().default(''),
+  status: BreachStatusSchema,
+  acknowledged_by: z.number().nullable(),
+  acknowledged_at: z.string().nullable(),
+  notes: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedWaitTimeBreachSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(WaitTimeBreachSchema),
+});
+
+export const BreachSummarySchema = z.object({
+  total_active: z.number(),
+  by_severity: z.record(z.string(), z.number()).default({}),
+  by_category: z.record(z.string(), z.number()).default({}),
+});
+
+export const EscalationSchema = z.object({
+  id: z.number(),
+  queue_entry: z.number(),
+  triage_assessment: z.number(),
+  patient: z.number(),
+  patient_name: z.string(),
+  patient_mrn: z.string(),
+  escalation_type: EscalationTypeSchema,
+  escalation_type_display: z.string(),
+  reason: z.string(),
+  status: EscalationStatusSchema,
+  status_display: z.string(),
+  wait_time_at_escalation: z.number().nullable(),
+  triage_category: z.string(),
+  assigned_area: z.string(),
+  escalated_by: z.number().nullable(),
+  escalated_by_name: z.string(),
+  resolved_by: z.number().nullable(),
+  resolved_at: z.string().nullable(),
+  resolution_notes: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedEscalationSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(EscalationSchema),
+});
