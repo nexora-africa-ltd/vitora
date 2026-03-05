@@ -331,64 +331,7 @@ export default function KardexPage() {
         title="Nursing Kardex"
         helpContent={`${kardex.patient_name} - ${kardex.ward_name} - Bed ${kardex.bed_number}. Manage nursing care information, shift notes, and handover documentation.`}
         actions={
-          <div className="flex gap-2">
-            <Dialog open={shiftNoteOpen} onOpenChange={setShiftNoteOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Plus className="h-4 w-4 sm:mr-1.5" />
-                <span className="hidden sm:inline">Shift Note</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <div className="flex items-center gap-2">
-                  <DialogTitle>Add Shift Note</DialogTitle>
-                  <HelpPopover content="Record your clinical observations, patient responses to treatment, and care activities performed during your shift." />
-                </div>
-              </DialogHeader>
-              <div className="space-y-4 py-2">
-                <div className="space-y-2">
-                  <Label htmlFor="shift-select" className="text-sm font-medium">Shift</Label>
-                  <Select value={shiftNoteType} onValueChange={(v) => setShiftNoteType(v as ShiftType)}>
-                    <SelectTrigger id="shift-select" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SHIFT_TYPES.map((shift) => (
-                        <SelectItem key={shift.value} value={shift.value}>
-                          {shift.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="notes-input" className="text-sm font-medium">Notes</Label>
-                  <Textarea
-                    id="notes-input"
-                    value={shiftNoteContent}
-                    onChange={(e) => setShiftNoteContent(e.target.value)}
-                    placeholder="Patient condition, vitals, medications given, interventions performed..."
-                    className="min-h-[120px] resize-none"
-                  />
-                </div>
-              </div>
-              <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
-                <Button variant="outline" onClick={() => setShiftNoteOpen(false)} className="w-full sm:w-auto">
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleAddShiftNote} 
-                  disabled={!shiftNoteContent.trim() || addShiftNote.isPending}
-                  className="w-full sm:w-auto"
-                >
-                  {addShiftNote.isPending ? 'Saving...' : 'Save Note'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
           <Button variant="outline" onClick={initEditForm}>Edit Kardex</Button>
-        </div>
         }
       />
 
