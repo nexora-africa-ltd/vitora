@@ -2292,6 +2292,26 @@ def create_kardex_for_admission(sender, instance, created, **kwargs):
     Auto-create Nursing Kardex when an Admission is created.
 
     This ensures every admission has a Kardex for nursing care coordination.
+    Pre-populates allergies from the patient's structured allergy records.
     """
     if created:
-        NursingKardex.objects.create(admission=instance)
+        # Build allergy summary from patient's active allergy records
+        allergies_text = ""
+        try:
+            active_allergies = instance.patient.allergies.filter(
+                status="ACTIVE"
+            ).values_list("substance", flat=True)
+            if active_allergies:
+                allergies_text = ", ".join(active_allergies)
+        except Exception:
+            pass  # Graceful fallback if allergy model not available
+
+        # Fallback: check latest encounter's free-text allergies field
+        if not allergies_text and instance.opd_encounter:
+            allergies_text = instance.opd_encounter.allergies or ""
+
+        NursingKardex.objects.create(
+            admission=instance,
+            allergies=allergies_text,
+            dietary_requirements="Regular",
+        )
