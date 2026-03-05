@@ -116,14 +116,20 @@ export function StaffSearchCombobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
+      <PopoverContent
+        className="w-[400px] p-0"
+        align="start"
+        style={{ pointerEvents: 'auto' }}
+        onWheel={(e) => e.stopPropagation()}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <Command shouldFilter={false}>
           <CommandInput
             placeholder={searchPlaceholder}
             value={searchQuery}
             onValueChange={setSearchQuery}
           />
-          <CommandList>
+          <CommandList className="max-h-[200px]">
             {isLoading ? (
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
