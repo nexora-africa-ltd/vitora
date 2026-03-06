@@ -171,6 +171,10 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
     spo2 = serializers.FloatField(allow_null=True, required=False)
     temperature = serializers.FloatField(allow_null=True, required=False)
 
+    # Glasgow Coma Scale - computed fields
+    gcs_total = serializers.IntegerField(read_only=True, allow_null=True)
+    gcs_severity = serializers.CharField(read_only=True, allow_null=True)
+
     class Meta:
         model = TriageAssessment
         fields = [
@@ -185,6 +189,11 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             "chief_complaint_category",
             "pain_score",
             "mental_status",
+            "gcs_eye",
+            "gcs_verbal",
+            "gcs_motor",
+            "gcs_total",
+            "gcs_severity",
             "mobility",
             "arrival_mode",
             "referring_facility_name",
@@ -219,7 +228,7 @@ class TriageAssessmentSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["auto_calculated_category", "alerts", "triaged_by", "assigned_clinic_name", "routing_destination"]
+        read_only_fields = ["auto_calculated_category", "alerts", "triaged_by", "assigned_clinic_name", "routing_destination", "gcs_total", "gcs_severity"]
 
     def get_vitals(self, obj) -> dict:
         """Get vitals captured at triage (fallback to encounter vitals if needed)."""
@@ -434,6 +443,17 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
 
+    # Glasgow Coma Scale (optional - for trauma/neuro cases)
+    gcs_eye = serializers.IntegerField(
+        required=False, allow_null=True, min_value=1, max_value=4
+    )
+    gcs_verbal = serializers.IntegerField(
+        required=False, allow_null=True, min_value=1, max_value=5
+    )
+    gcs_motor = serializers.IntegerField(
+        required=False, allow_null=True, min_value=1, max_value=6
+    )
+
     class Meta:
         model = TriageAssessment
         fields = [
@@ -442,6 +462,9 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
             "chief_complaint_category",
             "pain_score",
             "mental_status",
+            "gcs_eye",
+            "gcs_verbal",
+            "gcs_motor",
             "mobility",
             "arrival_mode",
             "referring_facility_name",
@@ -511,6 +534,16 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
             vitals["respiratory_rate"] = encounter.respiratory_rate
 
         return vitals
+
+    def _calculate_gcs_total(self, data: dict) -> int | None:
+        """Calculate GCS total from components if all three are provided."""
+        gcs_eye = data.get("gcs_eye")
+        gcs_verbal = data.get("gcs_verbal")
+        gcs_motor = data.get("gcs_motor")
+
+        if all([gcs_eye, gcs_verbal, gcs_motor]):
+            return gcs_eye + gcs_verbal + gcs_motor
+        return None
 
     def validate(self, data):
         """Validate triage assessment data.
@@ -587,6 +620,9 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
 
             vitals = self._extract_vitals(data, encounter)
 
+            # Calculate GCS total if components provided
+            gcs_total = self._calculate_gcs_total(data)
+
             # Calculate suggested category
             calculator = TriageCategoryCalculator()
             auto_category, _ = calculator.calculate(
@@ -595,6 +631,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
                 chief_complaint_category=data.get("chief_complaint_category"),
                 pain_score=data.get("pain_score"),
                 mobility=data.get("mobility"),
+                gcs_total=gcs_total,
             )
 
         # Check if user is overriding
@@ -631,6 +668,9 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
 
         vitals = self._extract_vitals(validated_data, encounter)
 
+        # Calculate GCS total if components provided
+        gcs_total = self._calculate_gcs_total(validated_data)
+
         # Calculate category and alerts
         calculator = TriageCategoryCalculator()
         auto_category, alerts = calculator.calculate(
@@ -639,6 +679,7 @@ class TriageAssessmentCreateSerializer(serializers.ModelSerializer):
             chief_complaint_category=validated_data.get("chief_complaint_category"),
             pain_score=validated_data.get("pain_score"),
             mobility=validated_data.get("mobility"),
+            gcs_total=gcs_total,
         )
 
         # Set auto-calculated category and alerts
@@ -890,6 +931,17 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
     )
     mobility = serializers.CharField(required=False, allow_null=True)
 
+    # Glasgow Coma Scale (optional)
+    gcs_eye = serializers.IntegerField(
+        min_value=1, max_value=4, required=False, allow_null=True
+    )
+    gcs_verbal = serializers.IntegerField(
+        min_value=1, max_value=5, required=False, allow_null=True
+    )
+    gcs_motor = serializers.IntegerField(
+        min_value=1, max_value=6, required=False, allow_null=True
+    )
+
     def calculate_category(self):
         """Calculate triage category using the service."""
         vitals = {}
@@ -907,6 +959,14 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
         if self.validated_data.get("respiratory_rate"):
             vitals["respiratory_rate"] = self.validated_data["respiratory_rate"]
 
+        # Calculate GCS total if components provided
+        gcs_total = None
+        gcs_eye = self.validated_data.get("gcs_eye")
+        gcs_verbal = self.validated_data.get("gcs_verbal")
+        gcs_motor = self.validated_data.get("gcs_motor")
+        if all([gcs_eye, gcs_verbal, gcs_motor]):
+            gcs_total = gcs_eye + gcs_verbal + gcs_motor
+
         calculator = TriageCategoryCalculator()
         category, alerts = calculator.calculate(
             vitals=vitals,
@@ -914,12 +974,14 @@ class TriageCategoryCalculationSerializer(serializers.Serializer):
             chief_complaint_category=self.validated_data["chief_complaint_category"],
             pain_score=self.validated_data.get("pain_score"),
             mobility=self.validated_data.get("mobility"),
+            gcs_total=gcs_total,
         )
 
         return {
             "suggested_category": category,
             "alerts": alerts,
             "vitals": vitals,
+            "gcs_total": gcs_total,
         }
 
 

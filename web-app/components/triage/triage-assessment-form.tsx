@@ -43,6 +43,8 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { TriageCategoryBadge } from './triage-category-badge';
 import { VitalAlertsPanel } from './vital-alerts-panel';
+import { GCSScorePanel } from './gcs-score-panel';
+import type { GCSScores } from './gcs-score-panel';
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import type {
   TriageAssessmentCreateData,
@@ -136,6 +138,19 @@ const triageFormSchema = z
     mental_status: z.enum(['A', 'V', 'P', 'U'], {
       required_error: 'Mental status (AVPU) is required',
     }),
+    // Glasgow Coma Scale (optional - for trauma/neuro cases)
+    gcs_eye: z.union([
+      z.literal(null),
+      z.number().min(1, 'Eye response must be 1-4').max(4, 'Eye response must be 1-4'),
+    ]).optional().nullable(),
+    gcs_verbal: z.union([
+      z.literal(null),
+      z.number().min(1, 'Verbal response must be 1-5').max(5, 'Verbal response must be 1-5'),
+    ]).optional().nullable(),
+    gcs_motor: z.union([
+      z.literal(null),
+      z.number().min(1, 'Motor response must be 1-6').max(6, 'Motor response must be 1-6'),
+    ]).optional().nullable(),
     mobility: z.enum(['AMBULATORY', 'WHEELCHAIR', 'STRETCHER', 'IMMOBILE'], {
       required_error: 'Mobility status is required',
     }),
@@ -612,6 +627,35 @@ function generateTriageAlerts(
     });
   }
 
+  // Check Glasgow Coma Scale
+  const gcsEye = formData.gcs_eye;
+  const gcsVerbal = formData.gcs_verbal;
+  const gcsMotor = formData.gcs_motor;
+  if (gcsEye && gcsVerbal && gcsMotor) {
+    const gcsTotal = gcsEye + gcsVerbal + gcsMotor;
+    if (gcsTotal <= 8) {
+      alerts.push({
+        id: 'gcs-severe',
+        severity: 'CRITICAL',
+        vital_type: 'GCS',
+        message: `Severe brain injury - GCS ${gcsTotal}/15`,
+        value: gcsTotal,
+        threshold: 8,
+        clinical_note: 'GCS ≤8 indicates severe brain injury. Patient may require intubation. Immediate neurosurgical assessment recommended.',
+      });
+    } else if (gcsTotal <= 12) {
+      alerts.push({
+        id: 'gcs-moderate',
+        severity: 'WARNING',
+        vital_type: 'GCS',
+        message: `Moderate brain injury - GCS ${gcsTotal}/15`,
+        value: gcsTotal,
+        threshold: 12,
+        clinical_note: 'GCS 9-12 indicates moderate brain injury. Close neurological monitoring required. Consider CT head scan.',
+      });
+    }
+  }
+
   // Check SpO2 - backend tiers: ≤85% severe critical, 86-90% moderate critical, 91-94% warning
   const spo2Value = typeof formData.spo2 === 'number' ? formData.spo2 : encounter.spo2;
   if (spo2Value !== undefined && spo2Value !== null) {
@@ -933,6 +977,14 @@ function calculateSuggestedCategory(
 
   // Critical conditions → RED
   if (formData.mental_status === 'U') return 'RED';
+  // GCS ≤8 (severe brain injury) → RED
+  const gcsEye = formData.gcs_eye;
+  const gcsVerbal = formData.gcs_verbal;
+  const gcsMotor = formData.gcs_motor;
+  if (gcsEye && gcsVerbal && gcsMotor) {
+    const gcsTotal = gcsEye + gcsVerbal + gcsMotor;
+    if (gcsTotal <= 8) return 'RED';
+  }
   if (typeof spo2 === 'number' && spo2 <= 90) return 'RED'; // Moderate-severe hypoxemia
   if (typeof heartRate === 'number' && (heartRate < 40 || heartRate > 150))
     return 'RED';
@@ -962,6 +1014,11 @@ function calculateSuggestedCategory(
   }
   if (typeof spo2 === 'number' && spo2 < 95) return 'ORANGE';
   if (formData.mental_status === 'P') return 'ORANGE';
+  // GCS 9-12 (moderate brain injury) → ORANGE
+  if (gcsEye && gcsVerbal && gcsMotor) {
+    const gcsTotal = gcsEye + gcsVerbal + gcsMotor;
+    if (gcsTotal >= 9 && gcsTotal <= 12) return 'ORANGE';
+  }
   // Moderate hypothermia (32-35°C) or moderate fever (38.5-39.9°C) → ORANGE
   if (typeof temperature === 'number' && ((temperature >= 32 && temperature < 35) || temperature >= 38.5))
     return 'ORANGE';
@@ -1082,6 +1139,10 @@ export function TriageAssessmentForm({
       height: null,
 
       mental_status: initialData?.mental_status || 'A',
+      // Glasgow Coma Scale (optional)
+      gcs_eye: null,
+      gcs_verbal: null,
+      gcs_motor: null,
       mobility: initialData?.mobility || 'AMBULATORY',
       allergies_noted: initialData?.allergies_noted || patient.allergies || '',
       triage_category: initialData?.triage_category,
@@ -1338,6 +1399,10 @@ export function TriageAssessmentForm({
         weight: data.weight,
         height: data.height,
         mental_status: data.mental_status,
+        // Glasgow Coma Scale (optional)
+        gcs_eye: data.gcs_eye,
+        gcs_verbal: data.gcs_verbal,
+        gcs_motor: data.gcs_motor,
         mobility: data.mobility,
         allergies_noted: data.allergies_noted,
         triage_category: data.triage_category,
@@ -1951,6 +2016,55 @@ export function TriageAssessmentForm({
               </div>
             )}
           </div>
+
+          {/* DEBUG: GCS visibility check */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+              DEBUG: CC={chiefComplaintCategory}, AVPU={mentalStatus}, 
+              showGCS={(chiefComplaintCategory === 'TRAUMA' ||
+                chiefComplaintCategory === 'ALTERED_CONSCIOUSNESS' ||
+                mentalStatus === 'P' ||
+                mentalStatus === 'U').toString()}
+            </div>
+          )}
+
+          {/* Glasgow Coma Scale - conditional for trauma/neuro cases */}
+          {(chiefComplaintCategory === 'TRAUMA' ||
+            chiefComplaintCategory === 'ALTERED_CONSCIOUSNESS' ||
+            mentalStatus === 'P' ||
+            mentalStatus === 'U') && (
+            <Controller
+              name="gcs_eye"
+              control={control}
+              render={({ field: eyeField }) => (
+                <Controller
+                  name="gcs_verbal"
+                  control={control}
+                  render={({ field: verbalField }) => (
+                    <Controller
+                      name="gcs_motor"
+                      control={control}
+                      render={({ field: motorField }) => (
+                        <GCSScorePanel
+                          value={{
+                            eye: eyeField.value ?? null,
+                            verbal: verbalField.value ?? null,
+                            motor: motorField.value ?? null,
+                          }}
+                          onChange={(gcs: GCSScores) => {
+                            eyeField.onChange(gcs.eye);
+                            verbalField.onChange(gcs.verbal);
+                            motorField.onChange(gcs.motor);
+                          }}
+                          disabled={disabled}
+                        />
+                      )}
+                    />
+                  )}
+                />
+              )}
+            />
+          )}
 
           {/* Mobility */}
           <div className="space-y-2">

@@ -48,6 +48,9 @@ export type { PainScoreSliderProps } from './pain-score-slider';
 export { AVPUCardGroup } from './avpu-card-group';
 export type { AVPUCardGroupProps } from './avpu-card-group';
 
+export { GCSScorePanel } from './gcs-score-panel';
+export type { GCSScorePanelProps, GCSScores } from './gcs-score-panel';
+
 export {
   VitalInputWithAlert,
   evaluateVitalSeverity,

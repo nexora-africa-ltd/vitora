@@ -381,6 +381,7 @@ export type VitalType =
   | 'RESPIRATORY_RATE'
   | 'MENTAL_STATUS'
   | 'PAIN_SCORE'
+  | 'GCS'
   | 'GENERAL';
 
 export type { TriageVitalThreshold } from '@/lib/schemas/triage.schema';
@@ -421,6 +422,10 @@ export interface TriageAssessmentCreateData {
   height?: number | null;
   // Assessment
   mental_status: AVPUStatus;
+  // Glasgow Coma Scale (optional - for trauma/neuro cases)
+  gcs_eye?: number | null;
+  gcs_verbal?: number | null;
+  gcs_motor?: number | null;
   mobility: MobilityStatus;
   allergies_noted?: string;
   triage_category: TriageCategory;

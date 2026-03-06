@@ -131,6 +131,8 @@ interface CalculateCategoryRequest {
   chief_complaint_category: string;
   pain_score?: number;
   mobility?: string;
+  // Glasgow Coma Scale (optional)
+  gcs_total?: number;
 }
 
 interface CalculateCategoryResponse {

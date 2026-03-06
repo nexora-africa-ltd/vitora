@@ -45,7 +45,9 @@ import {
   VitalAlertsPanel,
   PainScoreSlider,
   AVPUCardGroup,
+  GCSScorePanel,
 } from '@/components/triage';
+import type { GCSScores } from '@/components/triage/gcs-score-panel';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useTriageAssessStore } from '@/lib/stores/triage-assess-store';
 import { useCalculateTriageCategory } from '@/lib/hooks/use-triage';
@@ -92,6 +94,10 @@ const assessmentSchema = z.object({
   mental_status: z.enum(['A', 'V', 'P', 'U'], {
     required_error: 'Mental status (AVPU) is required',
   }),
+  // Glasgow Coma Scale (optional - for trauma/neuro cases)
+  gcs_eye: z.number().min(1).max(4).nullable().optional(),
+  gcs_verbal: z.number().min(1).max(5).nullable().optional(),
+  gcs_motor: z.number().min(1).max(6).nullable().optional(),
   mobility: z.enum(['AMBULATORY', 'WHEELCHAIR', 'STRETCHER', 'IMMOBILE'], {
     required_error: 'Mobility status is required',
   }),
@@ -186,6 +192,10 @@ export default function TriageAssessmentPage() {
       chief_complaint: getInitialChiefComplaint(),
       pain_score: currentAssessment?.pain_score ?? 0,
       mental_status: currentAssessment?.mental_status || 'A',
+      // Glasgow Coma Scale (optional)
+      gcs_eye: currentAssessment?.gcs_eye ?? null,
+      gcs_verbal: currentAssessment?.gcs_verbal ?? null,
+      gcs_motor: currentAssessment?.gcs_motor ?? null,
       mobility: currentAssessment?.mobility || 'AMBULATORY',
       triage_category: currentAssessment?.triage_category || calculatedCategory || 'GREEN',
       auto_calculated_category: currentAssessment?.auto_calculated_category,
@@ -200,6 +210,9 @@ export default function TriageAssessmentPage() {
     'mobility',
     'pain_score',
     'triage_category',
+    'gcs_eye',
+    'gcs_verbal',
+    'gcs_motor',
   ]);
   const [watchedChiefCategory, watchedMentalStatus, watchedMobility] = watchedFields;
   const selectedCategory = watch('triage_category');
@@ -238,6 +251,11 @@ export default function TriageAssessmentPage() {
   const handleCalculateCategory = useCallback(async () => {
     const formData = watch();
 
+    // Calculate GCS total if all components are present
+    const gcsTotal = (formData.gcs_eye && formData.gcs_verbal && formData.gcs_motor)
+      ? formData.gcs_eye + formData.gcs_verbal + formData.gcs_motor
+      : undefined;
+
     try {
       const result = await calculateCategoryMutation.mutateAsync({
         spo2: currentVitals?.spo2,
@@ -250,6 +268,7 @@ export default function TriageAssessmentPage() {
         chief_complaint_category: formData.chief_complaint_category,
         pain_score: formData.pain_score ?? undefined,
         mobility: formData.mobility,
+        gcs_total: gcsTotal,
       });
 
       setCalculatedCategory(result.suggested_category);
@@ -271,7 +290,7 @@ export default function TriageAssessmentPage() {
       handleCalculateCategory();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedFields[0], watchedFields[1], watchedFields[2], canCalculate]);
+  }, [watchedFields[0], watchedFields[1], watchedFields[2], watchedFields[5], watchedFields[6], watchedFields[7], canCalculate]);
 
   const onSubmit = useCallback(
     async (data: AssessmentFormData) => {
@@ -289,6 +308,10 @@ export default function TriageAssessmentPage() {
         chief_complaint: data.chief_complaint,
         pain_score: data.pain_score ?? undefined,
         mental_status: data.mental_status,
+        // Glasgow Coma Scale
+        gcs_eye: data.gcs_eye,
+        gcs_verbal: data.gcs_verbal,
+        gcs_motor: data.gcs_motor,
         mobility: data.mobility,
         triage_category: data.triage_category,
         auto_calculated_category: data.auto_calculated_category,
@@ -473,6 +496,43 @@ export default function TriageAssessmentPage() {
             />
             {errors.mental_status && (
               <p className="text-sm text-destructive">{errors.mental_status.message}</p>
+            )}
+
+            {/* Glasgow Coma Scale - conditional for trauma/neuro cases or altered consciousness */}
+            {(watchedChiefCategory === 'TRAUMA' ||
+              watchedChiefCategory === 'ALTERED_CONSCIOUSNESS' ||
+              watchedMentalStatus === 'P' ||
+              watchedMentalStatus === 'U') && (
+              <Controller
+                name="gcs_eye"
+                control={control}
+                render={({ field: eyeField }) => (
+                  <Controller
+                    name="gcs_verbal"
+                    control={control}
+                    render={({ field: verbalField }) => (
+                      <Controller
+                        name="gcs_motor"
+                        control={control}
+                        render={({ field: motorField }) => (
+                          <GCSScorePanel
+                            value={{
+                              eye: eyeField.value ?? null,
+                              verbal: verbalField.value ?? null,
+                              motor: motorField.value ?? null,
+                            }}
+                            onChange={(gcs: GCSScores) => {
+                              eyeField.onChange(gcs.eye);
+                              verbalField.onChange(gcs.verbal);
+                              motorField.onChange(gcs.motor);
+                            }}
+                          />
+                        )}
+                      />
+                    )}
+                  />
+                )}
+              />
             )}
 
             {/* Mobility */}

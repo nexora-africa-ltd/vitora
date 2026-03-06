@@ -55,6 +55,9 @@ import {
   HeartHandshake,
   Venus,
   BrainCircuit,
+  Thermometer,
+  UserPlus2,
+  ListOrdered,
 } from 'lucide-react';
 
 import {
@@ -94,15 +97,15 @@ const _allNavItems: NavItemType[] = [
     icon: Users,
     children: [
       { label: 'All Patients', href: '/patients', icon: Users },
-      { label: 'New Patient', href: '/patients/new', icon: ClipboardList },
+      { label: 'New Patient', href: '/patients/new', icon: UserPlus2 },
     ],
   },
   {
     label: 'Triage',
-    icon: AlertTriangle,
+    icon: Thermometer,
     children: [
-      { label: 'Queue', href: '/triage', icon: ClipboardList },
-      { label: 'New Triage', href: '/triage/new', icon: AlertTriangle },
+      { label: 'Queue', href: '/triage', icon: ListOrdered },
+      { label: 'New Triage', href: '/triage/new', icon: Thermometer },
       { label: 'Reports', href: '/triage/reports', icon: BarChart3 },
       { label: 'Settings', href: '/triage/settings', icon: Settings },
     ],

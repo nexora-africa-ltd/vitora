@@ -44,6 +44,10 @@ export interface TriageAssessmentData {
   chief_complaint?: string;
   pain_score?: number;
   mental_status?: AVPUStatus;
+  // Glasgow Coma Scale (optional - for trauma/neuro cases)
+  gcs_eye?: number | null;
+  gcs_verbal?: number | null;
+  gcs_motor?: number | null;
   mobility?: MobilityStatus;
   triage_category?: TriageCategory;
   auto_calculated_category?: TriageCategory;
