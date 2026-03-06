@@ -342,3 +342,136 @@ class TestTriageCategoryCalculator:
         # Should have alerts for multiple warnings
         assert len(alerts) >= 2
         assert isinstance(alerts, list)
+
+    # =========================================================================
+    # Glasgow Coma Scale (GCS) Tests
+    # =========================================================================
+
+    def test_red_for_severe_gcs(self):
+        """Should return RED for GCS ≤8 (severe brain injury)."""
+        from hmis.apps.triage.services import TriageCategoryCalculator
+
+        calculator = TriageCategoryCalculator()
+        vitals = {"spo2": 98, "heart_rate": 80}
+
+        # GCS 3+2+3 = 8 (severe)
+        category, alerts = calculator.calculate(
+            vitals=vitals,
+            mental_status="A",  # AVPU alone would be normal
+            chief_complaint_category="TRAUMA",
+            gcs_total=8,
+        )
+
+        assert category == "RED"
+        assert any("gcs" in alert["message"].lower() for alert in alerts)
+        assert any("severe" in alert["message"].lower() for alert in alerts)
+
+    def test_red_for_gcs_at_minimum(self):
+        """Should return RED for GCS of 3 (minimum score)."""
+        from hmis.apps.triage.services import TriageCategoryCalculator
+
+        calculator = TriageCategoryCalculator()
+        vitals = {}
+
+        category, alerts = calculator.calculate(
+            vitals=vitals,
+            mental_status="A",
+            chief_complaint_category="TRAUMA",
+            gcs_total=3,
+        )
+
+        assert category == "RED"
+        assert any("gcs" in alert["message"].lower() for alert in alerts)
+
+    def test_orange_for_moderate_gcs(self):
+        """Should return ORANGE for GCS 9-12 (moderate brain injury)."""
+        from hmis.apps.triage.services import TriageCategoryCalculator
+
+        calculator = TriageCategoryCalculator()
+        vitals = {"spo2": 98, "heart_rate": 80}
+
+        # GCS 9 (lower boundary of moderate)
+        category, alerts = calculator.calculate(
+            vitals=vitals,
+            mental_status="A",
+            chief_complaint_category="TRAUMA",
+            gcs_total=9,
+        )
+
+        assert category == "ORANGE"
+        assert any("gcs" in alert["message"].lower() for alert in alerts)
+        assert any("moderate" in alert["message"].lower() for alert in alerts)
+
+    def test_orange_for_gcs_12(self):
+        """Should return ORANGE for GCS 12 (upper boundary of moderate)."""
+        from hmis.apps.triage.services import TriageCategoryCalculator
+
+        calculator = TriageCategoryCalculator()
+        vitals = {}
+
+        category, alerts = calculator.calculate(
+            vitals=vitals,
+            mental_status="A",
+            chief_complaint_category="TRAUMA",
+            gcs_total=12,
+        )
+
+        assert category == "ORANGE"
+        assert any("gcs" in alert["message"].lower() for alert in alerts)
+
+    def test_no_escalation_for_mild_gcs(self):
+        """Should NOT escalate for GCS 13-15 (mild/normal)."""
+        from hmis.apps.triage.services import TriageCategoryCalculator
+
+        calculator = TriageCategoryCalculator()
+        vitals = {}
+
+        # GCS 15 (normal) with mundane complaint
+        category, alerts = calculator.calculate(
+            vitals=vitals,
+            mental_status="A",
+            chief_complaint_category="OTHER",
+            gcs_total=15,
+        )
+
+        # Should not generate GCS alert for normal score
+        gcs_alerts = [a for a in alerts if "gcs" in a["message"].lower()]
+        assert len(gcs_alerts) == 0
+
+    def test_gcs_none_does_not_affect_category(self):
+        """Should not consider GCS when gcs_total is None."""
+        from hmis.apps.triage.services import TriageCategoryCalculator
+
+        calculator = TriageCategoryCalculator()
+        vitals = {"spo2": 98}
+
+        category, alerts = calculator.calculate(
+            vitals=vitals,
+            mental_status="A",
+            chief_complaint_category="OTHER",
+            gcs_total=None,  # Not provided
+        )
+
+        # Should fall through to default category (BLUE for OTHER)
+        assert category == "BLUE"
+        gcs_alerts = [a for a in alerts if "gcs" in a["message"].lower()]
+        assert len(gcs_alerts) == 0
+
+    def test_gcs_overrides_avpu_when_more_severe(self):
+        """GCS ≤8 should trigger RED even with AVPU=A."""
+        from hmis.apps.triage.services import TriageCategoryCalculator
+
+        calculator = TriageCategoryCalculator()
+        vitals = {}
+
+        # Patient is technically alert (AVPU=A) but GCS=7 indicates severe injury
+        # This can happen with confused but awake patients
+        category, alerts = calculator.calculate(
+            vitals=vitals,
+            mental_status="A",
+            chief_complaint_category="OTHER",
+            gcs_total=7,
+        )
+
+        assert category == "RED"
+        assert any("gcs" in alert["message"].lower() for alert in alerts)

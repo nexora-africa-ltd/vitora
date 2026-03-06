@@ -72,6 +72,7 @@ export const VitalTypeSchema = z.enum([
   'RESPIRATORY_RATE',
   'MENTAL_STATUS',
   'PAIN_SCORE',
+  'GCS',
   'GENERAL',
 ]);
 
@@ -146,6 +147,14 @@ export const TriageAssessmentSchema = z.object({
   chief_complaint: z.string(),
   pain_score: z.number().nullable(),
   mental_status: AVPUStatusSchema,
+
+  // Glasgow Coma Scale (optional - for trauma/neuro cases)
+  gcs_eye: z.number().min(1).max(4).optional().nullable(),
+  gcs_verbal: z.number().min(1).max(5).optional().nullable(),
+  gcs_motor: z.number().min(1).max(6).optional().nullable(),
+  gcs_total: z.number().min(3).max(15).optional().nullable(),
+  gcs_severity: z.enum(['severe', 'moderate', 'mild']).optional().nullable(),
+
   mobility: MobilityStatusSchema,
   allergies_noted: z.string(),
   spo2: z.number().optional().nullable(),

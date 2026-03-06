@@ -98,6 +98,7 @@ const VITAL_TYPE_CONFIG: Record<VitalType, { label: string; unit: string; min: n
   // Non-numeric vital types (used for structured alerts, not configurable thresholds)
   MENTAL_STATUS: { label: 'Mental Status', unit: 'AVPU', min: 0, max: 3 },
   PAIN_SCORE: { label: 'Pain Score', unit: '/10', min: 0, max: 10 },
+  GCS: { label: 'Glasgow Coma Scale', unit: '/15', min: 3, max: 15 },
   GENERAL: { label: 'General', unit: '', min: 0, max: 0 },
 };
 
@@ -111,6 +112,7 @@ const DEFAULT_THRESHOLDS: Record<VitalType, EditFormData> = {
   // Non-numeric vital types (not configurable via UI)
   MENTAL_STATUS: { critical_low: null, warning_low: null, warning_high: null, critical_high: null },
   PAIN_SCORE: { critical_low: null, warning_low: null, warning_high: 7, critical_high: 9 },
+  GCS: { critical_low: 8, warning_low: 12, warning_high: null, critical_high: null },
   GENERAL: { critical_low: null, warning_low: null, warning_high: null, critical_high: null },
 };
 

@@ -235,7 +235,7 @@ export function AVPUCardGroup({
         <Alert variant="destructive" className="bg-red-50 dark:bg-red-950/50 border-red-300 dark:border-red-800">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="font-medium">
-            CRITICAL: Unresponsive patient — Immediate intervention required. This triggers RED triage category.
+            CRITICAL: Unresponsive patient — Immediate intervention required.
           </AlertDescription>
         </Alert>
       )}

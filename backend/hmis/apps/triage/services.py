@@ -232,6 +232,7 @@ class TriageCategoryCalculator:
         pain_score: int | None = None,
         mobility: str | None = None,
         patient_age_years: float = 30,
+        gcs_total: int | None = None,
     ) -> tuple[str, list[AlertDict]]:
         """
         Calculate triage category and generate alerts.
@@ -244,6 +245,7 @@ class TriageCategoryCalculator:
             pain_score: 0-10 pain scale (optional)
             mobility: Mobility status (optional)
             patient_age_years: Patient age in years (for age-adjusted MAP thresholds)
+            gcs_total: Glasgow Coma Scale total (3-15, optional)
 
         Returns:
             Tuple of (category, alerts_list) where alerts are structured dicts
@@ -252,7 +254,7 @@ class TriageCategoryCalculator:
 
         # Check RED criteria (highest priority)
         red_alerts = self._check_red_criteria(
-            vitals, mental_status, chief_complaint_category, patient_age_years
+            vitals, mental_status, chief_complaint_category, patient_age_years, gcs_total
         )
         if red_alerts:
             alerts.extend(red_alerts)
@@ -260,7 +262,7 @@ class TriageCategoryCalculator:
 
         # Check ORANGE criteria (very urgent)
         orange_alerts = self._check_orange_criteria(
-            vitals, pain_score, chief_complaint_category, mobility
+            vitals, pain_score, chief_complaint_category, mobility, gcs_total
         )
         if orange_alerts:
             alerts.extend(orange_alerts)
@@ -285,7 +287,8 @@ class TriageCategoryCalculator:
         return "BLUE", alerts
 
     def _check_red_criteria(
-        self, vitals: dict, mental_status: str, chief_complaint: str, patient_age_years: float = 30
+        self, vitals: dict, mental_status: str, chief_complaint: str, patient_age_years: float = 30,
+        gcs_total: int | None = None
     ) -> list[AlertDict]:
         """
         Check for RED (Emergency) criteria.
@@ -336,6 +339,21 @@ class TriageCategoryCalculator:
                     threshold=2,  # Minimum acceptable is V (voice response)
                     clinical_note="Severe neurological impairment",
                     actions=["Protect airway", "Neurological assessment", "Consider CT head"],
+                )
+            )
+            return alerts
+
+        # Glasgow Coma Scale (GCS) - severe impairment (3-8) is RED
+        if gcs_total is not None and gcs_total <= 8:
+            alerts.append(
+                create_alert(
+                    severity="CRITICAL",
+                    vital_type="GCS",
+                    message=f"Severe GCS impairment (GCS={gcs_total})",
+                    value=gcs_total,
+                    threshold=8,
+                    clinical_note="GCS ≤8 indicates severe brain injury; intubation likely needed",
+                    actions=["Protect airway", "Consider intubation", "Urgent CT head", "Neurosurgery consult"],
                 )
             )
             return alerts
@@ -487,7 +505,8 @@ class TriageCategoryCalculator:
         return alerts if has_red_criteria else []
 
     def _check_orange_criteria(
-        self, vitals: dict, pain_score: int | None, chief_complaint: str, mobility: str | None
+        self, vitals: dict, pain_score: int | None, chief_complaint: str, mobility: str | None,
+        gcs_total: int | None = None
     ) -> list[AlertDict]:
         """
         Check for ORANGE (Very Urgent) criteria.
@@ -497,17 +516,34 @@ class TriageCategoryCalculator:
         - Difficulty breathing with SpO2 < 95%
         - Pain score 9-10
         - Trauma with immobile status
+        - GCS 9-12 (moderate impairment)
 
         Args:
             vitals: Dictionary of vital signs
             pain_score: Pain level 0-10
             chief_complaint: Chief complaint category
             mobility: Mobility status
+            gcs_total: Glasgow Coma Scale total (3-15, optional)
 
         Returns:
             List of ORANGE-level structured alerts, empty if no ORANGE criteria met
         """
         alerts: list[AlertDict] = []
+
+        # Glasgow Coma Scale moderate impairment (9-12) - close monitoring needed
+        if gcs_total is not None and 9 <= gcs_total <= 12:
+            alerts.append(
+                create_alert(
+                    severity="WARNING",
+                    vital_type="GCS",
+                    message=f"Moderate GCS impairment (GCS={gcs_total})",
+                    value=gcs_total,
+                    threshold=12,
+                    clinical_note="GCS 9-12 indicates moderate brain injury; close neurological monitoring",
+                    actions=["Neurological monitoring q15min", "CT head", "Neurology consult"],
+                )
+            )
+            return alerts
 
         # Chest pain with abnormal vitals or severe pain
         if chief_complaint == "CHEST_PAIN":

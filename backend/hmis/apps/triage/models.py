@@ -614,6 +614,28 @@ class TriageAssessment(models.Model):
     mental_status = models.CharField(
         max_length=1, choices=MENTAL_STATUS_CHOICES, help_text="AVPU mental status scale"
     )
+
+    # Glasgow Coma Scale (GCS) - optional detailed neurological assessment
+    # Used for trauma, head injury, and altered consciousness cases
+    gcs_eye = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(4)],
+        null=True,
+        blank=True,
+        help_text="Eye response: 1=None, 2=To pain, 3=To voice, 4=Spontaneous",
+    )
+    gcs_verbal = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        null=True,
+        blank=True,
+        help_text="Verbal response: 1=None, 2=Sounds, 3=Words, 4=Confused, 5=Oriented",
+    )
+    gcs_motor = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(6)],
+        null=True,
+        blank=True,
+        help_text="Motor response: 1=None, 2=Extension, 3=Flexion, 4=Withdrawal, 5=Localizes, 6=Obeys",
+    )
+
     mobility = models.CharField(
         max_length=20, choices=MOBILITY_CHOICES, help_text="Patient mobility status"
     )
@@ -807,6 +829,31 @@ class TriageAssessment(models.Model):
     def category_priority(self) -> int:
         """Get numeric priority for sorting (lower = higher priority)."""
         return self.CATEGORY_PRIORITY.get(self.triage_category, 99)
+
+    @property
+    def gcs_total(self) -> int | None:
+        """
+        Calculate total Glasgow Coma Scale score (3-15).
+        Returns None if any component is missing.
+        """
+        if all([self.gcs_eye, self.gcs_verbal, self.gcs_motor]):
+            return self.gcs_eye + self.gcs_verbal + self.gcs_motor
+        return None
+
+    @property
+    def gcs_severity(self) -> str | None:
+        """
+        Get GCS severity classification.
+        Returns: 'severe' (3-8), 'moderate' (9-12), 'mild' (13-15), or None.
+        """
+        total = self.gcs_total
+        if total is None:
+            return None
+        if total <= 8:
+            return "severe"
+        if total <= 12:
+            return "moderate"
+        return "mild"
 
     def calculate_triage_category(self) -> str:
         """
