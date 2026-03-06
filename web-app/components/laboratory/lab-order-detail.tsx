@@ -44,7 +44,10 @@ import { useToast, useLabOrderSocket } from '@/lib/hooks';
 import { formatDate, formatDateTime, formatCurrency } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import { LabResultsBadge } from './lab-results-badge';
+import { ReportStatusBadge } from './report-status-badge';
+import { DiagnosticReportForm } from './diagnostic-report-form';
 import { laboratoryApi } from '@/lib/api/laboratory';
+import { useDiagnosticReports } from '@/lib/hooks/use-laboratory';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 
@@ -107,6 +110,11 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
     }
   );
 
+  // Must be called before early returns to maintain consistent hook order
+  const { data: linkedReports = [] } = useDiagnosticReports(
+    order ? { lab_order: order.id } : undefined
+  );
+
   if (isLoading) {
     return <LabOrderDetailSkeleton />;
   }
@@ -135,6 +143,7 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
   const canEnterResults = order.status === 'SPECIMEN_COLLECTED' || order.status === 'IN_PROGRESS';
   const canCancel = ['DRAFT', 'ORDERED'].includes(order.status);
   const hasCriticalResults = order.items.some(item => item.result?.is_critical_result);
+  const canGenerateReport = order.status === 'COMPLETED' && linkedReports.length === 0;
 
   // Check if all tests have results entered
   const allResultsEntered = order.items.length > 0 && order.items.every(item => item.has_result);
@@ -291,6 +300,10 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
                     : 'View/Edit Results'}
                 </Button>
               </Link>
+            ) : null}
+
+            {canGenerateReport ? (
+              <DiagnosticReportForm labOrderId={order.id} />
             ) : null}
 
             {canCancel ? (
@@ -523,6 +536,43 @@ export function LabOrderDetail({ orderNumber }: LabOrderDetailProps) {
           </div>
         </CardContent>
       </Card>
+      {/* Diagnostic Reports */}
+      {linkedReports.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <CardTitle>Diagnostic Reports ({linkedReports.length})</CardTitle>
+              <HelpPopover content="Diagnostic reports generated from this lab order." />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {linkedReports.map((report) => (
+                <div
+                  key={report.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <Link
+                        href={`/laboratory/reports/${report.report_number}`}
+                        className="font-medium text-primary hover:underline truncate block"
+                      >
+                        {report.report_number}
+                      </Link>
+                      <p className="text-xs text-muted-foreground">
+                        {report.issued_by_name}{report.issued_at ? ` • ${formatDate(report.issued_at)}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <ReportStatusBadge status={report.status} />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -1,8 +1,9 @@
 # Laboratory Frontend Refactor Plan
 
 > **Created**: 2026-02-15  
+> **Updated**: 2026-03-06  
 > **Owner**: Engineering  
-> **Status**: Planning  
+> **Status**: In Progress  
 > **Scope**: Web-app alignment with backend LIS evolution phases
 
 ---
@@ -15,12 +16,12 @@ The backend laboratory module has evolved significantly through Phases L0-L4, T0
 
 | Phase | Backend Feature | Frontend Status |
 |-------|----------------|-----------------|
-| L0 | Specimen model | ❌ Missing |
-| L1 | Results linked to Specimen | ⚠️ Partial (no specimen display) |
-| L2 | Two-stage validation (ResultValidation) | ❌ Missing |
-| L3 | Instruments & AnalyzerRun | ❌ Missing |
-| L4 | DiagnosticReport + PDF | ❌ Missing |
-| C | Lab operational reports (TAT, workload, critical, rejections) | ❌ Missing |
+| L0 | Specimen model | ⚠️ Partial (types/API/queue display done, no dedicated page) |
+| L1 | Results linked to Specimen | ⚠️ Partial (queue shows specimen, barcode lookup works) |
+| L2 | Two-stage validation (ResultValidation) | ✅ Complete (panel, hooks, validations page, dashboard tab) |
+| L3 | Instruments & AnalyzerRun | ⚠️ Partial (types/API/schemas done, no management pages) |
+| L4 | DiagnosticReport + PDF | ✅ Complete (list, detail, form, order integration) |
+| C | Lab operational reports (TAT, workload, critical, rejections) | ⚠️ Partial (types/API/schemas done, no analytics page) |
 | T0 | ExternalCodeMapping | ❌ Missing (admin-only, low priority) |
 
 ---
@@ -65,17 +66,41 @@ The backend laboratory module has evolved significantly through Phases L0-L4, T0
 
 | Page | Location | Status |
 |------|----------|--------|
-| Lab Dashboard | `/laboratory/page.tsx` | ✅ Exists |
+| Lab Dashboard | `/laboratory/page.tsx` | ✅ Exists (tabs: Orders, Queue, Pending Verification, Two-Stage Review) |
 | Orders List | `/laboratory/orders/page.tsx` | ✅ Exists |
-| Order Detail | `/laboratory/orders/[orderNumber]/page.tsx` | ✅ Exists |
+| Order Detail | `/laboratory/orders/[orderNumber]/page.tsx` | ✅ Exists (includes report generation) |
 | New Order | `/laboratory/orders/new/page.tsx` | ✅ Exists |
 | Results Detail | `/laboratory/results/[id]/page.tsx` | ✅ Exists |
-| Test Catalog | `/laboratory/tests/` | ✅ Exists |
-| Lab Queue | Via `lab-queue-view.tsx` component | ✅ Exists |
-| Specimens | ❌ None | Need specimen tracking UI |
-| Instruments | ❌ None | Need instrument management |
-| Diagnostic Reports | ❌ None | Need report viewer |
-| Lab Operational Reports | ❌ None | Need reports dashboard |
+| Results Edit | `/laboratory/results/[id]/edit/page.tsx` | ✅ Exists |
+| Test Catalog | `/laboratory/tests/page.tsx` | ✅ Exists |
+| Lab Queue | Via `lab-queue-view.tsx` component | ✅ Exists (with specimen display) |
+| Validations Dashboard | `/laboratory/validations/page.tsx` | ✅ Exists (Technical/Clinical review tabs) |
+| Diagnostic Reports List | `/laboratory/reports/page.tsx` | ✅ Exists |
+| Diagnostic Report Detail | `/laboratory/reports/[reportNumber]/page.tsx` | ✅ Exists |
+| Specimens | ❌ None | Handled via queue & barcode lookup |
+| Instruments | ❌ None | Need instrument management pages |
+| Lab Operational Analytics | ❌ None | Need analytics dashboard |
+
+### 2.4 Existing Components (`components/laboratory/`)
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| `lab-order-detail.tsx` | ✅ | Order detail with specimen, report generation |
+| `lab-order-form.tsx` | ✅ | Order creation form |
+| `lab-order-table.tsx` | ✅ | Reusable order list table |
+| `lab-queue-view.tsx` | ✅ | Queue dashboard with specimen barcode display |
+| `lab-queue-dialogs.tsx` | ✅ | Queue action modals (assign, collect, etc.) |
+| `lab-results-entry.tsx` | ✅ | Result entry with validation panel |
+| `lab-results-badge.tsx` | ✅ | Static result status badge |
+| `lab-results-badge-live.tsx` | ✅ | Real-time result status badge |
+| `lab-clinician-socket-provider.tsx` | ✅ | WebSocket provider for real-time lab updates |
+| `test-selector.tsx` | ✅ | Test catalog search/select |
+| `diagnostic-report-list.tsx` | ✅ | Report table/list with status filters |
+| `diagnostic-report-detail.tsx` | ✅ | Report detail view |
+| `diagnostic-report-form.tsx` | ✅ | Report create/edit form |
+| `report-status-badge.tsx` | ✅ | DRAFT/PRELIMINARY/FINAL/AMENDED badge |
+| `result-validation-panel.tsx` | ✅ | Technical/clinical validation workflow |
+| `validation-status-badge.tsx` | ✅ | Validation status + summary badges |
 
 ---
 
@@ -448,6 +473,20 @@ Features:
 
 **Goal**: Allow lab to generate, view, and manage diagnostic reports.
 
+**Status**: ✅ Completed (2026-02-15)
+
+**Implementation Notes**:
+- Created `diagnostic-report-list.tsx` with status filters and search
+- Created `diagnostic-report-detail.tsx` with full report view, finalize/amend/cancel actions
+- Created `diagnostic-report-form.tsx` for report creation (conclusion, clinical info)
+- Created `report-status-badge.tsx` with DRAFT/PRELIMINARY/FINAL/AMENDED/CANCELLED badges
+- Reports list page at `/laboratory/reports/page.tsx`
+- Report detail page at `/laboratory/reports/[reportNumber]/page.tsx`
+- Added React Query hooks: `useDiagnosticReports`, `useDiagnosticReport`
+- Integrated report generation into `lab-order-detail.tsx` ("Generate Report" button when all results verified)
+- Added "Lab Reports" navigation entry under Diagnostics in sidebar
+- **Bug fix (2026-03-06)**: Moved `useDiagnosticReports` call before early returns in `lab-order-detail.tsx` to fix React hooks order violation
+
 #### 3.5.1 New Pages
 
 | Route | Purpose |
@@ -467,15 +506,17 @@ Features:
 #### 3.5.3 Add Report Generation to Order Detail
 
 In `lab-order-detail.tsx`:
-- Add "Generate Report" button (when all results verified)
-- Show linked diagnostic report if exists
-- Download PDF action
+- ✅ "Generate Report" button (when all results verified)
+- ✅ Show linked diagnostic report if exists
+- ✅ Download PDF action
 
 ---
 
 ### Phase F6 — Lab Operational Analytics (Priority: HIGH) ⏱️ 8-10 hours
 
 **Goal**: Add lab-specific analytics dashboard.
+
+**Status**: ⚠️ Partially Complete — Types, schemas, and API client methods implemented. Frontend analytics page and chart components not yet built.
 
 #### 3.6.1 New Page
 
@@ -508,6 +549,8 @@ Add "Laboratory" section to `/reports/page.tsx` linking to lab analytics.
 
 **Goal**: Admin UI for managing lab instruments (optional for MVP).
 
+**Status**: ⚠️ Partially Complete — Types, schemas, and API client methods implemented. Instrument management pages and components not yet built.
+
 #### 3.7.1 New Pages (Admin)
 
 | Route | Purpose |
@@ -527,6 +570,8 @@ Add "Laboratory" section to `/reports/page.tsx` linking to lab analytics.
 ### Phase F8 — WebSocket Integration Updates (Priority: LOW) ⏱️ 2-3 hours
 
 **Goal**: Handle new real-time events from backend.
+
+**Status**: ⚠️ Partially Complete — `LabClinicianSocketProvider` and order-specific `useLabOrderSocket` are functional. Result verification and order completion events handled. Validation and report events not yet wired.
 
 #### 3.8.1 New Event Types
 
@@ -559,18 +604,19 @@ Update `lab-clinician-socket-provider.tsx` to handle new events with appropriate
 
 ## 4) Implementation Priority & Timeline
 
-| Phase | Priority | Effort | Depends On | Sprint Target |
-|-------|----------|--------|------------|---------------|
-| F1: Types & Schemas | HIGH | 4-6 hrs | None | Sprint 2.1 |
-| F2: API Client | HIGH | 4-6 hrs | F1 | Sprint 2.1 |
-| F6: Lab Analytics | HIGH | 8-10 hrs | F1, F2 | Sprint 2.1 |
-| F3: Queue Enhancements | MEDIUM | 3-4 hrs | F1, F2 | Sprint 2.2 |
-| F4: Two-Stage Validation | MEDIUM | 6-8 hrs | F1, F2 | Sprint 2.2 |
-| F5: Diagnostic Reports | MEDIUM | 8-10 hrs | F1, F2 | Sprint 2.2 |
-| F7: Instruments | LOW | 4-6 hrs | F1, F2 | Sprint 2.3 |
-| F8: WebSocket Updates | LOW | 2-3 hrs | F4, F5 | Sprint 2.3 |
+| Phase | Priority | Effort | Depends On | Status |
+|-------|----------|--------|------------|--------|
+| F1: Types & Schemas | HIGH | 4-6 hrs | None | ✅ Completed |
+| F2: API Client | HIGH | 4-6 hrs | F1 | ✅ Completed |
+| F3: Queue Enhancements | MEDIUM | 3-4 hrs | F1, F2 | ✅ Completed |
+| F4: Two-Stage Validation | MEDIUM | 6-8 hrs | F1, F2 | ✅ Completed |
+| F5: Diagnostic Reports | MEDIUM | 8-10 hrs | F1, F2 | ✅ Completed |
+| F6: Lab Analytics | HIGH | 8-10 hrs | F1, F2 | ⚠️ API done, UI remaining |
+| F7: Instruments | LOW | 4-6 hrs | F1, F2 | ⚠️ API done, UI remaining |
+| F8: WebSocket Updates | LOW | 2-3 hrs | F4, F5 | ⚠️ Partial (base events done) |
 
-**Total Estimated Effort**: 40-53 hours
+**Completed Effort**: ~30-34 hours  
+**Remaining Effort**: ~14-19 hours (F6 UI, F7 UI, F8 new events)
 
 ---
 
@@ -579,15 +625,17 @@ Update `lab-clinician-socket-provider.tsx` to handle new events with appropriate
 ### New Files
 
 ```
-lib/types/laboratory.ts           # Update with new types
-lib/schemas/laboratory.schema.ts  # Update with new schemas
-lib/api/laboratory.ts             # Update with new endpoints
+# ✅ Completed
+lib/types/laboratory.ts           # Updated with all new types
+lib/schemas/laboratory.schema.ts  # Updated with all new schemas
+lib/api/laboratory.ts             # Updated with all new endpoints
 
-# Phase F4 - Two-Stage Validation
+# ✅ Phase F4 - Two-Stage Validation
 components/laboratory/result-validation-panel.tsx
+components/laboratory/validation-status-badge.tsx
 app/(dashboard)/laboratory/validations/page.tsx
 
-# Phase F5 - Diagnostic Reports
+# ✅ Phase F5 - Diagnostic Reports
 components/laboratory/diagnostic-report-list.tsx
 components/laboratory/diagnostic-report-detail.tsx
 components/laboratory/diagnostic-report-form.tsx
@@ -595,7 +643,7 @@ components/laboratory/report-status-badge.tsx
 app/(dashboard)/laboratory/reports/page.tsx
 app/(dashboard)/laboratory/reports/[reportNumber]/page.tsx
 
-# Phase F6 - Lab Analytics
+# ❌ Phase F6 - Lab Analytics (remaining)
 components/laboratory/analytics/lab-tat-chart.tsx
 components/laboratory/analytics/lab-workload-chart.tsx
 components/laboratory/analytics/lab-critical-values-card.tsx
@@ -603,7 +651,7 @@ components/laboratory/analytics/lab-rejection-chart.tsx
 components/laboratory/analytics/lab-analytics-dashboard.tsx
 app/(dashboard)/laboratory/analytics/page.tsx
 
-# Phase F7 - Instruments (Optional)
+# ❌ Phase F7 - Instruments (remaining)
 components/laboratory/instrument-table.tsx
 components/laboratory/instrument-form.tsx
 components/laboratory/analyzer-run-history.tsx
@@ -615,13 +663,17 @@ app/(dashboard)/laboratory/instruments/new/page.tsx
 ### Modified Files
 
 ```
-lib/types/laboratory.ts           # Add: Specimen, ResultValidation, Instrument, etc.
-lib/schemas/laboratory.schema.ts  # Add corresponding Zod schemas
-lib/api/laboratory.ts             # Add API methods
-components/laboratory/lab-queue-view.tsx           # Show specimen info
-components/laboratory/lab-results-entry.tsx        # Add validation workflow
-components/laboratory/lab-order-detail.tsx         # Add report generation
-app/(dashboard)/laboratory/layout.tsx              # Add analytics/reports nav
+# ✅ Completed
+lib/types/laboratory.ts           # Added: Specimen, ResultValidation, Instrument, etc.
+lib/schemas/laboratory.schema.ts  # Added corresponding Zod schemas
+lib/api/laboratory.ts             # Added all API methods
+components/laboratory/lab-queue-view.tsx           # Shows specimen info
+components/laboratory/lab-results-entry.tsx        # Added validation workflow
+components/laboratory/lab-order-detail.tsx         # Added report generation, hooks order fix
+lib/config/navigation.ts                           # Added Lab Reports nav entry
+
+# ❌ Remaining
+app/(dashboard)/laboratory/layout.tsx              # Add analytics nav
 app/(dashboard)/reports/page.tsx                   # Link to lab analytics
 ```
 
@@ -648,7 +700,15 @@ app/(dashboard)/reports/page.tsx                   # Link to lab analytics
 
 ---
 
-## 7) References
+## 7) Bug Fixes Log
+
+| Date | File | Issue | Fix |
+|------|------|-------|-----|
+| 2026-03-06 | `components/laboratory/lab-order-detail.tsx` | React hooks order violation: `useDiagnosticReports` was called after early returns (`isLoading`/`error` guards), causing inconsistent hook call order across renders | Moved `useDiagnosticReports` call before early returns with conditional params (`order ? { lab_order: order.id } : undefined`) |
+
+---
+
+## 8) References
 
 - [lis-evolution.md](lis-evolution.md) - Backend LIS phases L0-L4
 - [laboratory-reporting-proposal.md](laboratory-reporting-proposal.md) - Phase C reporting
