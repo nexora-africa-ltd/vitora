@@ -44,6 +44,7 @@ import {
 import { useStockSummaryReport } from '@/lib/hooks/use-pharmacy';
 import { useToast } from '@/lib/hooks/use-toast';
 import { cn } from '@/lib/utils/cn';
+import { printStockSummaryReport } from '@/lib/documents/print-pharmacy-reports';
 import type { StockSummaryItem } from '@/lib/types/pharmacy';
 
 export function StockSummaryReport() {
@@ -109,7 +110,10 @@ export function StockSummaryReport() {
   };
 
   const handlePrint = () => {
-    window.print();
+    printStockSummaryReport({
+      items: filteredData,
+      showLowStockOnly,
+    });
   };
 
   if (isLoading) {
