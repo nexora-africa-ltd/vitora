@@ -516,7 +516,17 @@ In `lab-order-detail.tsx`:
 
 **Goal**: Add lab-specific analytics dashboard.
 
-**Status**: ⚠️ Partially Complete — Types, schemas, and API client methods implemented. Frontend analytics page and chart components not yet built.
+**Status**: ✅ Completed (2026-03-06)
+
+**Implementation Notes**:
+- Created React Query hooks: `useLabTurnaroundReport`, `useLabWorkloadReport`, `useLabCriticalValuesReport`, `useLabSampleRejectionReport`
+- Created chart components: `lab-tat-chart.tsx`, `lab-workload-chart.tsx`, `lab-critical-values-card.tsx`, `lab-rejection-chart.tsx`
+- Created `lab-analytics-dashboard.tsx` container with date picker, KPI cards, and chart grid
+- Analytics page at `/laboratory/analytics/page.tsx` with `PageHeader`
+- Added "Lab Analytics" navigation entry under Diagnostics
+- Added Module Analytics section to `/reports/page.tsx` with Laboratory link
+- Date presets: Today, Yesterday, Last 7 Days, Last 30 Days, This Month, Last Month
+- Export to JSON and Print support included
 
 #### 3.6.1 New Page
 
@@ -611,12 +621,12 @@ Update `lab-clinician-socket-provider.tsx` to handle new events with appropriate
 | F3: Queue Enhancements | MEDIUM | 3-4 hrs | F1, F2 | ✅ Completed |
 | F4: Two-Stage Validation | MEDIUM | 6-8 hrs | F1, F2 | ✅ Completed |
 | F5: Diagnostic Reports | MEDIUM | 8-10 hrs | F1, F2 | ✅ Completed |
-| F6: Lab Analytics | HIGH | 8-10 hrs | F1, F2 | ⚠️ API done, UI remaining |
+| F6: Lab Analytics | HIGH | 8-10 hrs | F1, F2 | ✅ Completed |
 | F7: Instruments | LOW | 4-6 hrs | F1, F2 | ⚠️ API done, UI remaining |
 | F8: WebSocket Updates | LOW | 2-3 hrs | F4, F5 | ⚠️ Partial (base events done) |
 
-**Completed Effort**: ~30-34 hours  
-**Remaining Effort**: ~14-19 hours (F6 UI, F7 UI, F8 new events)
+**Completed Effort**: ~38-44 hours  
+**Remaining Effort**: ~6-9 hours (F7 UI, F8 new events)
 
 ---
 
@@ -643,12 +653,12 @@ components/laboratory/report-status-badge.tsx
 app/(dashboard)/laboratory/reports/page.tsx
 app/(dashboard)/laboratory/reports/[reportNumber]/page.tsx
 
-# ❌ Phase F6 - Lab Analytics (remaining)
-components/laboratory/analytics/lab-tat-chart.tsx
-components/laboratory/analytics/lab-workload-chart.tsx
-components/laboratory/analytics/lab-critical-values-card.tsx
-components/laboratory/analytics/lab-rejection-chart.tsx
-components/laboratory/analytics/lab-analytics-dashboard.tsx
+# ✅ Phase F6 - Lab Analytics
+components/laboratory/lab-tat-chart.tsx
+components/laboratory/lab-workload-chart.tsx
+components/laboratory/lab-critical-values-card.tsx
+components/laboratory/lab-rejection-chart.tsx
+components/laboratory/lab-analytics-dashboard.tsx
 app/(dashboard)/laboratory/analytics/page.tsx
 
 # ❌ Phase F7 - Instruments (remaining)
@@ -667,14 +677,15 @@ app/(dashboard)/laboratory/instruments/new/page.tsx
 lib/types/laboratory.ts           # Added: Specimen, ResultValidation, Instrument, etc.
 lib/schemas/laboratory.schema.ts  # Added corresponding Zod schemas
 lib/api/laboratory.ts             # Added all API methods
+lib/hooks/use-laboratory.ts       # Added lab report hooks
 components/laboratory/lab-queue-view.tsx           # Shows specimen info
 components/laboratory/lab-results-entry.tsx        # Added validation workflow
 components/laboratory/lab-order-detail.tsx         # Added report generation, hooks order fix
-lib/config/navigation.ts                           # Added Lab Reports nav entry
+lib/config/navigation.ts                           # Added Lab Reports + Lab Analytics nav entries
+app/(dashboard)/reports/page.tsx                   # Added Module Analytics section with lab link
 
 # ❌ Remaining
-app/(dashboard)/laboratory/layout.tsx              # Add analytics nav
-app/(dashboard)/reports/page.tsx                   # Link to lab analytics
+app/(dashboard)/laboratory/layout.tsx              # Add analytics nav (optional - sidebar already updated)
 ```
 
 ---

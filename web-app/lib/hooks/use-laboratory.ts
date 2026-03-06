@@ -703,3 +703,57 @@ export function useGenerateReportPdf() {
   });
 }
 
+// ============ Lab Operational Reports Hooks ============
+
+/**
+ * Hook for fetching turnaround time report.
+ * @param startDate - Start date in YYYY-MM-DD format
+ * @param endDate - End date in YYYY-MM-DD format
+ */
+export function useLabTurnaroundReport(startDate: string, endDate: string) {
+  return useQuery({
+    queryKey: ['lab-reports', 'turnaround', startDate, endDate],
+    queryFn: () => laboratoryApi.getTurnaroundTimeReport(startDate, endDate),
+    enabled: !!startDate && !!endDate,
+  });
+}
+
+/**
+ * Hook for fetching workload report.
+ * @param startDate - Start date in YYYY-MM-DD format
+ * @param endDate - End date in YYYY-MM-DD format
+ */
+export function useLabWorkloadReport(startDate: string, endDate: string) {
+  return useQuery({
+    queryKey: ['lab-reports', 'workload', startDate, endDate],
+    queryFn: () => laboratoryApi.getWorkloadReport(startDate, endDate),
+    enabled: !!startDate && !!endDate,
+  });
+}
+
+/**
+ * Hook for fetching critical values report.
+ * @param startDate - Start date in YYYY-MM-DD format
+ * @param endDate - End date in YYYY-MM-DD format
+ */
+export function useLabCriticalValuesReport(startDate: string, endDate: string) {
+  return useQuery({
+    queryKey: ['lab-reports', 'critical-values', startDate, endDate],
+    queryFn: () => laboratoryApi.getCriticalValuesReport(startDate, endDate),
+    enabled: !!startDate && !!endDate,
+  });
+}
+
+/**
+ * Hook for fetching sample rejection report.
+ * @param startDate - Start date in YYYY-MM-DD format
+ * @param endDate - End date in YYYY-MM-DD format
+ */
+export function useLabSampleRejectionReport(startDate: string, endDate: string) {
+  return useQuery({
+    queryKey: ['lab-reports', 'rejections', startDate, endDate],
+    queryFn: () => laboratoryApi.getSampleRejectionReport(startDate, endDate),
+    enabled: !!startDate && !!endDate,
+  });
+}
+
