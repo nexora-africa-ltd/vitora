@@ -490,8 +490,16 @@ export function useTriageVitalThresholds() {
   return useQuery({
     queryKey: triageKeys.thresholds(),
     queryFn: async () => {
-      const response = await apiClient.get<TriageVitalThreshold[]>('/api/triage/vital-thresholds/');
-      return response.data;
+      const response = await apiClient.get<{ results: TriageVitalThreshold[] } | TriageVitalThreshold[]>(
+        '/api/triage/vital-thresholds/',
+        { params: { page_size: 100 } } // Fetch all thresholds
+      );
+      // Handle both paginated and non-paginated responses
+      const data = response.data;
+      if (Array.isArray(data)) {
+        return data;
+      }
+      return data.results ?? [];
     },
   });
 }

@@ -11,20 +11,10 @@
 'use client';
 
 import * as React from 'react';
-import {
-  Settings,
-  Edit,
-  Download,
-  Upload,
-  RotateCcw,
-  AlertTriangle,
-  Check,
-  X,
-  Info,
-} from 'lucide-react';
+import { Settings, Edit, Download, Upload, RotateCcw, AlertTriangle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -40,7 +30,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -56,6 +45,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
+import { HelpPopover } from '@/components/shared/help-popover';
 import type { TriageVitalThreshold, VitalType } from '@/lib/types/triage';
 
 // =============================================================================
@@ -122,6 +113,47 @@ const DEFAULT_THRESHOLDS: Record<VitalType, EditFormData> = {
   PAIN_SCORE: { critical_low: null, warning_low: null, warning_high: 7, critical_high: 9 },
   GENERAL: { critical_low: null, warning_low: null, warning_high: null, critical_high: null },
 };
+
+// Configurable vital types (subset that appears in threshold records)
+type ConfigurableVitalType = 'SPO2' | 'SYSTOLIC_BP' | 'DIASTOLIC_BP' | 'HEART_RATE' | 'TEMPERATURE' | 'RESPIRATORY_RATE';
+
+// Vital types that should appear in the configuration table
+const CONFIGURABLE_VITAL_TYPES: ConfigurableVitalType[] = [
+  'SPO2',
+  'SYSTOLIC_BP',
+  'DIASTOLIC_BP',
+  'HEART_RATE',
+  'TEMPERATURE',
+  'RESPIRATORY_RATE',
+];
+
+/**
+ * Create display thresholds by merging API data with defaults.
+ * This ensures all configurable vital types are shown even if not yet in the database.
+ */
+function createDisplayThresholds(apiThresholds: TriageVitalThreshold[]): TriageVitalThreshold[] {
+  const thresholdMap = new Map(apiThresholds.map((t) => [t.vital_type, t]));
+
+  return CONFIGURABLE_VITAL_TYPES.map((vitalType, index) => {
+    const existing = thresholdMap.get(vitalType);
+    if (existing) {
+      return existing;
+    }
+    // Create a synthetic threshold from defaults
+    const defaults = DEFAULT_THRESHOLDS[vitalType];
+    return {
+      id: -(index + 1), // Negative IDs indicate synthetic/default entries
+      vital_type: vitalType,
+      critical_low: defaults.critical_low,
+      warning_low: defaults.warning_low,
+      warning_high: defaults.warning_high,
+      critical_high: defaults.critical_high,
+      is_active: true,
+      created_at: '',
+      updated_at: '',
+    };
+  });
+}
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -265,10 +297,12 @@ function ThresholdEditDialog({
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit {config.label} Thresholds</DialogTitle>
-            <DialogDescription>
-              Configure alert thresholds for {config.label} ({config.unit})
-            </DialogDescription>
+            <div className="flex items-center gap-2">
+              <DialogTitle>Edit {config.label} Thresholds</DialogTitle>
+              <HelpPopover
+                content={`Configure alert thresholds for ${config.label} (${config.unit}). Values outside these thresholds will trigger alerts during triage.`}
+              />
+            </div>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
@@ -425,57 +459,45 @@ export function TriageThresholdsSettings({
   };
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Vital Thresholds</h1>
-        <LoadingSkeleton />
-      </div>
-    );
+    return <LoadingSkeleton />;
   }
 
-  const isEmpty = thresholds.length === 0;
+  // Merge API thresholds with defaults to always show all configurable vitals
+  const displayThresholds = createDisplayThresholds(thresholds);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Vital Thresholds</h1>
-          <p className="text-muted-foreground">
-            Configure alert thresholds for vital sign monitoring
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={onExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          {canEdit && (
-            <>
-              <Button variant="outline" size="sm" onClick={handleImportClick}>
-                <Upload className="h-4 w-4 mr-2" />
-                Import
-              </Button>
-              <Label htmlFor="triage-thresholds-import" className="sr-only">
-                Import triage threshold configuration (JSON)
-              </Label>
-              <input
-                id="triage-thresholds-import"
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                onChange={handleFileChange}
-                className="hidden"
-                aria-label="Import triage threshold configuration (JSON)"
-                title="Import triage threshold configuration (JSON)"
-              />
-              <Button variant="outline" size="sm">
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Reset All
-              </Button>
-            </>
-          )}
-        </div>
+    <div className="space-y-4">
+      {/* Action Bar */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <Button variant="outline" size="sm" onClick={onExport}>
+          <Download className="h-4 w-4 mr-2" />
+          Export
+        </Button>
+        {canEdit && (
+          <>
+            <Button variant="outline" size="sm" onClick={handleImportClick}>
+              <Upload className="h-4 w-4 mr-2" />
+              Import
+            </Button>
+            <Label htmlFor="triage-thresholds-import" className="sr-only">
+              Import triage threshold configuration (JSON)
+            </Label>
+            <input
+              id="triage-thresholds-import"
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleFileChange}
+              className="hidden"
+              aria-label="Import triage threshold configuration (JSON)"
+              title="Import triage threshold configuration (JSON)"
+            />
+            <Button variant="outline" size="sm">
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Reset All
+            </Button>
+          </>
+        )}
       </div>
 
       {/* Permission Warning */}
@@ -488,26 +510,13 @@ export function TriageThresholdsSettings({
         </Alert>
       )}
 
-      {isEmpty ? (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <Settings className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Thresholds Configured</h3>
-            <p className="text-muted-foreground">
-              Configure vital sign thresholds to enable triage alerts.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+      <Card>
+          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
               <Settings className="h-5 w-5" />
-              Threshold Configuration
-            </CardTitle>
-            <CardDescription>
-              Values outside these thresholds will trigger alerts during triage
-            </CardDescription>
+              <CardTitle className="text-base sm:text-lg">Threshold Configuration</CardTitle>
+              <HelpPopover content="Values outside these thresholds will trigger alerts during triage. Critical thresholds trigger immediate alerts; warning thresholds prompt review. Click Edit to customize values for your facility." />
+            </div>
           </CardHeader>
           <CardContent>
             <Table data-testid="thresholds-table">
@@ -523,8 +532,9 @@ export function TriageThresholdsSettings({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {thresholds.map((threshold) => {
+                {displayThresholds.map((threshold) => {
                   const config = VITAL_TYPE_CONFIG[threshold.vital_type];
+                  const isDefault = threshold.id < 0;
                   return (
                     <TableRow
                       key={threshold.id}
@@ -532,9 +542,16 @@ export function TriageThresholdsSettings({
                       className={cn(!threshold.is_active && 'opacity-50')}
                     >
                       <TableCell>
-                        <div>
-                          <span className="font-medium">{config.label}</span>
-                          <span className="text-muted-foreground ml-1">({config.unit})</span>
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <span className="font-medium">{config.label}</span>
+                            <span className="text-muted-foreground ml-1">({config.unit})</span>
+                          </div>
+                          {isDefault && (
+                            <Badge variant="secondary" className="text-xs">
+                              Default
+                            </Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="text-center font-mono">
@@ -589,7 +606,6 @@ export function TriageThresholdsSettings({
             </Table>
           </CardContent>
         </Card>
-      )}
 
       {/* Edit Dialog */}
       {editingThreshold && (

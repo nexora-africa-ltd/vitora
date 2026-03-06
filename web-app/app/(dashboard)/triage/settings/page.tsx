@@ -9,10 +9,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { TriageThresholdsSettings } from '@/components/triage';
@@ -30,7 +27,6 @@ import { toast } from '@/lib/hooks/use-toast';
 import type { TriageVitalThreshold } from '@/lib/types/triage';
 
 export default function TriageSettingsPage() {
-  const router = useRouter();
   const { hasPermission } = usePermissions();
 
   // Check permission - usePermissions handles superusers/admins automatically
@@ -164,21 +160,11 @@ export default function TriageSettingsPage() {
     [importThresholds, refetch]
   );
 
-  const handleBack = useCallback(() => {
-    router.push('/triage');
-  }, [router]);
-
   return (
     <div className="space-y-6">
       <PageHeader
         title="Triage Settings"
-        description="Configure vital sign thresholds and alert rules"
-        actions={
-          <Button variant="outline" onClick={handleBack}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Queue
-          </Button>
-        }
+        helpContent="Configure vital sign thresholds and alert rules for your facility."
       />
 
       <Tabs defaultValue="thresholds" className="space-y-4">
