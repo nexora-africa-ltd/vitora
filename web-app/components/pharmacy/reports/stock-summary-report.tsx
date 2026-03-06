@@ -7,7 +7,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { format } from 'date-fns';
 import {
   Download,
@@ -55,20 +55,17 @@ export function StockSummaryReport() {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
-  const [expandedDrugs, setExpandedDrugs] = useState<Set<number>>(new Set());
+  const [expandedDrugs, setExpandedDrugs] = useState<Record<number, boolean>>({});
   const [currentPage, setCurrentPage] = useState(1);
 
   const { data: reportData, isLoading, error } = useStockSummaryReport();
 
-  const toggleDrugExpanded = (drugId: number) => {
-    const newExpanded = new Set(expandedDrugs);
-    if (newExpanded.has(drugId)) {
-      newExpanded.delete(drugId);
-    } else {
-      newExpanded.add(drugId);
-    }
-    setExpandedDrugs(newExpanded);
-  };
+  const toggleDrugExpanded = useCallback((drugId: number) => {
+    setExpandedDrugs((prev) => ({
+      ...prev,
+      [drugId]: !prev[drugId],
+    }));
+  }, []);
 
   // Filter data - reportData has a results array wrapper
   const filteredData = (reportData?.results || []).filter((item: StockSummaryItem) => {
@@ -276,10 +273,10 @@ export function StockSummaryReport() {
                             e.stopPropagation();
                             toggleDrugExpanded(item.drug_id);
                           }}
-                          aria-expanded={expandedDrugs.has(item.drug_id)}
-                          aria-label={expandedDrugs.has(item.drug_id) ? 'Collapse batches' : 'Expand batches'}
+                          aria-expanded={!!expandedDrugs[item.drug_id]}
+                          aria-label={expandedDrugs[item.drug_id] ? 'Collapse batches' : 'Expand batches'}
                         >
-                          {expandedDrugs.has(item.drug_id) ? (
+                          {expandedDrugs[item.drug_id] ? (
                             <ChevronDown className="h-4 w-4" />
                           ) : (
                             <ChevronRight className="h-4 w-4" />
@@ -300,7 +297,7 @@ export function StockSummaryReport() {
                       </TableCell>
                       <TableCell className="text-right">{item.batches.length}</TableCell>
                     </TableRow>
-                    {expandedDrugs.has(item.drug_id) && (
+                    {expandedDrugs[item.drug_id] && (
                       <TableRow className="bg-muted/30" data-testid={`batch-details-${item.drug_id}`}>
                         <TableCell colSpan={6} className="p-0">
                           {item.batches.length > 0 ? (
@@ -387,7 +384,7 @@ export function StockSummaryReport() {
                         toggleDrugExpanded(item.drug_id);
                       }}
                     >
-                      {expandedDrugs.has(item.drug_id) ? (
+                      {expandedDrugs[item.drug_id] ? (
                         <ChevronDown className="h-4 w-4" />
                       ) : (
                         <ChevronRight className="h-4 w-4" />
@@ -409,7 +406,7 @@ export function StockSummaryReport() {
                   </span>
                   <span>{item.batches.length} batch(es)</span>
                 </div>
-                {expandedDrugs.has(item.drug_id) && item.batches.length > 0 && (
+                {expandedDrugs[item.drug_id] && item.batches.length > 0 && (
                   <div className="pl-8 pt-2 space-y-2 border-t">
                     {item.batches.map((batch) => (
                       <div key={batch.batch_number} className="flex justify-between text-sm">
@@ -438,7 +435,7 @@ export function StockSummaryReport() {
                     ))}
                   </div>
                 )}
-                {expandedDrugs.has(item.drug_id) && item.batches.length === 0 && (
+                {expandedDrugs[item.drug_id] && item.batches.length === 0 && (
                   <div className="pl-8 pt-2 text-sm text-muted-foreground border-t">
                     No batches available
                   </div>
