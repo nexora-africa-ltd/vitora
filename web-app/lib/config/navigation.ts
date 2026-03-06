@@ -166,6 +166,10 @@ const _allNavItems: NavItemType[] = [
     children: [
       { label: 'Wards', href: '/wards', icon: Building2 },
       { label: 'Admissions', href: '/admissions', icon: ClipboardList },
+      { label: 'Reviews', href: '/inpatient/reviews', icon: FileText },
+      { label: 'Kardex', href: '/inpatient/kardex', icon: ClipboardList },
+      { label: 'Rounds', href: '/inpatient/rounds', icon: Stethoscope },
+      { label: 'Supervisor Alerts', href: '/inpatient/alerts', icon: AlertTriangle },
     ],
   },
   {
