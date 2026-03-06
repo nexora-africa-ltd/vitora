@@ -607,6 +607,101 @@ class AIFeedbackStatsResponseSerializer(serializers.Serializer):
 
 
 # =============================================================================
+# Phase 4a — Smart Autopopulate
+# =============================================================================
+
+
+class AutopopulateSuggestedFieldSerializer(serializers.Serializer):
+    """A single field suggestion from AI autopopulate."""
+
+    field_name = serializers.CharField(
+        help_text="Target form field (e.g., 'assessment', 'chronic_conditions').",
+    )
+    value = serializers.JSONField(
+        help_text="Suggested value — string, list, or structured object.",
+    )
+    confidence = serializers.FloatField(
+        min_value=0.0,
+        max_value=1.0,
+        help_text="Confidence score (0.0 to 1.0).",
+    )
+    reason = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Clinical reasoning for this suggestion.",
+    )
+    source = serializers.ChoiceField(
+        choices=["ai", "cds", "history"],
+        default="ai",
+        help_text="Origin of the suggestion.",
+    )
+
+
+class AutopopulateRequestSerializer(serializers.Serializer):
+    """Request body for POST /api/ai/autopopulate/."""
+
+    chief_complaint = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=5000,
+        help_text="Chief complaint text.",
+    )
+    vitals = AIVitalsSerializer(required=False, allow_null=True)
+    patient_age = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        help_text="Patient age in years.",
+    )
+    patient_sex = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="M, F, or O.",
+    )
+    allergies = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        default=list,
+        help_text="Known patient allergies.",
+    )
+    current_medications = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        default=list,
+        help_text="Current medications.",
+    )
+    clinical_notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=10000,
+        help_text="Additional clinical notes / HPI text.",
+    )
+    encounter_type = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="OPD, IPD, or EMERGENCY.",
+    )
+
+
+class AutopopulateResponseSerializer(serializers.Serializer):
+    """Response from POST /api/ai/autopopulate/."""
+
+    suggested_fields = AutopopulateSuggestedFieldSerializer(
+        many=True,
+        help_text="List of field suggestions for the encounter form.",
+    )
+    icd10_suggestions = ICD10SuggestionSerializer(
+        many=True,
+        required=False,
+        help_text="ICD-10 code suggestions if chief complaint provided.",
+    )
+    error = serializers.CharField(
+        required=False,
+        allow_null=True,
+        help_text="Error message when AI is unavailable.",
+    )
+
+
+# =============================================================================
 # Phase 4 — ICU Predictor
 # =============================================================================
 

@@ -1,28 +1,127 @@
 'use client';
 
-import { FileText, AlertCircle, Pill, Heart, Users, Briefcase, ChevronRight, ChevronLeft } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+import { FileText, AlertCircle, Pill, Heart, Users, Briefcase, ChevronRight, ChevronLeft, Sparkles, Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { SmartSuggestion } from '@/components/shared/smart-suggestion';
+import { useFeatureFlag } from '@/lib/hooks/use-feature-flags';
+import { useSmartSuggestions } from '@/lib/hooks/use-smart-suggestions';
+import type { SmartSuggestion as SmartSuggestionType } from '@/lib/hooks/use-smart-suggestions';
 import type { EncounterFormData } from '@/lib/types/encounter-form';
 
 interface MedicalHistoryFormContentProps {
   data: EncounterFormData;
   onChange: (field: keyof EncounterFormData, value: string) => void;
   disabled?: boolean;
+  /** Chief complaint text — used for AI-powered suggestions when smart_autopopulate is on */
+  chiefComplaint?: string;
 }
 
 /**
  * Content-only version of the Medical History form (no Card wrapper)
  * Used in accordion-based layouts
  */
-export function MedicalHistoryFormContent({ data, onChange, disabled = false }: MedicalHistoryFormContentProps) {
+export function MedicalHistoryFormContent({ data, onChange, disabled = false, chiefComplaint }: MedicalHistoryFormContentProps) {
+  const smartAutopopulate = useFeatureFlag('smart_autopopulate');
+  const {
+    getFieldSuggestions,
+    fetchSuggestions,
+    accept,
+    reject,
+    isLoading: isSuggestLoading,
+    isAvailable,
+  } = useSmartSuggestions();
+
+  // Fetch AI suggestions from chief complaint context
+  const handleFetchSuggestions = useCallback(() => {
+    if (!chiefComplaint || chiefComplaint.trim().length < 5) return;
+    fetchSuggestions({
+      chief_complaint: chiefComplaint,
+      clinical_notes: [
+        data.allergies,
+        data.chronic_conditions,
+        data.current_medications,
+      ].filter(Boolean).join('; '),
+    });
+  }, [chiefComplaint, data.allergies, data.chronic_conditions, data.current_medications, fetchSuggestions]);
+
+  // Handle accepting a suggestion — append to the target field
+  const handleAcceptSuggestion = useCallback((suggestion: SmartSuggestionType) => {
+    const fieldMap: Record<string, keyof EncounterFormData> = {
+      allergies: 'allergies',
+      chronic_conditions: 'chronic_conditions',
+      current_medications: 'current_medications',
+      assessment: 'assessment',
+    };
+    const targetField = fieldMap[suggestion.field_name];
+    if (!targetField) {
+      accept(suggestion.id);
+      return;
+    }
+    const currentValue = (data[targetField] as string) || '';
+    const suggestedText = typeof suggestion.value === 'string'
+      ? suggestion.value
+      : JSON.stringify(suggestion.value);
+    const newValue = currentValue
+      ? `${currentValue}\n${suggestedText}`
+      : suggestedText;
+    onChange(targetField, newValue);
+    accept(suggestion.id);
+  }, [data, onChange, accept]);
+
+  // Helper to render field suggestions below a textarea
+  const renderFieldSuggestions = (fieldName: string) => {
+    if (!smartAutopopulate || !isAvailable) return null;
+    const suggestions = getFieldSuggestions(fieldName);
+    if (suggestions.length === 0) return null;
+    return (
+      <div className="mt-1.5 space-y-1">
+        {suggestions.map((s) => (
+          <SmartSuggestion
+            key={s.id}
+            suggestion={s}
+            onAccept={() => handleAcceptSuggestion(s)}
+            onReject={() => reject(s.id)}
+            variant="inline"
+            disabled={disabled}
+          />
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
-      <p className="text-sm text-muted-foreground">
-        Document the patient&apos;s relevant medical background for this encounter
-      </p>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <p className="text-sm text-muted-foreground">
+          Document the patient&apos;s relevant medical background for this encounter
+        </p>
+        {smartAutopopulate && isAvailable && chiefComplaint && chiefComplaint.trim().length >= 5 && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleFetchSuggestions}
+            disabled={disabled || isSuggestLoading}
+            className="gap-1.5 text-xs"
+          >
+            {isSuggestLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden sm:inline">
+              {isSuggestLoading ? 'Analyzing...' : 'AI Suggest History'}
+            </span>
+            <span className="sm:hidden">
+              {isSuggestLoading ? '...' : 'Suggest'}
+            </span>
+          </Button>
+        )}
+      </div>
       <div className="grid gap-6 md:grid-cols-2">
         {/* Allergies */}
         <div className="space-y-2">
@@ -39,6 +138,7 @@ export function MedicalHistoryFormContent({ data, onChange, disabled = false }: 
             rows={3}
             className="resize-none"
           />
+          {renderFieldSuggestions('allergies')}
         </div>
 
         {/* Chronic Conditions */}
@@ -56,6 +156,7 @@ export function MedicalHistoryFormContent({ data, onChange, disabled = false }: 
             rows={3}
             className="resize-none"
           />
+          {renderFieldSuggestions('chronic_conditions')}
         </div>
 
         {/* Current Medications */}
@@ -73,6 +174,7 @@ export function MedicalHistoryFormContent({ data, onChange, disabled = false }: 
             rows={3}
             className="resize-none"
           />
+          {renderFieldSuggestions('current_medications')}
         </div>
 
         {/* Past Surgeries */}

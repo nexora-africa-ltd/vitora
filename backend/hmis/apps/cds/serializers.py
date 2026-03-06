@@ -168,6 +168,7 @@ class CDSAlertSerializer(serializers.ModelSerializer):
     evidence_level = serializers.CharField(source="rule.evidence_level", read_only=True)
     action_type = serializers.CharField(source="rule.action_type", read_only=True)
     resolved_by_name = serializers.SerializerMethodField()
+    suggested_actions = serializers.SerializerMethodField()
 
     class Meta:
         model = CDSAlert
@@ -185,6 +186,7 @@ class CDSAlertSerializer(serializers.ModelSerializer):
             "message",
             "suggestion",
             "details",
+            "suggested_actions",
             "category",
             "evidence_level",
             "action_type",
@@ -221,6 +223,15 @@ class CDSAlertSerializer(serializers.ModelSerializer):
             return f"{obj.resolved_by.first_name} {obj.resolved_by.last_name}".strip() or obj.resolved_by.username
         return ""
 
+    def get_suggested_actions(self, obj: CDSAlert) -> list:
+        """Return suggested_actions from details, gated by feature flag."""
+        from hmis.apps.core.models import FeatureFlag
+
+        if not FeatureFlag.is_flag_enabled("smart_autopopulate"):
+            return []
+        details = obj.details or {}
+        return details.get("suggested_actions", [])
+
 
 class CDSAlertListSerializer(serializers.ModelSerializer):
     """Lightweight list serializer for CDS alerts."""
@@ -232,6 +243,7 @@ class CDSAlertListSerializer(serializers.ModelSerializer):
     is_pending = serializers.BooleanField(read_only=True)
     is_critical = serializers.BooleanField(read_only=True)
     category = serializers.CharField(source="rule.category", read_only=True)
+    suggested_actions = serializers.SerializerMethodField()
 
     class Meta:
         model = CDSAlert
@@ -248,11 +260,21 @@ class CDSAlertListSerializer(serializers.ModelSerializer):
             "status",
             "message",
             "suggestion",
+            "suggested_actions",
             "category",
             "is_pending",
             "is_critical",
             "created_at",
         ]
+
+    def get_suggested_actions(self, obj: CDSAlert) -> list:
+        """Return suggested_actions from details, gated by feature flag."""
+        from hmis.apps.core.models import FeatureFlag
+
+        if not FeatureFlag.is_flag_enabled("smart_autopopulate"):
+            return []
+        details = obj.details or {}
+        return details.get("suggested_actions", [])
 
 
 # ──────────────────────────── Action Serializers ────────────────────────────

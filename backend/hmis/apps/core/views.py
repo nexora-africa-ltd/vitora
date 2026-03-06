@@ -24,6 +24,7 @@ from .models import (
     CodeSystem,
     County,
     Department,
+    FeatureFlag,
     FrontendEvent,
     Notification,
     Role,
@@ -37,6 +38,7 @@ from .serializers import (
     CodeSystemSerializer,
     CountySerializer,
     DepartmentSerializer,
+    FeatureFlagSerializer,
     FrontendEventBatchSerializer,
     FrontendEventSerializer,
     NotificationSerializer,
@@ -1076,3 +1078,27 @@ def _parse_qr_data(qr_data: str) -> tuple | None:
         return (doc_type, doc_number, amount, date, signature)
     except Exception:
         return None
+
+
+class FeatureFlagViewSet(ListModelMixin, viewsets.GenericViewSet):
+    """
+    Read-only API for feature flags.
+
+    Allows authenticated clients to query which features are enabled.
+    Feature flags are managed exclusively via Django admin.
+    """
+
+    queryset = FeatureFlag.objects.all()
+    serializer_class = FeatureFlagSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None  # Always return all flags
+
+    @action(detail=False, methods=["get"])
+    def check(self, request):
+        """Check a specific flag by name. Returns disabled for unknown flags."""
+        name = request.query_params.get("name", "")
+        try:
+            flag = FeatureFlag.objects.get(name=name)
+            return Response(FeatureFlagSerializer(flag).data)
+        except FeatureFlag.DoesNotExist:
+            return Response({"name": name, "is_enabled": False, "description": ""})

@@ -17,6 +17,7 @@ import {
   AIICUPredictResponseSchema,
   AIFeedbackResponseSchema,
   AIFeedbackStatsSchema,
+  AIAutopopulateResponseSchema,
 } from '@/lib/schemas/ai.schema';
 import { parseResponse } from '@/lib/schemas/validation';
 import type {
@@ -35,6 +36,8 @@ import type {
   AIFeedbackRequest,
   AIFeedbackResponse,
   AIFeedbackStats,
+  AIAutopopulateRequest,
+  AIAutopopulateResponse,
 } from '@/lib/types/ai';
 
 export const aiApi = {
@@ -217,6 +220,29 @@ export const aiApi = {
     const response = await apiClient.get('/api/ai/feedback/stats/');
     return parseResponse(AIFeedbackStatsSchema, response.data, {
       context: 'aiApi.getFeedbackStats',
+    });
+  },
+
+  // ===========================================================================
+  // Phase 4a — Smart Autopopulate
+  // ===========================================================================
+
+  /**
+   * Get AI-generated field suggestions for an encounter form.
+   *
+   * Sends encounter context (chief complaint, vitals, patient info) and
+   * returns structured field suggestions. All suggestions require explicit
+   * user confirmation before being applied.
+   *
+   * Gated behind both TIBABOT_ENABLED and smart_autopopulate feature flag.
+   *
+   * @param data - Encounter context for autopopulation
+   * @returns Suggested fields and ICD-10 suggestions
+   */
+  autopopulate: async (data: AIAutopopulateRequest): Promise<AIAutopopulateResponse> => {
+    const response = await apiClient.post('/api/ai/autopopulate/', data);
+    return parseResponse(AIAutopopulateResponseSchema, response.data, {
+      context: 'aiApi.autopopulate',
     });
   },
 };

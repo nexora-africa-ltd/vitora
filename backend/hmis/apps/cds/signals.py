@@ -41,6 +41,9 @@ def evaluate_cds_on_encounter_save(sender: type, instance: object, created: bool
 
             if not existing:
                 rule = CDSRule.objects.get(id=result.rule_id)
+                details = result.details.copy() if result.details else {}
+                if result.suggested_actions:
+                    details["suggested_actions"] = result.suggested_actions
                 CDSAlert.objects.create(
                     rule=rule,
                     patient_id=context.patient_id,
@@ -48,7 +51,7 @@ def evaluate_cds_on_encounter_save(sender: type, instance: object, created: bool
                     priority=rule.priority,
                     message=result.message,
                     suggestion=rule.suggestion,
-                    details=result.details,
+                    details=details,
                 )
                 logger.info(
                     "CDS alert created: rule=%s patient=%s",

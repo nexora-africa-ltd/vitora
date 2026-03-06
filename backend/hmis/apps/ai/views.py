@@ -40,6 +40,8 @@ from .serializers import (
     AIFeedbackResponseSerializer,
     AIFeedbackStatsResponseSerializer,
     AIStatusResponseSerializer,
+    AutopopulateRequestSerializer,
+    AutopopulateResponseSerializer,
     ClinicalAssistRequestSerializer,
     ClinicalChatRequestSerializer,
     ConditionPredictRequestSerializer,
@@ -1003,3 +1005,175 @@ class ICUPredictView(AIFeatureGatedMixin, APIView):
 
         # Fallback — return whatever TibaBot gave us
         return Response(response_data)
+
+
+# =============================================================================
+# Phase 4a — Smart Autopopulate
+# =============================================================================
+
+
+class AutopopulateView(AIFeatureGatedMixin, APIView):
+    """
+    AI-powered encounter form autopopulation.
+
+    POST /api/ai/autopopulate/
+
+    Accepts encounter context (chief complaint, vitals, patient info) and
+    returns structured field suggestions for the encounter form.
+
+    Gated behind both the AI feature flag (TIBABOT_ENABLED) and the
+    smart_autopopulate feature flag. Returns 404 if either is disabled.
+
+    All suggestions require explicit user confirmation before being applied.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        from hmis.apps.core.models import FeatureFlag
+
+        # Double-gate: AI must be enabled AND smart_autopopulate flag must be on
+        if not FeatureFlag.is_flag_enabled("smart_autopopulate"):
+            return Response(
+                {"error": "Smart autopopulate is not enabled for this facility."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = AutopopulateRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        # Audit log the request
+        AuditLog.log(
+            action="ai_autopopulate_request",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "has_chief_complaint": bool(data.get("chief_complaint")),
+                "has_vitals": bool(data.get("vitals")),
+                "has_clinical_notes": bool(data.get("clinical_notes")),
+            },
+        )
+
+        suggested_fields: list[dict] = []
+        icd10_suggestions: list[dict] = []
+
+        # Build the clinical_assist prompt from encounter context
+        chief_complaint = data.get("chief_complaint", "")
+        clinical_notes = data.get("clinical_notes", "")
+        patient_age = data.get("patient_age")
+        patient_sex = data.get("patient_sex", "")
+
+        try:
+            client = get_tibabot_client()
+
+            # 1. Get ICD-10 suggestions if chief complaint provided
+            if chief_complaint:
+                sanitized = sanitize_clinical_text(chief_complaint)
+                try:
+                    icd10_result = client.suggest_icd10(sanitized)
+                    raw_suggestions = icd10_result.get("suggestions", [])
+                    if isinstance(raw_suggestions, list):
+                        icd10_suggestions = raw_suggestions
+                        # Add top suggestion as a recommended diagnosis field
+                        for s in raw_suggestions[:1]:
+                            confidence = s.get("confidence", 0.0)
+                            if confidence >= 0.85:
+                                suggested_fields.append({
+                                    "field_name": "primary_diagnosis",
+                                    "value": {
+                                        "icd10_code": s.get("code", ""),
+                                        "description": s.get("description", ""),
+                                        "diagnosis_type": "PROVISIONAL",
+                                    },
+                                    "confidence": confidence,
+                                    "reason": f"AI suggests {s.get('code', '')} — "
+                                              f"{s.get('description', '')} "
+                                              f"(confidence: {confidence:.0%})",
+                                    "source": "ai",
+                                })
+                except TibaBotError:
+                    logger.warning("TibaBot ICD-10 suggest failed during autopopulate")
+
+            # 2. Get clinical assist suggestions for assessment/plan
+            assist_text_parts = []
+            if chief_complaint:
+                assist_text_parts.append(f"Chief complaint: {chief_complaint}")
+            if clinical_notes:
+                assist_text_parts.append(f"Clinical notes: {clinical_notes}")
+            if patient_age:
+                assist_text_parts.append(f"Patient age: {patient_age}")
+            if patient_sex:
+                assist_text_parts.append(f"Sex: {patient_sex}")
+
+            allergies = data.get("allergies", [])
+            if allergies:
+                assist_text_parts.append(f"Known allergies: {', '.join(allergies)}")
+
+            medications = data.get("current_medications", [])
+            if medications:
+                assist_text_parts.append(f"Current medications: {', '.join(medications)}")
+
+            if assist_text_parts:
+                sanitized_assist = sanitize_clinical_text("\n".join(assist_text_parts))
+                try:
+                    assist_prompt = (
+                        "Based on the following encounter data, provide:\n"
+                        "1. A concise clinical assessment\n"
+                        "2. A treatment plan\n"
+                        "3. Any relevant chronic conditions to document\n\n"
+                        f"{sanitized_assist}"
+                    )
+                    assist_result = client.clinical_assist(
+                        query=assist_prompt,
+                        patient_context={
+                            "patient_age": patient_age or 0,
+                            "patient_sex": patient_sex or "O",
+                            "allergies": allergies,
+                            "current_medications": medications,
+                        },
+                    )
+                    assist_response = assist_result.get("response", "")
+                    if assist_response:
+                        suggested_fields.append({
+                            "field_name": "assessment",
+                            "value": assist_response,
+                            "confidence": 0.75,
+                            "reason": "AI-generated clinical assessment based on encounter context",
+                            "source": "ai",
+                        })
+                except TibaBotError:
+                    logger.warning("TibaBot clinical assist failed during autopopulate")
+
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for autopopulate")
+            return Response(
+                AutopopulateResponseSerializer({
+                    "suggested_fields": [],
+                    "icd10_suggestions": [],
+                    "error": "AI suggestions temporarily unavailable.",
+                }).data,
+                status=status.HTTP_200_OK,
+            )
+
+        # Build and validate response
+        response_data = {
+            "suggested_fields": suggested_fields,
+            "icd10_suggestions": icd10_suggestions,
+        }
+        response_serializer = AutopopulateResponseSerializer(data=response_data)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+
+        # Graceful fallback
+        return Response(
+            AutopopulateResponseSerializer({
+                "suggested_fields": [],
+                "icd10_suggestions": [],
+                "error": "AI returned unexpected response shape.",
+            }).data,
+            status=status.HTTP_200_OK,
+        )

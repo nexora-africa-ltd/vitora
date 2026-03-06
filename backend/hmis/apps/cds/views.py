@@ -399,6 +399,9 @@ class CDSAlertViewSet(viewsets.ModelViewSet):
             ).exists()
             if not existing:
                 rule = CDSRule.objects.get(id=result.rule_id)
+                details = result.details.copy() if result.details else {}
+                if result.suggested_actions:
+                    details["suggested_actions"] = result.suggested_actions
                 alert = CDSAlert.objects.create(
                     rule=rule,
                     patient_id=context.patient_id,
@@ -406,7 +409,7 @@ class CDSAlertViewSet(viewsets.ModelViewSet):
                     priority=rule.priority,
                     message=result.message,
                     suggestion=rule.suggestion,
-                    details=result.details,
+                    details=details,
                     triggered_by=request.user,
                 )
                 created_alerts.append(alert)
@@ -421,6 +424,7 @@ class CDSAlertViewSet(viewsets.ModelViewSet):
                     "rule_code": r.rule_code,
                     "message": r.message,
                     "details": r.details,
+                    "suggested_actions": r.suggested_actions,
                 }
                 for r in results
             ],

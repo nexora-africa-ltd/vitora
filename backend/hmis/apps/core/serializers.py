@@ -13,6 +13,7 @@ from .models import (
     CodeSystem,
     County,
     Department,
+    FeatureFlag,
     FrontendEvent,
     Notification,
     Role,
@@ -460,3 +461,12 @@ class NotificationSerializer(serializers.ModelSerializer):
             "action_url",
             "created_at",
         ]
+
+
+class FeatureFlagSerializer(serializers.ModelSerializer):
+    """Read-only serializer for feature flags."""
+
+    class Meta:
+        model = FeatureFlag
+        fields = ["id", "name", "is_enabled", "description"]
+        read_only_fields = fields

@@ -168,3 +168,23 @@ export const AIFeedbackStatsSchema = z.object({
   total_down: z.number(),
   recent_negatives: z.number().optional(),
 });
+
+// =============================================================================
+// Phase 4a — Smart Autopopulate
+// =============================================================================
+
+/** Schema for a single autopopulate field suggestion */
+export const AIAutopopulateSuggestedFieldSchema = z.object({
+  field_name: z.string(),
+  value: z.unknown(),
+  confidence: z.number().min(0).max(1),
+  reason: z.string().optional(),
+  source: z.enum(['ai', 'cds', 'history']).default('ai'),
+});
+
+/** Schema for POST /api/ai/autopopulate/ response */
+export const AIAutopopulateResponseSchema = z.object({
+  suggested_fields: z.array(AIAutopopulateSuggestedFieldSchema),
+  icd10_suggestions: z.array(AIICD10SuggestionSchema).optional(),
+  error: z.string().nullable().optional(),
+});
