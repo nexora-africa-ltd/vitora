@@ -57,6 +57,7 @@ export function AIChatWidget() {
     contextEnrichment,
     setReturnToUrl,
     pageContext,
+    triggerPanelAction,
   } = useAIChatContext();
 
   // Verbosity from context
@@ -193,6 +194,25 @@ export function AIChatWidget() {
 
   // Handle quick action click
   const handleQuickAction = useCallback(async (action: AIQuickAction) => {
+    // Panel actions: trigger the dedicated Phase 5 panel instead of chat
+    if (action.panelAction) {
+      addMessage({
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: action.userMessage || action.label,
+        timestamp: new Date().toISOString(),
+      });
+      addMessage({
+        id: `system-${Date.now()}`,
+        role: 'assistant',
+        content: `✨ Opening **${action.label}** panel below. Scroll down to see the detailed assessment.`,
+        timestamp: new Date().toISOString(),
+      });
+      triggerPanelAction(action.panelAction);
+      minimizeWidget();
+      return;
+    }
+
     // Check context sufficiency using merged context (base + enrichment)
     const sufficiency = assessContextSufficiency(mergedPatient, mergedEncounter);
 
@@ -257,7 +277,7 @@ export function AIChatWidget() {
         true,
       );
     }
-  }, [addMessage, updateStreamingMessage, assistMutation, mergedPatient, mergedEncounter, pageContext, verbosity]);
+  }, [addMessage, updateStreamingMessage, assistMutation, mergedPatient, mergedEncounter, pageContext, verbosity, triggerPanelAction, minimizeWidget]);
 
   // Open full view — store current URL so user can pop back to widget later
   const handleOpenFullView = useCallback(() => {

@@ -72,6 +72,10 @@ export interface CarePlanPanelProps {
   labResults?: AILabResultItem[];
   /** Whether the panel is disabled */
   disabled?: boolean;
+  /** When true, auto-trigger generation (set by widget quick action) */
+  autoTrigger?: boolean;
+  /** Called after auto-trigger is consumed */
+  onAutoTriggerConsumed?: () => void;
 }
 
 // =============================================================================
@@ -187,10 +191,34 @@ export function CarePlanPanel({
   vitals,
   labResults,
   disabled,
+  autoTrigger,
+  onAutoTriggerConsumed,
 }: CarePlanPanelProps) {
   const isAIEnabled = useAIEnabled();
   const { mutate, data: result, isPending, isError, reset } = useAICarePlanGenerate();
   const [isExporting, setIsExporting] = React.useState(false);
+
+  // Auto-trigger from widget quick action
+  React.useEffect(() => {
+    if (autoTrigger && isAIEnabled && !isPending && !result) {
+      mutate({
+        primary_diagnosis: primaryDiagnosis,
+        icd10_code: icd10Code,
+        severity,
+        comorbidities,
+        patient_age: patientAge,
+        patient_sex: patientSex,
+        is_pregnant: isPregnant,
+        facility_level: facilityLevel,
+        allergies,
+        current_medications: currentMedications,
+        vitals,
+        lab_results: labResults,
+      });
+      onAutoTriggerConsumed?.();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTrigger]);
 
   if (!isAIEnabled) return null;
 

@@ -114,6 +114,17 @@ export interface AIChatContextValue {
   returnToUrl: string | null;
   /** Save the current URL before navigating to /ai full page */
   setReturnToUrl: (url: string | null) => void;
+
+  /**
+   * Active panel action — set by the widget when a quick action with
+   * `panelAction` is clicked. Phase 5 panels subscribe to this and
+   * auto-trigger their mutation when it matches their ID.
+   */
+  activePanelAction: string | null;
+  /** Signal a panel to activate (called from widget handler) */
+  triggerPanelAction: (actionId: string) => void;
+  /** Clear the active panel action (called by panel after triggering) */
+  clearPanelAction: () => void;
 }
 
 // =============================================================================
@@ -160,6 +171,17 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
 
   // Verbosity preference (persisted in-memory; resets to standard on reload)
   const [verbosity, setVerbosity] = useState<AIVerbosity>('standard');
+
+  // Panel action — set by widget when a quick action has panelAction
+  const [activePanelAction, setActivePanelAction] = useState<string | null>(null);
+
+  const triggerPanelAction = useCallback((actionId: string) => {
+    setActivePanelAction(actionId);
+  }, []);
+
+  const clearPanelAction = useCallback(() => {
+    setActivePanelAction(null);
+  }, []);
 
   // Return-to-widget flow: store URL before navigating to /ai
   const returnToUrlRef = useRef<string | null>(null);
@@ -283,6 +305,9 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       setVerbosity,
       returnToUrl,
       setReturnToUrl,
+      activePanelAction,
+      triggerPanelAction,
+      clearPanelAction,
     }),
     [
       widgetState,
@@ -313,6 +338,9 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
       setVerbosity,
       returnToUrl,
       setReturnToUrl,
+      activePanelAction,
+      triggerPanelAction,
+      clearPanelAction,
     ]
   );
 

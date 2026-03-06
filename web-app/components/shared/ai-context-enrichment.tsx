@@ -128,9 +128,6 @@ export function AIContextEnrichmentForm({
 
   const hasAnyMissingField = missingChiefComplaint || missingAnyVitals;
 
-  // Don't render if context is already sufficient with all vitals
-  if (!hasAnyMissingField) return null;
-
   const handleApply = useCallback(() => {
     const enrichment: AIContextEnrichment = {};
 
@@ -151,6 +148,9 @@ export function AIContextEnrichmentForm({
       setIsExpanded(false);
     }
   }, [chiefComplaint, temperature, heartRate, spo2, respiratoryRate, systolicBp, diastolicBp, onEnrich]);
+
+  // Don't render if context is already sufficient with all vitals
+  if (!hasAnyMissingField) return null;
 
   const filledCount = [chiefComplaint, temperature, heartRate, spo2, respiratoryRate, systolicBp || diastolicBp]
     .filter(Boolean).length;

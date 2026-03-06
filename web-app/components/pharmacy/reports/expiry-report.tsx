@@ -166,6 +166,11 @@ export function ExpiryReport() {
     });
   };
 
+  // Reset to page 1 when threshold changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [daysThreshold]);
+
   if (isLoading) {
     return (
       <Card>
@@ -199,11 +204,6 @@ export function ExpiryReport() {
     (currentPage - 1) * REPORT_PAGE_SIZE,
     currentPage * REPORT_PAGE_SIZE
   );
-
-  // Reset to page 1 when threshold changes
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [daysThreshold]);
 
   return (
     <>

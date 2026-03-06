@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -26,8 +26,39 @@ import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { LabInterpretPanel } from '@/components/encounters/lab-interpret-panel';
+import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
+import type { AIQuickAction, AILabResultItem } from '@/lib/types/ai';
 
 type Attachment = { id: number; file: string; file_name: string; uploaded_at?: string };
+
+// =============================================================================
+// Lab Result Quick Actions for AI Chat Widget
+// =============================================================================
+
+const LAB_QUICK_ACTIONS: AIQuickAction[] = [
+  {
+    id: 'lab-interpret',
+    label: 'Interpret results',
+    query: '',
+    userMessage: '\uD83E\uDDEA Interpreting lab results...',
+    panelAction: 'lab-interpret',
+  },
+  {
+    id: 'lab-clinical-significance',
+    label: 'Clinical significance',
+    query:
+      'Explain the clinical significance of these lab results in the context of the patient\'s current diagnosis and history. Highlight any values that need urgent attention.',
+    userMessage: '\uD83D\uDCA1 Assessing clinical significance...',
+  },
+  {
+    id: 'lab-followup',
+    label: 'Suggest follow-up',
+    query:
+      'Based on these lab results, what follow-up tests would you recommend? Consider trends and clinical context.',
+    userMessage: '\uD83D\uDD2C Suggesting follow-up tests...',
+  },
+];
 
 export default function LabResultDetailPage() {
   const router = useRouter();
@@ -106,6 +137,43 @@ export default function LabResultDetailPage() {
     }
     return Array.from(ranges);
   })();
+
+  // Convert components to AILabResultItem format for LabInterpretPanel
+  const labResultItems: AILabResultItem[] = useMemo(() => {
+    return components
+      .filter((c) => c.name && c.value)
+      .map((c) => ({
+        test_name: c.name!,
+        value: parseFloat(c.value!) || 0,
+        unit: c.unit || '',
+      }));
+  }, [components]);
+
+  // =========================================================================
+  // AI Chat Widget — lab-aware context wiring
+  // =========================================================================
+
+  const chatCtx = useOptionalAIChatContext();
+  const setQuickActions = chatCtx?.setQuickActions;
+  const activePanelAction = chatCtx?.activePanelAction ?? null;
+  const clearPanelAction = chatCtx?.clearPanelAction;
+
+  const [autoTriggerInterpret, setAutoTriggerInterpret] = useState(false);
+
+  useEffect(() => {
+    if (!activePanelAction || !clearPanelAction) return;
+    if (activePanelAction === 'lab-interpret') {
+      setAutoTriggerInterpret(true);
+      clearPanelAction();
+    }
+  }, [activePanelAction, clearPanelAction]);
+
+  // Register lab-specific quick actions
+  useEffect(() => {
+    if (!setQuickActions) return;
+    setQuickActions(LAB_QUICK_ACTIONS);
+    return () => { setQuickActions([]); };
+  }, [setQuickActions]);
 
   return (
     <PullToRefresh
@@ -222,6 +290,17 @@ export default function LabResultDetailPage() {
                 ))}
               </CardContent>
             </Card>
+          )}
+
+          {/* AI Lab Interpretation (Phase 5) */}
+          {labResultItems.length > 0 && (
+            <LabInterpretPanel
+              patientAge={0}
+              patientSex="male"
+              labResults={labResultItems}
+              autoTrigger={autoTriggerInterpret}
+              onAutoTriggerConsumed={() => setAutoTriggerInterpret(false)}
+            />
           )}
 
           <Card>
