@@ -147,12 +147,19 @@ const _allNavItems: NavItemType[] = [
   },
   { label: 'Pharmacy', href: '/pharmacy', icon: Pill },
   {
-    label: 'Diagnostics',
-    icon: FlaskConical,
+    label: 'Laboratory',
+    icon: Microscope,
     children: [
-      { label: 'Laboratory', href: '/laboratory', icon: Microscope },
+      { label: 'Dashboard', href: '/laboratory', icon: LayoutDashboard },
       { label: 'Lab Reports', href: '/laboratory/reports', icon: FileText },
-      { label: 'Imaging', href: '/imaging', icon: ScanLine },
+      { label: 'Lab Analytics', href: '/laboratory/analytics', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Imaging',
+    icon: ScanLine,
+    children: [
+      { label: 'Dashboard', href: '/imaging', icon: LayoutDashboard },
       { label: 'Imaging Orders', href: '/imaging/orders', icon: ClipboardList },
       { label: 'DICOM Studies', href: '/imaging/studies', icon: ImageIcon },
     ],
