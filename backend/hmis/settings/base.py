@@ -750,6 +750,13 @@ TIBABOT_API_URL = os.getenv("TIBABOT_API_URL", "https://tibabot.hmis.nexora.afri
 TIBABOT_API_KEY = os.getenv("TIBABOT_API_KEY", "")
 TIBABOT_TIMEOUT = int(os.getenv("TIBABOT_TIMEOUT", "30"))
 
+# Per-feature flags (all default to True — opt-out, not opt-in).
+# Each requires TIBABOT_ENABLED=true as a prerequisite.
+TIBABOT_ENABLE_LAB_ASSIST = os.getenv("TIBABOT_ENABLE_LAB_ASSIST", "true").lower() == "true"
+TIBABOT_ENABLE_DISCHARGE_READINESS = os.getenv("TIBABOT_ENABLE_DISCHARGE_READINESS", "true").lower() == "true"
+TIBABOT_ENABLE_CARE_PLAN = os.getenv("TIBABOT_ENABLE_CARE_PLAN", "true").lower() == "true"
+TIBABOT_ENABLE_CLERKING_ASSIST = os.getenv("TIBABOT_ENABLE_CLERKING_ASSIST", "true").lower() == "true"
+
 # ============================================================================
 # SMART on FHIR OAuth2 Configuration (Phase 5)
 # ============================================================================

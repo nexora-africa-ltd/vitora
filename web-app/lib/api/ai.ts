@@ -18,6 +18,14 @@ import {
   AIFeedbackResponseSchema,
   AIFeedbackStatsSchema,
   AIAutopopulateResponseSchema,
+  AILabInterpretResponseSchema,
+  AIDischargeAssessResponseSchema,
+  AIDischargeConditionsResponseSchema,
+  AICarePlanResponseSchema,
+  AICarePlanConditionsResponseSchema,
+  AIClerkingAutocompleteResponseSchema,
+  AIClerkingStructureResponseSchema,
+  AICDSEvaluateResponseSchema,
 } from '@/lib/schemas/ai.schema';
 import { parseResponse } from '@/lib/schemas/validation';
 import type {
@@ -38,6 +46,20 @@ import type {
   AIFeedbackStats,
   AIAutopopulateRequest,
   AIAutopopulateResponse,
+  AILabInterpretRequest,
+  AILabInterpretResponse,
+  AIDischargeAssessRequest,
+  AIDischargeAssessResponse,
+  AIDischargeConditionsResponse,
+  AICarePlanGenerateRequest,
+  AICarePlanResponse,
+  AICarePlanConditionsResponse,
+  AIClerkingAutocompleteRequest,
+  AIClerkingAutocompleteResponse,
+  AIClerkingStructureRequest,
+  AIClerkingStructureResponse,
+  AICDSEvaluateRequest,
+  AICDSEvaluateResponse,
 } from '@/lib/types/ai';
 
 export const aiApi = {
@@ -243,6 +265,166 @@ export const aiApi = {
     const response = await apiClient.post('/api/ai/autopopulate/', data);
     return parseResponse(AIAutopopulateResponseSchema, response.data, {
       context: 'aiApi.autopopulate',
+    });
+  },
+
+  // ===========================================================================
+  // Phase 5 — Lab Assist
+  // ===========================================================================
+
+  /**
+   * Interpret lab results with reference ranges and pattern detection.
+   *
+   * Sends lab results with patient demographics to TibaBot for interpretation.
+   * Returns flagged abnormals, detected patterns, and follow-up suggestions.
+   * Falls back to local reference range checks when TibaBot is unavailable.
+   *
+   * @param data - Patient info and lab results
+   * @returns Flagged results, patterns, and interpretation summary
+   */
+  interpretLab: async (data: AILabInterpretRequest): Promise<AILabInterpretResponse> => {
+    const response = await apiClient.post('/api/ai/lab/interpret/', data);
+    return parseResponse(AILabInterpretResponseSchema, response.data, {
+      context: 'aiApi.interpretLab',
+    });
+  },
+
+  // ===========================================================================
+  // Phase 5 — Discharge Readiness
+  // ===========================================================================
+
+  /**
+   * Assess discharge readiness for an admitted patient.
+   *
+   * Evaluates clinical, functional, and social criteria against
+   * condition-specific checklists. Includes Kenya-specific criteria
+   * (NHIF/SHA coverage, CHW referral).
+   *
+   * @param data - Patient status, vitals history, and social criteria
+   * @returns Readiness score, criteria checklist, and recommendations
+   */
+  assessDischarge: async (data: AIDischargeAssessRequest): Promise<AIDischargeAssessResponse> => {
+    const response = await apiClient.post('/api/ai/discharge/assess/', data);
+    return parseResponse(AIDischargeAssessResponseSchema, response.data, {
+      context: 'aiApi.assessDischarge',
+    });
+  },
+
+  /**
+   * List supported conditions for discharge assessment.
+   *
+   * Returns the list of conditions that have specific discharge criteria
+   * defined. Static data — cacheable.
+   */
+  listDischargeConditions: async (): Promise<AIDischargeConditionsResponse> => {
+    const response = await apiClient.get('/api/ai/discharge/conditions/');
+    return parseResponse(AIDischargeConditionsResponseSchema, response.data, {
+      context: 'aiApi.listDischargeConditions',
+    });
+  },
+
+  // ===========================================================================
+  // Phase 5 — Care Plan Generator
+  // ===========================================================================
+
+  /**
+   * Generate a structured care plan for a diagnosis.
+   *
+   * Creates evidence-based care plans with goals, interventions, and
+   * discharge criteria. Includes KEML facility-level medication checks
+   * and CDS safety validation.
+   *
+   * @param data - Diagnosis, patient info, and clinical context
+   * @returns Structured care plan with goals, interventions, and follow-up
+   */
+  generateCarePlan: async (data: AICarePlanGenerateRequest): Promise<AICarePlanResponse> => {
+    const response = await apiClient.post('/api/ai/care-plan/generate/', data);
+    return parseResponse(AICarePlanResponseSchema, response.data, {
+      context: 'aiApi.generateCarePlan',
+    });
+  },
+
+  /**
+   * Generate a care plan as a FHIR R4 CarePlan resource.
+   *
+   * Same input as generateCarePlan but returns HL7 FHIR R4 output
+   * suitable for EMR interoperability.
+   *
+   * @param data - Same as generateCarePlan
+   * @returns FHIR R4 CarePlan resource JSON
+   */
+  generateCarePlanFHIR: async (data: AICarePlanGenerateRequest): Promise<Record<string, unknown>> => {
+    const response = await apiClient.post('/api/ai/care-plan/generate/fhir/', data);
+    return response.data as Record<string, unknown>;
+  },
+
+  /**
+   * List conditions with care plan templates available.
+   *
+   * Returns condition keys and names for the care plan generator dropdown.
+   * Static data — cacheable.
+   */
+  listCarePlanConditions: async (): Promise<AICarePlanConditionsResponse> => {
+    const response = await apiClient.get('/api/ai/care-plan/conditions/');
+    return parseResponse(AICarePlanConditionsResponseSchema, response.data, {
+      context: 'aiApi.listCarePlanConditions',
+    });
+  },
+
+  // ===========================================================================
+  // Phase 5 — Clerking Assist
+  // ===========================================================================
+
+  /**
+   * Get context-aware autocomplete suggestions for clinical text fields.
+   *
+   * Sends the current text and field name for AI-powered completion suggestions.
+   * Use with debounced input for real-time autocomplete in encounter forms.
+   *
+   * @param data - Current text, field name, and optional patient context
+   * @returns Ranked autocomplete suggestions with confidence
+   */
+  clerkingAutocomplete: async (data: AIClerkingAutocompleteRequest): Promise<AIClerkingAutocompleteResponse> => {
+    const response = await apiClient.post('/api/ai/clerking/autocomplete/', data);
+    return parseResponse(AIClerkingAutocompleteResponseSchema, response.data, {
+      context: 'aiApi.clerkingAutocomplete',
+    });
+  },
+
+  /**
+   * Convert free-text clinical notes to structured SOAP/SBAR format.
+   *
+   * Parses narrative clinical text and organizes it into standard sections.
+   * Useful for structuring dictated or free-form encounter notes.
+   *
+   * @param data - Free-text note and target format (SOAP or SBAR)
+   * @returns Structured note with named sections
+   */
+  clerkingStructure: async (data: AIClerkingStructureRequest): Promise<AIClerkingStructureResponse> => {
+    const response = await apiClient.post('/api/ai/clerking/structure/', data);
+    return parseResponse(AIClerkingStructureResponseSchema, response.data, {
+      context: 'aiApi.clerkingStructure',
+    });
+  },
+
+  // ===========================================================================
+  // Phase 5 — Enhanced CDS Evaluation
+  // ===========================================================================
+
+  /**
+   * Evaluate enhanced CDS rules via TibaBot.
+   *
+   * Supplements the local CDS engine with TibaBot-powered evaluation
+   * including drug-drug interactions, contraindications, protocol adherence,
+   * KEML formulary compliance, and dosing checks.
+   *
+   * @param data - Medications, diagnoses, labs, patient demographics
+   * @returns Alerts, recommendations, and evaluation stats
+   */
+  evaluateCDS: async (data: AICDSEvaluateRequest): Promise<AICDSEvaluateResponse> => {
+    const response = await apiClient.post('/api/ai/cds/evaluate/', data);
+    return parseResponse(AICDSEvaluateResponseSchema, response.data, {
+      context: 'aiApi.evaluateCDS',
     });
   },
 };

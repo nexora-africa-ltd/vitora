@@ -481,3 +481,284 @@ export interface AIAutopopulateResponse {
   icd10_suggestions?: AIICD10Suggestion[];
   error?: string | null;
 }
+
+// =============================================================================
+// Phase 5 — Lab Assist
+// =============================================================================
+
+/** A single lab result for interpretation */
+export interface AILabResultItem {
+  /** Standardized test name (e.g., "serum_creatinine", "hemoglobin") */
+  test_name: string;
+  /** Numeric result value */
+  value: number;
+  /** Unit of measurement (e.g., "mg/dL", "mmol/L") */
+  unit: string;
+  /** When the sample was collected */
+  timestamp?: string;
+}
+
+/** Request body for POST /api/ai/lab/interpret/ */
+export interface AILabInterpretRequest {
+  patient_age: number;
+  patient_sex: 'male' | 'female';
+  is_pregnant?: boolean;
+  gestational_weeks?: number | null;
+  lab_results: AILabResultItem[];
+  diagnoses?: string[];
+}
+
+/** A flagged lab result with reference range info */
+export interface AILabFlag {
+  test_name: string;
+  value: number;
+  unit: string;
+  /** normal, high, low, critical_high, critical_low, or unknown */
+  status: string;
+  reference_range?: { low?: number; high?: number; unit?: string } | null;
+  deviation_percent?: number | null;
+  message?: string;
+}
+
+/** A detected multi-lab pattern */
+export interface AILabPattern {
+  pattern_name: string;
+  significance: 'critical' | 'significant' | 'monitor';
+  confidence: number;
+  description?: string;
+  contributing_tests?: string[];
+}
+
+/** Response from POST /api/ai/lab/interpret/ */
+export interface AILabInterpretResponse {
+  flags: AILabFlag[];
+  patterns?: AILabPattern[];
+  interpretation_summary?: string;
+  suggested_followup_labs?: string[];
+  critical_alerts?: string[];
+  /** 'tibabot' or 'fallback' */
+  mode?: string;
+  error?: string | null;
+}
+
+// =============================================================================
+// Phase 5 — Discharge Readiness
+// =============================================================================
+
+/** A vitals snapshot for discharge assessment */
+export interface AIVitalsSnapshot {
+  timestamp: string;
+  heart_rate?: number | null;
+  systolic_bp?: number | null;
+  diastolic_bp?: number | null;
+  temperature?: number | null;
+  respiratory_rate?: number | null;
+  oxygen_saturation?: number | null;
+}
+
+/** Request body for POST /api/ai/discharge/assess/ */
+export interface AIDischargeAssessRequest {
+  patient_age: number;
+  primary_diagnosis: string;
+  admission_type?: 'medical' | 'surgical' | 'obstetric' | 'pediatric';
+  days_admitted: number;
+  vitals_history?: AIVitalsSnapshot[];
+  lab_results?: AILabResultItem[];
+  current_medications?: string[];
+  can_ambulate?: boolean | null;
+  can_tolerate_oral?: boolean | null;
+  has_follow_up_arranged?: boolean;
+  has_caregiver_at_home?: boolean | null;
+  /** NHIF/SHA coverage (Kenya-specific) */
+  has_nhif_or_sha?: boolean | null;
+  /** CHW referral arranged (Kenya-specific) */
+  chw_referral_made?: boolean | null;
+}
+
+/** A single discharge criterion evaluation */
+export interface AIDischargeCriterion {
+  name: string;
+  /** vitals, labs, functional, medication, social, follow_up */
+  category: string;
+  met: boolean;
+  details?: string;
+}
+
+/** Response from POST /api/ai/discharge/assess/ */
+export interface AIDischargeAssessResponse {
+  readiness_score: number;
+  readiness_level: 'ready' | 'near_ready' | 'not_ready';
+  criteria: AIDischargeCriterion[];
+  unmet_criteria_count: number;
+  readmission_risk?: number | null;
+  readmission_risk_level?: string | null;
+  recommendations?: string[];
+  /** 'stable', 'improving', or 'unstable' */
+  vitals_stability?: string | null;
+  mode?: string;
+  error?: string | null;
+}
+
+/** Response from GET /api/ai/discharge/conditions/ */
+export interface AIDischargeConditionsResponse {
+  conditions: string[];
+  count: number;
+}
+
+// =============================================================================
+// Phase 5 — Care Plan Generator
+// =============================================================================
+
+/** Request body for POST /api/ai/care-plan/generate/ */
+export interface AICarePlanGenerateRequest {
+  primary_diagnosis: string;
+  icd10_code?: string;
+  severity?: string;
+  comorbidities?: string[];
+  patient_age: number;
+  patient_sex: 'male' | 'female';
+  is_pregnant?: boolean;
+  /** Kenya facility level (H1-H5) */
+  facility_level?: string;
+  allergies?: string[];
+  current_medications?: string[];
+  vitals?: Record<string, number>;
+  lab_results?: AILabResultItem[];
+}
+
+/** A care plan goal */
+export interface AICarePlanGoal {
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  timeframe?: string;
+  measurable_target?: string;
+}
+
+/** A single intervention action */
+export interface AICarePlanInterventionItem {
+  action: string;
+  frequency?: string;
+  rationale?: string;
+}
+
+/** Interventions grouped by category */
+export interface AICarePlanInterventionCategory {
+  /** medications, investigations, nursing, nutrition, patient_education, rehabilitation, referrals */
+  category: string;
+  items: AICarePlanInterventionItem[];
+}
+
+/** Follow-up instructions */
+export interface AICarePlanFollowUp {
+  timing: string;
+  instructions?: string;
+  red_flags?: string[];
+}
+
+/** Response from POST /api/ai/care-plan/generate/ */
+export interface AICarePlanResponse {
+  primary_diagnosis: string;
+  icd10_code?: string | null;
+  severity?: string | null;
+  goals: AICarePlanGoal[];
+  interventions: AICarePlanInterventionCategory[];
+  discharge_criteria?: string[];
+  follow_up?: AICarePlanFollowUp | null;
+  references?: string[];
+  cds_alerts?: Record<string, unknown>[];
+  facility_level_notes?: string[];
+  template_used?: string | null;
+  mode?: string;
+  llm_enriched?: boolean;
+  evidence_sources?: string[];
+  error?: string | null;
+}
+
+/** Response from GET /api/ai/care-plan/conditions/ */
+export interface AICarePlanConditionsResponse {
+  conditions: { key: string; name: string; description?: string }[];
+  count: number;
+}
+
+// =============================================================================
+// Phase 5 — Clerking Assist
+// =============================================================================
+
+/** Request body for POST /api/ai/clerking/autocomplete/ */
+export interface AIClerkingAutocompleteRequest {
+  text: string;
+  field_name: string;
+  note_format?: 'soap' | 'sbar';
+  patient_context?: AIPatientContext;
+}
+
+/** A single autocomplete suggestion */
+export interface AIClerkingAutocompleteSuggestion {
+  text: string;
+  confidence: number;
+  category?: string;
+}
+
+/** Response from POST /api/ai/clerking/autocomplete/ */
+export interface AIClerkingAutocompleteResponse {
+  suggestions: AIClerkingAutocompleteSuggestion[];
+  mode?: string;
+  error?: string | null;
+}
+
+/** Request body for POST /api/ai/clerking/structure/ */
+export interface AIClerkingStructureRequest {
+  free_text: string;
+  note_format?: 'soap' | 'sbar';
+}
+
+/** Response from POST /api/ai/clerking/structure/ */
+export interface AIClerkingStructureResponse {
+  structured_note: Record<string, string>;
+  sections: string[];
+  original_text: string;
+  mode?: string;
+  error?: string | null;
+}
+
+// =============================================================================
+// Phase 5 — Enhanced CDS Evaluation
+// =============================================================================
+
+/** Request body for POST /api/ai/cds/evaluate/ */
+export interface AICDSEvaluateRequest {
+  medications?: string[];
+  diagnoses?: string[];
+  symptoms?: string[];
+  pending_procedures?: string[];
+  lab_results?: Record<string, number>;
+  allergies?: string[];
+  patient_age?: number | null;
+  patient_sex?: 'male' | 'female' | null;
+  is_pregnant?: boolean;
+  region?: string;
+  facility_level?: string;
+}
+
+/** A single CDS alert from TibaBot evaluation */
+export interface AICDSAlertItem {
+  rule_id?: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  /** drug-interaction, contraindication, protocol-adherence, lab-critical, dosing, formulary */
+  category: string;
+  title: string;
+  message: string;
+  recommendation?: string;
+  evidence_level?: string;
+}
+
+/** Response from POST /api/ai/cds/evaluate/ */
+export interface AICDSEvaluateResponse {
+  alerts: AICDSAlertItem[];
+  recommendations?: AICDSAlertItem[];
+  rules_evaluated: number;
+  rules_fired: number;
+  processing_time_ms: number;
+  mode?: string;
+  error?: string | null;
+}

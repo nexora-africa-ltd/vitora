@@ -42,14 +42,26 @@ from .serializers import (
     AIStatusResponseSerializer,
     AutopopulateRequestSerializer,
     AutopopulateResponseSerializer,
+    CarePlanGenerateRequestSerializer,
+    CarePlanResponseSerializer,
+    CDSEvaluateRequestSerializer,
+    CDSEvaluateResponseSerializer,
+    ClerkingAutocompleteRequestSerializer,
+    ClerkingAutocompleteResponseSerializer,
+    ClerkingStructureRequestSerializer,
+    ClerkingStructureResponseSerializer,
     ClinicalAssistRequestSerializer,
     ClinicalChatRequestSerializer,
     ConditionPredictRequestSerializer,
     ConditionPredictResponseSerializer,
+    DischargeAssessRequestSerializer,
+    DischargeAssessResponseSerializer,
     ICD10SuggestRequestSerializer,
     ICD10SuggestResponseSerializer,
     ICUPredictRequestSerializer,
     ICUPredictResponseSerializer,
+    LabInterpretRequestSerializer,
+    LabInterpretResponseSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -1177,3 +1189,443 @@ class AutopopulateView(AIFeatureGatedMixin, APIView):
             }).data,
             status=status.HTTP_200_OK,
         )
+
+
+# =============================================================================
+# Phase 5 — Lab Assist
+# =============================================================================
+
+
+class LabInterpretView(AIFeatureGatedMixin, APIView):
+    """
+    AI-powered lab result interpretation.
+
+    POST /api/ai/lab/interpret/
+
+    Returns flagged results with reference ranges, detected multi-lab
+    patterns, and critical alerts. Falls back to local reference range
+    engine when TibaBot is unavailable.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_LAB_ASSIST"
+
+    def post(self, request: Request) -> Response:
+        serializer = LabInterpretRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        AuditLog.log(
+            action="ai_lab_interpret",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            details={
+                "patient_age": data.get("patient_age"),
+                "lab_count": len(data.get("lab_results", [])),
+            },
+        )
+
+        try:
+            client = get_tibabot_client()
+            result = client.interpret_lab(data)
+            result["mode"] = "tibabot"
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for lab interpret — using fallback")
+            from .services.lab_fallback import interpret_lab_fallback
+
+            result = interpret_lab_fallback(data)
+        except TibaBotError as e:
+            logger.error("TibaBot error for lab interpret: %s", e)
+            from .services.lab_fallback import interpret_lab_fallback
+
+            result = interpret_lab_fallback(data)
+
+        response_serializer = LabInterpretResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)
+
+
+# =============================================================================
+# Phase 5 — Discharge Readiness
+# =============================================================================
+
+
+class DischargeAssessView(AIFeatureGatedMixin, APIView):
+    """
+    AI-powered discharge readiness assessment.
+
+    POST /api/ai/discharge/assess/
+
+    Evaluates condition-specific criteria, vitals stability, social
+    factors (Kenya-specific), and readmission risk. Falls back to
+    checklist scoring when TibaBot is unavailable.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_DISCHARGE_READINESS"
+
+    def post(self, request: Request) -> Response:
+        serializer = DischargeAssessRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        # Sanitize diagnosis text
+        data["primary_diagnosis"] = sanitize_clinical_text(data["primary_diagnosis"])
+
+        AuditLog.log(
+            action="ai_discharge_assess",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            details={
+                "patient_age": data.get("patient_age"),
+                "days_admitted": data.get("days_admitted"),
+                "admission_type": data.get("admission_type"),
+            },
+        )
+
+        try:
+            client = get_tibabot_client()
+            result = client.assess_discharge(data)
+            result["mode"] = "tibabot"
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for discharge assess — using fallback")
+            from .services.discharge_fallback import assess_discharge_fallback
+
+            result = assess_discharge_fallback(data)
+        except TibaBotError as e:
+            logger.error("TibaBot error for discharge assess: %s", e)
+            from .services.discharge_fallback import assess_discharge_fallback
+
+            result = assess_discharge_fallback(data)
+
+        response_serializer = DischargeAssessResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)
+
+
+class DischargeConditionsListView(AIFeatureGatedMixin, APIView):
+    """
+    List conditions supported by discharge readiness assessment.
+
+    GET /api/ai/discharge/conditions/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_DISCHARGE_READINESS"
+
+    def get(self, request: Request) -> Response:
+        try:
+            client = get_tibabot_client()
+            result = client.list_discharge_conditions()
+        except (TibaBotUnavailableError, TibaBotError):
+            logger.warning("TibaBot unavailable for discharge conditions list")
+            return Response({"conditions": [], "count": 0})
+
+        return Response(result)
+
+
+# =============================================================================
+# Phase 5 — Care Plan Generator
+# =============================================================================
+
+
+class CarePlanGenerateView(AIFeatureGatedMixin, APIView):
+    """
+    Generate structured, evidence-based care plan.
+
+    POST /api/ai/care-plan/generate/
+
+    Returns goals, interventions (grouped by category), discharge
+    criteria, follow-up instructions, and CDS safety alerts.
+    Falls back to generic template when TibaBot is unavailable.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_CARE_PLAN"
+
+    def post(self, request: Request) -> Response:
+        serializer = CarePlanGenerateRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        # Sanitize text fields
+        data["primary_diagnosis"] = sanitize_clinical_text(data["primary_diagnosis"])
+
+        # Enrich with context
+        payload = {
+            **data,
+            "user_context": build_user_context(request),
+            "facility_context": build_facility_context(),
+        }
+
+        AuditLog.log(
+            action="ai_care_plan_generate",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            details={
+                "primary_diagnosis": data.get("primary_diagnosis", "")[:100],
+                "patient_age": data.get("patient_age"),
+                "has_comorbidities": len(data.get("comorbidities", [])) > 0,
+            },
+        )
+
+        try:
+            client = get_tibabot_client()
+            result = client.generate_care_plan(payload)
+            result["mode"] = "tibabot"
+        except TibaBotUnavailableError:
+            logger.warning("TibaBot unavailable for care plan — using fallback")
+            from .services.care_plan_fallback import generate_care_plan_fallback
+
+            result = generate_care_plan_fallback(data)
+        except TibaBotError as e:
+            logger.error("TibaBot error for care plan: %s", e)
+            from .services.care_plan_fallback import generate_care_plan_fallback
+
+            result = generate_care_plan_fallback(data)
+
+        response_serializer = CarePlanResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)
+
+
+class CarePlanGenerateFHIRView(AIFeatureGatedMixin, APIView):
+    """
+    Generate care plan as FHIR R4 CarePlan resource.
+
+    POST /api/ai/care-plan/generate/fhir/
+
+    Same input as /care-plan/generate/ but returns FHIR R4 JSON.
+    No fallback — requires TibaBot.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_CARE_PLAN"
+
+    def post(self, request: Request) -> Response:
+        serializer = CarePlanGenerateRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        data["primary_diagnosis"] = sanitize_clinical_text(data["primary_diagnosis"])
+
+        payload = {
+            **data,
+            "user_context": build_user_context(request),
+            "facility_context": build_facility_context(),
+        }
+
+        AuditLog.log(
+            action="ai_care_plan_fhir_generate",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            details={"primary_diagnosis": data.get("primary_diagnosis", "")[:100]},
+        )
+
+        try:
+            client = get_tibabot_client()
+            result = client.generate_care_plan_fhir(payload)
+        except TibaBotUnavailableError:
+            return Response(
+                {"error": "FHIR care plan generation requires TibaBot. Service unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except TibaBotError as e:
+            logger.error("TibaBot error for FHIR care plan: %s", e)
+            return Response(
+                {"error": "FHIR care plan generation failed."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        return Response(result)
+
+
+class CarePlanConditionsListView(AIFeatureGatedMixin, APIView):
+    """
+    List conditions with care plan templates.
+
+    GET /api/ai/care-plan/conditions/
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_CARE_PLAN"
+
+    def get(self, request: Request) -> Response:
+        try:
+            client = get_tibabot_client()
+            result = client.list_care_plan_conditions()
+        except (TibaBotUnavailableError, TibaBotError):
+            logger.warning("TibaBot unavailable for care plan conditions list")
+            return Response({"conditions": [], "count": 0})
+
+        return Response(result)
+
+
+# =============================================================================
+# Phase 5 — Clerking Assist
+# =============================================================================
+
+
+class ClerkingAutocompleteView(AIFeatureGatedMixin, APIView):
+    """
+    Context-aware medical autocomplete for clinical notes.
+
+    POST /api/ai/clerking/autocomplete/
+
+    No meaningful fallback — returns empty suggestions when unavailable.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_CLERKING_ASSIST"
+
+    def post(self, request: Request) -> Response:
+        serializer = ClerkingAutocompleteRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        AuditLog.log(
+            action="ai_clerking_autocomplete",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            details={
+                "field_name": data.get("field_name"),
+                "text_length": len(data.get("text", "")),
+            },
+        )
+
+        try:
+            client = get_tibabot_client()
+            result = client.clerking_autocomplete(data)
+            result["mode"] = "tibabot"
+        except (TibaBotUnavailableError, TibaBotError):
+            logger.warning("TibaBot unavailable for clerking autocomplete")
+            from .services.clerking_fallback import clerking_autocomplete_fallback
+
+            result = clerking_autocomplete_fallback(data)
+
+        response_serializer = ClerkingAutocompleteResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)
+
+
+class ClerkingStructureView(AIFeatureGatedMixin, APIView):
+    """
+    Convert free-text clinical notes to structured format (SOAP/SBAR).
+
+    POST /api/ai/clerking/structure/
+
+    Falls back to empty structure template when TibaBot is unavailable.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    ai_feature_flag = "TIBABOT_ENABLE_CLERKING_ASSIST"
+
+    def post(self, request: Request) -> Response:
+        serializer = ClerkingStructureRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        AuditLog.log(
+            action="ai_clerking_structure",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            details={
+                "note_format": data.get("note_format"),
+                "text_length": len(data.get("free_text", "")),
+            },
+        )
+
+        try:
+            client = get_tibabot_client()
+            result = client.clerking_structure(data)
+            result["mode"] = "tibabot"
+        except (TibaBotUnavailableError, TibaBotError):
+            logger.warning("TibaBot unavailable for clerking structure")
+            from .services.clerking_fallback import clerking_structure_fallback
+
+            result = clerking_structure_fallback(data)
+
+        response_serializer = ClerkingStructureResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)
+
+
+# =============================================================================
+# Phase 5 — Enhanced CDS Evaluation
+# =============================================================================
+
+
+class CDSEvaluateView(AIFeatureGatedMixin, APIView):
+    """
+    TibaBot-powered CDS rule evaluation (supplements local engine).
+
+    POST /api/ai/cds/evaluate/
+
+    Checks for DDI, contraindications, protocol adherence, formulary
+    compliance. Designed to augment (not replace) the local CDS engine.
+
+    No fallback — returns empty alerts when TibaBot is unavailable.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        serializer = CDSEvaluateRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        # Enrich with context
+        payload = {
+            **data,
+            "user_context": build_user_context(request),
+            "facility_context": build_facility_context(),
+        }
+
+        AuditLog.log(
+            action="ai_cds_evaluate",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            details={
+                "medication_count": len(data.get("medications", [])),
+                "diagnosis_count": len(data.get("diagnoses", [])),
+            },
+        )
+
+        try:
+            client = get_tibabot_client()
+            result = client.evaluate_cds_rules(payload)
+            result["mode"] = "tibabot"
+        except (TibaBotUnavailableError, TibaBotError):
+            logger.warning("TibaBot unavailable for CDS evaluate")
+            result = {
+                "alerts": [],
+                "recommendations": [],
+                "rules_evaluated": 0,
+                "rules_fired": 0,
+                "processing_time_ms": 0.0,
+                "mode": "fallback",
+            }
+
+        response_serializer = CDSEvaluateResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)
