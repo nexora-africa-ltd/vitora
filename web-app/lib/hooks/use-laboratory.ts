@@ -15,6 +15,9 @@ import {
   ResultValidation,
   ResultValidationCreateData,
   ValidationType,
+  DiagnosticReport,
+  DiagnosticReportCreateData,
+  DiagnosticReportStatus,
 } from '@/lib/types/laboratory';
 
 // ============ Test Catalog Hooks ============
@@ -561,6 +564,142 @@ export function usePendingValidations(params?: PendingValidationsParams) {
     },
     refetchInterval: 30000, // Refresh every 30 seconds
     refetchIntervalInBackground: false,
+  });
+}
+
+// ============ Diagnostic Report Hooks ============
+
+interface DiagnosticReportListParams {
+  lab_order?: number;
+  status?: DiagnosticReportStatus;
+}
+
+/**
+ * Hook for fetching diagnostic reports.
+ */
+export function useDiagnosticReports(params?: DiagnosticReportListParams) {
+  return useQuery({
+    queryKey: ['diagnostic-reports', params],
+    queryFn: () => laboratoryApi.listDiagnosticReports(params),
+  });
+}
+
+/**
+ * Hook for fetching a single diagnostic report.
+ */
+export function useDiagnosticReport(id: number | string) {
+  return useQuery({
+    queryKey: ['diagnostic-reports', id],
+    queryFn: () => laboratoryApi.getDiagnosticReport(id),
+    enabled: !!id,
+  });
+}
+
+/**
+ * Hook for creating a diagnostic report.
+ */
+export function useCreateDiagnosticReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: DiagnosticReportCreateData) =>
+      laboratoryApi.createDiagnosticReport(data),
+    onSuccess: (newReport: DiagnosticReport) => {
+      queryClient.invalidateQueries({ queryKey: ['diagnostic-reports'] });
+      queryClient.invalidateQueries({
+        queryKey: ['lab-orders', newReport.lab_order_number],
+      });
+    },
+  });
+}
+
+/**
+ * Hook for updating a diagnostic report.
+ */
+export function useUpdateDiagnosticReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<DiagnosticReport> }) =>
+      laboratoryApi.updateDiagnosticReport(id, data),
+    onSuccess: (updatedReport: DiagnosticReport) => {
+      queryClient.invalidateQueries({ queryKey: ['diagnostic-reports'] });
+      queryClient.invalidateQueries({
+        queryKey: ['diagnostic-reports', updatedReport.report_number],
+      });
+    },
+  });
+}
+
+/**
+ * Hook for finalizing a diagnostic report.
+ */
+export function useFinalizeDiagnosticReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => laboratoryApi.finalizeDiagnosticReport(id),
+    onSuccess: (updatedReport: DiagnosticReport) => {
+      queryClient.invalidateQueries({ queryKey: ['diagnostic-reports'] });
+      queryClient.invalidateQueries({
+        queryKey: ['diagnostic-reports', updatedReport.report_number],
+      });
+    },
+  });
+}
+
+/**
+ * Hook for amending a diagnostic report.
+ */
+export function useAmendDiagnosticReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, conclusion }: { id: number; conclusion: string }) =>
+      laboratoryApi.amendDiagnosticReport(id, conclusion),
+    onSuccess: (updatedReport: DiagnosticReport) => {
+      queryClient.invalidateQueries({ queryKey: ['diagnostic-reports'] });
+      queryClient.invalidateQueries({
+        queryKey: ['diagnostic-reports', updatedReport.report_number],
+      });
+    },
+  });
+}
+
+/**
+ * Hook for cancelling a diagnostic report.
+ */
+export function useCancelDiagnosticReport() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      laboratoryApi.cancelDiagnosticReport(id, reason),
+    onSuccess: (updatedReport: DiagnosticReport) => {
+      queryClient.invalidateQueries({ queryKey: ['diagnostic-reports'] });
+      queryClient.invalidateQueries({
+        queryKey: ['diagnostic-reports', updatedReport.report_number],
+      });
+    },
+  });
+}
+
+/**
+ * Hook for generating and downloading a diagnostic report PDF.
+ */
+export function useGenerateReportPdf() {
+  return useMutation({
+    mutationFn: (id: number) => laboratoryApi.downloadDiagnosticReportPdf(id),
+    onSuccess: (blob: Blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `diagnostic-report.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    },
   });
 }
 

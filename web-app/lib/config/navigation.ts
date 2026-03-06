@@ -151,6 +151,7 @@ const _allNavItems: NavItemType[] = [
     icon: FlaskConical,
     children: [
       { label: 'Laboratory', href: '/laboratory', icon: Microscope },
+      { label: 'Lab Reports', href: '/laboratory/reports', icon: FileText },
       { label: 'Imaging', href: '/imaging', icon: ScanLine },
       { label: 'Imaging Orders', href: '/imaging/orders', icon: ClipboardList },
       { label: 'DICOM Studies', href: '/imaging/studies', icon: ImageIcon },
