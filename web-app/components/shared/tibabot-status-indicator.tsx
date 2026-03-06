@@ -4,9 +4,12 @@
  * A reusable component that displays the TibaBot AI assistant status
  * with animated icons and visual indicators:
  *
- * 1. **Available** — Green pulsing halo + `Bot` icon
- * 2. **Available + Unread** — Green pulsing halo + `BotMessageSquare` icon + green dot badge
- * 3. **Unavailable + Unread** — Red pulsing halo + `BotOff` icon + green dot badge
+ * 1. **Available** — Green pulsing halo + `Bot` icon (LLM + RAG active)
+ * 2. **Degraded** — Amber pulsing halo + `Bot` icon (RAG only, no LLM)
+ * 3. **Unavailable** — Red pulsing halo + `BotOff` icon
+ * 4. **Unread** — Green dot badge overlay
+ *
+ * Each state shows a hover tooltip explaining the current AI capability level.
  *
  * Used by:
  * - `AIChatWidget` (floating button in dashboard)
@@ -17,6 +20,12 @@
 import React from 'react';
 import { Bot, BotMessageSquare, BotOff } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { TibaBotAvailability } from '@/lib/types/ai';
 
 // =============================================================================
@@ -42,23 +51,39 @@ export interface TibaBotStatusIndicatorProps {
 // Halo animation styles
 // =============================================================================
 
-const haloStyles = {
+const haloStyles: Record<TibaBotAvailability, string> = {
   available: 'shadow-[0_0_12px_3px_rgba(34,197,94,0.4)]',
+  degraded: 'shadow-[0_0_12px_3px_rgba(245,158,11,0.4)]',
   unavailable: 'shadow-[0_0_12px_3px_rgba(239,68,68,0.4)]',
   loading: 'shadow-[0_0_12px_3px_rgba(156,163,175,0.3)]',
-} as const;
+};
 
-const haloPulseStyles = {
+const haloPulseStyles: Record<TibaBotAvailability, string> = {
   available: 'animate-[tibabot-pulse-green_2s_ease-in-out_infinite]',
+  degraded: 'animate-[tibabot-pulse-amber_2s_ease-in-out_infinite]',
   unavailable: 'animate-[tibabot-pulse-red_2s_ease-in-out_infinite]',
   loading: 'animate-pulse',
-} as const;
+};
 
-const iconColorStyles = {
+const iconColorStyles: Record<TibaBotAvailability, string> = {
   available: 'text-green-500',
+  degraded: 'text-amber-500',
   unavailable: 'text-red-500',
   loading: 'text-muted-foreground',
-} as const;
+};
+
+// =============================================================================
+// Tooltip text per availability state
+// =============================================================================
+
+const tooltipText: Record<TibaBotAvailability, string> = {
+  available: 'TibaBot is available — using advanced AI models for clinical assistance.',
+  degraded:
+    'TibaBot is using a less advanced implementation (rule-based / RAG only) due to AI model unavailability.',
+  unavailable:
+    'TibaBot is currently unavailable. Clinical AI features are offline.',
+  loading: 'Checking TibaBot availability…',
+};
 
 // =============================================================================
 // Component
@@ -84,6 +109,7 @@ export function TibaBotStatusIndicator({
   // Build accessibility label
   const defaultLabel = (() => {
     if (availability === 'loading') return 'TibaBot loading';
+    if (availability === 'degraded') return 'TibaBot degraded mode';
     if (availability === 'unavailable' && hasUnread)
       return `TibaBot unavailable, ${unreadCount} unread`;
     if (availability === 'unavailable') return 'TibaBot unavailable';
@@ -91,7 +117,7 @@ export function TibaBotStatusIndicator({
     return 'TibaBot available';
   })();
 
-  return (
+  const indicator = (
     <div
       className={cn('relative inline-flex items-center justify-center', className)}
       role="status"
@@ -131,6 +157,19 @@ export function TibaBotStatusIndicator({
       )}
     </div>
   );
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {indicator}
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[260px] text-center">
+          <p>{tooltipText[availability]}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
 }
 
 // =============================================================================
@@ -148,6 +187,14 @@ export const TIBABOT_KEYFRAMES = `
   }
   50% {
     box-shadow: 0 0 16px 6px rgba(34, 197, 94, 0.5);
+  }
+}
+@keyframes tibabot-pulse-amber {
+  0%, 100% {
+    box-shadow: 0 0 8px 2px rgba(245, 158, 11, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px 6px rgba(245, 158, 11, 0.5);
   }
 }
 @keyframes tibabot-pulse-red {

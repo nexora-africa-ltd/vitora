@@ -27,6 +27,8 @@ export const AIStatusSchema = z.object({
   enabled: z.boolean(),
   service_name: z.string(),
   service_available: z.boolean(),
+  rag_initialized: z.boolean().optional(),
+  demo_mode: z.boolean().optional(),
 });
 
 // =============================================================================
