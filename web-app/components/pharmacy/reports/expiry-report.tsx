@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns';
 import {
   Download,
@@ -16,6 +16,8 @@ import {
   AlertTriangle,
   Trash2,
   RotateCcw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,9 +56,12 @@ interface ExpiringBatch {
   status: 'OK' | 'CRITICAL' | 'WARNING' | 'EXPIRED';
 }
 
+const REPORT_PAGE_SIZE = 25;
+
 export function ExpiryReport() {
   const { toast } = useToast();
   const [daysThreshold, setDaysThreshold] = useState('90');
+  const [currentPage, setCurrentPage] = useState(1);
   const [disposeDialogOpen, setDisposeDialogOpen] = useState(false);
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState<ExpiringBatch | null>(null);
@@ -188,6 +193,18 @@ export function ExpiryReport() {
 
   const expiringBatches = reportData || [];
 
+  // Pagination - only for browser display, print/export uses full expiringBatches
+  const totalPages = Math.ceil(expiringBatches.length / REPORT_PAGE_SIZE);
+  const paginatedBatches = expiringBatches.slice(
+    (currentPage - 1) * REPORT_PAGE_SIZE,
+    currentPage * REPORT_PAGE_SIZE
+  );
+
+  // Reset to page 1 when threshold changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [daysThreshold]);
+
   return (
     <>
       <Card>
@@ -257,7 +274,7 @@ export function ExpiryReport() {
 
           {/* Data Table */}
           <ResponsiveTable
-            data={expiringBatches}
+            data={paginatedBatches}
             keyExtractor={(batch) => batch.batch_id}
             emptyMessage={`No batches expiring within ${daysThreshold} days`}
             columns={[
@@ -363,6 +380,37 @@ export function ExpiryReport() {
               </div>
             )}
           />
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-4 border-t">
+              <p className="text-sm text-muted-foreground text-center sm:text-left">
+                Showing {paginatedBatches.length} of {expiringBatches.length} batches (page {currentPage} of {totalPages})
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="flex-1 sm:flex-none"
+                >
+                  <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Previous</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="flex-1 sm:flex-none"
+                >
+                  <span className="hidden sm:inline">Next</span>
+                  <ChevronRight className="h-4 w-4 sm:ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

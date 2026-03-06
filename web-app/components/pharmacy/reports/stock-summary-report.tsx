@@ -14,6 +14,7 @@ import {
   Printer,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   AlertTriangle,
   Package,
   Search,
@@ -47,12 +48,15 @@ import { cn } from '@/lib/utils/cn';
 import { printStockSummaryReport } from '@/lib/documents/print-pharmacy-reports';
 import type { StockSummaryItem } from '@/lib/types/pharmacy';
 
+const REPORT_PAGE_SIZE = 25;
+
 export function StockSummaryReport() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [expandedDrugs, setExpandedDrugs] = useState<Set<number>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { data: reportData, isLoading, error } = useStockSummaryReport();
 
@@ -72,6 +76,18 @@ export function StockSummaryReport() {
     const matchesLowStock = !showLowStockOnly || item.is_below_reorder;
     return matchesSearch && matchesLowStock;
   });
+
+  // Pagination - only for browser display, print/export uses filteredData
+  const totalPages = Math.ceil(filteredData.length / REPORT_PAGE_SIZE);
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * REPORT_PAGE_SIZE,
+    currentPage * REPORT_PAGE_SIZE
+  );
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, categoryFilter, showLowStockOnly]);
 
   const handleExport = () => {
     try {
@@ -234,14 +250,14 @@ export function StockSummaryReport() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredData.length === 0 ? (
+              {paginatedData.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     No drugs found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredData.map((item: StockSummaryItem) => (
+                paginatedData.map((item: StockSummaryItem) => (
                   <React.Fragment key={item.drug_id}>
                     <TableRow
                       className={cn(
@@ -343,12 +359,12 @@ export function StockSummaryReport() {
 
         {/* Mobile Cards (hidden on desktop) */}
         <div className="md:hidden space-y-3">
-          {filteredData.length === 0 ? (
+          {paginatedData.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               No drugs found
             </div>
           ) : (
-            filteredData.map((item: StockSummaryItem) => (
+            paginatedData.map((item: StockSummaryItem) => (
               <div
                 key={item.drug_id}
                 className={cn(
@@ -431,6 +447,37 @@ export function StockSummaryReport() {
             ))
           )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-4 border-t">
+            <p className="text-sm text-muted-foreground text-center sm:text-left">
+              Showing {paginatedData.length} of {filteredData.length} drugs (page {currentPage} of {totalPages})
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex-1 sm:flex-none"
+              >
+                <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Previous</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="flex-1 sm:flex-none"
+              >
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRight className="h-4 w-4 sm:ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
