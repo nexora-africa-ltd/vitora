@@ -1,20 +1,25 @@
 /**
- * Hook to auto-populate AIPageContext from the current route.
+ * Hook to auto-populate AIPageContext and default quick actions from the
+ * current route.
  *
  * Reads the Next.js pathname, resolves a human-readable page title and
  * module name from the navigation config, and syncs it into the AI chat
  * context so TibaBot knows which page the user is viewing.
  *
+ * Also sets module-level default quick actions so every page shows
+ * contextual shortcuts in the chat widget. Pages that register their
+ * own quick actions via `setQuickActions()` will override these defaults.
+ *
  * Must be used inside both AIChatProvider and Next.js router context.
  */
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { mainNavItems, bottomNavItems, hasChildren } from '@/lib/config/navigation';
 import type { NavItem, NavItemType } from '@/lib/config/navigation';
-import type { AIPageContext } from '@/lib/types/ai';
+import type { AIPageContext, AIQuickAction } from '@/lib/types/ai';
 
 // =============================================================================
 // Route → Page title / module resolution
@@ -147,22 +152,233 @@ export function resolvePageContext(pathname: string): AIPageContext {
 }
 
 // =============================================================================
+// Default quick actions per module
+// =============================================================================
+
+/**
+ * Module-level default quick actions shown when a page doesn't register
+ * its own via `setQuickActions()`. These are generic prompts relevant to
+ * the module the user is browsing.
+ */
+const DEFAULT_MODULE_QUICK_ACTIONS: Record<string, AIQuickAction[]> = {
+  laboratory: [
+    {
+      id: 'lab-interpret-general',
+      label: 'Interpret lab results',
+      query:
+        'Help me interpret the lab results I\'m looking at. What are the key findings and clinical significance?',
+      userMessage: 'Requesting lab result interpretation...',
+    },
+    {
+      id: 'lab-reference-ranges',
+      label: 'Reference ranges',
+      query:
+        'What are the normal reference ranges for common lab tests? Include CBC, BMP, LFTs, and urinalysis.',
+      userMessage: 'Looking up reference ranges...',
+    },
+    {
+      id: 'lab-critical-values',
+      label: 'Critical value guide',
+      query:
+        'What lab values are considered critical and require immediate notification? List by test type.',
+      userMessage: 'Checking critical value thresholds...',
+    },
+  ],
+  inpatient: [
+    {
+      id: 'inpatient-discharge-criteria',
+      label: 'Discharge criteria',
+      query:
+        'What are the general discharge readiness criteria I should assess for this patient?',
+      userMessage: 'Checking discharge readiness criteria...',
+    },
+    {
+      id: 'inpatient-ward-round-tips',
+      label: 'Ward round checklist',
+      query:
+        'What should I review during a ward round? Provide a structured checklist including vitals trends, medication review, investigations, and care plan updates.',
+      userMessage: 'Generating ward round checklist...',
+    },
+    {
+      id: 'inpatient-fall-risk',
+      label: 'Fall risk assessment',
+      query:
+        'What are the key fall risk factors I should assess for inpatients? Include the Morse Fall Scale criteria.',
+      userMessage: 'Reviewing fall risk factors...',
+    },
+  ],
+  pharmacy: [
+    {
+      id: 'pharmacy-interactions',
+      label: 'Drug interactions',
+      query:
+        'Help me check for potential drug interactions. What are the most clinically significant interactions I should watch for?',
+      userMessage: 'Checking drug interactions...',
+    },
+    {
+      id: 'pharmacy-dosing',
+      label: 'Dosing guidance',
+      query:
+        'What are the standard adult dosing guidelines for commonly prescribed medications?',
+      userMessage: 'Looking up dosing guidance...',
+    },
+    {
+      id: 'pharmacy-renal-dosing',
+      label: 'Renal dose adjustment',
+      query:
+        'Which medications require renal dose adjustment? Provide guidelines for common drugs based on GFR ranges.',
+      userMessage: 'Checking renal dose adjustments...',
+    },
+  ],
+  patients: [
+    {
+      id: 'patients-history-tips',
+      label: 'History taking guide',
+      query:
+        'What are the key elements of a comprehensive patient history? Provide a structured approach.',
+      userMessage: 'Loading history taking guide...',
+    },
+    {
+      id: 'patients-screening',
+      label: 'Screening recommendations',
+      query:
+        'What routine health screenings should be recommended based on age and gender? Include Kenya-specific guidelines.',
+      userMessage: 'Checking screening recommendations...',
+    },
+  ],
+  encounters: [
+    {
+      id: 'encounters-soap-guide',
+      label: 'SOAP note guide',
+      query:
+        'How should I structure a SOAP note? Provide guidance on what to include in each section (Subjective, Objective, Assessment, Plan).',
+      userMessage: 'Loading SOAP note guide...',
+    },
+    {
+      id: 'encounters-ddx-approach',
+      label: 'Differential diagnosis approach',
+      query:
+        'What is a systematic approach to generating a differential diagnosis? Include frameworks like VINDICATE or SOCRATES.',
+      userMessage: 'Loading DDx approach...',
+    },
+  ],
+  imaging: [
+    {
+      id: 'imaging-ordering-guide',
+      label: 'Imaging selection guide',
+      query:
+        'Help me choose the appropriate imaging study. What are the indications for X-ray vs CT vs MRI vs ultrasound?',
+      userMessage: 'Loading imaging selection guide...',
+    },
+    {
+      id: 'imaging-contrast-safety',
+      label: 'Contrast safety',
+      query:
+        'What are the contraindications for IV contrast media? Include guidelines for renal function, allergies, and metformin.',
+      userMessage: 'Checking contrast safety...',
+    },
+  ],
+  emergency: [
+    {
+      id: 'emergency-acls',
+      label: 'ACLS protocols',
+      query:
+        'Summarize the key ACLS algorithms: cardiac arrest, bradycardia, tachycardia, and acute coronary syndromes.',
+      userMessage: 'Loading ACLS protocols...',
+    },
+    {
+      id: 'emergency-triage-categories',
+      label: 'KETA triage categories',
+      query:
+        'Explain the Kenya Emergency Triage Assessment (KETA) categories: RED, ORANGE, YELLOW, GREEN, BLUE. Include criteria for each.',
+      userMessage: 'Loading KETA triage categories...',
+    },
+    {
+      id: 'emergency-toxicology',
+      label: 'Poisoning management',
+      query:
+        'What is the general approach to managing an unknown poisoning? Include decontamination, antidotes, and supportive care.',
+      userMessage: 'Loading poisoning management guide...',
+    },
+  ],
+  surveillance: [
+    {
+      id: 'surveillance-notifiable',
+      label: 'Notifiable diseases',
+      query:
+        'What diseases are immediately notifiable in Kenya? Include the reporting timeline and authority to notify.',
+      userMessage: 'Loading notifiable disease list...',
+    },
+    {
+      id: 'surveillance-outbreak',
+      label: 'Outbreak investigation',
+      query:
+        'What are the steps in an outbreak investigation? Provide a structured approach using the CDC framework.',
+      userMessage: 'Loading outbreak investigation guide...',
+    },
+  ],
+  finance: [
+    {
+      id: 'finance-sha-claims',
+      label: 'SHA claims guide',
+      query:
+        'What are the common reasons SHA claims get rejected? Provide tips for successful claim submission.',
+      userMessage: 'Loading SHA claims guide...',
+    },
+  ],
+  mch: [
+    {
+      id: 'mch-anc-schedule',
+      label: 'ANC visit schedule',
+      query:
+        'What is the recommended ANC visit schedule per WHO and Kenya MOH guidelines? Include key assessments at each visit.',
+      userMessage: 'Loading ANC schedule...',
+    },
+    {
+      id: 'mch-danger-signs',
+      label: 'Pregnancy danger signs',
+      query:
+        'What are the danger signs in pregnancy that require immediate referral? Include both maternal and fetal indicators.',
+      userMessage: 'Checking pregnancy danger signs...',
+    },
+  ],
+};
+
+/**
+ * Get default quick actions for a resolved page context.
+ */
+function getDefaultQuickActions(ctx: AIPageContext): AIQuickAction[] {
+  return DEFAULT_MODULE_QUICK_ACTIONS[ctx.module] ?? [];
+}
+
+// =============================================================================
 // Hook
 // =============================================================================
 
 /**
- * Auto-sync the current page context into the AI chat provider.
+ * Auto-sync the current page context and default quick actions into the
+ * AI chat provider.
  *
  * Call this hook once in the dashboard layout. It watches the Next.js
  * pathname and updates the AI chat context's `pageContext` whenever the
- * user navigates.
+ * user navigates. It also sets module-level default quick actions.
+ *
+ * Pages that call `setQuickActions()` directly (e.g., encounter detail)
+ * will override these defaults. When those pages unmount and clear their
+ * actions, a short delay allows the next page's defaults to take effect.
  */
 export function usePageContextForAI(): void {
   const pathname = usePathname();
   const chatCtx = useOptionalAIChatContext();
-  // Extract the stable callback to avoid depending on the entire context object,
-  // which changes reference whenever pageContext state updates (infinite loop).
+  // Extract the stable callbacks to avoid depending on the entire context object,
+  // which changes reference whenever state updates (infinite loop).
   const setPageContext = chatCtx?.setPageContext;
+  const setQuickActions = chatCtx?.setQuickActions;
+
+  // Track whether a page-specific component has overridden the defaults.
+  // We use a ref so that the effect cleanup from specific pages (which call
+  // setQuickActions([])) doesn't create stale closure issues.
+  const defaultActionsRef = useRef<AIQuickAction[]>([]);
 
   useEffect(() => {
     if (!setPageContext || !pathname) return;
@@ -170,6 +386,14 @@ export function usePageContextForAI(): void {
     const ctx = resolvePageContext(pathname);
     setPageContext(ctx);
 
-    // No cleanup needed — the context updates on every navigation
-  }, [pathname, setPageContext]);
+    // Set default quick actions for this module.
+    // Pages that register their own will call setQuickActions() in their
+    // own useEffect, which runs after this layout-level effect.
+    const defaults = getDefaultQuickActions(ctx);
+    defaultActionsRef.current = defaults;
+
+    if (setQuickActions && defaults.length > 0) {
+      setQuickActions(defaults);
+    }
+  }, [pathname, setPageContext, setQuickActions]);
 }
