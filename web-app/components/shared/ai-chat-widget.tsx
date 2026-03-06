@@ -15,7 +15,7 @@
  */
 'use client';
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
 import { useAIChatContext } from '@/lib/context/ai-chat-context';
@@ -30,6 +30,107 @@ import {
   mergeContextWithEnrichment,
 } from '@/lib/utils/ai-context-sufficiency';
 import type { AIChatMessage, AIQuickAction } from '@/lib/types/ai';
+
+// =============================================================================
+// Drag Hook — draggable floating button position
+// =============================================================================
+
+interface Position {
+  x: number;
+  y: number;
+}
+
+const DRAG_STORAGE_KEY = 'tibabot-widget-position';
+
+function readStoredPosition(): Position {
+  if (typeof window === 'undefined') return { x: 0, y: 0 };
+  try {
+    const raw = localStorage.getItem(DRAG_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Position;
+      if (typeof parsed.x === 'number' && typeof parsed.y === 'number') return parsed;
+    }
+  } catch { /* ignore corrupt data */ }
+  return { x: 0, y: 0 };
+}
+
+function useDraggable() {
+  const [position, setPosition] = useState<Position>(readStoredPosition);
+  const dragState = useRef<{
+    isDragging: boolean;
+    hasMoved: boolean;
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
+
+  // Persist position to localStorage after each drag ends
+  const persistPosition = useCallback((pos: Position) => {
+    try { localStorage.setItem(DRAG_STORAGE_KEY, JSON.stringify(pos)); } catch { /* quota */ }
+  }, []);
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
+      // Only primary button (left click / touch)
+      if (e.button !== 0) return;
+      const el = e.currentTarget;
+      el.setPointerCapture(e.pointerId);
+      dragState.current = {
+        isDragging: true,
+        hasMoved: false,
+        startX: e.clientX,
+        startY: e.clientY,
+        originX: position.x,
+        originY: position.y,
+      };
+    },
+    [position]
+  );
+
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    const ds = dragState.current;
+    if (!ds?.isDragging) return;
+
+    const dx = e.clientX - ds.startX;
+    const dy = e.clientY - ds.startY;
+
+    // Dead-zone: require 5px movement to start drag (distinguishes tap from drag)
+    if (!ds.hasMoved && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+    ds.hasMoved = true;
+
+    // Use negative deltas because we position via bottom/right
+    const newX = ds.originX - dx;
+    const newY = ds.originY - dy;
+
+    // Clamp to viewport
+    const maxX = window.innerWidth - 72; // 56px button + 16px margin
+    const maxY = window.innerHeight - 72;
+    setPosition({
+      x: Math.max(-8, Math.min(newX, maxX)),
+      y: Math.max(-8, Math.min(newY, maxY)),
+    });
+  }, []);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
+    const ds = dragState.current;
+    const wasDrag = ds?.hasMoved ?? false;
+    dragState.current = null;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    // Persist the final position if it was a real drag
+    if (wasDrag) {
+      setPosition((cur) => { persistPosition(cur); return cur; });
+    }
+    return wasDrag;
+  }, [persistPosition]);
+
+  return {
+    position,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+  };
+}
 
 // =============================================================================
 // Component
@@ -286,6 +387,104 @@ export function AIChatWidget() {
     router.push('/ai');
   }, [minimizeWidget, router, pathname, setReturnToUrl]);
 
+  // -----------------------------------------------------------------------
+  // Pull-down-to-dismiss on the expanded panel (small screens only)
+  // -----------------------------------------------------------------------
+  const pullState = useRef<{
+    active: boolean;
+    startY: number;
+    pointerId: number;
+  } | null>(null);
+  const [pullOffset, setPullOffset] = useState(0);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const DISMISS_THRESHOLD = 80; // px of downward drag to dismiss
+
+  const handleHeaderPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Only on small screens (< md = 768px)
+    if (window.innerWidth >= 768) return;
+    // Only primary pointer
+    if (e.button !== 0) return;
+    // Ignore if the target is a button or inside a button (allow button clicks)
+    if ((e.target as HTMLElement).closest('button')) return;
+
+    e.currentTarget.setPointerCapture(e.pointerId);
+    pullState.current = {
+      active: true,
+      startY: e.clientY,
+      pointerId: e.pointerId,
+    };
+  }, []);
+
+  const handleHeaderPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const ps = pullState.current;
+    if (!ps?.active) return;
+
+    const dy = e.clientY - ps.startY;
+    // Only allow pulling downward (dy > 0), with rubber-band resistance
+    if (dy > 0) {
+      setPullOffset(dy);
+    }
+  }, []);
+
+  const handleHeaderPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const ps = pullState.current;
+    if (!ps?.active) return;
+
+    e.currentTarget.releasePointerCapture(ps.pointerId);
+    const dy = e.clientY - ps.startY;
+    pullState.current = null;
+
+    if (dy >= DISMISS_THRESHOLD) {
+      // Dismiss — animate out then minimize
+      setPullOffset(window.innerHeight);
+      setTimeout(() => {
+        minimizeWidget();
+        setPullOffset(0);
+      }, 200);
+    } else {
+      // Snap back
+      setPullOffset(0);
+    }
+  }, [minimizeWidget]);
+
+  const handleHeaderPointerCancel = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (pullState.current) {
+      e.currentTarget.releasePointerCapture(pullState.current.pointerId);
+      pullState.current = null;
+      setPullOffset(0);
+    }
+  }, []);
+
+  // -----------------------------------------------------------------------
+  // Draggable floating button
+  // -----------------------------------------------------------------------
+  const {
+    position: dragPosition,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+  } = useDraggable();
+
+  // Ref to distinguish drag from click
+  const wasDragRef = useRef(false);
+
+  const onPointerUp = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
+      wasDragRef.current = handlePointerUp(e);
+    },
+    [handlePointerUp]
+  );
+
+  const onButtonClick = useCallback(() => {
+    // If the pointer-up indicated a drag, swallow the click
+    if (wasDragRef.current) {
+      wasDragRef.current = false;
+      return;
+    }
+    toggleWidget();
+  }, [toggleWidget]);
+
   // Don't render if AI is disabled or user lacks permission
   // Also hide the widget entirely when already on the full-page /ai view
   const isOnAIPage = pathname?.startsWith('/ai');
@@ -310,6 +509,11 @@ export function AIChatWidget() {
 
           {/* Chat panel */}
           <div
+            ref={panelRef}
+            style={pullOffset > 0 ? {
+              transform: `translateY(${pullOffset}px)`,
+              transition: pullState.current?.active ? 'none' : 'transform 0.2s ease-out',
+            } : undefined}
             className={cn(
               'fixed z-[60] bg-background border rounded-2xl shadow-2xl',
               'flex flex-col overflow-hidden',
@@ -321,6 +525,16 @@ export function AIChatWidget() {
             role="dialog"
             aria-label="TibaBot Clinical Assistant"
           >
+            {/* Pull-down handle — visible on small screens only */}
+            <div
+              className="md:hidden flex flex-col items-center pt-2 pb-0 cursor-grab active:cursor-grabbing touch-none select-none"
+              onPointerDown={handleHeaderPointerDown}
+              onPointerMove={handleHeaderPointerMove}
+              onPointerUp={handleHeaderPointerUp}
+              onPointerCancel={handleHeaderPointerCancel}
+            >
+              <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+            </div>
             <AIChatPanel
               showHeader
               onClose={minimizeWidget}
@@ -329,24 +543,40 @@ export function AIChatWidget() {
               onAskAboutPatient={handleAskAboutPatient}
               onQuickAction={handleQuickAction}
               isSending={chatMutation.isPending || assistMutation.isPending}
+              headerDragHandlers={{
+                onPointerDown: handleHeaderPointerDown,
+                onPointerMove: handleHeaderPointerMove,
+                onPointerUp: handleHeaderPointerUp,
+                onPointerCancel: handleHeaderPointerCancel,
+              }}
             />
           </div>
         </>
       )}
 
-      {/* Floating button (minimized state) */}
+      {/* Floating button (minimized state) — draggable */}
       {!isExpanded && (
         <button
           type="button"
-          onClick={toggleWidget}
+          onClick={onButtonClick}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={onPointerUp}
+          style={{
+            right: `${24 + dragPosition.x}px`,
+            bottom: `${24 + dragPosition.y}px`,
+          }}
           className={cn(
-            'fixed z-[58] bottom-6 right-6',
+            'fixed z-[58]',
             'h-14 w-14 rounded-full',
             'bg-background border-2',
             'flex items-center justify-center',
             'shadow-lg hover:shadow-xl transition-shadow',
+            'touch-none select-none cursor-grab active:cursor-grabbing',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-            availability === 'available' ? 'border-green-500/30' : 'border-red-500/30'
+            availability === 'available' ? 'border-green-500/30'
+              : availability === 'degraded' ? 'border-amber-500/30'
+              : 'border-red-500/30'
           )}
           aria-label={
             unreadCount > 0

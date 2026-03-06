@@ -32,6 +32,10 @@ export interface AIStatus {
   enabled: boolean;
   service_name: string;
   service_available: boolean;
+  /** Whether TibaBot's RAG knowledge base is initialized */
+  rag_initialized?: boolean;
+  /** Whether TibaBot is running in demo mode (no LLM) */
+  demo_mode?: boolean;
 }
 
 // =============================================================================
@@ -377,7 +381,7 @@ export interface AIICUPredictResponse {
 export type AIWidgetState = 'minimized' | 'expanded' | 'full-page';
 
 /** TibaBot availability status for the widget indicator */
-export type TibaBotAvailability = 'available' | 'unavailable' | 'loading';
+export type TibaBotAvailability = 'available' | 'degraded' | 'unavailable' | 'loading';
 
 /**
  * A quick action button displayed in the chat widget.

@@ -13,7 +13,7 @@
  */
 'use client';
 
-import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useRef, useState, useEffect, useMemo, type PointerEvent as RPointerEvent } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -63,6 +63,13 @@ export interface AIChatPanelProps {
   onQuickAction?: (action: AIQuickAction) => void;
   /** Whether a message is currently being sent/streamed */
   isSending?: boolean;
+  /** Pointer events forwarded to the header for pull-down-to-dismiss (mobile) */
+  headerDragHandlers?: {
+    onPointerDown: (e: RPointerEvent<HTMLDivElement>) => void;
+    onPointerMove: (e: RPointerEvent<HTMLDivElement>) => void;
+    onPointerUp: (e: RPointerEvent<HTMLDivElement>) => void;
+    onPointerCancel: (e: RPointerEvent<HTMLDivElement>) => void;
+  };
 }
 
 // =============================================================================
@@ -213,6 +220,7 @@ export function AIChatPanel({
   onAskAboutPatient,
   onQuickAction,
   isSending = false,
+  headerDragHandlers,
 }: AIChatPanelProps) {
   const {
     messages,
@@ -302,14 +310,24 @@ export function AIChatPanel({
     [messages, activeSessionId, feedbackMutation]
   );
 
-  const isAvailable = availability === 'available';
+  const isAvailable = availability === 'available' || availability === 'degraded';
+
+  const headerSubtitle = (() => {
+    if (availability === 'loading') return 'Connecting...';
+    if (availability === 'degraded') return 'Basic Mode';
+    if (availability === 'available') return 'Clinical Assistant';
+    return 'Unavailable';
+  })();
 
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Header */}
       {showHeader && (
         <>
-          <div className="flex items-center justify-between px-4 py-3">
+          <div
+            className="flex items-center justify-between px-4 py-3 md:cursor-default touch-none select-none"
+            {...(headerDragHandlers ?? {})}
+          >
             <div className="flex items-center gap-2.5">
               <TibaBotStatusIndicator
                 availability={availability}
@@ -320,11 +338,7 @@ export function AIChatPanel({
               <div>
                 <h3 className="text-sm font-semibold leading-tight">TibaBot</h3>
                 <p className="text-xs text-muted-foreground">
-                  {availability === 'loading'
-                    ? 'Connecting...'
-                    : isAvailable
-                      ? 'Clinical Assistant'
-                      : 'Unavailable'}
+                  {headerSubtitle}
                 </p>
               </div>
             </div>

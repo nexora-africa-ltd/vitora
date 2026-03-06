@@ -197,7 +197,11 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
 
   const availability: TibaBotAvailability = useMemo(() => {
     if (statusLoading) return 'loading';
-    if (statusData?.enabled && statusData?.service_available) return 'available';
+    if (statusData?.enabled && statusData?.service_available) {
+      // demo_mode means TibaBot is running without an LLM (RAG-only / rule-based)
+      if (statusData.demo_mode) return 'degraded';
+      return 'available';
+    }
     return 'unavailable';
   }, [statusData, statusLoading]);
 

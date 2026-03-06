@@ -201,13 +201,17 @@ class AIStatusView(APIView):
     def get(self, request: Request) -> Response:
         enabled = is_ai_enabled()
         service_available = False
+        rag_initialized = False
+        demo_mode = False
 
         if enabled:
             try:
                 client = get_tibabot_client()
-                # Quick health check — try a lightweight request
-                client._request("GET", "/health")
+                # Quick health check — returns rag/demo status
+                health = client._request("GET", "/health")
                 service_available = True
+                rag_initialized = bool(health.get("rag_initialized", False))
+                demo_mode = bool(health.get("demo_mode", False))
             except (TibaBotError, Exception):
                 service_available = False
 
@@ -215,6 +219,8 @@ class AIStatusView(APIView):
             "enabled": enabled,
             "service_name": "TibaBot",
             "service_available": service_available,
+            "rag_initialized": rag_initialized,
+            "demo_mode": demo_mode,
         }
         serializer = AIStatusResponseSerializer(data)
         return Response(serializer.data)

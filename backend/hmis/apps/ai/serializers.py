@@ -59,6 +59,8 @@ class AIStatusResponseSerializer(serializers.Serializer):
     enabled = serializers.BooleanField()
     service_name = serializers.CharField()
     service_available = serializers.BooleanField()
+    rag_initialized = serializers.BooleanField(required=False, default=False)
+    demo_mode = serializers.BooleanField(required=False, default=False)
 
 
 # =============================================================================

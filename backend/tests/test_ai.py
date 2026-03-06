@@ -338,6 +338,8 @@ class TestAIStatusEndpoint:
         assert response.data["enabled"] is False
         assert response.data["service_name"] == "TibaBot"
         assert response.data["service_available"] is False
+        assert response.data["rag_initialized"] is False
+        assert response.data["demo_mode"] is False
 
     @override_settings(TIBABOT_ENABLED=True)
     def test_returns_enabled_with_service_check(self, authenticated_client):
@@ -368,7 +370,11 @@ class TestAIStatusEndpoint:
             "hmis.apps.ai.views.get_tibabot_client"
         ) as mock_get_client:
             mock_client = MagicMock()
-            mock_client._request.return_value = {"status": "ok"}
+            mock_client._request.return_value = {
+                "status": "ok",
+                "rag_initialized": True,
+                "demo_mode": False,
+            }
             mock_get_client.return_value = mock_client
 
             response = authenticated_client.get("/api/ai/status/")
@@ -376,6 +382,32 @@ class TestAIStatusEndpoint:
             assert response.status_code == status.HTTP_200_OK
             assert response.data["enabled"] is True
             assert response.data["service_available"] is True
+            assert response.data["rag_initialized"] is True
+            assert response.data["demo_mode"] is False
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_returns_demo_mode_when_tibabot_in_demo(
+        self, authenticated_client
+    ):
+        """Should report demo_mode=True when TibaBot is running without LLM."""
+        with patch(
+            "hmis.apps.ai.views.get_tibabot_client"
+        ) as mock_get_client:
+            mock_client = MagicMock()
+            mock_client._request.return_value = {
+                "status": "ok",
+                "rag_initialized": True,
+                "demo_mode": True,
+            }
+            mock_get_client.return_value = mock_client
+
+            response = authenticated_client.get("/api/ai/status/")
+
+            assert response.status_code == status.HTTP_200_OK
+            assert response.data["enabled"] is True
+            assert response.data["service_available"] is True
+            assert response.data["rag_initialized"] is True
+            assert response.data["demo_mode"] is True
 
 
 class TestSanitizer:
