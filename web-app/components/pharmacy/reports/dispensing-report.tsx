@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { format, parseISO, subDays, startOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import {
   Download,
@@ -16,6 +16,8 @@ import {
   AlertTriangle,
   Search,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +40,8 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { printDispensingReport } from '@/lib/documents/print-pharmacy-reports';
 import type { DispensingReportRecord } from '@/lib/types/pharmacy';
 
+const REPORT_PAGE_SIZE = 25;
+
 export function DispensingReport() {
   const { toast } = useToast();
   const today = new Date();
@@ -46,6 +50,7 @@ export function DispensingReport() {
   const [drugFilter, setDrugFilter] = useState('');
   const [patientFilter, setPatientFilter] = useState('');
   const [groupByDrug, setGroupByDrug] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { data: reportData, isLoading, error } = useDispensingReport(startDate, endDate);
 
@@ -80,6 +85,11 @@ export function DispensingReport() {
   const totalDispensed = filteredRecords.reduce((sum: number, r: DispensingReportRecord) => sum + r.quantity_dispensed, 0);
   const totalValue = filteredRecords.reduce((sum: number, r: DispensingReportRecord) => sum + parseFloat(r.total_cost), 0);
 
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [startDate, endDate, drugFilter, patientFilter, groupByDrug]);
+
   // Group by drug if enabled
   const groupedData = groupByDrug
     ? Object.entries(
@@ -95,6 +105,18 @@ export function DispensingReport() {
         }, {})
       ).map(([_, value]) => value)
     : null;
+
+  // Pagination - use appropriate data source based on grouping
+  const displayData = groupByDrug ? (groupedData || []) : filteredRecords;
+  const totalPages = Math.ceil(displayData.length / REPORT_PAGE_SIZE);
+  const paginatedRecords = filteredRecords.slice(
+    (currentPage - 1) * REPORT_PAGE_SIZE,
+    currentPage * REPORT_PAGE_SIZE
+  );
+  const paginatedGroupedData = (groupedData || []).slice(
+    (currentPage - 1) * REPORT_PAGE_SIZE,
+    currentPage * REPORT_PAGE_SIZE
+  );
 
   const handleExport = () => {
     try {
@@ -287,7 +309,7 @@ export function DispensingReport() {
         {/* Data Table */}
           {groupByDrug ? (
             <ResponsiveTable
-              data={groupedData || []}
+              data={paginatedGroupedData}
               keyExtractor={(item) => item.drug_name}
               emptyMessage="No dispensing records found"
               columns={[
@@ -327,7 +349,7 @@ export function DispensingReport() {
             />
           ) : (
             <ResponsiveTable
-              data={filteredRecords}
+              data={paginatedRecords}
               keyExtractor={(record) => record.dispensing_id}
               emptyMessage="No dispensing records found"
               columns={[
@@ -385,6 +407,37 @@ export function DispensingReport() {
                 </div>
               )}
             />
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-4 border-t">
+              <p className="text-sm text-muted-foreground text-center sm:text-left">
+                Showing {groupByDrug ? paginatedGroupedData.length : paginatedRecords.length} of {displayData.length} records (page {currentPage} of {totalPages})
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="flex-1 sm:flex-none"
+                >
+                  <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Previous</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="flex-1 sm:flex-none"
+                >
+                  <span className="hidden sm:inline">Next</span>
+                  <ChevronRight className="h-4 w-4 sm:ml-1" />
+                </Button>
+              </div>
+            </div>
           )}
       </CardContent>
     </Card>

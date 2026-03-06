@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { format, parseISO, subDays, startOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import {
   Download,
@@ -17,6 +17,8 @@ import {
   ArrowUpCircle,
   ArrowDownCircle,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +49,8 @@ interface StockMovement {
   user: string;
 }
 
+const REPORT_PAGE_SIZE = 25;
+
 export function StockMovementReport() {
   const { toast } = useToast();
   const today = new Date();
@@ -54,6 +58,7 @@ export function StockMovementReport() {
   const [endDate, setEndDate] = useState(format(today, 'yyyy-MM-dd'));
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [drugFilter, setDrugFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { data: reportData, isLoading, error } = useStockMovementReport(startDate, endDate);
 
@@ -97,6 +102,18 @@ export function StockMovementReport() {
     .filter((m: StockMovement) => m.movement_type !== 'RECEIVED')
     .reduce((sum: number, m: StockMovement) => sum + Math.abs(m.quantity), 0);
   const netMovement = totalIn - totalOut;
+
+  // Pagination - only for browser display, print/export uses sortedMovements
+  const totalPages = Math.ceil(sortedMovements.length / REPORT_PAGE_SIZE);
+  const paginatedMovements = sortedMovements.slice(
+    (currentPage - 1) * REPORT_PAGE_SIZE,
+    currentPage * REPORT_PAGE_SIZE
+  );
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [startDate, endDate, typeFilter, drugFilter]);
 
   const getMovementIcon = (type: StockMovement['movement_type']) => {
     switch (type) {
@@ -303,7 +320,7 @@ export function StockMovementReport() {
 
         {/* Data Table */}
         <ResponsiveTable
-          data={sortedMovements}
+          data={paginatedMovements}
           keyExtractor={(movement) => `${movement.date}-${movement.drug_name}-${movement.reference}-${movement.quantity}`}
           emptyMessage="No stock movements found"
           columns={[
@@ -377,6 +394,37 @@ export function StockMovementReport() {
             </div>
           )}
         />
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-4 border-t">
+            <p className="text-sm text-muted-foreground text-center sm:text-left">
+              Showing {paginatedMovements.length} of {sortedMovements.length} movements (page {currentPage} of {totalPages})
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex-1 sm:flex-none"
+              >
+                <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Previous</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="flex-1 sm:flex-none"
+              >
+                <span className="hidden sm:inline">Next</span>
+                <ChevronRight className="h-4 w-4 sm:ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
