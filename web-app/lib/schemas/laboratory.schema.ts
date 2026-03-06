@@ -21,8 +21,6 @@ export const TestCategorySchema = z.enum([
   'HISTOPATHOLOGY',
   'CYTOLOGY',
   'MOLECULAR',
-  'PATHOLOGY',
-  'RADIOLOGY',
   'OTHER',
 ]);
 
@@ -41,7 +39,7 @@ export const SpecimenTypeSchema = z.enum([
   'ASPIRATE',
 ]);
 
-export const ResultTypeSchema = z.enum(['NUMERIC', 'TEXT', 'OPTION', 'PANEL', 'OPTIONS']);
+export const ResultTypeSchema = z.enum(['NUMERIC', 'TEXT', 'OPTIONS', 'PANEL']);
 
 export const SpecimenStatusSchema = z.enum([
   'PENDING',
@@ -57,7 +55,7 @@ export const ValidationTypeSchema = z.enum(['TECHNICAL', 'CLINICAL']);
 
 export const ValidationStatusSchema = z.enum(['PENDING', 'APPROVED', 'REJECTED']);
 
-export const InterfaceTypeSchema = z.enum(['ASTM', 'HL7', 'SERIAL', 'TCP', 'NONE']);
+export const InterfaceTypeSchema = z.enum(['HL7_MLLP', 'ASTM', 'FHIR', 'MANUAL']);
 
 export const AnalyzerRunStatusSchema = z.enum(['RECEIVED', 'PARSED', 'APPLIED', 'ERROR']);
 
@@ -109,7 +107,6 @@ export const QueueStatusSchema = z.enum([
   'PROCESSING',
   'REVIEW',
   'RELEASED',
-  'REJECTED',
 ]);
 // Alias for module-specific export to avoid conflicts with triage QueueStatusSchema
 export const LabQueueStatusSchema = QueueStatusSchema;
@@ -151,6 +148,26 @@ export const LabResultSchema = z.object({
   external_result_date: z.string().nullable().optional(),
   created_at: z.string(),
   updated_at: z.string(),
+  validation_summary: z
+    .object({
+      requires_clinical_signoff: z.boolean(),
+      technical_validation: z.object({
+        status: z.string(),
+        validated_by: z.string().nullable(),
+        validated_at: z.string().nullable(),
+        comment: z.string(),
+      }),
+      clinical_validation: z
+        .object({
+          status: z.string(),
+          validated_by: z.string().nullable(),
+          validated_at: z.string().nullable(),
+          comment: z.string(),
+        })
+        .nullable(),
+    })
+    .nullable()
+    .optional(),
 });
 
 export type LabResultSchemaType = z.infer<typeof LabResultSchema>;
@@ -320,7 +337,7 @@ export const LabTestCatalogSchema = z.object({
   external_lab_partner: z.string().nullable().optional(),
   turnaround_hours: z.number().nullable().optional(),
   is_panel: z.boolean(),
-  panel_components: z.array(z.number()).nullable().optional(),
+  panel_components: z.array(LabTestCatalogListSchema).nullable().optional(),
   is_active: z.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -603,9 +620,16 @@ export type LabQueueStatsSchemaType = z.infer<typeof LabQueueStatsSchema>;
 
 export const LabResultAttachmentSchema = z.object({
   id: z.number(),
+  lab_order: z.number(),
   file: z.string(),
   file_name: z.string(),
-  uploaded_at: z.string().optional(),
+  file_type: z.string(),
+  file_size: z.number(),
+  attachment_type: z.string(),
+  description: z.string().nullable().optional(),
+  uploaded_by: z.number(),
+  uploaded_by_name: z.string().nullable().optional(),
+  uploaded_at: z.string(),
 });
 
 export const LabResultAttachmentArraySchema = z.array(LabResultAttachmentSchema);

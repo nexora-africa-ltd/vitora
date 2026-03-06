@@ -463,6 +463,29 @@ class LabOrder(models.Model):
         """
         return self.items.exists() and not self.get_pending_results().exists()
 
+    def update_status_from_items(self):
+        """
+        Advance order status based on item statuses.
+
+        Called automatically when item statuses change.
+        - Any item IN_PROGRESS → order IN_PROGRESS (if currently SPECIMEN_COLLECTED)
+        - All items COMPLETED → order COMPLETED (if currently IN_PROGRESS)
+        """
+        if self.status == "SPECIMEN_COLLECTED":
+            has_in_progress = self.items.filter(status__in=["IN_PROGRESS", "COMPLETED"]).exists()
+            if has_in_progress:
+                self.status = "IN_PROGRESS"
+                self.save(update_fields=["status"])
+        elif self.status == "IN_PROGRESS":
+            all_completed = (
+                self.items.exists()
+                and not self.items.exclude(status__in=["COMPLETED", "CANCELLED"]).exists()
+            )
+            if all_completed:
+                self.status = "COMPLETED"
+                self.completed_at = timezone.now()
+                self.save(update_fields=["status", "completed_at"])
+
     def get_turnaround_time(self):
         """
         Calculate time from order to completion.
@@ -654,6 +677,28 @@ class LabOrderItem(models.Model):
             bool: True if result exists
         """
         return hasattr(self, "result")
+
+    def update_status_from_result(self):
+        """
+        Advance item status based on its result state.
+
+        Called automatically when a result is created or verified.
+        - Result entered → IN_PROGRESS
+        - Result verified → COMPLETED
+        Then cascades to the parent LabOrder.
+        """
+        if not self.has_result():
+            return
+
+        result = self.result
+        if result.verification_status == "VERIFIED" and self.status != "COMPLETED":
+            self.status = "COMPLETED"
+            self.save(update_fields=["status"])
+        elif self.status == "PENDING":
+            self.status = "IN_PROGRESS"
+            self.save(update_fields=["status"])
+
+        self.lab_order.update_status_from_items()
 
 
 class Specimen(models.Model):
@@ -1043,6 +1088,9 @@ class LabResult(models.Model):
             self.verified_at = None
 
         self.save(update_fields=["verification_status", "verified_by", "verified_at"])
+
+        # Cascade status to parent item and order
+        self.order_item.update_status_from_result()
 
     def get_validation_summary(self) -> dict:
         """

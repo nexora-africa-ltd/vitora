@@ -320,12 +320,8 @@ export const laboratoryApi = {
   /**
    * Upload external result attachment.
    */
-  async listResultAttachments(
-    resultId: number
-  ): Promise<Array<{ id: number; file: string; file_name: string; uploaded_at?: string }>> {
-    const response = await apiClient.get<
-      Array<{ id: number; file: string; file_name: string; uploaded_at?: string }>
-    >(`/api/lab/results/${resultId}/attachments/`);
+  async listResultAttachments(resultId: number) {
+    const response = await apiClient.get(`/api/lab/results/${resultId}/attachments/`);
     return parseResponse(LabResultAttachmentArraySchema, response.data, {
       context: 'laboratoryApi.listResultAttachments',
     });
