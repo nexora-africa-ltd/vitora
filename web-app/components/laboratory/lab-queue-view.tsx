@@ -91,7 +91,6 @@ const STATUS_CONFIG: Record<QueueStatus, {
   PROCESSING: { label: 'Processing', variant: 'default', icon: Play },
   REVIEW: { label: 'Review', variant: 'secondary', icon: User },
   RELEASED: { label: 'Released', variant: 'default', icon: CheckCircle2 },
-  REJECTED: { label: 'Rejected', variant: 'destructive', icon: XCircle },
 };
 
 const PRIORITY_CONFIG: Record<LabPriority, { label: string; className: string }> = {
@@ -120,7 +119,6 @@ const STATUS_FILTERS: { value: QueueStatus | ''; label: string }[] = [
   { value: 'PROCESSING', label: 'Processing' },
   { value: 'REVIEW', label: 'Review' },
   { value: 'RELEASED', label: 'Released' },
-  { value: 'REJECTED', label: 'Rejected' },
 ];
 
 export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
@@ -380,7 +378,6 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
         {/* Status Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           {Object.entries(STATUS_CONFIG)
-            .filter(([status]) => status !== 'REJECTED')
             .map(([status, config]) => {
               const StatusIcon = config.icon;
               const count = statusCounts[status as QueueStatus] || 0;
@@ -706,7 +703,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                                 </DropdownMenuItem>
                               )}
 
-                              {!['RELEASED', 'REJECTED'].includes(item.queue_status) && (
+                              {!['RELEASED'].includes(item.queue_status) && !item.rejection_reason && (
                                 <>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem

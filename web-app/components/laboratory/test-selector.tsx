@@ -45,10 +45,11 @@ const CATEGORIES: { value: TestCategory | ''; label: string }[] = [
   { value: 'MICROBIOLOGY', label: 'Microbiology' },
   { value: 'PARASITOLOGY', label: 'Parasitology' },
   { value: 'SEROLOGY', label: 'Serology' },
+  { value: 'IMMUNOLOGY', label: 'Immunology' },
   { value: 'URINALYSIS', label: 'Urinalysis' },
+  { value: 'HISTOPATHOLOGY', label: 'Histopathology' },
+  { value: 'CYTOLOGY', label: 'Cytology' },
   { value: 'MOLECULAR', label: 'Molecular' },
-  { value: 'PATHOLOGY', label: 'Pathology' },
-  { value: 'RADIOLOGY', label: 'Radiology' },
   { value: 'OTHER', label: 'Other' },
 ];
 
@@ -63,8 +64,6 @@ const CATEGORY_COLORS: Record<TestCategory, string> = {
   HISTOPATHOLOGY: 'bg-rose-100 text-rose-700',
   CYTOLOGY: 'bg-amber-100 text-amber-700',
   MOLECULAR: 'bg-pink-100 text-pink-700',
-  PATHOLOGY: 'bg-indigo-100 text-indigo-700',
-  RADIOLOGY: 'bg-cyan-100 text-cyan-700',
   OTHER: 'bg-gray-100 text-gray-700',
 };
 

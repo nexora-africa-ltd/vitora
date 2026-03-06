@@ -43,7 +43,7 @@ export interface TestCatalog {
   external_lab_partner?: string | null;
   turnaround_hours?: number | null;
   is_panel: boolean;
-  panel_components?: number[] | null;
+  panel_components?: TestCatalogListItem[] | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -60,8 +60,6 @@ export type TestCategory =
   | 'HISTOPATHOLOGY'
   | 'CYTOLOGY'
   | 'MOLECULAR'
-  | 'PATHOLOGY'
-  | 'RADIOLOGY'
   | 'OTHER';
 
 export type SpecimenType =
@@ -77,7 +75,7 @@ export type SpecimenType =
   | 'ASPIRATE'
   | 'OTHER';
 
-export type ResultType = 'NUMERIC' | 'TEXT' | 'OPTION' | 'OPTIONS' | 'PANEL';
+export type ResultType = 'NUMERIC' | 'TEXT' | 'OPTIONS' | 'PANEL';
 
 // =========== Phase L0 — Specimen ===========
 
@@ -137,7 +135,7 @@ export interface ResultValidationCreateData {
 
 // =========== Phase L3 — Instruments & Analyzer Runs ===========
 
-export type InterfaceType = 'ASTM' | 'HL7' | 'SERIAL' | 'TCP' | 'NONE';
+export type InterfaceType = 'HL7_MLLP' | 'ASTM' | 'FHIR' | 'MANUAL';
 export type AnalyzerRunStatus = 'RECEIVED' | 'PARSED' | 'APPLIED' | 'ERROR';
 
 export interface Instrument {
@@ -378,6 +376,23 @@ export interface LabResult {
   external_result_date?: string | null;
   created_at: string;
   updated_at: string;
+  validation_summary?: ValidationSummary | null;
+}
+
+export interface ValidationSummary {
+  requires_clinical_signoff: boolean;
+  technical_validation: {
+    status: string;
+    validated_by: string | null;
+    validated_at: string | null;
+    comment: string;
+  };
+  clinical_validation: {
+    status: string;
+    validated_by: string | null;
+    validated_at: string | null;
+    comment: string;
+  } | null;
 }
 
 export type ResultFlag =
@@ -432,8 +447,7 @@ export type QueueStatus =
   | 'COLLECTED'
   | 'PROCESSING'
   | 'REVIEW'
-  | 'RELEASED'
-  | 'REJECTED';
+  | 'RELEASED';
 
 // Technician type
 export interface LabTechnician {

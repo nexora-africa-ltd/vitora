@@ -27,6 +27,7 @@ class LabResultAttachmentSerializer(serializers.ModelSerializer):
     """Serializer for lab result attachments (read)."""
 
     uploaded_by_name = serializers.SerializerMethodField()
+    file_name = serializers.CharField(source="filename", read_only=True)
 
     class Meta:
         model = LabResultAttachment
@@ -34,7 +35,7 @@ class LabResultAttachmentSerializer(serializers.ModelSerializer):
             "id",
             "lab_order",
             "file",
-            "filename",
+            "file_name",
             "file_type",
             "file_size",
             "attachment_type",
@@ -230,6 +231,7 @@ class LabOrderSerializer(serializers.ModelSerializer):
 
     items = LabOrderItemSerializer(many=True, read_only=True)
     patient_name = serializers.SerializerMethodField()
+    patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
     ordered_by_name = serializers.SerializerMethodField()
     # Coerce total_cost to float for frontend compatibility
     total_cost = serializers.SerializerMethodField()
@@ -241,6 +243,7 @@ class LabOrderSerializer(serializers.ModelSerializer):
             "order_number",
             "patient",
             "patient_name",
+            "patient_mrn",
             "encounter",
             "admission",
             "ordered_by",
@@ -251,10 +254,15 @@ class LabOrderSerializer(serializers.ModelSerializer):
             "clinical_notes",
             "status",
             "specimen_collected",
+            "specimen_collected_at",
+            "specimen_collected_by",
             "total_cost",
             "items",
             "ordered_at",
             "completed_at",
+            "cancellation_reason",
+            "cancelled_by",
+            "cancelled_at",
             "created_at",
             "updated_at",
         ]
@@ -322,12 +330,15 @@ class LabOrderCreateSerializer(serializers.ModelSerializer):
 
 
 class LabResultSerializer(serializers.ModelSerializer):
-    """Result with test info and flags."""
+    """Result with test info and flags — full fields matching frontend LabResult type."""
 
     test_name = serializers.CharField(source="order_item.test.name", read_only=True)
     test_code = serializers.CharField(source="order_item.test.code", read_only=True)
     formatted_value = serializers.CharField(source="get_formatted_value", read_only=True)
     numeric_value = serializers.SerializerMethodField()
+    result_flag = serializers.SerializerMethodField()
+    entered_by_name = serializers.SerializerMethodField()
+    verified_by_name = serializers.SerializerMethodField()
     # Two-stage validation summary (Phase L2)
     validation_summary = serializers.SerializerMethodField()
 
@@ -341,27 +352,60 @@ class LabResultSerializer(serializers.ModelSerializer):
             "numeric_value",
             "text_value",
             "option_value",
-            "result_flag",
             "formatted_value",
+            "result_unit",
+            "reference_low",
+            "reference_high",
+            "reference_range_text",
+            "result_flag",
             "interpretation",
+            "is_critical_result",
+            "method",
+            "equipment",
             "verification_status",
             "verified_by",
+            "verified_by_name",
             "verified_at",
             "entered_by",
+            "entered_by_name",
             "entered_at",
-            "is_external_result",
-            "is_critical_result",
             "is_amended",
+            "amendment_reason",
+            "original_value",
+            "is_external_result",
+            "external_result_attachment",
+            "external_result_date",
             "created_at",
             "updated_at",
             "validation_summary",
         ]
-        read_only_fields = ["entered_by", "entered_at", "result_flag", "validation_summary"]
+        read_only_fields = [
+            "entered_by",
+            "entered_at",
+            "result_flag",
+            "entered_by_name",
+            "verified_by_name",
+            "validation_summary",
+        ]
 
     def get_numeric_value(self, obj) -> float | None:
         """Return numeric_value as float for frontend compatibility."""
         if obj.numeric_value is not None:
             return float(obj.numeric_value)
+        return None
+
+    def get_result_flag(self, obj) -> Optional[str]:
+        """Return null instead of empty string for frontend enum compatibility."""
+        return obj.result_flag if obj.result_flag else None
+
+    def get_entered_by_name(self, obj) -> Optional[str]:
+        if obj.entered_by:
+            return obj.entered_by.get_full_name() or obj.entered_by.username
+        return None
+
+    def get_verified_by_name(self, obj) -> Optional[str]:
+        if obj.verified_by:
+            return obj.verified_by.get_full_name() or obj.verified_by.username
         return None
 
     def get_validation_summary(self, obj) -> dict | None:
@@ -406,6 +450,9 @@ class LabResultCreateSerializer(serializers.ModelSerializer):
         if result.numeric_value is not None and not result.result_flag:
             result.auto_flag_result()
 
+        # Cascade status: item → IN_PROGRESS, order → IN_PROGRESS
+        result.order_item.update_status_from_result()
+
         return result
 
 
@@ -435,6 +482,45 @@ class LOINCCodeSerializer(serializers.ModelSerializer):
 # ============================================================================
 
 
+class LabQueueSpecimenSerializer(serializers.ModelSerializer):
+    """Lightweight specimen serializer for LabQueue nesting."""
+
+    collected_by_name = serializers.SerializerMethodField()
+    order_items = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Specimen
+        fields = [
+            "id",
+            "barcode",
+            "specimen_type",
+            "container_type",
+            "lab_order",
+            "order_items",
+            "collected_by",
+            "collected_by_name",
+            "collected_at",
+            "collection_site",
+            "received_by",
+            "received_at",
+            "status",
+            "rejection_reason",
+            "storage_location",
+            "storage_temperature",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    def get_collected_by_name(self, obj) -> Optional[str]:
+        if obj.collected_by:
+            return obj.collected_by.get_full_name() or obj.collected_by.username
+        return None
+
+    def get_order_items(self, obj) -> list[int]:
+        return list(obj.order_items.values_list("id", flat=True))
+
+
 class LabQueueSerializer(serializers.ModelSerializer):
     """Serializer for lab queue listing and detail."""
 
@@ -451,7 +537,7 @@ class LabQueueSerializer(serializers.ModelSerializer):
     collected_by_name = serializers.SerializerMethodField()
     reviewed_by_name = serializers.SerializerMethodField()
 
-    specimen_id = serializers.IntegerField(source="specimen.id", read_only=True)
+    specimen = LabQueueSpecimenSerializer(read_only=True)
     sample_type = serializers.SerializerMethodField()
     sample_id = serializers.SerializerMethodField()
     collected_by = serializers.SerializerMethodField()
@@ -474,7 +560,7 @@ class LabQueueSerializer(serializers.ModelSerializer):
             "tests",
             "priority",
             "queue_status",
-            "specimen_id",
+            "specimen",
             "sample_type",
             "sample_id",
             "assigned_technician",
@@ -500,7 +586,7 @@ class LabQueueSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "queue_number",
-            "specimen_id",
+            "specimen",
             "created_at",
             "updated_at",
         ]
@@ -950,7 +1036,7 @@ class SpecimenSerializer(serializers.ModelSerializer):
     received_by_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     specimen_type_display = serializers.CharField(source="get_specimen_type_display", read_only=True)
-    order_item_ids = serializers.SerializerMethodField()
+    order_items = serializers.SerializerMethodField()
 
     class Meta:
         model = Specimen
@@ -964,7 +1050,7 @@ class SpecimenSerializer(serializers.ModelSerializer):
             "order_number",
             "patient_name",
             "patient_mrn",
-            "order_item_ids",
+            "order_items",
             "collected_by",
             "collected_by_name",
             "collected_at",
@@ -990,7 +1076,7 @@ class SpecimenSerializer(serializers.ModelSerializer):
             "specimen_type_display",
             "collected_by_name",
             "received_by_name",
-            "order_item_ids",
+            "order_items",
             "created_at",
             "updated_at",
         ]
@@ -1012,7 +1098,7 @@ class SpecimenSerializer(serializers.ModelSerializer):
             return obj.received_by.get_full_name() or obj.received_by.username
         return None
 
-    def get_order_item_ids(self, obj) -> list[int]:
+    def get_order_items(self, obj) -> list[int]:
         """Get list of linked order item IDs."""
         return list(obj.order_items.values_list("id", flat=True))
 
