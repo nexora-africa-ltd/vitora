@@ -69,6 +69,10 @@ export interface DischargeReadinessPanelProps {
   chwReferralMade?: boolean | null;
   /** Whether the panel is disabled */
   disabled?: boolean;
+  /** When true, auto-trigger the assessment (set by widget quick action) */
+  autoTrigger?: boolean;
+  /** Called after auto-trigger is consumed */
+  onAutoTriggerConsumed?: () => void;
 }
 
 // =============================================================================
@@ -151,10 +155,46 @@ export function DischargeReadinessPanel({
   hasNhifOrSha,
   chwReferralMade,
   disabled,
+  autoTrigger,
+  onAutoTriggerConsumed,
 }: DischargeReadinessPanelProps) {
   const isAIEnabled = useAIEnabled();
   const { mutate, data: result, isPending, isError, reset } = useAIDischargeAssess();
   const [showDetails, setShowDetails] = React.useState(false);
+
+  // Auto-trigger from widget quick action
+  React.useEffect(() => {
+    if (autoTrigger && isAIEnabled && !isPending && !result) {
+      mutate({
+        patient_age: patientAge,
+        primary_diagnosis: primaryDiagnosis,
+        admission_type: admissionType,
+        days_admitted: daysAdmitted,
+        vitals_history: vitalsHistory,
+        lab_results: labResults,
+        current_medications: currentMedications,
+        can_ambulate: canAmbulate,
+        can_tolerate_oral: canTolerateOral,
+        has_follow_up_arranged: hasFollowUpArranged,
+        has_caregiver_at_home: hasCaregiverAtHome,
+        has_nhif_or_sha: hasNhifOrSha,
+        chw_referral_made: chwReferralMade,
+      });
+      onAutoTriggerConsumed?.();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTrigger]);
+
+  // Group criteria by category
+  const groupedCriteria = React.useMemo(() => {
+    if (!result?.criteria) return {};
+    return result.criteria.reduce<Record<string, AIDischargeCriterion[]>>((acc, c) => {
+      const cat = c.category || 'other';
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(c);
+      return acc;
+    }, {});
+  }, [result?.criteria]);
 
   if (!isAIEnabled) return null;
 
@@ -179,17 +219,6 @@ export function DischargeReadinessPanel({
   const hasResult = result && result.readiness_level;
   const readinessConfig = hasResult ? READINESS_CONFIG[result.readiness_level] : null;
   const isFallback = result?.mode === 'fallback';
-
-  // Group criteria by category
-  const groupedCriteria = React.useMemo(() => {
-    if (!result?.criteria) return {};
-    return result.criteria.reduce<Record<string, AIDischargeCriterion[]>>((acc, c) => {
-      const cat = c.category || 'other';
-      if (!acc[cat]) acc[cat] = [];
-      acc[cat].push(c);
-      return acc;
-    }, {});
-  }, [result?.criteria]);
 
   return (
     <Card>

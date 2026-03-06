@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { PlayCircle, User, Calendar, Stethoscope, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,8 @@ import { formatDate } from '@/lib/utils/format';
 import { ENCOUNTER_STATUS, ENCOUNTER_TYPES } from '@/lib/utils/constants';
 import { VitalsDisplay } from '@/components/encounters/vitals-display';
 import { CDSAlertsPanel } from '@/components/encounters/cds-alerts-panel';
+import { EnhancedCDSPanel } from '@/components/encounters/enhanced-cds-panel';
+import { CarePlanPanel } from '@/components/encounters/care-plan-panel';
 import { DiagnosesList } from '@/components/encounters/diagnoses-list';
 import { TreatmentPlanView } from '@/components/encounters/treatment-plan-view';
 import { MedicalHistoryView } from '@/components/encounters/medical-history-view';
@@ -38,8 +40,10 @@ import { ClinicalSnapshotBanner } from '@/components/encounters/clinical-snapsho
 import { EncounterAuditTrail } from '@/components/encounters/encounter-audit-trail';
 import { EncounterAlliedHealthContent } from '@/components/encounters/encounter-allied-health-content';
 import { EncounterReferralsContent } from '@/components/encounters/encounter-referrals-content';
+import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import Link from 'next/link';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
+import type { AIQuickAction } from '@/lib/types/ai';
 
 // Parse blood pressure string "120/80" to systolic/diastolic
 function parseBP(bp: string | null | undefined): { systolic: number | null; diastolic: number | null } {
@@ -51,6 +55,57 @@ function parseBP(bp: string | null | undefined): { systolic: number | null; dias
     diastolic: parseInt(parts[1] || '') || null,
   };
 }
+
+function parseBPToMAP(bp: string | null | undefined): number | undefined {
+  if (!bp) return undefined;
+  const match = bp.match(/^(\d+)\/(\d+)$/);
+  if (!match) return undefined;
+  const sys = Number(match[1]);
+  const dia = Number(match[2]);
+  if (isNaN(sys) || isNaN(dia)) return undefined;
+  return Math.round(dia + (sys - dia) / 3);
+}
+
+function calculateAge(dob: string | null | undefined): number {
+  if (!dob) return 0;
+  const diff = Date.now() - new Date(dob).getTime();
+  return Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
+}
+
+// =============================================================================
+// Encounter Quick Actions for AI Chat Widget
+// =============================================================================
+
+const ENCOUNTER_QUICK_ACTIONS: AIQuickAction[] = [
+  {
+    id: 'encounter-ddx',
+    label: 'Differential diagnosis',
+    query:
+      'Provide a differential diagnosis for this patient\'s presentation. Consider the chief complaint, vital signs, age, history, and any risk factors. Rank by likelihood.',
+    userMessage: '\uD83E\uDE7A Requesting differential diagnosis...',
+  },
+  {
+    id: 'encounter-care-plan',
+    label: 'Suggest care plan',
+    query: '',
+    userMessage: '\uD83D\uDCCB Generating care plan...',
+    panelAction: 'care-plan',
+  },
+  {
+    id: 'encounter-cds-check',
+    label: 'Safety check',
+    query: '',
+    userMessage: '\uD83D\uDEE1\uFE0F Running clinical safety checks...',
+    panelAction: 'cds-evaluate',
+  },
+  {
+    id: 'encounter-workup',
+    label: 'Recommended workup',
+    query:
+      'Based on this patient\'s presentation, what investigations and workup would you recommend? Include labs, imaging, and point-of-care tests.',
+    userMessage: '\uD83D\uDD2C Requesting recommended workup...',
+  },
+];
 
 export default function EncounterDetailPage() {
   const params = useParams();
@@ -84,6 +139,73 @@ export default function EncounterDetailPage() {
   // Real-time WebSocket subscription for lab result updates
   // Automatically invalidates lab orders cache when results are verified
   useLabEncounterSocket(encounterId);
+
+  // =========================================================================
+  // AI Chat Widget — encounter-aware context wiring
+  // =========================================================================
+
+  const chatCtx = useOptionalAIChatContext();
+  const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
+  const setQuickActions = chatCtx?.setQuickActions;
+  const activePanelAction = chatCtx?.activePanelAction ?? null;
+  const clearPanelAction = chatCtx?.clearPanelAction;
+
+  // Track which panel was triggered by the AI widget
+  const [autoTriggerCDS, setAutoTriggerCDS] = useState(false);
+  const [autoTriggerCarePlan, setAutoTriggerCarePlan] = useState(false);
+
+  useEffect(() => {
+    if (!activePanelAction || !clearPanelAction) return;
+    if (activePanelAction === 'cds-evaluate') {
+      setAutoTriggerCDS(true);
+      clearPanelAction();
+    } else if (activePanelAction === 'care-plan') {
+      setAutoTriggerCarePlan(true);
+      clearPanelAction();
+    }
+  }, [activePanelAction, clearPanelAction]);
+
+  // Wire encounter + patient data into the AI chat context
+  useEffect(() => {
+    if (!setEncounterAwareContext || !encounter) return;
+
+    const allergies = encounter.allergies
+      ?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [];
+    const comorbidities = encounter.chronic_conditions
+      ?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [];
+    const meds = encounter.current_medications
+      ?.split(',').map((s: string) => s.trim()).filter(Boolean) ?? [];
+
+    setEncounterAwareContext(
+      {
+        patient_age: calculateAge(encounter.patient_date_of_birth),
+        patient_sex: encounter.patient_gender ?? 'O',
+        allergies,
+        comorbidities,
+        current_medications: meds,
+      },
+      {
+        chief_complaint: encounter.chief_complaint ?? undefined,
+        vitals: {
+          spo2: encounter.spo2 != null ? Number(encounter.spo2) : undefined,
+          pulse: encounter.pulse ?? undefined,
+          temperature: encounter.temperature != null
+            ? Number(encounter.temperature) : undefined,
+          rr: encounter.respiratory_rate ?? undefined,
+          map: parseBPToMAP(encounter.blood_pressure),
+        },
+      },
+    );
+
+    return () => { setEncounterAwareContext(null, null); };
+  }, [encounter, setEncounterAwareContext]);
+
+  // Register encounter-specific quick actions
+  useEffect(() => {
+    if (!setQuickActions) return;
+    setQuickActions(ENCOUNTER_QUICK_ACTIONS);
+    return () => { setQuickActions([]); };
+  }, [setQuickActions]);
 
   // Convert encounter to formData format for SOAP Note Summary
   const formData = useMemo((): EncounterFormData | null => {
@@ -229,6 +351,44 @@ export default function EncounterDetailPage() {
 
       {/* CDS Alerts Panel — tiered advisory alerts from clinical rules */}
       <CDSAlertsPanel encounterId={encounterId} />
+
+      {/* AI Enhanced CDS Panel (Phase 5) — drug interactions, contraindications */}
+      <EnhancedCDSPanel
+        medications={encounter.current_medications
+          ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
+        diagnoses={diagnosisFormData.map(d =>
+          d.icd10_display || d.free_text_diagnosis
+        ).filter(Boolean)}
+        allergies={encounter.allergies
+          ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
+        patientAge={calculateAge(encounter.patient_date_of_birth)}
+        patientSex={
+          encounter.patient_gender === 'F' ? 'female' :
+          encounter.patient_gender === 'M' ? 'male' : null
+        }
+        autoTrigger={autoTriggerCDS}
+        onAutoTriggerConsumed={() => setAutoTriggerCDS(false)}
+      />
+
+      {/* AI Care Plan Panel (Phase 5) */}
+      <CarePlanPanel
+        primaryDiagnosis={
+          diagnosisFormData[0]?.icd10_display
+          || diagnosisFormData[0]?.free_text_diagnosis
+          || encounter.chief_complaint || ''
+        }
+        icd10Code={diagnosisFormData[0]?.icd10_code?.toString()}
+        patientAge={calculateAge(encounter.patient_date_of_birth)}
+        patientSex={encounter.patient_gender === 'F' ? 'female' : 'male'}
+        allergies={encounter.allergies
+          ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
+        currentMedications={encounter.current_medications
+          ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
+        comorbidities={encounter.chronic_conditions
+          ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
+        autoTrigger={autoTriggerCarePlan}
+        onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
+      />
 
       {/* Tabs */}
       <Tabs defaultValue="soap" className="space-y-4">

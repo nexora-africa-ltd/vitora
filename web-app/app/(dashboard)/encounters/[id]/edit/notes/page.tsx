@@ -17,6 +17,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PageHeader } from '@/components/shared/page-header';
 import { ClinicalNotesFormContent } from '@/components/encounters/clinical-notes-form';
 import { ClinicalTemplateFormContent } from '@/components/encounters/clinical-template-section';
+import { StructureNoteButton } from '@/components/encounters/structure-note-button';
 import { AutoSaveStatusIndicator } from '@/components/ui/auto-save-status';
 import { useEncounterContext } from '@/lib/context/encounter-context';
 import { useEncounterEditStore } from '@/lib/stores/encounter-edit-store';
@@ -240,10 +241,27 @@ export default function EncounterEditNotesPage() {
       {/* Clinical Notes Form */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5" />
-            History of Present Illness & Assessment
-          </CardTitle>
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardList className="h-5 w-5" />
+              History of Present Illness & Assessment
+            </CardTitle>
+            {isEditable && (
+              <StructureNoteButton
+                freeText={
+                  [notes?.history_of_present_illness, notes?.physical_examination, notes?.assessment, notes?.notes]
+                    .filter(Boolean)
+                    .join('\n\n')
+                }
+                onAccept={(sections) => {
+                  if (sections.subjective) setNotes(encounterId, { history_of_present_illness: sections.subjective });
+                  if (sections.objective) setNotes(encounterId, { physical_examination: sections.objective });
+                  if (sections.assessment) setNotes(encounterId, { assessment: sections.assessment });
+                  if (sections.plan) setNotes(encounterId, { notes: sections.plan });
+                }}
+              />
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <ClinicalNotesFormContent

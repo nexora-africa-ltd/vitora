@@ -55,6 +55,10 @@ export interface LabInterpretPanelProps {
   diagnoses?: string[];
   /** Whether the panel is disabled */
   disabled?: boolean;
+  /** When true, auto-trigger interpretation (set by widget quick action) */
+  autoTrigger?: boolean;
+  /** Called after auto-trigger is consumed */
+  onAutoTriggerConsumed?: () => void;
 }
 
 // =============================================================================
@@ -168,10 +172,28 @@ export function LabInterpretPanel({
   labResults,
   diagnoses,
   disabled,
+  autoTrigger,
+  onAutoTriggerConsumed,
 }: LabInterpretPanelProps) {
   const isAIEnabled = useAIEnabled();
   const { mutate, data: result, isPending, isError, reset } = useAILabInterpret();
   const [showDetails, setShowDetails] = React.useState(false);
+
+  // Auto-trigger from widget quick action
+  React.useEffect(() => {
+    if (autoTrigger && isAIEnabled && !isPending && !result && labResults?.length > 0) {
+      mutate({
+        patient_age: patientAge,
+        patient_sex: patientSex,
+        is_pregnant: isPregnant,
+        gestational_weeks: gestationalWeeks,
+        lab_results: labResults,
+        diagnoses,
+      });
+      onAutoTriggerConsumed?.();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTrigger]);
 
   if (!isAIEnabled) return null;
   if (!labResults || labResults.length === 0) return null;

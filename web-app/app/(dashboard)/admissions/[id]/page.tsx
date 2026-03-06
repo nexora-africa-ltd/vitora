@@ -49,7 +49,8 @@ import {
   useCreateReviewRequest,
   useAdmissionReviewRequests,
 } from '@/lib/hooks/use-inpatient';
-import { AdmissionOrdersTab, ICURiskAssessmentPanel } from '@/components/inpatient';
+import { AdmissionOrdersTab, ICURiskAssessmentPanel, DischargeReadinessPanel } from '@/components/inpatient';
+import { CarePlanPanel } from '@/components/encounters/care-plan-panel';
 import { TemperatureChart } from '@/components/inpatient/temperature-chart';
 import { BloodTransfusionChart } from '@/components/inpatient/blood-transfusion-chart';
 import { BPMonitoringChart } from '@/components/inpatient/bp-monitoring-chart';
@@ -87,9 +88,9 @@ const INPATIENT_QUICK_ACTIONS: AIQuickAction[] = [
   {
     id: 'inpatient-discharge-readiness',
     label: 'Discharge readiness',
-    query:
-      'Assess whether this inpatient is ready for discharge. Consider their current condition status, latest ward round findings, vitals trends, diagnosis, and length of stay. Identify any criteria that should be met before discharge.',
+    query: '',
     userMessage: '🏠 Evaluating discharge readiness...',
+    panelAction: 'discharge-readiness',
   },
   {
     id: 'inpatient-complications',
@@ -101,9 +102,9 @@ const INPATIENT_QUICK_ACTIONS: AIQuickAction[] = [
   {
     id: 'inpatient-care-plan',
     label: 'Suggest care plan',
-    query:
-      'Suggest a comprehensive inpatient care plan for this patient. Include medication review recommendations, nursing observations frequency, diet considerations, mobilization plan, and investigation priorities based on the current clinical picture.',
+    query: '',
     userMessage: '📋 Generating care plan suggestions...',
+    panelAction: 'care-plan',
   },
 ];
 
@@ -140,6 +141,23 @@ export default function AdmissionDetailPage() {
   const chatCtx = useOptionalAIChatContext();
   const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
   const setQuickActions = chatCtx?.setQuickActions;
+  const activePanelAction = chatCtx?.activePanelAction ?? null;
+  const clearPanelAction = chatCtx?.clearPanelAction;
+
+  // Track which panel was triggered by the AI widget
+  const [autoTriggerDischarge, setAutoTriggerDischarge] = useState(false);
+  const [autoTriggerCarePlan, setAutoTriggerCarePlan] = useState(false);
+
+  useEffect(() => {
+    if (!activePanelAction || !clearPanelAction) return;
+    if (activePanelAction === 'discharge-readiness') {
+      setAutoTriggerDischarge(true);
+      clearPanelAction();
+    } else if (activePanelAction === 'care-plan') {
+      setAutoTriggerCarePlan(true);
+      clearPanelAction();
+    }
+  }, [activePanelAction, clearPanelAction]);
 
   // Derive the latest ward round (most recent by date) for vitals + condition
   const latestWardRound = useMemo(() => {
@@ -664,6 +682,34 @@ export default function AdmissionDetailPage() {
                 admission.admitting_diagnosis_text || admission.admitting_diagnosis
               }
               lengthOfStayDays={daysAdmitted}
+            />
+          )}
+
+          {/* AI Discharge Readiness (Phase 5) */}
+          {admission.admission_status === 'ACTIVE' && (
+            <DischargeReadinessPanel
+              patientAge={admission.patient_age ?? 0}
+              primaryDiagnosis={
+                admission.admitting_diagnosis_text || admission.admitting_diagnosis || ''
+              }
+              daysAdmitted={daysAdmitted}
+              autoTrigger={autoTriggerDischarge}
+              onAutoTriggerConsumed={() => setAutoTriggerDischarge(false)}
+            />
+          )}
+
+          {/* AI Care Plan (Phase 5) */}
+          {admission.admission_status === 'ACTIVE' && (
+            <CarePlanPanel
+              primaryDiagnosis={
+                admission.admitting_diagnosis_text || admission.admitting_diagnosis || ''
+              }
+              patientAge={admission.patient_age ?? 0}
+              patientSex={
+                admission.patient_gender === 'F' ? 'female' : 'male'
+              }
+              autoTrigger={autoTriggerCarePlan}
+              onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
             />
           )}
         </TabsContent>

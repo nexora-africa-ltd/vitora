@@ -397,6 +397,13 @@ export interface AIQuickAction {
   query: string;
   /** Optional user-visible message shown in chat when clicked */
   userMessage?: string;
+  /**
+   * When set, clicking this action triggers a dedicated Phase 5 panel
+   * instead of sending a chat query. The value identifies which panel
+   * to activate (e.g., 'discharge-readiness', 'care-plan', 'lab-interpret',
+   * 'cds-evaluate', 'structure-notes').
+   */
+  panelAction?: string;
 }
 
 // =============================================================================

@@ -64,6 +64,10 @@ export interface EnhancedCDSPanelProps {
   disabled?: boolean;
   /** Auto-run on mount when true (default: false) */
   autoRun?: boolean;
+  /** When true, auto-trigger evaluation (set by widget quick action) */
+  autoTrigger?: boolean;
+  /** Called after auto-trigger is consumed */
+  onAutoTriggerConsumed?: () => void;
 }
 
 // =============================================================================
@@ -173,6 +177,8 @@ export function EnhancedCDSPanel({
   facilityLevel,
   disabled,
   autoRun = false,
+  autoTrigger,
+  onAutoTriggerConsumed,
 }: EnhancedCDSPanelProps) {
   const isAIEnabled = useAIEnabled();
   const { mutate, data: result, isPending, isError, reset } = useAICDSEvaluate();
@@ -203,13 +209,14 @@ export function EnhancedCDSPanel({
     }
   }, [autoRun, isAIEnabled, disabled, handleEvaluate]);
 
-  if (!isAIEnabled) return null;
-
-  const alertCount = result?.alerts?.length ?? 0;
-  const recCount = result?.recommendations?.length ?? 0;
-  const hasResult = result && (alertCount > 0 || recCount > 0);
-  const noAlerts = result && alertCount === 0 && recCount === 0;
-  const isFallback = result?.mode === 'fallback';
+  // Auto-trigger from widget quick action
+  React.useEffect(() => {
+    if (autoTrigger && isAIEnabled && !isPending) {
+      handleEvaluate();
+      onAutoTriggerConsumed?.();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTrigger]);
 
   // Group alerts by severity
   const alertsBySeverity = React.useMemo(() => {
@@ -220,6 +227,14 @@ export function EnhancedCDSPanel({
       return acc;
     }, {});
   }, [result?.alerts]);
+
+  if (!isAIEnabled) return null;
+
+  const alertCount = result?.alerts?.length ?? 0;
+  const recCount = result?.recommendations?.length ?? 0;
+  const hasResult = result && (alertCount > 0 || recCount > 0);
+  const noAlerts = result && alertCount === 0 && recCount === 0;
+  const isFallback = result?.mode === 'fallback';
 
   return (
     <Card>
