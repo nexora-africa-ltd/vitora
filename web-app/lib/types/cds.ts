@@ -84,6 +84,27 @@ export interface CDSRuleCreateData {
   metadata?: Record<string, unknown>;
 }
 
+// ──────────────────────────── Suggested Actions ────────────────────────────
+
+export type CDSSuggestedActionType =
+  | 'SET_FIELD'
+  | 'ESCALATE_PRIORITY'
+  | 'ORDER_TEST'
+  | 'ADD_MEDICATION'
+  | 'REMOVE_MEDICATION'
+  | 'ADD_ALLERGY'
+  | 'FLAG_CONDITION'
+  | 'REFER';
+
+/** A single structured action suggested by CDS. */
+export interface CDSSuggestedAction {
+  action_type: string;
+  target_field: string;
+  value?: unknown;
+  confidence: number;
+  reason: string;
+}
+
 // ──────────────────────────── Alert Types ────────────────────────────
 
 export interface CDSAlertListItem {
@@ -99,6 +120,7 @@ export interface CDSAlertListItem {
   status: string;
   message: string;
   suggestion: string;
+  suggested_actions: CDSSuggestedAction[];
   category: string;
   is_pending: boolean;
   is_critical: boolean;
@@ -108,6 +130,7 @@ export interface CDSAlertListItem {
 export interface CDSAlertDetail extends CDSAlertListItem {
   suggestion: string;
   details: Record<string, unknown>;
+  suggested_actions: CDSSuggestedAction[];
   evidence_level: string;
   action_type: string;
   override_reason: string;
@@ -141,6 +164,7 @@ export interface CDSEvaluationResult {
   rule_code: string;
   message: string;
   details: Record<string, unknown>;
+  suggested_actions?: CDSSuggestedAction[];
 }
 
 export interface CDSRuleEvaluateResponse {

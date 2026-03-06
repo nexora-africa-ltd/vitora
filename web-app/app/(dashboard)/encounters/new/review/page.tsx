@@ -22,6 +22,7 @@ import {
   Loader2,
   SendHorizontal,
   Save,
+  Sparkles,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,6 +40,8 @@ import { useNewEncounterStore } from '@/lib/stores/new-encounter-store';
 import { useCreateEncounterWithValidation } from '@/lib/hooks/use-encounter-form';
 import { useCheckInPatient } from '@/lib/hooks/use-triage';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useSmartSuggestions } from '@/lib/hooks/use-smart-suggestions';
+import { SmartSuggestionBatch } from '@/components/shared/smart-suggestion-batch';
 import { LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
 
 // =============================================================================
@@ -93,6 +96,17 @@ export default function NewEncounterReviewPage() {
 
   const [showTriageModal, setShowTriageModal] = useState(false);
   const [createdEncounterId, setCreatedEncounterId] = useState<number | null>(null);
+  const [showAutopopulate, setShowAutopopulate] = useState(false);
+
+  // Smart suggestions (AI autopopulate)
+  const {
+    suggestions: smartSuggestions,
+    pendingSuggestions,
+    accept: acceptSuggestion,
+    fetchSuggestions,
+    isLoading: isSuggestionsLoading,
+    isAvailable: isAutopopulateAvailable,
+  } = useSmartSuggestions();
 
   const { data: patientData } = getPatient();
   const details = getDetails();
@@ -242,6 +256,41 @@ export default function NewEncounterReviewPage() {
     router.push('/encounters');
   }, [clearSession, toast, router]);
 
+  // Handle AI autopopulate
+  const handleAutopopulate = useCallback(() => {
+    fetchSuggestions({
+      chief_complaint: details.chief_complaint,
+      clinical_notes: notes.history_of_present_illness || '',
+      allergies: history.allergies ? [history.allergies] : [],
+      current_medications: history.current_medications ? [history.current_medications] : [],
+      encounter_type: details.encounter_type,
+    });
+    setShowAutopopulate(true);
+  }, [fetchSuggestions, details, notes, history]);
+
+  // Apply selected AI suggestions to the encounter store
+  const handleApplyAutopopulate = useCallback(
+    (accepted: Array<{ id: string; field_name: string; value: unknown }>) => {
+      const store = useNewEncounterStore.getState();
+      for (const item of accepted) {
+        acceptSuggestion(item.id);
+        // Apply to the appropriate store section
+        if (item.field_name === 'assessment' && typeof item.value === 'string') {
+          store.setNotes({ assessment: item.value });
+        } else if (item.field_name === 'allergies' && typeof item.value === 'string') {
+          store.setHistory({ allergies: item.value });
+        } else if (item.field_name === 'chronic_conditions' && typeof item.value === 'string') {
+          store.setHistory({ chronic_conditions: item.value });
+        }
+      }
+      toast({
+        title: 'Suggestions Applied',
+        description: `Applied ${accepted.length} AI suggestion${accepted.length !== 1 ? 's' : ''} to the encounter.`,
+      });
+    },
+    [acceptSuggestion, toast]
+  );
+
   // Redirect if missing required data
   useEffect(() => {
     if (!patientData) {
@@ -309,10 +358,34 @@ export default function NewEncounterReviewPage() {
         {/* Review Card */}
         <Card>
           <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
-            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
-              Review & Create
-            </CardTitle>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5" />
+                Review & Create
+              </CardTitle>
+              {isAutopopulateAvailable && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAutopopulate}
+                  disabled={isSuggestionsLoading || !details.chief_complaint?.trim()}
+                  className="gap-1.5 text-xs"
+                >
+                  {isSuggestionsLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {isSuggestionsLoading ? 'Analyzing...' : 'AI Autopopulate'}
+                  </span>
+                  <span className="sm:hidden">
+                    {isSuggestionsLoading ? '...' : 'AI Fill'}
+                  </span>
+                </Button>
+              )}
+            </div>
             <CardDescription>
               Review the encounter details before creating.
             </CardDescription>
@@ -517,6 +590,15 @@ export default function NewEncounterReviewPage() {
             </Button>
           </div>
         </div>
+
+        {/* AI Autopopulate Dialog */}
+        <SmartSuggestionBatch
+          open={showAutopopulate}
+          onOpenChange={setShowAutopopulate}
+          suggestions={smartSuggestions}
+          onApply={handleApplyAutopopulate}
+          title="AI Autopopulate Suggestions"
+        />
     </div>
   );
 }

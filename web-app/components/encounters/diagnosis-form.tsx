@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Search, Plus, Trash2, AlertCircle, Check, X, ChevronLeft, Pencil, Sparkles, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,10 @@ import { Switch } from '@/components/ui/switch';
 import { ICD11Select } from '@/components/terminology';
 import { useICD10Search } from '@/lib/hooks/use-encounter-form';
 import { useAIEnabled, useAIICD10Suggest } from '@/lib/hooks/use-ai';
+import { useFeatureFlag } from '@/lib/hooks/use-feature-flags';
+import { SmartSuggestion } from '@/components/shared/smart-suggestion';
 import { cn } from '@/lib/utils/cn';
+import type { SmartSuggestion as SmartSuggestionType } from '@/lib/hooks/use-smart-suggestions';
 import type { DiagnosisFormData, ICD10SearchResult } from '@/lib/types/encounter-form';
 import type { AIICD10Suggestion } from '@/lib/types/ai';
 
@@ -62,6 +65,8 @@ export function DiagnosisEntry({
     reset: resetAISuggestions,
   } = useAIICD10Suggest();
   const [dismissedAISuggestions, setDismissedAISuggestions] = useState<Set<string>>(new Set());
+  const smartAutopopulate = useFeatureFlag('smart_autopopulate');
+  const autoTriggerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleAISuggest = useCallback(() => {
     const text = formData.free_text_diagnosis.trim();
@@ -70,6 +75,37 @@ export function DiagnosisEntry({
       suggestICD10(text);
     }
   }, [formData.free_text_diagnosis, suggestICD10]);
+
+  // Auto-trigger AI suggestions when smart_autopopulate is enabled (debounced)
+  useEffect(() => {
+    if (!smartAutopopulate || !aiEnabled) return;
+    const text = formData.free_text_diagnosis.trim();
+    if (text.length < 3) return;
+    if (autoTriggerTimer.current) clearTimeout(autoTriggerTimer.current);
+    autoTriggerTimer.current = setTimeout(() => {
+      setDismissedAISuggestions(new Set());
+      suggestICD10(text);
+    }, 800);
+    return () => {
+      if (autoTriggerTimer.current) clearTimeout(autoTriggerTimer.current);
+    };
+  }, [smartAutopopulate, aiEnabled, formData.free_text_diagnosis, suggestICD10]);
+
+  // Build smart suggestion from top AI result (high confidence only)
+  const topSmartSuggestion: SmartSuggestionType | null = useMemo(() => {
+    if (!smartAutopopulate || !aiSuggestions?.suggestions?.length) return null;
+    const top = aiSuggestions.suggestions[0]!;
+    if (top.confidence < 0.85 || dismissedAISuggestions.has(top.code)) return null;
+    return {
+      id: `ai-icd10-${top.code}`,
+      field_name: 'primary_diagnosis',
+      value: top,
+      confidence: top.confidence,
+      reason: `AI suggests ${top.code} — ${top.description}`,
+      source: 'ai',
+      status: 'pending',
+    };
+  }, [smartAutopopulate, aiSuggestions, dismissedAISuggestions]);
 
   const handleDismissAISuggestion = useCallback((code: string) => {
     setDismissedAISuggestions(prev => new Set([...prev, code]));
@@ -294,6 +330,27 @@ export function DiagnosisEntry({
                     </span>
                   )}
                 </div>
+
+                {/* Smart Suggestion — high-confidence auto-suggested (smart_autopopulate only) */}
+                {topSmartSuggestion && (
+                  <SmartSuggestion
+                    suggestion={topSmartSuggestion}
+                    onAccept={() => {
+                      const s = topSmartSuggestion.value as AIICD10Suggestion;
+                      handleAcceptAISuggestion(s);
+                    }}
+                    onReject={() => {
+                      const s = topSmartSuggestion.value as AIICD10Suggestion;
+                      handleDismissAISuggestion(s.code);
+                    }}
+                    variant="inline"
+                    formatValue={(v) => {
+                      const s = v as AIICD10Suggestion;
+                      return `${s.code} — ${s.description}`;
+                    }}
+                    disabled={disabled}
+                  />
+                )}
 
                 {/* AI Suggestion Results */}
                 {visibleAISuggestions.length > 0 && (

@@ -8,6 +8,7 @@ from .views import (
     AIFeedbackStatsView,
     AIFeedbackView,
     AIStatusView,
+    AutopopulateView,
     ClinicalAssistView,
     ClinicalChatSessionDetailView,
     ClinicalChatSessionListView,
@@ -51,4 +52,6 @@ urlpatterns = [
         ICUPredictView.as_view(),
         name="predict-icu",
     ),
+    # Phase 4a — Smart Autopopulate
+    path("autopopulate/", AutopopulateView.as_view(), name="autopopulate"),
 ]

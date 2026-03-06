@@ -435,3 +435,49 @@ export interface AIFeedbackStats {
   total_down: number;
   recent_negatives?: number;
 }
+
+// =============================================================================
+// Phase 4a — Smart Autopopulate
+// =============================================================================
+
+/** Source of an autopopulate suggestion */
+export type AISuggestionSource = 'ai' | 'cds' | 'history';
+
+/** A single field suggestion from AI autopopulate */
+export interface AIAutopopulateSuggestedField {
+  /** Target form field (e.g., "assessment", "primary_diagnosis") */
+  field_name: string;
+  /** Suggested value — string, object, or array */
+  value?: unknown;
+  /** Confidence score (0.0 to 1.0) */
+  confidence: number;
+  /** Clinical reasoning for this suggestion */
+  reason?: string;
+  /** Origin of the suggestion */
+  source: AISuggestionSource;
+}
+
+/** Request body for POST /api/ai/autopopulate/ */
+export interface AIAutopopulateRequest {
+  chief_complaint?: string;
+  vitals?: {
+    spo2?: number;
+    pulse?: number;
+    temperature?: number;
+    rr?: number;
+    map?: number;
+  };
+  patient_age?: number;
+  patient_sex?: string;
+  allergies?: string[];
+  current_medications?: string[];
+  clinical_notes?: string;
+  encounter_type?: string;
+}
+
+/** Response from POST /api/ai/autopopulate/ */
+export interface AIAutopopulateResponse {
+  suggested_fields: AIAutopopulateSuggestedField[];
+  icd10_suggestions?: AIICD10Suggestion[];
+  error?: string | null;
+}

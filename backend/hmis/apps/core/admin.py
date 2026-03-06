@@ -11,6 +11,7 @@ from .models import (
     County,
     Department,
     ExternalCodeMapping,
+    FeatureFlag,
     NetworkStatus,
     Role,
     StaffProfile,
@@ -57,6 +58,17 @@ class AuditLogAdmin(admin.ModelAdmin):
     def has_change_permission(self, request, obj=None):
         """Prevent modification of audit logs."""
         return False
+
+
+@admin.register(FeatureFlag)
+class FeatureFlagAdmin(admin.ModelAdmin):
+    """Admin configuration for FeatureFlag model."""
+
+    list_display = ["name", "is_enabled", "description", "updated_at"]
+    list_filter = ["is_enabled"]
+    search_fields = ["name", "description"]
+    list_editable = ["is_enabled"]
+    readonly_fields = ["created_at", "updated_at"]
 
     def has_delete_permission(self, request, obj=None):
         """Prevent deletion of audit logs."""

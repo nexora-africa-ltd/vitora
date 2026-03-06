@@ -11,7 +11,7 @@ Supplementary API guide for the clinical decision support features implemented a
 
 ## Authentication
 
-Same as the core API — see [api-guide.md](api-guide.md#authentication). All clinical feature endpoints that modify or evaluate patient data require API key authentication. Health and listing endpoints are public.
+Same as the core API — see [ai-api-guide.md](ai-api-guide.md#authentication). All clinical feature endpoints that modify or evaluate patient data require API key authentication. Health and listing endpoints are public.
 
 ---
 
@@ -1531,7 +1531,7 @@ Several clinical features work together when available:
 
 ## Support
 
-- **Core API Docs:** [api-guide.md](api-guide.md)
+- **Core API Docs:** [ai-api-guide.md](ai-api-guide.md)
 - **Clinical Features Plan:** [clinical_features_plan.md](clinical_features_plan.md)
 - **Issues:** https://github.com/nexora-africa-ltd/tibabot/issues
 - **OpenAPI:** `https://tibabot.hmis.nexora.africa/docs` (when `TIBABOT_ENABLE_DOCS=true`)

@@ -50,7 +50,8 @@ import {
   useOverrideCDSAlert,
   useDismissCDSAlert,
 } from '@/lib/hooks/use-cds';
-import type { CDSAlertListItem } from '@/lib/types/cds';
+import { useFeatureFlag } from '@/lib/hooks/use-feature-flags';
+import type { CDSAlertListItem, CDSSuggestedAction } from '@/lib/types/cds';
 
 // =============================================================================
 // Priority Helpers
@@ -295,16 +296,19 @@ function OverrideDialog({ open, onOpenChange, onConfirm, alertMessage, isPending
 interface CDSAlertsPanelProps {
   /** The encounter ID to fetch alerts for */
   encounterId: number;
+  /** Called when user accepts an alert that has suggested_actions (smart_autopopulate) */
+  onSuggestedAction?: (actions: CDSSuggestedAction[]) => void;
   /** Additional CSS classes */
   className?: string;
 }
 
-export function CDSAlertsPanel({ encounterId, className }: CDSAlertsPanelProps) {
+export function CDSAlertsPanel({ encounterId, onSuggestedAction, className }: CDSAlertsPanelProps) {
   const { data, isLoading } = useEncounterCDSAlerts(encounterId);
   const acknowledgeAlert = useAcknowledgeCDSAlert();
   const acceptAlert = useAcceptCDSAlert();
   const overrideAlert = useOverrideCDSAlert();
   const dismissAlert = useDismissCDSAlert();
+  const smartAutopopulate = useFeatureFlag('smart_autopopulate');
 
   const [showLower, setShowLower] = useState(false);
   const [overrideTarget, setOverrideTarget] = useState<CDSAlertListItem | null>(null);
@@ -333,7 +337,14 @@ export function CDSAlertsPanel({ encounterId, className }: CDSAlertsPanelProps) 
   // Handlers
   const handleAccept = useCallback((id: number) => {
     acceptAlert.mutate(id);
-  }, [acceptAlert]);
+    // Emit suggested actions if smart_autopopulate is on
+    if (smartAutopopulate && onSuggestedAction) {
+      const alert = data?.results.find((a) => a.id === id);
+      if (alert?.suggested_actions?.length) {
+        onSuggestedAction(alert.suggested_actions);
+      }
+    }
+  }, [acceptAlert, smartAutopopulate, onSuggestedAction, data]);
 
   const handleOverride = useCallback((id: number) => {
     const alert = data?.results.find((a) => a.id === id);

@@ -59,6 +59,14 @@ export const CDSRuleDetailSchema = z.object({
 
 // ──────────────────────────── Alert Schemas ────────────────────────────
 
+export const CDSSuggestedActionSchema = z.object({
+  action_type: z.string(),
+  target_field: z.string(),
+  value: z.unknown(),
+  confidence: z.number().min(0).max(1),
+  reason: z.string(),
+});
+
 export const CDSAlertListItemSchema = z.object({
   id: z.number(),
   rule: z.number(),
@@ -72,6 +80,7 @@ export const CDSAlertListItemSchema = z.object({
   status: z.string(),
   message: z.string(),
   suggestion: z.string(),
+  suggested_actions: z.array(CDSSuggestedActionSchema).default([]),
   category: z.string(),
   is_pending: z.boolean(),
   is_critical: z.boolean(),
@@ -99,6 +108,7 @@ export const CDSAlertDetailSchema = z.object({
   message: z.string(),
   suggestion: z.string(),
   details: z.record(z.unknown()),
+  suggested_actions: z.array(CDSSuggestedActionSchema).default([]),
   category: z.string(),
   evidence_level: z.string(),
   action_type: z.string(),
@@ -136,6 +146,7 @@ export const CDSEvaluationResultSchema = z.object({
   rule_code: z.string(),
   message: z.string(),
   details: z.record(z.unknown()),
+  suggested_actions: z.array(CDSSuggestedActionSchema).default([]),
 });
 
 export const CDSRuleEvaluateResponseSchema = z.object({

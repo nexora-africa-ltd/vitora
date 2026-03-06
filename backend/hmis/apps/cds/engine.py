@@ -68,6 +68,7 @@ class EvaluationResult:
     rule_code: str
     message: str = ""
     details: dict[str, Any] = field(default_factory=dict)
+    suggested_actions: list[dict[str, Any]] = field(default_factory=list)
 
 
 def evaluate_rule(rule: Any, context: EvaluationContext) -> EvaluationResult:
@@ -94,10 +95,17 @@ def evaluate_rule(rule: Any, context: EvaluationContext) -> EvaluationResult:
         return EvaluationResult(triggered=False, rule_id=rule.id, rule_code=rule.code)
 
     try:
-        return evaluator(rule, condition, context)
+        result = evaluator(rule, condition, context)
     except Exception:
         logger.exception("Error evaluating rule %s", rule.code)
         return EvaluationResult(triggered=False, rule_id=rule.id, rule_code=rule.code)
+
+    # Attach suggested_actions from rule metadata when triggered
+    if result.triggered:
+        metadata = getattr(rule, "metadata", None) or {}
+        result.suggested_actions = metadata.get("suggested_actions", [])
+
+    return result
 
 
 def evaluate_rules(

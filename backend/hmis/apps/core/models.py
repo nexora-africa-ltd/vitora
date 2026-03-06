@@ -1945,3 +1945,47 @@ class ExternalCodeMapping(models.Model):
         if self.code_system_ref:
             return self.code_system_ref.uri
         return None
+
+
+class FeatureFlag(models.Model):
+    """
+    Runtime-togglable feature flag.
+
+    Allows facilities to enable/disable features without redeployment.
+    Managed exclusively via Django admin — the API is read-only.
+    """
+
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        db_index=True,
+        help_text="Unique feature name (e.g., smart_autopopulate)",
+    )
+    is_enabled = models.BooleanField(
+        default=False,
+        help_text="Whether the feature is currently enabled",
+    )
+    description = models.TextField(
+        blank=True,
+        default="",
+        help_text="Human-readable description of what this flag controls",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Feature Flag"
+        verbose_name_plural = "Feature Flags"
+
+    def __str__(self) -> str:
+        status = "enabled" if self.is_enabled else "disabled"
+        return f"{self.name} ({status})"
+
+    @classmethod
+    def is_flag_enabled(cls, name: str) -> bool:
+        """Check if a feature flag is enabled. Returns False for unknown flags."""
+        try:
+            return cls.objects.values_list("is_enabled", flat=True).get(name=name)
+        except cls.DoesNotExist:
+            return False

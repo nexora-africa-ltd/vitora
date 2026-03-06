@@ -248,3 +248,15 @@ export const CaseNumberResponseSchema = z.object({
 });
 
 export type CaseNumberResponseSchemaType = z.infer<typeof CaseNumberResponseSchema>;
+
+// =============================================================================
+// FEATURE FLAG SCHEMAS
+// =============================================================================
+
+export const FeatureFlagSchema = z.object({
+  name: z.string(),
+  is_enabled: z.boolean(),
+  description: z.string(),
+});
+
+export type FeatureFlagSchemaType = z.infer<typeof FeatureFlagSchema>;
