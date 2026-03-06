@@ -35,6 +35,7 @@ import {
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { useDispensingReport } from '@/lib/hooks/use-pharmacy';
 import { useToast } from '@/lib/hooks/use-toast';
+import { printDispensingReport } from '@/lib/documents/print-pharmacy-reports';
 import type { DispensingReportRecord } from '@/lib/types/pharmacy';
 
 export function DispensingReport() {
@@ -144,7 +145,13 @@ export function DispensingReport() {
   };
 
   const handlePrint = () => {
-    window.print();
+    printDispensingReport({
+      startDate,
+      endDate,
+      records: filteredRecords,
+      groupByDrug,
+      groupedData: groupedData ?? undefined,
+    });
   };
 
   if (isLoading) {

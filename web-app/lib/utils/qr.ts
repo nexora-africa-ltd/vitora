@@ -338,6 +338,141 @@ export function getLabResultQRContent(labResult: {
   };
 }
 
+/**
+ * Get QR content for a lab analytics report
+ *
+ * @param analytics - Lab analytics data
+ * @returns QR content with report reference
+ */
+export function getLabAnalyticsQRContent(analytics: {
+  startDate: string;
+  endDate: string;
+  reportUrl?: string;
+}): QRContent {
+  if (analytics.reportUrl) {
+    return {
+      data: analytics.reportUrl,
+      isVerifiable: true,
+      label: 'View report online',
+    };
+  }
+
+  // Generate a reference URL for the analytics report
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  return {
+    data: `${baseUrl}/laboratory/analytics?start=${analytics.startDate}&end=${analytics.endDate}`,
+    isVerifiable: false,
+    label: 'Reference only',
+  };
+}
+
+/**
+ * Get QR content for a pharmacy dispensing report
+ *
+ * @param report - Report parameters
+ * @returns QR content with report reference
+ */
+export function getDispensingReportQRContent(report: {
+  startDate: string;
+  endDate: string;
+  reportUrl?: string;
+}): QRContent {
+  if (report.reportUrl) {
+    return {
+      data: report.reportUrl,
+      isVerifiable: true,
+      label: 'View report online',
+    };
+  }
+
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  return {
+    data: `${baseUrl}/pharmacy/reports/dispensing?start=${report.startDate}&end=${report.endDate}`,
+    isVerifiable: false,
+    label: 'Reference only',
+  };
+}
+
+/**
+ * Get QR content for a pharmacy stock summary report
+ *
+ * @param report - Report parameters
+ * @returns QR content with report reference
+ */
+export function getStockSummaryReportQRContent(report: {
+  generatedAt: string;
+  reportUrl?: string;
+}): QRContent {
+  if (report.reportUrl) {
+    return {
+      data: report.reportUrl,
+      isVerifiable: true,
+      label: 'View report online',
+    };
+  }
+
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  return {
+    data: `${baseUrl}/pharmacy/reports/stock-summary?date=${report.generatedAt}`,
+    isVerifiable: false,
+    label: 'Reference only',
+  };
+}
+
+/**
+ * Get QR content for a pharmacy expiry report
+ *
+ * @param report - Report parameters
+ * @returns QR content with report reference
+ */
+export function getExpiryReportQRContent(report: {
+  thresholdDays: number;
+  generatedAt: string;
+  reportUrl?: string;
+}): QRContent {
+  if (report.reportUrl) {
+    return {
+      data: report.reportUrl,
+      isVerifiable: true,
+      label: 'View report online',
+    };
+  }
+
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  return {
+    data: `${baseUrl}/pharmacy/reports/expiry?days=${report.thresholdDays}&date=${report.generatedAt}`,
+    isVerifiable: false,
+    label: 'Reference only',
+  };
+}
+
+/**
+ * Get QR content for a pharmacy stock movement report
+ *
+ * @param report - Report parameters
+ * @returns QR content with report reference
+ */
+export function getStockMovementReportQRContent(report: {
+  startDate: string;
+  endDate: string;
+  reportUrl?: string;
+}): QRContent {
+  if (report.reportUrl) {
+    return {
+      data: report.reportUrl,
+      isVerifiable: true,
+      label: 'View report online',
+    };
+  }
+
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  return {
+    data: `${baseUrl}/pharmacy/reports/stock-movement?start=${report.startDate}&end=${report.endDate}`,
+    isVerifiable: false,
+    label: 'Reference only',
+  };
+}
+
 // =============================================================================
 // PLACEHOLDERS
 // =============================================================================

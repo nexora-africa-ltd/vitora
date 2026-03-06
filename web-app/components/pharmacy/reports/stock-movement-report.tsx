@@ -36,6 +36,7 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { useStockMovementReport } from '@/lib/hooks/use-pharmacy';
 import { useToast } from '@/lib/hooks/use-toast';
 import { cn } from '@/lib/utils/cn';
+import { printStockMovementReport } from '@/lib/documents/print-pharmacy-reports';
 
 interface StockMovement {
   drug_name: string;
@@ -157,7 +158,11 @@ export function StockMovementReport() {
   };
 
   const handlePrint = () => {
-    window.print();
+    printStockMovementReport({
+      startDate,
+      endDate,
+      movements: sortedMovements,
+    });
   };
 
   if (isLoading) {

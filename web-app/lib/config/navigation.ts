@@ -89,8 +89,24 @@ export function hasChildren(item: NavItemType): item is NavItemWithChildren {
 const _allNavItems: NavItemType[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Check-in', href: '/patients/checkin', icon: UserCheck },
-  { label: 'Patients', href: '/patients', icon: Users },
-  { label: 'Triage', href: '/triage', icon: AlertTriangle },
+  {
+    label: 'Patients',
+    icon: Users,
+    children: [
+      { label: 'All Patients', href: '/patients', icon: Users },
+      { label: 'New Patient', href: '/patients/new', icon: ClipboardList },
+    ],
+  },
+  {
+    label: 'Triage',
+    icon: AlertTriangle,
+    children: [
+      { label: 'Queue', href: '/triage', icon: ClipboardList },
+      { label: 'New Triage', href: '/triage/new', icon: AlertTriangle },
+      { label: 'Reports', href: '/triage/reports', icon: BarChart3 },
+      { label: 'Settings', href: '/triage/settings', icon: Settings },
+    ],
+  },
   {
     label: 'Emergency',
     icon: Siren,
@@ -136,7 +152,14 @@ const _allNavItems: NavItemType[] = [
       { label: 'HEI Follow-up', href: '/mch/hei', icon: HeartPulse },
     ],
   },
-  { label: 'Encounters', href: '/encounters', icon: Stethoscope },
+  {
+    label: 'Encounters',
+    icon: Stethoscope,
+    children: [
+      { label: 'All Encounters', href: '/encounters', icon: Stethoscope },
+      { label: 'New Encounter', href: '/encounters/new', icon: ClipboardList },
+    ],
+  },
   {
     label: 'Inpatient',
     icon: BedDouble,
@@ -145,7 +168,18 @@ const _allNavItems: NavItemType[] = [
       { label: 'Admissions', href: '/admissions', icon: ClipboardList },
     ],
   },
-  { label: 'Pharmacy', href: '/pharmacy', icon: Pill },
+  {
+    label: 'Pharmacy',
+    icon: Pill,
+    children: [
+      { label: 'Dashboard', href: '/pharmacy', icon: LayoutDashboard },
+      { label: 'Dispensing', href: '/pharmacy/dispensing', icon: FlaskConical },
+      { label: 'Prescriptions', href: '/pharmacy/prescriptions', icon: FileText },
+      { label: 'Drug Catalog', href: '/pharmacy/drugs', icon: Pill },
+      { label: 'Stock Receive', href: '/pharmacy/stock/receive', icon: ClipboardList },
+      { label: 'Reports', href: '/pharmacy/reports', icon: BarChart3 },
+    ],
+  },
   {
     label: 'Laboratory',
     icon: Microscope,

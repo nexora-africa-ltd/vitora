@@ -25,6 +25,7 @@ import {
   useLabCriticalValuesReport,
   useLabSampleRejectionReport,
 } from '@/lib/hooks/use-laboratory';
+import { printLabAnalytics } from '@/lib/documents/print-lab-analytics';
 
 type DatePreset = 'today' | 'yesterday' | 'last7days' | 'last30days' | 'thisMonth' | 'lastMonth';
 
@@ -133,7 +134,16 @@ export function LabAnalyticsDashboard() {
   };
 
   const handlePrint = () => {
-    window.print();
+    const presetLabel = datePresets.find((p) => p.value === preset)?.label || 'Custom Period';
+    printLabAnalytics({
+      startDate: start,
+      endDate: end,
+      presetLabel,
+      turnaroundTime: tatData,
+      workload: workloadData,
+      criticalValues: criticalData,
+      sampleRejection: rejectionData,
+    });
   };
 
   const handleExport = () => {

@@ -42,6 +42,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useExpiryReport } from '@/lib/hooks/use-pharmacy';
 import { useToast } from '@/lib/hooks/use-toast';
 import { cn } from '@/lib/utils/cn';
+import { printExpiryReport } from '@/lib/documents/print-pharmacy-reports';
 
 interface ExpiringBatch {
   batch_id: number;
@@ -144,7 +145,20 @@ export function ExpiryReport() {
   };
 
   const handlePrint = () => {
-    window.print();
+    printExpiryReport({
+      batches: expiringBatches.map((b) => ({
+        batch_id: b.batch_id,
+        drug_name: b.drug_name,
+        drug_code: '',
+        batch_number: b.batch_number,
+        quantity_available: b.quantity_available,
+        expiry_date: b.expiry_date,
+        days_to_expiry: b.days_to_expiry,
+        status: b.status,
+        value: 0,
+      })),
+      thresholdDays: parseInt(daysThreshold),
+    });
   };
 
   if (isLoading) {
