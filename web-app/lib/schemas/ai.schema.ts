@@ -188,3 +188,196 @@ export const AIAutopopulateResponseSchema = z.object({
   icd10_suggestions: z.array(AIICD10SuggestionSchema).optional(),
   error: z.string().nullable().optional(),
 });
+
+// =============================================================================
+// Phase 5 — Lab Assist
+// =============================================================================
+
+/** Schema for a single lab result item */
+export const AILabResultItemSchema = z.object({
+  test_name: z.string(),
+  value: z.number(),
+  unit: z.string(),
+  timestamp: z.string().optional(),
+});
+
+/** Schema for a flagged lab result */
+export const AILabFlagSchema = z.object({
+  test_name: z.string(),
+  value: z.number(),
+  unit: z.string(),
+  status: z.string(),
+  reference_range: z.object({
+    low: z.number().optional(),
+    high: z.number().optional(),
+    unit: z.string().optional(),
+  }).nullable().optional(),
+  deviation_percent: z.number().nullable().optional(),
+  message: z.string().optional(),
+}).passthrough();
+
+/** Schema for a detected multi-lab pattern */
+export const AILabPatternSchema = z.object({
+  pattern_name: z.string(),
+  significance: z.enum(['critical', 'significant', 'monitor']),
+  confidence: z.number().min(0).max(1),
+  description: z.string().optional(),
+  contributing_tests: z.array(z.string()).optional(),
+}).passthrough();
+
+/** Schema for POST /api/ai/lab/interpret/ response */
+export const AILabInterpretResponseSchema = z.object({
+  flags: z.array(AILabFlagSchema),
+  patterns: z.array(AILabPatternSchema).optional(),
+  interpretation_summary: z.string().optional(),
+  suggested_followup_labs: z.array(z.string()).optional(),
+  critical_alerts: z.array(z.string()).optional(),
+  mode: z.string().optional(),
+  error: z.string().nullable().optional(),
+}).passthrough();
+
+// =============================================================================
+// Phase 5 — Discharge Readiness
+// =============================================================================
+
+/** Schema for a single discharge criterion */
+export const AIDischargeCriterionSchema = z.object({
+  name: z.string(),
+  category: z.string(),
+  met: z.boolean(),
+  details: z.string().optional(),
+}).passthrough();
+
+/** Schema for POST /api/ai/discharge/assess/ response */
+export const AIDischargeAssessResponseSchema = z.object({
+  readiness_score: z.number().min(0).max(1),
+  readiness_level: z.enum(['ready', 'near_ready', 'not_ready']),
+  criteria: z.array(AIDischargeCriterionSchema),
+  unmet_criteria_count: z.number(),
+  readmission_risk: z.number().min(0).max(1).nullable().optional(),
+  readmission_risk_level: z.string().nullable().optional(),
+  recommendations: z.array(z.string()).optional(),
+  vitals_stability: z.string().nullable().optional(),
+  mode: z.string().optional(),
+  error: z.string().nullable().optional(),
+}).passthrough();
+
+/** Schema for GET /api/ai/discharge/conditions/ response */
+export const AIDischargeConditionsResponseSchema = z.object({
+  conditions: z.array(z.string()),
+  count: z.number(),
+}).passthrough();
+
+// =============================================================================
+// Phase 5 — Care Plan Generator
+// =============================================================================
+
+/** Schema for a care plan goal */
+export const AICarePlanGoalSchema = z.object({
+  description: z.string(),
+  priority: z.enum(['high', 'medium', 'low']),
+  timeframe: z.string().optional(),
+  measurable_target: z.string().optional(),
+}).passthrough();
+
+/** Schema for a care plan intervention item */
+export const AICarePlanInterventionItemSchema = z.object({
+  action: z.string(),
+  frequency: z.string().optional(),
+  rationale: z.string().optional(),
+}).passthrough();
+
+/** Schema for a care plan intervention category */
+export const AICarePlanInterventionCategorySchema = z.object({
+  category: z.string(),
+  items: z.array(AICarePlanInterventionItemSchema),
+}).passthrough();
+
+/** Schema for care plan follow-up */
+export const AICarePlanFollowUpSchema = z.object({
+  timing: z.string(),
+  instructions: z.string().optional(),
+  red_flags: z.array(z.string()).optional(),
+}).passthrough();
+
+/** Schema for POST /api/ai/care-plan/generate/ response */
+export const AICarePlanResponseSchema = z.object({
+  primary_diagnosis: z.string(),
+  icd10_code: z.string().nullable().optional(),
+  severity: z.string().nullable().optional(),
+  goals: z.array(AICarePlanGoalSchema),
+  interventions: z.array(AICarePlanInterventionCategorySchema),
+  discharge_criteria: z.array(z.string()).optional(),
+  follow_up: AICarePlanFollowUpSchema.nullable().optional(),
+  references: z.array(z.string()).optional(),
+  cds_alerts: z.array(z.record(z.unknown())).optional(),
+  facility_level_notes: z.array(z.string()).optional(),
+  template_used: z.string().nullable().optional(),
+  mode: z.string().optional(),
+  llm_enriched: z.boolean().optional(),
+  evidence_sources: z.array(z.string()).optional(),
+  error: z.string().nullable().optional(),
+}).passthrough();
+
+/** Schema for GET /api/ai/care-plan/conditions/ response */
+export const AICarePlanConditionsResponseSchema = z.object({
+  conditions: z.array(z.object({
+    key: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+  })),
+  count: z.number(),
+}).passthrough();
+
+// =============================================================================
+// Phase 5 — Clerking Assist
+// =============================================================================
+
+/** Schema for a clerking autocomplete suggestion */
+export const AIClerkingAutocompleteSuggestionSchema = z.object({
+  text: z.string(),
+  confidence: z.number().min(0).max(1),
+  category: z.string().optional(),
+}).passthrough();
+
+/** Schema for POST /api/ai/clerking/autocomplete/ response */
+export const AIClerkingAutocompleteResponseSchema = z.object({
+  suggestions: z.array(AIClerkingAutocompleteSuggestionSchema),
+  mode: z.string().optional(),
+  error: z.string().nullable().optional(),
+}).passthrough();
+
+/** Schema for POST /api/ai/clerking/structure/ response */
+export const AIClerkingStructureResponseSchema = z.object({
+  structured_note: z.record(z.string()),
+  sections: z.array(z.string()),
+  original_text: z.string(),
+  mode: z.string().optional(),
+  error: z.string().nullable().optional(),
+}).passthrough();
+
+// =============================================================================
+// Phase 5 — Enhanced CDS Evaluation
+// =============================================================================
+
+/** Schema for a single CDS alert from TibaBot */
+export const AICDSAlertItemSchema = z.object({
+  rule_id: z.string().optional(),
+  severity: z.enum(['critical', 'high', 'medium', 'low']),
+  category: z.string(),
+  title: z.string(),
+  message: z.string(),
+  recommendation: z.string().optional(),
+  evidence_level: z.string().optional(),
+}).passthrough();
+
+/** Schema for POST /api/ai/cds/evaluate/ response */
+export const AICDSEvaluateResponseSchema = z.object({
+  alerts: z.array(AICDSAlertItemSchema),
+  recommendations: z.array(AICDSAlertItemSchema).optional(),
+  rules_evaluated: z.number(),
+  rules_fired: z.number(),
+  processing_time_ms: z.number(),
+  mode: z.string().optional(),
+  error: z.string().nullable().optional(),
+}).passthrough();

@@ -351,6 +351,200 @@ class TibaBotClient:
             endpoint="/feedback/stats",
         )
 
+    # -----------------------------------------------------------------
+    # Phase 5 — Lab Assist
+    # -----------------------------------------------------------------
+
+    def interpret_lab(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Interpret lab results in clinical context.
+
+        Sends lab results with patient demographics to TibaBot's
+        ``POST /lab/interpret`` endpoint for reference range flagging
+        and multi-lab pattern detection.
+
+        Args:
+            payload: Dict containing patient_age, patient_sex, lab_results[],
+                     optional is_pregnant, gestational_weeks, diagnoses.
+
+        Returns:
+            Dict with flags, patterns, interpretation_summary,
+            suggested_followup_labs, critical_alerts.
+        """
+        return self._request(
+            method="POST",
+            endpoint="/lab/interpret",
+            data=payload,
+        )
+
+    # -----------------------------------------------------------------
+    # Phase 5 — Discharge Readiness
+    # -----------------------------------------------------------------
+
+    def assess_discharge(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Assess patient discharge readiness.
+
+        Sends patient clinical data to TibaBot's ``POST /discharge/assess``
+        endpoint for condition-specific checklist evaluation.
+
+        Args:
+            payload: Dict containing patient_age, primary_diagnosis,
+                     days_admitted, optional vitals_history, lab_results,
+                     functional status, Kenya-specific social criteria.
+
+        Returns:
+            Dict with readiness_score, readiness_level, criteria[],
+            recommendations, vitals_stability.
+        """
+        return self._request(
+            method="POST",
+            endpoint="/discharge/assess",
+            data=payload,
+        )
+
+    def list_discharge_conditions(self) -> dict[str, Any]:
+        """
+        List conditions supported by discharge readiness assessment.
+
+        Returns:
+            Dict with conditions[] and count.
+        """
+        return self._request(
+            method="GET",
+            endpoint="/discharge/conditions",
+        )
+
+    # -----------------------------------------------------------------
+    # Phase 5 — Care Plan Generator
+    # -----------------------------------------------------------------
+
+    def generate_care_plan(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Generate a structured, evidence-based care plan.
+
+        Sends diagnosis and patient context to TibaBot's
+        ``POST /care-plan/generate`` endpoint.
+
+        Args:
+            payload: Dict containing primary_diagnosis, patient_age,
+                     patient_sex, optional comorbidities, allergies,
+                     current_medications, facility_level, vitals, lab_results.
+
+        Returns:
+            Dict with goals, interventions, discharge_criteria,
+            follow_up, references, cds_alerts, facility_level_notes.
+        """
+        return self._request(
+            method="POST",
+            endpoint="/care-plan/generate",
+            data=payload,
+        )
+
+    def generate_care_plan_fhir(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Generate a care plan as an HL7 FHIR R4 CarePlan resource.
+
+        Same input as ``generate_care_plan`` but returns FHIR R4 JSON.
+
+        Args:
+            payload: Same as ``generate_care_plan``.
+
+        Returns:
+            FHIR R4 CarePlan resource dict.
+        """
+        return self._request(
+            method="POST",
+            endpoint="/care-plan/generate/fhir",
+            data=payload,
+        )
+
+    def list_care_plan_conditions(self) -> dict[str, Any]:
+        """
+        List conditions with care plan templates.
+
+        Returns:
+            Dict with conditions[] and count.
+        """
+        return self._request(
+            method="GET",
+            endpoint="/care-plan/conditions",
+        )
+
+    # -----------------------------------------------------------------
+    # Phase 5 — Clerking Assist
+    # -----------------------------------------------------------------
+
+    def clerking_autocomplete(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Context-aware medical autocomplete for clinical notes.
+
+        Sends partial text and field context to TibaBot's
+        ``POST /clerking/autocomplete`` endpoint.
+
+        Args:
+            payload: Dict containing text, field_name,
+                     optional note_format, patient_context.
+
+        Returns:
+            Dict with suggestions[] (text, confidence, category).
+        """
+        if "text" in payload:
+            payload["text"] = sanitize_clinical_text(payload["text"])
+        return self._request(
+            method="POST",
+            endpoint="/clerking/autocomplete",
+            data=payload,
+        )
+
+    def clerking_structure(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Convert free-text clinical notes to structured format.
+
+        Sends free-text to TibaBot's ``POST /clerking/structure`` endpoint
+        for SOAP/SBAR formatting.
+
+        Args:
+            payload: Dict containing free_text, note_format (soap/sbar).
+
+        Returns:
+            Dict with structured_note, sections[], original_text.
+        """
+        if "free_text" in payload:
+            payload["free_text"] = sanitize_clinical_text(payload["free_text"])
+        return self._request(
+            method="POST",
+            endpoint="/clerking/structure",
+            data=payload,
+        )
+
+    # -----------------------------------------------------------------
+    # Phase 5 — Enhanced CDS Evaluation
+    # -----------------------------------------------------------------
+
+    def evaluate_cds_rules(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Evaluate CDS rules via TibaBot (supplements local engine).
+
+        Sends medications, diagnoses, symptoms, labs, and patient info
+        to TibaBot's ``POST /cds/evaluate`` endpoint for DDI,
+        contraindication, protocol-adherence, and formulary checks.
+
+        Args:
+            payload: Dict with medications[], diagnoses[], symptoms[],
+                     lab_results{}, allergies[], patient_age, patient_sex,
+                     optional is_pregnant, region, facility_level.
+
+        Returns:
+            Dict with alerts[], recommendations[], rules_evaluated,
+            rules_fired, processing_time_ms.
+        """
+        return self._request(
+            method="POST",
+            endpoint="/cds/evaluate",
+            data=payload,
+        )
+
 
 # Module-level singleton (created on first import — lazy via function)
 _client: TibaBotClient | None = None

@@ -25,6 +25,20 @@ import type {
   AIFeedbackRequest,
   AIFeedbackResponse,
   AIFeedbackStats,
+  AILabInterpretRequest,
+  AILabInterpretResponse,
+  AIDischargeAssessRequest,
+  AIDischargeAssessResponse,
+  AIDischargeConditionsResponse,
+  AICarePlanGenerateRequest,
+  AICarePlanResponse,
+  AICarePlanConditionsResponse,
+  AIClerkingAutocompleteRequest,
+  AIClerkingAutocompleteResponse,
+  AIClerkingStructureRequest,
+  AIClerkingStructureResponse,
+  AICDSEvaluateRequest,
+  AICDSEvaluateResponse,
 } from '@/lib/types/ai';
 
 // =============================================================================
@@ -37,6 +51,8 @@ export const aiKeys = {
   sessions: () => [...aiKeys.all, 'sessions'] as const,
   session: (id: string) => [...aiKeys.all, 'session', id] as const,
   feedbackStats: () => [...aiKeys.all, 'feedback-stats'] as const,
+  dischargeConditions: () => [...aiKeys.all, 'discharge-conditions'] as const,
+  carePlanConditions: () => [...aiKeys.all, 'care-plan-conditions'] as const,
 };
 
 // =============================================================================
@@ -285,5 +301,128 @@ export function useAIFeedbackStats() {
     queryFn: () => aiApi.getFeedbackStats(),
     enabled: ENABLE_AI,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+}
+
+// =============================================================================
+// Phase 5 Hooks — Lab Assist
+// =============================================================================
+
+/**
+ * Hook for AI-powered lab result interpretation.
+ *
+ * Sends lab results with patient demographics for interpretation.
+ * Returns flagged abnormals, detected patterns, and follow-up suggestions.
+ * Falls back to local reference range checks when TibaBot is unavailable.
+ */
+export function useAILabInterpret() {
+  return useMutation<AILabInterpretResponse, Error, AILabInterpretRequest>({
+    mutationFn: (data) => aiApi.interpretLab(data),
+    retry: false,
+  });
+}
+
+// =============================================================================
+// Phase 5 Hooks — Discharge Readiness
+// =============================================================================
+
+/**
+ * Hook for AI-powered discharge readiness assessment.
+ *
+ * Evaluates clinical, functional, and social criteria against
+ * condition-specific checklists. Includes Kenya-specific criteria.
+ */
+export function useAIDischargeAssess() {
+  return useMutation<AIDischargeAssessResponse, Error, AIDischargeAssessRequest>({
+    mutationFn: (data) => aiApi.assessDischarge(data),
+    retry: false,
+  });
+}
+
+/**
+ * Hook for listing supported discharge conditions.
+ * Static data — cached for 24 hours.
+ */
+export function useAIDischargeConditions() {
+  return useQuery<AIDischargeConditionsResponse, Error>({
+    queryKey: aiKeys.dischargeConditions(),
+    queryFn: () => aiApi.listDischargeConditions(),
+    enabled: ENABLE_AI,
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+}
+
+// =============================================================================
+// Phase 5 Hooks — Care Plan Generator
+// =============================================================================
+
+/**
+ * Hook for AI-powered care plan generation.
+ *
+ * Generates structured, evidence-based care plans with goals, interventions,
+ * and discharge criteria. Includes KEML facility-level medication checks.
+ */
+export function useAICarePlanGenerate() {
+  return useMutation<AICarePlanResponse, Error, AICarePlanGenerateRequest>({
+    mutationFn: (data) => aiApi.generateCarePlan(data),
+    retry: false,
+  });
+}
+
+/**
+ * Hook for listing conditions with care plan templates.
+ * Static data — cached for 24 hours.
+ */
+export function useAICarePlanConditions() {
+  return useQuery<AICarePlanConditionsResponse, Error>({
+    queryKey: aiKeys.carePlanConditions(),
+    queryFn: () => aiApi.listCarePlanConditions(),
+    enabled: ENABLE_AI,
+    staleTime: 24 * 60 * 60 * 1000,
+  });
+}
+
+// =============================================================================
+// Phase 5 Hooks — Clerking Assist
+// =============================================================================
+
+/**
+ * Hook for AI-powered clinical text autocomplete.
+ *
+ * Provides context-aware suggestions for clinical text fields.
+ * Use with debounced input for real-time autocomplete in encounter forms.
+ */
+export function useAIClerkingAutocomplete() {
+  return useMutation<AIClerkingAutocompleteResponse, Error, AIClerkingAutocompleteRequest>({
+    mutationFn: (data) => aiApi.clerkingAutocomplete(data),
+    retry: false,
+  });
+}
+
+/**
+ * Hook for converting free-text notes to structured SOAP/SBAR format.
+ */
+export function useAIClerkingStructure() {
+  return useMutation<AIClerkingStructureResponse, Error, AIClerkingStructureRequest>({
+    mutationFn: (data) => aiApi.clerkingStructure(data),
+    retry: false,
+  });
+}
+
+// =============================================================================
+// Phase 5 Hooks — Enhanced CDS Evaluation
+// =============================================================================
+
+/**
+ * Hook for enhanced CDS evaluation via TibaBot.
+ *
+ * Supplements the local CDS engine with TibaBot-powered evaluation
+ * including drug-drug interactions, contraindications, protocol adherence,
+ * and KEML formulary compliance.
+ */
+export function useAICDSEvaluate() {
+  return useMutation<AICDSEvaluateResponse, Error, AICDSEvaluateRequest>({
+    mutationFn: (data) => aiApi.evaluateCDS(data),
+    retry: false,
   });
 }

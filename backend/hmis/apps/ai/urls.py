@@ -9,13 +9,22 @@ from .views import (
     AIFeedbackView,
     AIStatusView,
     AutopopulateView,
+    CarePlanConditionsListView,
+    CarePlanGenerateFHIRView,
+    CarePlanGenerateView,
+    CDSEvaluateView,
+    ClerkingAutocompleteView,
+    ClerkingStructureView,
     ClinicalAssistView,
     ClinicalChatSessionDetailView,
     ClinicalChatSessionListView,
     ClinicalChatView,
     ConditionPredictView,
+    DischargeAssessView,
+    DischargeConditionsListView,
     ICD10SuggestView,
     ICUPredictView,
+    LabInterpretView,
 )
 
 app_name = "ai"
@@ -54,4 +63,42 @@ urlpatterns = [
     ),
     # Phase 4a — Smart Autopopulate
     path("autopopulate/", AutopopulateView.as_view(), name="autopopulate"),
+    # Phase 5 — Lab Assist
+    path("lab/interpret/", LabInterpretView.as_view(), name="lab-interpret"),
+    # Phase 5 — Discharge Readiness
+    path("discharge/assess/", DischargeAssessView.as_view(), name="discharge-assess"),
+    path(
+        "discharge/conditions/",
+        DischargeConditionsListView.as_view(),
+        name="discharge-conditions",
+    ),
+    # Phase 5 — Care Plan Generator
+    path(
+        "care-plan/generate/",
+        CarePlanGenerateView.as_view(),
+        name="care-plan-generate",
+    ),
+    path(
+        "care-plan/generate/fhir/",
+        CarePlanGenerateFHIRView.as_view(),
+        name="care-plan-generate-fhir",
+    ),
+    path(
+        "care-plan/conditions/",
+        CarePlanConditionsListView.as_view(),
+        name="care-plan-conditions",
+    ),
+    # Phase 5 — Clerking Assist
+    path(
+        "clerking/autocomplete/",
+        ClerkingAutocompleteView.as_view(),
+        name="clerking-autocomplete",
+    ),
+    path(
+        "clerking/structure/",
+        ClerkingStructureView.as_view(),
+        name="clerking-structure",
+    ),
+    # Phase 5 — Enhanced CDS
+    path("cds/evaluate/", CDSEvaluateView.as_view(), name="cds-evaluate"),
 ]
