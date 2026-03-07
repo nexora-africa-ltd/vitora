@@ -378,7 +378,7 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
           </TabsList>
 
           <TabsContent value="anc">
-            <ANCVisitsTab registrationId={registrationId} />
+            <ANCVisitsTab registrationId={registrationId} isDelivered={isDelivered} />
           </TabsContent>
 
           <TabsContent value="delivery">
@@ -390,7 +390,7 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
           </TabsContent>
 
           <TabsContent value="pnc">
-            <PNCVisitsTab registrationId={registrationId} />
+            <PNCVisitsTab registrationId={registrationId} isDelivered={isDelivered} />
           </TabsContent>
 
           {registration.baby && (
