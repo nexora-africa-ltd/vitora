@@ -155,6 +155,14 @@ export function useStaffList(params?: StaffListParams) {
   });
 }
 
+export function useMyStaffProfile() {
+  return useQuery({
+    queryKey: ['staff-profile', 'me'],
+    queryFn: () => staffApi.getMe(),
+    retry: false,
+  });
+}
+
 export function useStaffProfile(id: number) {
   return useQuery({
     queryKey: ['staff-profile', id],
