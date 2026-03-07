@@ -375,8 +375,9 @@ export default function EncounterDetailPage() {
         primaryDiagnosis={
           diagnosisFormData[0]?.icd10_display
           || diagnosisFormData[0]?.free_text_diagnosis
-          || encounter.chief_complaint || ''
+          || undefined
         }
+        chiefComplaint={encounter.chief_complaint || undefined}
         icd10Code={diagnosisFormData[0]?.icd10_code?.toString()}
         patientAge={calculateAge(encounter.patient_date_of_birth)}
         patientSex={encounter.patient_gender === 'F' ? 'female' : 'male'}

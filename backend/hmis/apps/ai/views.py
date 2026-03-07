@@ -1446,7 +1446,15 @@ class CarePlanGenerateView(AIFeatureGatedMixin, APIView):
         data = serializer.validated_data
 
         # Sanitize text fields
-        data["primary_diagnosis"] = sanitize_clinical_text(data["primary_diagnosis"])
+        if data.get("primary_diagnosis"):
+            data["primary_diagnosis"] = sanitize_clinical_text(data["primary_diagnosis"])
+        if data.get("chief_complaint"):
+            data["chief_complaint"] = sanitize_clinical_text(data["chief_complaint"])
+
+        # Ensure primary_diagnosis has a value for the downstream LLM/fallback.
+        # Prefer confirmed diagnosis; fall back to chief complaint.
+        if not data.get("primary_diagnosis"):
+            data["primary_diagnosis"] = data.get("chief_complaint", "")
 
         # Enrich with context
         payload = {

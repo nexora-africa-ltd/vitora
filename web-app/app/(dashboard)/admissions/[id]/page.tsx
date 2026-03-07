@@ -702,7 +702,7 @@ export default function AdmissionDetailPage() {
           {admission.admission_status === 'ACTIVE' && (
             <CarePlanPanel
               primaryDiagnosis={
-                admission.admitting_diagnosis_text || admission.admitting_diagnosis || ''
+                admission.admitting_diagnosis_text || admission.admitting_diagnosis || undefined
               }
               patientAge={admission.patient_age ?? 0}
               patientSex={

@@ -19,7 +19,7 @@ import {
   ChevronUp,
   Loader2,
   ShieldAlert,
-  Sparkles,
+  BrainCircuit,
   Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -238,7 +238,7 @@ export function AIRiskAssessmentPanel({
             <Brain className="h-4 w-4 text-purple-500" />
             AI Risk Assessment
             <Badge variant="outline" className="text-xs font-normal gap-1">
-              <Sparkles className="h-3 w-3" />
+              <BrainCircuit className="h-3 w-3" />
               Advisory
             </Badge>
           </CardTitle>

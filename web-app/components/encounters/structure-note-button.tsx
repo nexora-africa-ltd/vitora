@@ -13,7 +13,7 @@
 'use client';
 
 import * as React from 'react';
-import { AlignLeft, Check, Loader2, Sparkles, X } from 'lucide-react';
+import { AlignLeft, Check, Loader2, BrainCircuit, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -117,7 +117,7 @@ export function StructureNoteButton({
         )}
         <span className="sm:hidden">Structure</span>
         <span className="hidden sm:inline">Structure to {noteFormat.toUpperCase()}</span>
-        <Sparkles className="h-3 w-3 text-purple-400" />
+        <BrainCircuit className="h-3 w-3 text-purple-400" />
       </Button>
 
       {/* Preview Dialog */}

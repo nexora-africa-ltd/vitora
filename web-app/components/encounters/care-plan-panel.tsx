@@ -21,7 +21,7 @@ import {
   Download,
   Info,
   Loader2,
-  Sparkles,
+  BrainCircuit,
   Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -46,8 +46,10 @@ import type {
 // =============================================================================
 
 export interface CarePlanPanelProps {
-  /** Primary diagnosis */
-  primaryDiagnosis: string;
+  /** Primary diagnosis (confirmed) */
+  primaryDiagnosis?: string;
+  /** Chief complaint from triage (used when no diagnosis yet) */
+  chiefComplaint?: string;
   /** ICD-10 code if available */
   icd10Code?: string;
   /** Severity */
@@ -182,6 +184,7 @@ function FollowUpSection({ followUp }: { followUp: AICarePlanFollowUp }) {
 
 export function CarePlanPanel({
   primaryDiagnosis,
+  chiefComplaint,
   icd10Code,
   severity,
   patientAge,
@@ -205,7 +208,8 @@ export function CarePlanPanel({
   React.useEffect(() => {
     if (autoTrigger && isAIEnabled && !isPending && !result) {
       mutate({
-        primary_diagnosis: primaryDiagnosis,
+        primary_diagnosis: primaryDiagnosis || undefined,
+        chief_complaint: chiefComplaint || undefined,
         icd10_code: icd10Code,
         severity,
         comorbidities,
@@ -227,7 +231,8 @@ export function CarePlanPanel({
 
   const handleGenerate = () => {
     mutate({
-      primary_diagnosis: primaryDiagnosis,
+      primary_diagnosis: primaryDiagnosis || undefined,
+      chief_complaint: chiefComplaint || undefined,
       icd10_code: icd10Code,
       severity,
       comorbidities,
@@ -246,7 +251,8 @@ export function CarePlanPanel({
     setIsExporting(true);
     try {
       const fhirData = await aiApi.generateCarePlanFHIR({
-        primary_diagnosis: primaryDiagnosis,
+        primary_diagnosis: primaryDiagnosis || undefined,
+        chief_complaint: chiefComplaint || undefined,
         icd10_code: icd10Code,
         severity,
         comorbidities,
@@ -263,7 +269,8 @@ export function CarePlanPanel({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `care-plan-${primaryDiagnosis.replace(/\s+/g, '-').toLowerCase()}.fhir.json`;
+      const label = (primaryDiagnosis || chiefComplaint || 'care-plan').replace(/\s+/g, '-').toLowerCase();
+      a.download = `care-plan-${label}.fhir.json`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -283,7 +290,7 @@ export function CarePlanPanel({
           <div className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-muted-foreground" />
             <CardTitle className="text-base">Care Plan</CardTitle>
-            <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+            <BrainCircuit className="h-3.5 w-3.5 text-purple-500" />
             <HelpPopover content="AI-generated care plan with goals, interventions, and discharge criteria. Validated against KEML formulary and CDS safety rules. Advisory only." />
           </div>
           {isFallback && (

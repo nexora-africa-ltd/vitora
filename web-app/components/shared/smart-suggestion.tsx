@@ -13,7 +13,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, X, Sparkles, ShieldAlert, History, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, X, BrainCircuit, ShieldAlert, History, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/cn';
@@ -25,7 +25,7 @@ import type { SmartSuggestion as SmartSuggestionType } from '@/lib/hooks/use-sma
 
 const sourceConfig = {
   ai: {
-    icon: Sparkles,
+    icon: BrainCircuit,
     label: 'AI',
     borderColor: 'border-purple-200 dark:border-purple-800',
     bgColor: 'bg-purple-50/50 dark:bg-purple-950/20',

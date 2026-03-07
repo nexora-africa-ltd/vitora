@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { FileText, AlertCircle, Pill, Heart, Users, Briefcase, ChevronRight, ChevronLeft, Sparkles, Loader2 } from 'lucide-react';
+import { FileText, AlertCircle, Pill, Heart, Users, Briefcase, ChevronRight, ChevronLeft, BrainCircuit, Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -111,7 +111,7 @@ export function MedicalHistoryFormContent({ data, onChange, disabled = false, ch
             {isSuggestLoading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Sparkles className="h-3.5 w-3.5" />
+              <BrainCircuit className="h-3.5 w-3.5" />
             )}
             <span className="hidden sm:inline">
               {isSuggestLoading ? 'Analyzing...' : 'AI Suggest History'}

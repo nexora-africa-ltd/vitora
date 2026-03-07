@@ -13,7 +13,7 @@
 'use client';
 
 import * as React from 'react';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, BrainCircuit } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Textarea } from '@/components/ui/textarea';
 import { useAIClerkingAutocomplete, useAIEnabled, useAISuggestionAudit } from '@/lib/hooks/use-ai';
@@ -159,7 +159,7 @@ export function ClerkingAssistTextarea({
           {isPending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
           ) : (
-            <Sparkles className="h-3.5 w-3.5 text-purple-400 opacity-50" />
+            <BrainCircuit className="h-3.5 w-3.5 text-purple-400 opacity-50" />
           )}
         </div>
       )}

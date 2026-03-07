@@ -9,7 +9,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Check, X, Sparkles, ShieldAlert, History, CheckCircle, XCircle } from 'lucide-react';
+import { Check, X, BrainCircuit, ShieldAlert, History, CheckCircle, XCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -31,7 +31,7 @@ import type { SmartSuggestion } from '@/lib/hooks/use-smart-suggestions';
 // =============================================================================
 
 const sourceIcons = {
-  ai: Sparkles,
+  ai: BrainCircuit,
   cds: ShieldAlert,
   history: History,
 } as const;
@@ -149,7 +149,7 @@ export function SmartSuggestionBatch({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <BrainCircuit className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             <DialogTitle>{title}</DialogTitle>
           </div>
           <DialogDescription>
@@ -177,7 +177,7 @@ export function SmartSuggestionBatch({
             {pendingSuggestions.map((suggestion) => {
               const isSelected = selected.has(suggestion.id);
               const SourceIcon =
-                sourceIcons[suggestion.source as keyof typeof sourceIcons] ?? Sparkles;
+                sourceIcons[suggestion.source as keyof typeof sourceIcons] ?? BrainCircuit;
               const sourceLabel =
                 sourceLabels[suggestion.source as keyof typeof sourceLabels] ?? 'AI';
 

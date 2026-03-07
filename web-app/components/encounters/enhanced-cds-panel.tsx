@@ -23,7 +23,7 @@ import {
   Info,
   Loader2,
   ShieldCheck,
-  Sparkles,
+  BrainCircuit,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
@@ -246,7 +246,7 @@ export function EnhancedCDSPanel({
               <span className="sm:hidden">AI Safety</span>
               <span className="hidden sm:inline">AI Safety Check</span>
             </CardTitle>
-            <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+            <BrainCircuit className="h-3.5 w-3.5 text-purple-500" />
             <HelpPopover content="TibaBot-powered safety evaluation. Checks drug interactions, contraindications, protocol adherence, KEML formulary compliance, and dosing. Supplements local CDS rules." />
           </div>
           <div className="flex items-center gap-2">

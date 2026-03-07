@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { Search, Plus, Trash2, AlertCircle, Check, X, ChevronLeft, Pencil, Sparkles, Loader2 } from 'lucide-react';
+import { Search, Plus, Trash2, AlertCircle, Check, X, ChevronLeft, Pencil, BrainCircuit, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -315,7 +315,7 @@ export function DiagnosisEntry({
                     {isAISuggesting ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      <Sparkles className="h-3.5 w-3.5" />
+                      <BrainCircuit className="h-3.5 w-3.5" />
                     )}
                     <span className="hidden sm:inline">
                       {isAISuggesting ? 'Suggesting...' : 'AI Suggest ICD-10'}
@@ -356,7 +356,7 @@ export function DiagnosisEntry({
                 {visibleAISuggestions.length > 0 && (
                   <div className="rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20 p-3 space-y-2">
                     <div className="flex items-center gap-1.5 text-xs font-medium text-purple-700 dark:text-purple-400">
-                      <Sparkles className="h-3.5 w-3.5" />
+                      <BrainCircuit className="h-3.5 w-3.5" />
                       AI Suggested Codes
                       <span className="text-muted-foreground font-normal">(click to accept)</span>
                     </div>
