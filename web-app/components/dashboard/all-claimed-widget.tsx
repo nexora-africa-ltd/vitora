@@ -14,12 +14,10 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronRight, Users, Clock, User } from 'lucide-react';
+import { Users, Clock, User, Stethoscope } from 'lucide-react';
 import { formatRelativeTime } from '@/lib/utils/format';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Tooltip,
   TooltipContent,
@@ -27,6 +25,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useAllClaimedEncounters } from '@/lib/hooks/use-consultation-queue';
+import { DashboardEmptyState, DashboardFooterLink, DashboardListSkeleton } from './widget-primitives';
 
 const MAX_DISPLAY_ITEMS = 5;
 
@@ -43,46 +42,26 @@ export function AllClaimedEncountersWidget({ enabled = true }: AllClaimedEncount
   }
 
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <Skeleton className="h-10 w-10 rounded-full" />
-            <div className="flex-1 space-y-1">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-3 w-24" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    return <DashboardListSkeleton rows={3} />;
   }
 
   if (isError) {
     return (
-      <div className="text-center py-4">
-        <Users className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-        <p className="text-sm text-muted-foreground">
-          Unable to load claimed encounters
-        </p>
-        <p className="text-xs text-muted-foreground mt-1">
-          You may not have supervisor access
-        </p>
-      </div>
+      <DashboardEmptyState
+        icon={Users}
+        title="Unable to load consultations"
+        description="Supervisor access may be unavailable, or the queue could not be refreshed."
+      />
     );
   }
 
   if (!data?.results?.length) {
     return (
-      <div className="text-center py-4">
-        <Users className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-        <p className="text-sm text-muted-foreground">
-          No active consultations
-        </p>
-        <p className="text-xs text-muted-foreground mt-1">
-          All clinicians are available
-        </p>
-      </div>
+      <DashboardEmptyState
+        icon={Stethoscope}
+        title="No active consultations"
+        description="No clinician has a currently claimed encounter across the facility."
+      />
     );
   }
 
@@ -92,78 +71,80 @@ export function AllClaimedEncountersWidget({ enabled = true }: AllClaimedEncount
   return (
     <div className="space-y-3">
       <TooltipProvider delayDuration={200}>
-        {displayItems.map((encounter) => (
-          <Link
-            key={encounter.id}
-            href={`/encounters/${encounter.id}`}
-            className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 dark:hover:bg-muted/30 group"
-          >
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-blue-500/10 text-blue-600 text-sm">
-                {encounter.patient_name
-                  ?.split(' ')
-                  .map((n) => n[0])
-                  .join('')
-                  .slice(0, 2) || '??'}
-              </AvatarFallback>
-            </Avatar>
-
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
-                {encounter.patient_name || 'Unknown Patient'}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {encounter.patient_mrn} • {encounter.chief_complaint?.slice(0, 25)}
-                {(encounter.chief_complaint?.length || 0) > 25 ? '...' : ''}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {/* Clinician info */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="outline" className="text-xs gap-1 hidden sm:flex">
-                    <User className="h-3 w-3" />
-                    {encounter.assigned_clinician_name?.split(' ')[0] ||
-                      encounter.assigned_clinician_username ||
-                      'Unknown'}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent>
-                  Clinician: {encounter.assigned_clinician_name || encounter.assigned_clinician_username}
-                </TooltipContent>
-              </Tooltip>
-
-              {/* Claimed time */}
-              {encounter.claimed_at && (
-                <Badge variant="secondary" className="text-xs gap-1 hidden md:flex">
-                  <Clock className="h-3 w-3" />
-                  {formatRelativeTime(encounter.claimed_at)}
-                </Badge>
-              )}
-
-              {/* Status indicator */}
-              <Badge
-                variant={encounter.status === 'IN_PROGRESS' ? 'default' : 'secondary'}
-                className="text-xs"
+        <ul className="space-y-3" aria-label="All active consultations">
+          {displayItems.map((encounter) => (
+            <li key={encounter.id}>
+              <Link
+                href={`/encounters/${encounter.id}`}
+                className="group block rounded-xl border border-border/60 bg-muted/10 p-3 transition-colors hover:border-primary/30 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                {encounter.status === 'IN_PROGRESS' ? 'Active' : 'Claimed'}
-              </Badge>
-            </div>
-          </Link>
-        ))}
+                <div className="flex items-start gap-3">
+                  <Avatar className="h-10 w-10 shrink-0">
+                    <AvatarFallback className="bg-info/10 text-info text-sm">
+                      {encounter.patient_name
+                        ?.split(' ')
+                        .map((namePart) => namePart[0])
+                        .join('')
+                        .slice(0, 2) || '??'}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground group-hover:text-primary">
+                          {encounter.patient_name || 'Unknown Patient'}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
+                          {encounter.chief_complaint || 'Chief complaint not recorded.'}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={encounter.status === 'IN_PROGRESS' ? 'default' : 'secondary'}
+                        className="shrink-0 w-fit self-start"
+                      >
+                        {encounter.status === 'IN_PROGRESS' ? 'Active' : 'Claimed'}
+                      </Badge>
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      {encounter.patient_mrn && (
+                        <Badge variant="outline" className="w-fit shrink-0">
+                          {encounter.patient_mrn}
+                        </Badge>
+                      )}
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className="w-fit shrink-0 gap-1">
+                            <User className="h-3 w-3" aria-hidden="true" />
+                            {encounter.assigned_clinician_name?.split(' ')[0] ||
+                              encounter.assigned_clinician_username ||
+                              'Unknown'}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Clinician: {encounter.assigned_clinician_name || encounter.assigned_clinician_username}
+                        </TooltipContent>
+                      </Tooltip>
+
+                      {encounter.claimed_at && (
+                        <Badge variant="secondary" className="w-fit shrink-0 gap-1">
+                          <Clock className="h-3 w-3" aria-hidden="true" />
+                          Claimed {formatRelativeTime(encounter.claimed_at)}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
       </TooltipProvider>
 
-      {/* View All Link */}
       {hasMore && (
-        <div className="pt-2 border-t">
-          <Button variant="ghost" size="sm" className="w-full justify-center" asChild>
-            <Link href="/encounters?filter=all_claimed">
-              View All ({data.count})
-              <ChevronRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
+        <DashboardFooterLink href="/encounters?filter=all_claimed" label={`View All (${data.count})`} />
       )}
     </div>
   );

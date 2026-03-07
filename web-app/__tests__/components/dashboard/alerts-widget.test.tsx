@@ -43,10 +43,10 @@ jest.mock('@/lib/hooks/use-pharmacy', () => ({
 }));
 
 describe('AlertsWidget Component', () => {
-  it('should render alerts widget header', () => {
+  it('should render unresolved alert summary', () => {
     render(<AlertsWidget />);
 
-    expect(screen.getByText('Stock Alerts')).toBeInTheDocument();
+    expect(screen.getByText('3 unresolved alerts')).toBeInTheDocument();
   });
 
   it('should render alert count badges by severity', () => {
@@ -72,10 +72,13 @@ describe('AlertsWidget Component', () => {
     expect(container.querySelectorAll('svg').length).toBeGreaterThan(0);
   });
 
-  it('should show alert count badge', () => {
+  it('should show alert count badge and footer link', () => {
     render(<AlertsWidget />);
 
-    // Should show the count of alerts
+    expect(screen.getByRole('link', { name: /view all alerts/i })).toHaveAttribute(
+      'href',
+      '/pharmacy?tab=alerts'
+    );
     expect(screen.getByText('3')).toBeInTheDocument();
   });
 });

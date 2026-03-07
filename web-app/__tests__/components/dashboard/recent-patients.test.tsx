@@ -51,7 +51,7 @@ describe('RecentPatients Component', () => {
 
     render(<RecentPatients />);
 
-    expect(screen.getByText(/No patients found/i)).toBeInTheDocument();
+    expect(screen.getByText(/No recent patients/i)).toBeInTheDocument();
   });
 
   it('should render patient list', () => {
