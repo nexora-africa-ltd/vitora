@@ -376,7 +376,12 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
           </Button>
           <Dialog open={observationDialogOpen} onOpenChange={setObservationDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-2">
+              <Button
+                size="sm"
+                className="gap-2"
+                disabled={!['ACTIVE', 'DELIVERED'].includes(registration.status)}
+                title={!['ACTIVE', 'DELIVERED'].includes(registration.status) ? 'Cannot record observations after delivery is completed' : undefined}
+              >
                 <Plus className="h-4 w-4" />
                 Record Observation
               </Button>
