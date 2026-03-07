@@ -2,9 +2,10 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { WebSocketStatus } from '@/components/ui/websocket-status';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -80,8 +81,10 @@ function StandaloneWidgetSkeleton({ title, description }: { title: string; descr
   return (
     <Card className="overflow-hidden">
       <CardHeader>
-        <CardTitle className="text-base sm:text-lg">{title}</CardTitle>
-        <CardDescription className="text-xs sm:text-sm">{description}</CardDescription>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-base sm:text-lg">{title}</CardTitle>
+          <HelpPopover content={description} />
+        </div>
       </CardHeader>
       <CardContent>
         <WidgetTableSkeleton rows={3} />
@@ -278,10 +281,8 @@ export default function DashboardPage() {
                   <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                     <UserCheck className="h-4 w-4 shrink-0 text-primary sm:h-5 sm:w-5" />
                     <span className="truncate">My Active Consultations</span>
+                    <HelpPopover content="Encounters you have claimed and are currently handling." />
                   </CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">
-                    Encounters you&apos;ve claimed and are currently handling
-                  </CardDescription>
                 </div>
                 <Button variant="ghost" size="sm" asChild className="self-start shrink-0 sm:self-auto">
                   <Link href="/encounters?filter=my_claimed">
@@ -302,10 +303,8 @@ export default function DashboardPage() {
                     <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <UserCheck className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
                       <span className="truncate">All Active Consultations</span>
+                      <HelpPopover content="Supervisor view of consultations currently assigned to clinicians." />
                     </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
-                      Supervisor view of consultations currently assigned to clinicians
-                    </CardDescription>
                   </div>
                   <Button variant="ghost" size="sm" asChild className="self-start shrink-0 sm:self-auto">
                     <Link href="/encounters?filter=all_claimed">
@@ -323,10 +322,10 @@ export default function DashboardPage() {
             <Card className="overflow-hidden">
               <CardHeader className="flex flex-col space-y-2 pb-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
                 <div className="min-w-0 flex-1">
-                  <CardTitle className="text-base sm:text-lg truncate">Recent Patients</CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">
-                    Patients recently registered or checked in
-                  </CardDescription>
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <span className="truncate">Recent Patients</span>
+                    <HelpPopover content="Patients recently registered or checked in." />
+                  </CardTitle>
                 </div>
                 <Button variant="ghost" size="sm" asChild className="self-start shrink-0 sm:self-auto">
                   <Link href="/patients">
@@ -344,10 +343,10 @@ export default function DashboardPage() {
           <div className="space-y-6 xl:col-span-4">
             <Card className="overflow-hidden">
               <CardHeader>
-                <CardTitle className="text-base sm:text-lg">Active Alerts</CardTitle>
-                <CardDescription className="text-xs sm:text-sm">
-                  Critical items and escalation work requiring attention
-                </CardDescription>
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <span>Active Alerts</span>
+                  <HelpPopover content="Critical items and escalation work requiring attention." />
+                </CardTitle>
               </CardHeader>
               <CardContent className="overflow-x-auto">
                 <AlertsWidget />
