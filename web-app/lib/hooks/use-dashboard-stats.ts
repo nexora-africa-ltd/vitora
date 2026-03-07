@@ -7,6 +7,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { DashboardStatsSchema } from '@/lib/schemas/dashboard-stats.schema';
+import { parseResponse } from '@/lib/schemas/validation';
 import type { DashboardStats } from '@/lib/types/dashboard-stats';
 
 // Query key for React Query cache management
@@ -44,7 +46,9 @@ async function fetchDashboardStats(refresh = false): Promise<DashboardStats> {
   const response = await apiClient.get<DashboardStats>('/api/core/dashboard/stats/', {
     params,
   });
-  return response.data;
+  return parseResponse(DashboardStatsSchema, response.data, {
+    context: 'useDashboardStats.fetchDashboardStats',
+  });
 }
 
 /**

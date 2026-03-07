@@ -2,6 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useDashboardStats, formatNumber, formatCurrency } from '@/lib/hooks/use-dashboard-stats';
 import { apiClient } from '@/lib/api/client';
+import { DashboardStatsSchema } from '@/lib/schemas/dashboard-stats.schema';
 
 // Mock the API client
 jest.mock('@/lib/api/client', () => ({
@@ -68,7 +69,19 @@ describe('useDashboardStats', () => {
   });
 
   it('should pass refresh param when specified', async () => {
-    mockApiClient.get.mockResolvedValueOnce({ data: {} });
+    mockApiClient.get.mockResolvedValueOnce({
+      data: {
+        timestamp: '2026-01-17T08:30:00Z',
+        cache_ttl: 300,
+        patients: { total: 0, today: 0, this_week: 0, this_month: 0 },
+        encounters: { total: 0, today: 0, in_progress: 0, completed_today: 0 },
+        pharmacy: { prescriptions_today: 0, pending_dispensing: 0, low_stock_items: 0, expiring_soon: 0 },
+        laboratory: { pending_tests: 0, completed_today: 0, critical_results: 0 },
+        triage: { waiting: 0, avg_wait_time_minutes: 0, emergency_count: 0 },
+        billing: { revenue_today: 0, pending_payments: 0, sha_claims_pending: 0 },
+        alerts: { critical: 0, high: 0, medium: 0, total_unresolved: 0 },
+      },
+    });
 
     const { result } = renderHook(() => useDashboardStats({ refresh: true }), {
       wrapper: createWrapper(),
@@ -93,6 +106,16 @@ describe('useDashboardStats', () => {
     expect(result.current.data).toBeDefined();
     expect(result.current.data?.patients.total).toBe(0);
     expect(result.current.data?.encounters.today).toBe(0);
+  });
+
+  it('should reject invalid dashboard stats data with the schema', () => {
+    const result = DashboardStatsSchema.safeParse({
+      timestamp: '2026-01-17T08:30:00Z',
+      cache_ttl: 300,
+      patients: { total: 10, today: 2, this_week: 4, this_month: 8 },
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 
