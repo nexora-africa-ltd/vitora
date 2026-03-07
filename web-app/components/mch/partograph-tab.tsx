@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Activity, Plus, Waves, HeartPulse, Baby, Loader2 } from 'lucide-react';
+import { Activity, Plus, Waves, HeartPulse, Baby, Loader2, Printer } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -48,10 +48,18 @@ import {
 import { useLabourPartographSocket } from '@/lib/hooks/use-websocket';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
-import type { LiquorStatus, MembraneStatus, MouldingGrade, UrineResult } from '@/lib/types/mch';
+import { printPartographReport } from '@/lib/documents';
+import type {
+  LiquorStatus,
+  MCHRegistration,
+  MembraneStatus,
+  MouldingGrade,
+  UrineResult,
+} from '@/lib/types/mch';
 
 interface PartographTabProps {
   registrationId: number;
+  registration: MCHRegistration;
 }
 
 const membraneOptions: { value: MembraneStatus; label: string }[] = [
@@ -88,11 +96,12 @@ const mouldingOptions: { value: MouldingGrade; label: string }[] = [
   { value: '+++', label: '+++' },
 ];
 
-export function PartographTab({ registrationId }: PartographTabProps) {
+export function PartographTab({ registrationId, registration }: PartographTabProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [observationDialogOpen, setObservationDialogOpen] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   const [parity, setParity] = useState('');
   const [gestationWeeks, setGestationWeeks] = useState('');
@@ -215,6 +224,21 @@ export function PartographTab({ registrationId }: PartographTabProps) {
     }
   };
 
+  const handlePrint = async () => {
+    if (!activePartograph) return;
+
+    setIsPrinting(true);
+    try {
+      await printPartographReport({
+        registration,
+        partograph: activePartograph,
+        observations,
+      });
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
   if (isLoading) {
     return <Skeleton className="h-80 w-full" />;
   }
@@ -322,6 +346,17 @@ export function PartographTab({ registrationId }: PartographTabProps) {
             size="sm"
             lastUpdate={wsState.lastUpdate}
           />
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-2"
+            onClick={handlePrint}
+            disabled={isPrinting || observationsQuery.isLoading}
+          >
+            {isPrinting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Printer className="h-4 w-4" />}
+            <span className="sm:hidden">Print</span>
+            <span className="hidden sm:inline">Print / Export</span>
+          </Button>
           <Dialog open={observationDialogOpen} onOpenChange={setObservationDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">

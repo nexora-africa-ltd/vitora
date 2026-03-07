@@ -68,6 +68,12 @@ export {
   labReportStatusClasses,
   labReportStatusLabels,
 } from './schemas/lab-report.schema';
+export {
+  partographReportSchema,
+  partographReportDefaults,
+  partographReportStatusClasses,
+  partographReportStatusLabels,
+} from './schemas/partograph-report.schema';
 
 // =============================================================================
 // RENDERER
@@ -153,3 +159,7 @@ export {
   printLabReport,
   type PrintLabReportData,
 } from './print-lab-report';
+export {
+  printPartographReport,
+  type PrintPartographReportData,
+} from './print-partograph-report';
