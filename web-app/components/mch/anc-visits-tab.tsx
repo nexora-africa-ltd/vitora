@@ -12,7 +12,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,13 +25,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useAuth } from '@/lib/auth/context';
 import { formatDate } from '@/lib/utils/format';
 import { ancVisitsApi } from '@/lib/api/mch';
 import type { ANCVisitCreateData, FetalPresentation, UrineResult } from '@/lib/types/mch';
 
 interface ANCVisitsTabProps {
   registrationId: number;
+  isDelivered?: boolean;
 }
 
 const PRESENTATION_OPTIONS: { value: FetalPresentation; label: string }[] = [
@@ -54,7 +56,9 @@ const URINE_OPTIONS: { value: UrineResult; label: string }[] = [
   { value: '4+', label: '4+' },
 ];
 
-export function ANCVisitsTab({ registrationId }: ANCVisitsTabProps) {
+export function ANCVisitsTab({ registrationId, isDelivered = false }: ANCVisitsTabProps) {
+  const { user } = useAuth();
+  const isAdminUser = user?.is_staff || user?.is_superuser;
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -172,15 +176,34 @@ export function ANCVisitsTab({ registrationId }: ANCVisitsTabProps) {
           <HelpPopover content="Antenatal care visits track maternal health throughout pregnancy. WHO recommends 8+ contacts." />
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-2">
+          {isDelivered && !isAdminUser ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>
+                    <Button size="sm" className="gap-2" disabled>
+                      <Plus className="h-4 w-4" />
+                      Record Visit
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>ANC visits cannot be recorded after delivery</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <Button
+              size="sm"
+              variant={isDelivered ? 'outline' : 'default'}
+              className="gap-2"
+              onClick={() => setDialogOpen(true)}
+            >
               <Plus className="h-4 w-4" />
-              Record Visit
+              {isDelivered ? 'Backdate ANC Visit' : 'Record Visit'}
             </Button>
-          </DialogTrigger>
+          )}
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Record ANC Visit</DialogTitle>
+              <DialogTitle>{isDelivered && isAdminUser ? 'Backdate ANC Visit' : 'Record ANC Visit'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">

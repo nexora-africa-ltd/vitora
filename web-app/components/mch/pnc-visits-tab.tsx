@@ -12,7 +12,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate } from '@/lib/utils/format';
 import { pncVisitsApi } from '@/lib/api/mch';
@@ -42,6 +42,7 @@ import type {
 
 interface PNCVisitsTabProps {
   registrationId: number;
+  isDelivered?: boolean;
 }
 
 const UTERINE_OPTIONS: { value: string; label: string }[] = [
@@ -104,7 +105,7 @@ const CONTRACEPTIVE_OPTIONS: { value: string; label: string }[] = [
   { value: 'NONE', label: 'Declined' },
 ];
 
-export function PNCVisitsTab({ registrationId }: PNCVisitsTabProps) {
+export function PNCVisitsTab({ registrationId, isDelivered = false }: PNCVisitsTabProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -204,12 +205,26 @@ export function PNCVisitsTab({ registrationId }: PNCVisitsTabProps) {
           <HelpPopover content="Postnatal care visits monitor mother and baby health in the first 6 weeks after delivery. Kenya recommends visits at 6 hours, 6 days, 2 weeks, and 6 weeks." />
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="gap-2">
+          {!isDelivered ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>
+                    <Button size="sm" className="gap-2" disabled>
+                      <Plus className="h-4 w-4" />
+                      Record Visit
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>PNC visits cannot be recorded before delivery</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <Button size="sm" className="gap-2" onClick={() => setDialogOpen(true)}>
               <Plus className="h-4 w-4" />
               Record Visit
             </Button>
-          </DialogTrigger>
+          )}
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Record PNC Visit</DialogTitle>
