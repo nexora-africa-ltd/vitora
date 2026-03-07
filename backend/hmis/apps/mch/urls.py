@@ -8,6 +8,8 @@ from hmis.apps.mch.views import (
     ANCVisitViewSet,
     DeliveryViewSet,
     GrowthMeasurementViewSet,
+    LabourPartographObservationViewSet,
+    LabourPartographViewSet,
     HEIFollowUpViewSet,
     HEIPCRTestViewSet,
     ImmunizationRecordViewSet,
@@ -23,6 +25,12 @@ router = DefaultRouter()
 router.register(r"registrations", MCHRegistrationViewSet, basename="mch-registration")
 router.register(r"anc-visits", ANCVisitViewSet, basename="mch-anc-visit")
 router.register(r"deliveries", DeliveryViewSet, basename="mch-delivery")
+router.register(r"labour-partographs", LabourPartographViewSet, basename="mch-labour-partograph")
+router.register(
+    r"labour-partograph-observations",
+    LabourPartographObservationViewSet,
+    basename="mch-labour-partograph-observation",
+)
 router.register(r"pnc-visits", PNCVisitViewSet, basename="mch-pnc-visit")
 router.register(r"growth-measurements", GrowthMeasurementViewSet, basename="mch-growth")
 router.register(r"vaccines", VaccineViewSet, basename="mch-vaccine")

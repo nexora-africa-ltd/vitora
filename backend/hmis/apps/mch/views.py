@@ -7,11 +7,15 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import get_client_ip
 from hmis.apps.mch.models import (
     AEFI,
     ANCVisit,
     Delivery,
     GrowthMeasurement,
+    LabourPartograph,
+    LabourPartographObservation,
     HEIFollowUp,
     HEIPCRTest,
     ImmunizationRecord,
@@ -31,6 +35,8 @@ from hmis.apps.mch.serializers import (
     GrowthChartDataSerializer,
     GrowthMeasurementListSerializer,
     GrowthMeasurementSerializer,
+    LabourPartographObservationSerializer,
+    LabourPartographSerializer,
     HEIFollowUpListSerializer,
     HEIFollowUpSerializer,
     HEIPCRTestSerializer,
@@ -94,6 +100,27 @@ class DeliveryFilter(django_filters.FilterSet):
     class Meta:
         model = Delivery
         fields = ["registration", "status", "delivery_type", "delivery_outcome"]
+
+
+class LabourPartographFilter(django_filters.FilterSet):
+    """Filter for labour partographs."""
+
+    registration = django_filters.NumberFilter()
+    status = django_filters.CharFilter(lookup_expr="iexact")
+
+    class Meta:
+        model = LabourPartograph
+        fields = ["registration", "status"]
+
+
+class LabourPartographObservationFilter(django_filters.FilterSet):
+    """Filter for labour partograph observations."""
+
+    partograph = django_filters.NumberFilter()
+
+    class Meta:
+        model = LabourPartographObservation
+        fields = ["partograph"]
 
 
 class PNCVisitFilter(django_filters.FilterSet):
@@ -695,6 +722,81 @@ class DeliveryViewSet(viewsets.ModelViewSet):
             "high_risk_due_soon": high_risk_due_soon[:10],
             "monthly_trend": monthly_trend,
         })
+
+
+class LabourPartographViewSet(viewsets.ModelViewSet):
+    """ViewSet for labour partographs."""
+
+    queryset = LabourPartograph.objects.select_related(
+        "registration",
+        "registration__mother",
+        "encounter",
+        "admission",
+        "created_by",
+    )
+    permission_classes = [IsAuthenticated]
+    filter_backends = [
+        django_filters.DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_class = LabourPartographFilter
+    search_fields = [
+        "registration__mch_number",
+        "registration__mother__first_name",
+        "registration__mother__last_name",
+        "registration__mother__mrn",
+    ]
+    ordering_fields = ["started_at", "created_at", "status"]
+    ordering = ["-started_at"]
+    serializer_class = LabourPartographSerializer
+
+    def get_queryset(self):
+        return self.queryset.annotate(observation_count=models.Count("observations"))
+
+    def perform_create(self, serializer):
+        instance = serializer.save(created_by=self.request.user)
+        AuditLog.log(
+            action="labour_partograph_create",
+            user=self.request.user,
+            resource_type="LabourPartograph",
+            resource_id=instance.id,
+            details={"registration_id": instance.registration_id, "status": instance.status},
+            ip_address=get_client_ip(self.request),
+        )
+
+
+class LabourPartographObservationViewSet(viewsets.ModelViewSet):
+    """ViewSet for labour partograph observations."""
+
+    queryset = LabourPartographObservation.objects.select_related(
+        "partograph",
+        "partograph__registration",
+        "recorded_by",
+    )
+    permission_classes = [IsAuthenticated]
+    filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = LabourPartographObservationFilter
+    ordering_fields = ["observation_time", "created_at"]
+    ordering = ["observation_time"]
+    serializer_class = LabourPartographObservationSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save(recorded_by=self.request.user)
+        AuditLog.log(
+            action="labour_partograph_observation_create",
+            user=self.request.user,
+            resource_type="LabourPartographObservation",
+            resource_id=instance.id,
+            details={
+                "partograph_id": instance.partograph_id,
+                "fetal_heart_rate": instance.fetal_heart_rate,
+                "cervical_dilation_cm": str(instance.cervical_dilation_cm)
+                if instance.cervical_dilation_cm is not None
+                else None,
+            },
+            ip_address=get_client_ip(self.request),
+        )
 
 
 class PNCVisitViewSet(viewsets.ModelViewSet):

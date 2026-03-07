@@ -21,6 +21,10 @@ import {
   DeliveryListItemSchema,
   PaginatedDeliveryListSchema,
   DeliveryDashboardSchema,
+  LabourPartographSchema,
+  LabourPartographObservationSchema,
+  PaginatedLabourPartographListSchema,
+  PaginatedLabourPartographObservationListSchema,
   PNCVisitSchema,
   PNCVisitListItemSchema,
   PaginatedPNCVisitListSchema,
@@ -57,6 +61,11 @@ import type {
   DeliveryListItem,
   DeliveryCreateData,
   DeliveryDashboard,
+  LabourPartograph,
+  LabourPartographObservation,
+  LabourPartographCreateData,
+  LabourPartographObservationCreateData,
+  LabourPartographListParams,
   PNCVisit,
   PNCVisitListItem,
   PNCVisitCreateData,
@@ -314,6 +323,62 @@ export const deliveriesApi = {
     );
     return parseResponse(DeliveryDashboardSchema, response.data, {
       context: 'deliveriesApi.dashboard',
+    });
+  },
+};
+
+// =============================================================================
+// LABOUR PARTOGRAPH API
+// =============================================================================
+
+export const labourPartographsApi = {
+  list: async (
+    params?: LabourPartographListParams
+  ): Promise<PaginatedResponse<LabourPartograph>> => {
+    const response = await apiClient.get<PaginatedResponse<LabourPartograph>>(
+      `${BASE_URL}/labour-partographs/`,
+      { params }
+    );
+    return parseResponse(PaginatedLabourPartographListSchema, response.data, {
+      context: 'labourPartographsApi.list',
+    });
+  },
+
+  get: async (id: number): Promise<LabourPartograph> => {
+    const response = await apiClient.get<LabourPartograph>(`${BASE_URL}/labour-partographs/${id}/`);
+    return parseResponse(LabourPartographSchema, response.data, {
+      context: 'labourPartographsApi.get',
+    });
+  },
+
+  create: async (data: LabourPartographCreateData): Promise<LabourPartograph> => {
+    const response = await apiClient.post<LabourPartograph>(`${BASE_URL}/labour-partographs/`, data);
+    return parseResponse(LabourPartographSchema, response.data, {
+      context: 'labourPartographsApi.create',
+    });
+  },
+};
+
+export const labourPartographObservationsApi = {
+  list: async (partographId: number): Promise<PaginatedResponse<LabourPartographObservation>> => {
+    const response = await apiClient.get<PaginatedResponse<LabourPartographObservation>>(
+      `${BASE_URL}/labour-partograph-observations/`,
+      { params: { partograph: partographId, page_size: 200 } }
+    );
+    return parseResponse(PaginatedLabourPartographObservationListSchema, response.data, {
+      context: 'labourPartographObservationsApi.list',
+    });
+  },
+
+  create: async (
+    data: LabourPartographObservationCreateData
+  ): Promise<LabourPartographObservation> => {
+    const response = await apiClient.post<LabourPartographObservation>(
+      `${BASE_URL}/labour-partograph-observations/`,
+      data
+    );
+    return parseResponse(LabourPartographObservationSchema, response.data, {
+      context: 'labourPartographObservationsApi.create',
     });
   },
 };
@@ -739,6 +804,8 @@ export const mchApi = {
   registrations: mchRegistrationsApi,
   ancVisits: ancVisitsApi,
   deliveries: deliveriesApi,
+  labourPartographs: labourPartographsApi,
+  labourPartographObservations: labourPartographObservationsApi,
   pncVisits: pncVisitsApi,
   growthMeasurements: growthMeasurementsApi,
   vaccines: vaccinesApi,

@@ -397,7 +397,7 @@ export default function NewEncounterReviewPage() {
                   {isSuggestionsLoading ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <BrainCircuit className="h-3.5 w-3.5" />
+                    <Sparkles className="h-3.5 w-3.5" />
                   )}
                   <span className="hidden sm:inline">
                     {isSuggestionsLoading ? 'Analyzing...' : 'AI Autopopulate'}

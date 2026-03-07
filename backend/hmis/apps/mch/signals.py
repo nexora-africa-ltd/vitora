@@ -6,7 +6,14 @@ from datetime import date, datetime, time, timedelta
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from hmis.apps.mch.models import ANCVisit, Delivery, HEIFollowUp, MCHRegistration, PNCVisit
+from hmis.apps.mch.models import (
+    ANCVisit,
+    Delivery,
+    HEIFollowUp,
+    LabourPartographObservation,
+    MCHRegistration,
+    PNCVisit,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -281,6 +288,46 @@ def create_baby_patient_on_delivery(sender, instance, created, **kwargs):
 
     except Exception as exc:
         logger.error("Failed to create baby patient for delivery %s: %s", instance.id, exc)
+
+
+@receiver(post_save, sender=LabourPartographObservation)
+def broadcast_labour_partograph_observation(sender, instance, created, **kwargs):
+    """Broadcast new partograph observations to realtime subscribers."""
+    if not created:
+        return
+
+    try:
+        from hmis.apps.mch.websockets import broadcast_partograph_event_sync
+
+        broadcast_partograph_event_sync(
+            partograph_id=instance.partograph_id,
+            event_type="partograph.observation_recorded",
+            data={
+                "observation_id": instance.id,
+                "partograph_id": instance.partograph_id,
+                "registration_id": instance.partograph.registration_id,
+                "observation_time": (
+                    instance.observation_time.isoformat()
+                    if hasattr(instance.observation_time, "isoformat")
+                    else str(instance.observation_time)
+                ),
+                "fetal_heart_rate": instance.fetal_heart_rate,
+                "cervical_dilation_cm": str(instance.cervical_dilation_cm)
+                if instance.cervical_dilation_cm is not None
+                else None,
+                "contractions_per_10_min": instance.contractions_per_10_min,
+                "contraction_duration_seconds": instance.contraction_duration_seconds,
+                "maternal_pulse": instance.maternal_pulse,
+                "urine_volume_ml": instance.urine_volume_ml,
+                "alerts": instance.get_alerts(),
+            },
+        )
+    except Exception as exc:
+        logger.warning(
+            "Failed to broadcast partograph observation %s: %s",
+            instance.id,
+            exc,
+        )
 
 
 @receiver(post_save, sender=HEIFollowUp)

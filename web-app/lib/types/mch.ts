@@ -416,6 +416,106 @@ export interface DeliveryDashboard {
 }
 
 // =============================================================================
+// LABOUR PARTOGRAPH TYPES
+// =============================================================================
+
+export type LabourPartographStatus = 'ACTIVE' | 'COMPLETED' | 'REFERRED';
+
+export type MembraneStatus = 'INTACT' | 'RUPTURED' | 'UNKNOWN' | '';
+
+export type LiquorStatus = 'CLEAR' | 'MECONIUM' | 'BLOOD_STAINED' | 'OFFENSIVE' | 'UNKNOWN' | '';
+
+export type MouldingGrade = '0' | '+' | '++' | '+++' | '';
+
+export interface LabourPartographObservation {
+  id: number;
+  partograph: number;
+  observation_time: string;
+  recorded_by: number;
+  recorded_by_name: string;
+  fetal_heart_rate: number | null;
+  cervical_dilation_cm: string | null;
+  descent_fifths: number | null;
+  contractions_per_10_min: number | null;
+  contraction_duration_seconds: number | null;
+  moulding: MouldingGrade;
+  maternal_pulse: number | null;
+  maternal_blood_pressure: string;
+  maternal_temperature: number | null;
+  urine_volume_ml: number | null;
+  urine_protein: UrineResult;
+  urine_acetone: UrineResult;
+  oxytocin_drops_per_min: number | null;
+  medications: string;
+  notes: string;
+  alerts: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LabourPartograph {
+  id: number;
+  registration: number;
+  registration_mch_number: string;
+  mother_name: string;
+  encounter: number | null;
+  admission: number | null;
+  started_at: string;
+  status: LabourPartographStatus;
+  parity: number | null;
+  gestation_weeks: number | null;
+  membrane_status: MembraneStatus;
+  liquor: LiquorStatus;
+  notes: string;
+  created_by: number | null;
+  created_by_name: string | null;
+  completed_at: string | null;
+  observation_count: number;
+  latest_observation: LabourPartographObservation | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LabourPartographCreateData {
+  registration: number;
+  encounter?: number;
+  admission?: number;
+  started_at?: string;
+  status?: LabourPartographStatus;
+  parity?: number;
+  gestation_weeks?: number;
+  membrane_status?: MembraneStatus;
+  liquor?: LiquorStatus;
+  notes?: string;
+}
+
+export interface LabourPartographObservationCreateData {
+  partograph: number;
+  observation_time: string;
+  fetal_heart_rate?: number;
+  cervical_dilation_cm?: number | string;
+  descent_fifths?: number;
+  contractions_per_10_min?: number;
+  contraction_duration_seconds?: number;
+  moulding?: MouldingGrade;
+  maternal_pulse?: number;
+  maternal_blood_pressure?: string;
+  maternal_temperature?: number;
+  urine_volume_ml?: number;
+  urine_protein?: UrineResult;
+  urine_acetone?: UrineResult;
+  oxytocin_drops_per_min?: number;
+  medications?: string;
+  notes?: string;
+}
+
+export interface LabourPartographListParams {
+  registration?: number;
+  status?: LabourPartographStatus;
+  search?: string;
+}
+
+// =============================================================================
 // PNC VISIT TYPES
 // =============================================================================
 
