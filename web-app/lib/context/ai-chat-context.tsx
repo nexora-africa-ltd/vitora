@@ -61,7 +61,7 @@ export interface AIChatContextValue {
   /** Add a message to the current session */
   addMessage: (message: AIChatMessage) => void;
   /** Update a streaming message's content */
-  updateStreamingMessage: (id: string, content: string, done?: boolean) => void;
+  updateStreamingMessage: (id: string, content: string, done?: boolean, model?: string) => void;
   /** Clear messages (on session switch) */
   clearMessages: () => void;
 
@@ -235,10 +235,10 @@ export function AIChatProvider({ children }: AIChatProviderProps) {
   }, []);
 
   const updateStreamingMessage = useCallback(
-    (id: string, content: string, done?: boolean) => {
+    (id: string, content: string, done?: boolean, model?: string) => {
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.id === id ? { ...msg, content, isStreaming: done ? false : msg.isStreaming } : msg
+          msg.id === id ? { ...msg, content, isStreaming: done ? false : msg.isStreaming, ...(model ? { model } : {}) } : msg
         )
       );
     },

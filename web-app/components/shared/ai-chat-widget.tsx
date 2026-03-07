@@ -218,7 +218,7 @@ export function AIChatWidget() {
         }
 
         // Update placeholder with actual response
-        updateStreamingMessage(assistantMsgId, response.message.content, true);
+        updateStreamingMessage(assistantMsgId, response.message.content, true, response.model);
       } catch {
         // Update placeholder with error message
         updateStreamingMessage(

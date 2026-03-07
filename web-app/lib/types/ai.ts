@@ -53,6 +53,8 @@ export interface AIChatMessage {
   timestamp: string;
   /** Whether this message is still being streamed (SSE) */
   isStreaming?: boolean;
+  /** The LLM model that generated this message (assistant messages only) */
+  model?: string;
 }
 
 /** Patient context for Clinical Assist — no PII */
@@ -187,6 +189,8 @@ export interface AIClinicalChatRequest {
 export interface AIClinicalChatResponse {
   session_id: string;
   message: AIChatMessage;
+  /** The LLM model used for this response (e.g., "gemini-2.5-pro") */
+  model?: string;
   /** Set when TibaBot is unreachable */
   error?: string;
 }

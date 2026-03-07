@@ -454,9 +454,13 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
         if not assistant_content:
             assistant_content = result.get("response", result.get("content", ""))
 
+        # Extract model identifier from TibaBot response (if provided)
+        model_id = result.get("model") or None
+
         return self._build_response(
             session=session,
             content=str(assistant_content) if assistant_content else "",
+            model=model_id,
         )
 
     # ------------------------------------------------------------------
@@ -479,6 +483,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
         session: ChatSession,
         content: str,
         error: str | None = None,
+        model: str | None = None,
     ) -> Response:
         """Persist assistant message and return schema-compliant response."""
         assistant_msg = ChatMessage.objects.create(
@@ -498,6 +503,8 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
         }
         if error:
             response_data["error"] = error
+        if model:
+            response_data["model"] = model
 
         return Response(response_data, status=status.HTTP_200_OK)
 
