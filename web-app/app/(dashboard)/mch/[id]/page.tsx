@@ -292,7 +292,7 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
 
         {/* Baby Info (if delivered) */}
         {registration.baby && (
-          <Card className="border-blue-200 bg-blue-50/50">
+          <Card className="border-blue-200 bg-blue">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2 text-blue-700">
                 <Baby className="h-4 w-4" />
@@ -358,7 +358,7 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
           </TabsContent>
 
           <TabsContent value="partograph">
-            <PartographTab registrationId={registrationId} />
+            <PartographTab registrationId={registrationId} registration={registration} />
           </TabsContent>
 
           <TabsContent value="pnc">
