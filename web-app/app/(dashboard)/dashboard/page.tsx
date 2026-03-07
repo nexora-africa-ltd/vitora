@@ -103,12 +103,31 @@ function getGreetingLabel(date = new Date()) {
 
 function getDisplayName(firstName?: string | null, username?: string | null) {
   const trimmedFirstName = firstName?.trim();
-  if (trimmedFirstName) return trimmedFirstName;
+  if (trimmedFirstName) {
+    return trimmedFirstName.charAt(0).toUpperCase() + trimmedFirstName.slice(1);
+  }
 
   const trimmedUsername = username?.trim();
-  if (trimmedUsername) return trimmedUsername;
+  if (trimmedUsername) {
+    return trimmedUsername.charAt(0).toUpperCase() + trimmedUsername.slice(1);
+  }
 
   return 'there';
+}
+
+// Roles that warrant a "Dr." title prefix
+const CLINICIAN_ROLES = new Set([
+  'DOCTOR',
+  'MEDICAL_DOCTOR',
+  'CLINICAL_OFFICER',
+  'MEDICAL_OFFICER',
+  'CONSULTANT',
+  'SENIOR_CONSULTANT',
+]);
+
+function isClinician(role?: string): boolean {
+  if (!role) return false;
+  return CLINICIAN_ROLES.has(role.toUpperCase());
 }
 
 function formatRoleLabel(role?: string) {
@@ -142,7 +161,14 @@ export default function DashboardPage() {
 
   const greetingLabel = getGreetingLabel();
   const displayName = getDisplayName(user?.first_name, user?.username);
+  const nameWithTitle = isClinician(user?.role) ? `Dr. ${displayName}` : displayName;
   const roleLabel = formatRoleLabel(user?.role);
+  const currentDateLabel = new Intl.DateTimeFormat('en-KE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date());
 
   const statCards: DashboardStatCard[] = [
     {
@@ -273,26 +299,52 @@ export default function DashboardPage() {
           }
         />
 
-        <div className="flex flex-col gap-4 rounded-xl border bg-muted/40 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 lg:p-8">
-          <div className="space-y-1.5">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              {greetingLabel}, {displayName} <span aria-hidden="true">👋</span>
-            </h2>
-            <p className="text-muted-foreground sm:text-lg">
-              {roleLabel
-                ? `You are signed in as ${roleLabel}. Here is the current operational picture.`
-                : 'Here is the current operational picture.'}
-            </p>
-          </div>
-          {isRefreshing && (
-            <div className="hidden shrink-0 items-center gap-2 rounded-full border bg-background px-4 py-1.5 text-sm font-medium text-muted-foreground shadow-sm sm:flex">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 opacity-75"></span>
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
-              </span>
-              Refreshing data...
+        <div className="relative overflow-hidden rounded-xl border bg-card p-5 sm:p-6">
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.06] to-transparent" aria-hidden="true" />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-2 ring-primary/20 sm:flex">
+                <Stethoscope className="h-6 w-6 text-primary" />
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                  {currentDateLabel}
+                </p>
+                <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+                  {greetingLabel}, {nameWithTitle} <span aria-hidden="true">👋</span>
+                </h2>
+                {roleLabel && (
+                  <p className="text-sm text-muted-foreground">{roleLabel}</p>
+                )}
+              </div>
             </div>
-          )}
+            <div className="flex shrink-0 flex-col items-start gap-1 self-start sm:items-end sm:self-auto">
+              {isRefreshing ? (
+                <div className="flex items-center gap-2 rounded-full border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                  </span>
+                  Refreshing data…
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-semibold text-foreground">
+                      {formatNumber(stats?.encounters.today ?? 0)}
+                    </span>{' '}
+                    {(stats?.encounters.today ?? 0) === 1 ? 'encounter' : 'encounters'} today
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-semibold text-foreground">
+                      {formatNumber(stats?.patients.today ?? 0)}
+                    </span>{' '}
+                    {(stats?.patients.today ?? 0) === 1 ? 'patient' : 'patients'} registered
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
         {isError && (
