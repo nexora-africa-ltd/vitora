@@ -20,7 +20,7 @@ import {
   ChevronUp,
   Info,
   Loader2,
-  Sparkles,
+  BrainCircuit,
   TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -222,7 +222,7 @@ export function LabInterpretPanel({
           <div className="flex items-center gap-2">
             <Beaker className="h-4 w-4 text-muted-foreground" />
             <CardTitle className="text-base">Lab Interpretation</CardTitle>
-            <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+            <BrainCircuit className="h-3.5 w-3.5 text-purple-500" />
             <HelpPopover content="AI-powered lab result interpretation. Flags abnormal values, detects multi-lab patterns, and suggests follow-up tests. Advisory only — clinician must confirm." />
           </div>
           {isFallback && (

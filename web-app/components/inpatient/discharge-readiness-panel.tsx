@@ -21,7 +21,7 @@ import {
   ClipboardCheck,
   Info,
   Loader2,
-  Sparkles,
+  BrainCircuit,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -227,7 +227,7 @@ export function DischargeReadinessPanel({
           <div className="flex items-center gap-2">
             <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
             <CardTitle className="text-base">Discharge Readiness</CardTitle>
-            <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+            <BrainCircuit className="h-3.5 w-3.5 text-purple-500" />
             <HelpPopover content="AI-powered discharge readiness assessment. Evaluates clinical, functional, and social criteria. Includes Kenya-specific checks (SHA coverage, CHW referral). Advisory only." />
           </div>
           {isFallback && (

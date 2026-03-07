@@ -1293,8 +1293,12 @@ class CarePlanGenerateRequestSerializer(serializers.Serializer):
     """Request body for POST /api/ai/care-plan/generate/."""
 
     primary_diagnosis = serializers.CharField(
-        max_length=500,
-        help_text="Primary diagnosis.",
+        required=False, allow_blank=True, max_length=500,
+        help_text="Confirmed primary diagnosis (if available).",
+    )
+    chief_complaint = serializers.CharField(
+        required=False, allow_blank=True, max_length=500,
+        help_text="Presenting complaint from triage (used when no diagnosis yet).",
     )
     icd10_code = serializers.CharField(
         required=False, allow_blank=True, max_length=20,

@@ -657,7 +657,8 @@ export interface AIDischargeConditionsResponse {
 
 /** Request body for POST /api/ai/care-plan/generate/ */
 export interface AICarePlanGenerateRequest {
-  primary_diagnosis: string;
+  primary_diagnosis?: string;
+  chief_complaint?: string;
   icd10_code?: string;
   severity?: string;
   comorbidities?: string[];

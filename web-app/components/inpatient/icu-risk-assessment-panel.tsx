@@ -23,7 +23,7 @@ import {
   Info,
   Loader2,
   ShieldAlert,
-  Sparkles,
+  BrainCircuit,
   TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -381,7 +381,7 @@ export function ICURiskAssessmentPanel({
             <span className="sm:hidden">ICU Risk</span>
             <span className="hidden sm:inline">ICU Risk Assessment</span>
             <Badge variant="outline" className="text-xs font-normal gap-1">
-              <Sparkles className="h-3 w-3" />
+              <BrainCircuit className="h-3 w-3" />
               Advisory
             </Badge>
           </CardTitle>
