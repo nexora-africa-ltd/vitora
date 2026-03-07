@@ -34,6 +34,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useAIICUPredict, useAIEnabled } from '@/lib/hooks/use-ai';
+import { toast } from 'sonner';
 import type {
   AIICUPredictRequest,
   AIICUPredictResponse,
@@ -309,6 +310,17 @@ export function ICURiskAssessmentPanel({
   const [showDetails, setShowDetails] = React.useState(false);
   const [predictionType, setPredictionType] = React.useState<AIICUPredictionType>('predict');
 
+  // Show success toast when prediction completes
+  React.useEffect(() => {
+    if (prediction && prediction.risk_level && !prediction.error) {
+      const riskLabel = prediction.risk_level.charAt(0).toUpperCase() + prediction.risk_level.slice(1);
+      const score = prediction.risk_score != null ? ` — ${Math.round(prediction.risk_score * 100)}%` : '';
+      toast.success('ICU risk assessment complete', {
+        description: `${riskLabel} risk${score}`,
+      });
+    }
+  }, [prediction]);
+
   // Don't render if AI is disabled
   if (!aiEnabled) return null;
 
@@ -370,8 +382,9 @@ export function ICURiskAssessmentPanel({
   return (
     <Card
       className={cn(
-        'border-dashed',
-        hasPrediction && riskConfig ? riskConfig.borderColor : 'border-muted-foreground/25'
+        'border-dashed transition-colors duration-500',
+        hasPrediction && riskConfig ? riskConfig.borderColor : 'border-muted-foreground/25',
+        hasPrediction && 'bg-emerald-50/50 dark:bg-emerald-950/20'
       )}
     >
       <CardHeader className="pb-3">

@@ -29,6 +29,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useAILabInterpret, useAIEnabled } from '@/lib/hooks/use-ai';
+import { toast } from 'sonner';
 import type {
   AILabResultItem,
   AILabFlag,
@@ -179,6 +180,19 @@ export function LabInterpretPanel({
   const { mutate, data: result, isPending, isError, reset } = useAILabInterpret();
   const [showDetails, setShowDetails] = React.useState(false);
 
+  // Show success toast when interpretation completes
+  React.useEffect(() => {
+    if (result && result.flags) {
+      const abnormalCount = result.flags.filter((f) => f.status !== 'normal').length;
+      const patternsCount = result.patterns?.length ?? 0;
+      toast.success('Lab interpretation complete', {
+        description: abnormalCount > 0
+          ? `${abnormalCount} abnormal flag(s)${patternsCount > 0 ? `, ${patternsCount} pattern(s)` : ''}`
+          : 'All results within normal range',
+      });
+    }
+  }, [result]);
+
   // Auto-trigger from widget quick action
   React.useEffect(() => {
     if (autoTrigger && isAIEnabled && !isPending && !result && labResults?.length > 0) {
@@ -216,7 +230,10 @@ export function LabInterpretPanel({
   const isFallback = result?.mode === 'fallback';
 
   return (
-    <Card>
+    <Card className={cn(
+      'transition-colors duration-500',
+      hasResult && 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800/50 dark:bg-emerald-950/20'
+    )}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

@@ -32,6 +32,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useAICarePlanGenerate, useAIEnabled } from '@/lib/hooks/use-ai';
 import { aiApi } from '@/lib/api/ai';
+import { toast } from 'sonner';
 import type {
   AICarePlanGenerateRequest,
   AICarePlanResponse,
@@ -204,6 +205,18 @@ export function CarePlanPanel({
   const { mutate, data: result, isPending, isError, reset } = useAICarePlanGenerate();
   const [isExporting, setIsExporting] = React.useState(false);
 
+  // Show success toast when care plan is generated
+  React.useEffect(() => {
+    if (result && result.goals && result.goals.length > 0) {
+      const totalInterventions = result.interventions?.reduce(
+        (sum, cat) => sum + cat.items.length, 0
+      ) ?? 0;
+      toast.success('Care plan generated', {
+        description: `${result.goals.length} goal(s), ${totalInterventions} intervention(s)`,
+      });
+    }
+  }, [result]);
+
   // Auto-trigger from widget quick action
   React.useEffect(() => {
     if (autoTrigger && isAIEnabled && !isPending && !result) {
@@ -284,7 +297,10 @@ export function CarePlanPanel({
   const isFallback = result?.mode === 'fallback';
 
   return (
-    <Card>
+    <Card className={cn(
+      'transition-colors duration-500',
+      hasResult && 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800/50 dark:bg-emerald-950/20'
+    )}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -361,17 +377,35 @@ export function CarePlanPanel({
 
             {/* Tabbed Content */}
             <Tabs defaultValue="goals" className="space-y-3">
-              <TabsList className="w-full grid grid-cols-3 h-auto">
-                <TabsTrigger value="goals" className="text-xs sm:text-sm">
-                  Goals ({result.goals.length})
+              <TabsList className="w-full grid grid-cols-3 h-auto p-1">
+                <TabsTrigger
+                  value="goals"
+                  className="text-xs data-[state=active]:text-sm data-[state=active]:font-semibold transition-all gap-1.5"
+                >
+                  Goals
+                  <Badge variant="secondary" className="h-5 min-w-5 px-1 text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    {result.goals.length}
+                  </Badge>
                 </TabsTrigger>
-                <TabsTrigger value="interventions" className="text-xs sm:text-sm">
+                <TabsTrigger
+                  value="interventions"
+                  className="text-xs data-[state=active]:text-sm data-[state=active]:font-semibold transition-all gap-1.5"
+                >
                   <span className="sm:hidden">Rx</span>
                   <span className="hidden sm:inline">Interventions</span>
+                  <Badge variant="secondary" className="h-5 min-w-5 px-1 text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    {result.interventions.reduce((sum, cat) => sum + cat.items.length, 0)}
+                  </Badge>
                 </TabsTrigger>
-                <TabsTrigger value="discharge" className="text-xs sm:text-sm">
+                <TabsTrigger
+                  value="discharge"
+                  className="text-xs data-[state=active]:text-sm data-[state=active]:font-semibold transition-all gap-1.5"
+                >
                   <span className="sm:hidden">D/C</span>
                   <span className="hidden sm:inline">Discharge</span>
+                  <Badge variant="secondary" className="h-5 min-w-5 px-1 text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                    {(result.discharge_criteria?.length || 0) + (result.follow_up ? 1 : 0)}
+                  </Badge>
                 </TabsTrigger>
               </TabsList>
 
