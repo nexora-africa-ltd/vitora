@@ -30,7 +30,7 @@ import { MyClaimedEncountersWidget } from '@/components/dashboard/my-claimed-wid
 import { useDashboardStats, formatCurrency, formatNumber } from '@/lib/hooks/use-dashboard-stats';
 import { useTriageWaitTimeStats } from '@/lib/hooks/use-triage';
 import { useEmergencySocket } from '@/lib/hooks/use-websocket';
-import { useIsSupervisor } from '@/lib/auth';
+import { useIsSupervisor, useUser } from '@/lib/auth';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 
 type DashboardStatCard = {
@@ -93,11 +93,40 @@ function StandaloneWidgetSkeleton({ title, description }: { title: string; descr
   );
 }
 
+function getGreetingLabel(date = new Date()) {
+  const hour = date.getHours();
+
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function getDisplayName(firstName?: string | null, username?: string | null) {
+  const trimmedFirstName = firstName?.trim();
+  if (trimmedFirstName) return trimmedFirstName;
+
+  const trimmedUsername = username?.trim();
+  if (trimmedUsername) return trimmedUsername;
+
+  return 'there';
+}
+
+function formatRoleLabel(role?: string) {
+  if (!role) return null;
+
+  return role
+    .split('_')
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0) + segment.slice(1).toLowerCase())
+    .join(' ');
+}
+
 export default function DashboardPage() {
   const { data: stats, isLoading, isError } = useDashboardStats();
   const { data: triageStats, isLoading: isTriageLoading } = useTriageWaitTimeStats({ dateRange: 'today' });
   const { connectionState, reconnectAttempts, lastUpdate } = useEmergencySocket();
   const isSupervisor = useIsSupervisor();
+  const user = useUser();
   const { refresh, isRefreshing } = usePageRefresh();
 
   // Triage queue metrics
@@ -110,6 +139,10 @@ export default function DashboardPage() {
   const handleRefresh = async () => {
     await refresh();
   };
+
+  const greetingLabel = getGreetingLabel();
+  const displayName = getDisplayName(user?.first_name, user?.username);
+  const roleLabel = formatRoleLabel(user?.role);
 
   const statCards: DashboardStatCard[] = [
     {
@@ -239,6 +272,28 @@ export default function DashboardPage() {
             </>
           }
         />
+
+        <div className="flex flex-col gap-4 rounded-xl border bg-muted/40 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 lg:p-8">
+          <div className="space-y-1.5">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              {greetingLabel}, {displayName} <span aria-hidden="true">👋</span>
+            </h2>
+            <p className="text-muted-foreground sm:text-lg">
+              {roleLabel
+                ? `You are signed in as ${roleLabel}. Here is the current operational picture.`
+                : 'Here is the current operational picture.'}
+            </p>
+          </div>
+          {isRefreshing && (
+            <div className="hidden shrink-0 items-center gap-2 rounded-full border bg-background px-4 py-1.5 text-sm font-medium text-muted-foreground shadow-sm sm:flex">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 opacity-75"></span>
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
+              </span>
+              Refreshing data...
+            </div>
+          )}
+        </div>
 
         {isError && (
           <Card className="border-warning/40 bg-warning/5">
