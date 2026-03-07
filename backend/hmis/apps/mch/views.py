@@ -658,6 +658,8 @@ class DeliveryViewSet(viewsets.ModelViewSet):
             },
             ip_address=get_client_ip(self.request),
         )
+
+    @action(detail=False, methods=["get"])
     def dashboard(self, request):
         """
         Delivery dashboard stats.
