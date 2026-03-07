@@ -163,6 +163,11 @@ function MessageBubble({ message, feedbackGiven, onFeedback }: MessageBubbleProp
         {/* Feedback buttons — only on assistant messages that are done streaming */}
         {showFeedback && (
           <div className="flex items-center gap-1 mt-1 ml-1">
+            {message.model && (
+              <span className="text-[10px] font-medium text-muted-foreground/60 mr-1.5">
+                {message.model}
+              </span>
+            )}
             <button
               type="button"
               onClick={() => onFeedback('up')}

@@ -48,6 +48,7 @@ export const AIChatMessageSchema = z.object({
 export const AIClinicalChatResponseSchema = z.object({
   session_id: z.string(),
   message: AIChatMessageSchema,
+  model: z.string().optional(),
   error: z.string().optional(),
 });
 
