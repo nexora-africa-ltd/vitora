@@ -776,6 +776,295 @@ class Delivery(HistoryMixin, TimeStampedModel):
 
 
 # =============================================================================
+# Labour Partograph Models
+# =============================================================================
+
+
+class LabourPartograph(HistoryMixin, TimeStampedModel):
+    """Labour monitoring record with chartable partograph observations."""
+
+    STATUS_CHOICES = [
+        ("ACTIVE", "Active"),
+        ("COMPLETED", "Completed"),
+        ("REFERRED", "Referred"),
+    ]
+
+    MEMBRANE_STATUS_CHOICES = [
+        ("INTACT", "Intact"),
+        ("RUPTURED", "Ruptured"),
+        ("UNKNOWN", "Unknown"),
+    ]
+
+    LIQUOR_CHOICES = [
+        ("CLEAR", "Clear"),
+        ("MECONIUM", "Meconium stained"),
+        ("BLOOD_STAINED", "Blood stained"),
+        ("OFFENSIVE", "Offensive"),
+        ("UNKNOWN", "Unknown"),
+    ]
+
+    registration = models.ForeignKey(
+        MCHRegistration,
+        on_delete=models.CASCADE,
+        related_name="labour_partographs",
+        help_text="MCH registration being monitored in labour",
+    )
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="labour_partographs",
+        help_text="Linked clinical encounter, if available",
+    )
+    admission = models.ForeignKey(
+        "inpatient.Admission",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="labour_partographs",
+        help_text="Linked inpatient admission, if mother is admitted",
+    )
+    started_at = models.DateTimeField(
+        default=timezone.now,
+        help_text="When labour monitoring started",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="ACTIVE",
+        help_text="Current labour monitoring status",
+    )
+    parity = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="Maternal parity at labour onset",
+    )
+    gestation_weeks = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(20), MaxValueValidator(45)],
+        help_text="Gestation in weeks at labour onset",
+    )
+    membrane_status = models.CharField(
+        max_length=20,
+        choices=MEMBRANE_STATUS_CHOICES,
+        blank=True,
+        default="",
+        help_text="Whether membranes are intact or ruptured",
+    )
+    liquor = models.CharField(
+        max_length=20,
+        choices=LIQUOR_CHOICES,
+        blank=True,
+        default="",
+        help_text="Liquor appearance when membranes rupture",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="General labour notes",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="labour_partographs_created",
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the labour partograph was closed",
+    )
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["-started_at"]
+        verbose_name = "Labour Partograph"
+        verbose_name_plural = "Labour Partographs"
+
+    def __str__(self):
+        return f"Partograph {self.registration.mch_number} ({self.status})"
+
+    def save(self, *args, **kwargs):
+        if self.parity is None and self.registration.anc_enrollment:
+            self.parity = self.registration.anc_enrollment.para
+
+        if self.gestation_weeks is None and self.registration.anc_enrollment:
+            self.gestation_weeks = self.registration.anc_enrollment.gestation_weeks()
+
+        if self.status != "ACTIVE" and self.completed_at is None:
+            self.completed_at = timezone.now()
+
+        if self.status == "ACTIVE":
+            self.completed_at = None
+
+        super().save(*args, **kwargs)
+
+    @property
+    def latest_observation(self):
+        return self.observations.order_by("-observation_time").first()
+
+
+class LabourPartographObservation(HistoryMixin, TimeStampedModel):
+    """Single charted labour observation on a partograph timeline."""
+
+    MOULDING_CHOICES = [
+        ("0", "None"),
+        ("+", "+"),
+        ("++", "++"),
+        ("+++", "+++"),
+    ]
+
+    partograph = models.ForeignKey(
+        LabourPartograph,
+        on_delete=models.CASCADE,
+        related_name="observations",
+        help_text="Partograph this observation belongs to",
+    )
+    observation_time = models.DateTimeField(
+        help_text="Time this observation was taken",
+    )
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="labour_partograph_observations",
+    )
+    fetal_heart_rate = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(80), MaxValueValidator(200)],
+        help_text="Fetal heart rate in beats per minute",
+    )
+    cervical_dilation_cm = models.DecimalField(
+        max_digits=3,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.0")), MaxValueValidator(Decimal("10.0"))],
+        help_text="Cervical dilation in cm",
+    )
+    descent_fifths = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(5)],
+        help_text="Descent of head in fifths palpable abdominally",
+    )
+    contractions_per_10_min = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(10)],
+        help_text="Number of contractions in 10 minutes",
+    )
+    contraction_duration_seconds = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(180)],
+        help_text="Approximate contraction duration in seconds",
+    )
+    moulding = models.CharField(
+        max_length=3,
+        choices=MOULDING_CHOICES,
+        blank=True,
+        default="",
+        help_text="Fetal skull moulding grade",
+    )
+    maternal_pulse = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(0), MaxValueValidator(250)],
+        help_text="Maternal pulse rate",
+    )
+    maternal_blood_pressure = models.CharField(
+        max_length=10,
+        blank=True,
+        default="",
+        help_text="Maternal blood pressure in format 120/80",
+    )
+    maternal_temperature = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("30.0")), MaxValueValidator(Decimal("45.0"))],
+        help_text="Maternal temperature in °C",
+    )
+    urine_volume_ml = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Measured urine volume in mL",
+    )
+    urine_protein = models.CharField(
+        max_length=10,
+        blank=True,
+        default="",
+        choices=ANCVisit.URINE_CHOICES,
+        help_text="Urine protein result",
+    )
+    urine_acetone = models.CharField(
+        max_length=10,
+        blank=True,
+        default="",
+        choices=ANCVisit.URINE_CHOICES,
+        help_text="Urine acetone result",
+    )
+    oxytocin_drops_per_min = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="Oxytocin infusion rate in drops per minute",
+    )
+    medications = models.TextField(
+        blank=True,
+        default="",
+        help_text="Medications or interventions given",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Additional labour notes",
+    )
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["observation_time"]
+        verbose_name = "Labour Partograph Observation"
+        verbose_name_plural = "Labour Partograph Observations"
+        indexes = [models.Index(fields=["partograph", "observation_time"])]
+
+    def __str__(self):
+        return (
+            f"Observation {self.observation_time:%Y-%m-%d %H:%M} "
+            f"for {self.partograph.registration.mch_number}"
+        )
+
+    def get_alerts(self) -> list[str]:
+        alerts = []
+        dilation_value = self.cervical_dilation_cm
+        if dilation_value not in (None, "") and not isinstance(dilation_value, Decimal):
+            try:
+                dilation_value = Decimal(str(dilation_value))
+            except Exception:
+                dilation_value = None
+
+        if self.fetal_heart_rate is not None:
+            if self.fetal_heart_rate < 110:
+                alerts.append(f"Fetal bradycardia: {self.fetal_heart_rate} BPM")
+            elif self.fetal_heart_rate > 160:
+                alerts.append(f"Fetal tachycardia: {self.fetal_heart_rate} BPM")
+
+        if dilation_value is not None and dilation_value >= Decimal("8.0"):
+            alerts.append(f"Advanced labour: {dilation_value} cm")
+
+        if self.urine_protein and self.urine_protein not in ("", "NEGATIVE", "TRACE"):
+            alerts.append(f"Proteinuria: {self.urine_protein}")
+
+        return alerts
+
+
+# =============================================================================
 # PNC Visit Model
 # =============================================================================
 

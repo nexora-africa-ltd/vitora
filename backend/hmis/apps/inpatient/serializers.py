@@ -903,6 +903,7 @@ class TemperatureReadingSerializer(serializers.ModelSerializer):
     )
     is_febrile = serializers.BooleanField(read_only=True)
     is_hypothermic = serializers.BooleanField(read_only=True)
+    fluid_balance_ml = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = TemperatureReading
@@ -917,6 +918,9 @@ class TemperatureReadingSerializer(serializers.ModelSerializer):
             "respiratory_rate",
             "bowels",
             "urine_output",
+            "fluid_intake_ml",
+            "urine_output_ml",
+            "fluid_balance_ml",
             "notes",
             "is_febrile",
             "is_hypothermic",
@@ -939,6 +943,8 @@ class TemperatureReadingCreateSerializer(serializers.ModelSerializer):
             "respiratory_rate",
             "bowels",
             "urine_output",
+            "fluid_intake_ml",
+            "urine_output_ml",
             "notes",
         ]
 

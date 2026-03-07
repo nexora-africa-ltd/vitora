@@ -1812,6 +1812,15 @@ class TemperatureReadingViewSet(viewsets.ModelViewSet):
             return TemperatureReadingCreateSerializer
         return TemperatureReadingSerializer
 
+    def create(self, request, *args, **kwargs):
+        """Return the full read serializer after creating a temperature reading."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        instance = self.get_queryset().get(pk=serializer.instance.pk)
+        output_serializer = TemperatureReadingSerializer(instance)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
     def perform_create(self, serializer):
         instance = serializer.save(recorded_by=self.request.user)
         AuditLog.log(

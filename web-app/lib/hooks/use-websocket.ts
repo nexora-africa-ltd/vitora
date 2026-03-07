@@ -119,6 +119,31 @@ export interface LabWebSocketMessage<T = unknown> {
   data: T;
 }
 
+// =============================================================================
+// MCH Labour Partograph WebSocket Types
+// =============================================================================
+
+export type PartographEventType = 'partograph.observation_recorded';
+
+export interface PartographObservationEvent {
+  observation_id: number;
+  partograph_id: number;
+  registration_id: number;
+  observation_time: string;
+  fetal_heart_rate: number | null;
+  cervical_dilation_cm: string | null;
+  contractions_per_10_min: number | null;
+  contraction_duration_seconds: number | null;
+  maternal_pulse: number | null;
+  urine_volume_ml: number | null;
+  alerts: string[];
+}
+
+export interface PartographWebSocketMessage<T = unknown> {
+  event: PartographEventType;
+  data: T;
+}
+
 /**
  * WebSocket message structure from backend
  */
@@ -263,9 +288,9 @@ function getWebSocketUrl(path: string): string {
 /**
  * Low-level WebSocket hook with reconnection logic
  */
-export function useWebSocket(
+export function useWebSocket<TMessage = WebSocketMessage>(
   url: string | null,
-  options: UseWebSocketOptions = {}
+  options: UseWebSocketOptions<TMessage> = {}
 ): UseWebSocketReturn {
   const {
     autoReconnect = true,
@@ -326,7 +351,7 @@ export function useWebSocket(
 
       ws.onmessage = (event) => {
         try {
-          const message = JSON.parse(event.data) as WebSocketMessage;
+          const message = JSON.parse(event.data) as TMessage;
           onMessageRef.current?.(message);
         } catch (e) {
           console.warn('[WebSocket] Failed to parse message:', e);
@@ -931,6 +956,44 @@ export function useEmergencySocket(
     ...wsResult,
     criticalData,
     zonesData,
+    lastUpdate,
+  };
+}
+
+// =============================================================================
+// MCH Labour Partograph WebSocket Hook
+// =============================================================================
+
+export function useLabourPartographSocket(
+  partographId: number | null,
+  registrationId?: number | null,
+  options: UseWebSocketOptions<PartographWebSocketMessage> = {}
+): UseWebSocketReturn & { lastUpdate: Date | null } {
+  const queryClient = useQueryClient();
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+
+  const url = partographId ? getWebSocketUrl(`/ws/mch/partographs/${partographId}/`) : null;
+
+  const handleMessage = useCallback(
+    (message: PartographWebSocketMessage) => {
+      if (!partographId) return;
+
+      setLastUpdate(new Date());
+      queryClient.invalidateQueries({ queryKey: ['mch-partographs', { registration: registrationId ?? null }] });
+      queryClient.invalidateQueries({ queryKey: ['mch-partograph-observations', partographId] });
+
+      options.onMessage?.(message);
+    },
+    [options, partographId, queryClient, registrationId]
+  );
+
+  const wsResult = useWebSocket(url, {
+    ...options,
+    onMessage: handleMessage,
+  });
+
+  return {
+    ...wsResult,
     lastUpdate,
   };
 }

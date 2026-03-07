@@ -340,6 +340,71 @@ export const DeliveryDashboardSchema = z.object({
 });
 
 // =============================================================================
+// LABOUR PARTOGRAPH SCHEMAS
+// =============================================================================
+
+export const LabourPartographStatusSchema = z.enum(['ACTIVE', 'COMPLETED', 'REFERRED']);
+
+export const MembraneStatusSchema = z.enum(['INTACT', 'RUPTURED', 'UNKNOWN', '']);
+
+export const LiquorStatusSchema = z.enum(['CLEAR', 'MECONIUM', 'BLOOD_STAINED', 'OFFENSIVE', 'UNKNOWN', '']);
+
+export const MouldingGradeSchema = z.enum(['0', '+', '++', '+++', '']);
+
+export const LabourPartographObservationSchema = z.object({
+  id: z.number(),
+  partograph: z.number(),
+  observation_time: z.string(),
+  recorded_by: z.number(),
+  recorded_by_name: z.string(),
+  fetal_heart_rate: z.number().nullable(),
+  cervical_dilation_cm: z.string().nullable(),
+  descent_fifths: z.number().nullable(),
+  contractions_per_10_min: z.number().nullable(),
+  contraction_duration_seconds: z.number().nullable(),
+  moulding: MouldingGradeSchema,
+  maternal_pulse: z.number().nullable(),
+  maternal_blood_pressure: z.string(),
+  maternal_temperature: z.coerce.number().nullable(),
+  urine_volume_ml: z.number().nullable(),
+  urine_protein: UrineResultSchema,
+  urine_acetone: UrineResultSchema,
+  oxytocin_drops_per_min: z.number().nullable(),
+  medications: z.string(),
+  notes: z.string(),
+  alerts: z.array(z.string()),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const LabourPartographSchema = z.object({
+  id: z.number(),
+  registration: z.number(),
+  registration_mch_number: z.string(),
+  mother_name: z.string(),
+  encounter: z.number().nullable(),
+  admission: z.number().nullable(),
+  started_at: z.string(),
+  status: LabourPartographStatusSchema,
+  parity: z.number().nullable(),
+  gestation_weeks: z.number().nullable(),
+  membrane_status: MembraneStatusSchema,
+  liquor: LiquorStatusSchema,
+  notes: z.string(),
+  created_by: z.number().nullable(),
+  created_by_name: z.string().nullable(),
+  completed_at: z.string().nullable(),
+  observation_count: z.number(),
+  latest_observation: LabourPartographObservationSchema.nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const PaginatedLabourPartographListSchema = createPaginatedSchema(LabourPartographSchema);
+
+export const PaginatedLabourPartographObservationListSchema = createPaginatedSchema(LabourPartographObservationSchema);
+
+// =============================================================================
 // PNC VISIT SCHEMAS
 // =============================================================================
 

@@ -64,10 +64,15 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
   const [pulse, setPulse] = useState('');
   const [respiratoryRate, setRespiratoryRate] = useState('');
   const [bowels, setBowels] = useState('');
+  const [fluidIntakeMl, setFluidIntakeMl] = useState('');
+  const [urineOutputMl, setUrineOutputMl] = useState('');
   const [urineOutput, setUrineOutput] = useState('');
   const [notes, setNotes] = useState('');
 
   const readings = data?.results ?? [];
+  const totalFluidIntake = readings.reduce((sum, reading) => sum + (reading.fluid_intake_ml ?? 0), 0);
+  const totalUrineMeasured = readings.reduce((sum, reading) => sum + (reading.urine_output_ml ?? 0), 0);
+  const totalFluidBalance = totalFluidIntake - totalUrineMeasured;
 
   // Chart data: reverse to show chronological order (oldest first)
   const chartData = [...readings].reverse().map((r) => ({
@@ -92,6 +97,8 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
         pulse: pulse ? parseInt(pulse) : undefined,
         respiratory_rate: respiratoryRate ? parseInt(respiratoryRate) : undefined,
         bowels: bowels || undefined,
+        fluid_intake_ml: fluidIntakeMl ? parseInt(fluidIntakeMl) : undefined,
+        urine_output_ml: urineOutputMl ? parseInt(urineOutputMl) : undefined,
         urine_output: urineOutput || undefined,
         notes: notes || undefined,
       });
@@ -108,6 +115,8 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
     setPulse('');
     setRespiratoryRate('');
     setBowels('');
+    setFluidIntakeMl('');
+    setUrineOutputMl('');
     setUrineOutput('');
     setNotes('');
   };
@@ -188,6 +197,30 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
+                    <Label htmlFor="fluid-intake">Fluid Given (mL)</Label>
+                    <Input
+                      id="fluid-intake"
+                      type="number"
+                      min="0"
+                      placeholder="1000"
+                      value={fluidIntakeMl}
+                      onChange={(e) => setFluidIntakeMl(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="urine-measured">Urine Measured (mL)</Label>
+                    <Input
+                      id="urine-measured"
+                      type="number"
+                      min="0"
+                      placeholder="450"
+                      value={urineOutputMl}
+                      onChange={(e) => setUrineOutputMl(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     <Label htmlFor="urine">Urine Output</Label>
                     <Input
                       id="urine"
@@ -227,6 +260,36 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
         </Card>
       ) : (
         <>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Fluid Given</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold">{totalFluidIntake} mL</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Urine Measured</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-semibold">{totalUrineMeasured} mL</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Net Balance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className={`text-2xl font-semibold ${totalFluidBalance < 0 ? 'text-destructive' : ''}`}>
+                  {totalFluidBalance > 0 ? '+' : ''}
+                  {totalFluidBalance} mL
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Chart */}
           <Card>
             <CardHeader className="pb-2">
@@ -316,6 +379,9 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
                       <th className="p-2 font-medium">Pulse</th>
                       <th className="p-2 font-medium">RR</th>
                       <th className="p-2 font-medium">Bowels</th>
+                      <th className="p-2 font-medium">Fluid In</th>
+                      <th className="p-2 font-medium">Urine mL</th>
+                      <th className="p-2 font-medium">Balance</th>
                       <th className="p-2 font-medium">Urine</th>
                       <th className="p-2 font-medium">By</th>
                     </tr>
@@ -333,6 +399,13 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
                         <td className="p-2">{r.pulse ?? '—'}</td>
                         <td className="p-2">{r.respiratory_rate ?? '—'}</td>
                         <td className="p-2">{r.bowels || '—'}</td>
+                        <td className="p-2">{r.fluid_intake_ml != null ? `${r.fluid_intake_ml} mL` : '—'}</td>
+                        <td className="p-2">{r.urine_output_ml != null ? `${r.urine_output_ml} mL` : '—'}</td>
+                        <td className={`p-2 ${r.fluid_balance_ml != null && r.fluid_balance_ml < 0 ? 'text-destructive font-medium' : ''}`}>
+                          {r.fluid_balance_ml != null
+                            ? `${r.fluid_balance_ml > 0 ? '+' : ''}${r.fluid_balance_ml} mL`
+                            : '—'}
+                        </td>
                         <td className="p-2">{r.urine_output || '—'}</td>
                         <td className="p-2 text-muted-foreground">{r.recorded_by_username}</td>
                       </tr>

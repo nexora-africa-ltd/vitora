@@ -1925,6 +1925,16 @@ class TemperatureReading(TimeStampedModel):
         blank=True,
         help_text="Urine output (e.g., Normal, Reduced, Nil)",
     )
+    fluid_intake_ml = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Measured fluid intake in mL for this charting interval",
+    )
+    urine_output_ml = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Measured urine output in mL for this charting interval",
+    )
     notes = models.TextField(
         blank=True,
         help_text="Additional observations or notes",
@@ -1953,6 +1963,14 @@ class TemperatureReading(TimeStampedModel):
     def is_hypothermic(self) -> bool:
         """Temperature <= 35.0°C is considered hypothermic."""
         return self.temperature <= Decimal("35.0")
+
+    @property
+    def fluid_balance_ml(self) -> int | None:
+        """Return net fluid balance for the charting interval."""
+        if self.fluid_intake_ml is None and self.urine_output_ml is None:
+            return None
+
+        return (self.fluid_intake_ml or 0) - (self.urine_output_ml or 0)
 
 
 class BloodTransfusionObservation(TimeStampedModel):

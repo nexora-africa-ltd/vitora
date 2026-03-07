@@ -29,6 +29,7 @@ import { mchRegistrationsApi, ancVisitsApi, deliveriesApi, pncVisitsApi } from '
 import { ANCVisitsTab } from '@/components/mch/anc-visits-tab';
 import { DeliveryTab } from '@/components/mch/delivery-tab';
 import { PNCVisitsTab } from '@/components/mch/pnc-visits-tab';
+import { PartographTab } from '@/components/mch/partograph-tab';
 import { GrowthTab } from '@/components/mch/growth-tab';
 import { ImmunizationsTab } from '@/components/mch/immunizations-tab';
 import { HEITab } from '@/components/mch/hei-tab';
@@ -317,6 +318,11 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
               <Baby className="h-4 w-4" />
               Delivery
             </TabsTrigger>
+            <TabsTrigger value="partograph" className="gap-2">
+              <Stethoscope className="h-4 w-4" />
+              <span className="sm:hidden">Labour</span>
+              <span className="hidden sm:inline">Partograph</span>
+            </TabsTrigger>
             <TabsTrigger value="pnc" className="gap-2">
               <Heart className="h-4 w-4" />
               <span className="sm:hidden">PNC</span>
@@ -349,6 +355,10 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
 
           <TabsContent value="delivery">
             <DeliveryTab registrationId={registrationId} />
+          </TabsContent>
+
+          <TabsContent value="partograph">
+            <PartographTab registrationId={registrationId} />
           </TabsContent>
 
           <TabsContent value="pnc">

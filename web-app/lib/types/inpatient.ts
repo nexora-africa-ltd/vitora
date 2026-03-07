@@ -853,6 +853,9 @@ export interface TemperatureReading {
   respiratory_rate?: number | null;
   bowels?: string;
   urine_output?: string;
+  fluid_intake_ml?: number | null;
+  urine_output_ml?: number | null;
+  fluid_balance_ml?: number | null;
   notes?: string;
   is_febrile?: boolean;
   is_hypothermic?: boolean;
@@ -868,6 +871,8 @@ export interface TemperatureReadingCreateData {
   respiratory_rate?: number | null;
   bowels?: string;
   urine_output?: string;
+  fluid_intake_ml?: number | null;
+  urine_output_ml?: number | null;
   notes?: string;
 }
 

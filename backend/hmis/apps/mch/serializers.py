@@ -11,6 +11,8 @@ from hmis.apps.mch.models import (
     ANCVisit,
     Delivery,
     GrowthMeasurement,
+    LabourPartograph,
+    LabourPartographObservation,
     HEIFollowUp,
     HEIPCRTest,
     ImmunizationRecord,
@@ -370,6 +372,108 @@ class DeliveryListSerializer(serializers.ModelSerializer):
 
     def get_alerts(self, obj):
         return obj.get_alerts()
+
+
+# =============================================================================
+# Labour Partograph Serializers
+# =============================================================================
+
+
+class LabourPartographObservationSerializer(serializers.ModelSerializer):
+    """Serializer for labour partograph observations."""
+
+    recorded_by_name = serializers.CharField(source="recorded_by.username", read_only=True)
+    alerts = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LabourPartographObservation
+        fields = [
+            "id",
+            "partograph",
+            "observation_time",
+            "recorded_by",
+            "recorded_by_name",
+            "fetal_heart_rate",
+            "cervical_dilation_cm",
+            "descent_fifths",
+            "contractions_per_10_min",
+            "contraction_duration_seconds",
+            "moulding",
+            "maternal_pulse",
+            "maternal_blood_pressure",
+            "maternal_temperature",
+            "urine_volume_ml",
+            "urine_protein",
+            "urine_acetone",
+            "oxytocin_drops_per_min",
+            "medications",
+            "notes",
+            "alerts",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["recorded_by", "recorded_by_name", "alerts"]
+
+    def get_alerts(self, obj):
+        return obj.get_alerts()
+
+
+class LabourPartographSerializer(serializers.ModelSerializer):
+    """Serializer for labour partographs."""
+
+    registration_mch_number = serializers.CharField(
+        source="registration.mch_number", read_only=True
+    )
+    mother_name = serializers.SerializerMethodField()
+    created_by_name = serializers.CharField(source="created_by.username", read_only=True)
+    observation_count = serializers.IntegerField(read_only=True)
+    latest_observation = serializers.SerializerMethodField()
+
+    class Meta:
+        model = LabourPartograph
+        fields = [
+            "id",
+            "registration",
+            "registration_mch_number",
+            "mother_name",
+            "encounter",
+            "admission",
+            "started_at",
+            "status",
+            "parity",
+            "gestation_weeks",
+            "membrane_status",
+            "liquor",
+            "notes",
+            "created_by",
+            "created_by_name",
+            "completed_at",
+            "observation_count",
+            "latest_observation",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "created_by",
+            "created_by_name",
+            "completed_at",
+            "observation_count",
+            "latest_observation",
+        ]
+
+    def get_mother_name(self, obj):
+        mother = obj.registration.mother
+        return f"{mother.first_name} {mother.last_name}"
+
+    def get_latest_observation(self, obj):
+        latest = getattr(obj, "latest_observation", None)
+        if callable(latest):
+            latest = latest()
+        if latest is None:
+            latest = obj.observations.order_by("-observation_time").first()
+        if latest is None:
+            return None
+        return LabourPartographObservationSerializer(latest).data
 
 
 # =============================================================================

@@ -7,6 +7,8 @@ from hmis.apps.mch.models import (
     ANCVisit,
     Delivery,
     GrowthMeasurement,
+    LabourPartograph,
+    LabourPartographObservation,
     HEIFollowUp,
     HEIPCRTest,
     ImmunizationRecord,
@@ -36,6 +38,31 @@ class DeliveryAdmin(admin.ModelAdmin):
     list_display = ("registration", "delivery_date", "delivery_type", "delivery_outcome", "status")
     list_filter = ("delivery_type", "delivery_outcome", "status")
     search_fields = ("registration__mch_number",)
+
+
+@admin.register(LabourPartograph)
+class LabourPartographAdmin(admin.ModelAdmin):
+    list_display = ("registration", "started_at", "status", "parity", "gestation_weeks")
+    list_filter = ("status", "membrane_status", "liquor")
+    search_fields = (
+        "registration__mch_number",
+        "registration__mother__first_name",
+        "registration__mother__last_name",
+    )
+
+
+@admin.register(LabourPartographObservation)
+class LabourPartographObservationAdmin(admin.ModelAdmin):
+    list_display = (
+        "partograph",
+        "observation_time",
+        "fetal_heart_rate",
+        "cervical_dilation_cm",
+        "contractions_per_10_min",
+        "maternal_pulse",
+    )
+    list_filter = ("urine_protein", "urine_acetone")
+    search_fields = ("partograph__registration__mch_number",)
 
 
 @admin.register(PNCVisit)
