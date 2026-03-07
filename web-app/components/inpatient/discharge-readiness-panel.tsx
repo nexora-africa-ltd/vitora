@@ -31,6 +31,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useAIDischargeAssess, useAIEnabled } from '@/lib/hooks/use-ai';
+import { toast } from 'sonner';
 import type {
   AIDischargeAssessRequest,
   AIDischargeAssessResponse,
@@ -162,6 +163,18 @@ export function DischargeReadinessPanel({
   const { mutate, data: result, isPending, isError, reset } = useAIDischargeAssess();
   const [showDetails, setShowDetails] = React.useState(false);
 
+  // Show success toast when assessment completes
+  React.useEffect(() => {
+    if (result && result.readiness_level) {
+      const score = Math.round(result.readiness_score * 100);
+      const levelLabel = result.readiness_level === 'ready' ? 'Ready'
+        : result.readiness_level === 'near_ready' ? 'Near ready' : 'Not ready';
+      toast.success('Discharge assessment complete', {
+        description: `${levelLabel} — ${score}% readiness score`,
+      });
+    }
+  }, [result]);
+
   // Auto-trigger from widget quick action
   React.useEffect(() => {
     if (autoTrigger && isAIEnabled && !isPending && !result) {
@@ -221,7 +234,10 @@ export function DischargeReadinessPanel({
   const isFallback = result?.mode === 'fallback';
 
   return (
-    <Card>
+    <Card className={cn(
+      'transition-colors duration-500',
+      hasResult && 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800/50 dark:bg-emerald-950/20'
+    )}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

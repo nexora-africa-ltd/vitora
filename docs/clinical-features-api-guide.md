@@ -11,7 +11,7 @@ Supplementary API guide for the clinical decision support features implemented a
 
 ## Authentication
 
-Same as the core API — see [ai-api-guide.md](ai-api-guide.md#authentication). All clinical feature endpoints that modify or evaluate patient data require API key authentication. Health and listing endpoints are public.
+Same as the core API — see [api-guide.md](api-guide.md#authentication). All clinical feature endpoints that modify or evaluate patient data require API key authentication. Health and listing endpoints are public.
 
 ---
 
@@ -36,6 +36,8 @@ Same as the core API — see [ai-api-guide.md](ai-api-guide.md#authentication). 
 | `/clerking/templates/{format}` | GET | No | Get note template sections |
 | `/clerking/autocomplete` | POST | **Yes** | Context-aware medical autocomplete |
 | `/clerking/structure` | POST | **Yes** | Convert free-text to structured note |
+| `/feedback` | POST | **Yes** | Submit feedback for any service response |
+| `/feedback/stats` | GET | No | Feedback statistics (overall + per-service) |
 
 ---
 
@@ -1515,6 +1517,165 @@ curl https://tibabot.hmis.nexora.africa/clerking/health
 
 ---
 
+## 6. Feedback
+
+Unified feedback collection across all TibaBot services. Every service response can be rated with thumbs up/down, tagged by service type, and enriched with service-specific metadata for quality monitoring and improvement.
+
+### Submit Feedback
+
+```http
+POST /feedback
+Content-Type: application/json
+X-API-Key: your-api-key
+```
+
+**Request:**
+```json
+{
+  "message_id": "abc123",
+  "conversation_id": "conv-456",
+  "feedback": "down",
+  "user_query": "Generate care plan for pneumonia with SpO2 88%",
+  "bot_response": "Goals: Manage pneumonia. Investigations: Baseline investigations...",
+  "risk_level": "high",
+  "service_type": "care_plan",
+  "metadata": {
+    "mode": "template",
+    "template_used": "pneumonia",
+    "llm_enriched": false,
+    "facility_level": "H3"
+  }
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `message_id` | string | **Yes** | — | ID of the response being rated |
+| `conversation_id` | string | No | `null` | Conversation/session ID |
+| `feedback` | string | **Yes** | — | `"up"` or `"down"` |
+| `user_query` | string | No | `null` | The user's original input |
+| `bot_response` | string | No | `null` | The response text (truncated to 500 chars) |
+| `risk_level` | string | No | `null` | Risk level of the response |
+| `service_type` | string | No | `"chat"` | Which service generated the response (see values below) |
+| `metadata` | dict | No | `null` | Service-specific context for quality analysis |
+
+**Service Types:**
+
+| Value | Service |
+|-------|---------|
+| `chat` | General RAG chat (default) |
+| `symptom_checker` | Symptom checker / triage |
+| `clinical_assist` | Clinical assistant (provider-facing) |
+| `care_plan` | Care Plan Generator |
+| `lab_assist` | Lab result interpretation |
+| `discharge_readiness` | Discharge readiness assessment |
+| `cds_rules` | CDS Rules Engine |
+| `clerking_assist` | Clerking Assist |
+| `icd10` | ICD-10 search / coding |
+| `medical_predictor` | Medical condition predictor |
+| `icu_predictor` | ICU condition predictor |
+| `pubmed` | PubMed research citations |
+
+**Recommended `metadata` by service:**
+
+| Service | Useful metadata fields |
+|---------|----------------------|
+| `care_plan` | `mode`, `template_used`, `llm_enriched`, `facility_level` |
+| `clinical_assist` | `verbosity`, `risk_level`, `rag_source_count` |
+| `symptom_checker` | `triage_level`, `symptoms_extracted`, `language` |
+| `lab_assist` | `critical_count`, `patterns_detected` |
+| `discharge_readiness` | `readiness_level`, `readiness_score`, `condition` |
+| `cds_rules` | `rules_fired`, `alert_count`, `severity_max` |
+| `clerking_assist` | `format`, `completeness_score` |
+| `icd10` | `code`, `confidence`, `search_mode` |
+
+**Response:**
+```json
+{
+  "status": "received",
+  "message": "Thank you for your feedback!",
+  "feedback_id": "a1b2c3d4"
+}
+```
+
+### Feedback Statistics
+
+```http
+GET /feedback/stats
+GET /feedback/stats?service=care_plan
+```
+
+Optional query parameter `service` filters statistics to a single service type.
+
+**Response (unfiltered):**
+```json
+{
+  "total": 142,
+  "positive": 118,
+  "negative": 24,
+  "positive_rate": 83.1,
+  "by_service": {
+    "chat": {
+      "total": 80,
+      "positive": 68,
+      "negative": 12,
+      "positive_rate": 85.0
+    },
+    "care_plan": {
+      "total": 30,
+      "positive": 22,
+      "negative": 8,
+      "positive_rate": 73.3
+    },
+    "lab_assist": {
+      "total": 15,
+      "positive": 14,
+      "negative": 1,
+      "positive_rate": 93.3
+    }
+  },
+  "recent_negative": [
+    {
+      "feedback_id": "a1b2c3d4",
+      "user_query": "Generate care plan for pneumonia with SpO2 88%",
+      "risk_level": "high",
+      "service_type": "care_plan",
+      "timestamp": "2026-03-07T10:30:00"
+    }
+  ]
+}
+```
+
+**Response (filtered by `?service=care_plan`):**
+```json
+{
+  "total": 30,
+  "positive": 22,
+  "negative": 8,
+  "positive_rate": 73.3,
+  "recent_negative": [
+    {
+      "feedback_id": "a1b2c3d4",
+      "user_query": "Generate care plan for pneumonia with SpO2 88%",
+      "risk_level": "high",
+      "service_type": "care_plan",
+      "timestamp": "2026-03-07T10:30:00"
+    }
+  ]
+}
+```
+
+| Response Field | Type | Description |
+|----------------|------|-------------|
+| `total` | int | Total feedback entries |
+| `positive` | int | Thumbs-up count |
+| `negative` | int | Thumbs-down count |
+| `positive_rate` | float | Positive feedback percentage |
+| `by_service` | dict | Per-service breakdown (omitted when filtering) |
+| `recent_negative` | dict[] | Last 10 negative feedback entries |
+
+---
+
 ## Cross-Feature Integration
 
 Several clinical features work together when available:
@@ -1526,12 +1687,13 @@ Several clinical features work together when available:
 | **Lab Assist → Discharge** | Lab results from Lab Assist inform discharge criteria evaluation |
 | **CDS Rules → Lab Assist** | Critical lab value rules mirror Lab Assist critical alerts |
 | **Clerking → ICD-10** | Structured notes include auto-coded diagnoses via the ICD-10 service |
+| **Feedback → All Services** | Unified feedback endpoint accepts `service_type` to tag ratings per service; `/feedback/stats?service=` filters per-service quality metrics |
 
 ---
 
 ## Support
 
-- **Core API Docs:** [ai-api-guide.md](ai-api-guide.md)
+- **Core API Docs:** [api-guide.md](api-guide.md)
 - **Clinical Features Plan:** [clinical_features_plan.md](clinical_features_plan.md)
 - **Issues:** https://github.com/nexora-africa-ltd/tibabot/issues
 - **OpenAPI:** `https://tibabot.hmis.nexora.africa/docs` (when `TIBABOT_ENABLE_DOCS=true`)

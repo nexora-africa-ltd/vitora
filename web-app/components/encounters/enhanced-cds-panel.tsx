@@ -31,6 +31,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useAICDSEvaluate, useAIEnabled } from '@/lib/hooks/use-ai';
+import { toast } from 'sonner';
 import type { AICDSAlertItem, AICDSEvaluateRequest } from '@/lib/types/ai';
 
 // =============================================================================
@@ -185,6 +186,19 @@ export function EnhancedCDSPanel({
   const [showRecommendations, setShowRecommendations] = React.useState(false);
   const hasRun = React.useRef(false);
 
+  // Show success toast when evaluation completes
+  React.useEffect(() => {
+    if (result) {
+      const alertCount = result.alerts?.length ?? 0;
+      const recCount = result.recommendations?.length ?? 0;
+      toast.success('Safety check complete', {
+        description: alertCount > 0
+          ? `${alertCount} alert(s), ${recCount} recommendation(s)`
+          : 'No safety concerns detected',
+      });
+    }
+  }, [result]);
+
   const handleEvaluate = React.useCallback(() => {
     mutate({
       medications,
@@ -237,7 +251,10 @@ export function EnhancedCDSPanel({
   const isFallback = result?.mode === 'fallback';
 
   return (
-    <Card>
+    <Card className={cn(
+      'transition-colors duration-500',
+      (hasResult || noAlerts) && 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800/50 dark:bg-emerald-950/20'
+    )}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
