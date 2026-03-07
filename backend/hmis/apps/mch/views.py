@@ -988,8 +988,6 @@ class GrowthMeasurementViewSet(viewsets.ModelViewSet):
         if patient_id:
             measurements = measurements.filter(patient_id=patient_id)
 
-        serializer = GrowthMeasurementListSerializer(measurements, many=True)
-
         percentile_lines = {}
         if sex:
             try:
@@ -1022,8 +1020,11 @@ class GrowthMeasurementViewSet(viewsets.ModelViewSet):
             except Exception:
                 percentile_lines = {}
 
+        # Pass the queryset (model instances) so GrowthChartDataSerializer can serialize
+        # them correctly. Passing pre-serialized data (dicts) would cause
+        # PrimaryKeyRelatedField.to_representation to fail with 'int has no attribute pk'.
         payload = {
-            "measurements": serializer.data,
+            "measurements": measurements,
             "percentile_lines": percentile_lines,
             "chart_type": chart_type,
             "sex": sex or "",
