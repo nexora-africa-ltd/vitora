@@ -10,28 +10,27 @@ import { z } from 'zod';
 // ENUMS
 // =============================================================================
 
-export const DepartmentTypeSchema = z.enum(['CLINICAL', 'ADMINISTRATIVE', 'SUPPORT', 'ANCILLARY', 'LABORATORY', 'PHARMACY', 'RADIOLOGY', 'RECORDS']);
+export const DepartmentTypeSchema = z.enum(['CLINICAL', 'ADMINISTRATIVE', 'SUPPORT', 'LABORATORY', 'PHARMACY', 'RADIOLOGY', 'RECORDS']);
 
 export const RoleCategorySchema = z.enum(['CLINICAL', 'ADMINISTRATIVE', 'TECHNICAL', 'MANAGEMENT', 'COMMUNITY']);
 
-export const EmploymentStatusSchema = z.enum(['ACTIVE', 'INACTIVE', 'ON_LEAVE', 'SUSPENDED', 'TERMINATED']);
+export const EmploymentStatusSchema = z.enum(['ACTIVE', 'ON_LEAVE', 'SUSPENDED', 'TERMINATED']);
 
-export const EmploymentTypeSchema = z.enum(['PERMANENT', 'CONTRACT', 'LOCUM', 'INTERN', 'VOLUNTEER']);
+export const EmploymentTypeSchema = z.enum(['PERMANENT', 'CONTRACT', 'LOCUM']);
 
 export const GenderSchema = z.enum(['M', 'F', 'O']);
 
 export const AuditActionSchema = z.enum([
+  'department_created',
+  'department_updated',
+  'department_deleted',
   'role_created',
   'role_updated',
   'role_deleted',
-  'permission_granted',
-  'permission_revoked',
   'staff_created',
   'staff_updated',
   'staff_deactivated',
   'role_assigned',
-  'department_created',
-  'department_updated',
 ]);
 
 // =============================================================================
@@ -120,8 +119,6 @@ export const StaffProfileSchema = z.object({
   employee_id: z.string(),
   title: z.string().nullable().optional(),
   middle_name: z.string().nullable().optional(),
-  gender: GenderSchema.nullable().optional(),
-  date_of_birth: z.string().nullable().optional(),
   primary_role: z.number().nullable().optional(),
   primary_role_name: z.string().nullable().optional(),
   secondary_roles: z.array(z.number()).optional(),

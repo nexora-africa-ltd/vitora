@@ -27,6 +27,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCreateRole, usePermissions } from '@/lib/hooks/use-rbac';
 import type { Permission, RoleCategory } from '@/lib/types/rbac';
+import { buildPermissionsMatrix } from '@/lib/utils/rbac-permissions';
 
 const ROLE_CATEGORIES: { value: RoleCategory; label: string }[] = [
   { value: 'CLINICAL', label: 'Clinical Staff' },
@@ -59,7 +60,7 @@ export default function NewRolePage() {
         code: formData.code,
         description: formData.description,
         category: formData.category as RoleCategory,
-        permissions_matrix: {},
+        permissions_matrix: buildPermissionsMatrix(formData.permissions, permissionsData || []),
       });
 
       toast({

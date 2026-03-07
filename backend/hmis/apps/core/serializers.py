@@ -41,6 +41,7 @@ class AuditLogSerializer(serializers.ModelSerializer):
     """Serializer for AuditLog model."""
 
     username = serializers.CharField(source="user.username", read_only=True, default="Anonymous")
+    user_name = serializers.SerializerMethodField()
 
     class Meta:
         """Meta options for AuditLogSerializer."""
@@ -50,6 +51,7 @@ class AuditLogSerializer(serializers.ModelSerializer):
             "id",
             "user",
             "username",
+            "user_name",
             "action",
             "resource_type",
             "resource_id",
@@ -60,6 +62,13 @@ class AuditLogSerializer(serializers.ModelSerializer):
             "patient_id",
         ]
         read_only_fields = fields  # All fields are read-only
+
+    def get_user_name(self, obj) -> str:
+        """Return a friendly display name for the acting user."""
+        if not obj.user:
+            return "System"
+        full_name = obj.user.get_full_name().strip()
+        return full_name or obj.user.username
 
 
 class FrontendEventSerializer(serializers.ModelSerializer):
@@ -170,6 +179,9 @@ class DepartmentSerializer(serializers.ModelSerializer):
     parent_name = serializers.CharField(source="parent.name", read_only=True)
     head_name = serializers.SerializerMethodField()
     staff_count = serializers.SerializerMethodField()
+    department_type_display = serializers.CharField(
+        source="get_department_type_display", read_only=True
+    )
 
     class Meta:
         """Meta options for DepartmentSerializer."""
@@ -179,7 +191,9 @@ class DepartmentSerializer(serializers.ModelSerializer):
             "id",
             "code",
             "name",
+            "description",
             "department_type",
+            "department_type_display",
             "parent",
             "parent_name",
             "head",
@@ -207,6 +221,7 @@ class RoleSerializer(serializers.ModelSerializer):
 
     parent_role_name = serializers.CharField(source="parent_role.name", read_only=True)
     django_group_name = serializers.CharField(source="django_group.name", read_only=True)
+    category_display = serializers.CharField(source="get_category_display", read_only=True)
 
     class Meta:
         """Meta options for RoleSerializer."""
@@ -217,6 +232,7 @@ class RoleSerializer(serializers.ModelSerializer):
             "code",
             "name",
             "category",
+            "category_display",
             "description",
             "permissions_matrix",
             "hierarchy_level",
@@ -295,6 +311,86 @@ class StaffProfileSerializer(serializers.ModelSerializer):
     def get_is_license_valid(self, obj) -> bool:
         """Check if license is valid."""
         return obj.is_license_valid()
+
+
+class StaffProfileUpdateSerializer(serializers.ModelSerializer):
+    """Write serializer for admin/staff profile updates with user field aliases."""
+
+    email = serializers.EmailField(source="user.email", required=False)
+    first_name = serializers.CharField(source="user.first_name", required=False)
+    last_name = serializers.CharField(source="user.last_name", required=False)
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.filter(is_active=True),
+        required=False,
+        allow_null=True,
+        source="primary_department",
+    )
+    role = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.filter(is_active=True),
+        required=False,
+        allow_null=True,
+        source="primary_role",
+    )
+
+    class Meta:
+        model = StaffProfile
+        fields = [
+            "title",
+            "middle_name",
+            "email",
+            "first_name",
+            "last_name",
+            "employee_id",
+            "primary_role",
+            "role",
+            "secondary_roles",
+            "primary_department",
+            "department",
+            "secondary_departments",
+            "hwr_id",
+            "license_number",
+            "license_expiry",
+            "license_verified",
+            "licensing_body",
+            "specialization",
+            "phone_number",
+            "emergency_contact_name",
+            "emergency_contact_phone",
+            "employment_status",
+            "employment_type",
+            "date_joined",
+            "date_left",
+            "supervisor",
+        ]
+
+    def validate_email(self, value):
+        """Validate email uniqueness for updates."""
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        instance = getattr(self, "instance", None)
+        queryset = User.objects.filter(email__iexact=value)
+        if instance is not None:
+            queryset = queryset.exclude(pk=instance.user_id)
+        if queryset.exists():
+            raise serializers.ValidationError("This email is already registered.")
+        return value.lower()
+
+    def update(self, instance, validated_data):
+        """Update related user fields and the staff profile in one request."""
+        user_data = validated_data.pop("user", {})
+        user = instance.user
+        user_changed = False
+
+        for field, value in user_data.items():
+            if getattr(user, field) != value:
+                setattr(user, field, value)
+                user_changed = True
+
+        if user_changed:
+            user.save(update_fields=list(user_data.keys()))
+
+        return super().update(instance, validated_data)
 
 
 class StaffProfileCreateSerializer(serializers.Serializer):
@@ -395,6 +491,34 @@ class StaffProfileCreateSerializer(serializers.Serializer):
         staff_profile = StaffProfile.objects.create(user=user, **validated_data)
 
         return staff_profile
+
+
+class UserPermissionsSerializer(serializers.Serializer):
+    """Serializer for the current user's permission list."""
+
+    permissions = serializers.ListField(child=serializers.CharField())
+
+
+class UsernameCheckResponseSerializer(serializers.Serializer):
+    """Response serializer for username availability checks."""
+
+    username = serializers.CharField()
+    available = serializers.BooleanField()
+    suggestions = serializers.ListField(child=serializers.CharField())
+
+
+class UsernameSuggestionRequestSerializer(serializers.Serializer):
+    """Request serializer for username suggestions."""
+
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    middle_name = serializers.CharField(required=False, allow_blank=True)
+
+
+class UsernameSuggestionResponseSerializer(serializers.Serializer):
+    """Response serializer for username suggestions."""
+
+    suggestions = serializers.ListField(child=serializers.CharField())
 
 
 # ============================================================================

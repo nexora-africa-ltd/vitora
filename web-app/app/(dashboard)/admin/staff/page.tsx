@@ -42,13 +42,13 @@ export default function StaffListPage() {
   const [statusFilter, setStatusFilter] = useState<EmploymentStatus | ''>('');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
-  const { data: departments } = useDepartments({ is_active: true });
-  const { data: roles } = useRoles();
+  const { data: departments } = useDepartments({ is_active: true, page_size: 100 });
+  const { data: roles } = useRoles({ page_size: 100 });
 
   const { data, isLoading, error } = useStaffList({
     search: search || undefined,
-    department: departmentFilter ? parseInt(departmentFilter) : undefined,
-    role: roleFilter ? parseInt(roleFilter) : undefined,
+    primary_department: departmentFilter ? parseInt(departmentFilter) : undefined,
+    primary_role: roleFilter ? parseInt(roleFilter) : undefined,
     employment_status: statusFilter || undefined,
   });
 
@@ -134,7 +134,6 @@ export default function StaffListPage() {
               <SelectContent>
                 <SelectItem value="">All Status</SelectItem>
                 <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="INACTIVE">Inactive</SelectItem>
                 <SelectItem value="ON_LEAVE">On Leave</SelectItem>
                 <SelectItem value="SUSPENDED">Suspended</SelectItem>
                 <SelectItem value="TERMINATED">Terminated</SelectItem>
@@ -288,7 +287,6 @@ function StaffGridView({ staff }: { staff: StaffProfile[] }) {
           title={member.full_name}
           subtitle={`@${member.user_username}`}
           initials={getInitials(member.user_first_name, member.user_last_name)}
-          gender={member.gender}
           href={`/admin/staff/${member.id}`}
           status={{
             label: member.employment_status === 'ACTIVE' ? 'Active' : member.employment_status?.toLowerCase() || 'Unknown',

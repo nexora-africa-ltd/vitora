@@ -50,8 +50,8 @@ export default function EditStaffPage() {
   const updateStaff = useUpdateStaffProfile();
   const terminateStaff = useDeleteStaffProfile();
 
-  const { data: departments } = useDepartments({ is_active: true });
-  const { data: roles } = useRoles();
+  const { data: departments } = useDepartments({ is_active: true, page_size: 100 });
+  const { data: roles } = useRoles({ page_size: 100 });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -65,7 +65,6 @@ export default function EditStaffPage() {
     license_number: '',
     license_expiry: '',
     specialization: '',
-    is_active: true,
   });
 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -84,7 +83,6 @@ export default function EditStaffPage() {
         license_number: staff.license_number || '',
         license_expiry: staff.license_expiry || '',
         specialization: staff.specialization || '',
-        is_active: staff.employment_status === 'ACTIVE',
       });
     }
   }, [staff]);
@@ -147,7 +145,6 @@ export default function EditStaffPage() {
           license_number: formData.license_number || undefined,
           license_expiry: formData.license_expiry || undefined,
           specialization: formData.specialization || undefined,
-          is_active: formData.is_active,
         },
       });
 

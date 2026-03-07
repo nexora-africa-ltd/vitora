@@ -20,6 +20,7 @@ from hmis.apps.core.views import (
     CodeSystemViewSet,
     CountyViewSet,
     DepartmentViewSet,
+    me_permissions,
     NotificationViewSet,
     PermissionViewSet,
     RoleViewSet,
@@ -109,6 +110,7 @@ urlpatterns = [
     path("api/health/", health_check, name="api_health_check"),
     path("admin/", admin.site.urls),
     path("api/", include(router.urls)),
+    path("api/me/permissions/", me_permissions, name="me-permissions"),
     path("api/locations/", include(location_router.urls)),
     path("api/terminology/", include(terminology_router.urls)),
     # Nested route for emergency contacts under patients

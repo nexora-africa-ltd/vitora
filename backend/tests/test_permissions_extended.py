@@ -268,7 +268,7 @@ class TestAuditLogPermission:
         assert permission.has_permission(request, None) is False
 
     def test_denies_regular_user(self, django_user_model):
-        """Should deny non-superusers."""
+        """Should deny non-admin users."""
         user = django_user_model.objects.create_user(
             username="regular", email="regular@example.com", password="testpass"
         )
@@ -279,6 +279,22 @@ class TestAuditLogPermission:
 
         permission = AuditLogPermission()
         assert permission.has_permission(request, None) is False
+
+    def test_allows_staff_admin_read(self, django_user_model):
+        """Should allow staff admins to read audit logs."""
+        user = django_user_model.objects.create_user(
+            username="staffadmin",
+            email="staffadmin@example.com",
+            password="testpass",
+            is_staff=True,
+        )
+
+        factory = RequestFactory()
+        request = factory.get("/")
+        request.user = user
+
+        permission = AuditLogPermission()
+        assert permission.has_permission(request, None) is True
 
     def test_allows_superuser_read(self, django_user_model):
         """Should allow superusers to read."""
@@ -332,8 +348,8 @@ class TestAuditLogPermission:
         permission = AuditLogPermission()
         assert permission.has_object_permission(request, None, MagicMock()) is True
 
-    def test_has_object_permission_denies_non_superuser(self, django_user_model):
-        """has_object_permission should deny non-superusers."""
+    def test_has_object_permission_denies_non_admin(self, django_user_model):
+        """has_object_permission should deny non-admins."""
         user = django_user_model.objects.create_user(
             username="regular", email="regular@example.com", password="testpass"
         )

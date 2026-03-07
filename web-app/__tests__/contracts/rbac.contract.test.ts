@@ -681,17 +681,16 @@ describe('RBAC Contract Tests', () => {
       // The OpenAPI audit action is a string field, not an enum
       // This test ensures our Zod enum covers expected actions
       const rbacActions = [
+        'department_created',
+        'department_updated',
+        'department_deleted',
         'role_created',
         'role_updated',
         'role_deleted',
-        'permission_granted',
-        'permission_revoked',
         'staff_created',
         'staff_updated',
         'staff_deactivated',
         'role_assigned',
-        'department_created',
-        'department_updated',
       ];
 
       const missing = rbacActions.filter((a) => !zodValues.includes(a));

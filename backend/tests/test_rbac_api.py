@@ -82,15 +82,38 @@ class TestDepartmentAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["code"] == "OPD"
         assert response.data["name"] == "Outpatient Department"
+        assert response.data["description"] == ""
+        assert response.data["department_type_display"] == "Clinical"
 
     def test_update_department_admin_only(self, authenticated_client, sample_department):
         """Should allow admins to update departments."""
-        data = {"name": "Updated OPD"}
+        data = {"name": "Updated OPD", "description": "Handles walk-in visits"}
 
         response = authenticated_client.patch(f"/api/departments/{sample_department.id}/", data)
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["name"] == "Updated OPD"
+        assert response.data["description"] == "Handles walk-in visits"
+
+    def test_create_department_logs_audit_event(self, authenticated_client, admin_user):
+        """Creating a department should generate an audit log entry."""
+        from hmis.apps.core.models import AuditLog
+
+        response = authenticated_client.post(
+            "/api/departments/",
+            {
+                "code": "RAD",
+                "name": "Radiology",
+                "department_type": "RADIOLOGY",
+                "description": "Imaging services",
+            },
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        audit = AuditLog.objects.filter(action="department_created").latest("timestamp")
+        assert audit.user == admin_user
+        assert audit.resource_type == "Department"
+        assert audit.details["name"] == "Radiology"
 
     def test_delete_department_admin_only(self, authenticated_client, sample_department):
         """Should allow admins to delete departments."""
@@ -193,6 +216,23 @@ class TestRoleAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["code"] == "DOCTOR"
         assert response.data["requires_license"] is True
+        assert response.data["category_display"] == "Clinical Staff"
+
+    def test_update_role_logs_audit_event(self, authenticated_client, sample_role, admin_user):
+        """Updating a role should generate an audit log entry."""
+        from hmis.apps.core.models import AuditLog
+
+        response = authenticated_client.patch(
+            f"/api/roles/{sample_role.id}/",
+            {"description": "Updated role description"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        audit = AuditLog.objects.filter(action="role_updated").latest("timestamp")
+        assert audit.user == admin_user
+        assert audit.resource_type == "Role"
+        assert audit.resource_id == sample_role.id
 
     def test_get_role_permissions_matrix(self, authenticated_client, sample_role):
         """Should return role's permission matrix."""
@@ -313,12 +353,52 @@ class TestStaffProfileAPI:
 
     def test_update_staff_profile(self, authenticated_client, sample_staff):
         """Should allow updating staff profile."""
-        data = {"title": "Dr."}
+        from hmis.apps.core.models import Department, Role
+
+        new_department = Department.objects.create(
+            code="LAB",
+            name="Laboratory",
+            department_type="LABORATORY",
+            description="Diagnostics",
+        )
+        new_role = Role.objects.create(
+            code="CONSULTANT",
+            name="Consultant",
+            category="CLINICAL",
+        )
+        data = {
+            "title": "Dr.",
+            "first_name": "Jane",
+            "last_name": "Roe",
+            "email": "jane.roe@example.com",
+            "department": new_department.id,
+            "role": new_role.id,
+        }
 
         response = authenticated_client.patch(f"/api/staff/{sample_staff.id}/", data)
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data["title"] == "Dr."
+        assert response.data["user_first_name"] == "Jane"
+        assert response.data["user_last_name"] == "Roe"
+        assert response.data["user_email"] == "jane.roe@example.com"
+        assert response.data["primary_department"] == new_department.id
+        assert response.data["primary_role"] == new_role.id
+
+    def test_update_staff_profile_logs_audit_event(self, authenticated_client, sample_staff, admin_user):
+        """Updating staff should generate an audit log entry."""
+        from hmis.apps.core.models import AuditLog
+
+        response = authenticated_client.patch(
+            f"/api/staff/{sample_staff.id}/",
+            {"title": "Dr."},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        audit = AuditLog.objects.filter(action="staff_updated").latest("timestamp")
+        assert audit.user == admin_user
+        assert audit.resource_type == "StaffProfile"
+        assert audit.resource_id == sample_staff.id
 
     def test_get_current_user_profile(self, api_client, sample_staff):
         """Should return current user's staff profile."""
@@ -353,3 +433,13 @@ class TestStaffProfileAPI:
 
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data["results"]) >= 1
+
+    def test_get_current_user_permissions(self, api_client, sample_staff):
+        """Should return the current user's permissions list."""
+        api_client.force_authenticate(user=sample_staff.user)
+
+        response = api_client.get("/api/me/permissions/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert "permissions" in response.data
+        assert isinstance(response.data["permissions"], list)

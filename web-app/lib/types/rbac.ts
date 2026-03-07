@@ -14,7 +14,6 @@ export type DepartmentType =
   | 'CLINICAL'
   | 'ADMINISTRATIVE'
   | 'SUPPORT'
-  | 'ANCILLARY'
   | 'LABORATORY'
   | 'PHARMACY'
   | 'RADIOLOGY'
@@ -97,9 +96,11 @@ export interface RoleUpdateData extends Partial<RoleCreateData> {}
 // =============================================================================
 
 export interface Permission {
+  id: number;
   codename: string;
   name: string;
   app_label: string;
+  model: string;
 }
 
 export interface PermissionGroup {
@@ -112,9 +113,8 @@ export interface PermissionGroup {
 // Staff Profile Types
 // =============================================================================
 
-export type EmploymentStatus = 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE' | 'SUSPENDED' | 'TERMINATED';
-export type EmploymentType = 'PERMANENT' | 'CONTRACT' | 'LOCUM' | 'INTERN' | 'VOLUNTEER';
-export type Gender = 'M' | 'F' | 'O';
+export type EmploymentStatus = 'ACTIVE' | 'ON_LEAVE' | 'SUSPENDED' | 'TERMINATED';
+export type EmploymentType = 'PERMANENT' | 'CONTRACT' | 'LOCUM';
 
 export interface StaffProfile {
   id: number;
@@ -127,8 +127,6 @@ export interface StaffProfile {
   employee_id: string;
   title?: string | null;
   middle_name?: string | null;
-  gender?: Gender | null;
-  date_of_birth?: string | null;
   primary_role?: number | null;
   primary_role_name?: string | null;
   secondary_roles?: number[];
@@ -170,12 +168,14 @@ export interface StaffProfileCreateData {
   license_expiry?: string;
   licensing_body?: string;
   specialization?: string;
-  is_active?: boolean;
   hire_date?: string;
 }
 
 export interface StaffProfileUpdateData extends Partial<Omit<StaffProfileCreateData, 'password'>> {
   password?: string;
+  title?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
 }
 
 // Username check response
@@ -203,17 +203,16 @@ export interface UserPermissions {
 // =============================================================================
 
 export type AuditAction =
+  | 'department_created'
+  | 'department_updated'
+  | 'department_deleted'
   | 'role_created'
   | 'role_updated'
   | 'role_deleted'
-  | 'permission_granted'
-  | 'permission_revoked'
   | 'staff_created'
   | 'staff_updated'
   | 'staff_deactivated'
-  | 'role_assigned'
-  | 'department_created'
-  | 'department_updated';
+  | 'role_assigned';
 
 export interface AuditLogEntry {
   id: number;
@@ -256,9 +255,8 @@ export interface StaffListParams {
   page?: number;
   page_size?: number;
   search?: string;
-  department?: number;
-  role?: number;
-  is_active?: boolean;
+  primary_department?: number;
+  primary_role?: number;
   employment_status?: EmploymentStatus;
 }
 

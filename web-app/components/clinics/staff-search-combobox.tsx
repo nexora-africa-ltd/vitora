@@ -73,7 +73,7 @@ export function StaffSearchCombobox({
   // Fetch staff list with search
   const { data: staffData, isLoading } = useStaffList({
     search: debouncedSearch.length >= 2 ? debouncedSearch : undefined,
-    is_active: true, // Only show active staff
+    employment_status: 'ACTIVE',
   });
 
   // Filter out excluded users
