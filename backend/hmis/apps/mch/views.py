@@ -235,7 +235,26 @@ class MCHRegistrationViewSet(viewsets.ModelViewSet):
         return MCHRegistrationSerializer
 
     def perform_create(self, serializer):
-        serializer.save(registered_by=self.request.user)
+        instance = serializer.save(registered_by=self.request.user)
+        AuditLog.log(
+            action="mch_registration_create",
+            user=self.request.user,
+            resource_type="MCHRegistration",
+            resource_id=instance.id,
+            details={"mch_number": instance.mch_number, "mother_id": instance.mother_id},
+            ip_address=get_client_ip(self.request),
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="mch_registration_update",
+            user=self.request.user,
+            resource_type="MCHRegistration",
+            resource_id=instance.id,
+            details={"mch_number": instance.mch_number, "status": instance.status},
+            ip_address=get_client_ip(self.request),
+        )
 
     def create(self, request, *args, **kwargs):
         """Override create to return full serializer response (not the write-only create serializer)."""
@@ -516,6 +535,28 @@ class ANCVisitViewSet(viewsets.ModelViewSet):
             return ANCVisitListSerializer
         return ANCVisitSerializer
 
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="anc_visit_create",
+            user=self.request.user,
+            resource_type="ANCVisit",
+            resource_id=instance.id,
+            details={"registration_id": instance.registration_id, "visit_number": instance.visit_number},
+            ip_address=get_client_ip(self.request),
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="anc_visit_update",
+            user=self.request.user,
+            resource_type="ANCVisit",
+            resource_id=instance.id,
+            details={"registration_id": instance.registration_id, "visit_number": instance.visit_number},
+            ip_address=get_client_ip(self.request),
+        )
+
 
 class DeliveryViewSet(viewsets.ModelViewSet):
     """ViewSet for delivery records."""
@@ -547,7 +588,34 @@ class DeliveryViewSet(viewsets.ModelViewSet):
             return DeliveryListSerializer
         return DeliverySerializer
 
-    @action(detail=False, methods=["get"])
+    def perform_create(self, serializer):
+        instance = serializer.save(delivered_by=self.request.user)
+        AuditLog.log(
+            action="delivery_create",
+            user=self.request.user,
+            resource_type="Delivery",
+            resource_id=instance.id,
+            details={
+                "registration_id": instance.registration_id,
+                "delivery_type": instance.delivery_type,
+                "delivery_outcome": instance.delivery_outcome,
+            },
+            ip_address=get_client_ip(self.request),
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="delivery_update",
+            user=self.request.user,
+            resource_type="Delivery",
+            resource_id=instance.id,
+            details={
+                "registration_id": instance.registration_id,
+                "status": instance.status,
+            },
+            ip_address=get_client_ip(self.request),
+        )
     def dashboard(self, request):
         """
         Delivery dashboard stats.
@@ -818,6 +886,28 @@ class PNCVisitViewSet(viewsets.ModelViewSet):
             return PNCVisitListSerializer
         return PNCVisitSerializer
 
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="pnc_visit_create",
+            user=self.request.user,
+            resource_type="PNCVisit",
+            resource_id=instance.id,
+            details={"registration_id": instance.registration_id, "visit_number": instance.visit_number},
+            ip_address=get_client_ip(self.request),
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="pnc_visit_update",
+            user=self.request.user,
+            resource_type="PNCVisit",
+            resource_id=instance.id,
+            details={"registration_id": instance.registration_id, "visit_number": instance.visit_number},
+            ip_address=get_client_ip(self.request),
+        )
+
 
 class GrowthMeasurementViewSet(viewsets.ModelViewSet):
     """ViewSet for growth measurements."""
@@ -833,6 +923,17 @@ class GrowthMeasurementViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             return GrowthMeasurementListSerializer
         return GrowthMeasurementSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="growth_measurement_create",
+            user=self.request.user,
+            resource_type="GrowthMeasurement",
+            resource_id=instance.id,
+            details={"patient_id": instance.patient_id},
+            ip_address=get_client_ip(self.request),
+        )
 
     @action(detail=False, methods=["get"], url_path="chart-data")
     def chart_data(self, request):
@@ -958,6 +1059,17 @@ class ImmunizationRecordViewSet(viewsets.ModelViewSet):
             return AdministerVaccineSerializer
         return ImmunizationRecordSerializer
 
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="immunization_record_create",
+            user=self.request.user,
+            resource_type="ImmunizationRecord",
+            resource_id=instance.id,
+            details={"patient_id": instance.patient_id, "vaccine_id": instance.vaccine_id},
+            ip_address=get_client_ip(self.request),
+        )
+
     @action(detail=True, methods=["post"])
     def administer(self, request, pk=None):
         """Mark a vaccine as administered."""
@@ -1065,6 +1177,17 @@ class VitaminASupplementViewSet(viewsets.ModelViewSet):
     ordering_fields = ["administered_date", "created_at"]
     ordering = ["-administered_date"]
 
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="vitamin_a_supplement_create",
+            user=self.request.user,
+            resource_type="VitaminASupplement",
+            resource_id=instance.id,
+            details={"patient_id": instance.patient_id},
+            ip_address=get_client_ip(self.request),
+        )
+
 
 class AEFIViewSet(viewsets.ModelViewSet):
     """ViewSet for AEFI reporting."""
@@ -1080,6 +1203,17 @@ class AEFIViewSet(viewsets.ModelViewSet):
         if self.action == "list":
             return AEFIListSerializer
         return AEFISerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="aefi_create",
+            user=self.request.user,
+            resource_type="AEFI",
+            resource_id=instance.id,
+            details={"immunization_record_id": instance.immunization_record_id, "severity": instance.severity},
+            ip_address=get_client_ip(self.request),
+        )
 
 
 class HEIFollowUpViewSet(viewsets.ModelViewSet):
@@ -1099,7 +1233,15 @@ class HEIFollowUpViewSet(viewsets.ModelViewSet):
         return HEIFollowUpSerializer
 
     def perform_create(self, serializer):
-        serializer.save(enrolled_by=self.request.user)
+        instance = serializer.save(enrolled_by=self.request.user)
+        AuditLog.log(
+            action="hei_followup_create",
+            user=self.request.user,
+            resource_type="HEIFollowUp",
+            resource_id=instance.id,
+            details={"infant_id": instance.infant_id, "hei_number": instance.hei_number},
+            ip_address=get_client_ip(self.request),
+        )
 
     @action(detail=True, methods=["post"])
     def determine_final_status(self, request, pk=None):
@@ -1196,3 +1338,14 @@ class HEIPCRTestViewSet(viewsets.ModelViewSet):
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     ordering_fields = ["scheduled_date", "actual_date", "created_at"]
     ordering = ["-scheduled_date"]
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="hei_pcr_test_create",
+            user=self.request.user,
+            resource_type="HEIPCRTest",
+            resource_id=instance.id,
+            details={"hei_followup_id": instance.hei_followup_id, "test_number": instance.test_number},
+            ip_address=get_client_ip(self.request),
+        )
