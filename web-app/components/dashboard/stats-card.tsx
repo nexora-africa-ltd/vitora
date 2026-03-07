@@ -9,6 +9,7 @@ import { LucideIcon } from 'lucide-react';
 interface StatsCardProps {
   title: string;
   value: string | number;
+  meta?: ReactNode;
   description?: ReactNode;
   icon: LucideIcon;
   trend?: 'up' | 'down' | 'neutral';
@@ -16,17 +17,27 @@ interface StatsCardProps {
   loading?: boolean;
   /** Optional link to navigate to on click */
   href?: string;
+  /** Accessible label for interactive cards */
+  ariaLabel?: string;
+  /** Hide the trend indicator when description is factual text instead of a delta */
+  showTrendIndicator?: boolean;
+  /** Additional classes for the value */
+  valueClassName?: string;
 }
 
 export function StatsCard({
   title,
   value,
+  meta,
   description,
   icon: Icon,
   trend = 'neutral',
   variant = 'default',
   loading = false,
   href,
+  ariaLabel,
+  showTrendIndicator = Boolean(description),
+  valueClassName,
 }: StatsCardProps) {
   const iconBgColors = {
     default: 'bg-primary/10 text-primary',
@@ -37,8 +48,8 @@ export function StatsCard({
   };
 
   const cardContent = (
-    <Card 
-      variant={href ? 'interactive' : 'elevated'} 
+    <Card
+      variant={href ? 'interactive' : 'elevated'}
       className={cn('overflow-hidden h-full', href && 'cursor-pointer')}
     >
       <CardContent className="p-6 h-full flex flex-col">
@@ -61,16 +72,23 @@ export function StatsCard({
                 <Icon className="h-5 w-5" />
               </div>
             </div>
-            <div className="space-y-1 mt-auto">
-              <p className="text-3xl font-bold tracking-tight">{value}</p>
+            <div className="space-y-1.5 mt-auto">
+              <p className={cn('text-3xl font-bold tracking-tight tabular-nums', valueClassName)}>{value}</p>
+              {meta && (
+                <div className="text-sm text-muted-foreground">
+                  {typeof meta === 'string' ? <span>{meta}</span> : meta}
+                </div>
+              )}
               {description && (
                 <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <TrendIndicator
-                    value={0}
-                    direction={trend}
-                    showPercentage={false}
-                    size="sm"
-                  />
+                  {showTrendIndicator && (
+                    <TrendIndicator
+                      value={0}
+                      direction={trend}
+                      showPercentage={false}
+                      size="sm"
+                    />
+                  )}
                   {typeof description === 'string' ? <span>{description}</span> : description}
                 </div>
               )}
@@ -82,7 +100,15 @@ export function StatsCard({
   );
 
   if (href) {
-    return <Link href={href} className="h-full block">{cardContent}</Link>;
+    return (
+      <Link
+        href={href}
+        aria-label={ariaLabel ?? title}
+        className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        {cardContent}
+      </Link>
+    );
   }
 
   return cardContent;

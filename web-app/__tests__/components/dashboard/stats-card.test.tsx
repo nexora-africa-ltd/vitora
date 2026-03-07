@@ -65,6 +65,19 @@ describe('StatsCard Component', () => {
     expect(screen.getByText('+12% from last month')).toBeInTheDocument();
   });
 
+  it('should render meta when provided', () => {
+    render(
+      <StatsCard
+        title="Total Patients"
+        value={150}
+        meta="12 registered today"
+        icon={Users}
+      />
+    );
+
+    expect(screen.getByText('12 registered today')).toBeInTheDocument();
+  });
+
   it('should render icon', () => {
     const { container } = render(
       <StatsCard
@@ -159,5 +172,33 @@ describe('StatsCard Component', () => {
 
     // Should render without errors with default values
     expect(screen.getByText('Total')).toBeInTheDocument();
+  });
+
+  it('should hide trend indicator when disabled', () => {
+    render(
+      <StatsCard
+        title="Total"
+        value={100}
+        description="8 completed today"
+        icon={Users}
+        showTrendIndicator={false}
+      />
+    );
+
+    expect(screen.queryByTestId('trend-indicator')).not.toBeInTheDocument();
+  });
+
+  it('should render interactive link when href is provided', () => {
+    render(
+      <StatsCard
+        title="Total Patients"
+        value={150}
+        icon={Users}
+        href="/patients"
+        ariaLabel="Open patient list"
+      />
+    );
+
+    expect(screen.getByRole('link', { name: 'Open patient list' })).toHaveAttribute('href', '/patients');
   });
 });
