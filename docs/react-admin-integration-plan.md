@@ -282,15 +282,151 @@ Build the minimum viable React Admin foundation with one or two low-risk resourc
 
 These are low-risk, admin-oriented, and easy to validate.
 
-### Tasks
+### Phase 1 Implementation Checklist Tied To Current Web App Files
 
-1. Install React Admin and required peer dependencies.
-2. Create `authProvider` using existing JWT token handling.
-3. Create `dataProvider` for DRF list/get/create/update/delete patterns.
-4. Create isolated admin layout and mount point.
-5. Add resource definitions for departments and roles.
-6. Add permission gate for admin-console entry.
-7. Validate create, edit, list, and delete behavior.
+The goal of Phase 1 is to stand up a minimal React Admin pilot without breaking or rewriting the current custom admin pages.
+
+#### 1. Add Dependencies
+
+- [ ] Update `web-app/package.json` to add `react-admin` and its required peer dependencies.
+- [ ] Keep the existing stack intact: `@tanstack/react-query`, the current auth layer, and the existing Axios client remain the source of truth.
+- [ ] Run install and verify there are no dependency conflicts with the current Next.js and React versions.
+
+#### 2. Create An Isolated Admin Console Route Group
+
+- [ ] Add a new route group under `web-app/app/(admin-console)/admin/`.
+- [ ] Create `web-app/app/(admin-console)/admin/page.tsx` as the React Admin entry point.
+- [ ] Create `web-app/app/(admin-console)/admin/layout.tsx` as the isolated admin-console layout.
+- [ ] Keep the existing custom admin routes under `web-app/app/(dashboard)/admin/` untouched during the pilot.
+- [ ] Add a redirect strategy only after the pilot is stable. Do not replace `web-app/app/(dashboard)/admin/page.tsx` in Phase 1.
+
+#### 3. Reuse Existing Auth Instead Of Building New Auth
+
+- [ ] Use `web-app/lib/auth/context.tsx` as the canonical source for authenticated user state.
+- [ ] Reuse token behavior already implemented in `web-app/lib/api/client.ts`.
+- [ ] Create `web-app/lib/react-admin/auth-provider.ts` as a thin adapter over the existing auth model.
+- [ ] Ensure the React Admin auth adapter reads the same user and token state already used by the rest of the app.
+- [ ] Do not introduce a second login screen, second token store, or second refresh flow.
+
+#### 4. Reuse Existing Permission Logic
+
+- [ ] Reuse the permission and role rules in `web-app/lib/hooks/use-permissions.ts`.
+- [ ] Create `web-app/lib/react-admin/permissions.ts` to map React Admin access checks to Vitora permission names.
+- [ ] Gate the new admin-console route so only intended admin users can enter.
+- [ ] Validate the permission boundary against the same role model used by current admin screens.
+
+#### 5. Build A DRF-Compatible React Admin Data Provider
+
+- [ ] Create `web-app/lib/react-admin/data-provider.ts`.
+- [ ] Base it on the current backend conventions already used in `web-app/lib/api/rbac.ts`.
+- [ ] Support DRF list responses shaped as `count`, `next`, `previous`, and `results`.
+- [ ] Map React Admin list, get-one, create, update, and delete operations to existing RBAC endpoints.
+- [ ] Normalize response records to the `id`-based shape React Admin expects.
+- [ ] Translate React Admin sorting, pagination, and filtering into the query parameter style already used by current list screens.
+
+#### 6. Reuse Existing RBAC Schemas And Resource Types
+
+- [ ] Keep `web-app/lib/schemas/rbac.schema.ts` as the runtime validation layer for the pilot resources.
+- [ ] Reuse the endpoints in `web-app/lib/api/rbac.ts` as the reference for resource behavior.
+- [ ] Review `departmentsApi.list`, `departmentsApi.get`, `departmentsApi.create`, and `departmentsApi.update` before wiring the departments resource.
+- [ ] Review `rolesApi.list`, `rolesApi.get`, `rolesApi.create`, and `rolesApi.update` before wiring the roles resource.
+- [ ] If the data provider cannot cleanly consume an endpoint, fix the API adapter or backend contract instead of adding one-off hacks inside React Admin pages.
+
+#### 7. Add A Small React Admin Resource Registry
+
+- [ ] Create `web-app/lib/react-admin/resources.ts`.
+- [ ] Register only the pilot resources in Phase 1: departments and roles.
+- [ ] Use the existing custom routes as the source of truth for which fields matter most to users.
+- [ ] Do not add staff or audit logs to the first working slice unless departments and roles are already stable.
+
+#### 8. Create A Minimal Admin Shell
+
+- [ ] Create `web-app/components/admin-console/admin-shell.tsx`.
+- [ ] Keep the shell intentionally simple and separate from `web-app/components/layout/sidebar.tsx` and `web-app/components/layout/header.tsx`.
+- [ ] Do not attempt to force React Admin into the main dashboard shell in Phase 1.
+- [ ] Use branding and basic theme alignment only where low effort.
+
+#### 9. Pilot The Departments Resource First
+
+- [ ] Use `web-app/app/(dashboard)/admin/departments/page.tsx` as the baseline for list requirements.
+- [ ] Ensure the React Admin departments list supports search, department type filtering, pagination, and row navigation.
+- [ ] Add create and edit views that cover the same core fields currently exposed through the custom departments flow.
+- [ ] Confirm the resource uses the existing `DepartmentSchema` and the same backend endpoints behind `departmentsApi`.
+
+#### 10. Pilot The Roles Resource Second
+
+- [ ] Use `web-app/app/(dashboard)/admin/roles/page.tsx` as the baseline for list requirements.
+- [ ] Ensure the React Admin roles list supports search, category filtering, pagination, and status visibility.
+- [ ] Add create and edit views for the role fields already modeled in `RoleSchema`.
+- [ ] Confirm the resource uses the existing `RoleSchema` and the same backend endpoints behind `rolesApi`.
+
+#### 11. Leave Current Custom Pages In Place During The Pilot
+
+- [ ] Keep `web-app/app/(dashboard)/admin/departments/page.tsx` available as the fallback implementation.
+- [ ] Keep `web-app/app/(dashboard)/admin/roles/page.tsx` available as the fallback implementation.
+- [ ] Keep `web-app/app/(dashboard)/admin/overview/page.tsx` unchanged in Phase 1.
+- [ ] Do not migrate `web-app/app/(dashboard)/admin/staff/page.tsx` in the first pilot slice.
+- [ ] Do not migrate `web-app/app/(dashboard)/admin/audit-logs/page.tsx` in the first pilot slice.
+
+#### 12. Validate React Query Interoperability
+
+- [ ] Ensure the new React Admin pages do not break the `QueryClientProvider` configured in `web-app/app/providers.tsx`.
+- [ ] Confirm React Admin can coexist with the current query client created in `web-app/lib/query-client.ts`.
+- [ ] If React Admin needs its own query behavior, document the boundary clearly and keep the integration minimal.
+
+#### 13. Add Phase 1 Tests
+
+- [ ] Add a focused test file for admin-console access control.
+- [ ] Add tests for the React Admin departments resource loading correctly.
+- [ ] Add tests for the React Admin roles resource loading correctly.
+- [ ] Add tests that verify non-admin users cannot access the new admin-console route.
+- [ ] Keep existing RBAC contract coverage in `web-app/__tests__/contracts/rbac.contract.test.ts` as part of the safety net.
+
+#### 14. Define Phase 1 Exit Criteria
+
+- [ ] The new admin-console route renders without affecting the main dashboard app.
+- [ ] Departments CRUD works end-to-end through the React Admin pilot.
+- [ ] Roles CRUD works end-to-end through the React Admin pilot.
+- [ ] Authentication and permission behavior matches the existing app.
+- [ ] The data provider remains generic and does not accumulate resource-specific exceptions.
+- [ ] The current custom admin pages remain usable as fallback until Phase 2 decisions are made.
+
+### Files To Create In Phase 1
+
+```text
+web-app/app/(admin-console)/admin/layout.tsx
+web-app/app/(admin-console)/admin/page.tsx
+web-app/lib/react-admin/auth-provider.ts
+web-app/lib/react-admin/data-provider.ts
+web-app/lib/react-admin/permissions.ts
+web-app/lib/react-admin/resources.ts
+web-app/components/admin-console/admin-shell.tsx
+```
+
+### Existing Files To Reuse In Phase 1
+
+```text
+web-app/app/providers.tsx
+web-app/lib/query-client.ts
+web-app/lib/api/client.ts
+web-app/lib/api/rbac.ts
+web-app/lib/hooks/use-permissions.ts
+web-app/lib/hooks/use-rbac.ts
+web-app/lib/schemas/rbac.schema.ts
+web-app/app/(dashboard)/admin/departments/page.tsx
+web-app/app/(dashboard)/admin/roles/page.tsx
+web-app/app/(dashboard)/admin/overview/page.tsx
+```
+
+### Existing Files To Leave Untouched In Phase 1
+
+```text
+web-app/app/(dashboard)/admin/staff/page.tsx
+web-app/app/(dashboard)/admin/audit-logs/page.tsx
+web-app/app/(dashboard)/layout.tsx
+web-app/components/layout/sidebar.tsx
+web-app/components/layout/header.tsx
+```
 
 ### Success Criteria
 
