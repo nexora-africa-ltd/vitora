@@ -386,6 +386,23 @@ export default function EncounterDetailPage() {
           ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
         comorbidities={encounter.chronic_conditions
           ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
+        vitals={{
+          ...(encounter.temperature != null && { temperature: Number(encounter.temperature) }),
+          ...(encounter.pulse != null && { pulse: encounter.pulse }),
+          ...(encounter.respiratory_rate != null && { respiratory_rate: encounter.respiratory_rate }),
+          ...(encounter.spo2 != null && { spo2: Number(encounter.spo2) }),
+          ...(encounter.weight != null && { weight: Number(encounter.weight) }),
+          ...(encounter.height != null && { height: Number(encounter.height) }),
+        }}
+        labResults={labOrders?.flatMap(order =>
+          order.items
+            .filter(item => item.result?.numeric_value != null && item.test_name)
+            .map(item => ({
+              test_name: item.test_name,
+              value: item.result!.numeric_value!,
+              unit: item.result!.result_unit || '',
+            }))
+        )}
         autoTrigger={autoTriggerCarePlan}
         onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
       />
