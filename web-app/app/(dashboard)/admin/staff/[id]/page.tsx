@@ -10,7 +10,8 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
-import { ArrowLeft, Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, AlertTriangle } from 'lucide-react';
+import { Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, AlertTriangle } from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -202,15 +203,11 @@ export default function EditStaffPage() {
 
   if (error || !staff) {
     return (
-      <div className="container mx-auto py-6 max-w-3xl">
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/admin/staff">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <h1 className="text-2xl font-bold">Edit Staff Profile</h1>
-        </div>
+      <div className="mx-auto max-w-3xl space-y-6">
+        <PageHeader
+          title="Edit Staff Profile"
+          helpContent="Update account, assignment, and professional details for an existing staff record."
+        />
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
@@ -222,53 +219,53 @@ export default function EditStaffPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 max-w-3xl">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/admin/staff">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Edit Staff Profile</h1>
-            <p className="text-muted-foreground">
-              {staff.full_name || `${staff.user_first_name} ${staff.user_last_name}`}
-              {' • '}
-              <Badge variant={staff.employment_status === 'ACTIVE' ? 'default' : 'secondary'}>
-                {staff.employment_status === 'ACTIVE' ? 'Active' : staff.employment_status?.toLowerCase() || 'Unknown'}
-              </Badge>
-            </p>
-          </div>
-        </div>
+    <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
+      <PageHeader
+        title={staff.full_name || `${staff.user_first_name} ${staff.user_last_name}`}
+        helpContent="Update account, assignment, and professional details for an existing staff record."
+        actions={
+          staff.employment_status === 'ACTIVE' ? (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">Terminate</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Terminate Staff Member?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will terminate {staff.user_first_name}&apos;s employment and revoke access to the system. They will no longer be able to log in.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeactivate}>
+                    Confirm Termination
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : null
+        }
+      />
 
-        {staff.employment_status === 'ACTIVE' && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive">Terminate</Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Terminate Staff Member?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will terminate {staff.user_first_name}&apos;s employment and revoke access to the system.
-                  They will no longer be able to log in. Their termination date will be recorded.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeactivate}>
-                  Confirm Termination
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 space-y-1">
+          <p className="truncate text-sm font-medium">
+            @{staff.user_username}
+            <span className="text-muted-foreground"> • {staff.employee_id}</span>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {staff.primary_department_name || 'Department not assigned'}
+            <span className="text-muted-foreground"> • </span>
+            {staff.primary_role_name || 'Role not assigned'}
+          </p>
+        </div>
+        <Badge variant={staff.employment_status === 'ACTIVE' ? 'default' : 'secondary'} className="w-fit shrink-0 self-start sm:self-auto">
+          {formatEmploymentStatus(staff.employment_status)}
+        </Badge>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Staff Info */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -280,14 +277,16 @@ export default function EditStaffPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="first_name">First Name *</Label>
                 <Input
+                  autoComplete="given-name"
                   id="first_name"
+                  name="first_name"
                   value={formData.first_name}
                   onChange={(e) => handleChange('first_name', e.target.value)}
-                  placeholder="First name"
+                  placeholder="First name…"
                 />
                 {formErrors.first_name && (
                   <p className="text-sm text-destructive">{formErrors.first_name}</p>
@@ -296,28 +295,33 @@ export default function EditStaffPage() {
               <div className="space-y-2">
                 <Label htmlFor="last_name">Last Name *</Label>
                 <Input
+                  autoComplete="family-name"
                   id="last_name"
+                  name="last_name"
                   value={formData.last_name}
                   onChange={(e) => handleChange('last_name', e.target.value)}
-                  placeholder="Last name"
+                  placeholder="Last name…"
                 />
                 {formErrors.last_name && (
                   <p className="text-sm text-destructive">{formErrors.last_name}</p>
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="email">
                   <Mail className="h-4 w-4 inline mr-1" />
                   Email *
                 </Label>
                 <Input
+                  autoComplete="email"
                   id="email"
+                  name="email"
+                  spellCheck={false}
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleChange('email', e.target.value)}
-                  placeholder="email@example.com"
+                  placeholder="email@example.com…"
                 />
                 {formErrors.email && (
                   <p className="text-sm text-destructive">{formErrors.email}</p>
@@ -329,10 +333,14 @@ export default function EditStaffPage() {
                   Phone Number
                 </Label>
                 <Input
+                  autoComplete="tel"
                   id="phone_number"
+                  inputMode="tel"
+                  name="phone_number"
+                  type="tel"
                   value={formData.phone_number}
                   onChange={(e) => handleChange('phone_number', e.target.value)}
-                  placeholder="+254..."
+                  placeholder="+254712345678…"
                 />
               </div>
             </div>
@@ -342,10 +350,12 @@ export default function EditStaffPage() {
                 Employee ID *
               </Label>
               <Input
+                autoComplete="off"
                 id="employee_id"
+                name="employee_id"
                 value={formData.employee_id}
                 onChange={(e) => handleChange('employee_id', e.target.value)}
-                placeholder="EMP-XXX"
+                placeholder="EMP-001…"
               />
               {formErrors.employee_id && (
                 <p className="text-sm text-destructive">{formErrors.employee_id}</p>
@@ -354,7 +364,6 @@ export default function EditStaffPage() {
           </CardContent>
         </Card>
 
-        {/* Role Assignment */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -366,7 +375,7 @@ export default function EditStaffPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="department">
                   <Building2 className="h-4 w-4 inline mr-1" />
@@ -419,7 +428,6 @@ export default function EditStaffPage() {
           </CardContent>
         </Card>
 
-        {/* License Information */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -431,14 +439,17 @@ export default function EditStaffPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="license_number">License Number</Label>
                 <Input
+                  autoComplete="off"
                   id="license_number"
+                  name="license_number"
+                  spellCheck={false}
                   value={formData.license_number}
                   onChange={(e) => handleChange('license_number', e.target.value)}
-                  placeholder="MED-XXXXX"
+                  placeholder="MED-12345…"
                 />
               </div>
               <div className="space-y-2">
@@ -454,25 +465,40 @@ export default function EditStaffPage() {
               <Label htmlFor="specialization">Specialization</Label>
               <Input
                 id="specialization"
+                name="specialization"
                 value={formData.specialization}
                 onChange={(e) => handleChange('specialization', e.target.value)}
-                placeholder="e.g., Internal Medicine, Pediatrics"
+                placeholder="e.g., Internal Medicine…"
               />
             </div>
           </CardContent>
         </Card>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-4">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" asChild>
             <Link href="/admin/staff">Cancel</Link>
           </Button>
           <Button type="submit" disabled={updateStaff.isPending}>
             <Save className="h-4 w-4 mr-2" />
-            {updateStaff.isPending ? 'Saving...' : 'Save Changes'}
+            {updateStaff.isPending ? 'Saving…' : 'Save Changes'}
           </Button>
         </div>
       </form>
     </div>
   );
+}
+
+function formatEmploymentStatus(status?: string) {
+  switch (status) {
+    case 'ACTIVE':
+      return 'Active';
+    case 'ON_LEAVE':
+      return 'On Leave';
+    case 'SUSPENDED':
+      return 'Suspended';
+    case 'TERMINATED':
+      return 'Terminated';
+    default:
+      return 'Unknown';
+  }
 }

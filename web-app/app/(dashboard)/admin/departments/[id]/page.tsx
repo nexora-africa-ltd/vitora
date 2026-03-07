@@ -7,12 +7,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Building2, Loader2, Trash2 } from 'lucide-react';
+import { Building2, Loader2, Trash2, AlertTriangle } from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -32,6 +34,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useDepartment, useUpdateDepartment, useDeleteDepartment, useDepartments, useStaffList } from '@/lib/hooks/use-rbac';
 import type { DepartmentType, DepartmentUpdateData } from '@/lib/types/rbac';
@@ -122,59 +125,65 @@ export default function EditDepartmentPage() {
 
   if (error || !department) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="text-center py-8 text-destructive">
-          Department not found
-        </div>
+      <div className="space-y-6">
+        <PageHeader
+          title="Edit Department"
+          helpContent="Update department structure, leadership, and reporting relationships."
+        />
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>Department not found or failed to load.</AlertDescription>
+        </Alert>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/admin/departments">
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <Building2 className="h-6 w-6" />
-              Edit Department
-            </h1>
-            <p className="text-muted-foreground">
-              Update department information
-            </p>
-          </div>
-        </div>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Department</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete this department? This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete}>
+    <div className="space-y-4 sm:space-y-6">
+      <PageHeader
+        title={department.name}
+        helpContent="Update department structure, leadership, and reporting relationships."
+        actions={
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">
+                <Trash2 className="mr-2 h-4 w-4" />
                 Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Department</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Delete this department permanently. Reassign dependent staff and child departments first to avoid broken references.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete}>Delete Department</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        }
+      />
+
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 space-y-1">
+          <p className="truncate text-sm font-medium">
+            {department.code}
+            <span className="text-muted-foreground"> • {department.department_type_display}</span>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {department.head_name || 'No department head assigned'}
+            <span className="text-muted-foreground"> • </span>
+            {department.staff_count} staff assigned
+          </p>
+        </div>
+        <Badge variant={department.is_active ? 'default' : 'secondary'} className="w-fit shrink-0 self-start sm:self-auto">
+          {department.is_active ? 'Active' : 'Inactive'}
+        </Badge>
       </div>
 
-      {/* Form */}
       <form onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
@@ -188,20 +197,25 @@ export default function EditDepartmentPage() {
               <div className="space-y-2">
                 <Label htmlFor="name">Name *</Label>
                 <Input
+                  autoComplete="organization"
                   id="name"
+                  name="name"
                   value={formData.name || ''}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., Outpatient Department"
+                  placeholder="e.g., Outpatient Department…"
                   required
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="code">Code *</Label>
                 <Input
+                  autoComplete="off"
                   id="code"
+                  name="code"
+                  spellCheck={false}
                   value={formData.code || ''}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                  placeholder="e.g., OPD"
+                  placeholder="e.g., OPD…"
                   required
                 />
               </div>
@@ -211,9 +225,10 @@ export default function EditDepartmentPage() {
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
+                name="description"
                 value={formData.description || ''}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Brief description of the department..."
+                placeholder="Brief description of the department…"
                 rows={3}
               />
             </div>
@@ -280,7 +295,7 @@ export default function EditDepartmentPage() {
               </Select>
             </div>
 
-            <div className="flex justify-end gap-4 pt-4">
+            <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:justify-end">
               <Button variant="outline" type="button" asChild>
                 <Link href="/admin/departments">Cancel</Link>
               </Button>

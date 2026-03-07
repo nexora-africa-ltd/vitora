@@ -7,8 +7,9 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, Search, Filter, Clock, User, Shield } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { FileText, Search, Filter, Clock, User, Shield, PencilLine, Trash2, PlusCircle } from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,16 +20,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { useAuditLogs, type AuditAction } from '@/lib/hooks/use-rbac';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { AdminStatCard } from '@/components/admin/admin-stat-card';
 import { formatDistanceToNow } from 'date-fns';
 
 const ACTION_TYPES = [
@@ -66,145 +62,239 @@ function formatActionLabel(action: string): string {
 export default function AuditLogsPage() {
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState<string>('all');
+  const { refresh, isRefreshing } = usePageRefresh();
 
-  const { data, isLoading, error } = useAuditLogs({
+  const { data, isLoading, error, refetch } = useAuditLogs({
     search: search || undefined,
     action: actionFilter !== 'all' ? (actionFilter as AuditAction) : undefined,
   });
 
-  return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <FileText className="h-6 w-6" />
-            Audit Logs
-          </h1>
-          <p className="text-muted-foreground">
-            Track role assignments and permission changes
-          </p>
-        </div>
+  const logs = data?.results ?? [];
+  const createdCount = logs.filter((log) => log.action.includes('create')).length;
+  const updatedCount = logs.filter((log) => log.action.includes('update')).length;
+  const destructiveCount = logs.filter(
+    (log) => log.action.includes('delete') || log.action.includes('deactivate')
+  ).length;
+
+  const handleRefresh = async () => {
+    await refresh();
+    await refetch();
+  };
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Audit Logs"
+          helpContent="Review administrative changes for departments, roles, and staff records. Use these logs for accountability and compliance checks."
+        />
+        <Card>
+          <CardContent className="py-10 text-center">
+            <p className="font-medium text-destructive">Audit logs could not be loaded.</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Check the audit service response and try again.
+            </p>
+          </CardContent>
+        </Card>
       </div>
+    );
+  }
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by user or description..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
+  return (
+    <PullToRefresh onRefresh={handleRefresh} isRefreshing={isRefreshing}>
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title="Audit Logs"
+          helpContent="Review administrative changes for departments, roles, and staff records. Use these logs for accountability and compliance checks."
+        />
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <AdminStatCard
+            title="Visible Entries"
+            value={data?.count ?? 0}
+            description="Current results after filters"
+            icon={<FileText className="h-4 w-4 text-muted-foreground" />}
+          />
+          <AdminStatCard
+            title="Created"
+            value={createdCount}
+            description="New records and assignments"
+            icon={<PlusCircle className="h-4 w-4 text-emerald-600" />}
+            valueClassName="text-2xl font-semibold text-emerald-600"
+          />
+          <AdminStatCard
+            title="Updated"
+            value={updatedCount}
+            description="Edits to existing records"
+            icon={<PencilLine className="h-4 w-4 text-amber-600" />}
+            valueClassName="text-2xl font-semibold text-amber-600"
+          />
+          <AdminStatCard
+            title="Destructive"
+            value={destructiveCount}
+            description="Deletes and deactivations"
+            icon={<Trash2 className="h-4 w-4 text-destructive" />}
+            valueClassName="text-2xl font-semibold text-destructive"
+          />
+        </div>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_240px]">
+              <div className="relative min-w-0">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  autoComplete="off"
+                  className="pl-9"
+                  name="audit-log-search"
+                  placeholder="Search by user, action, or resource…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Select value={actionFilter} onValueChange={setActionFilter}>
+                <SelectTrigger aria-label="Filter audit logs by action">
+                  <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <SelectValue placeholder="Filter by action" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Actions</SelectItem>
+                  {ACTION_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select
-              value={actionFilter}
-              onValueChange={setActionFilter}
-            >
-              <SelectTrigger className="w-48" aria-label="Action filter">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filter by action" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Actions</SelectItem>
-                {ACTION_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Activity Stream
+              <Badge variant="secondary" className="ml-1">
+                {data?.count ?? 0}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Skeleton key={index} className="h-16 w-full rounded-lg" />
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Audit Logs Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {data?.count ?? 0} Log Entries
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : error ? (
-            <div className="text-center py-8 text-destructive">
-              Error loading audit logs
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Resource</TableHead>
-                  <TableHead>Details</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data?.results.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">
+              </div>
+            ) : (
+              <ResponsiveTable
+                data={logs}
+                emptyMessage="No audit entries match the current filters."
+                keyExtractor={(log) => log.id}
+                mobileCard={(log) => <AuditLogMobileCard log={log} />}
+                columns={[
+                  {
+                    key: 'timestamp',
+                    header: 'Timestamp',
+                    cell: (log) => (
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">
                           {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
-                        </span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">{formatTimestamp(log.timestamp)}</p>
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(log.timestamp).toLocaleString()}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{log.user_name || log.username || 'System'}</span>
+                    ),
+                  },
+                  {
+                    key: 'user',
+                    header: 'User',
+                    cell: (log) => (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="truncate font-medium">{log.user_name || log.username || 'System'}</span>
                       </div>
-                    </TableCell>
-                    <TableCell>
+                    ),
+                  },
+                  {
+                    key: 'action',
+                    header: 'Action',
+                    cell: (log) => (
                       <Badge variant={getActionBadgeVariant(log.action)}>
                         {formatActionLabel(log.action)}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Shield className="h-4 w-4 text-muted-foreground" />
-                        <span>{log.resource_type}</span>
+                    ),
+                  },
+                  {
+                    key: 'resource',
+                    header: 'Resource',
+                    hideOnMobile: true,
+                    cell: (log) => (
+                      <div className="min-w-0">
+                        <p>{log.resource_name || log.resource_type}</p>
+                        <p className="text-xs text-muted-foreground">ID: {log.resource_id ?? '—'}</p>
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        ID: {log.resource_id}
+                    ),
+                  },
+                  {
+                    key: 'details',
+                    header: 'Details',
+                    hideOnMobile: true,
+                    cell: (log) => (
+                      <span className="block max-w-xs truncate text-sm text-muted-foreground">
+                        {formatDetails(log.details)}
                       </span>
-                    </TableCell>
-                    <TableCell className="max-w-xs">
-                      <span className="text-sm text-muted-foreground truncate block">
-                        {typeof log.details === 'object'
-                          ? JSON.stringify(log.details)
-                          : log.details || '-'}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {data?.results.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      No audit logs found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                    ),
+                  },
+                ]}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </PullToRefresh>
   );
+}
+
+function AuditLogMobileCard({ log }: { log: (typeof logsPlaceholder)[number] }) {
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <p className="font-medium truncate">{log.user_name || log.username || 'System'}</p>
+          <p className="text-sm text-muted-foreground">{formatTimestamp(log.timestamp)}</p>
+        </div>
+        <Badge variant={getActionBadgeVariant(log.action)}>
+          {formatActionLabel(log.action)}
+        </Badge>
+      </div>
+      <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+        <p>{log.resource_name || log.resource_type}</p>
+        <p>{formatDetails(log.details)}</p>
+      </div>
+    </Card>
+  );
+}
+
+const logsPlaceholder = [] as Array<{
+  id: number;
+  user_name?: string;
+  username: string;
+  action: string;
+  resource_name?: string;
+  resource_type: string;
+  details: Record<string, unknown>;
+  timestamp: string;
+}>;
+
+function formatDetails(details: Record<string, unknown>) {
+  const serialized = JSON.stringify(details);
+  return serialized === '{}' ? 'No additional details' : serialized;
+}
+
+function formatTimestamp(timestamp: string) {
+  return new Intl.DateTimeFormat('en-KE', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(timestamp));
 }

@@ -9,13 +9,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Shield, Save, Loader2 } from 'lucide-react';
+import { Shield, Save, Loader2 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -26,8 +26,9 @@ import {
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useCreateRole, usePermissions } from '@/lib/hooks/use-rbac';
-import type { Permission, RoleCategory } from '@/lib/types/rbac';
+import type { RoleCategory } from '@/lib/types/rbac';
 import { buildPermissionsMatrix } from '@/lib/utils/rbac-permissions';
+import { PermissionGroupSelector } from '@/components/admin/permission-group-selector';
 
 const ROLE_CATEGORIES: { value: RoleCategory; label: string }[] = [
   { value: 'CLINICAL', label: 'Clinical Staff' },
@@ -87,39 +88,18 @@ export default function NewRolePage() {
     }));
   };
 
-  // Group permissions by app (permissionsData is a plain array, not paginated)
-  const groupedPermissions = permissionsData?.reduce<Record<string, Permission[]>>(
-    (acc, perm) => {
-      const appLabel = perm.app_label || 'other';
-      if (!acc[appLabel]) {
-        acc[appLabel] = [];
-      }
-      acc[appLabel].push(perm);
-      return acc;
-    },
-    {}
-  );
-
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/admin/roles">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Shield className="h-6 w-6" />
-            New Role
-          </h1>
-          <p className="text-muted-foreground">Create a new role with permissions</p>
-        </div>
+    <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
+      <PageHeader
+        title="New Role"
+        helpContent="Create a role definition and permission bundle for staff assignment."
+      />
+
+      <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
+        Define the role details first, then assign only the permissions needed for the work this role performs.
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Info */}
         <Card>
           <CardHeader>
             <CardTitle>Basic Information</CardTitle>
@@ -130,20 +110,25 @@ export default function NewRolePage() {
               <div className="space-y-2">
                 <Label htmlFor="name">Role Name *</Label>
                 <Input
+                  autoComplete="off"
                   id="name"
+                  name="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., Senior Nurse"
+                  placeholder="e.g., Senior Nurse…"
                   required
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="code">Role Code *</Label>
                 <Input
+                  autoComplete="off"
                   id="code"
+                  name="code"
+                  spellCheck={false}
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                  placeholder="e.g., SENIOR_NURSE"
+                  placeholder="e.g., SENIOR_NURSE…"
                   required
                 />
               </div>
@@ -172,52 +157,32 @@ export default function NewRolePage() {
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
+                name="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Describe the role's responsibilities..."
+                placeholder="Describe the role's responsibilities…"
                 rows={3}
               />
             </div>
           </CardContent>
         </Card>
 
-        {/* Permissions */}
         <Card>
           <CardHeader>
             <CardTitle>Permissions</CardTitle>
-            <CardDescription>Select the permissions for this role</CardDescription>
+            <CardDescription>Select the permissions for this role ({formData.permissions.length} selected)</CardDescription>
           </CardHeader>
           <CardContent>
             {permissionsLoading ? (
               <div className="text-center py-8 text-muted-foreground">
-                Loading permissions...
+                Loading permissions…
               </div>
-            ) : groupedPermissions ? (
-              <div className="space-y-6">
-                {Object.entries(groupedPermissions).map(([appLabel, permissions]) => (
-                  <div key={appLabel} className="space-y-3">
-                    <h4 className="font-medium capitalize">{appLabel}</h4>
-                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                      {permissions.map((perm) => {
-                        const permCode = `${perm.app_label}.${perm.codename}`;
-                        return (
-                          <div key={permCode} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={permCode}
-                              checked={formData.permissions.includes(permCode)}
-                              onCheckedChange={() => togglePermission(permCode)}
-                              aria-label={perm.name}
-                            />
-                            <Label htmlFor={permCode} className="text-sm font-normal cursor-pointer">
-                              {perm.name}
-                            </Label>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
+            ) : permissionsData ? (
+              <PermissionGroupSelector
+                permissions={permissionsData}
+                selectedPermissions={formData.permissions}
+                onToggle={togglePermission}
+              />
             ) : (
               <Alert>
                 <AlertDescription>No permissions available</AlertDescription>
@@ -226,18 +191,17 @@ export default function NewRolePage() {
           </CardContent>
         </Card>
 
-        {/* Actions */}
-        <div className="flex gap-4">
-          <Button type="submit" disabled={createRole.isPending}>
-            {createRole.isPending ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            Create Role
-          </Button>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" asChild>
             <Link href="/admin/roles">Cancel</Link>
+          </Button>
+          <Button type="submit" disabled={createRole.isPending}>
+            {createRole.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-4 w-4" />
+            )}
+            Create Role
           </Button>
         </div>
       </form>
