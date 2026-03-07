@@ -10,7 +10,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, Check, X, Loader2, Sparkles } from 'lucide-react';
+import { Save, User, Building2, Shield, Briefcase, Phone, Mail, IdCard, Check, X, Loader2, Sparkles } from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -312,22 +313,17 @@ export default function NewStaffPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 max-w-3xl">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/admin/staff">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">New Staff Profile</h1>
-          <p className="text-muted-foreground">Create a new staff member account</p>
-        </div>
+    <div className="mx-auto max-w-3xl space-y-4 sm:space-y-6">
+      <PageHeader
+        title="New Staff Profile"
+        helpContent="Create a staff account, assign a department and role, and capture professional registration details."
+      />
+
+      <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
+        Start with DHA registry lookup when available so licensing fields are populated consistently before assigning the user account.
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Professional Details - FIRST for DHA lookup */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -352,10 +348,13 @@ export default function NewStaffPage() {
               <div className="space-y-2">
                 <Label htmlFor="hwr_id">HWR ID (Registry Number)</Label>
                 <Input
+                  autoComplete="off"
                   id="hwr_id"
+                  name="hwr_id"
+                  spellCheck={false}
                   value={formData.hwr_id}
                   onChange={(e) => handleChange('hwr_id', e.target.value)}
-                  placeholder="e.g., PUID-059839"
+                  placeholder="e.g., PUID-059839…"
                   className={isProfessionalDataPopulated && formData.hwr_id ? 'bg-muted' : ''}
                 />
                 <p className="text-xs text-muted-foreground">
@@ -365,10 +364,13 @@ export default function NewStaffPage() {
               <div className="space-y-2">
                 <Label htmlFor="license_number">License Number</Label>
                 <Input
+                  autoComplete="off"
                   id="license_number"
+                  name="license_number"
+                  spellCheck={false}
                   value={formData.license_number}
                   onChange={(e) => handleChange('license_number', e.target.value)}
-                  placeholder="e.g., COC-Clinical Officer-2026-620095"
+                  placeholder="e.g., COC-Clinical Officer-2026-620095…"
                   className={isProfessionalDataPopulated && formData.license_number ? 'bg-muted' : ''}
                 />
                 <p className="text-xs text-muted-foreground">
@@ -381,9 +383,10 @@ export default function NewStaffPage() {
                 <Label htmlFor="licensing_body">Licensing Body</Label>
                 <Input
                   id="licensing_body"
+                  name="licensing_body"
                   value={formData.licensing_body}
                   onChange={(e) => handleChange('licensing_body', e.target.value)}
-                  placeholder="e.g., Clinical Officers Council"
+                  placeholder="e.g., Clinical Officers Council…"
                   className={isProfessionalDataPopulated && formData.licensing_body ? 'bg-muted' : ''}
                 />
               </div>
@@ -405,9 +408,10 @@ export default function NewStaffPage() {
                 <Label htmlFor="specialization">Specialization</Label>
                 <Input
                   id="specialization"
+                  name="specialization"
                   value={formData.specialization}
                   onChange={(e) => handleChange('specialization', e.target.value)}
-                  placeholder="e.g., Clinical Officer, Nursing"
+                  placeholder="e.g., Clinical Officer…"
                 />
               </div>
               <div className="space-y-2">
@@ -415,10 +419,14 @@ export default function NewStaffPage() {
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
+                    autoComplete="tel"
                     id="phone_number"
+                    inputMode="tel"
+                    name="phone_number"
+                    type="tel"
                     value={formData.phone_number}
                     onChange={(e) => handleChange('phone_number', e.target.value)}
-                    placeholder="+254712345678"
+                    placeholder="+254712345678…"
                     className="pl-9"
                   />
                 </div>
@@ -427,7 +435,6 @@ export default function NewStaffPage() {
           </CardContent>
         </Card>
 
-        {/* User Account */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -445,11 +452,13 @@ export default function NewStaffPage() {
                   First Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
+                  autoComplete="given-name"
                   id="first_name"
+                  name="first_name"
                   value={formData.first_name}
                   onChange={(e) => handleChange('first_name', e.target.value)}
                   onBlur={suggestUsername}
-                  placeholder="James"
+                  placeholder="James…"
                   className={errors.first_name ? 'border-destructive' : ''}
                 />
                 {errors.first_name && (
@@ -460,9 +469,10 @@ export default function NewStaffPage() {
                 <Label htmlFor="middle_name">Middle Name</Label>
                 <Input
                   id="middle_name"
+                  name="middle_name"
                   value={formData.middle_name}
                   onChange={(e) => handleChange('middle_name', e.target.value)}
-                  placeholder="Kamau (optional)"
+                  placeholder="Kamau (optional)…"
                 />
               </div>
               <div className="space-y-2">
@@ -470,11 +480,13 @@ export default function NewStaffPage() {
                   Last Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
+                  autoComplete="family-name"
                   id="last_name"
+                  name="last_name"
                   value={formData.last_name}
                   onChange={(e) => handleChange('last_name', e.target.value)}
                   onBlur={suggestUsername}
-                  placeholder="Mwangi"
+                  placeholder="Mwangi…"
                   className={errors.last_name ? 'border-destructive' : ''}
                 />
                 {errors.last_name && (
@@ -490,9 +502,12 @@ export default function NewStaffPage() {
                 <div className="relative">
                   <Input
                     id="username"
+                    name="username"
+                    spellCheck={false}
+                    autoComplete="off"
                     value={formData.username}
                     onChange={(e) => handleChange('username', e.target.value.toLowerCase().replace(/\s/g, ''))}
-                    placeholder="e.g., james.mwangi"
+                    placeholder="e.g., james.mwangi…"
                     className={`pr-10 ${errors.username ? 'border-destructive' : usernameStatus === 'available' ? 'border-green-500' : usernameStatus === 'taken' ? 'border-destructive' : ''}`}
                   />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -542,11 +557,14 @@ export default function NewStaffPage() {
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
+                    autoComplete="email"
                     id="email"
+                    name="email"
+                    spellCheck={false}
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleChange('email', e.target.value)}
-                    placeholder="email@facility.com"
+                    placeholder="email@facility.com…"
                     className={`pl-9 ${errors.email ? 'border-destructive' : ''}`}
                   />
                 </div>
@@ -558,7 +576,6 @@ export default function NewStaffPage() {
           </CardContent>
         </Card>
 
-        {/* Employment Details */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -578,10 +595,12 @@ export default function NewStaffPage() {
                 <div className="relative">
                   <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
+                    autoComplete="off"
                     id="employee_id"
+                    name="employee_id"
                     value={formData.employee_id}
                     onChange={(e) => handleChange('employee_id', e.target.value)}
-                    placeholder="EMP-001"
+                    placeholder="EMP-001…"
                     className={`pl-9 ${errors.employee_id ? 'border-destructive' : ''}`}
                   />
                 </div>
@@ -659,14 +678,13 @@ export default function NewStaffPage() {
           </CardContent>
         </Card>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-4">
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <Button variant="outline" type="button" asChild>
             <Link href="/admin/staff">Cancel</Link>
           </Button>
           <Button type="submit" disabled={createStaff.isPending || usernameStatus === 'taken'}>
             <Save className="h-4 w-4 mr-2" />
-            {createStaff.isPending ? 'Creating...' : 'Create Staff Profile'}
+            {createStaff.isPending ? 'Creating…' : 'Create Staff Profile'}
           </Button>
         </div>
       </form>

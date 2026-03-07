@@ -1,22 +1,17 @@
-/**
- * Role Edit Page
- * Sprint 1.1-1.2 Track C: RBAC Foundation
- *
- * Edit role details and manage permissions.
- */
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Shield, Save, Loader2, Trash2, AlertTriangle, Check, X } from 'lucide-react';
+import { useParams, useRouter } from 'next/navigation';
+import { AlertTriangle, Loader2, Save, Trash2 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
+import { PermissionGroupSelector } from '@/components/admin/permission-group-selector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -36,18 +31,12 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
 import { useToast } from '@/lib/hooks/use-toast';
-import { useRole, useUpdateRole, useDeleteRole, usePermissions } from '@/lib/hooks/use-rbac';
-import type { RoleCategory, Permission } from '@/lib/types/rbac';
+import { useDeleteRole, usePermissions, useRole, useUpdateRole } from '@/lib/hooks/use-rbac';
+import type { RoleCategory } from '@/lib/types/rbac';
 import { buildPermissionsMatrix, matrixToPermissionCodes } from '@/lib/utils/rbac-permissions';
 
-const ROLE_CATEGORIES = [
+const ROLE_CATEGORIES: Array<{ value: RoleCategory; label: string }> = [
   { value: 'CLINICAL', label: 'Clinical Staff' },
   { value: 'ADMINISTRATIVE', label: 'Administrative' },
   { value: 'TECHNICAL', label: 'Technical Staff' },
@@ -55,59 +44,45 @@ const ROLE_CATEGORIES = [
   { value: 'COMMUNITY', label: 'Community Health' },
 ];
 
-// Group permissions by app_label for display
-function groupPermissions(permissions: Permission[]) {
-  const groups: Record<string, Permission[]> = {};
-  permissions.forEach((perm) => {
-    const appLabel = perm.app_label || 'other';
-    if (!groups[appLabel]) {
-      groups[appLabel] = [];
-    }
-    groups[appLabel].push(perm);
-  });
-  return groups;
-}
-
 export default function RoleEditPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const roleId = parseInt(params.id as string);
+  const roleId = parseInt(params.id as string, 10);
 
   const { data: role, isLoading, error } = useRole(roleId);
   const { data: allPermissions } = usePermissions();
   const updateRole = useUpdateRole();
   const deleteRole = useDeleteRole();
 
-  // Form state
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('CLINICAL');
+  const [category, setCategory] = useState<RoleCategory>('CLINICAL');
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 
-  // Initialize form when role loads
   useEffect(() => {
-    if (role && allPermissions) {
-      setName(role.name);
-      setCode(role.code);
-      setDescription(role.description || '');
-      setCategory(role.category);
-      const initialPermissions = matrixToPermissionCodes(role.permissions_matrix || {}, allPermissions);
-      setSelectedPermissions(initialPermissions);
+    if (!role || !allPermissions) {
+      return;
     }
+
+    setName(role.name);
+    setCode(role.code);
+    setDescription(role.description || '');
+    setCategory(role.category);
+    setSelectedPermissions(matrixToPermissionCodes(role.permissions_matrix || {}, allPermissions));
   }, [role, allPermissions]);
 
-  const handlePermissionToggle = (permission: string) => {
-    setSelectedPermissions((prev) =>
-      prev.includes(permission)
-        ? prev.filter((p) => p !== permission)
-        : [...prev, permission]
+  const handlePermissionToggle = (permissionCode: string) => {
+    setSelectedPermissions((current) =>
+      current.includes(permissionCode)
+        ? current.filter((item) => item !== permissionCode)
+        : [...current, permissionCode]
     );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
 
     try {
       await updateRole.mutateAsync({
@@ -116,7 +91,7 @@ export default function RoleEditPage() {
           name,
           code,
           description,
-          category: category as RoleCategory,
+          category,
           permissions_matrix: buildPermissionsMatrix(selectedPermissions, allPermissions || []),
         },
       });
@@ -157,7 +132,7 @@ export default function RoleEditPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-6 flex items-center justify-center">
+      <div className="flex min-h-[240px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
@@ -165,69 +140,80 @@ export default function RoleEditPage() {
 
   if (error || !role) {
     return (
-      <div className="container mx-auto py-6">
-        <Card>
-          <CardContent className="py-8 text-center text-destructive">
-            Role not found or failed to load.
-          </CardContent>
-        </Card>
+      <div className="space-y-6">
+        <PageHeader
+          title="Edit Role"
+          helpContent="Update role metadata and permission bundles for staff assignment."
+        />
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            Role not found or failed to load. Refresh the page and confirm the role still exists.
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
 
-  const groupedPermissions = allPermissions
-    ? groupPermissions(allPermissions)
-    : {};
-
-  // Calculate assigned/unassigned counts per group
-  const getGroupStats = (perms: Permission[]) => {
-    const assigned = perms.filter(p =>
-      selectedPermissions.includes(`${p.app_label}.${p.codename}`)
-    ).length;
-    return { assigned, total: perms.length, unassigned: perms.length - assigned };
-  };
-
-  // Get groups with any assigned permissions (for default open state)
-  const groupsWithAssigned = Object.entries(groupedPermissions)
-    .filter(([, perms]) => getGroupStats(perms).assigned > 0)
-    .map(([label]) => label);
-
   return (
-    <div className="container mx-auto py-6 max-w-4xl">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/admin/roles">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Shield className="h-6 w-6" />
-            Edit Role
-          </h1>
-          <p className="text-muted-foreground">
-            Modify role settings and permissions
+    <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
+      <PageHeader
+        title={role.name}
+        helpContent="Update role metadata and permission bundles for staff assignment."
+        actions={
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button type="button" variant="destructive" disabled={deleteRole.isPending}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Role
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Role</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Delete this role permanently. Staff members using it will need reassignment before they can keep working with the correct permissions.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete}>Delete Role</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        }
+      />
+
+      <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 space-y-1">
+          <p className="truncate text-sm font-medium">
+            {role.code}
+            <span className="text-muted-foreground"> • Hierarchy Level {role.hierarchy_level}</span>
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {role.category_display || role.category}
+            {role.requires_license ? ` • License body: ${role.license_body || 'Required'}` : ' • No license requirement'}
           </p>
         </div>
+        <Badge variant={role.is_active ? 'default' : 'secondary'} className="w-fit shrink-0 self-start sm:self-auto">
+          {role.is_active ? 'Active' : 'Inactive'}
+        </Badge>
       </div>
 
-      {/* Inactive Role Warning */}
-      {!role.is_active && (
-        <Alert className="mb-6">
+      {!role.is_active ? (
+        <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            This role is inactive. Staff members cannot be assigned to this role.
+            This role is inactive. Staff members cannot be assigned to it until it is reactivated.
           </AlertDescription>
         </Alert>
-      )}
+      ) : null}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Basic Information */}
         <Card>
           <CardHeader>
             <CardTitle>Role Information</CardTitle>
-            <CardDescription>Basic details about this role</CardDescription>
+            <CardDescription>Basic details about this role.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
@@ -235,9 +221,11 @@ export default function RoleEditPage() {
                 <Label htmlFor="name">Name *</Label>
                 <Input
                   id="name"
+                  name="name"
+                  autoComplete="off"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., Senior Nurse"
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="e.g., Senior Nurse…"
                   required
                 />
               </div>
@@ -245,9 +233,12 @@ export default function RoleEditPage() {
                 <Label htmlFor="code">Code *</Label>
                 <Input
                   id="code"
+                  name="code"
+                  autoComplete="off"
+                  spellCheck={false}
                   value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  placeholder="e.g., SR_NURSE"
+                  onChange={(event) => setCode(event.target.value.toUpperCase())}
+                  placeholder="e.g., SR_NURSE…"
                   required
                 />
               </div>
@@ -256,23 +247,24 @@ export default function RoleEditPage() {
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
+                name="description"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe this role's responsibilities..."
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Describe this role's responsibilities…"
                 rows={3}
               />
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="category">Category *</Label>
-                <Select value={category} onValueChange={setCategory} disabled={role.is_active === false}>
+                <Select value={category} onValueChange={(value) => setCategory(value as RoleCategory)}>
                   <SelectTrigger id="category">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ROLE_CATEGORIES.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.label}
+                    {ROLE_CATEGORIES.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -282,130 +274,39 @@ export default function RoleEditPage() {
           </CardContent>
         </Card>
 
-        {/* Permissions */}
         <Card>
           <CardHeader>
             <CardTitle>Permissions</CardTitle>
             <CardDescription>
-              Select permissions for this role ({selectedPermissions.length} selected)
+              Select permissions for this role ({selectedPermissions.length} selected).
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {Object.keys(groupedPermissions).length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">
-                No permissions available
-              </p>
-            ) : (
-              <Accordion
-                type="multiple"
-                defaultValue={groupsWithAssigned}
-                className="w-full"
-              >
-                {Object.entries(groupedPermissions).map(([appLabel, perms]) => {
-                  const stats = getGroupStats(perms);
-                  return (
-                    <AccordionItem key={appLabel} value={appLabel}>
-                      <AccordionTrigger className="hover:no-underline">
-                        <div className="flex items-center gap-3 flex-1">
-                          <span className="font-medium capitalize">{appLabel}</span>
-                          <div className="flex items-center gap-2 text-sm">
-                            {stats.assigned > 0 && (
-                              <Badge variant="default" className="gap-1">
-                                <Check className="h-3 w-3" />
-                                {stats.assigned}
-                              </Badge>
-                            )}
-                            {stats.unassigned > 0 && (
-                              <Badge variant="outline" className="gap-1 text-muted-foreground">
-                                <X className="h-3 w-3" />
-                                {stats.unassigned}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="grid gap-2 sm:grid-cols-2 pt-2">
-                          {perms.map((perm) => {
-                            const permCode = `${perm.app_label}.${perm.codename}`;
-                            const isChecked = selectedPermissions.includes(permCode);
-                            return (
-                              <div
-                                key={permCode}
-                                className={`flex items-center space-x-2 p-2 rounded-md transition-colors ${
-                                  isChecked ? 'bg-primary/5' : 'hover:bg-muted/50'
-                                }`}
-                              >
-                                <Checkbox
-                                  id={permCode}
-                                  checked={isChecked}
-                                  onCheckedChange={() => handlePermissionToggle(permCode)}
-                                />
-                                <Label
-                                  htmlFor={permCode}
-                                  className="text-sm font-normal cursor-pointer flex-1"
-                                >
-                                  {perm.name}
-                                </Label>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
-            )}
+            <PermissionGroupSelector
+              permissions={allPermissions || []}
+              selectedPermissions={selectedPermissions}
+              onToggle={handlePermissionToggle}
+            />
           </CardContent>
         </Card>
 
-        {/* Actions */}
-        <div className="flex justify-between">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={deleteRole.isPending}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Role
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Role</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete this role? This action cannot be undone.
-                  Staff members with this role will need to be reassigned.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" asChild>
-              <Link href="/admin/roles">Cancel</Link>
-            </Button>
-            <Button type="submit" disabled={updateRole.isPending}>
-              {updateRole.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Changes
-                </>
-              )}
-            </Button>
-          </div>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" asChild>
+            <Link href="/admin/roles">Cancel</Link>
+          </Button>
+          <Button type="submit" disabled={updateRole.isPending}>
+            {updateRole.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Changes
+              </>
+            )}
+          </Button>
         </div>
       </form>
     </div>

@@ -6,7 +6,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Building2, Users, Search, Filter } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, Building2, Users, Search, Filter, Network, CheckCircle2 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,17 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { AdminStatCard } from '@/components/admin/admin-stat-card';
 import { useDepartments } from '@/lib/hooks/use-rbac';
-import type { DepartmentType } from '@/lib/types/rbac';
+import type { Department, DepartmentType } from '@/lib/types/rbac';
 
 const DEPARTMENT_TYPES: { value: DepartmentType; label: string }[] = [
   { value: 'CLINICAL', label: 'Clinical' },
@@ -59,141 +57,238 @@ function getDepartmentTypeBadgeVariant(type: DepartmentType) {
 }
 
 export default function DepartmentsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<DepartmentType | 'all'>('all');
+  const { refresh, isRefreshing } = usePageRefresh();
 
-  const { data, isLoading, error } = useDepartments({
+  const { data, isLoading, error, refetch } = useDepartments({
     search: search || undefined,
     department_type: typeFilter !== 'all' ? typeFilter : undefined,
   });
 
-  return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Building2 className="h-6 w-6" />
-            Departments
-          </h1>
-          <p className="text-muted-foreground">
-            Manage organizational departments and their structure
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/admin/departments/new">
-            <Plus className="h-4 w-4 mr-2" />
-            New Department
-          </Link>
-        </Button>
+  const departments = data?.results ?? [];
+  const activeCount = departments.filter((dept) => dept.is_active).length;
+  const topLevelCount = departments.filter((dept) => !dept.parent).length;
+  const totalStaff = departments.reduce((sum, dept) => sum + dept.staff_count, 0);
+
+  const handleRefresh = async () => {
+    await refresh();
+    await refetch();
+  };
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Departments"
+          helpContent="Manage organizational departments, reporting structure, and leadership assignments."
+          actions={
+            <Button asChild>
+              <Link href="/admin/departments/new">
+                <Plus className="mr-2 h-4 w-4" />
+                New Department
+              </Link>
+            </Button>
+          }
+        />
+        <Card>
+          <CardContent className="py-10 text-center">
+            <p className="font-medium text-destructive">Departments could not be loaded.</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Refresh the page or inspect the backend response, then try again.
+            </p>
+          </CardContent>
+        </Card>
       </div>
+    );
+  }
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search departments..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
+  return (
+    <PullToRefresh onRefresh={handleRefresh} isRefreshing={isRefreshing}>
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title="Departments"
+          helpContent="Manage organizational departments, reporting structure, and leadership assignments."
+          actions={
+            <Button asChild>
+              <Link href="/admin/departments/new">
+                <Plus className="mr-2 h-4 w-4" />
+                New Department
+              </Link>
+            </Button>
+          }
+        />
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <AdminStatCard
+            title="Visible Departments"
+            value={data?.count ?? 0}
+            description="Current results after filters"
+            icon={<Building2 className="h-4 w-4 text-muted-foreground" />}
+          />
+          <AdminStatCard
+            title="Active"
+            value={activeCount}
+            description="Open for assignment"
+            icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+            valueClassName="text-2xl font-semibold text-emerald-600"
+          />
+          <AdminStatCard
+            title="Top-Level"
+            value={topLevelCount}
+            description="No parent department"
+            icon={<Network className="h-4 w-4 text-muted-foreground" />}
+          />
+          <AdminStatCard
+            title="Staff Assigned"
+            value={totalStaff}
+            description="Across visible departments"
+            icon={<Users className="h-4 w-4 text-muted-foreground" />}
+          />
+        </div>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+              <div className="relative min-w-0">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  autoComplete="off"
+                  className="pl-9"
+                  name="department-search"
+                  placeholder="Search by department name or code…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <Select
+                value={typeFilter}
+                onValueChange={(value) => setTypeFilter(value as DepartmentType | 'all')}
+              >
+                <SelectTrigger aria-label="Filter departments by type">
+                  <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {DEPARTMENT_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <Select
-              value={typeFilter}
-              onValueChange={(value) => setTypeFilter(value as DepartmentType | 'all')}
-            >
-              <SelectTrigger className="w-48">
-                <Filter className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Filter by type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {DEPARTMENT_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Department Directory
+              <Badge variant="secondary" className="ml-1">
+                {data?.count ?? 0}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <Skeleton key={index} className="h-16 w-full rounded-lg" />
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Departments Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {data?.count ?? 0} Departments
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : error ? (
-            <div className="text-center py-8 text-destructive">
-              Error loading departments
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Head</TableHead>
-                  <TableHead>Staff</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-20"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data?.results.map((dept) => (
-                  <TableRow key={dept.id}>
-                    <TableCell className="font-medium">{dept.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{dept.code}</TableCell>
-                    <TableCell>
+              </div>
+            ) : (
+              <ResponsiveTable
+                data={departments}
+                emptyMessage="No departments match the current filters."
+                keyExtractor={(dept) => dept.id}
+                onRowClick={(dept) => router.push(`/admin/departments/${dept.id}`)}
+                mobileCard={(dept) => <DepartmentMobileCard dept={dept} />}
+                columns={[
+                  {
+                    key: 'name',
+                    header: 'Department',
+                    cell: (dept) => (
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{dept.name}</p>
+                        <p className="font-mono text-sm text-muted-foreground truncate">{dept.code}</p>
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'type',
+                    header: 'Type',
+                    cell: (dept) => (
                       <Badge variant={getDepartmentTypeBadgeVariant(dept.department_type)}>
                         {dept.department_type_display}
                       </Badge>
-                    </TableCell>
-                    <TableCell>{dept.head_name || '-'}</TableCell>
-                    <TableCell>
-                      <span className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        {dept.staff_count} staff
-                      </span>
-                    </TableCell>
-                    <TableCell>
+                    ),
+                  },
+                  {
+                    key: 'head',
+                    header: 'Head',
+                    hideOnMobile: true,
+                    cell: (dept) => dept.head_name || 'Not assigned',
+                  },
+                  {
+                    key: 'staff',
+                    header: 'Staff',
+                    hideOnMobile: true,
+                    cell: (dept) => `${dept.staff_count} assigned`,
+                  },
+                  {
+                    key: 'status',
+                    header: 'Status',
+                    cell: (dept) => (
                       <Badge variant={dept.is_active ? 'default' : 'secondary'}>
                         {dept.is_active ? 'Active' : 'Inactive'}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
+                    ),
+                  },
+                  {
+                    key: 'actions',
+                    header: '',
+                    className: 'w-[90px] text-right',
+                    cell: (dept) => (
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/admin/departments/${dept.id}`}>Edit</Link>
+                        <Link href={`/admin/departments/${dept.id}`}>Open</Link>
                       </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {data?.results.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No departments found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                    ),
+                  },
+                ]}
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </PullToRefresh>
+  );
+}
+
+function DepartmentMobileCard({ dept }: { dept: Department }) {
+  return (
+    <Card className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <p className="font-medium truncate">{dept.name}</p>
+          <p className="font-mono text-sm text-muted-foreground truncate">{dept.code}</p>
+        </div>
+        <Badge variant={dept.is_active ? 'default' : 'secondary'}>
+          {dept.is_active ? 'Active' : 'Inactive'}
+        </Badge>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Badge variant={getDepartmentTypeBadgeVariant(dept.department_type)}>
+          {dept.department_type_display}
+        </Badge>
+      </div>
+      <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+        <p>Head: {dept.head_name || 'Not assigned'}</p>
+        <p>{dept.staff_count} staff assigned</p>
+      </div>
+    </Card>
   );
 }

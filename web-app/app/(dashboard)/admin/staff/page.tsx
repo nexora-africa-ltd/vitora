@@ -9,19 +9,26 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Plus, Users, Search, Building2, Shield, Mail, Phone, IdCard } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import {
+  Plus,
+  Users,
+  Search,
+  Building2,
+  Shield,
+  Mail,
+  Phone,
+  IdCard,
+  UserCheck,
+  UserMinus,
+  UserCog,
+} from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   Select,
   SelectContent,
@@ -32,32 +39,75 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { ViewToggle, type ViewMode } from '@/components/ui/view-toggle';
 import { EntityCard, EntityGrid } from '@/components/shared/entity-card';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { AdminStatCard } from '@/components/admin/admin-stat-card';
 import { useStaffList, useDepartments, useRoles } from '@/lib/hooks/use-rbac';
 import type { StaffProfile, EmploymentStatus } from '@/lib/types/rbac';
 
 export default function StaffListPage() {
+  const router = useRouter();
   const [search, setSearch] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<EmploymentStatus | ''>('');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<EmploymentStatus | 'all'>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const { refresh, isRefreshing } = usePageRefresh();
 
-  const { data: departments } = useDepartments({ is_active: true, page_size: 100 });
-  const { data: roles } = useRoles({ page_size: 100 });
+  const {
+    data: departments,
+    refetch: refetchDepartments,
+  } = useDepartments({ is_active: true, page_size: 100 });
+  const {
+    data: roles,
+    refetch: refetchRoles,
+  } = useRoles({ page_size: 100 });
 
-  const { data, isLoading, error } = useStaffList({
+  const {
+    data,
+    isLoading,
+    error,
+    refetch: refetchStaff,
+  } = useStaffList({
     search: search || undefined,
-    primary_department: departmentFilter ? parseInt(departmentFilter) : undefined,
-    primary_role: roleFilter ? parseInt(roleFilter) : undefined,
-    employment_status: statusFilter || undefined,
+    primary_department: departmentFilter !== 'all' ? parseInt(departmentFilter, 10) : undefined,
+    primary_role: roleFilter !== 'all' ? parseInt(roleFilter, 10) : undefined,
+    employment_status: statusFilter !== 'all' ? statusFilter : undefined,
   });
+
+  const staff = data?.results ?? [];
+  const activeCount = staff.filter((member) => member.employment_status === 'ACTIVE').length;
+  const onLeaveCount = staff.filter((member) => member.employment_status === 'ON_LEAVE').length;
+  const unassignedCount = staff.filter(
+    (member) => !member.primary_department_name || !member.primary_role_name
+  ).length;
+
+  const handleRefresh = async () => {
+    await refresh();
+    await Promise.all([refetchStaff(), refetchDepartments(), refetchRoles()]);
+  };
 
   if (error) {
     return (
-      <div className="container mx-auto py-6">
+      <div className="space-y-6">
+        <PageHeader
+          title="Staff Profiles"
+          helpContent="Manage staff accounts, role assignments, and department placement for administrative oversight."
+          actions={
+            <Button asChild>
+              <Link href="/admin/staff/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Staff
+              </Link>
+            </Button>
+          }
+        />
         <Card>
-          <CardContent className="py-8 text-center text-destructive">
-            Failed to load staff profiles. Please try again.
+          <CardContent className="py-10 text-center">
+            <p className="font-medium text-destructive">Staff profiles could not be loaded.</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Refresh the page or check the RBAC service response, then try again.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -65,205 +115,259 @@ export default function StaffListPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Users className="h-6 w-6" />
-            Staff Profiles
-          </h1>
-          <p className="text-muted-foreground">
-            Manage staff members, roles, and departments
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/admin/staff/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Staff
-          </Link>
-        </Button>
-      </div>
+    <PullToRefresh onRefresh={handleRefresh} isRefreshing={isRefreshing}>
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title="Staff Profiles"
+          helpContent="Manage staff accounts, role assignments, and department placement for administrative oversight. Pull down to refresh on mobile when new records are added from another workstation."
+          actions={
+            <Button asChild>
+              <Link href="/admin/staff/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Staff
+              </Link>
+            </Button>
+          }
+        />
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex-1 min-w-[200px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <AdminStatCard
+            title="Visible Profiles"
+            value={data?.count ?? 0}
+            description="Current results after filters"
+            icon={<Users className="h-4 w-4 text-muted-foreground" />}
+          />
+          <AdminStatCard
+            title="Active"
+            value={activeCount}
+            description="Able to access the system"
+            icon={<UserCheck className="h-4 w-4 text-emerald-600" />}
+            valueClassName="text-2xl font-semibold text-emerald-600"
+          />
+          <AdminStatCard
+            title="On Leave"
+            value={onLeaveCount}
+            description="Temporarily unavailable"
+            icon={<UserMinus className="h-4 w-4 text-amber-600" />}
+            valueClassName="text-2xl font-semibold text-amber-600"
+          />
+          <AdminStatCard
+            title="Needs Assignment"
+            value={unassignedCount}
+            description="Missing a role or department"
+            icon={<UserCog className="h-4 w-4 text-muted-foreground" />}
+          />
+        </div>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_180px_180px_160px_auto] lg:items-center">
+              <div className="relative min-w-0">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search staff..."
+                  aria-label="Search staff"
+                  autoComplete="off"
+                  className="pl-9"
+                  name="staff-search"
+                  placeholder="Search by name, username, or employee ID…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9"
-                  aria-label="Search"
                 />
               </div>
-            </div>
-            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-              <SelectTrigger className="w-[180px]" aria-label="Department">
-                <SelectValue placeholder="All Departments" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">All Departments</SelectItem>
-                {departments?.results?.map((dept) => (
-                  <SelectItem key={dept.id} value={dept.id.toString()}>
-                    {dept.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-[180px]" aria-label="Role">
-                <SelectValue placeholder="All Roles" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">All Roles</SelectItem>
-                {roles?.results?.map((role) => (
-                  <SelectItem key={role.id} value={role.id.toString()}>
-                    {role.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as EmploymentStatus | '')}>
-              <SelectTrigger className="w-[160px]" aria-label="Status">
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">All Status</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="ON_LEAVE">On Leave</SelectItem>
-                <SelectItem value="SUSPENDED">Suspended</SelectItem>
-                <SelectItem value="TERMINATED">Terminated</SelectItem>
-              </SelectContent>
-            </Select>
-            <ViewToggle value={viewMode} onChange={setViewMode} />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Staff List/Grid */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Staff List
-            {data?.count !== undefined && (
-              <Badge variant="secondary" className="ml-2">
-                {data.count}
-              </Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            viewMode === 'list' ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
-                ))}
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger aria-label="Filter by department">
+                  <SelectValue placeholder="All Departments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {departments?.results?.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id.toString()}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger aria-label="Filter by role">
+                  <SelectValue placeholder="All Roles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  {roles?.results?.map((role) => (
+                    <SelectItem key={role.id} value={role.id.toString()}>
+                      {role.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => setStatusFilter(value as EmploymentStatus | 'all')}
+              >
+                <SelectTrigger aria-label="Filter by employment status">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="ON_LEAVE">On Leave</SelectItem>
+                  <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                  <SelectItem value="TERMINATED">Terminated</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="flex justify-start lg:justify-end">
+                <ViewToggle value={viewMode} onChange={setViewMode} />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Staff Directory
+              <Badge variant="secondary" className="ml-1">
+                {data?.count ?? 0}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              viewMode === 'list' ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <Skeleton key={index} className="h-16 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : (
+                <EntityGrid>
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <Skeleton key={index} className="h-44 w-full rounded-lg" />
+                  ))}
+                </EntityGrid>
+              )
+            ) : viewMode === 'list' ? (
+              <StaffTableView
+                staff={staff}
+                onOpen={(member) => router.push(`/admin/staff/${member.id}`)}
+              />
             ) : (
-              <EntityGrid>
-                {[...Array(8)].map((_, i) => (
-                  <Skeleton key={i} className="h-40 w-full rounded-lg" />
-                ))}
-              </EntityGrid>
-            )
-          ) : viewMode === 'list' ? (
-            <StaffTableView staff={data?.results || []} />
-          ) : (
-            <StaffGridView staff={data?.results || []} />
-          )}
-        </CardContent>
-      </Card>
-    </div>
+              <StaffGridView staff={staff} />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </PullToRefresh>
   );
 }
 
-/**
- * Staff Table View Component
- */
-function StaffTableView({ staff }: { staff: StaffProfile[] }) {
-  if (staff.length === 0) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        No staff profiles found.
-      </div>
-    );
-  }
-
+function StaffTableView({
+  staff,
+  onOpen,
+}: {
+  staff: StaffProfile[];
+  onOpen: (member: StaffProfile) => void;
+}) {
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Employee</TableHead>
-          <TableHead>Employee ID</TableHead>
-          <TableHead>Department</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead>Contact</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {staff.map((member) => (
-          <TableRow key={member.id}>
-            <TableCell>
-              <div>
-                <p className="font-medium">{member.full_name}</p>
-                <p className="text-sm text-muted-foreground">@{member.user_username}</p>
+    <ResponsiveTable
+      data={staff}
+      emptyMessage="No staff profiles match the current filters."
+      keyExtractor={(member) => member.id}
+      onRowClick={onOpen}
+      mobileCard={(member) => (
+        <Card className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <p className="font-medium truncate">{member.full_name}</p>
+              <p className="text-sm text-muted-foreground truncate">@{member.user_username}</p>
+            </div>
+            <Badge variant={member.employment_status === 'ACTIVE' ? 'default' : 'secondary'}>
+              {formatEmploymentStatus(member.employment_status)}
+            </Badge>
+          </div>
+          <div className="mt-3 space-y-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <IdCard className="h-3.5 w-3.5" />
+              <span className="font-mono">{member.employee_id}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Building2 className="h-3.5 w-3.5" />
+              <span>{member.primary_department_name || 'Department not assigned'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Shield className="h-3.5 w-3.5" />
+              <span>{member.primary_role_name || 'Role not assigned'}</span>
+            </div>
+            {member.user_email ? (
+              <div className="flex items-center gap-2 min-w-0">
+                <Mail className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{member.user_email}</span>
               </div>
-            </TableCell>
-            <TableCell>
-              <code className="text-sm">{member.employee_id}</code>
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center gap-1">
-                <Building2 className="h-3 w-3 text-muted-foreground" />
-                <span>{member.primary_department_name || 'Unassigned'}</span>
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="flex items-center gap-1">
-                <Shield className="h-3 w-3 text-muted-foreground" />
-                <span>{member.primary_role_name || 'Unassigned'}</span>
-              </div>
-            </TableCell>
-            <TableCell>
-              <div className="space-y-1">
-                {member.user_email && (
-                  <div className="flex items-center gap-1 text-sm">
-                    <Mail className="h-3 w-3 text-muted-foreground" />
-                    <span className="truncate max-w-[150px]">{member.user_email}</span>
-                  </div>
-                )}
-                {member.phone_number && (
-                  <div className="flex items-center gap-1 text-sm">
-                    <Phone className="h-3 w-3 text-muted-foreground" />
-                    <span>{member.phone_number}</span>
-                  </div>
-                )}
-              </div>
-            </TableCell>
-            <TableCell>
-              <Badge variant={member.employment_status === 'ACTIVE' ? 'default' : 'secondary'}>
-                {member.employment_status === 'ACTIVE' ? 'Active' : member.employment_status?.toLowerCase() || 'Unknown'}
-              </Badge>
-            </TableCell>
-            <TableCell className="text-right">
-              <Button variant="ghost" size="sm" asChild>
-                <Link href={`/admin/staff/${member.id}`}>
-                  Edit
-                </Link>
-              </Button>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+            ) : null}
+          </div>
+        </Card>
+      )}
+      columns={[
+        {
+          key: 'employee',
+          header: 'Employee',
+          cell: (member) => (
+            <div className="min-w-0">
+              <p className="font-medium truncate">{member.full_name}</p>
+              <p className="text-sm text-muted-foreground truncate">@{member.user_username}</p>
+            </div>
+          ),
+        },
+        {
+          key: 'employee_id',
+          header: 'Employee ID',
+          cell: (member) => <span className="font-mono text-sm">{member.employee_id}</span>,
+        },
+        {
+          key: 'department',
+          header: 'Department',
+          hideOnMobile: true,
+          cell: (member) => member.primary_department_name || 'Unassigned',
+        },
+        {
+          key: 'role',
+          header: 'Role',
+          hideOnMobile: true,
+          cell: (member) => member.primary_role_name || 'Unassigned',
+        },
+        {
+          key: 'contact',
+          header: 'Contact',
+          hideOnMobile: true,
+          cell: (member) => (
+            <div className="min-w-0 space-y-1 text-sm text-muted-foreground">
+              {member.user_email ? <p className="truncate">{member.user_email}</p> : null}
+              {member.phone_number ? <p>{member.phone_number}</p> : <p>—</p>}
+            </div>
+          ),
+        },
+        {
+          key: 'status',
+          header: 'Status',
+          cell: (member) => (
+            <Badge variant={member.employment_status === 'ACTIVE' ? 'default' : 'secondary'}>
+              {formatEmploymentStatus(member.employment_status)}
+            </Badge>
+          ),
+        },
+        {
+          key: 'actions',
+          header: '',
+          className: 'w-[90px] text-right',
+          cell: (member) => (
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={`/admin/staff/${member.id}`}>Open</Link>
+            </Button>
+          ),
+        },
+      ]}
+    />
   );
 }
 
@@ -273,8 +377,8 @@ function StaffTableView({ staff }: { staff: StaffProfile[] }) {
 function StaffGridView({ staff }: { staff: StaffProfile[] }) {
   if (staff.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        No staff profiles found.
+      <div className="py-12 text-center text-muted-foreground">
+        No staff profiles match the current filters.
       </div>
     );
   }
@@ -320,6 +424,21 @@ function StaffGridView({ staff }: { staff: StaffProfile[] }) {
       ))}
     </EntityGrid>
   );
+}
+
+function formatEmploymentStatus(status?: EmploymentStatus) {
+  switch (status) {
+    case 'ACTIVE':
+      return 'Active';
+    case 'ON_LEAVE':
+      return 'On Leave';
+    case 'SUSPENDED':
+      return 'Suspended';
+    case 'TERMINATED':
+      return 'Terminated';
+    default:
+      return 'Unknown';
+  }
 }
 
 /**

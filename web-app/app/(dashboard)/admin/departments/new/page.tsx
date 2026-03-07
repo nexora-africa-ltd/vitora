@@ -7,7 +7,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Building2, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -71,26 +72,16 @@ export default function NewDepartmentPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/admin/departments">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Building2 className="h-6 w-6" />
-            New Department
-          </h1>
-          <p className="text-muted-foreground">
-            Create a new organizational department
-          </p>
-        </div>
+    <div className="space-y-4 sm:space-y-6">
+      <PageHeader
+        title="New Department"
+        helpContent="Create a department and place it correctly in the organizational structure before assigning staff."
+      />
+
+      <div className="rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
+        Choose the department type and parent carefully so routing, ownership, and staffing reports remain accurate.
       </div>
 
-      {/* Form */}
       <form onSubmit={handleSubmit}>
         <Card>
           <CardHeader>
@@ -104,20 +95,25 @@ export default function NewDepartmentPage() {
               <div className="space-y-2">
                 <Label htmlFor="name">Name *</Label>
                 <Input
+                  autoComplete="organization"
                   id="name"
+                  name="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., Outpatient Department"
+                  placeholder="e.g., Outpatient Department…"
                   required
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="code">Code *</Label>
                 <Input
+                  autoComplete="off"
                   id="code"
+                  name="code"
+                  spellCheck={false}
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                  placeholder="e.g., OPD"
+                  placeholder="e.g., OPD…"
                   required
                 />
               </div>
@@ -127,9 +123,10 @@ export default function NewDepartmentPage() {
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
+                name="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Brief description of the department..."
+                placeholder="Brief description of the department…"
                 rows={3}
               />
             </div>
@@ -194,7 +191,7 @@ export default function NewDepartmentPage() {
               </Select>
             </div>
 
-            <div className="flex justify-end gap-4 pt-4">
+            <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:justify-end">
               <Button variant="outline" type="button" asChild>
                 <Link href="/admin/departments">Cancel</Link>
               </Button>
