@@ -308,6 +308,7 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
 
         {/* Baby Info (if delivered) */}
         {registration.baby && (
+          <div className="pt-1">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -330,6 +331,7 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
               <TooltipContent>View baby&apos;s patient record</TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          </div>
         )}
 
         {/* Tabs */}
