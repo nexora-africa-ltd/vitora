@@ -1483,6 +1483,15 @@ class CarePlanGenerateView(AIFeatureGatedMixin, APIView):
 
             result = generate_care_plan_fallback(data)
 
+        # Normalize follow_up: LLM may return "appointment"/"investigations"
+        # instead of the canonical "timing"/"instructions" field names.
+        follow_up = result.get("follow_up")
+        if isinstance(follow_up, dict):
+            if "timing" not in follow_up and "appointment" in follow_up:
+                follow_up["timing"] = follow_up.pop("appointment")
+            if "instructions" not in follow_up and "investigations" in follow_up:
+                follow_up["instructions"] = follow_up.pop("investigations")
+
         response_serializer = CarePlanResponseSerializer(data=result)
         if response_serializer.is_valid():
             return Response(response_serializer.data)

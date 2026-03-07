@@ -696,7 +696,8 @@ export interface AICarePlanInterventionCategory {
 
 /** Follow-up instructions */
 export interface AICarePlanFollowUp {
-  timing: string;
+  timing?: string;
+  appointment?: string;
   instructions?: string;
   red_flags?: string[];
 }

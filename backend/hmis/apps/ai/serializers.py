@@ -1361,7 +1361,7 @@ class CarePlanInterventionCategorySerializer(serializers.Serializer):
 class CarePlanFollowUpSerializer(serializers.Serializer):
     """Follow-up instructions."""
 
-    timing = serializers.CharField()
+    timing = serializers.CharField(required=False, allow_blank=True)
     instructions = serializers.CharField(required=False, allow_blank=True)
     red_flags = serializers.ListField(
         child=serializers.CharField(),

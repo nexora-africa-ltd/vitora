@@ -153,9 +153,12 @@ function InterventionCategorySection({ category }: { category: AICarePlanInterve
 }
 
 function FollowUpSection({ followUp }: { followUp: AICarePlanFollowUp }) {
+  const followUpTiming = followUp.timing || followUp.appointment;
   return (
     <div className="space-y-2 rounded-md p-2.5 border border-border">
-      <h5 className="text-sm font-medium">Follow-up: {followUp.timing}</h5>
+      {followUpTiming && (
+        <h5 className="text-sm font-medium">Follow-up: {followUpTiming}</h5>
+      )}
       {followUp.instructions && (
         <p className="text-sm text-muted-foreground">{followUp.instructions}</p>
       )}

@@ -306,7 +306,7 @@ export function AIChatWidget() {
       addMessage({
         id: `system-${Date.now()}`,
         role: 'assistant',
-        content: `✨ Opening **${action.label}** panel below. Scroll down to see the detailed assessment.`,
+        content: `✨ Opening **${action.label}** panel in the form. Minimize the widget and scroll down to see the detailed assessment.`,
         timestamp: new Date().toISOString(),
       });
       triggerPanelAction(action.panelAction);

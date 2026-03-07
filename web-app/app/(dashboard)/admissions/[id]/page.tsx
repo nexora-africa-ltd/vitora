@@ -708,6 +708,18 @@ export default function AdmissionDetailPage() {
               patientSex={
                 admission.patient_gender === 'F' ? 'female' : 'male'
               }
+              vitals={(() => {
+                const vs = latestWardRound?.vital_signs ?? latestWardRound;
+                if (!vs) return undefined;
+                return {
+                  ...(vs.temperature != null && { temperature: Number(vs.temperature) }),
+                  ...(vs.pulse != null && { pulse: vs.pulse }),
+                  ...(vs.respiratory_rate != null && { respiratory_rate: vs.respiratory_rate }),
+                  ...(vs.spo2 != null && { spo2: Number(vs.spo2) }),
+                };
+              })()}
+              allergies={kardex?.allergies
+                ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
               autoTrigger={autoTriggerCarePlan}
               onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
             />
