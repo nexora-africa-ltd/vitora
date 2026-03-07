@@ -320,7 +320,8 @@ export function AIChatPanel({
   })();
 
   return (
-    <div className={cn('flex flex-col h-full', className)}>
+    <div className={cn('relative flex flex-col h-full', className)}>
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
       {/* Header */}
       {showHeader && (
         <>

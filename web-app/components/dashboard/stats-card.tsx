@@ -50,9 +50,10 @@ export function StatsCard({
   const cardContent = (
     <Card
       variant={href ? 'interactive' : 'elevated'}
-      className={cn('h-full overflow-hidden border-border/60', href && 'cursor-pointer')}
+      className={cn('relative h-full overflow-hidden border-border/60', href && 'cursor-pointer')}
     >
-      <CardContent className="flex h-full flex-col p-5 sm:p-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+      <CardContent className="relative flex h-full flex-col p-5 sm:p-6">
         {loading ? (
           <div className="flex-1 flex flex-col">
             <div className="flex items-center justify-between mb-4">

@@ -1376,6 +1376,52 @@ When tab/button labels are too long on small screens, render a shorter label on 
 </TabsTrigger>
 ```
 
+### Subtle Radial Gradient (Data-Display Cards Only)
+
+Apply a dual radial gradient to **data-display / highlight cards** (stat cards, KPI cards, entity cards, hero panels) to give them subtle visual depth. **Do NOT add it to the base `Card` component** — form containers, dialog bodies, settings panels, table wrappers, and empty states should stay plain.
+
+**Principle:** The gradient is opt-in per component. It adds meaning to cards that surface key numbers or identity, not ambient decoration to every container.
+
+**Full-intensity** (hero panels, welcome bars):
+
+```tsx
+<div className="relative overflow-hidden rounded-xl border border-primary/20 bg-card">
+  <div
+    className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.18),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.14),transparent_34%)]"
+    aria-hidden="true"
+  />
+  <div className="relative p-6">{/* content */}</div>
+</div>
+```
+
+**Subtle** (stat cards, KPI cards, entity cards):
+
+```tsx
+<Card className="relative overflow-hidden">
+  <div
+    className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+    aria-hidden="true"
+  />
+  <CardContent className="relative">{/* content */}</CardContent>
+</Card>
+```
+
+**Where to apply:**
+- `StatsCard` (dashboard) — subtle
+- `KPICard` (reports) — subtle
+- `EntityCard` (staff/patient grids) — subtle
+- `AdminStatCard` (admin overview) — subtle
+- Dashboard welcome panel — full-intensity
+- Admin hero card — full-intensity
+- `AIChatPanel` container — subtle
+
+**Where NOT to apply:**
+- Base `Card` component (`components/ui/card.tsx`)
+- Ghost, muted, dashed card variants
+- Form/dialog containers
+- Table wrapper cards
+- Empty state cards
+
 ---
 
 ## ✅ Commit Discipline (Required)
