@@ -11,6 +11,16 @@ jest.mock('next/dynamic', () => () => {
 // Avoid needing AuthProvider in this unit test
 jest.mock('@/lib/auth', () => ({
   useIsSupervisor: () => false,
+  useUser: () => ({
+    id: 1,
+    username: 'jdoe',
+    email: 'jdoe@example.com',
+    first_name: 'Jane',
+    last_name: 'Doe',
+    is_staff: true,
+    permissions: [],
+    role: 'NURSING_OFFICER',
+  }),
 }));
 
 jest.mock('@/lib/hooks/use-triage', () => ({
@@ -106,6 +116,13 @@ describe('Dashboard Page', () => {
   it('should render dashboard title', () => {
     render(<DashboardPage />, { wrapper: TestWrapper });
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
+  });
+
+  it('should render personalized welcome message', () => {
+    render(<DashboardPage />, { wrapper: TestWrapper });
+    expect(screen.getByText(/good morning|good afternoon|good evening/i)).toBeInTheDocument();
+    expect(screen.getByText(/jane/i)).toBeInTheDocument();
+    expect(screen.getByText(/nursing officer/i)).toBeInTheDocument();
   });
 
   it('should render stats cards', () => {
