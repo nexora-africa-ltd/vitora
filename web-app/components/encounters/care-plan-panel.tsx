@@ -33,6 +33,7 @@ import { HelpPopover } from '@/components/shared/help-popover';
 import { useAICarePlanGenerate, useAIEnabled } from '@/lib/hooks/use-ai';
 import { aiApi } from '@/lib/api/ai';
 import { toast } from 'sonner';
+import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
 import type {
   AICarePlanGenerateRequest,
   AICarePlanResponse,
@@ -204,6 +205,7 @@ export function CarePlanPanel({
   const isAIEnabled = useAIEnabled();
   const { mutate, data: result, isPending, isError, reset } = useAICarePlanGenerate();
   const [isExporting, setIsExporting] = React.useState(false);
+  const panelId = React.useId();
 
   // Show success toast when care plan is generated
   React.useEffect(() => {
@@ -464,8 +466,23 @@ export function CarePlanPanel({
               <span>AI-generated care plan. Review all interventions and adjust based on clinical judgment and patient response.</span>
             </div>
 
-            {/* Actions */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end pt-1">
+            {/* Feedback + Actions */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-1">
+              <AIFeedbackButtons
+                messageId={`careplan-${panelId}`}
+                serviceType="care_plan"
+                userQuery={primaryDiagnosis || chiefComplaint}
+                botResponse={`Goals: ${result.goals.map(g => g.description).join('; ')}`}
+                metadata={{
+                  mode: result.mode,
+                  template_used: result.template_used,
+                  llm_enriched: result.llm_enriched,
+                  facility_level: facilityLevel,
+                  goals_count: result.goals.length,
+                  interventions_count: result.interventions.reduce((s, c) => s + c.items.length, 0),
+                }}
+              />
+              <div className="flex flex-col gap-2 sm:flex-row">
               <Button
                 type="button"
                 variant="ghost"
@@ -492,6 +509,7 @@ export function CarePlanPanel({
                 )}
                 Export FHIR R4
               </Button>
+              </div>
             </div>
           </div>
         )}

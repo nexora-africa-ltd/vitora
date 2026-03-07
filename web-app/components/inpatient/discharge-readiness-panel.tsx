@@ -32,6 +32,7 @@ import { Progress } from '@/components/ui/progress';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useAIDischargeAssess, useAIEnabled } from '@/lib/hooks/use-ai';
 import { toast } from 'sonner';
+import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
 import type {
   AIDischargeAssessRequest,
   AIDischargeAssessResponse,
@@ -162,6 +163,7 @@ export function DischargeReadinessPanel({
   const isAIEnabled = useAIEnabled();
   const { mutate, data: result, isPending, isError, reset } = useAIDischargeAssess();
   const [showDetails, setShowDetails] = React.useState(false);
+  const panelId = React.useId();
 
   // Show success toast when assessment completes
   React.useEffect(() => {
@@ -388,8 +390,20 @@ export function DischargeReadinessPanel({
               <span>AI-generated assessment. Discharge decisions require clinical judgment and attending physician approval.</span>
             </div>
 
-            {/* Re-run */}
-            <div className="flex justify-end">
+            {/* Feedback + Re-run */}
+            <div className="flex items-center justify-between">
+              <AIFeedbackButtons
+                messageId={`discharge-${panelId}`}
+                serviceType="discharge_readiness"
+                userQuery={primaryDiagnosis}
+                botResponse={`${readinessConfig.label} — ${Math.round(result.readiness_score * 100)}%`}
+                metadata={{
+                  readiness_level: result.readiness_level,
+                  readiness_score: result.readiness_score,
+                  condition: primaryDiagnosis,
+                  unmet_count: result.unmet_criteria_count,
+                }}
+              />
               <Button
                 type="button"
                 variant="ghost"

@@ -435,6 +435,10 @@ export interface AIFeedbackRequest {
   bot_response?: string;
   /** Echo back the risk_level from the /clinical/assist response */
   risk_level?: string;
+  /** Which service generated the response */
+  service_type?: string;
+  /** Service-specific context for quality analysis */
+  metadata?: Record<string, unknown>;
 }
 
 /** Response from POST /api/ai/feedback/ */

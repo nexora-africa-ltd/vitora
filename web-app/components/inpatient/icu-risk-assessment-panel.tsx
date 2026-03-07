@@ -35,6 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useAIICUPredict, useAIEnabled } from '@/lib/hooks/use-ai';
 import { toast } from 'sonner';
+import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
 import type {
   AIICUPredictRequest,
   AIICUPredictResponse,
@@ -309,6 +310,7 @@ export function ICURiskAssessmentPanel({
   const { mutate, data: prediction, isPending, reset, isError } = useAIICUPredict();
   const [showDetails, setShowDetails] = React.useState(false);
   const [predictionType, setPredictionType] = React.useState<AIICUPredictionType>('predict');
+  const panelId = React.useId();
 
   // Show success toast when prediction completes
   React.useEffect(() => {
@@ -650,7 +652,21 @@ export function ICURiskAssessmentPanel({
             )}
 
             {/* Re-run Buttons */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end pt-1">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-1">
+              <AIFeedbackButtons
+                messageId={`icu-${predictionType}-${panelId}`}
+                serviceType="icu_predictor"
+                userQuery={admissionDiagnosis}
+                botResponse={`${prediction.risk_level} risk${prediction.risk_score != null ? ` — ${Math.round(prediction.risk_score * 100)}%` : ''}`}
+                metadata={{
+                  prediction_type: predictionType,
+                  risk_level: prediction.risk_level,
+                  risk_score: prediction.risk_score,
+                  sofa_score: prediction.sofa_score,
+                  qsofa_score: prediction.qsofa_score,
+                }}
+              />
+              <div className="flex flex-col gap-2 sm:flex-row">
               <Button
                 type="button"
                 variant="ghost"
@@ -687,6 +703,7 @@ export function ICURiskAssessmentPanel({
                 )}
                 Re-run Risk Stratify
               </Button>
+              </div>
             </div>
           </div>
         )}
