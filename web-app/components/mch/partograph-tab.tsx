@@ -103,8 +103,12 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
   const [observationDialogOpen, setObservationDialogOpen] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
-  const [parity, setParity] = useState('');
-  const [gestationWeeks, setGestationWeeks] = useState('');
+  const [parity, setParity] = useState(
+    registration.parity != null ? String(registration.parity) : ''
+  );
+  const [gestationWeeks, setGestationWeeks] = useState(
+    registration.current_gestation_weeks != null ? String(registration.current_gestation_weeks) : ''
+  );
   const [membraneStatus, setMembraneStatus] = useState<MembraneStatus>('');
   const [liquor, setLiquor] = useState<LiquorStatus>('');
   const [partographNotes, setPartographNotes] = useState('');
@@ -147,8 +151,8 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
   }));
 
   const resetPartographForm = () => {
-    setParity('');
-    setGestationWeeks('');
+    setParity(registration.parity != null ? String(registration.parity) : '');
+    setGestationWeeks(registration.current_gestation_weeks != null ? String(registration.current_gestation_weeks) : '');
     setMembraneStatus('');
     setLiquor('');
     setPartographNotes('');
@@ -274,10 +278,16 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
                   <div className="space-y-2">
                     <Label>Parity</Label>
                     <Input type="number" min="0" value={parity} onChange={(e) => setParity(e.target.value)} />
+                    {registration.parity != null && (
+                      <p className="text-xs text-muted-foreground">From ANC registration (editable)</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Gestation Weeks</Label>
                     <Input type="number" min="20" max="45" value={gestationWeeks} onChange={(e) => setGestationWeeks(e.target.value)} />
+                    {registration.current_gestation_weeks != null && (
+                      <p className="text-xs text-muted-foreground">From ANC registration (editable)</p>
+                    )}
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">

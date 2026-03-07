@@ -764,6 +764,10 @@ class LabourPartographViewSet(viewsets.ModelViewSet):
             details={"registration_id": instance.registration_id, "status": instance.status},
             ip_address=get_client_ip(self.request),
         )
+        # Re-fetch through annotated queryset so observation_count is present
+        # in the serialized response.
+        refreshed = self.get_queryset().get(pk=instance.pk)
+        serializer.instance = refreshed
 
 
 class LabourPartographObservationViewSet(viewsets.ModelViewSet):

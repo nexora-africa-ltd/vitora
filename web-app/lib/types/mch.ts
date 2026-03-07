@@ -38,6 +38,9 @@ export interface MCHRegistrationListItem {
   edd: string | null;
   gestation_display: string;
   trimester: number | null;
+  gravida: number | null;
+  parity: number | null;
+  current_gestation_weeks: number | null;
   anc_visit_count: number;
   created_at: string;
 }
