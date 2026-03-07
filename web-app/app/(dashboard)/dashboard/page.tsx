@@ -288,8 +288,8 @@ export default function DashboardPage() {
           }
         />
 
-        <div className="relative overflow-hidden rounded-xl border bg-card p-5 sm:p-6">
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.06] to-transparent" aria-hidden="true" />
+        <div className="relative overflow-hidden rounded-xl border border-primary/20 bg-card p-5 sm:p-6">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.18),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.14),transparent_34%)]" aria-hidden="true" />
           <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-4">
               <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-2 ring-primary/20 sm:flex">

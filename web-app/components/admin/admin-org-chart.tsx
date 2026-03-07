@@ -8,7 +8,6 @@ import {
   Handle,
   MarkerType,
   MiniMap,
-  Panel,
   Position,
   ReactFlow,
   useReactFlow,
@@ -29,6 +28,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils/cn';
 import type { Department, StaffProfile } from '@/lib/types/rbac';
 
@@ -610,87 +610,38 @@ export function AdminOrgChart({
   }
 
   return (
-    <div className="h-[640px] overflow-hidden rounded-2xl border bg-background">
-      <ReactFlow
-        nodes={chart.nodes}
-        edges={chart.edges}
-        nodeTypes={nodeTypes}
-        nodesConnectable={false}
-        nodesDraggable={false}
-        elementsSelectable
-        fitView
-        fitViewOptions={{ padding: 0.24 }}
-        minZoom={0.35}
-        maxZoom={1.4}
-        onNodeClick={(_, node) => {
-          if (node.data.kind === 'department') {
-            setSelectedDepartmentId(node.data.departmentId);
-            setSelectedStaffId(null);
-            setFocusNodeId(node.id);
-            return;
-          }
-
-          setSelectedDepartmentId(node.data.departmentId);
-          setSelectedStaffId(node.data.staffId);
-          setFocusNodeId(node.id);
-        }}
-        proOptions={{ hideAttribution: true }}
-      >
-        <FlowFocusController focusNodeId={focusNodeId} />
-        <Background color="#94a3b8" gap={20} size={1} />
-        <MiniMap
-          pannable
-          zoomable
-          nodeStrokeWidth={3}
-          nodeColor={(node) => {
-            if (node.data?.kind === 'staff') {
-              return '#0f766e';
-            }
-            return node.data?.isActive ? '#0891b2' : '#94a3b8';
-          }}
-        />
-        <Controls showInteractive={false} position="bottom-right" />
-
-        <Panel position="top-left" className="max-w-sm rounded-xl border bg-background/95 p-3 shadow-sm backdrop-blur">
-          <div className="space-y-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                className="pl-9"
-                placeholder="Search departments or staff"
-              />
-            </div>
-
-            {departmentSearchResults.length > 0 ? (
-              <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border bg-muted/20 p-2">
-                {departmentSearchResults.map((result) => (
-                  <button
-                    key={`${result.kind}-${result.id}`}
-                    type="button"
-                    className="w-full rounded-md px-2 py-2 text-left transition-colors hover:bg-background"
-                    onClick={() => {
-                      if (result.kind === 'department') {
-                        setSelectedDepartmentId(result.id);
-                        setSelectedStaffId(null);
-                        setFocusNodeId(result.nodeId);
-                      } else {
-                        setShowStaffLines(true);
-                        setSelectedDepartmentId(result.departmentId);
-                        setSelectedStaffId(result.id);
-                        setFocusNodeId(result.nodeId);
-                      }
-                    }}
-                  >
-                    <p className="truncate text-sm font-medium text-foreground">{result.label}</p>
-                    <p className="truncate text-xs text-muted-foreground">{result.description}</p>
-                  </button>
-                ))}
+    <div className="space-y-4">
+      {/* Toolbar: search + filters */}
+      <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="space-y-2">
+              <Label
+                htmlFor="org-chart-search"
+                className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground"
+              >
+                Find Department or Staff
+              </Label>
+              <div className="relative max-w-xl">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="org-chart-search"
+                  name="orgChartSearch"
+                  autoComplete="off"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  className="pl-9"
+                  placeholder="Search departments or staff…"
+                  aria-label="Search departments or staff"
+                />
               </div>
-            ) : null}
+            </div>
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              Click a node to inspect it. Staff reporting lines appear for the selected department when staff lines are enabled.
+            </p>
+          </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"
               variant={showInactive ? 'outline' : 'default'}
@@ -698,7 +649,7 @@ export function AdminOrgChart({
                 startTransition(() => setShowInactive(false));
               }}
             >
-              Active only
+              Active Only
             </Button>
             <Button
               size="sm"
@@ -707,7 +658,7 @@ export function AdminOrgChart({
                 startTransition(() => setShowInactive(true));
               }}
             >
-              Include inactive
+              Include Inactive
             </Button>
             <Button
               size="sm"
@@ -716,122 +667,201 @@ export function AdminOrgChart({
                 startTransition(() => setShowStaffLines((current) => !current));
               }}
             >
-              {showStaffLines ? 'Hide staff lines' : 'Show staff lines'}
+              {showStaffLines ? 'Hide Staff Lines' : 'Show Staff Lines'}
             </Button>
-            </div>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Department nodes show formal structure. Staff reporting lines appear for the selected department when staff lines are enabled.
-          </p>
-        </Panel>
+        </div>
 
-        {selectedDetail ? (
-          <Panel position="top-right" className="w-[300px] rounded-xl border bg-background/95 p-4 shadow-sm backdrop-blur">
-            <div className="space-y-3">
-              {selectedStaff ? (
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-foreground">
-                          {selectedStaff.full_name}
-                        </p>
-                        <p className="mt-1 truncate text-xs text-muted-foreground">
-                          {selectedStaff.primary_role_name || 'Role not assigned'}
-                        </p>
-                      </div>
-                      <Badge variant={selectedStaff.employment_status === 'ACTIVE' ? 'default' : 'secondary'}>
-                        {selectedStaff.employment_status || 'ACTIVE'}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {selectedStaff.title ? <Badge variant="outline">{selectedStaff.title}</Badge> : null}
-                      <Badge variant="secondary">{selectedStaff.employee_id}</Badge>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 shrink-0" />
-                      <span className="truncate">
-                        Department: {selectedStaff.primary_department_name || 'Not assigned'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 shrink-0" />
-                      <span>
-                        Supervisor:{' '}
-                        {selectedStaff.supervisor
-                          ? chart.staffById.get(selectedStaff.supervisor)?.full_name || 'Assigned'
-                          : 'Top-level in department'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <Button asChild className="w-full">
-                    <Link href={`/admin/staff/${selectedStaff.id}`}>
-                      Open staff profile
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <div>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-foreground">
-                          {selectedDetail.department.name}
-                        </p>
-                        <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                          {selectedDetail.department.code}
-                        </p>
-                      </div>
-                      <Badge variant={selectedDetail.department.is_active ? 'default' : 'secondary'}>
-                        {selectedDetail.department.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <Badge variant="outline">{selectedDetail.department.department_type_display}</Badge>
-                      <Badge variant="secondary">{selectedDetail.department.staff_count} staff</Badge>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <UserRound className="h-4 w-4 shrink-0" />
-                      <span className="truncate">Head: {selectedDetail.headName || 'Not assigned'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-4 w-4 shrink-0" />
-                      <span className="truncate">Parent: {selectedDetail.parentName || 'Top-level department'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <GitBranch className="h-4 w-4 shrink-0" />
-                      <span>{selectedDetail.childCount} direct sub-departments</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Network className="h-4 w-4 shrink-0" />
-                      <span>{selectedDetail.supervisorCoverage}% supervisor coverage</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 shrink-0" />
-                      <span>{focusedDepartmentStaff.length} staff in the selected department</span>
-                    </div>
-                  </div>
-
-                  <Button asChild className="w-full">
-                    <Link href={`/admin/departments/${selectedDetail.department.id}`}>
-                      Open department
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </>
-              )}
-            </div>
-          </Panel>
+        {departmentSearchResults.length > 0 ? (
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {departmentSearchResults.map((result) => (
+              <button
+                key={`${result.kind}-${result.id}`}
+                type="button"
+                className="w-full rounded-2xl border border-border/70 bg-background/80 px-3 py-3 text-left transition-colors hover:border-primary/30 hover:bg-background"
+                onClick={() => {
+                  if (result.kind === 'department') {
+                    setSelectedDepartmentId(result.id);
+                    setSelectedStaffId(null);
+                    setFocusNodeId(result.nodeId);
+                  } else {
+                    setShowStaffLines(true);
+                    setSelectedDepartmentId(result.departmentId);
+                    setSelectedStaffId(result.id);
+                    setFocusNodeId(result.nodeId);
+                  }
+                }}
+              >
+                <p className="truncate text-sm font-medium text-foreground">{result.label}</p>
+                <p className="mt-1 truncate text-xs text-muted-foreground">{result.description}</p>
+              </button>
+            ))}
+          </div>
         ) : null}
-      </ReactFlow>
+      </div>
+
+      {/* Canvas: full width at every breakpoint */}
+      <div className="h-[540px] overflow-hidden rounded-[28px] border border-border/70 sm:h-[580px] lg:h-[620px] bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.08),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(15,118,110,0.08),transparent_30%),hsl(var(--background))]">
+        <ReactFlow
+          nodes={chart.nodes}
+          edges={chart.edges}
+          nodeTypes={nodeTypes}
+          nodesConnectable={false}
+          nodesDraggable={false}
+          elementsSelectable
+          fitView
+          fitViewOptions={{ padding: 0.24 }}
+          minZoom={0.35}
+          maxZoom={1.4}
+          onNodeClick={(_, node) => {
+            if (node.data.kind === 'department') {
+              setSelectedDepartmentId(node.data.departmentId);
+              setSelectedStaffId(null);
+              setFocusNodeId(node.id);
+              return;
+            }
+
+            setSelectedDepartmentId(node.data.departmentId);
+            setSelectedStaffId(node.data.staffId);
+            setFocusNodeId(node.id);
+          }}
+          proOptions={{ hideAttribution: true }}
+        >
+          <FlowFocusController focusNodeId={focusNodeId} />
+          <Background color="#1f2937" gap={24} size={1} />
+          <MiniMap
+            pannable
+            zoomable
+            nodeStrokeWidth={3}
+            className="!hidden md:!block !rounded-2xl !border !border-border/70 !bg-background/90"
+            nodeColor={(node) => {
+              if (node.data?.kind === 'staff') {
+                return '#0f766e';
+              }
+              return node.data?.isActive ? '#0891b2' : '#94a3b8';
+            }}
+          />
+          <Controls showInteractive={false} position="bottom-right" />
+        </ReactFlow>
+      </div>
+
+      {/* Inspector: responsive detail bar below canvas */}
+      {selectedDetail ? (
+        <div className="rounded-3xl border border-border/70 bg-background p-5 shadow-sm">
+          <div className="flex items-center justify-between gap-3 pb-4">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                {selectedStaff ? 'Staff Focus' : 'Department Focus'}
+              </p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {selectedStaff ? 'Selected Staff Profile' : 'Selected Department'}
+              </p>
+            </div>
+            <Badge variant="outline">Inspector</Badge>
+          </div>
+
+          {selectedStaff ? (
+            <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-semibold text-foreground">
+                      {selectedStaff.full_name}
+                    </p>
+                    <p className="mt-1 truncate text-sm text-muted-foreground">
+                      {selectedStaff.primary_role_name || 'Role not assigned'}
+                    </p>
+                  </div>
+                  <Badge variant={selectedStaff.employment_status === 'ACTIVE' ? 'default' : 'secondary'}>
+                    {selectedStaff.employment_status || 'ACTIVE'}
+                  </Badge>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {selectedStaff.title ? <Badge variant="outline">{selectedStaff.title}</Badge> : null}
+                  <Badge variant="secondary">{selectedStaff.employee_id}</Badge>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    Department: {selectedStaff.primary_department_name || 'Not assigned'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 shrink-0" />
+                  <span>
+                    Supervisor:{' '}
+                    {selectedStaff.supervisor
+                      ? chart.staffById.get(selectedStaff.supervisor)?.full_name || 'Assigned'
+                      : 'Top-level in department'}
+                  </span>
+                </div>
+              </div>
+
+              <Button asChild className="self-start">
+                <Link href={`/admin/staff/${selectedStaff.id}`}>
+                  Open Staff Profile
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-semibold text-foreground">
+                      {selectedDetail.department.name}
+                    </p>
+                    <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                      {selectedDetail.department.code}
+                    </p>
+                  </div>
+                  <Badge variant={selectedDetail.department.is_active ? 'default' : 'secondary'}>
+                    {selectedDetail.department.is_active ? 'Active' : 'Inactive'}
+                  </Badge>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge variant="outline">{selectedDetail.department.department_type_display}</Badge>
+                  <Badge variant="secondary">{selectedDetail.department.staff_count} staff</Badge>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <UserRound className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Head: {selectedDetail.headName || 'Not assigned'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Parent: {selectedDetail.parentName || 'Top-level department'}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <GitBranch className="h-4 w-4 shrink-0" />
+                  <span>{selectedDetail.childCount} sub-departments</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Network className="h-4 w-4 shrink-0" />
+                  <span>{selectedDetail.supervisorCoverage}% supervisor coverage</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 shrink-0" />
+                  <span>{focusedDepartmentStaff.length} staff in department</span>
+                </div>
+              </div>
+
+              <Button asChild className="self-start">
+                <Link href={`/admin/departments/${selectedDetail.department.id}`}>
+                  Open Department
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
