@@ -305,10 +305,10 @@ export const AICarePlanInterventionCategorySchema = z.object({
 
 /** Schema for care plan follow-up */
 export const AICarePlanFollowUpSchema = z.object({
-  timing: z.string().nullable().optional(),
-  appointment: z.string().nullable().optional(),
-  instructions: z.string().nullable().optional(),
-  red_flags: z.array(z.string()).nullable().optional(),
+  timing: z.string().nullish().transform(v => v ?? undefined),
+  appointment: z.string().nullish().transform(v => v ?? undefined),
+  instructions: z.string().nullish().transform(v => v ?? undefined),
+  red_flags: z.array(z.string()).nullish().transform(v => v ?? undefined),
 }).passthrough();
 
 /** Schema for POST /api/ai/care-plan/generate/ response */
