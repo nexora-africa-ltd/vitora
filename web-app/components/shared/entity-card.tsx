@@ -133,7 +133,8 @@ export function EntityCard({
       )}
       onClick={onClick}
     >
-      <CardContent className="p-4">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]" aria-hidden="true" />
+      <CardContent className="relative p-4">
         {/* Actions dropdown */}
         {actions.length > 0 && (
           <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
