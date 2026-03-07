@@ -33,9 +33,10 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HelpPopover } from '@/components/shared/help-popover';
-import { useAIICUPredict, useAIEnabled } from '@/lib/hooks/use-ai';
+import { useAIICUPredict, useAIEnabled, useStoredICURiskResults, aiKeys } from '@/lib/hooks/use-ai';
 import { toast } from 'sonner';
 import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
+import { useQueryClient } from '@tanstack/react-query';
 import type {
   AIICUPredictRequest,
   AIICUPredictResponse,
@@ -50,6 +51,8 @@ import type {
 // =============================================================================
 
 export interface ICURiskAssessmentPanelProps {
+  /** Admission ID for persistence */
+  admissionId?: number;
   /** Patient age in years */
   patientAge: number;
   /** Patient gender */
@@ -294,6 +297,7 @@ function RiskProbabilityBar({
 // =============================================================================
 
 export function ICURiskAssessmentPanel({
+  admissionId,
   patientAge,
   patientGender,
   vitals,
@@ -307,10 +311,17 @@ export function ICURiskAssessmentPanel({
   disabled = false,
 }: ICURiskAssessmentPanelProps) {
   const aiEnabled = useAIEnabled();
+  const queryClient = useQueryClient();
   const { mutate, data: prediction, isPending, reset, isError } = useAIICUPredict();
   const [showDetails, setShowDetails] = React.useState(false);
   const [predictionType, setPredictionType] = React.useState<AIICUPredictionType>('predict');
   const panelId = React.useId();
+
+  // Load stored ICU results
+  const { data: storedResults } = useStoredICURiskResults(admissionId);
+  const latestStored = storedResults?.[0];
+  const displayPrediction: AIICUPredictResponse | undefined = prediction
+    ?? (latestStored?.result_data as unknown as AIICUPredictResponse | undefined);
 
   // Show success toast when prediction completes
   React.useEffect(() => {
@@ -320,8 +331,11 @@ export function ICURiskAssessmentPanel({
       toast.success('ICU risk assessment complete', {
         description: `${riskLabel} risk${score}`,
       });
+      if (admissionId) {
+        queryClient.invalidateQueries({ queryKey: aiKeys.storedICURisk(admissionId) });
+      }
     }
-  }, [prediction]);
+  }, [prediction, queryClient, admissionId]);
 
   // Don't render if AI is disabled
   if (!aiEnabled) return null;
@@ -371,15 +385,15 @@ export function ICURiskAssessmentPanel({
     if (admissionDiagnosis?.trim()) patientData.admission_diagnosis = admissionDiagnosis;
     if (lengthOfStayDays != null) patientData.length_of_stay_days = lengthOfStayDays;
 
-    mutate({ patient_data: patientData, prediction_type: useType });
+    mutate({ patient_data: patientData, prediction_type: useType, admission_id: admissionId });
   };
 
-  const riskConfig = prediction?.risk_level
-    ? RISK_LEVEL_CONFIG[prediction.risk_level] || RISK_LEVEL_CONFIG.low
+  const riskConfig = displayPrediction?.risk_level
+    ? RISK_LEVEL_CONFIG[displayPrediction.risk_level] || RISK_LEVEL_CONFIG.low
     : null;
 
-  const hasPrediction = prediction && prediction.risk_level && !prediction.error;
-  const alertCount = prediction?.critical_alerts?.length ?? 0;
+  const hasPrediction = displayPrediction && displayPrediction.risk_level && !displayPrediction.error;
+  const alertCount = displayPrediction?.critical_alerts?.length ?? 0;
 
   return (
     <Card
@@ -477,12 +491,12 @@ export function ICURiskAssessmentPanel({
                       {riskConfig.label}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Risk Score: {Math.round(prediction.risk_score * 100)}%
-                      {prediction.sofa_score != null && (
-                        <> &bull; SOFA: {prediction.sofa_score}/24</>
+                      Risk Score: {Math.round(displayPrediction.risk_score * 100)}%
+                      {displayPrediction.sofa_score != null && (
+                        <> &bull; SOFA: {displayPrediction.sofa_score}/24</>
                       )}
-                      {prediction.qsofa_score != null && (
-                        <> &bull; qSOFA: {prediction.qsofa_score}/3</>
+                      {displayPrediction.qsofa_score != null && (
+                        <> &bull; qSOFA: {displayPrediction.qsofa_score}/3</>
                       )}
                     </p>
                   </div>
@@ -490,11 +504,11 @@ export function ICURiskAssessmentPanel({
                 <Badge
                   className={cn(
                     'shrink-0',
-                    prediction.risk_level === 'critical'
+                    displayPrediction.risk_level === 'critical'
                       ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
-                      : prediction.risk_level === 'high'
+                      : displayPrediction.risk_level === 'high'
                         ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300'
-                        : prediction.risk_level === 'moderate'
+                        : displayPrediction.risk_level === 'moderate'
                           ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300'
                           : 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
                   )}
@@ -505,8 +519,8 @@ export function ICURiskAssessmentPanel({
             </div>
 
             {/* Escalation Recommendation */}
-            {prediction.escalation && (
-              <EscalationBanner escalation={prediction.escalation} />
+            {displayPrediction.escalation && (
+              <EscalationBanner escalation={displayPrediction.escalation} />
             )}
 
             {/* Critical Alerts */}
@@ -517,7 +531,7 @@ export function ICURiskAssessmentPanel({
                   Critical Alerts ({alertCount})
                 </h4>
                 <div className="space-y-2">
-                  {prediction.critical_alerts!.map((alert, i) => (
+                  {displayPrediction.critical_alerts!.map((alert, i) => (
                     <CriticalAlertItem key={i} alert={alert} />
                   ))}
                 </div>
@@ -569,29 +583,29 @@ export function ICURiskAssessmentPanel({
                 {/* Scores Tab */}
                 <TabsContent value="scores" className="space-y-4 pt-1">
                   {/* SOFA Breakdown */}
-                  {prediction.sofa_breakdown && (
+                  {displayPrediction.sofa_breakdown && (
                     <div className="space-y-2">
                       <h4 className="text-sm font-medium flex items-center gap-1.5">
                         SOFA Breakdown
                         <span className="text-xs text-muted-foreground font-normal">
-                          (Total: {prediction.sofa_score}/24)
+                          (Total: {displayPrediction.sofa_score}/24)
                         </span>
                       </h4>
-                      <SOFABreakdownChart breakdown={prediction.sofa_breakdown} />
+                      <SOFABreakdownChart breakdown={displayPrediction.sofa_breakdown} />
                     </div>
                   )}
 
                   {/* qSOFA Criteria */}
-                  {prediction.qsofa_criteria && prediction.qsofa_criteria.length > 0 && (
+                  {displayPrediction.qsofa_criteria && displayPrediction.qsofa_criteria.length > 0 && (
                     <div className="space-y-2">
                       <h4 className="text-sm font-medium flex items-center gap-1.5">
                         qSOFA Criteria Met
                         <span className="text-xs text-muted-foreground font-normal">
-                          ({prediction.qsofa_score}/3)
+                          ({displayPrediction.qsofa_score}/3)
                         </span>
                       </h4>
                       <ul className="space-y-1 pl-1">
-                        {prediction.qsofa_criteria.map((criteria, i) => (
+                        {displayPrediction.qsofa_criteria.map((criteria, i) => (
                           <li
                             key={i}
                             className="flex items-center gap-2 text-sm text-muted-foreground"
@@ -607,21 +621,21 @@ export function ICURiskAssessmentPanel({
 
                 {/* Probabilities Tab */}
                 <TabsContent value="probabilities" className="space-y-3 pt-1">
-                  {prediction.sepsis_probability != null ||
-                  prediction.aki_probability != null ||
-                  prediction.deterioration_probability != null ? (
+                  {displayPrediction.sepsis_probability != null ||
+                  displayPrediction.aki_probability != null ||
+                  displayPrediction.deterioration_probability != null ? (
                     <>
                       <RiskProbabilityBar
                         label="Sepsis"
-                        probability={prediction.sepsis_probability}
+                        probability={displayPrediction.sepsis_probability}
                       />
                       <RiskProbabilityBar
                         label="Acute Kidney Injury"
-                        probability={prediction.aki_probability}
+                        probability={displayPrediction.aki_probability}
                       />
                       <RiskProbabilityBar
                         label="Clinical Deterioration"
-                        probability={prediction.deterioration_probability}
+                        probability={displayPrediction.deterioration_probability}
                       />
                     </>
                   ) : (
@@ -633,11 +647,11 @@ export function ICURiskAssessmentPanel({
 
                 {/* Actions Tab */}
                 <TabsContent value="actions" className="space-y-3 pt-1">
-                  {prediction.recommendations && prediction.recommendations.length > 0 ? (
+                  {displayPrediction.recommendations && displayPrediction.recommendations.length > 0 ? (
                     <div className="space-y-2">
                       <h4 className="text-sm font-medium">Recommendations</h4>
                       <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 pl-1">
-                        {prediction.recommendations.map((rec, i) => (
+                        {displayPrediction.recommendations.map((rec, i) => (
                           <li key={i}>{rec}</li>
                         ))}
                       </ul>
@@ -657,13 +671,13 @@ export function ICURiskAssessmentPanel({
                 messageId={`icu-${predictionType}-${panelId}`}
                 serviceType="icu_predictor"
                 userQuery={admissionDiagnosis}
-                botResponse={`${prediction.risk_level} risk${prediction.risk_score != null ? ` — ${Math.round(prediction.risk_score * 100)}%` : ''}`}
+                botResponse={`${displayPrediction.risk_level} risk${displayPrediction.risk_score != null ? ` — ${Math.round(displayPrediction.risk_score * 100)}%` : ''}`}
                 metadata={{
                   prediction_type: predictionType,
-                  risk_level: prediction.risk_level,
-                  risk_score: prediction.risk_score,
-                  sofa_score: prediction.sofa_score,
-                  qsofa_score: prediction.qsofa_score,
+                  risk_level: displayPrediction.risk_level,
+                  risk_score: displayPrediction.risk_score,
+                  sofa_score: displayPrediction.sofa_score,
+                  qsofa_score: displayPrediction.qsofa_score,
                 }}
               />
               <div className="flex flex-col gap-2 sm:flex-row">
@@ -709,11 +723,11 @@ export function ICURiskAssessmentPanel({
         )}
 
         {/* Error State (TibaBot unavailable but returned gracefully) */}
-        {prediction && !hasPrediction && prediction.error && (
+        {displayPrediction && !hasPrediction && displayPrediction.error && (
           <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
             <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-yellow-500" />
             <div>
-              <p>{prediction.error}</p>
+              <p>{displayPrediction.error}</p>
               <Button
                 type="button"
                 variant="ghost"
@@ -734,7 +748,7 @@ export function ICURiskAssessmentPanel({
         )}
 
         {/* Network error */}
-        {isError && !prediction && (
+        {isError && !displayPrediction && (
           <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
             <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
             <div>

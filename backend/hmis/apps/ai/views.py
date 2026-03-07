@@ -28,7 +28,15 @@ from hmis.apps.core.models import AuditLog
 from .client import TibaBotError, TibaBotUnavailableError, get_tibabot_client
 from .context import build_facility_context, build_user_context
 from .feature_flags import AIFeatureGatedMixin, is_ai_enabled
-from .models import ChatMessage, ChatSession
+from .models import (
+    AICarePlanResult,
+    AICDSResult,
+    AIDischargeResult,
+    AIICURiskResult,
+    AILabInterpretResult,
+    ChatMessage,
+    ChatSession,
+)
 from .sanitizer import sanitize_clinical_text
 from .serializers import (
     AIChatMessageSerializer,
@@ -65,6 +73,11 @@ from .serializers import (
     ICUPredictResponseSerializer,
     LabInterpretRequestSerializer,
     LabInterpretResponseSerializer,
+    StoredCarePlanSerializer,
+    StoredCDSResultSerializer,
+    StoredDischargeResultSerializer,
+    StoredICURiskResultSerializer,
+    StoredLabInterpretSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -1102,6 +1115,23 @@ class ICUPredictView(AIFeatureGatedMixin, APIView):
             "deterioration_probability": result.get("deterioration_probability"),
         }
 
+        # Persist result
+        admission_id = serializer.validated_data.get("admission_id")
+        try:
+            stored = AIICURiskResult.objects.create(
+                created_by=request.user,
+                admission_id=admission_id,
+                prediction_type=prediction_type,
+                risk_level=response_data.get("risk_level", ""),
+                risk_score=response_data.get("risk_score"),
+                request_data={"patient_data": patient_data},
+                result_data=response_data,
+                service_mode="tibabot",
+            )
+            response_data["stored_id"] = str(stored.id)
+        except Exception:
+            logger.exception("Failed to persist ICU risk result")
+
         response_serializer = ICUPredictResponseSerializer(data=response_data)
         if response_serializer.is_valid():
             return Response(response_serializer.data)
@@ -1333,6 +1363,30 @@ class LabInterpretView(AIFeatureGatedMixin, APIView):
 
             result = interpret_lab_fallback(data)
 
+        # Persist result
+        try:
+            flags = result.get("flags", [])
+            stored = AILabInterpretResult.objects.create(
+                created_by=request.user,
+                lab_result_id=data.get("lab_result_id"),
+                encounter_id=data.get("encounter_id"),
+                abnormal_count=sum(
+                    1 for f in flags if f.get("status") in ("abnormal", "critical")
+                ),
+                critical_count=sum(
+                    1 for f in flags if f.get("status") == "critical"
+                ),
+                request_data={
+                    k: v for k, v in data.items()
+                    if k not in ("lab_result_id", "encounter_id")
+                },
+                result_data=result,
+                service_mode=result.get("mode", "tibabot"),
+            )
+            result["stored_id"] = str(stored.id)
+        except Exception:
+            logger.exception("Failed to persist lab interpretation result")
+
         response_serializer = LabInterpretResponseSerializer(data=result)
         if response_serializer.is_valid():
             return Response(response_serializer.data)
@@ -1393,6 +1447,24 @@ class DischargeAssessView(AIFeatureGatedMixin, APIView):
             from .services.discharge_fallback import assess_discharge_fallback
 
             result = assess_discharge_fallback(data)
+
+        # Persist result
+        try:
+            stored = AIDischargeResult.objects.create(
+                created_by=request.user,
+                admission_id=data.get("admission_id"),
+                readiness_level=result.get("readiness_level", ""),
+                readiness_score=result.get("readiness_score"),
+                request_data={
+                    k: v for k, v in data.items()
+                    if k != "admission_id"
+                },
+                result_data=result,
+                service_mode=result.get("mode", "tibabot"),
+            )
+            result["stored_id"] = str(stored.id)
+        except Exception:
+            logger.exception("Failed to persist discharge assessment result")
 
         response_serializer = DischargeAssessResponseSerializer(data=result)
         if response_serializer.is_valid():
@@ -1499,6 +1571,24 @@ class CarePlanGenerateView(AIFeatureGatedMixin, APIView):
                 follow_up["timing"] = follow_up.pop("appointment")
             if "instructions" not in follow_up and "investigations" in follow_up:
                 follow_up["instructions"] = follow_up.pop("investigations")
+
+        # Persist result
+        try:
+            stored = AICarePlanResult.objects.create(
+                created_by=request.user,
+                encounter_id=data.get("encounter_id"),
+                admission_id=data.get("admission_id"),
+                primary_diagnosis=data.get("primary_diagnosis", "")[:500],
+                request_data={
+                    k: v for k, v in data.items()
+                    if k not in ("encounter_id", "admission_id")
+                },
+                result_data=result,
+                service_mode=result.get("mode", "tibabot"),
+            )
+            result["stored_id"] = str(stored.id)
+        except Exception:
+            logger.exception("Failed to persist care plan result")
 
         response_serializer = CarePlanResponseSerializer(data=result)
         if response_serializer.is_valid():
@@ -1733,7 +1823,132 @@ class CDSEvaluateView(AIFeatureGatedMixin, APIView):
                 "mode": "fallback",
             }
 
+        # Persist result
+        try:
+            stored = AICDSResult.objects.create(
+                created_by=request.user,
+                encounter_id=data.get("encounter_id"),
+                rules_fired=result.get("rules_fired", 0),
+                alert_count=len(result.get("alerts", [])),
+                request_data={
+                    k: v for k, v in data.items()
+                    if k != "encounter_id"
+                },
+                result_data=result,
+                service_mode=result.get("mode", "tibabot"),
+            )
+            result["stored_id"] = str(stored.id)
+        except Exception:
+            logger.exception("Failed to persist CDS result")
+
         response_serializer = CDSEvaluateResponseSerializer(data=result)
         if response_serializer.is_valid():
             return Response(response_serializer.data)
         return Response(result)
+
+
+# =============================================================================
+# Stored AI result retrieval views
+# =============================================================================
+
+
+class StoredCarePlanListView(APIView):
+    """
+    GET /api/ai/results/care-plans/?encounter_id=X or ?admission_id=X
+
+    Returns saved care plan results (most recent first).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        qs = AICarePlanResult.objects.select_related("created_by")
+        encounter_id = request.query_params.get("encounter_id")
+        admission_id = request.query_params.get("admission_id")
+        if encounter_id:
+            qs = qs.filter(encounter_id=encounter_id)
+        elif admission_id:
+            qs = qs.filter(admission_id=admission_id)
+        else:
+            return Response([])
+        results = qs[:10]
+        return Response(StoredCarePlanSerializer(results, many=True).data)
+
+
+class StoredCDSResultListView(APIView):
+    """
+    GET /api/ai/results/cds/?encounter_id=X
+
+    Returns saved CDS evaluation results.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        encounter_id = request.query_params.get("encounter_id")
+        if not encounter_id:
+            return Response([])
+        qs = AICDSResult.objects.select_related("created_by").filter(
+            encounter_id=encounter_id,
+        )[:10]
+        return Response(StoredCDSResultSerializer(qs, many=True).data)
+
+
+class StoredLabInterpretListView(APIView):
+    """
+    GET /api/ai/results/lab-interpretations/?lab_result_id=X or ?encounter_id=X
+
+    Returns saved lab interpretation results.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        qs = AILabInterpretResult.objects.select_related("created_by")
+        lab_result_id = request.query_params.get("lab_result_id")
+        encounter_id = request.query_params.get("encounter_id")
+        if lab_result_id:
+            qs = qs.filter(lab_result_id=lab_result_id)
+        elif encounter_id:
+            qs = qs.filter(encounter_id=encounter_id)
+        else:
+            return Response([])
+        return Response(StoredLabInterpretSerializer(qs[:10], many=True).data)
+
+
+class StoredDischargeResultListView(APIView):
+    """
+    GET /api/ai/results/discharge/?admission_id=X
+
+    Returns saved discharge readiness assessments.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        admission_id = request.query_params.get("admission_id")
+        if not admission_id:
+            return Response([])
+        qs = AIDischargeResult.objects.select_related("created_by").filter(
+            admission_id=admission_id,
+        )[:10]
+        return Response(StoredDischargeResultSerializer(qs, many=True).data)
+
+
+class StoredICURiskResultListView(APIView):
+    """
+    GET /api/ai/results/icu-risk/?admission_id=X
+
+    Returns saved ICU risk results.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        admission_id = request.query_params.get("admission_id")
+        if not admission_id:
+            return Response([])
+        qs = AIICURiskResult.objects.select_related("created_by").filter(
+            admission_id=admission_id,
+        )[:10]
+        return Response(StoredICURiskResultSerializer(qs, many=True).data)

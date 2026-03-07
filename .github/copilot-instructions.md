@@ -486,6 +486,16 @@ GET    /api/auditlogs/?user={id}         # Filter by user
 GET    /api/auditlogs/?action=patient_view  # Filter by action
 ```
 
+### AI Stored Results (Persisted TibaBot Outputs)
+```
+GET    /api/ai/results/care-plans/?encounter_id={id}           # Stored care plans
+GET    /api/ai/results/cds/?encounter_id={id}                  # Stored CDS evaluations
+GET    /api/ai/results/lab-interpretations/?encounter_id={id}   # Stored lab interpretations
+GET    /api/ai/results/lab-interpretations/?lab_result_id={id}  # Stored lab interpretations by lab result
+GET    /api/ai/results/discharge/?admission_id={id}            # Stored discharge assessments
+GET    /api/ai/results/icu-risk/?admission_id={id}             # Stored ICU risk predictions
+```
+
 ---
 
 ## ✅ Test-Driven Development (TDD) Process
@@ -1075,6 +1085,7 @@ export const patientsApi = {
 | RBAC | `lib/schemas/rbac.schema.ts` | 📋 Placeholder |
 | SHA | `lib/schemas/sha.schema.ts` | 📋 Placeholder |
 | Core | `lib/schemas/core.schema.ts` | 📋 Placeholder |
+| AI | `lib/schemas/ai.schema.ts` | ✅ Implemented |
 
 ### When Adding New API Endpoints
 

@@ -326,6 +326,7 @@ export type AIICUPredictionType = 'predict' | 'risk-stratify';
 
 /** Request body for POST /api/ai/predict/icu/ */
 export interface AIICUPredictRequest {
+  admission_id?: number | null;
   patient_data: AIICUPredictPatientData;
   prediction_type?: AIICUPredictionType;
 }
@@ -550,6 +551,8 @@ export interface AILabResultItem {
 
 /** Request body for POST /api/ai/lab/interpret/ */
 export interface AILabInterpretRequest {
+  lab_result_id?: number | null;
+  encounter_id?: number | null;
   patient_age: number;
   patient_sex: 'male' | 'female';
   is_pregnant?: boolean;
@@ -608,6 +611,7 @@ export interface AIVitalsSnapshot {
 
 /** Request body for POST /api/ai/discharge/assess/ */
 export interface AIDischargeAssessRequest {
+  admission_id?: number | null;
   patient_age: number;
   primary_diagnosis: string;
   admission_type?: 'medical' | 'surgical' | 'obstetric' | 'pediatric';
@@ -661,6 +665,8 @@ export interface AIDischargeConditionsResponse {
 
 /** Request body for POST /api/ai/care-plan/generate/ */
 export interface AICarePlanGenerateRequest {
+  encounter_id?: number | null;
+  admission_id?: number | null;
   primary_diagnosis?: string;
   chief_complaint?: string;
   icd10_code?: string;
@@ -779,6 +785,7 @@ export interface AIClerkingStructureResponse {
 
 /** Request body for POST /api/ai/cds/evaluate/ */
 export interface AICDSEvaluateRequest {
+  encounter_id?: number | null;
   medications?: string[];
   diagnoses?: string[];
   symptoms?: string[];
@@ -813,4 +820,54 @@ export interface AICDSEvaluateResponse {
   processing_time_ms: number;
   mode?: string;
   error?: string | null;
+}
+
+// =============================================================================
+// Stored AI Result Types (persisted panel outputs)
+// =============================================================================
+
+/** Base fields shared by all stored AI results */
+export interface StoredAIResultBase {
+  id: string;
+  result_data: Record<string, unknown>;
+  service_mode: string;
+  created_at: string;
+  created_by: string;
+}
+
+/** Stored care plan result */
+export interface StoredCarePlanResult extends StoredAIResultBase {
+  encounter_id: number | null;
+  admission_id: number | null;
+  primary_diagnosis: string;
+}
+
+/** Stored CDS evaluation result */
+export interface StoredCDSResult extends StoredAIResultBase {
+  encounter_id: number | null;
+  rules_fired: number;
+  alert_count: number;
+}
+
+/** Stored lab interpretation result */
+export interface StoredLabInterpretResult extends StoredAIResultBase {
+  lab_result_id: number | null;
+  encounter_id: number | null;
+  abnormal_count: number;
+  critical_count: number;
+}
+
+/** Stored discharge readiness result */
+export interface StoredDischargeResult extends StoredAIResultBase {
+  admission_id: number | null;
+  readiness_level: string;
+  readiness_score: number | null;
+}
+
+/** Stored ICU risk result */
+export interface StoredICURiskResult extends StoredAIResultBase {
+  admission_id: number | null;
+  prediction_type: string;
+  risk_level: string;
+  risk_score: number | null;
 }
