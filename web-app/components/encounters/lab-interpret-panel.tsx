@@ -28,9 +28,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { HelpPopover } from '@/components/shared/help-popover';
-import { useAILabInterpret, useAIEnabled } from '@/lib/hooks/use-ai';
+import { useAILabInterpret, useAIEnabled, useStoredLabInterpretations, aiKeys } from '@/lib/hooks/use-ai';
 import { toast } from 'sonner';
 import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
+import { useQueryClient } from '@tanstack/react-query';
 import type {
   AILabResultItem,
   AILabFlag,
@@ -43,6 +44,10 @@ import type {
 // =============================================================================
 
 export interface LabInterpretPanelProps {
+  /** Lab result ID for persistence */
+  labResultId?: number;
+  /** Encounter ID for persistence */
+  encounterId?: number;
   /** Patient age in years */
   patientAge: number;
   /** Patient sex */
@@ -167,6 +172,8 @@ function PatternItem({ pattern }: { pattern: AILabPattern }) {
 // =============================================================================
 
 export function LabInterpretPanel({
+  labResultId,
+  encounterId,
   patientAge,
   patientSex,
   isPregnant = false,
@@ -178,9 +185,20 @@ export function LabInterpretPanel({
   onAutoTriggerConsumed,
 }: LabInterpretPanelProps) {
   const isAIEnabled = useAIEnabled();
+  const queryClient = useQueryClient();
   const { mutate, data: result, isPending, isError, reset } = useAILabInterpret();
   const [showDetails, setShowDetails] = React.useState(false);
   const panelId = React.useId();
+
+  // Load stored lab interpretations
+  const storedParams = React.useMemo(
+    () => ({ lab_result_id: labResultId, encounter_id: encounterId }),
+    [labResultId, encounterId],
+  );
+  const { data: storedResults } = useStoredLabInterpretations(storedParams);
+  const latestStored = storedResults?.[0];
+  const displayResult: AILabInterpretResponse | undefined = result
+    ?? (latestStored?.result_data as unknown as AILabInterpretResponse | undefined);
 
   // Show success toast when interpretation completes
   React.useEffect(() => {
@@ -192,13 +210,16 @@ export function LabInterpretPanel({
           ? `${abnormalCount} abnormal flag(s)${patternsCount > 0 ? `, ${patternsCount} pattern(s)` : ''}`
           : 'All results within normal range',
       });
+      queryClient.invalidateQueries({ queryKey: aiKeys.storedLabInterpretations(storedParams) });
     }
-  }, [result]);
+  }, [result, queryClient, storedParams]);
 
   // Auto-trigger from widget quick action
   React.useEffect(() => {
-    if (autoTrigger && isAIEnabled && !isPending && !result && labResults?.length > 0) {
+    if (autoTrigger && isAIEnabled && !isPending && !displayResult && labResults?.length > 0) {
       mutate({
+        lab_result_id: labResultId,
+        encounter_id: encounterId,
         patient_age: patientAge,
         patient_sex: patientSex,
         is_pregnant: isPregnant,
@@ -216,6 +237,8 @@ export function LabInterpretPanel({
 
   const handleInterpret = () => {
     mutate({
+      lab_result_id: labResultId,
+      encounter_id: encounterId,
       patient_age: patientAge,
       patient_sex: patientSex,
       is_pregnant: isPregnant,
@@ -225,11 +248,11 @@ export function LabInterpretPanel({
     });
   };
 
-  const hasResult = result && result.flags && result.flags.length > 0;
-  const abnormalFlags = result?.flags?.filter((f) => f.status !== 'normal') ?? [];
-  const criticalAlerts = result?.critical_alerts ?? [];
-  const patterns = result?.patterns ?? [];
-  const isFallback = result?.mode === 'fallback';
+  const hasResult = displayResult && displayResult.flags && displayResult.flags.length > 0;
+  const abnormalFlags = displayResult?.flags?.filter((f) => f.status !== 'normal') ?? [];
+  const criticalAlerts = displayResult?.critical_alerts ?? [];
+  const patterns = displayResult?.patterns ?? [];
+  const isFallback = displayResult?.mode === 'fallback';
 
   return (
     <Card className={cn(
@@ -254,7 +277,7 @@ export function LabInterpretPanel({
 
       <CardContent className="space-y-3">
         {/* Initial State — Run Button */}
-        {!hasResult && !isPending && !isError && (
+        {!hasResult && !isPending && !isError && !displayResult && (
           <Button
             type="button"
             variant="outline"
@@ -320,14 +343,14 @@ export function LabInterpretPanel({
             )}
 
             {/* Interpretation Summary */}
-            {result.interpretation_summary && (
+            {displayResult.interpretation_summary && (
               <div className="text-sm text-muted-foreground bg-muted/50 rounded-md p-2.5">
-                {result.interpretation_summary}
+                {displayResult.interpretation_summary}
               </div>
             )}
 
             {/* Expandable Details */}
-            {result.suggested_followup_labs && result.suggested_followup_labs.length > 0 && (
+            {displayResult.suggested_followup_labs && displayResult.suggested_followup_labs.length > 0 && (
               <>
                 <Button
                   type="button"
@@ -341,7 +364,7 @@ export function LabInterpretPanel({
                 </Button>
                 {showDetails && (
                   <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 pl-1">
-                    {result.suggested_followup_labs.map((lab, i) => (
+                    {displayResult.suggested_followup_labs.map((lab, i) => (
                       <li key={i}>{lab}</li>
                     ))}
                   </ul>
@@ -361,12 +384,12 @@ export function LabInterpretPanel({
                 messageId={`lab-${panelId}`}
                 serviceType="lab_assist"
                 userQuery={labResults.map(r => `${r.test_name}: ${r.value} ${r.unit}`).join(', ')}
-                botResponse={result.interpretation_summary}
+                botResponse={displayResult.interpretation_summary}
                 metadata={{
                   critical_count: criticalAlerts.length,
                   patterns_detected: patterns.length,
                   abnormal_count: abnormalFlags.length,
-                  total_flags: result.flags.length,
+                  total_flags: displayResult.flags.length,
                 }}
               />
               <Button
@@ -385,7 +408,7 @@ export function LabInterpretPanel({
         )}
 
         {/* Error State */}
-        {isError && !result && (
+        {isError && !displayResult && (
           <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
             <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
             <div>

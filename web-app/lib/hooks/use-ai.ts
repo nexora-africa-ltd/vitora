@@ -41,6 +41,11 @@ import type {
   AIClerkingStructureResponse,
   AICDSEvaluateRequest,
   AICDSEvaluateResponse,
+  StoredCarePlanResult,
+  StoredCDSResult,
+  StoredLabInterpretResult,
+  StoredDischargeResult,
+  StoredICURiskResult,
 } from '@/lib/types/ai';
 
 // =============================================================================
@@ -55,6 +60,16 @@ export const aiKeys = {
   feedbackStats: () => [...aiKeys.all, 'feedback-stats'] as const,
   dischargeConditions: () => [...aiKeys.all, 'discharge-conditions'] as const,
   carePlanConditions: () => [...aiKeys.all, 'care-plan-conditions'] as const,
+  storedCarePlans: (params: { encounter_id?: number; admission_id?: number }) =>
+    [...aiKeys.all, 'stored-care-plans', params] as const,
+  storedCDS: (encounterId: number) =>
+    [...aiKeys.all, 'stored-cds', encounterId] as const,
+  storedLabInterpretations: (params: { lab_result_id?: number; encounter_id?: number }) =>
+    [...aiKeys.all, 'stored-lab-interpretations', params] as const,
+  storedDischarge: (admissionId: number) =>
+    [...aiKeys.all, 'stored-discharge', admissionId] as const,
+  storedICURisk: (admissionId: number) =>
+    [...aiKeys.all, 'stored-icu-risk', admissionId] as const,
 };
 
 // =============================================================================
@@ -436,5 +451,56 @@ export function useAICDSEvaluate() {
   return useMutation<AICDSEvaluateResponse, Error, AICDSEvaluateRequest>({
     mutationFn: (data) => aiApi.evaluateCDS(data),
     retry: false,
+  });
+}
+
+// =============================================================================
+// Stored AI result hooks (load persisted outputs)
+// =============================================================================
+
+export function useStoredCarePlans(params: { encounter_id?: number; admission_id?: number }) {
+  const hasId = Boolean(params.encounter_id || params.admission_id);
+  return useQuery<StoredCarePlanResult[]>({
+    queryKey: aiKeys.storedCarePlans(params),
+    queryFn: () => aiApi.getStoredCarePlans(params),
+    enabled: ENABLE_AI && hasId,
+    staleTime: 30_000,
+  });
+}
+
+export function useStoredCDSResults(encounterId: number | undefined) {
+  return useQuery<StoredCDSResult[]>({
+    queryKey: aiKeys.storedCDS(encounterId ?? 0),
+    queryFn: () => aiApi.getStoredCDSResults({ encounter_id: encounterId! }),
+    enabled: ENABLE_AI && Boolean(encounterId),
+    staleTime: 30_000,
+  });
+}
+
+export function useStoredLabInterpretations(params: { lab_result_id?: number; encounter_id?: number }) {
+  const hasId = Boolean(params.lab_result_id || params.encounter_id);
+  return useQuery<StoredLabInterpretResult[]>({
+    queryKey: aiKeys.storedLabInterpretations(params),
+    queryFn: () => aiApi.getStoredLabInterpretations(params),
+    enabled: ENABLE_AI && hasId,
+    staleTime: 30_000,
+  });
+}
+
+export function useStoredDischargeResults(admissionId: number | undefined) {
+  return useQuery<StoredDischargeResult[]>({
+    queryKey: aiKeys.storedDischarge(admissionId ?? 0),
+    queryFn: () => aiApi.getStoredDischargeResults({ admission_id: admissionId! }),
+    enabled: ENABLE_AI && Boolean(admissionId),
+    staleTime: 30_000,
+  });
+}
+
+export function useStoredICURiskResults(admissionId: number | undefined) {
+  return useQuery<StoredICURiskResult[]>({
+    queryKey: aiKeys.storedICURisk(admissionId ?? 0),
+    queryFn: () => aiApi.getStoredICURiskResults({ admission_id: admissionId! }),
+    enabled: ENABLE_AI && Boolean(admissionId),
+    staleTime: 30_000,
   });
 }

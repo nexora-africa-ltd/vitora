@@ -27,6 +27,11 @@ import {
   AIClerkingAutocompleteResponseSchema,
   AIClerkingStructureResponseSchema,
   AICDSEvaluateResponseSchema,
+  StoredCarePlanResultSchema,
+  StoredCDSResultSchema,
+  StoredLabInterpretResultSchema,
+  StoredDischargeResultSchema,
+  StoredICURiskResultSchema,
 } from '@/lib/schemas/ai.schema';
 import { parseResponse } from '@/lib/schemas/validation';
 import type {
@@ -63,6 +68,11 @@ import type {
   AIClerkingStructureResponse,
   AICDSEvaluateRequest,
   AICDSEvaluateResponse,
+  StoredCarePlanResult,
+  StoredCDSResult,
+  StoredLabInterpretResult,
+  StoredDischargeResult,
+  StoredICURiskResult,
 } from '@/lib/types/ai';
 
 export const aiApi = {
@@ -438,6 +448,45 @@ export const aiApi = {
     const response = await apiClient.post('/api/ai/cds/evaluate/', data);
     return parseResponse(AICDSEvaluateResponseSchema, response.data, {
       context: 'aiApi.evaluateCDS',
+    });
+  },
+
+  // ===========================================================================
+  // Stored AI Results — retrieval
+  // ===========================================================================
+
+  getStoredCarePlans: async (params: { encounter_id?: number; admission_id?: number }): Promise<StoredCarePlanResult[]> => {
+    const response = await apiClient.get('/api/ai/results/care-plans/', { params });
+    return parseResponse(StoredCarePlanResultSchema.array(), response.data, {
+      context: 'aiApi.getStoredCarePlans',
+    });
+  },
+
+  getStoredCDSResults: async (params: { encounter_id: number }): Promise<StoredCDSResult[]> => {
+    const response = await apiClient.get('/api/ai/results/cds/', { params });
+    return parseResponse(StoredCDSResultSchema.array(), response.data, {
+      context: 'aiApi.getStoredCDSResults',
+    });
+  },
+
+  getStoredLabInterpretations: async (params: { lab_result_id?: number; encounter_id?: number }): Promise<StoredLabInterpretResult[]> => {
+    const response = await apiClient.get('/api/ai/results/lab-interpretations/', { params });
+    return parseResponse(StoredLabInterpretResultSchema.array(), response.data, {
+      context: 'aiApi.getStoredLabInterpretations',
+    });
+  },
+
+  getStoredDischargeResults: async (params: { admission_id: number }): Promise<StoredDischargeResult[]> => {
+    const response = await apiClient.get('/api/ai/results/discharge/', { params });
+    return parseResponse(StoredDischargeResultSchema.array(), response.data, {
+      context: 'aiApi.getStoredDischargeResults',
+    });
+  },
+
+  getStoredICURiskResults: async (params: { admission_id: number }): Promise<StoredICURiskResult[]> => {
+    const response = await apiClient.get('/api/ai/results/icu-risk/', { params });
+    return parseResponse(StoredICURiskResultSchema.array(), response.data, {
+      context: 'aiApi.getStoredICURiskResults',
     });
   },
 };

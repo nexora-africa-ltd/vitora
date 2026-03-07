@@ -392,3 +392,47 @@ export const AICDSEvaluateResponseSchema = z.object({
   mode: z.string().optional(),
   error: z.string().nullable().optional(),
 }).passthrough();
+
+// =============================================================================
+// Stored AI result schemas
+// =============================================================================
+
+const StoredAIResultBaseSchema = z.object({
+  id: z.string(),
+  result_data: z.record(z.unknown()),
+  service_mode: z.string(),
+  created_at: z.string(),
+  created_by: z.string(),
+});
+
+export const StoredCarePlanResultSchema = StoredAIResultBaseSchema.extend({
+  encounter_id: z.number().nullable(),
+  admission_id: z.number().nullable(),
+  primary_diagnosis: z.string(),
+});
+
+export const StoredCDSResultSchema = StoredAIResultBaseSchema.extend({
+  encounter_id: z.number().nullable(),
+  rules_fired: z.number(),
+  alert_count: z.number(),
+});
+
+export const StoredLabInterpretResultSchema = StoredAIResultBaseSchema.extend({
+  lab_result_id: z.number().nullable(),
+  encounter_id: z.number().nullable(),
+  abnormal_count: z.number(),
+  critical_count: z.number(),
+});
+
+export const StoredDischargeResultSchema = StoredAIResultBaseSchema.extend({
+  admission_id: z.number().nullable(),
+  readiness_level: z.string(),
+  readiness_score: z.number().nullable(),
+});
+
+export const StoredICURiskResultSchema = StoredAIResultBaseSchema.extend({
+  admission_id: z.number().nullable(),
+  prediction_type: z.string(),
+  risk_level: z.string(),
+  risk_score: z.number().nullable(),
+});

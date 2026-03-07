@@ -30,16 +30,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { HelpPopover } from '@/components/shared/help-popover';
-import { useAICDSEvaluate, useAIEnabled } from '@/lib/hooks/use-ai';
+import { useAICDSEvaluate, useAIEnabled, useStoredCDSResults, aiKeys } from '@/lib/hooks/use-ai';
 import { toast } from 'sonner';
 import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
-import type { AICDSAlertItem, AICDSEvaluateRequest } from '@/lib/types/ai';
+import { useQueryClient } from '@tanstack/react-query';
+import type { AICDSAlertItem, AICDSEvaluateRequest, AICDSEvaluateResponse } from '@/lib/types/ai';
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
 export interface EnhancedCDSPanelProps {
+  /** Encounter ID for persistence */
+  encounterId?: number;
   /** Current medications */
   medications?: string[];
   /** Current diagnoses */
@@ -166,6 +169,7 @@ function CDSAlertCard({ alert }: { alert: AICDSAlertItem }) {
 // =============================================================================
 
 export function EnhancedCDSPanel({
+  encounterId,
   medications,
   diagnoses,
   symptoms,
@@ -183,10 +187,17 @@ export function EnhancedCDSPanel({
   onAutoTriggerConsumed,
 }: EnhancedCDSPanelProps) {
   const isAIEnabled = useAIEnabled();
+  const queryClient = useQueryClient();
   const { mutate, data: result, isPending, isError, reset } = useAICDSEvaluate();
   const [showRecommendations, setShowRecommendations] = React.useState(false);
   const hasRun = React.useRef(false);
   const panelId = React.useId();
+
+  // Load stored CDS results
+  const { data: storedResults } = useStoredCDSResults(encounterId);
+  const latestStored = storedResults?.[0];
+  const displayResult: AICDSEvaluateResponse | undefined = result
+    ?? (latestStored?.result_data as unknown as AICDSEvaluateResponse | undefined);
 
   // Show success toast when evaluation completes
   React.useEffect(() => {
@@ -198,11 +209,15 @@ export function EnhancedCDSPanel({
           ? `${alertCount} alert(s), ${recCount} recommendation(s)`
           : 'No safety concerns detected',
       });
+      if (encounterId) {
+        queryClient.invalidateQueries({ queryKey: aiKeys.storedCDS(encounterId) });
+      }
     }
-  }, [result]);
+  }, [result, queryClient, encounterId]);
 
   const handleEvaluate = React.useCallback(() => {
     mutate({
+      encounter_id: encounterId,
       medications,
       diagnoses,
       symptoms,
@@ -215,7 +230,7 @@ export function EnhancedCDSPanel({
       region,
       facility_level: facilityLevel,
     });
-  }, [mutate, medications, diagnoses, symptoms, pendingProcedures, labResults, allergies, patientAge, patientSex, isPregnant, region, facilityLevel]);
+  }, [mutate, encounterId, medications, diagnoses, symptoms, pendingProcedures, labResults, allergies, patientAge, patientSex, isPregnant, region, facilityLevel]);
 
   // Auto-run on mount if requested
   React.useEffect(() => {
@@ -236,21 +251,21 @@ export function EnhancedCDSPanel({
 
   // Group alerts by severity
   const alertsBySeverity = React.useMemo(() => {
-    if (!result?.alerts) return {};
-    return result.alerts.reduce<Record<string, AICDSAlertItem[]>>((acc, alert) => {
+    if (!displayResult?.alerts) return {};
+    return displayResult.alerts.reduce<Record<string, AICDSAlertItem[]>>((acc, alert) => {
       if (!acc[alert.severity]) acc[alert.severity] = [];
       acc[alert.severity]!.push(alert);
       return acc;
     }, {});
-  }, [result?.alerts]);
+  }, [displayResult?.alerts]);
 
   if (!isAIEnabled) return null;
 
-  const alertCount = result?.alerts?.length ?? 0;
-  const recCount = result?.recommendations?.length ?? 0;
-  const hasResult = result && (alertCount > 0 || recCount > 0);
-  const noAlerts = result && alertCount === 0 && recCount === 0;
-  const isFallback = result?.mode === 'fallback';
+  const alertCount = displayResult?.alerts?.length ?? 0;
+  const recCount = displayResult?.recommendations?.length ?? 0;
+  const hasResult = displayResult && (alertCount > 0 || recCount > 0);
+  const noAlerts = displayResult && alertCount === 0 && recCount === 0;
+  const isFallback = displayResult?.mode === 'fallback';
 
   return (
     <Card className={cn(
@@ -285,7 +300,7 @@ export function EnhancedCDSPanel({
 
       <CardContent className="space-y-3">
         {/* Initial State */}
-        {!result && !isPending && !isError && (
+        {!displayResult && !isPending && !isError && (
           <Button
             type="button"
             variant="outline"
@@ -346,7 +361,7 @@ export function EnhancedCDSPanel({
                 </Button>
                 {showRecommendations && (
                   <div className="space-y-2">
-                    {result.recommendations!.map((rec, i) => (
+                    {displayResult.recommendations!.map((rec, i) => (
                       <CDSAlertCard key={`rec-${i}`} alert={rec} />
                     ))}
                   </div>
@@ -357,9 +372,9 @@ export function EnhancedCDSPanel({
         )}
 
         {/* Processing Stats */}
-        {result && (
+        {displayResult && (
           <p className="text-xs text-muted-foreground">
-            Evaluated {result.rules_evaluated} rules in {result.processing_time_ms.toFixed(0)}ms
+            Evaluated {displayResult.rules_evaluated} rules in {displayResult.processing_time_ms.toFixed(0)}ms
           </p>
         )}
 
@@ -372,7 +387,7 @@ export function EnhancedCDSPanel({
         )}
 
         {/* Feedback + Re-run */}
-        {result && (
+        {displayResult && (
           <div className="flex items-center justify-between">
             <AIFeedbackButtons
               messageId={`cds-${panelId}`}
@@ -380,9 +395,9 @@ export function EnhancedCDSPanel({
               userQuery={medications?.join(', ')}
               botResponse={`${alertCount} alert(s), ${recCount} recommendation(s)`}
               metadata={{
-                rules_fired: result.rules_fired,
+                rules_fired: displayResult.rules_fired,
                 alert_count: alertCount,
-                severity_max: result.alerts?.[0]?.severity,
+                severity_max: displayResult.alerts?.[0]?.severity,
               }}
             />
             <Button
@@ -400,7 +415,7 @@ export function EnhancedCDSPanel({
         )}
 
         {/* Error */}
-        {isError && !result && (
+        {isError && !displayResult && (
           <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
             <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-destructive" />
             <div>

@@ -38,6 +38,12 @@ Same as the core API — see [api-guide.md](api-guide.md#authentication). All cl
 | `/clerking/structure` | POST | **Yes** | Convert free-text to structured note |
 | `/feedback` | POST | **Yes** | Submit feedback for any service response |
 | `/feedback/stats` | GET | No | Feedback statistics (overall + per-service) |
+| **Stored AI Results** | | | |
+| `/api/ai/results/care-plans/` | GET | **Yes** | Retrieve stored care plan results |
+| `/api/ai/results/cds/` | GET | **Yes** | Retrieve stored CDS evaluation results |
+| `/api/ai/results/lab-interpretations/` | GET | **Yes** | Retrieve stored lab interpretation results |
+| `/api/ai/results/discharge/` | GET | **Yes** | Retrieve stored discharge assessment results |
+| `/api/ai/results/icu-risk/` | GET | **Yes** | Retrieve stored ICU risk prediction results |
 
 ---
 
@@ -1673,6 +1679,128 @@ Optional query parameter `service` filters statistics to a single service type.
 | `positive_rate` | float | Positive feedback percentage |
 | `by_service` | dict | Per-service breakdown (omitted when filtering) |
 | `recent_negative` | dict[] | Last 10 negative feedback entries |
+
+---
+
+## AI Result Persistence
+
+All five AI clinical panels (Care Plan, CDS, Lab Interpret, Discharge Readiness, ICU Risk) persist their results to the database after generation. This allows results to survive page reloads and be retrieved later.
+
+### Architecture
+
+Each AI panel has a corresponding model that stores:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Primary key (auto-generated) |
+| `created_by` | FK → User | User who triggered the generation |
+| `request_data` | JSON | Input payload sent to TibaBot (sanitized) |
+| `result_data` | JSON | Full response JSON from TibaBot or fallback engine |
+| `service_mode` | string | `'tibabot'` or `'fallback'` |
+| `created_at` | datetime | Auto-set on creation |
+
+Each concrete model adds entity-specific foreign keys:
+
+| Model | Entity FK(s) | Extra Fields |
+|-------|------------|-------|
+| `AICarePlanResult` | `encounter`, `admission` | `primary_diagnosis` |
+| `AICDSResult` | `encounter` | `rules_fired`, `alert_count` |
+| `AILabInterpretResult` | `lab_result`, `encounter` | `abnormal_count`, `critical_count` |
+| `AIDischargeResult` | `admission` | `readiness_level`, `readiness_score` |
+| `AIICURiskResult` | `admission` | `prediction_type`, `risk_level`, `risk_score` |
+
+### Stored Result Retrieval Endpoints
+
+All stored result endpoints require JWT authentication and return results ordered by `created_at` descending (most recent first).
+
+#### Care Plans
+
+```http
+GET /api/ai/results/care-plans/?encounter_id={id}
+GET /api/ai/results/care-plans/?admission_id={id}
+Authorization: Bearer <token>
+```
+
+#### CDS Results
+
+```http
+GET /api/ai/results/cds/?encounter_id={id}
+Authorization: Bearer <token>
+```
+
+#### Lab Interpretations
+
+```http
+GET /api/ai/results/lab-interpretations/?encounter_id={id}
+GET /api/ai/results/lab-interpretations/?lab_result_id={id}
+Authorization: Bearer <token>
+```
+
+#### Discharge Assessments
+
+```http
+GET /api/ai/results/discharge/?admission_id={id}
+Authorization: Bearer <token>
+```
+
+#### ICU Risk Predictions
+
+```http
+GET /api/ai/results/icu-risk/?admission_id={id}
+Authorization: Bearer <token>
+```
+
+**Response (all endpoints):**
+```json
+[
+  {
+    "id": "a1b2c3d4-...",
+    "created_by": 1,
+    "request_data": { ... },
+    "result_data": { ... },
+    "service_mode": "tibabot",
+    "created_at": "2026-03-07T10:30:00Z",
+    "encounter": 42,
+    "admission": null
+  }
+]
+```
+
+### Persistence Flow
+
+1. Frontend panel sends generation request with optional `encounter_id` / `admission_id` / `lab_result_id`
+2. Backend proxies to TibaBot → receives AI response
+3. Backend creates the corresponding `AI*Result` model instance with the full request + response
+4. Backend returns the TibaBot response (unchanged) to the frontend
+5. Frontend `useQuery` hook loads the latest stored result on mount — if the user hasn't generated a new result, the last saved one is displayed automatically
+6. After a new generation, the stored results query is invalidated and refreshed
+
+### Frontend Integration
+
+Each panel accepts optional entity ID props and loads stored results on mount:
+
+```tsx
+// Example: CarePlanPanel with encounter context
+<CarePlanPanel encounterId={encounter.id} />
+
+// Example: DischargeReadinessPanel with admission context
+<DischargeReadinessPanel admissionId={admission.id} />
+
+// Example: LabInterpretPanel with both
+<LabInterpretPanel encounterId={encounter.id} labResultId={labResult.id} />
+```
+
+React Query hooks for stored results:
+
+```typescript
+import {
+  useStoredCarePlans,
+  useStoredCDSResults,
+  useStoredLabInterpretations,
+  useStoredDischargeResults,
+  useStoredICURiskResults,
+} from '@/lib/hooks/use-ai';
+```
 
 ---
 

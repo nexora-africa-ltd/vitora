@@ -30,10 +30,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { HelpPopover } from '@/components/shared/help-popover';
-import { useAICarePlanGenerate, useAIEnabled } from '@/lib/hooks/use-ai';
+import { useAICarePlanGenerate, useAIEnabled, useStoredCarePlans, aiKeys } from '@/lib/hooks/use-ai';
 import { aiApi } from '@/lib/api/ai';
 import { toast } from 'sonner';
 import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
+import { useQueryClient } from '@tanstack/react-query';
 import type {
   AICarePlanGenerateRequest,
   AICarePlanResponse,
@@ -48,6 +49,10 @@ import type {
 // =============================================================================
 
 export interface CarePlanPanelProps {
+  /** Encounter ID for persistence */
+  encounterId?: number;
+  /** Admission ID for persistence */
+  admissionId?: number;
   /** Primary diagnosis (confirmed) */
   primaryDiagnosis?: string;
   /** Chief complaint from triage (used when no diagnosis yet) */
@@ -185,6 +190,8 @@ function FollowUpSection({ followUp }: { followUp: AICarePlanFollowUp }) {
 // =============================================================================
 
 export function CarePlanPanel({
+  encounterId,
+  admissionId,
   primaryDiagnosis,
   chiefComplaint,
   icd10Code,
@@ -203,9 +210,22 @@ export function CarePlanPanel({
   onAutoTriggerConsumed,
 }: CarePlanPanelProps) {
   const isAIEnabled = useAIEnabled();
+  const queryClient = useQueryClient();
   const { mutate, data: result, isPending, isError, reset } = useAICarePlanGenerate();
   const [isExporting, setIsExporting] = React.useState(false);
   const panelId = React.useId();
+
+  // Load stored care plan
+  const storedParams = React.useMemo(
+    () => ({ encounter_id: encounterId, admission_id: admissionId }),
+    [encounterId, admissionId],
+  );
+  const { data: storedResults } = useStoredCarePlans(storedParams);
+  const latestStored = storedResults?.[0];
+
+  // Hydrate from stored result if no fresh result yet
+  const displayResult: AICarePlanResponse | undefined = result
+    ?? (latestStored?.result_data as unknown as AICarePlanResponse | undefined);
 
   // Show success toast when care plan is generated
   React.useEffect(() => {
@@ -216,13 +236,17 @@ export function CarePlanPanel({
       toast.success('Care plan generated', {
         description: `${result.goals.length} goal(s), ${totalInterventions} intervention(s)`,
       });
+      // Invalidate stored results cache so it refreshes
+      queryClient.invalidateQueries({ queryKey: aiKeys.storedCarePlans(storedParams) });
     }
-  }, [result]);
+  }, [result, queryClient, storedParams]);
 
   // Auto-trigger from widget quick action
   React.useEffect(() => {
-    if (autoTrigger && isAIEnabled && !isPending && !result) {
+    if (autoTrigger && isAIEnabled && !isPending && !displayResult) {
       mutate({
+        encounter_id: encounterId,
+        admission_id: admissionId,
         primary_diagnosis: primaryDiagnosis || undefined,
         chief_complaint: chiefComplaint || undefined,
         icd10_code: icd10Code,
@@ -246,6 +270,8 @@ export function CarePlanPanel({
 
   const handleGenerate = () => {
     mutate({
+      encounter_id: encounterId,
+      admission_id: admissionId,
       primary_diagnosis: primaryDiagnosis || undefined,
       chief_complaint: chiefComplaint || undefined,
       icd10_code: icd10Code,
@@ -266,6 +292,8 @@ export function CarePlanPanel({
     setIsExporting(true);
     try {
       const fhirData = await aiApi.generateCarePlanFHIR({
+        encounter_id: encounterId,
+        admission_id: admissionId,
         primary_diagnosis: primaryDiagnosis || undefined,
         chief_complaint: chiefComplaint || undefined,
         icd10_code: icd10Code,
@@ -295,8 +323,8 @@ export function CarePlanPanel({
     }
   };
 
-  const hasResult = result && result.goals && result.goals.length > 0;
-  const isFallback = result?.mode === 'fallback';
+  const hasResult = displayResult && displayResult.goals && displayResult.goals.length > 0;
+  const isFallback = displayResult?.mode === 'fallback';
 
   return (
     <Card className={cn(
@@ -348,26 +376,26 @@ export function CarePlanPanel({
           <div className="space-y-3">
             {/* Diagnosis Header */}
             <div className="flex items-center gap-2 text-sm flex-wrap">
-              <span className="font-medium">{result.primary_diagnosis}</span>
-              {result.icd10_code && (
-                <Badge variant="secondary" className="text-xs">{result.icd10_code}</Badge>
+              <span className="font-medium">{displayResult.primary_diagnosis}</span>
+              {displayResult.icd10_code && (
+                <Badge variant="secondary" className="text-xs">{displayResult.icd10_code}</Badge>
               )}
-              {result.severity && (
-                <Badge variant="outline" className="text-xs">{result.severity}</Badge>
+              {displayResult.severity && (
+                <Badge variant="outline" className="text-xs">{displayResult.severity}</Badge>
               )}
-              {result.template_used && (
-                <span className="text-xs text-muted-foreground">Template: {result.template_used}</span>
+              {displayResult.template_used && (
+                <span className="text-xs text-muted-foreground">Template: {displayResult.template_used}</span>
               )}
             </div>
 
             {/* CDS Safety Alerts */}
-            {result.cds_alerts && result.cds_alerts.length > 0 && (
+            {displayResult.cds_alerts && displayResult.cds_alerts.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-medium flex items-center gap-1.5 text-orange-600 dark:text-orange-400">
                   <AlertTriangle className="h-3.5 w-3.5" />
-                  Safety Alerts ({result.cds_alerts.length})
+                  Safety Alerts ({displayResult.cds_alerts.length})
                 </h4>
-                {result.cds_alerts.map((alert, i) => (
+                {displayResult.cds_alerts.map((alert, i) => (
                   <div key={i} className="rounded-md p-2 bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 text-sm text-orange-800 dark:text-orange-200">
                     {typeof alert === 'object' && alert !== null
                       ? (alert as Record<string, unknown>).message as string ?? JSON.stringify(alert)
@@ -386,7 +414,7 @@ export function CarePlanPanel({
                 >
                   Goals
                   <Badge variant="secondary" className="h-5 min-w-5 px-1 text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                    {result.goals.length}
+                    {displayResult.goals.length}
                   </Badge>
                 </TabsTrigger>
                 <TabsTrigger
@@ -396,7 +424,7 @@ export function CarePlanPanel({
                   <span className="sm:hidden">Rx</span>
                   <span className="hidden sm:inline">Interventions</span>
                   <Badge variant="secondary" className="h-5 min-w-5 px-1 text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                    {result.interventions.reduce((sum, cat) => sum + cat.items.length, 0)}
+                    {displayResult.interventions.reduce((sum, cat) => sum + cat.items.length, 0)}
                   </Badge>
                 </TabsTrigger>
                 <TabsTrigger
@@ -406,27 +434,27 @@ export function CarePlanPanel({
                   <span className="sm:hidden">D/C</span>
                   <span className="hidden sm:inline">Discharge</span>
                   <Badge variant="secondary" className="h-5 min-w-5 px-1 text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                    {(result.discharge_criteria?.length || 0) + (result.follow_up ? 1 : 0)}
+                    {(displayResult.discharge_criteria?.length || 0) + (displayResult.follow_up ? 1 : 0)}
                   </Badge>
                 </TabsTrigger>
               </TabsList>
 
               {/* Goals Tab */}
               <TabsContent value="goals" className="space-y-1 pt-1">
-                {result.goals.map((goal, i) => (
+                {displayResult.goals.map((goal, i) => (
                   <GoalItem key={i} goal={goal} />
                 ))}
               </TabsContent>
 
               {/* Interventions Tab */}
               <TabsContent value="interventions" className="space-y-4 pt-1">
-                {result.interventions.map((cat, i) => (
+                {displayResult.interventions.map((cat, i) => (
                   <InterventionCategorySection key={i} category={cat} />
                 ))}
-                {result.facility_level_notes && result.facility_level_notes.length > 0 && (
+                {displayResult.facility_level_notes && displayResult.facility_level_notes.length > 0 && (
                   <div className="space-y-1 rounded-md p-2.5 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
                     <p className="text-xs font-medium text-blue-700 dark:text-blue-400">Facility Level Notes</p>
-                    {result.facility_level_notes.map((note, i) => (
+                    {displayResult.facility_level_notes.map((note, i) => (
                       <p key={i} className="text-xs text-blue-600 dark:text-blue-300">{note}</p>
                     ))}
                   </div>
@@ -435,11 +463,11 @@ export function CarePlanPanel({
 
               {/* Discharge Tab */}
               <TabsContent value="discharge" className="space-y-3 pt-1">
-                {result.discharge_criteria && result.discharge_criteria.length > 0 ? (
+                {displayResult.discharge_criteria && displayResult.discharge_criteria.length > 0 ? (
                   <div className="space-y-1">
                     <h5 className="text-sm font-medium">Discharge Criteria</h5>
                     <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 pl-1">
-                      {result.discharge_criteria.map((c, i) => (
+                      {displayResult.discharge_criteria.map((c, i) => (
                         <li key={i}>{c}</li>
                       ))}
                     </ul>
@@ -449,14 +477,14 @@ export function CarePlanPanel({
                     No specific discharge criteria generated.
                   </p>
                 )}
-                {result.follow_up && <FollowUpSection followUp={result.follow_up} />}
+                {displayResult.follow_up && <FollowUpSection followUp={displayResult.follow_up} />}
               </TabsContent>
             </Tabs>
 
             {/* Evidence Sources */}
-            {result.evidence_sources && result.evidence_sources.length > 0 && (
+            {displayResult.evidence_sources && displayResult.evidence_sources.length > 0 && (
               <div className="text-xs text-muted-foreground">
-                Sources: {result.evidence_sources.join(', ')}
+                Sources: {displayResult.evidence_sources.join(', ')}
               </div>
             )}
 
@@ -472,14 +500,14 @@ export function CarePlanPanel({
                 messageId={`careplan-${panelId}`}
                 serviceType="care_plan"
                 userQuery={primaryDiagnosis || chiefComplaint}
-                botResponse={`Goals: ${result.goals.map(g => g.description).join('; ')}`}
+                botResponse={`Goals: ${displayResult.goals.map(g => g.description).join('; ')}`}
                 metadata={{
-                  mode: result.mode,
-                  template_used: result.template_used,
-                  llm_enriched: result.llm_enriched,
+                  mode: displayResult.mode,
+                  template_used: displayResult.template_used,
+                  llm_enriched: displayResult.llm_enriched,
                   facility_level: facilityLevel,
-                  goals_count: result.goals.length,
-                  interventions_count: result.interventions.reduce((s, c) => s + c.items.length, 0),
+                  goals_count: displayResult.goals.length,
+                  interventions_count: displayResult.interventions.reduce((s, c) => s + c.items.length, 0),
                 }}
               />
               <div className="flex flex-col gap-2 sm:flex-row">

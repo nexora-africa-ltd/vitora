@@ -886,6 +886,10 @@ class ICUPredictPatientDataSerializer(serializers.Serializer):
 class ICUPredictRequestSerializer(serializers.Serializer):
     """Request body for POST /api/ai/predict/icu/."""
 
+    admission_id = serializers.IntegerField(
+        required=False, allow_null=True, default=None,
+        help_text="Link result to this admission for persistence.",
+    )
     patient_data = ICUPredictPatientDataSerializer(
         help_text="Patient clinical data for ICU risk prediction.",
     )
@@ -1094,6 +1098,14 @@ class LabResultItemSerializer(serializers.Serializer):
 class LabInterpretRequestSerializer(serializers.Serializer):
     """Request body for POST /api/ai/lab/interpret/."""
 
+    lab_result_id = serializers.IntegerField(
+        required=False, allow_null=True, default=None,
+        help_text="Link result to this lab result for persistence.",
+    )
+    encounter_id = serializers.IntegerField(
+        required=False, allow_null=True, default=None,
+        help_text="Link result to this encounter for persistence.",
+    )
     patient_age = serializers.IntegerField(
         min_value=0,
         max_value=120,
@@ -1222,6 +1234,10 @@ class VitalsSnapshotSerializer(serializers.Serializer):
 class DischargeAssessRequestSerializer(serializers.Serializer):
     """Request body for POST /api/ai/discharge/assess/."""
 
+    admission_id = serializers.IntegerField(
+        required=False, allow_null=True, default=None,
+        help_text="Link result to this admission for persistence.",
+    )
     patient_age = serializers.IntegerField(
         min_value=0, max_value=120,
         help_text="Patient age in years.",
@@ -1308,6 +1324,14 @@ class DischargeAssessResponseSerializer(serializers.Serializer):
 class CarePlanGenerateRequestSerializer(serializers.Serializer):
     """Request body for POST /api/ai/care-plan/generate/."""
 
+    encounter_id = serializers.IntegerField(
+        required=False, allow_null=True, default=None,
+        help_text="Link result to this encounter for persistence.",
+    )
+    admission_id = serializers.IntegerField(
+        required=False, allow_null=True, default=None,
+        help_text="Link result to this admission for persistence.",
+    )
     primary_diagnosis = serializers.CharField(
         required=False, allow_blank=True, max_length=500,
         help_text="Confirmed primary diagnosis (if available).",
@@ -1500,6 +1524,10 @@ class ClerkingStructureResponseSerializer(serializers.Serializer):
 class CDSEvaluateRequestSerializer(serializers.Serializer):
     """Request body for POST /api/ai/cds/evaluate/."""
 
+    encounter_id = serializers.IntegerField(
+        required=False, allow_null=True, default=None,
+        help_text="Link result to this encounter for persistence.",
+    )
     medications = serializers.ListField(
         child=serializers.CharField(max_length=200),
         required=False, default=list,
@@ -1567,3 +1595,67 @@ class CDSEvaluateResponseSerializer(serializers.Serializer):
     processing_time_ms = serializers.FloatField()
     mode = serializers.CharField(required=False)
     error = serializers.CharField(required=False, allow_null=True)
+
+
+# =============================================================================
+# Stored AI result serializers (read-only, for GET endpoints)
+# =============================================================================
+
+
+class StoredAIResultSerializer(serializers.Serializer):
+    """Base fields for all persisted AI results."""
+
+    id = serializers.UUIDField(read_only=True)
+    result_data = serializers.JSONField(read_only=True)
+    service_mode = serializers.CharField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    created_by = serializers.SerializerMethodField()
+
+    def get_created_by(self, obj: object) -> str:
+        user = getattr(obj, "created_by", None)
+        if user:
+            full = f"{user.first_name} {user.last_name}".strip()
+            return full or user.username
+        return ""
+
+
+class StoredCarePlanSerializer(StoredAIResultSerializer):
+    """Persisted care plan result for GET endpoint."""
+
+    encounter_id = serializers.IntegerField(allow_null=True, read_only=True)
+    admission_id = serializers.IntegerField(allow_null=True, read_only=True)
+    primary_diagnosis = serializers.CharField(read_only=True)
+
+
+class StoredCDSResultSerializer(StoredAIResultSerializer):
+    """Persisted CDS evaluation result for GET endpoint."""
+
+    encounter_id = serializers.IntegerField(allow_null=True, read_only=True)
+    rules_fired = serializers.IntegerField(read_only=True)
+    alert_count = serializers.IntegerField(read_only=True)
+
+
+class StoredLabInterpretSerializer(StoredAIResultSerializer):
+    """Persisted lab interpretation result for GET endpoint."""
+
+    lab_result_id = serializers.IntegerField(allow_null=True, read_only=True)
+    encounter_id = serializers.IntegerField(allow_null=True, read_only=True)
+    abnormal_count = serializers.IntegerField(read_only=True)
+    critical_count = serializers.IntegerField(read_only=True)
+
+
+class StoredDischargeResultSerializer(StoredAIResultSerializer):
+    """Persisted discharge readiness assessment for GET endpoint."""
+
+    admission_id = serializers.IntegerField(allow_null=True, read_only=True)
+    readiness_level = serializers.CharField(read_only=True)
+    readiness_score = serializers.FloatField(read_only=True)
+
+
+class StoredICURiskResultSerializer(StoredAIResultSerializer):
+    """Persisted ICU risk result for GET endpoint."""
+
+    admission_id = serializers.IntegerField(allow_null=True, read_only=True)
+    prediction_type = serializers.CharField(read_only=True)
+    risk_level = serializers.CharField(read_only=True)
+    risk_score = serializers.FloatField(read_only=True)

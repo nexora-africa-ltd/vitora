@@ -423,6 +423,12 @@ curl https://tibabot.hmis.nexora.africa/health
 | `/i18n/bundle/{language}` | GET | No | Translation bundle |
 | `/feedback` | POST | Optional | Submit feedback |
 | `/feedback/stats` | GET | No | Feedback statistics |
+| **Stored AI Results (Vitora HMIS)** | | | |
+| `/api/ai/results/care-plans/` | GET | Yes (JWT) | Stored care plan results |
+| `/api/ai/results/cds/` | GET | Yes (JWT) | Stored CDS evaluation results |
+| `/api/ai/results/lab-interpretations/` | GET | Yes (JWT) | Stored lab interpretation results |
+| `/api/ai/results/discharge/` | GET | Yes (JWT) | Stored discharge assessment results |
+| `/api/ai/results/icu-risk/` | GET | Yes (JWT) | Stored ICU risk prediction results |
 
 ---
 
@@ -562,3 +568,4 @@ console.log(result.response);
 |---------|------|---------|
 | 1.0 | February 2026 | Initial checklist |
 | 1.1 | March 2026 | Added symptom triage, clinical chat, ICU predictor, practitioner validation, i18n endpoints; updated schemas and endpoint paths |
+| 1.2 | March 2026 | Added stored AI result retrieval endpoints (care plans, CDS, lab interpretations, discharge assessments, ICU risk predictions) for result persistence |
