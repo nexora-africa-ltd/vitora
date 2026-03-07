@@ -2,6 +2,9 @@ import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DashboardPage from '@/app/(dashboard)/dashboard/page';
 
+const mockUseUser = jest.fn();
+const mockUseMyStaffProfile = jest.fn();
+
 jest.mock('next/dynamic', () => () => {
   const DynamicComponent = () => null;
   DynamicComponent.displayName = 'DynamicComponent';
@@ -11,17 +14,23 @@ jest.mock('next/dynamic', () => () => {
 // Avoid needing AuthProvider in this unit test
 jest.mock('@/lib/auth', () => ({
   useIsSupervisor: () => false,
-  useUser: () => ({
-    id: 1,
-    username: 'jdoe',
-    email: 'jdoe@example.com',
-    first_name: 'Jane',
-    last_name: 'Doe',
-    is_staff: true,
-    permissions: [],
-    role: 'NURSING_OFFICER',
-  }),
+  useUser: () => mockUseUser(),
 }));
+
+jest.mock('@/lib/hooks/use-rbac', () => ({
+  useMyStaffProfile: () => mockUseMyStaffProfile(),
+}));
+
+const defaultUser = {
+  id: 1,
+  username: 'jdoe',
+  email: 'jdoe@example.com',
+  first_name: 'Jane',
+  last_name: 'Doe',
+  is_staff: true,
+  permissions: [],
+  role: 'NURSING_OFFICER',
+};
 
 jest.mock('@/lib/hooks/use-triage', () => ({
   useTriageWaitTimeStats: () => ({
@@ -113,6 +122,11 @@ jest.mock('@/components/surveillance/idsr-dashboard-widget', () => ({
 }));
 
 describe('Dashboard Page', () => {
+  beforeEach(() => {
+    mockUseUser.mockReturnValue(defaultUser);
+    mockUseMyStaffProfile.mockReturnValue({ data: null });
+  });
+
   it('should render dashboard title', () => {
     render(<DashboardPage />, { wrapper: TestWrapper });
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
@@ -129,26 +143,21 @@ describe('Dashboard Page', () => {
   });
 
   it('should prefix Dr. for clinician roles', () => {
-    const { useUser: mockUseUser } = jest.requireMock('@/lib/auth') as {
-      useUser: () => unknown;
-      useIsSupervisor: () => boolean;
-    };
-    // Temporarily override useUser to return a DOCTOR role
-    (mockUseUser as jest.Mock).mockReturnValueOnce
-      ? (mockUseUser as jest.Mock).mockReturnValueOnce({
-          id: 2,
-          username: 'drsmith',
-          email: 'smith@example.com',
-          first_name: 'samuel',
-          last_name: 'Smith',
-          is_staff: false,
-          permissions: [],
-          role: 'DOCTOR',
-        })
-      : null;
-    // If mock overriding is not available, verify the helper logic directly:
-    // isClinician('DOCTOR') should return true and prefix 'Dr.'
-    // This is covered via the getByRole heading check when override works.
+    mockUseUser.mockReturnValue({
+      ...defaultUser,
+      role: 'ADMIN',
+      first_name: 'Samuel',
+    });
+    mockUseMyStaffProfile.mockReturnValue({
+      data: {
+        primary_role_name: 'DOCTOR',
+      },
+    });
+
+    render(<DashboardPage />, { wrapper: TestWrapper });
+
+    const welcomeHeading = screen.getByRole('heading', { level: 2 });
+    expect(welcomeHeading).toHaveTextContent(/Dr\. Samuel/i);
   });
 
   it('should render stats cards', () => {

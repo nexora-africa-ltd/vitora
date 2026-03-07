@@ -128,6 +128,11 @@ export const staffApi = {
     return parseResponse(PaginatedStaffProfileSchema, response.data, { context: 'staffApi.list' });
   },
 
+  getMe: async (): Promise<StaffProfile> => {
+    const response = await apiClient.get<StaffProfile>('/api/staff/me/');
+    return parseResponse(StaffProfileSchema, response.data, { context: 'staffApi.getMe' });
+  },
+
   get: async (id: number): Promise<StaffProfile> => {
     const response = await apiClient.get<StaffProfile>(`/api/staff/${id}/`);
     return parseResponse(StaffProfileSchema, response.data, { context: 'staffApi.get' });

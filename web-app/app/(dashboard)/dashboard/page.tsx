@@ -28,10 +28,12 @@ import { RecentPatients } from '@/components/dashboard/recent-patients';
 import { AlertsWidget } from '@/components/dashboard/alerts-widget';
 import { MyClaimedEncountersWidget } from '@/components/dashboard/my-claimed-widget';
 import { useDashboardStats, formatCurrency, formatNumber } from '@/lib/hooks/use-dashboard-stats';
+import { useMyStaffProfile } from '@/lib/hooks/use-rbac';
 import { useTriageWaitTimeStats } from '@/lib/hooks/use-triage';
 import { useEmergencySocket } from '@/lib/hooks/use-websocket';
 import { useIsSupervisor, useUser } from '@/lib/auth';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { getClinicianHonorific } from '@/lib/utils/clinician-role';
 
 type DashboardStatCard = {
   title: string;
@@ -115,21 +117,6 @@ function getDisplayName(firstName?: string | null, username?: string | null) {
   return 'there';
 }
 
-// Roles that warrant a "Dr." title prefix
-const CLINICIAN_ROLES = new Set([
-  'DOCTOR',
-  'MEDICAL_DOCTOR',
-  'CLINICAL_OFFICER',
-  'MEDICAL_OFFICER',
-  'CONSULTANT',
-  'SENIOR_CONSULTANT',
-]);
-
-function isClinician(role?: string): boolean {
-  if (!role) return false;
-  return CLINICIAN_ROLES.has(role.toUpperCase());
-}
-
 function formatRoleLabel(role?: string) {
   if (!role) return null;
 
@@ -146,6 +133,7 @@ export default function DashboardPage() {
   const { connectionState, reconnectAttempts, lastUpdate } = useEmergencySocket();
   const isSupervisor = useIsSupervisor();
   const user = useUser();
+  const { data: staffProfile } = useMyStaffProfile();
   const { refresh, isRefreshing } = usePageRefresh();
 
   // Triage queue metrics
@@ -161,7 +149,8 @@ export default function DashboardPage() {
 
   const greetingLabel = getGreetingLabel();
   const displayName = getDisplayName(user?.first_name, user?.username);
-  const nameWithTitle = isClinician(user?.role) ? `Dr. ${displayName}` : displayName;
+  const clinicianHonorific = getClinicianHonorific(user?.role, staffProfile?.primary_role_name);
+  const nameWithTitle = clinicianHonorific ? `${clinicianHonorific} ${displayName}` : displayName;
   const roleLabel = formatRoleLabel(user?.role);
   const currentDateLabel = new Intl.DateTimeFormat('en-KE', {
     weekday: 'long',

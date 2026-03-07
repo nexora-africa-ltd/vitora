@@ -16,6 +16,22 @@ jest.mock('next-themes', () => ({
   })),
 }));
 
+// Mock dropdown menu primitives to keep the test focused on rendered links
+jest.mock('@/components/ui/dropdown-menu', () => ({
+  DropdownMenu: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
+  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
+  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => React.createElement('div', null, children),
+  DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => React.createElement('div', null, children),
+  DropdownMenuSeparator: () => React.createElement('hr'),
+  DropdownMenuItem: ({ children, asChild = false, ...props }: { children: React.ReactNode; asChild?: boolean } & Record<string, unknown>) => {
+    if (asChild && React.isValidElement(children)) {
+      return React.cloneElement(children, props);
+    }
+
+    return React.createElement('button', props, children);
+  },
+}));
+
 // Mock auth context
 jest.mock('@/lib/auth/context', () => ({
   useAuth: jest.fn(() => ({
@@ -110,5 +126,15 @@ describe('Header', () => {
   it('should render user avatar with initials', () => {
     render(<Header {...defaultProps} />);
     expect(screen.getByText('TU')).toBeInTheDocument(); // Test User initials
+  });
+
+  it('should provide working profile and settings links in the user menu', async () => {
+    render(<Header {...defaultProps} />);
+
+    const profileLink = await screen.findByRole('link', { name: /profile/i });
+    const settingsLink = await screen.findByRole('link', { name: /settings/i });
+
+    expect(profileLink).toHaveAttribute('href', '/profile');
+    expect(settingsLink).toHaveAttribute('href', '/settings');
   });
 });
