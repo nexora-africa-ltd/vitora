@@ -9,6 +9,7 @@ import type {
   DepartmentCreateData,
   DepartmentUpdateData,
   DepartmentListParams,
+  OrgChartParams,
   RoleCreateData,
   RoleUpdateData,
   RoleListParams,
@@ -38,6 +39,13 @@ export function useDepartment(id: number) {
     queryKey: ['department', id],
     queryFn: () => departmentsApi.get(id),
     enabled: id > 0,
+  });
+}
+
+export function useDepartmentOrgChart(params?: OrgChartParams) {
+  return useQuery({
+    queryKey: ['departments', 'org-chart', params],
+    queryFn: () => departmentsApi.getOrgChart(params),
   });
 }
 

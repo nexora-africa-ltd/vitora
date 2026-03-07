@@ -8,6 +8,7 @@ import { parseResponse } from '@/lib/schemas/validation';
 import { z } from 'zod';
 import {
   DepartmentSchema,
+  OrgChartResponseSchema,
   RoleSchema,
   PermissionSchema,
   StaffProfileSchema,
@@ -26,6 +27,8 @@ import type {
   DepartmentCreateData,
   DepartmentUpdateData,
   DepartmentListParams,
+  OrgChartParams,
+  OrgChartResponse,
   Role,
   RoleCreateData,
   RoleUpdateData,
@@ -69,6 +72,15 @@ export const departmentsApi = {
 
   delete: async (id: number): Promise<void> => {
     await apiClient.delete(`/api/departments/${id}/`);
+  },
+
+  getOrgChart: async (params?: OrgChartParams): Promise<OrgChartResponse> => {
+    const response = await apiClient.get<OrgChartResponse>('/api/departments/org-chart/', {
+      params,
+    });
+    return parseResponse(OrgChartResponseSchema, response.data, {
+      context: 'departmentsApi.getOrgChart',
+    });
   },
 };
 

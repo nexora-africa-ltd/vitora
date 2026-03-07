@@ -1,6 +1,6 @@
 'use client';
 
-import { startTransition, useEffect, useMemo, useState } from 'react';
+import { startTransition, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   Background,
@@ -11,23 +11,37 @@ import {
   Panel,
   Position,
   ReactFlow,
+  useReactFlow,
   type Edge,
   type Node,
   type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { ArrowRight, Building2, GitBranch, Network, UserRound } from 'lucide-react';
+import {
+  ArrowRight,
+  Building2,
+  GitBranch,
+  Network,
+  Search,
+  UserRound,
+  Users,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils/cn';
 import type { Department, StaffProfile } from '@/lib/types/rbac';
 
-const NODE_WIDTH = 260;
+const DEPARTMENT_NODE_WIDTH = 260;
 const NODE_HEIGHT = 138;
+const STAFF_NODE_WIDTH = 220;
+const STAFF_NODE_HEIGHT = 112;
 const HORIZONTAL_GAP = 84;
 const VERTICAL_GAP = 228;
+const STAFF_VERTICAL_GAP = 160;
 
-type OrgChartNodeData = {
+type DepartmentNodeData = {
+  kind: 'department';
   departmentId: number;
   name: string;
   code: string;
@@ -37,6 +51,20 @@ type OrgChartNodeData = {
   directReports: number;
   isActive: boolean;
 };
+
+type StaffNodeData = {
+  kind: 'staff';
+  staffId: number;
+  departmentId: number;
+  fullName: string;
+  roleName: string | null;
+  title: string | null;
+  supervisorId: number | null;
+  isHead: boolean;
+  employmentStatus: string | null;
+};
+
+type OrgChartNodeData = DepartmentNodeData | StaffNodeData;
 
 type DepartmentDetail = {
   department: Department;
@@ -50,10 +78,28 @@ type ChartBuildResult = {
   nodes: Node<OrgChartNodeData>[];
   edges: Edge[];
   detailsById: Map<number, DepartmentDetail>;
+  staffById: Map<number, StaffProfile>;
   firstDepartmentId: number | null;
 };
 
-function DepartmentNode({ data, selected }: NodeProps<Node<OrgChartNodeData>>) {
+type SearchResult =
+  | {
+      kind: 'department';
+      id: number;
+      label: string;
+      description: string;
+      nodeId: string;
+    }
+  | {
+      kind: 'staff';
+      id: number;
+      departmentId: number;
+      label: string;
+      description: string;
+      nodeId: string;
+    };
+
+function DepartmentNode({ data, selected }: NodeProps<Node<DepartmentNodeData>>) {
   return (
     <div
       className={cn(
@@ -97,12 +143,53 @@ function DepartmentNode({ data, selected }: NodeProps<Node<OrgChartNodeData>>) {
   );
 }
 
+function StaffNode({ data, selected }: NodeProps<Node<StaffNodeData>>) {
+  const isActive = data.employmentStatus === 'ACTIVE' || data.employmentStatus === null;
+
+  return (
+    <div
+      className={cn(
+        'w-[220px] rounded-2xl border bg-background/95 p-3 shadow-md transition-all',
+        selected ? 'border-cyan-500 ring-2 ring-cyan-500/25' : 'border-border/70',
+        !isActive && 'opacity-70'
+      )}
+    >
+      <Handle type="target" position={Position.Top} className="!h-3 !w-3 !bg-cyan-500" />
+      <div className="space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground">{data.fullName}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {data.roleName || 'Role not assigned'}
+            </p>
+          </div>
+          <Badge variant={isActive ? 'default' : 'secondary'}>
+            {data.employmentStatus || 'ACTIVE'}
+          </Badge>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {data.title ? <Badge variant="outline">{data.title}</Badge> : null}
+          {data.isHead ? <Badge variant="secondary">Department head</Badge> : null}
+        </div>
+      </div>
+      <Handle type="source" position={Position.Bottom} className="!h-3 !w-3 !bg-cyan-500" />
+    </div>
+  );
+}
+
 const nodeTypes = {
   department: DepartmentNode,
+  staff: StaffNode,
 };
 
-function buildOrgChart(departments: Department[], staff: StaffProfile[]): ChartBuildResult {
+function buildOrgChart(
+  departments: Department[],
+  staff: StaffProfile[],
+  focusedDepartmentId: number | null,
+  showStaffLines: boolean
+): ChartBuildResult {
   const departmentsById = new Map(departments.map((department) => [department.id, department]));
+  const staffById = new Map(staff.map((staffMember) => [staffMember.id, staffMember]));
   const childrenByParent = new Map<number | null, number[]>();
   const positions = new Map<number, { x: number; y: number }>();
   const detailsById = new Map<number, DepartmentDetail>();
@@ -157,7 +244,7 @@ function buildOrgChart(departments: Department[], staff: StaffProfile[]): ChartB
     const childIds = childrenByParent.get(departmentId) ?? [];
 
     if (childIds.length === 0) {
-      const x = leafIndex * (NODE_WIDTH + HORIZONTAL_GAP);
+      const x = leafIndex * (DEPARTMENT_NODE_WIDTH + HORIZONTAL_GAP);
       positions.set(departmentId, { x, y: depth * VERTICAL_GAP });
       leafIndex += 1;
       return x;
@@ -180,7 +267,7 @@ function buildOrgChart(departments: Department[], staff: StaffProfile[]): ChartB
     if (positions.has(department.id)) {
       continue;
     }
-    const x = leafIndex * (NODE_WIDTH + HORIZONTAL_GAP);
+    const x = leafIndex * (DEPARTMENT_NODE_WIDTH + HORIZONTAL_GAP);
     positions.set(department.id, { x, y: 0 });
     leafIndex += 1;
   }
@@ -212,7 +299,9 @@ function buildOrgChart(departments: Department[], staff: StaffProfile[]): ChartB
       },
       draggable: false,
       selectable: true,
+      selected: department.id === focusedDepartmentId,
       data: {
+        kind: 'department',
         departmentId: department.id,
         name: department.name,
         code: department.code,
@@ -244,12 +333,160 @@ function buildOrgChart(departments: Department[], staff: StaffProfile[]): ChartB
       },
     }));
 
+  if (showStaffLines && focusedDepartmentId !== null && departmentsById.has(focusedDepartmentId)) {
+    const departmentPosition = positions.get(focusedDepartmentId) ?? { x: 0, y: 0 };
+    const departmentNodeX = departmentPosition.x - minX + 40;
+    const departmentNodeY = departmentPosition.y + 40;
+    const department = departmentsById.get(focusedDepartmentId)!;
+
+    const departmentStaff = staff
+      .filter((staffMember) => staffMember.primary_department === focusedDepartmentId)
+      .sort((left, right) => left.full_name.localeCompare(right.full_name));
+    const departmentStaffIds = new Set(departmentStaff.map((staffMember) => staffMember.id));
+    const staffChildren = new Map<number | null, number[]>();
+    const staffPositions = new Map<number, { x: number; y: number }>();
+    let staffLeafIndex = 0;
+
+    for (const staffMember of departmentStaff) {
+      const supervisorId =
+        staffMember.supervisor && departmentStaffIds.has(staffMember.supervisor)
+          ? staffMember.supervisor
+          : null;
+      const siblingIds = staffChildren.get(supervisorId) ?? [];
+      siblingIds.push(staffMember.id);
+      staffChildren.set(supervisorId, siblingIds);
+    }
+
+    for (const childIds of staffChildren.values()) {
+      childIds.sort((leftId, rightId) => {
+        const left = staffById.get(leftId);
+        const right = staffById.get(rightId);
+        if (!left || !right) {
+          return 0;
+        }
+        return left.full_name.localeCompare(right.full_name);
+      });
+    }
+
+    const placeStaffSubtree = (staffId: number, depth: number): number => {
+      const childIds = staffChildren.get(staffId) ?? [];
+      if (childIds.length === 0) {
+        const x = staffLeafIndex * (STAFF_NODE_WIDTH + HORIZONTAL_GAP);
+        staffPositions.set(staffId, { x, y: depth * STAFF_VERTICAL_GAP });
+        staffLeafIndex += 1;
+        return x;
+      }
+
+      const childX = childIds.map((childId) => placeStaffSubtree(childId, depth + 1));
+      const minChildX = Math.min(...childX);
+      const maxChildX = Math.max(...childX);
+      const x = minChildX + (maxChildX - minChildX) / 2;
+      staffPositions.set(staffId, { x, y: depth * STAFF_VERTICAL_GAP });
+      return x;
+    };
+
+    const rootStaffIds = staffChildren.get(null) ?? [];
+    for (const rootStaffId of rootStaffIds) {
+      placeStaffSubtree(rootStaffId, 0);
+    }
+
+    for (const staffMember of departmentStaff) {
+      if (staffPositions.has(staffMember.id)) {
+        continue;
+      }
+      const x = staffLeafIndex * (STAFF_NODE_WIDTH + HORIZONTAL_GAP);
+      staffPositions.set(staffMember.id, { x, y: 0 });
+      staffLeafIndex += 1;
+    }
+
+    const staffXValues = Array.from(staffPositions.values(), (position) => position.x);
+    const staffMinX = staffXValues.length > 0 ? Math.min(...staffXValues) : 0;
+    const staffMaxX = staffXValues.length > 0 ? Math.max(...staffXValues) : 0;
+    const staffTreeWidth = staffMaxX - staffMinX;
+    const baseShiftX = departmentNodeX + DEPARTMENT_NODE_WIDTH / 2 - staffTreeWidth / 2 - STAFF_NODE_WIDTH / 2;
+
+    for (const staffMember of departmentStaff) {
+      const staffPosition = staffPositions.get(staffMember.id) ?? { x: 0, y: 0 };
+      const normalizedSupervisorId =
+        staffMember.supervisor && departmentStaffIds.has(staffMember.supervisor)
+          ? staffMember.supervisor
+          : null;
+      const isHead = department.head === staffMember.id;
+      nodes.push({
+        id: `staff-${staffMember.id}`,
+        type: 'staff',
+        position: {
+          x: baseShiftX + (staffPosition.x - staffMinX),
+          y: departmentNodeY + NODE_HEIGHT + 120 + staffPosition.y,
+        },
+        draggable: false,
+        selectable: true,
+        data: {
+          kind: 'staff',
+          staffId: staffMember.id,
+          departmentId: focusedDepartmentId,
+          fullName: staffMember.full_name,
+          roleName: staffMember.primary_role_name ?? null,
+          title: staffMember.title ?? null,
+          supervisorId: normalizedSupervisorId,
+          isHead,
+          employmentStatus: staffMember.employment_status ?? null,
+        },
+      } satisfies Node<OrgChartNodeData>);
+
+      edges.push(
+        normalizedSupervisorId
+          ? {
+              id: `staff-edge-${normalizedSupervisorId}-${staffMember.id}`,
+              source: `staff-${normalizedSupervisorId}`,
+              target: `staff-${staffMember.id}`,
+              type: 'smoothstep',
+              markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
+              style: { strokeWidth: 1.5, stroke: '#0f766e' },
+            }
+          : {
+              id: `department-staff-edge-${focusedDepartmentId}-${staffMember.id}`,
+              source: `department-${focusedDepartmentId}`,
+              target: `staff-${staffMember.id}`,
+              type: 'smoothstep',
+              markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
+              style: { strokeWidth: 1.5, stroke: '#0f766e', strokeDasharray: '6 4' },
+            }
+      );
+    }
+  }
+
   return {
     nodes,
     edges,
     detailsById,
+    staffById,
     firstDepartmentId: departments[0]?.id ?? null,
   };
+}
+
+function FlowFocusController({ focusNodeId }: { focusNodeId: string | null }) {
+  const { getNode, setCenter } = useReactFlow<Node<OrgChartNodeData>, Edge>();
+
+  useEffect(() => {
+    if (!focusNodeId) {
+      return;
+    }
+
+    const node = getNode(focusNodeId);
+    if (!node) {
+      return;
+    }
+
+    const estimatedWidth = node.type === 'staff' ? STAFF_NODE_WIDTH : DEPARTMENT_NODE_WIDTH;
+    const estimatedHeight = node.type === 'staff' ? STAFF_NODE_HEIGHT : NODE_HEIGHT;
+    setCenter(node.position.x + estimatedWidth / 2, node.position.y + estimatedHeight / 2, {
+      zoom: node.type === 'staff' ? 0.85 : 0.72,
+      duration: 300,
+    });
+  }, [focusNodeId, getNode, setCenter]);
+
+  return null;
 }
 
 export function AdminOrgChart({
@@ -260,16 +497,68 @@ export function AdminOrgChart({
   staff: StaffProfile[];
 }) {
   const [showInactive, setShowInactive] = useState(false);
+  const [showStaffLines, setShowStaffLines] = useState(true);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
+  const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
+  const deferredSearchQuery = useDeferredValue(searchQuery.trim().toLowerCase());
+
+  const visibleStaff = useMemo(
+    () =>
+      staff.filter(
+        (staffMember) =>
+          !!staffMember.primary_department &&
+          (showInactive || staffMember.employment_status === 'ACTIVE')
+      ),
+    [showInactive, staff]
+  );
 
   const visibleDepartments = useMemo(
     () => (showInactive ? departments : departments.filter((department) => department.is_active)),
     [departments, showInactive]
   );
 
+  const departmentSearchResults = useMemo<SearchResult[]>(() => {
+    if (!deferredSearchQuery) {
+      return [];
+    }
+
+    const departmentMatches = visibleDepartments
+      .filter((department) => {
+        const haystack = `${department.name} ${department.code} ${department.department_type_display}`.toLowerCase();
+        return haystack.includes(deferredSearchQuery);
+      })
+      .slice(0, 5)
+      .map((department) => ({
+        kind: 'department' as const,
+        id: department.id,
+        label: department.name,
+        description: `${department.code} • ${department.department_type_display}`,
+        nodeId: `department-${department.id}`,
+      }));
+
+    const staffMatches = visibleStaff
+      .filter((staffMember) => {
+        const haystack = `${staffMember.full_name} ${staffMember.primary_role_name ?? ''} ${staffMember.primary_department_name ?? ''}`.toLowerCase();
+        return haystack.includes(deferredSearchQuery);
+      })
+      .slice(0, 5)
+      .map((staffMember) => ({
+        kind: 'staff' as const,
+        id: staffMember.id,
+        departmentId: staffMember.primary_department!,
+        label: staffMember.full_name,
+        description: `${staffMember.primary_role_name ?? 'No role'} • ${staffMember.primary_department_name ?? 'No department'}`,
+        nodeId: `staff-${staffMember.id}`,
+      }));
+
+    return [...departmentMatches, ...staffMatches].slice(0, 8);
+  }, [deferredSearchQuery, visibleDepartments, visibleStaff]);
+
   const chart = useMemo(
-    () => buildOrgChart(visibleDepartments, staff),
-    [staff, visibleDepartments]
+    () => buildOrgChart(visibleDepartments, visibleStaff, selectedDepartmentId, showStaffLines),
+    [selectedDepartmentId, showStaffLines, visibleDepartments, visibleStaff]
   );
 
   useEffect(() => {
@@ -281,12 +570,30 @@ export function AdminOrgChart({
     const hasSelected = selectedDepartmentId !== null && chart.detailsById.has(selectedDepartmentId);
     if (!hasSelected) {
       setSelectedDepartmentId(chart.firstDepartmentId);
+      setSelectedStaffId(null);
     }
   }, [chart.detailsById, chart.firstDepartmentId, selectedDepartmentId]);
+
+  useEffect(() => {
+    if (selectedStaffId === null) {
+      return;
+    }
+
+    const selectedStaff = chart.staffById.get(selectedStaffId);
+    if (!selectedStaff || selectedStaff.primary_department !== selectedDepartmentId) {
+      setSelectedStaffId(null);
+    }
+  }, [chart.staffById, selectedDepartmentId, selectedStaffId]);
 
   const selectedDetail = selectedDepartmentId === null
     ? null
     : chart.detailsById.get(selectedDepartmentId) ?? null;
+  const selectedStaff = selectedStaffId === null ? null : chart.staffById.get(selectedStaffId) ?? null;
+
+  const focusedDepartmentStaff = useMemo(
+    () => visibleStaff.filter((staffMember) => staffMember.primary_department === selectedDepartmentId),
+    [selectedDepartmentId, visibleStaff]
+  );
 
   if (chart.nodes.length === 0) {
     return (
@@ -316,21 +623,74 @@ export function AdminOrgChart({
         minZoom={0.35}
         maxZoom={1.4}
         onNodeClick={(_, node) => {
+          if (node.data.kind === 'department') {
+            setSelectedDepartmentId(node.data.departmentId);
+            setSelectedStaffId(null);
+            setFocusNodeId(node.id);
+            return;
+          }
+
           setSelectedDepartmentId(node.data.departmentId);
+          setSelectedStaffId(node.data.staffId);
+          setFocusNodeId(node.id);
         }}
         proOptions={{ hideAttribution: true }}
       >
+        <FlowFocusController focusNodeId={focusNodeId} />
         <Background color="#94a3b8" gap={20} size={1} />
         <MiniMap
           pannable
           zoomable
           nodeStrokeWidth={3}
-          nodeColor={(node) => (node.data?.isActive ? '#0891b2' : '#94a3b8')}
+          nodeColor={(node) => {
+            if (node.data?.kind === 'staff') {
+              return '#0f766e';
+            }
+            return node.data?.isActive ? '#0891b2' : '#94a3b8';
+          }}
         />
         <Controls showInteractive={false} position="bottom-right" />
 
         <Panel position="top-left" className="max-w-sm rounded-xl border bg-background/95 p-3 shadow-sm backdrop-blur">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="pl-9"
+                placeholder="Search departments or staff"
+              />
+            </div>
+
+            {departmentSearchResults.length > 0 ? (
+              <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border bg-muted/20 p-2">
+                {departmentSearchResults.map((result) => (
+                  <button
+                    key={`${result.kind}-${result.id}`}
+                    type="button"
+                    className="w-full rounded-md px-2 py-2 text-left transition-colors hover:bg-background"
+                    onClick={() => {
+                      if (result.kind === 'department') {
+                        setSelectedDepartmentId(result.id);
+                        setSelectedStaffId(null);
+                        setFocusNodeId(result.nodeId);
+                      } else {
+                        setShowStaffLines(true);
+                        setSelectedDepartmentId(result.departmentId);
+                        setSelectedStaffId(result.id);
+                        setFocusNodeId(result.nodeId);
+                      }
+                    }}
+                  >
+                    <p className="truncate text-sm font-medium text-foreground">{result.label}</p>
+                    <p className="truncate text-xs text-muted-foreground">{result.description}</p>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"
               variant={showInactive ? 'outline' : 'default'}
@@ -349,60 +709,125 @@ export function AdminOrgChart({
             >
               Include inactive
             </Button>
+            <Button
+              size="sm"
+              variant={showStaffLines ? 'default' : 'outline'}
+              onClick={() => {
+                startTransition(() => setShowStaffLines((current) => !current));
+              }}
+            >
+              {showStaffLines ? 'Hide staff lines' : 'Show staff lines'}
+            </Button>
+            </div>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Department nodes are grouped by parent-child structure. Select a node to inspect leadership and reporting coverage.
+            Department nodes show formal structure. Staff reporting lines appear for the selected department when staff lines are enabled.
           </p>
         </Panel>
 
         {selectedDetail ? (
           <Panel position="top-right" className="w-[300px] rounded-xl border bg-background/95 p-4 shadow-sm backdrop-blur">
             <div className="space-y-3">
-              <div>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-foreground">
-                      {selectedDetail.department.name}
-                    </p>
-                    <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                      {selectedDetail.department.code}
-                    </p>
+              {selectedStaff ? (
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {selectedStaff.full_name}
+                        </p>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                          {selectedStaff.primary_role_name || 'Role not assigned'}
+                        </p>
+                      </div>
+                      <Badge variant={selectedStaff.employment_status === 'ACTIVE' ? 'default' : 'secondary'}>
+                        {selectedStaff.employment_status || 'ACTIVE'}
+                      </Badge>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {selectedStaff.title ? <Badge variant="outline">{selectedStaff.title}</Badge> : null}
+                      <Badge variant="secondary">{selectedStaff.employee_id}</Badge>
+                    </div>
                   </div>
-                  <Badge variant={selectedDetail.department.is_active ? 'default' : 'secondary'}>
-                    {selectedDetail.department.is_active ? 'Active' : 'Inactive'}
-                  </Badge>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <Badge variant="outline">{selectedDetail.department.department_type_display}</Badge>
-                  <Badge variant="secondary">{selectedDetail.department.staff_count} staff</Badge>
-                </div>
-              </div>
 
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <UserRound className="h-4 w-4 shrink-0" />
-                  <span className="truncate">Head: {selectedDetail.headName || 'Not assigned'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 shrink-0" />
-                  <span className="truncate">Parent: {selectedDetail.parentName || 'Top-level department'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <GitBranch className="h-4 w-4 shrink-0" />
-                  <span>{selectedDetail.childCount} direct sub-departments</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Network className="h-4 w-4 shrink-0" />
-                  <span>{selectedDetail.supervisorCoverage}% supervisor coverage</span>
-                </div>
-              </div>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 shrink-0" />
+                      <span className="truncate">
+                        Department: {selectedStaff.primary_department_name || 'Not assigned'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 shrink-0" />
+                      <span>
+                        Supervisor:{' '}
+                        {selectedStaff.supervisor
+                          ? chart.staffById.get(selectedStaff.supervisor)?.full_name || 'Assigned'
+                          : 'Top-level in department'}
+                      </span>
+                    </div>
+                  </div>
 
-              <Button asChild className="w-full">
-                <Link href={`/admin/departments/${selectedDetail.department.id}`}>
-                  Open department
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
+                  <Button asChild className="w-full">
+                    <Link href={`/admin/staff/${selectedStaff.id}`}>
+                      Open staff profile
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-foreground">
+                          {selectedDetail.department.name}
+                        </p>
+                        <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                          {selectedDetail.department.code}
+                        </p>
+                      </div>
+                      <Badge variant={selectedDetail.department.is_active ? 'default' : 'secondary'}>
+                        {selectedDetail.department.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Badge variant="outline">{selectedDetail.department.department_type_display}</Badge>
+                      <Badge variant="secondary">{selectedDetail.department.staff_count} staff</Badge>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <UserRound className="h-4 w-4 shrink-0" />
+                      <span className="truncate">Head: {selectedDetail.headName || 'Not assigned'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 shrink-0" />
+                      <span className="truncate">Parent: {selectedDetail.parentName || 'Top-level department'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <GitBranch className="h-4 w-4 shrink-0" />
+                      <span>{selectedDetail.childCount} direct sub-departments</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Network className="h-4 w-4 shrink-0" />
+                      <span>{selectedDetail.supervisorCoverage}% supervisor coverage</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 shrink-0" />
+                      <span>{focusedDepartmentStaff.length} staff in the selected department</span>
+                    </div>
+                  </div>
+
+                  <Button asChild className="w-full">
+                    <Link href={`/admin/departments/${selectedDetail.department.id}`}>
+                      Open department
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </>
+              )}
             </div>
           </Panel>
         ) : null}

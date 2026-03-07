@@ -141,6 +141,130 @@ class TestDepartmentAPI:
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) >= 1
 
+    def test_org_chart_returns_hierarchy_and_staff(self, authenticated_client):
+        """Should return a non-paginated org chart payload with departments and staff."""
+        from hmis.apps.core.models import Department, Role, StaffProfile
+
+        root_department = Department.objects.create(
+            code="CLIN",
+            name="Clinical Services",
+            department_type="CLINICAL",
+        )
+        child_department = Department.objects.create(
+            code="OPD",
+            name="Outpatient Department",
+            department_type="CLINICAL",
+            parent=root_department,
+        )
+        role = Role.objects.create(code="NURSE", name="Nurse", category="CLINICAL")
+        supervisor_user = User.objects.create_user(username="supervisor1", password="pass123")
+        staff_user = User.objects.create_user(username="nurse2", password="pass123")
+
+        supervisor = StaffProfile.objects.create(
+            user=supervisor_user,
+            employee_id="VH-2026-010",
+            primary_role=role,
+            primary_department=child_department,
+            date_joined=date.today(),
+        )
+        child_department.head = supervisor
+        child_department.save(update_fields=["head"])
+
+        staff_member = StaffProfile.objects.create(
+            user=staff_user,
+            employee_id="VH-2026-011",
+            primary_role=role,
+            primary_department=child_department,
+            supervisor=supervisor,
+            date_joined=date.today(),
+        )
+
+        response = authenticated_client.get("/api/departments/org-chart/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert {"departments", "staff", "summary"}.issubset(response.data.keys())
+        assert any(
+            department["id"] == root_department.id and department["parent"] is None
+            for department in response.data["departments"]
+        )
+        assert any(
+            department["id"] == child_department.id and department["parent"] == root_department.id
+            for department in response.data["departments"]
+        )
+        assert any(
+            staff_entry["id"] == staff_member.id and staff_entry["supervisor"] == supervisor.id
+            for staff_entry in response.data["staff"]
+        )
+        assert response.data["summary"]["department_count"] >= 2
+        assert response.data["summary"]["staff_count"] >= 2
+        assert response.data["summary"]["root_department_count"] >= 1
+
+    def test_org_chart_excludes_inactive_records_by_default(self, authenticated_client):
+        """Should exclude inactive departments and non-active staff unless requested."""
+        from hmis.apps.core.models import Department, Role, StaffProfile
+
+        inactive_department = Department.objects.create(
+            code="ARCH",
+            name="Archived Department",
+            department_type="ADMINISTRATIVE",
+            is_active=False,
+        )
+        active_department = Department.objects.create(
+            code="LAB",
+            name="Laboratory",
+            department_type="LABORATORY",
+        )
+        role = Role.objects.create(code="LABTECH", name="Lab Tech", category="TECHNICAL")
+        inactive_user = User.objects.create_user(username="inactive_staff", password="pass123")
+        active_user = User.objects.create_user(username="active_staff", password="pass123")
+
+        StaffProfile.objects.create(
+            user=inactive_user,
+            employee_id="VH-2026-012",
+            primary_role=role,
+            primary_department=inactive_department,
+            employment_status="TERMINATED",
+            date_joined=date.today(),
+        )
+        active_staff = StaffProfile.objects.create(
+            user=active_user,
+            employee_id="VH-2026-013",
+            primary_role=role,
+            primary_department=active_department,
+            employment_status="ACTIVE",
+            date_joined=date.today(),
+        )
+
+        default_response = authenticated_client.get("/api/departments/org-chart/")
+
+        assert default_response.status_code == status.HTTP_200_OK
+        assert all(
+            department["id"] != inactive_department.id
+            for department in default_response.data["departments"]
+        )
+        assert all(
+            staff_entry["employment_status"] == "ACTIVE"
+            for staff_entry in default_response.data["staff"]
+        )
+        assert any(
+            staff_entry["id"] == active_staff.id
+            for staff_entry in default_response.data["staff"]
+        )
+
+        include_inactive_response = authenticated_client.get(
+            "/api/departments/org-chart/?include_inactive=true"
+        )
+
+        assert include_inactive_response.status_code == status.HTTP_200_OK
+        assert any(
+            department["id"] == inactive_department.id
+            for department in include_inactive_response.data["departments"]
+        )
+        assert any(
+            staff_entry["employment_status"] == "TERMINATED"
+            for staff_entry in include_inactive_response.data["staff"]
+        )
+
 
 @pytest.mark.django_db
 class TestRoleAPI:

@@ -55,7 +55,13 @@ export interface DepartmentUpdateData extends Partial<DepartmentCreateData> {}
 /**
  * Role categories matching backend ROLE_CATEGORIES
  */
-export type RoleCategory = 'CLINICAL' | 'ADMINISTRATIVE' | 'TECHNICAL' | 'MANAGEMENT' | 'COMMUNITY';
+export type RoleCategory =
+  | 'CLINICAL'
+  | 'ADMINISTRATIVE'
+  | 'TECHNICAL'
+  | 'MANAGEMENT'
+  | 'COMMUNITY'
+  | 'ALLIED_HEALTH';
 
 export interface Role {
   id: number;
@@ -152,6 +158,20 @@ export interface StaffProfile {
   updated_at?: string;
 }
 
+export interface OrgChartSummary {
+  department_count: number;
+  staff_count: number;
+  root_department_count: number;
+  department_heads_count: number;
+  supervisor_link_count: number;
+}
+
+export interface OrgChartResponse {
+  departments: Department[];
+  staff: StaffProfile[];
+  summary: OrgChartSummary;
+}
+
 export interface StaffProfileCreateData {
   username: string;
   email: string;
@@ -241,6 +261,10 @@ export interface DepartmentListParams {
   department_type?: DepartmentType;
   is_active?: boolean;
   parent?: number;
+}
+
+export interface OrgChartParams {
+  include_inactive?: boolean;
 }
 
 export interface RoleListParams {

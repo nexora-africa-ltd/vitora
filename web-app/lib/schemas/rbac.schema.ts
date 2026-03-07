@@ -12,7 +12,14 @@ import { z } from 'zod';
 
 export const DepartmentTypeSchema = z.enum(['CLINICAL', 'ADMINISTRATIVE', 'SUPPORT', 'LABORATORY', 'PHARMACY', 'RADIOLOGY', 'RECORDS']);
 
-export const RoleCategorySchema = z.enum(['CLINICAL', 'ADMINISTRATIVE', 'TECHNICAL', 'MANAGEMENT', 'COMMUNITY']);
+export const RoleCategorySchema = z.enum([
+  'CLINICAL',
+  'ADMINISTRATIVE',
+  'TECHNICAL',
+  'MANAGEMENT',
+  'COMMUNITY',
+  'ALLIED_HEALTH',
+]);
 
 export const EmploymentStatusSchema = z.enum(['ACTIVE', 'ON_LEAVE', 'SUSPENDED', 'TERMINATED']);
 
@@ -45,7 +52,7 @@ export const DepartmentSchema = z.object({
   department_type: DepartmentTypeSchema,
   department_type_display: z.string(),
   parent: z.number().nullable(),
-  parent_name: z.string().nullable(),
+  parent_name: z.string().nullable().optional().transform((value) => value ?? null),
   head: z.number().nullable(),
   head_name: z.string().nullable(),
   is_active: z.boolean(),
@@ -145,6 +152,24 @@ export const StaffProfileSchema = z.object({
 });
 
 export type StaffProfileSchemaType = z.infer<typeof StaffProfileSchema>;
+
+export const OrgChartSummarySchema = z.object({
+  department_count: z.number(),
+  staff_count: z.number(),
+  root_department_count: z.number(),
+  department_heads_count: z.number(),
+  supervisor_link_count: z.number(),
+});
+
+export type OrgChartSummarySchemaType = z.infer<typeof OrgChartSummarySchema>;
+
+export const OrgChartResponseSchema = z.object({
+  departments: z.array(DepartmentSchema),
+  staff: z.array(StaffProfileSchema),
+  summary: OrgChartSummarySchema,
+});
+
+export type OrgChartResponseSchemaType = z.infer<typeof OrgChartResponseSchema>;
 
 // =============================================================================
 // USER PERMISSIONS SCHEMA
