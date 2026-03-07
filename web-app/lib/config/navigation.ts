@@ -272,6 +272,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Admin',
     icon: ShieldUser,
     children: [
+      { label: 'Overview', href: '/admin/overview', icon: LayoutDashboard },
       { label: 'Departments', href: '/admin/departments', icon: Building2 },
       { label: 'Roles', href: '/admin/roles', icon: ShieldUser },
       { label: 'Staff', href: '/admin/staff', icon: UserCog },
