@@ -147,11 +147,23 @@ export const MCHRegistrationListItemSchema = z.object({
   created_at: z.string(),
 });
 
+export const BabyInfoSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  mrn: z.string(),
+  gender: z.string(),
+  date_of_birth: z.string().nullable(),
+});
+
 export const MCHRegistrationSchema = MCHRegistrationListItemSchema.extend({
   anc_enrollment: z.number().nullable(),
   baby: z.number().nullable(),
   baby_name: z.string().nullable(),
   baby_mrn: z.string().nullable(),
+  baby_count: z.number(),
+  is_multiple_pregnancy: z.boolean(),
+  all_babies_info: z.array(BabyInfoSchema),
+  inter_pregnancy_interval_days: z.number().nullable(),
   risk_factors: z.string(),
   sha_claimable: z.boolean(),
   gbv_related: z.boolean(),
@@ -162,6 +174,30 @@ export const MCHRegistrationSchema = MCHRegistrationListItemSchema.extend({
   completed_at: z.string().nullable(),
   pnc_visit_count: z.number(),
   updated_at: z.string(),
+});
+
+export const PregnancyHistoryItemSchema = z.object({
+  id: z.number(),
+  mch_number: z.string(),
+  registration_date: z.string(),
+  status: MCHRegistrationStatusSchema,
+  edd: z.string().nullable(),
+  delivery_date: z.string().nullable(),
+  delivery_outcome: z.string().nullable(),
+  baby_count: z.number(),
+  inter_pregnancy_interval_days: z.number().nullable(),
+  completed_at: z.string().nullable(),
+});
+
+export const PregnancyHistoryArraySchema = z.array(PregnancyHistoryItemSchema);
+
+export const SuggestedObstetricHistorySchema = z.object({
+  gravida: z.number(),
+  parity: z.number(),
+  previous_pregnancies: z.number(),
+  previous_deliveries: z.number(),
+  previous_live_births: z.number(),
+  previous_stillbirths: z.number(),
 });
 
 export const PaginatedMCHRegistrationListSchema = createPaginatedSchema(MCHRegistrationListItemSchema);

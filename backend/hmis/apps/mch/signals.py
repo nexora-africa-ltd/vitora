@@ -279,6 +279,9 @@ def create_baby_patient_on_delivery(sender, instance, created, **kwargs):
         instance.baby_patient = baby
         instance.save(update_fields=["baby_patient"])
 
+        # Link to registration only if no baby linked yet (first baby).
+        # For twins/multiples, registration.baby keeps the first-born;
+        # additional babies are accessible via registration.all_babies.
         registration = instance.registration
         if not registration.baby:
             registration.baby = baby
