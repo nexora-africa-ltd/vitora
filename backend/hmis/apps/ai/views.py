@@ -455,7 +455,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
             assistant_content = result.get("response", result.get("content", ""))
 
         # Extract model identifier from TibaBot response (if provided)
-        model_id = result.get("model") or None
+        model_id = result.get("model_used") or result.get("model") or None
 
         return self._build_response(
             session=session,
