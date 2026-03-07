@@ -35,6 +35,9 @@ class MCHRegistrationListSerializer(serializers.ModelSerializer):
     edd = serializers.SerializerMethodField()
     gestation_display = serializers.SerializerMethodField()
     trimester = serializers.SerializerMethodField()
+    gravida = serializers.SerializerMethodField()
+    parity = serializers.SerializerMethodField()
+    current_gestation_weeks = serializers.SerializerMethodField()
     anc_visit_count = serializers.IntegerField(read_only=True)
 
     class Meta:
@@ -52,6 +55,9 @@ class MCHRegistrationListSerializer(serializers.ModelSerializer):
             "edd",
             "gestation_display",
             "trimester",
+            "gravida",
+            "parity",
+            "current_gestation_weeks",
             "anc_visit_count",
             "created_at",
         ]
@@ -68,6 +74,18 @@ class MCHRegistrationListSerializer(serializers.ModelSerializer):
     def get_trimester(self, obj):
         return obj.trimester
 
+    def get_gravida(self, obj):
+        enrollment = obj.anc_enrollment
+        return enrollment.gravida if enrollment else None
+
+    def get_parity(self, obj):
+        enrollment = obj.anc_enrollment
+        return enrollment.para if enrollment else None
+
+    def get_current_gestation_weeks(self, obj):
+        enrollment = obj.anc_enrollment
+        return enrollment.gestation_weeks() if enrollment else None
+
 
 class MCHRegistrationSerializer(serializers.ModelSerializer):
     """Full serializer for MCH registration detail."""
@@ -79,6 +97,9 @@ class MCHRegistrationSerializer(serializers.ModelSerializer):
     edd = serializers.SerializerMethodField()
     gestation_display = serializers.SerializerMethodField()
     trimester = serializers.SerializerMethodField()
+    gravida = serializers.SerializerMethodField()
+    parity = serializers.SerializerMethodField()
+    current_gestation_weeks = serializers.SerializerMethodField()
     anc_visit_count = serializers.IntegerField(read_only=True)
     pnc_visit_count = serializers.IntegerField(read_only=True)
     registered_by_name = serializers.SerializerMethodField()
@@ -110,6 +131,9 @@ class MCHRegistrationSerializer(serializers.ModelSerializer):
             "edd",
             "gestation_display",
             "trimester",
+            "gravida",
+            "parity",
+            "current_gestation_weeks",
             "anc_visit_count",
             "pnc_visit_count",
             "created_at",
@@ -147,6 +171,19 @@ class MCHRegistrationSerializer(serializers.ModelSerializer):
     def get_registered_by_name(self, obj):
         if obj.registered_by:
             return f"{obj.registered_by.first_name} {obj.registered_by.last_name}".strip() or obj.registered_by.username
+        return None
+
+    def get_gravida(self, obj):
+        enrollment = obj.anc_enrollment
+        return enrollment.gravida if enrollment else None
+
+    def get_parity(self, obj):
+        enrollment = obj.anc_enrollment
+        return enrollment.para if enrollment else None
+
+    def get_current_gestation_weeks(self, obj):
+        enrollment = obj.anc_enrollment
+        return enrollment.gestation_weeks() if enrollment else None
         return None
 
 

@@ -140,6 +140,9 @@ export const MCHRegistrationListItemSchema = z.object({
   edd: z.string().nullable(),
   gestation_display: z.string(),
   trimester: z.number().nullable(),
+  gravida: z.number().nullable(),
+  parity: z.number().nullable(),
+  current_gestation_weeks: z.number().nullable(),
   anc_visit_count: z.number(),
   created_at: z.string(),
 });
