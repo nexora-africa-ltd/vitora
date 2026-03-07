@@ -32,6 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useAICDSEvaluate, useAIEnabled } from '@/lib/hooks/use-ai';
 import { toast } from 'sonner';
+import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
 import type { AICDSAlertItem, AICDSEvaluateRequest } from '@/lib/types/ai';
 
 // =============================================================================
@@ -185,6 +186,7 @@ export function EnhancedCDSPanel({
   const { mutate, data: result, isPending, isError, reset } = useAICDSEvaluate();
   const [showRecommendations, setShowRecommendations] = React.useState(false);
   const hasRun = React.useRef(false);
+  const panelId = React.useId();
 
   // Show success toast when evaluation completes
   React.useEffect(() => {
@@ -369,9 +371,20 @@ export function EnhancedCDSPanel({
           </div>
         )}
 
-        {/* Re-run */}
+        {/* Feedback + Re-run */}
         {result && (
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between">
+            <AIFeedbackButtons
+              messageId={`cds-${panelId}`}
+              serviceType="cds_rules"
+              userQuery={medications?.join(', ')}
+              botResponse={`${alertCount} alert(s), ${recCount} recommendation(s)`}
+              metadata={{
+                rules_fired: result.rules_fired,
+                alert_count: alertCount,
+                severity_max: result.alerts?.[0]?.severity,
+              }}
+            />
             <Button
               type="button"
               variant="ghost"

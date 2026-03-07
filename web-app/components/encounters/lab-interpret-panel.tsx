@@ -30,6 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useAILabInterpret, useAIEnabled } from '@/lib/hooks/use-ai';
 import { toast } from 'sonner';
+import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
 import type {
   AILabResultItem,
   AILabFlag,
@@ -179,6 +180,7 @@ export function LabInterpretPanel({
   const isAIEnabled = useAIEnabled();
   const { mutate, data: result, isPending, isError, reset } = useAILabInterpret();
   const [showDetails, setShowDetails] = React.useState(false);
+  const panelId = React.useId();
 
   // Show success toast when interpretation completes
   React.useEffect(() => {
@@ -353,8 +355,20 @@ export function LabInterpretPanel({
               <span>AI-generated interpretation. Reference ranges are age/sex-specific. Use clinical judgment to validate.</span>
             </div>
 
-            {/* Re-run */}
-            <div className="flex justify-end">
+            {/* Feedback + Re-run */}
+            <div className="flex items-center justify-between">
+              <AIFeedbackButtons
+                messageId={`lab-${panelId}`}
+                serviceType="lab_assist"
+                userQuery={labResults.map(r => `${r.test_name}: ${r.value} ${r.unit}`).join(', ')}
+                botResponse={result.interpretation_summary}
+                metadata={{
+                  critical_count: criticalAlerts.length,
+                  patterns_detected: patterns.length,
+                  abnormal_count: abnormalFlags.length,
+                  total_flags: result.flags.length,
+                }}
+              />
               <Button
                 type="button"
                 variant="ghost"

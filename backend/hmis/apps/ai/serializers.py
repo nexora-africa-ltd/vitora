@@ -583,6 +583,22 @@ class AIFeedbackRequestSerializer(serializers.Serializer):
         max_length=50,
         help_text="Echo back the risk_level from the /clinical/assist response.",
     )
+    service_type = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=50,
+        default="chat",
+        help_text=(
+            "Which service generated the response: chat, care_plan, "
+            "lab_assist, discharge_readiness, cds_rules, clerking_assist, "
+            "icu_predictor, etc."
+        ),
+    )
+    metadata = serializers.DictField(
+        required=False,
+        default=dict,
+        help_text="Service-specific context for quality analysis.",
+    )
 
 
 class AIFeedbackResponseSerializer(serializers.Serializer):
