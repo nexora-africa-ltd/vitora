@@ -43,6 +43,7 @@ from .serializers import (
     FrontendEventBatchSerializer,
     FrontendEventSerializer,
     NotificationSerializer,
+    OrgChartPayloadSerializer,
     PermissionSerializer,
     RoleSerializer,
     StaffProfileUpdateSerializer,
@@ -62,6 +63,13 @@ def _get_client_ip(request) -> str | None:
     if forwarded_for:
         return forwarded_for.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR")
+
+
+def _query_param_truthy(value: str | None) -> bool:
+    """Parse common truthy query parameter values."""
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 class AuditLogViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):
@@ -464,6 +472,56 @@ class DepartmentViewSet(viewsets.ModelViewSet):
         department = self.get_object()
         staff = StaffProfile.objects.filter(primary_department=department)
         serializer = StaffProfileSerializer(staff, many=True)
+        return Response(serializer.data)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="include_inactive",
+                type=OpenApiTypes.BOOL,
+                required=False,
+                description="Include inactive departments and non-active staff records.",
+            )
+        ],
+        responses={200: OrgChartPayloadSerializer},
+    )
+    @action(detail=False, methods=["get"], url_path="org-chart")
+    def org_chart(self, request):
+        """Return a non-paginated hierarchy payload for the admin org chart."""
+        include_inactive = _query_param_truthy(request.query_params.get("include_inactive"))
+
+        departments = Department.objects.select_related("parent", "head", "head__user").order_by(
+            "name"
+        )
+        if not include_inactive:
+            departments = departments.filter(is_active=True)
+        departments = list(departments)
+        department_ids = [department.id for department in departments]
+
+        staff_queryset = (
+            StaffProfile.objects.select_related(
+                "user", "primary_role", "primary_department", "supervisor"
+            )
+            .prefetch_related("secondary_roles", "secondary_departments")
+            .filter(primary_department_id__in=department_ids)
+            .order_by("user__last_name", "user__first_name")
+        )
+        if not include_inactive:
+            staff_queryset = staff_queryset.filter(employment_status="ACTIVE")
+        staff = list(staff_queryset)
+
+        payload = {
+            "departments": departments,
+            "staff": staff,
+            "summary": {
+                "department_count": len(departments),
+                "staff_count": len(staff),
+                "root_department_count": sum(1 for department in departments if department.parent_id is None),
+                "department_heads_count": sum(1 for department in departments if department.head_id is not None),
+                "supervisor_link_count": sum(1 for staff_member in staff if staff_member.supervisor_id is not None),
+            },
+        }
+        serializer = OrgChartPayloadSerializer(payload)
         return Response(serializer.data)
 
 

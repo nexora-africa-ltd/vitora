@@ -428,6 +428,8 @@ class StaffProfileCreateSerializer(serializers.Serializer):
     license_expiry = serializers.DateField(required=False, allow_null=True)
     licensing_body = serializers.CharField(max_length=100, required=False, allow_blank=True)
     specialization = serializers.CharField(max_length=100, required=False, allow_blank=True)
+
+
     hire_date = serializers.DateField(required=False, allow_null=True, source="date_joined")
 
     def validate_username(self, value):
@@ -491,6 +493,24 @@ class StaffProfileCreateSerializer(serializers.Serializer):
         staff_profile = StaffProfile.objects.create(user=user, **validated_data)
 
         return staff_profile
+
+
+class OrgChartSummarySerializer(serializers.Serializer):
+    """Summary metrics for the organization chart payload."""
+
+    department_count = serializers.IntegerField()
+    staff_count = serializers.IntegerField()
+    root_department_count = serializers.IntegerField()
+    department_heads_count = serializers.IntegerField()
+    supervisor_link_count = serializers.IntegerField()
+
+
+class OrgChartPayloadSerializer(serializers.Serializer):
+    """Serializer for the department org chart endpoint."""
+
+    departments = DepartmentSerializer(many=True)
+    staff = StaffProfileSerializer(many=True)
+    summary = OrgChartSummarySerializer()
 
 
 class UserPermissionsSerializer(serializers.Serializer):

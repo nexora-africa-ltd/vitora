@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
-import { useDepartments, useRoles, useStaffList } from '@/lib/hooks/use-rbac';
+import { useDepartmentOrgChart, useRoles } from '@/lib/hooks/use-rbac';
 
 const AdminOrgChart = dynamic(
   () => import('@/components/admin/admin-org-chart').then((mod) => mod.AdminOrgChart),
@@ -71,27 +71,21 @@ const QUICK_LINKS = [
 export default function AdminOverviewPage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const {
-    data: departmentsData,
-    isLoading: departmentsLoading,
-    error: departmentsError,
-    refetch: refetchDepartments,
-  } = useDepartments({ page_size: 200 });
-  const {
     data: rolesData,
     isLoading: rolesLoading,
     error: rolesError,
     refetch: refetchRoles,
   } = useRoles({ page_size: 200 });
   const {
-    data: staffData,
-    isLoading: staffLoading,
-    error: staffError,
-    refetch: refetchStaff,
-  } = useStaffList({ page_size: 500 });
+    data: orgChartData,
+    isLoading: orgChartLoading,
+    error: orgChartError,
+    refetch: refetchOrgChart,
+  } = useDepartmentOrgChart({ include_inactive: true });
 
-  const departments = departmentsData?.results ?? [];
+  const departments = orgChartData?.departments ?? [];
   const roles = rolesData?.results ?? [];
-  const staff = staffData?.results ?? [];
+  const staff = orgChartData?.staff ?? [];
 
   const activeDepartments = departments.filter((department) => department.is_active).length;
   const assignedHeads = departments.filter((department) => department.head !== null).length;
@@ -103,22 +97,13 @@ export default function AdminOverviewPage() {
   const licensedRoles = roles.filter((role) => role.requires_license).length;
   const topLevelDepartments = departments.filter((department) => department.parent === null).length;
 
-  const isLoading = departmentsLoading || rolesLoading || staffLoading;
-  const hasError = departmentsError || rolesError || staffError;
+  const isLoading = orgChartLoading || rolesLoading;
+  const hasError = orgChartError || rolesError;
 
   const handleRefresh = async () => {
     await refresh();
-    await Promise.all([refetchDepartments(), refetchRoles(), refetchStaff()]);
+    await Promise.all([refetchOrgChart(), refetchRoles()]);
   };
-
-  const dataCoverageNotes = [
-    departmentsData && departments.length < departmentsData.count
-      ? `Showing ${departments.length} of ${departmentsData.count} departments in the overview dataset.`
-      : null,
-    staffData && staff.length < staffData.count
-      ? `Org chart metrics are based on the first ${staff.length} of ${staffData.count} staff records.`
-      : null,
-  ].filter(Boolean) as string[];
 
   return (
     <PullToRefresh onRefresh={handleRefresh} isRefreshing={isRefreshing}>
@@ -152,7 +137,7 @@ export default function AdminOverviewPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <AdminStatCard
             title="Departments"
-            value={isLoading ? '...' : departmentsData?.count ?? 0}
+            value={isLoading ? '...' : orgChartData?.summary.department_count ?? 0}
             description={`${activeDepartments} active, ${topLevelDepartments} top-level`}
             icon={<Building2 className="h-4 w-4 text-muted-foreground" />}
           />
@@ -165,7 +150,7 @@ export default function AdminOverviewPage() {
           />
           <AdminStatCard
             title="Staff Profiles"
-            value={isLoading ? '...' : staffData?.count ?? 0}
+            value={isLoading ? '...' : orgChartData?.summary.staff_count ?? 0}
             description={`${activeStaff} active staff in loaded results`}
             icon={<Users className="h-4 w-4 text-muted-foreground" />}
           />
@@ -220,13 +205,6 @@ export default function AdminOverviewPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {dataCoverageNotes.length > 0 ? (
-                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-200">
-                  {dataCoverageNotes.map((note) => (
-                    <p key={note}>{note}</p>
-                  ))}
-                </div>
-              ) : null}
               <AdminOrgChart departments={departments} staff={staff} />
             </CardContent>
           </Card>
