@@ -7,6 +7,7 @@ from django.urls import path
 from .views import (
     AIFeedbackStatsView,
     AIFeedbackView,
+    AISuggestionAuditView,
     AIStatusView,
     AutopopulateView,
     CarePlanConditionsListView,
@@ -55,6 +56,7 @@ urlpatterns = [
     # Phase 3 — Feedback
     path("feedback/", AIFeedbackView.as_view(), name="feedback"),
     path("feedback/stats/", AIFeedbackStatsView.as_view(), name="feedback-stats"),
+    path("suggestion-audit/", AISuggestionAuditView.as_view(), name="suggestion-audit"),
     # Phase 4 — ICU Predictor
     path(
         "predict/icu/",

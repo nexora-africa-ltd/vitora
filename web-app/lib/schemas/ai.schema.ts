@@ -171,6 +171,13 @@ export const AIFeedbackStatsSchema = z.object({
   recent_negatives: z.number().optional(),
 });
 
+/** Schema for POST /api/ai/suggestion-audit/ response */
+export const AISuggestionAuditResponseSchema = z.object({
+  status: z.string(),
+  message: z.string(),
+  logged_count: z.number(),
+}).passthrough();
+
 // =============================================================================
 // Phase 4a — Smart Autopopulate
 // =============================================================================

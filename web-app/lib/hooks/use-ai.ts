@@ -25,6 +25,8 @@ import type {
   AIFeedbackRequest,
   AIFeedbackResponse,
   AIFeedbackStats,
+  AISuggestionAuditRequest,
+  AISuggestionAuditResponse,
   AILabInterpretRequest,
   AILabInterpretResponse,
   AIDischargeAssessRequest,
@@ -301,6 +303,16 @@ export function useAIFeedbackStats() {
     queryFn: () => aiApi.getFeedbackStats(),
     enabled: ENABLE_AI,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+}
+
+/**
+ * Hook for recording accepted or applied AI suggestions.
+ */
+export function useAISuggestionAudit() {
+  return useMutation<AISuggestionAuditResponse, Error, AISuggestionAuditRequest>({
+    mutationFn: (data) => aiApi.auditSuggestionAction(data),
+    retry: false,
   });
 }
 

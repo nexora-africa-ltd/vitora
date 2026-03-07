@@ -70,7 +70,13 @@ interface SmartSuggestionBatchProps {
   onOpenChange: (open: boolean) => void;
   suggestions: SmartSuggestion[];
   /** Called with the list of accepted suggestions */
-  onApply: (accepted: Array<{ id: string; field_name: string; value: unknown }>) => void;
+  onApply: (accepted: Array<{
+    id: string;
+    field_name: string;
+    value: unknown;
+    source: string;
+    confidence: number;
+  }>) => void;
   /** Optional title */
   title?: string;
 }
@@ -125,7 +131,13 @@ export function SmartSuggestionBatch({
   const handleApply = () => {
     const accepted = pendingSuggestions
       .filter((s) => selected.has(s.id))
-      .map((s) => ({ id: s.id, field_name: s.field_name, value: s.value }));
+      .map((s) => ({
+        id: s.id,
+        field_name: s.field_name,
+        value: s.value,
+        source: s.source,
+        confidence: s.confidence,
+      }));
     onApply(accepted);
     onOpenChange(false);
   };

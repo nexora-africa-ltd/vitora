@@ -16,7 +16,7 @@ import * as React from 'react';
 import { Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Textarea } from '@/components/ui/textarea';
-import { useAIClerkingAutocomplete, useAIEnabled } from '@/lib/hooks/use-ai';
+import { useAIClerkingAutocomplete, useAIEnabled, useAISuggestionAudit } from '@/lib/hooks/use-ai';
 import type { AIPatientContext, AIClerkingAutocompleteSuggestion } from '@/lib/types/ai';
 
 // =============================================================================
@@ -59,12 +59,13 @@ export function ClerkingAssistTextarea({
 }: ClerkingAssistTextareaProps) {
   const isAIEnabled = useAIEnabled();
   const { mutate, data: result, isPending, reset } = useAIClerkingAutocomplete();
+  const { mutate: auditSuggestionAction } = useAISuggestionAudit();
   const [showSuggestions, setShowSuggestions] = React.useState(false);
   const [selectedIndex, setSelectedIndex] = React.useState(0);
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
-  const suggestions = result?.suggestions ?? [];
+  const suggestions = React.useMemo(() => result?.suggestions ?? [], [result]);
 
   // Debounced autocomplete trigger
   React.useEffect(() => {
@@ -94,11 +95,24 @@ export function ClerkingAssistTextarea({
   const acceptSuggestion = React.useCallback(
     (suggestion: AIClerkingAutocompleteSuggestion) => {
       onChange(suggestion.text);
+      auditSuggestionAction({
+        suggestion_type: 'clerking_autocomplete',
+        event_type: 'accepted',
+        note_format: noteFormat,
+        suggestions: [
+          {
+            field_name: fieldName,
+            source: 'ai',
+            confidence: suggestion.confidence,
+            accepted_value: suggestion.text,
+          },
+        ],
+      });
       setShowSuggestions(false);
       reset();
       textareaRef.current?.focus();
     },
-    [onChange, reset]
+    [auditSuggestionAction, fieldName, noteFormat, onChange, reset]
   );
 
   const handleKeyDown = React.useCallback(

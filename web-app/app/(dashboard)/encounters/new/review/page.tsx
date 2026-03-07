@@ -40,6 +40,7 @@ import { useNewEncounterStore } from '@/lib/stores/new-encounter-store';
 import { useCreateEncounterWithValidation } from '@/lib/hooks/use-encounter-form';
 import { useCheckInPatient } from '@/lib/hooks/use-triage';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useAISuggestionAudit } from '@/lib/hooks/use-ai';
 import { useSmartSuggestions } from '@/lib/hooks/use-smart-suggestions';
 import { SmartSuggestionBatch } from '@/components/shared/smart-suggestion-batch';
 import { LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
@@ -93,6 +94,7 @@ export default function NewEncounterReviewPage() {
 
   const createEncounter = useCreateEncounterWithValidation();
   const checkInPatient = useCheckInPatient();
+  const { mutate: auditSuggestionAction } = useAISuggestionAudit();
 
   const [showTriageModal, setShowTriageModal] = useState(false);
   const [createdEncounterId, setCreatedEncounterId] = useState<number | null>(null);
@@ -270,7 +272,13 @@ export default function NewEncounterReviewPage() {
 
   // Apply selected AI suggestions to the encounter store
   const handleApplyAutopopulate = useCallback(
-    (accepted: Array<{ id: string; field_name: string; value: unknown }>) => {
+    (accepted: Array<{
+      id: string;
+      field_name: string;
+      value: unknown;
+      source: string;
+      confidence: number;
+    }>) => {
       const store = useNewEncounterStore.getState();
       for (const item of accepted) {
         acceptSuggestion(item.id);
@@ -283,12 +291,26 @@ export default function NewEncounterReviewPage() {
           store.setHistory({ chronic_conditions: item.value });
         }
       }
+      if (accepted.length > 0) {
+        auditSuggestionAction({
+          suggestion_type: 'autopopulate',
+          event_type: 'applied',
+          encounter_type: details.encounter_type,
+          suggestions: accepted.map((item) => ({
+            suggestion_id: item.id,
+            field_name: item.field_name,
+            source: item.source === 'cds' || item.source === 'history' ? item.source : 'ai',
+            confidence: item.confidence,
+            accepted_value: item.value,
+          })),
+        });
+      }
       toast({
         title: 'Suggestions Applied',
         description: `Applied ${accepted.length} AI suggestion${accepted.length !== 1 ? 's' : ''} to the encounter.`,
       });
     },
-    [acceptSuggestion, toast]
+    [acceptSuggestion, auditSuggestionAction, details.encounter_type, toast]
   );
 
   // Redirect if missing required data
