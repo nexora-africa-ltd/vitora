@@ -447,6 +447,37 @@ export interface AIFeedbackStats {
   recent_negatives?: number;
 }
 
+/** Suggestion workflow that produced an accountable AI action. */
+export type AISuggestionType = 'autopopulate' | 'clerking_autocomplete';
+
+/** Suggestion action recorded for accountability. */
+export type AISuggestionEventType = 'accepted' | 'applied';
+
+/** A single accepted or applied suggestion audit item. */
+export interface AISuggestionAuditItem {
+  suggestion_id?: string;
+  field_name: string;
+  source: AISuggestionSource;
+  confidence?: number;
+  accepted_value?: unknown;
+}
+
+/** Request body for POST /api/ai/suggestion-audit/. */
+export interface AISuggestionAuditRequest {
+  suggestion_type: AISuggestionType;
+  event_type: AISuggestionEventType;
+  suggestions: AISuggestionAuditItem[];
+  note_format?: 'soap' | 'sbar';
+  encounter_type?: string;
+}
+
+/** Response from POST /api/ai/suggestion-audit/. */
+export interface AISuggestionAuditResponse {
+  status: string;
+  message: string;
+  logged_count: number;
+}
+
 // =============================================================================
 // Phase 4a — Smart Autopopulate
 // =============================================================================

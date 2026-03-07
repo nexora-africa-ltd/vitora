@@ -13,6 +13,7 @@ Session management views (ClinicalChatSessionListView,
 ClinicalChatSessionDetailView) provide local session history.
 """
 
+import json
 import logging
 import uuid
 
@@ -38,6 +39,8 @@ from .serializers import (
     AIClinicalChatResponseSerializer,
     AIFeedbackRequestSerializer,
     AIFeedbackResponseSerializer,
+    AISuggestionAuditRequestSerializer,
+    AISuggestionAuditResponseSerializer,
     AIFeedbackStatsResponseSerializer,
     AIStatusResponseSerializer,
     AutopopulateRequestSerializer,
@@ -95,6 +98,81 @@ def _resolve_verbosity(request: Request, body_value: str | None) -> str:
     if body_value and body_value in _VALID_VERBOSITY:
         return body_value
     return "standard"
+
+
+def _build_audit_value_preview(value: object) -> dict[str, str]:
+    """Build a sanitized, truncated preview of an accepted suggestion value."""
+    value_type = type(value).__name__
+
+    if isinstance(value, str):
+        serialized = value
+    else:
+        try:
+            serialized = json.dumps(value, sort_keys=True)
+        except TypeError:
+            serialized = str(value)
+
+    sanitized = sanitize_clinical_text(serialized)
+    return {
+        "accepted_value_type": value_type,
+        "accepted_value_preview": sanitized[:120],
+    }
+
+
+class AISuggestionAuditView(AIFeatureGatedMixin, APIView):
+    """Audit accepted or applied AI suggestions for accountability."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        serializer = AISuggestionAuditRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        audited_suggestions = []
+        for suggestion in data["suggestions"]:
+            item = {
+                "field_name": suggestion["field_name"],
+                "source": suggestion.get("source", "ai"),
+            }
+            if suggestion.get("suggestion_id"):
+                item["suggestion_id"] = suggestion["suggestion_id"]
+            if suggestion.get("confidence") is not None:
+                item["confidence"] = suggestion["confidence"]
+            if "accepted_value" in suggestion:
+                item.update(_build_audit_value_preview(suggestion["accepted_value"]))
+            audited_suggestions.append(item)
+
+        action = f"ai_suggestion_{data['event_type']}"
+        details = {
+            "suggestion_type": data["suggestion_type"],
+            "event_type": data["event_type"],
+            "logged_count": len(audited_suggestions),
+            "suggestions": audited_suggestions,
+        }
+        if data.get("note_format"):
+            details["note_format"] = data["note_format"]
+        if data.get("encounter_type"):
+            details["encounter_type"] = data["encounter_type"]
+
+        AuditLog.log(
+            action=action,
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details=details,
+        )
+
+        response = AISuggestionAuditResponseSerializer(
+            {
+                "status": "logged",
+                "message": "Suggestion audit event recorded.",
+                "logged_count": len(audited_suggestions),
+            }
+        )
+        return Response(response.data, status=status.HTTP_200_OK)
 
 
 class ICD10SuggestView(AIFeatureGatedMixin, APIView):

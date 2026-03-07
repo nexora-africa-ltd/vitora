@@ -17,6 +17,7 @@ import {
   AIICUPredictResponseSchema,
   AIFeedbackResponseSchema,
   AIFeedbackStatsSchema,
+  AISuggestionAuditResponseSchema,
   AIAutopopulateResponseSchema,
   AILabInterpretResponseSchema,
   AIDischargeAssessResponseSchema,
@@ -44,6 +45,8 @@ import type {
   AIFeedbackRequest,
   AIFeedbackResponse,
   AIFeedbackStats,
+  AISuggestionAuditRequest,
+  AISuggestionAuditResponse,
   AIAutopopulateRequest,
   AIAutopopulateResponse,
   AILabInterpretRequest,
@@ -242,6 +245,16 @@ export const aiApi = {
     const response = await apiClient.get('/api/ai/feedback/stats/');
     return parseResponse(AIFeedbackStatsSchema, response.data, {
       context: 'aiApi.getFeedbackStats',
+    });
+  },
+
+  /**
+   * Record an accepted or applied AI suggestion for accountability.
+   */
+  auditSuggestionAction: async (data: AISuggestionAuditRequest): Promise<AISuggestionAuditResponse> => {
+    const response = await apiClient.post('/api/ai/suggestion-audit/', data);
+    return parseResponse(AISuggestionAuditResponseSchema, response.data, {
+      context: 'aiApi.auditSuggestionAction',
     });
   },
 

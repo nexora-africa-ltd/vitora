@@ -608,6 +608,74 @@ class AIFeedbackStatsResponseSerializer(serializers.Serializer):
     )
 
 
+class AISuggestionAuditItemSerializer(serializers.Serializer):
+    """A single accepted or applied AI suggestion event."""
+
+    suggestion_id = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=200,
+        help_text="Client-side suggestion identifier when available.",
+    )
+    field_name = serializers.CharField(
+        max_length=100,
+        help_text="Field that received the suggestion.",
+    )
+    source = serializers.ChoiceField(
+        choices=["ai", "cds", "history"],
+        default="ai",
+        help_text="Origin of the suggestion.",
+    )
+    confidence = serializers.FloatField(
+        required=False,
+        allow_null=True,
+        min_value=0.0,
+        max_value=1.0,
+        help_text="Confidence score for the suggestion.",
+    )
+    accepted_value = serializers.JSONField(
+        required=False,
+        help_text="Accepted value for audit preview generation.",
+    )
+
+
+class AISuggestionAuditRequestSerializer(serializers.Serializer):
+    """Request body for POST /api/ai/suggestion-audit/."""
+
+    suggestion_type = serializers.ChoiceField(
+        choices=["autopopulate", "clerking_autocomplete"],
+        help_text="Suggestion workflow that produced the accepted value.",
+    )
+    event_type = serializers.ChoiceField(
+        choices=["accepted", "applied"],
+        help_text="Whether the suggestion was accepted inline or applied in batch.",
+    )
+    suggestions = AISuggestionAuditItemSerializer(
+        many=True,
+        allow_empty=False,
+        help_text="Accepted or applied suggestions to audit.",
+    )
+    note_format = serializers.ChoiceField(
+        choices=["soap", "sbar"],
+        required=False,
+        help_text="Clinical note format for clerking autocomplete events.",
+    )
+    encounter_type = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=50,
+        help_text="Encounter type context when available.",
+    )
+
+
+class AISuggestionAuditResponseSerializer(serializers.Serializer):
+    """Response from POST /api/ai/suggestion-audit/."""
+
+    status = serializers.CharField(help_text="Acknowledgement status.")
+    message = serializers.CharField(help_text="Human-readable confirmation.")
+    logged_count = serializers.IntegerField(help_text="Number of suggestion events logged.")
+
+
 # =============================================================================
 # Phase 4a — Smart Autopopulate
 # =============================================================================
