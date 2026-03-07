@@ -32,21 +32,27 @@ import type { DepartmentType } from '@/lib/types/rbac';
 
 const DEPARTMENT_TYPES: { value: DepartmentType; label: string }[] = [
   { value: 'CLINICAL', label: 'Clinical' },
-  { value: 'ANCILLARY', label: 'Ancillary' },
   { value: 'ADMINISTRATIVE', label: 'Administrative' },
   { value: 'SUPPORT', label: 'Support' },
+  { value: 'LABORATORY', label: 'Laboratory' },
+  { value: 'PHARMACY', label: 'Pharmacy' },
+  { value: 'RADIOLOGY', label: 'Radiology' },
+  { value: 'RECORDS', label: 'Medical Records' },
 ];
 
 function getDepartmentTypeBadgeVariant(type: DepartmentType) {
   switch (type) {
     case 'CLINICAL':
       return 'default';
-    case 'ANCILLARY':
-      return 'secondary';
     case 'ADMINISTRATIVE':
       return 'default';
     case 'SUPPORT':
       return 'destructive';
+    case 'LABORATORY':
+    case 'PHARMACY':
+    case 'RADIOLOGY':
+    case 'RECORDS':
+      return 'secondary';
     default:
       return 'secondary';
   }

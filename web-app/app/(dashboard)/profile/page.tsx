@@ -46,7 +46,7 @@ function formatRole(role?: string, isSuperuser?: boolean, isStaff?: boolean): st
 function formatPermission(permission: string): string {
   const [domain, action] = permission.split('.', 2);
 
-  if (!action) {
+  if (!action || !domain) {
     return formatLabel(permission);
   }
 

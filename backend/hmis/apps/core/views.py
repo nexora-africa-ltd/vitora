@@ -4,6 +4,7 @@ Views for core app.
 
 from django.contrib.auth.models import Permission
 from django.contrib.auth.signals import user_logged_in, user_login_failed
+from django.utils.dateparse import parse_date, parse_datetime
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiParameter,
@@ -44,10 +45,23 @@ from .serializers import (
     NotificationSerializer,
     PermissionSerializer,
     RoleSerializer,
+    StaffProfileUpdateSerializer,
     StaffProfileSerializer,
     SubCountySerializer,
+    UserPermissionsSerializer,
     WardSerializer,
+    UsernameCheckResponseSerializer,
+    UsernameSuggestionRequestSerializer,
+    UsernameSuggestionResponseSerializer,
 )
+
+
+def _get_client_ip(request) -> str | None:
+    """Best-effort client IP extraction for audit logging."""
+    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR")
 
 
 class AuditLogViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):
@@ -64,6 +78,32 @@ class AuditLogViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSe
     search_fields = ["action", "resource_type", "user__username"]
     ordering_fields = ["timestamp", "action"]
     ordering = ["-timestamp"]
+
+    def get_queryset(self):
+        """Apply optional date range filters for admin audit review."""
+        queryset = super().get_queryset()
+        start_date = self.request.query_params.get("start_date")
+        end_date = self.request.query_params.get("end_date")
+
+        if start_date:
+            start_dt = parse_datetime(start_date)
+            if start_dt is not None:
+                queryset = queryset.filter(timestamp__gte=start_dt)
+            else:
+                start_day = parse_date(start_date)
+                if start_day is not None:
+                    queryset = queryset.filter(timestamp__date__gte=start_day)
+
+        if end_date:
+            end_dt = parse_datetime(end_date)
+            if end_dt is not None:
+                queryset = queryset.filter(timestamp__lte=end_dt)
+            else:
+                end_day = parse_date(end_date)
+                if end_day is not None:
+                    queryset = queryset.filter(timestamp__date__lte=end_day)
+
+        return queryset
 
 
 class FrontendEventViewSet(viewsets.GenericViewSet):
@@ -372,6 +412,52 @@ class DepartmentViewSet(viewsets.ModelViewSet):
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
 
+    def perform_create(self, serializer):
+        """Create department and record the admin audit trail."""
+        department = serializer.save()
+        AuditLog.log(
+            action="department_created",
+            user=self.request.user,
+            resource_type="Department",
+            resource_id=department.id,
+            ip_address=_get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "name": department.name,
+                "code": department.code,
+                "department_type": department.department_type,
+            },
+        )
+
+    def perform_update(self, serializer):
+        """Update department and record the admin audit trail."""
+        department = serializer.save()
+        AuditLog.log(
+            action="department_updated",
+            user=self.request.user,
+            resource_type="Department",
+            resource_id=department.id,
+            ip_address=_get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "changed_fields": sorted(serializer.validated_data.keys()),
+                "name": department.name,
+            },
+        )
+
+    def perform_destroy(self, instance):
+        """Delete department and record the admin audit trail."""
+        AuditLog.log(
+            action="department_deleted",
+            user=self.request.user,
+            resource_type="Department",
+            resource_id=instance.id,
+            ip_address=_get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            details={"name": instance.name, "code": instance.code},
+        )
+        super().perform_destroy(instance)
+
     @action(detail=True, methods=["get"])
     def staff(self, request, pk=None):
         """Get staff in this department."""
@@ -404,6 +490,48 @@ class RoleViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [IsAuthenticated]
         return [permission() for permission in permission_classes]
+
+    def perform_create(self, serializer):
+        """Create role and record the admin audit trail."""
+        role = serializer.save()
+        AuditLog.log(
+            action="role_created",
+            user=self.request.user,
+            resource_type="Role",
+            resource_id=role.id,
+            ip_address=_get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            details={"name": role.name, "code": role.code, "category": role.category},
+        )
+
+    def perform_update(self, serializer):
+        """Update role and record the admin audit trail."""
+        role = serializer.save()
+        AuditLog.log(
+            action="role_updated",
+            user=self.request.user,
+            resource_type="Role",
+            resource_id=role.id,
+            ip_address=_get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "changed_fields": sorted(serializer.validated_data.keys()),
+                "name": role.name,
+            },
+        )
+
+    def perform_destroy(self, instance):
+        """Delete role and record the admin audit trail."""
+        AuditLog.log(
+            action="role_deleted",
+            user=self.request.user,
+            resource_type="Role",
+            resource_id=instance.id,
+            ip_address=_get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            details={"name": instance.name, "code": instance.code},
+        )
+        super().perform_destroy(instance)
 
     @action(detail=True, methods=["get"])
     def permissions(self, request, pk=None):
@@ -449,6 +577,8 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
 
         if self.action == "create":
             return StaffProfileCreateSerializer
+        if self.action in ["update", "partial_update"]:
+            return StaffProfileUpdateSerializer
         return StaffProfileSerializer
 
     def get_permissions(self):
@@ -465,9 +595,46 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         staff_profile = serializer.save()
 
+        AuditLog.log(
+            action="staff_created",
+            user=request.user,
+            resource_type="StaffProfile",
+            resource_id=staff_profile.id,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "employee_id": staff_profile.employee_id,
+                "username": staff_profile.user.username,
+            },
+        )
+
         # Return the full staff profile using the read serializer
         read_serializer = StaffProfileSerializer(staff_profile)
         return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        """Update a staff profile and return the canonical read representation."""
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        staff_profile = serializer.save()
+
+        AuditLog.log(
+            action="staff_updated",
+            user=request.user,
+            resource_type="StaffProfile",
+            resource_id=staff_profile.id,
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "changed_fields": sorted(serializer.validated_data.keys()),
+                "employee_id": staff_profile.employee_id,
+            },
+        )
+
+        read_serializer = StaffProfileSerializer(staff_profile)
+        return Response(read_serializer.data)
 
     @action(detail=False, methods=["get", "patch"])
     def me(self, request):
@@ -503,6 +670,18 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
             return Response(serializer.data)
 
     @action(detail=False, methods=["get"])
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "username",
+                OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Username to check for availability.",
+                required=True,
+            )
+        ],
+        responses=UsernameCheckResponseSerializer,
+    )
     def check_username(self, request):
         """
         Check if a username is available.
@@ -556,6 +735,10 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
         return Response(response_data)
 
     @action(detail=False, methods=["post"])
+    @extend_schema(
+        request=UsernameSuggestionRequestSerializer,
+        responses=UsernameSuggestionResponseSerializer,
+    )
     def suggest_username(self, request):
         """
         Suggest a unique username based on first name and last name.
@@ -640,6 +823,30 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
         instance.employment_status = "TERMINATED"
         instance.date_left = date.today()
         instance.save()
+
+        AuditLog.log(
+            action="staff_deactivated",
+            user=self.request.user,
+            resource_type="StaffProfile",
+            resource_id=instance.id,
+            ip_address=_get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "employee_id": instance.employee_id,
+                "username": instance.user.username,
+            },
+        )
+
+
+@extend_schema(responses=UserPermissionsSerializer)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def me_permissions(request):
+    """Return the current user's effective permission list."""
+    serializer = UserPermissionsSerializer(
+        {"permissions": sorted(request.user.get_all_permissions())}
+    )
+    return Response(serializer.data)
 
 
 # ============================================================================

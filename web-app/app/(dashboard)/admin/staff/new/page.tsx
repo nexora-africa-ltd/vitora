@@ -18,10 +18,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import {
   Select,
   SelectContent,
+  SelectEmpty,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  SelectEmpty,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -38,8 +38,8 @@ export default function NewStaffPage() {
   const { toast } = useToast();
   const createStaff = useCreateStaffProfile();
 
-  const { data: departments } = useDepartments({ is_active: true });
-  const { data: roles } = useRoles();
+  const { data: departments } = useDepartments({ is_active: true, page_size: 100 });
+  const { data: roles } = useRoles({ page_size: 100 });
 
   // Form state
   const [formData, setFormData] = useState({

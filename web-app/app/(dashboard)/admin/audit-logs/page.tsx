@@ -32,12 +32,15 @@ import { useAuditLogs, type AuditAction } from '@/lib/hooks/use-rbac';
 import { formatDistanceToNow } from 'date-fns';
 
 const ACTION_TYPES = [
-  { value: 'role_assign', label: 'Role Assignment' },
-  { value: 'role_change', label: 'Role Change' },
-  { value: 'permission_change', label: 'Permission Change' },
-  { value: 'staff_create', label: 'Staff Created' },
-  { value: 'staff_update', label: 'Staff Updated' },
-  { value: 'staff_deactivate', label: 'Staff Deactivated' },
+  { value: 'department_created', label: 'Department Created' },
+  { value: 'department_updated', label: 'Department Updated' },
+  { value: 'department_deleted', label: 'Department Deleted' },
+  { value: 'role_created', label: 'Role Created' },
+  { value: 'role_updated', label: 'Role Updated' },
+  { value: 'role_deleted', label: 'Role Deleted' },
+  { value: 'staff_created', label: 'Staff Created' },
+  { value: 'staff_updated', label: 'Staff Updated' },
+  { value: 'staff_deactivated', label: 'Staff Deactivated' },
 ];
 
 function getActionBadgeVariant(action: string) {
@@ -164,7 +167,7 @@ export default function AuditLogsPage() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{log.user_name || 'System'}</span>
+                        <span className="font-medium">{log.user_name || log.username || 'System'}</span>
                       </div>
                     </TableCell>
                     <TableCell>

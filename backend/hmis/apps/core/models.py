@@ -958,6 +958,10 @@ class Department(models.Model):
         max_length=100,
         help_text="Department name",
     )
+    description = models.TextField(
+        blank=True,
+        help_text="Department description",
+    )
     department_type = models.CharField(
         max_length=20,
         choices=DEPARTMENT_TYPES,

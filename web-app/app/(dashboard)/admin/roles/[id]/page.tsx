@@ -6,7 +6,7 @@
  */
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Shield, Save, Loader2, Trash2, AlertTriangle, Check, X } from 'lucide-react';
@@ -45,6 +45,7 @@ import {
 import { useToast } from '@/lib/hooks/use-toast';
 import { useRole, useUpdateRole, useDeleteRole, usePermissions } from '@/lib/hooks/use-rbac';
 import type { RoleCategory, Permission } from '@/lib/types/rbac';
+import { buildPermissionsMatrix, matrixToPermissionCodes } from '@/lib/utils/rbac-permissions';
 
 const ROLE_CATEGORIES = [
   { value: 'CLINICAL', label: 'Clinical Staff' },
@@ -67,27 +68,6 @@ function groupPermissions(permissions: Permission[]) {
   return groups;
 }
 
-// Convert permissions_matrix to flat permission codes
-function matrixToPermissionCodes(matrix: Record<string, Record<string, boolean>>): string[] {
-  const codes: string[] = [];
-  Object.entries(matrix).forEach(([resource, actions]) => {
-    Object.entries(actions).forEach(([action, granted]) => {
-      if (granted) {
-        // Convert to permission code format: app_label.action_model
-        // e.g., Patient { create: true } -> patients.add_patient
-        const appLabel = resource.toLowerCase() + 's'; // Simple pluralization
-        const codename = action === 'create' ? `add_${resource.toLowerCase()}`
-          : action === 'read' ? `view_${resource.toLowerCase()}`
-          : action === 'update' ? `change_${resource.toLowerCase()}`
-          : action === 'delete' ? `delete_${resource.toLowerCase()}`
-          : `${action}_${resource.toLowerCase()}`;
-        codes.push(`${appLabel}.${codename}`);
-      }
-    });
-  });
-  return codes;
-}
-
 export default function RoleEditPage() {
   const params = useParams();
   const router = useRouter();
@@ -105,21 +85,18 @@ export default function RoleEditPage() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('CLINICAL');
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
-  const [isDefault, setIsDefault] = useState(false);
 
   // Initialize form when role loads
   useEffect(() => {
-    if (role) {
+    if (role && allPermissions) {
       setName(role.name);
       setCode(role.code);
       setDescription(role.description || '');
       setCategory(role.category);
-      // Initialize permissions from the role's permissions_matrix
-      const initialPermissions = matrixToPermissionCodes(role.permissions_matrix || {});
+      const initialPermissions = matrixToPermissionCodes(role.permissions_matrix || {}, allPermissions);
       setSelectedPermissions(initialPermissions);
-      setIsDefault(false);
     }
-  }, [role]);
+  }, [role, allPermissions]);
 
   const handlePermissionToggle = (permission: string) => {
     setSelectedPermissions((prev) =>
@@ -140,6 +117,7 @@ export default function RoleEditPage() {
           code,
           description,
           category: category as RoleCategory,
+          permissions_matrix: buildPermissionsMatrix(selectedPermissions, allPermissions || []),
         },
       });
 
@@ -299,14 +277,6 @@ export default function RoleEditPage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="flex items-center space-x-2 pt-8">
-                <Checkbox
-                  id="is_default"
-                  checked={isDefault}
-                  onCheckedChange={(checked) => setIsDefault(checked as boolean)}
-                />
-                <Label htmlFor="is_default">Default role for new staff</Label>
               </div>
             </div>
           </CardContent>

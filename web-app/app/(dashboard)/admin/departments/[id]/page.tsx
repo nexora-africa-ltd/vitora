@@ -38,9 +38,12 @@ import type { DepartmentType, DepartmentUpdateData } from '@/lib/types/rbac';
 
 const DEPARTMENT_TYPES: { value: DepartmentType; label: string }[] = [
   { value: 'CLINICAL', label: 'Clinical' },
-  { value: 'ANCILLARY', label: 'Ancillary' },
   { value: 'ADMINISTRATIVE', label: 'Administrative' },
   { value: 'SUPPORT', label: 'Support' },
+  { value: 'LABORATORY', label: 'Laboratory' },
+  { value: 'PHARMACY', label: 'Pharmacy' },
+  { value: 'RADIOLOGY', label: 'Radiology' },
+  { value: 'RECORDS', label: 'Medical Records' },
 ];
 
 export default function EditDepartmentPage() {
@@ -52,8 +55,8 @@ export default function EditDepartmentPage() {
   const { data: department, isLoading, error } = useDepartment(departmentId);
   const updateDepartment = useUpdateDepartment();
   const deleteDepartment = useDeleteDepartment();
-  const { data: departments } = useDepartments();
-  const { data: staff } = useStaffList();
+  const { data: departments } = useDepartments({ page_size: 100 });
+  const { data: staff } = useStaffList({ page_size: 100, employment_status: 'ACTIVE' });
 
   const [formData, setFormData] = useState<DepartmentUpdateData>({});
 

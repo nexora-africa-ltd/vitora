@@ -142,7 +142,7 @@ class AuditLogPermission(permissions.BasePermission):
     """
     Permission class for audit log access.
 
-    Only superusers can view audit logs.
+    Staff admins and superusers can view audit logs.
     Audit logs cannot be modified or deleted via API.
     """
 
@@ -151,16 +151,19 @@ class AuditLogPermission(permissions.BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
 
-        # Only allow GET (list/retrieve) for superusers
+        # Only allow GET (list/retrieve) for admin users
         if request.method in permissions.SAFE_METHODS:
-            return request.user.is_superuser
+            return request.user.is_staff or request.user.is_superuser
 
         # No modifications allowed
         return False
 
     def has_object_permission(self, request, view, obj):
         """Check if user can access specific audit log."""
-        return request.method in permissions.SAFE_METHODS and request.user.is_superuser
+        return (
+            request.method in permissions.SAFE_METHODS
+            and (request.user.is_staff or request.user.is_superuser)
+        )
 
 
 class PatientPermission(permissions.BasePermission):
