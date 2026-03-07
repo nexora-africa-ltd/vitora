@@ -83,6 +83,9 @@ class MCHRegistrationListSerializer(serializers.ModelSerializer):
         return enrollment.para if enrollment else None
 
     def get_current_gestation_weeks(self, obj):
+        frozen = obj._gestation_at_delivery()
+        if frozen is not None:
+            return frozen[0]
         enrollment = obj.anc_enrollment
         return enrollment.gestation_weeks() if enrollment else None
 
@@ -182,9 +185,11 @@ class MCHRegistrationSerializer(serializers.ModelSerializer):
         return enrollment.para if enrollment else None
 
     def get_current_gestation_weeks(self, obj):
+        frozen = obj._gestation_at_delivery()
+        if frozen is not None:
+            return frozen[0]
         enrollment = obj.anc_enrollment
         return enrollment.gestation_weeks() if enrollment else None
-        return None
 
 
 class MCHRegistrationCreateSerializer(serializers.ModelSerializer):

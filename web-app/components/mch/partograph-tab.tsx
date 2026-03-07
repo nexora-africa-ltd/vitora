@@ -252,16 +252,22 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
   }
 
   if (!activePartograph) {
+    const isPreDelivery = registration.status === 'ACTIVE';
     return (
       <Card>
         <CardContent className="py-10 text-center space-y-4">
           <Waves className="h-12 w-12 mx-auto text-muted-foreground" />
           <div className="space-y-1">
-            <p className="font-medium">No labour partograph started</p>
+            <p className="font-medium">
+              {isPreDelivery ? 'No labour partograph started' : 'No partograph recorded'}
+            </p>
             <p className="text-sm text-muted-foreground">
-              Start a realtime maternity partograph to track cervical dilation, contractions, fetal heart rate, and maternal observations.
+              {isPreDelivery
+                ? 'Start a realtime maternity partograph to track cervical dilation, contractions, fetal heart rate, and maternal observations.'
+                : 'This registration has progressed past active labour. A partograph can only be started during active ANC status.'}
             </p>
           </div>
+          {isPreDelivery && (
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">
@@ -336,6 +342,7 @@ export function PartographTab({ registrationId, registration }: PartographTabPro
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          )}
         </CardContent>
       </Card>
     );

@@ -280,9 +280,23 @@ class MCHRegistration(HistoryMixin, TimeStampedModel):
             self.completed_at = timezone.now()
         self.save()
 
+    def _gestation_at_delivery(self):
+        """Return (weeks, days) at delivery if delivered, else None."""
+        if self.status not in ("DELIVERED", "POSTNATAL", "COMPLETED"):
+            return None
+        delivery = self.deliveries.order_by("-delivery_date").first()
+        if not delivery or not self.anc_enrollment or not self.anc_enrollment.lmp:
+            return None
+        total_days = (delivery.delivery_date - self.anc_enrollment.lmp).days
+        return (total_days // 7, total_days % 7)
+
     @property
     def gestation_display(self) -> str:
-        """Return gestation display from linked ANC enrollment."""
+        """Return gestation display; freezes at delivery date once delivered."""
+        frozen = self._gestation_at_delivery()
+        if frozen is not None:
+            weeks, days = frozen
+            return f"{weeks} weeks {days} days (at delivery)"
         if self.anc_enrollment:
             return self.anc_enrollment.gestation_display()
         return "Unknown"
@@ -296,7 +310,15 @@ class MCHRegistration(HistoryMixin, TimeStampedModel):
 
     @property
     def trimester(self):
-        """Return trimester from linked ANC enrollment."""
+        """Return trimester; freezes at delivery date once delivered."""
+        frozen = self._gestation_at_delivery()
+        if frozen is not None:
+            weeks = frozen[0]
+            if weeks <= 12:
+                return 1
+            elif weeks <= 27:
+                return 2
+            return 3
         if self.anc_enrollment:
             return self.anc_enrollment.trimester()
         return None

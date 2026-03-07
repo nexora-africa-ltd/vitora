@@ -1,9 +1,10 @@
 'use client';
 
 import { use, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Baby, Calendar, CalendarPlus, FileText, Heart, Loader2, Shield, Stethoscope, Syringe, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Baby, Calendar, CalendarPlus, ExternalLink, FileText, Heart, Loader2, Shield, Stethoscope, Syringe, TrendingUp } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate } from '@/lib/utils/format';
@@ -151,7 +153,9 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
     );
   }
 
-  const daysToEDD = registration.edd
+  const isDelivered = ['DELIVERED', 'POSTNATAL', 'COMPLETED'].includes(registration.status);
+
+  const daysToEDD = registration.edd && !isDelivered
     ? Math.ceil((new Date(registration.edd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : null;
 
@@ -196,7 +200,19 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-4 rounded-lg bg-muted/50">
           <div className="flex flex-col gap-1 min-w-0">
             <p className="text-lg font-semibold truncate">
-              {registration.mother_name}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href={`/patients/${registration.mother}`}
+                      className="hover:text-sky-600 dark:hover:text-sky-400 hover:underline transition-colors duration-200"
+                    >
+                      {registration.mother_name}
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>View mother&apos;s patient record</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <span className="text-muted-foreground font-normal"> • {registration.mother_mrn}</span>
             </p>
             <p className="text-sm text-muted-foreground">
@@ -292,18 +308,28 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
 
         {/* Baby Info (if delivered) */}
         {registration.baby && (
-          <Card className="border-blue-200 bg-blue">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2 text-blue-700">
-                <Baby className="h-4 w-4" />
-                Baby Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="font-medium">{registration.baby_name}</p>
-              <p className="text-sm text-muted-foreground">{registration.baby_mrn}</p>
-            </CardContent>
-          </Card>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href={`/patients/${registration.baby}`}>
+                  <Card className="border-sky-300 dark:border-sky-700 bg-sky-50 dark:bg-sky-950/40 hover:bg-sky-100 dark:hover:bg-sky-900/50 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium flex items-center gap-2 text-sky-700 dark:text-sky-400">
+                        <Baby className="h-4 w-4" />
+                        Baby Information
+                        <ExternalLink className="h-3.5 w-3.5 ml-auto text-sky-400 dark:text-sky-500" />
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="font-medium">{registration.baby_name}</p>
+                      <p className="text-sm text-muted-foreground">{registration.baby_mrn}</p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>View baby&apos;s patient record</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
 
         {/* Tabs */}
