@@ -14,6 +14,8 @@ import {
   MCHRegistrationSchema,
   MCHRegistrationListItemSchema,
   PaginatedMCHRegistrationListSchema,
+  PregnancyHistoryArraySchema,
+  SuggestedObstetricHistorySchema,
   ANCVisitSchema,
   ANCVisitListItemSchema,
   PaginatedANCVisitListSchema,
@@ -54,6 +56,8 @@ import type {
   MCHRegistrationListItem,
   MCHRegistrationCreateData,
   MCHRegistrationListParams,
+  PregnancyHistoryItem,
+  SuggestedObstetricHistory,
   ANCVisit,
   ANCVisitListItem,
   ANCVisitCreateData,
@@ -192,6 +196,28 @@ export const mchRegistrationsApi = {
   }> => {
     const response = await apiClient.post(`${BASE_URL}/registrations/${id}/schedule_anc_visit/`, data);
     return response.data;
+  },
+
+  /**
+   * Get pregnancy history for the same mother
+   */
+  getPregnancyHistory: async (id: number): Promise<PregnancyHistoryItem[]> => {
+    const response = await apiClient.get(`${BASE_URL}/registrations/${id}/pregnancy_history/`);
+    return parseResponse(PregnancyHistoryArraySchema, response.data, {
+      context: 'mchRegistrationsApi.getPregnancyHistory',
+    });
+  },
+
+  /**
+   * Get suggested obstetric history (auto-calculated gravida/parity) for a mother
+   */
+  getSuggestedObstetricHistory: async (motherId: number): Promise<SuggestedObstetricHistory> => {
+    const response = await apiClient.get(`${BASE_URL}/registrations/suggested_obstetric_history/`, {
+      params: { mother: motherId },
+    });
+    return parseResponse(SuggestedObstetricHistorySchema, response.data, {
+      context: 'mchRegistrationsApi.getSuggestedObstetricHistory',
+    });
   },
 };
 

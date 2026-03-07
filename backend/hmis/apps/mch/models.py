@@ -333,6 +333,79 @@ class MCHRegistration(HistoryMixin, TimeStampedModel):
         """Return count of PNC visits."""
         return self.pnc_visits.count()
 
+    @property
+    def baby_count(self) -> int:
+        """Return count of babies from completed deliveries."""
+        return self.deliveries.filter(
+            status="COMPLETED",
+            baby_patient__isnull=False,
+        ).count()
+
+    @property
+    def all_babies(self):
+        """Return all baby Patient objects from completed deliveries."""
+        from hmis.apps.patients.models import Patient
+
+        baby_ids = self.deliveries.filter(
+            status="COMPLETED",
+            baby_patient__isnull=False,
+        ).values_list("baby_patient_id", flat=True)
+        return Patient.objects.filter(id__in=baby_ids)
+
+    @property
+    def is_multiple_pregnancy(self) -> bool:
+        """Return True if this registration has more than one baby."""
+        return self.baby_count > 1
+
+    @property
+    def inter_pregnancy_interval_days(self) -> int | None:
+        """
+        Return days since the previous pregnancy's delivery for the same mother.
+
+        WHO recommends >= 730 days (24 months) between pregnancies.
+        Returns None if this is the first pregnancy or no prior delivery date found.
+        """
+        previous = (
+            MCHRegistration.objects.filter(
+                mother=self.mother,
+                status__in=["DELIVERED", "POSTNATAL", "COMPLETED"],
+                registration_date__lt=self.registration_date,
+            )
+            .exclude(pk=self.pk)
+            .order_by("-registration_date")
+            .first()
+        )
+        if not previous:
+            return None
+
+        last_delivery = previous.deliveries.order_by("-delivery_date").first()
+        if not last_delivery:
+            return None
+
+        return (self.registration_date - last_delivery.delivery_date).days
+
+    @classmethod
+    def suggested_obstetric_history(cls, mother_id: int) -> dict:
+        """
+        Calculate suggested gravida/parity from historical MCH registrations.
+
+        Gravida = total pregnancies (including current active ones).
+        Parity = number of pregnancies that reached viability (delivered).
+
+        Returns dict with suggested_gravida, suggested_parity, and pregnancy_count.
+        """
+        all_registrations = cls.objects.filter(mother_id=mother_id)
+        total = all_registrations.count()
+        delivered = all_registrations.filter(
+            status__in=["DELIVERED", "POSTNATAL", "COMPLETED"],
+        ).count()
+
+        return {
+            "suggested_gravida": total + 1,  # +1 for the new registration being created
+            "suggested_parity": delivered,
+            "previous_pregnancies": total,
+        }
+
 
 # =============================================================================
 # ANC Visit Model

@@ -46,6 +46,17 @@ export interface MCHRegistrationListItem {
 }
 
 /**
+ * Baby info for multi-pregnancy support
+ */
+export interface BabyInfo {
+  id: number;
+  name: string;
+  mrn: string;
+  gender: string;
+  date_of_birth: string | null;
+}
+
+/**
  * MCH registration detail (full serializer)
  */
 export interface MCHRegistration extends MCHRegistrationListItem {
@@ -53,6 +64,10 @@ export interface MCHRegistration extends MCHRegistrationListItem {
   baby: number | null;
   baby_name: string | null;
   baby_mrn: string | null;
+  baby_count: number;
+  is_multiple_pregnancy: boolean;
+  all_babies_info: BabyInfo[];
+  inter_pregnancy_interval_days: number | null;
   risk_factors: string;
   sha_claimable: boolean;
   gbv_related: boolean;
@@ -63,6 +78,34 @@ export interface MCHRegistration extends MCHRegistrationListItem {
   completed_at: string | null;
   pnc_visit_count: number;
   updated_at: string;
+}
+
+/**
+ * Pregnancy history item (past registrations for same mother)
+ */
+export interface PregnancyHistoryItem {
+  id: number;
+  mch_number: string;
+  registration_date: string;
+  status: MCHRegistrationStatus;
+  edd: string | null;
+  delivery_date: string | null;
+  delivery_outcome: string | null;
+  baby_count: number;
+  inter_pregnancy_interval_days: number | null;
+  completed_at: string | null;
+}
+
+/**
+ * Suggested obstetric history (auto-calculated gravida/parity)
+ */
+export interface SuggestedObstetricHistory {
+  gravida: number;
+  parity: number;
+  previous_pregnancies: number;
+  previous_deliveries: number;
+  previous_live_births: number;
+  previous_stillbirths: number;
 }
 
 /**

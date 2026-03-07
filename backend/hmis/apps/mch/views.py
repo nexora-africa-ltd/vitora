@@ -45,6 +45,7 @@ from hmis.apps.mch.serializers import (
     MCHRegistrationCreateSerializer,
     MCHRegistrationListSerializer,
     MCHRegistrationSerializer,
+    PregnancyHistorySerializer,
     PNCVisitListSerializer,
     PNCVisitSerializer,
     VaccineSerializer,
@@ -518,6 +519,47 @@ class MCHRegistrationViewSet(viewsets.ModelViewSet):
         instance = self.get_queryset().get(pk=registration.pk)
 
         return Response(MCHRegistrationSerializer(instance).data)
+
+    @action(detail=True, methods=["get"])
+    def pregnancy_history(self, request, pk=None):
+        """
+        Get all past pregnancies for the same mother.
+
+        Returns a list of previous MCH registrations (excluding the current one)
+        ordered by registration_date desc. Useful for multi-gravida visibility.
+        """
+        registration = self.get_object()
+        previous = MCHRegistration.objects.filter(
+            mother=registration.mother,
+        ).exclude(pk=registration.pk).select_related("mother").order_by("-registration_date")
+
+        serializer = PregnancyHistorySerializer(previous, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["get"])
+    def suggested_obstetric_history(self, request):
+        """
+        Get auto-calculated gravida/parity for a mother.
+
+        Query param: mother={patient_id}
+        Returns suggested gravida, parity, and count of previous pregnancies.
+        """
+        mother_id = request.query_params.get("mother")
+        if not mother_id:
+            return Response(
+                {"detail": "mother query parameter is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            mother_id = int(mother_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "mother must be a valid integer."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        result = MCHRegistration.suggested_obstetric_history(mother_id)
+        return Response(result)
 
 
 class ANCVisitViewSet(viewsets.ModelViewSet):

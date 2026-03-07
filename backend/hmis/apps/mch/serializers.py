@@ -97,6 +97,10 @@ class MCHRegistrationSerializer(serializers.ModelSerializer):
     mother_mrn = serializers.CharField(source="mother.mrn", read_only=True)
     baby_name = serializers.SerializerMethodField()
     baby_mrn = serializers.SerializerMethodField()
+    baby_count = serializers.IntegerField(read_only=True)
+    is_multiple_pregnancy = serializers.BooleanField(read_only=True)
+    all_babies_info = serializers.SerializerMethodField()
+    inter_pregnancy_interval_days = serializers.SerializerMethodField()
     edd = serializers.SerializerMethodField()
     gestation_display = serializers.SerializerMethodField()
     trimester = serializers.SerializerMethodField()
@@ -119,6 +123,10 @@ class MCHRegistrationSerializer(serializers.ModelSerializer):
             "baby",
             "baby_name",
             "baby_mrn",
+            "baby_count",
+            "is_multiple_pregnancy",
+            "all_babies_info",
+            "inter_pregnancy_interval_days",
             "registration_date",
             "status",
             "is_high_risk",
@@ -161,6 +169,23 @@ class MCHRegistrationSerializer(serializers.ModelSerializer):
         if obj.baby:
             return obj.baby.mrn
         return None
+
+    def get_all_babies_info(self, obj):
+        """Return list of all babies for this registration (supports twins/multiples)."""
+        babies = obj.all_babies
+        return [
+            {
+                "id": baby.id,
+                "name": f"{baby.first_name} {baby.last_name}",
+                "mrn": baby.mrn,
+                "gender": baby.gender,
+                "date_of_birth": str(baby.date_of_birth) if baby.date_of_birth else None,
+            }
+            for baby in babies
+        ]
+
+    def get_inter_pregnancy_interval_days(self, obj):
+        return obj.inter_pregnancy_interval_days
 
     def get_edd(self, obj):
         return obj.edd
@@ -208,6 +233,45 @@ class MCHRegistrationCreateSerializer(serializers.ModelSerializer):
             "gbv_related",
             "notes",
         ]
+
+
+class PregnancyHistorySerializer(serializers.ModelSerializer):
+    """Lean serializer for pregnancy history — past registrations for the same mother."""
+
+    edd = serializers.SerializerMethodField()
+    delivery_date = serializers.SerializerMethodField()
+    delivery_outcome = serializers.SerializerMethodField()
+    baby_count = serializers.IntegerField(read_only=True)
+    inter_pregnancy_interval_days = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MCHRegistration
+        fields = [
+            "id",
+            "mch_number",
+            "registration_date",
+            "status",
+            "edd",
+            "delivery_date",
+            "delivery_outcome",
+            "baby_count",
+            "inter_pregnancy_interval_days",
+            "completed_at",
+        ]
+
+    def get_edd(self, obj):
+        return obj.edd
+
+    def get_delivery_date(self, obj):
+        delivery = obj.deliveries.order_by("-delivery_date").first()
+        return str(delivery.delivery_date) if delivery else None
+
+    def get_delivery_outcome(self, obj):
+        delivery = obj.deliveries.order_by("-delivery_date").first()
+        return delivery.delivery_outcome if delivery else None
+
+    def get_inter_pregnancy_interval_days(self, obj):
+        return obj.inter_pregnancy_interval_days
 
 
 # =============================================================================
