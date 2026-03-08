@@ -99,6 +99,7 @@ describe('Clinic Hooks - Patient Journey Store Integration', () => {
     it('should add patient to queue and sync to journey store', async () => {
       const mockVisit = createMockVisit();
       mockClinicsApi.addToQueue.mockResolvedValue(mockVisit);
+      const invalidateQueriesSpy = jest.spyOn(QueryClient.prototype, 'invalidateQueries');
 
       const { result } = renderHook(() => useAddToQueue(), { wrapper: createWrapper() });
 
@@ -127,6 +128,9 @@ describe('Clinic Hooks - Patient Journey Store Integration', () => {
       expect(patient?.name).toBe('John Doe');
       // addToWaitingQueue sets stage to AWAITING_TRIAGE per journey store logic
       expect(patient?.stage).toBe('AWAITING_TRIAGE');
+      expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ['consultation-queue'] });
+
+      invalidateQueriesSpy.mockRestore();
     });
 
     it('should register patient with correct details', async () => {

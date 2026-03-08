@@ -290,3 +290,23 @@ class TestTriageRouteToClinicAPI:
 
         assert response.status_code == status.HTTP_201_CREATED
         assert "queue_number" in response.data
+
+    def test_route_to_clinic_links_existing_encounter_to_clinic_visit(
+        self, authenticated_client, sample_triage, sample_encounter, eye_clinic
+    ):
+        """Routing from triage should reuse the existing encounter and link it to the visit."""
+        url = f"/api/triage/assessments/{sample_triage.id}/route-to-clinic/"
+
+        response = authenticated_client.post(
+            url,
+            {"clinic_id": eye_clinic.id},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+
+        visit = ClinicVisit.objects.get(pk=response.data["id"])
+        sample_encounter.refresh_from_db()
+
+        assert visit.encounter == sample_encounter
+        assert sample_encounter.clinic_visit == visit

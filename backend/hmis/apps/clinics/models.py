@@ -811,6 +811,72 @@ class ClinicVisit(TimeStampedModel):
         self.assigned_clinician = clinician
         self.save()
 
+    def ensure_consultation_encounter(self, existing_encounter=None):
+        """Ensure this clinic visit is linked to a consultation-ready encounter."""
+        from hmis.apps.encounters.models import Encounter
+
+        from hmis.apps.clinics.services.template_routing import resolve_default_clinical_template
+
+        resolved_template = resolve_default_clinical_template(self.session.clinic)
+        encounter = self.encounter or existing_encounter
+
+        if not encounter:
+            encounter_data = {
+                "patient": self.patient,
+                "encounter_type": self._map_clinic_to_encounter_type(),
+                "chief_complaint": self.chief_complaint or "See clinic notes",
+                "triage_status": ("COMPLETED" if self.triage_assessment else "NOT_APPLICABLE"),
+                "clinic_visit": self,
+                "clinical_template": resolved_template,
+            }
+
+            if self.triage_assessment:
+                ta = self.triage_assessment
+                if ta.temperature is not None:
+                    encounter_data["temperature"] = ta.temperature
+                if ta.heart_rate is not None:
+                    encounter_data["pulse"] = ta.heart_rate
+                if ta.respiratory_rate is not None:
+                    encounter_data["respiratory_rate"] = ta.respiratory_rate
+                if ta.spo2 is not None:
+                    encounter_data["spo2"] = ta.spo2
+                if ta.weight is not None:
+                    encounter_data["weight"] = ta.weight
+                if ta.systolic_bp is not None and ta.diastolic_bp is not None:
+                    encounter_data["blood_pressure"] = f"{ta.systolic_bp}/{ta.diastolic_bp}"
+                encounter_data["vitals_source"] = "TRIAGE"
+                encounter_data["vitals_recorded_at"] = ta.triage_end_time or ta.created_at
+                if ta.triaged_by:
+                    encounter_data["vitals_recorded_by"] = ta.triaged_by
+
+            encounter = Encounter.objects.create(**encounter_data)
+
+        encounter_updates = []
+        if encounter.clinic_visit_id != self.id:
+            encounter.clinic_visit = self
+            encounter_updates.append("clinic_visit")
+
+        if encounter.triage_status not in ("COMPLETED", "BYPASSED", "NOT_APPLICABLE"):
+            encounter.triage_status = "COMPLETED" if self.triage_assessment else "NOT_APPLICABLE"
+            encounter_updates.append("triage_status")
+
+        if not encounter.chief_complaint and self.chief_complaint:
+            encounter.chief_complaint = self.chief_complaint
+            encounter_updates.append("chief_complaint")
+
+        if encounter.clinical_template_id is None and resolved_template is not None:
+            encounter.clinical_template = resolved_template
+            encounter_updates.append("clinical_template")
+
+        if encounter_updates:
+            encounter.save(update_fields=encounter_updates)
+
+        if self.encounter_id != encounter.id:
+            self.encounter = encounter
+            self.save(update_fields=["encounter"])
+
+        return encounter
+
     def start_consultation(self, user=None):
         """
         Start consultation - creates encounter and generates billing.
@@ -827,78 +893,21 @@ class ClinicVisit(TimeStampedModel):
         3. Generates an Invoice for the consultation fee if not already charged
         4. Links the billing to the clinic visit
         """
-        from hmis.apps.encounters.models import Encounter
-
         self.status = "IN_CONSULTATION"
         self.consultation_started_at = timezone.now()
-
-        from hmis.apps.clinics.services.template_routing import resolve_default_clinical_template
-
-        resolved_template = resolve_default_clinical_template(self.session.clinic)
-
-        # Create encounter if not exists
-        if not self.encounter:
-            encounter_data = {
-                "patient": self.patient,
-                "encounter_type": self._map_clinic_to_encounter_type(),
-                "chief_complaint": self.chief_complaint or "See clinic notes",
-                "triage_status": ("COMPLETED" if self.triage_assessment else "NOT_APPLICABLE"),
-                "clinic_visit": self,
-                "clinical_template": resolved_template,
-            }
-
-            # Copy vitals from triage assessment if available
-            if self.triage_assessment:
-                ta = self.triage_assessment
-                if ta.temperature is not None:
-                    encounter_data["temperature"] = ta.temperature
-                if ta.heart_rate is not None:
-                    encounter_data["pulse"] = ta.heart_rate
-                if ta.respiratory_rate is not None:
-                    encounter_data["respiratory_rate"] = ta.respiratory_rate
-                if ta.spo2 is not None:
-                    encounter_data["spo2"] = ta.spo2
-                if ta.weight is not None:
-                    encounter_data["weight"] = ta.weight
-                if ta.systolic_bp is not None and ta.diastolic_bp is not None:
-                    encounter_data["blood_pressure"] = f"{ta.systolic_bp}/{ta.diastolic_bp}"
-                # Track vitals source
-                encounter_data["vitals_source"] = "TRIAGE"
-                encounter_data["vitals_recorded_at"] = ta.triage_end_time or ta.created_at
-                if ta.triaged_by:
-                    encounter_data["vitals_recorded_by"] = ta.triaged_by
-
-            self.encounter = Encounter.objects.create(**encounter_data)
-        else:
-            # Ensure forward link exists for reporting/traceability
-            if self.encounter.clinic_visit_id != self.id:
-                self.encounter.clinic_visit = self
-                self.encounter.save(update_fields=["clinic_visit"])
-
-            # Sync triage status from clinic visit's triage assessment
-            # This handles cases where an existing encounter has PENDING triage
-            # but the clinic visit workflow has completed its own triage.
-            if self.encounter.triage_status not in ("COMPLETED", "BYPASSED", "NOT_APPLICABLE"):
-                new_triage_status = "COMPLETED" if self.triage_assessment else "NOT_APPLICABLE"
-                self.encounter.triage_status = new_triage_status
-                self.encounter.save(update_fields=["triage_status"])
-
-            # If encounter exists but has no template, set a default (do not override)
-            if self.encounter.clinical_template_id is None and resolved_template is not None:
-                self.encounter.clinical_template = resolved_template
-                self.encounter.save(update_fields=["clinical_template"])
+        encounter = self.ensure_consultation_encounter()
 
         # Sync encounter consultation status (single source of truth)
         # This ensures the encounter is removed from the consultation queue
-        if self.encounter.consultation_status not in ("IN_PROGRESS", "COMPLETED"):
-            self.encounter.begin_consultation()
+        if encounter.consultation_status not in ("IN_PROGRESS", "COMPLETED"):
+            encounter.begin_consultation()
 
         # Generate billing if consultation fee not already charged
         if not self.consultation_fee_charged:
             self._generate_consultation_billing(user=user)
 
         self.save()
-        return self.encounter
+        return encounter
 
     def _generate_consultation_billing(self, user=None):
         """

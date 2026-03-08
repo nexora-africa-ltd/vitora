@@ -1049,6 +1049,7 @@ class TriageAssessment(models.Model):
         visit = ClinicVisit.objects.create(
             session=session,
             patient=self.encounter.patient,
+            encounter=self.encounter,
             triage_assessment=self,
             visit_type="NEW",
             source="TRIAGE",
@@ -1057,6 +1058,8 @@ class TriageAssessment(models.Model):
             notes=notes or "",
             registered_by=user,
         )
+
+        visit.ensure_consultation_encounter(existing_encounter=self.encounter)
 
         return visit
 

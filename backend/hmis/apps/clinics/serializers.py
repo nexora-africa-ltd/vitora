@@ -341,7 +341,9 @@ class ClinicVisitCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """Create a clinic visit with auto queue number."""
         validated_data["registered_by"] = self.context["request"].user
-        return super().create(validated_data)
+        visit = super().create(validated_data)
+        visit.ensure_consultation_encounter()
+        return visit
 
 
 class ClinicVisitReferSerializer(serializers.Serializer):
