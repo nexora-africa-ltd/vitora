@@ -927,20 +927,35 @@ export function PatientForm({
         }[idType] || idType,
         identification_number: idNumber,
       }),
+      patientsApi.checkDuplicate({
+        identification_number: idNumber,
+        identification_type: idType,
+      }),
       shaApi.checkDirectEligibility(
         idType === 'national_id' ? { national_id: idNumber } :
         idType === 'cr_number' ? { sha_number: idNumber } :
         { identification_type: idType, identification_number: idNumber }
       ),
-    ]).then(([crResult, shaResult]) => {
+    ]).then(([crResult, duplicateResult, shaResult]) => {
       setCrSearched(true);
+
+      if (duplicateResult.status === 'fulfilled') {
+        const duplicateData = duplicateResult.value;
+        if (duplicateData.has_duplicate && duplicateData.matches.length > 0) {
+          setDuplicateCheckResult(duplicateData);
+        }
+      } else {
+        console.warn('Duplicate check failed:', duplicateResult.reason);
+      }
 
       // Handle CR lookup result
       let crFound = false;
+      let foundCrClient: ClientRegistryClient | null = null;
       if (crResult.status === 'fulfilled') {
         const crResponse = crResult.value;
         if (crResponse.found && crResponse.client) {
           setCrClient(crResponse.client);
+          foundCrClient = crResponse.client;
           crFound = true;
           // Don't auto-populate here - let user confirm in dialog first
         }
@@ -968,9 +983,9 @@ export function PatientForm({
         if (hasShaDetails) {
           setPendingShaDetails(response);
           setShowVerificationDialog(true);
-        } else if (crFound && crClient) {
+        } else if (crFound && foundCrClient) {
           // No SHA details but CR found - auto-populate
-          populateFromCRClient(crClient);
+          populateFromCRClient(foundCrClient);
           toast({
             title: 'Client Registry Record Found',
             description: 'Patient details auto-populated from registry.',
@@ -1002,8 +1017,8 @@ export function PatientForm({
         });
 
         // If only CR found, populate from it
-        if (crFound && crClient) {
-          populateFromCRClient(crClient);
+        if (crFound && foundCrClient) {
+          populateFromCRClient(foundCrClient);
           toast({
             title: 'Client Registry Record Found',
             description: 'Patient details auto-populated from registry.',
@@ -1015,7 +1030,7 @@ export function PatientForm({
       setIsCheckingEligibility(false);
       setFormLocked(false);
     });
-  }, [form, toast, populateFromCRClient, crClient]);
+  }, [form, toast, populateFromCRClient]);
 
   // Handle Enter/Tab key on ID input field
   const handleIdInputKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
