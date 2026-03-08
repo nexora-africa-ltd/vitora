@@ -40,6 +40,25 @@ def default_recommendation_expiry():
     return timezone.now() + timedelta(hours=24)
 
 
+MATERNITY_CONTINUITY_ACTION_CHOICES = [
+    ("NONE", "No Continuity Action"),
+    ("CONTINUE_POSTPARTUM_OBSERVATION", "Continue Postpartum Observation"),
+    ("SCHEDULE_EARLY_PNC", "Schedule Early PNC"),
+    ("ROUTE_TO_PNC_QUEUE", "Route To PNC Queue"),
+]
+
+MATERNITY_DISCHARGE_CONTINUITY_ACTIONS = {
+    "SCHEDULE_EARLY_PNC",
+    "ROUTE_TO_PNC_QUEUE",
+}
+
+MATERNITY_CONTINUITY_STATUS_CHOICES = [
+    ("NOT_APPLICABLE", "Not Applicable"),
+    ("SCHEDULED", "Scheduled"),
+    ("QUEUED", "Queued"),
+]
+
+
 class Ward(TimeStampedModel):
     """
     Hospital ward for inpatient care.
@@ -939,6 +958,35 @@ class Discharge(TimeStampedModel):
         help_text="List of discharge medications with dosage and instructions",
     )
 
+    maternity_continuity_action = models.CharField(
+        max_length=40,
+        choices=MATERNITY_CONTINUITY_ACTION_CHOICES,
+        default="NONE",
+        help_text="Structured postpartum continuity action for maternity discharges",
+    )
+    maternity_continuity_status = models.CharField(
+        max_length=20,
+        choices=MATERNITY_CONTINUITY_STATUS_CHOICES,
+        default="NOT_APPLICABLE",
+        help_text="Outcome of the postpartum continuity action",
+    )
+    pnc_clinic_visit = models.ForeignKey(
+        "clinics.ClinicVisit",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="discharge_continuity_routes",
+        help_text="PNC clinic visit created directly from maternity discharge",
+    )
+    pnc_appointment = models.ForeignKey(
+        "scheduling.Appointment",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="discharge_continuity_appointments",
+        help_text="Scheduled PNC follow-up appointment created from maternity discharge",
+    )
+
     # Follow-up
     follow_up_date = models.DateField(
         null=True,
@@ -1235,6 +1283,18 @@ class WardRound(TimeStampedModel):
     assessment = models.TextField(help_text="Clinical assessment, diagnosis updates")
     plan = models.TextField(help_text="Treatment plan, orders, next steps")
 
+    maternity_continuity_action = models.CharField(
+        max_length=40,
+        choices=MATERNITY_CONTINUITY_ACTION_CHOICES,
+        default="NONE",
+        help_text="Planned postpartum continuity step captured during ward review",
+    )
+    maternity_continuity_notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Postpartum continuity notes for the next nursing or discharge workflow step",
+    )
+
     # Patient condition tracking
     condition_status = models.CharField(max_length=20, choices=CONDITION_STATUS_CHOICES)
 
@@ -1453,6 +1513,16 @@ class NursingKardex(models.Model):
     allergies = models.TextField(blank=True, help_text="Known allergies")
     iv_access = models.CharField(
         max_length=200, blank=True, help_text="IV access details (e.g., Right arm IV cannula)"
+    )
+    maternity_continuity_action = models.CharField(
+        max_length=40,
+        choices=MATERNITY_CONTINUITY_ACTION_CHOICES,
+        default="NONE",
+        help_text="Current postpartum continuity action the nursing team is working toward",
+    )
+    maternity_continuity_notes = models.TextField(
+        blank=True,
+        help_text="Operational postpartum continuity notes for nursing handoff and discharge workflow",
     )
 
     # Legacy nursing care plan fields (deprecated - use care_plan_entries instead)

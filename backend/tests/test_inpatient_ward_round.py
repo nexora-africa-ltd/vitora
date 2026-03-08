@@ -366,3 +366,24 @@ class TestConditionStatusTracking:
 
         assert critical_round.condition_status == "CRITICAL"
         assert critical_round.requires_consultant_review is True
+
+    def test_postpartum_continuity_fields_capture_next_maternity_step(
+        self, sample_admission, test_user
+    ):
+        """Ward rounds should capture structured postpartum continuity intent for maternity care."""
+        ward_round = WardRound.objects.create(
+            admission=sample_admission,
+            round_date=date.today(),
+            round_time=time(11, 0),
+            conducted_by=test_user,
+            subjective="Mother recovering well after delivery",
+            objective="Bleeding minimal, vitals stable, breastfeeding established",
+            assessment="Stable postpartum recovery",
+            plan="Prepare for step-down and early PNC linkage",
+            condition_status="IMPROVING",
+            maternity_continuity_action="SCHEDULE_EARLY_PNC",
+            maternity_continuity_notes="Book day 7 early PNC review before discharge.",
+        )
+
+        assert ward_round.maternity_continuity_action == "SCHEDULE_EARLY_PNC"
+        assert "day 7" in ward_round.maternity_continuity_notes.lower()

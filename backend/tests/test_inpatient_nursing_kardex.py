@@ -90,6 +90,18 @@ class TestNursingKardex:
             assert kardex.fall_risk == risk_level
             assert kardex.pressure_sore_risk == risk_level
 
+    def test_kardex_tracks_postpartum_continuity_workflow(self, sample_admission):
+        """Kardex should track the planned postpartum continuity action for nursing teams."""
+        kardex = sample_admission.kardex
+
+        kardex.maternity_continuity_action = "ROUTE_TO_PNC_QUEUE"
+        kardex.maternity_continuity_notes = "Keep discharge teaching complete, then escort mother to PNC queue."
+        kardex.save()
+
+        refreshed_kardex = NursingKardex.objects.get(pk=kardex.pk)
+        assert refreshed_kardex.maternity_continuity_action == "ROUTE_TO_PNC_QUEUE"
+        assert "escort mother" in refreshed_kardex.maternity_continuity_notes.lower()
+
 
 @pytest.mark.django_db
 class TestKardexShiftNote:

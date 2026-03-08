@@ -35,6 +35,30 @@ def anc_enrollment(db, anc_clinic, sample_patient, test_user):
 
 
 @pytest.fixture
+def pnc_clinic(db):
+    from hmis.apps.clinics.models import Clinic
+
+    return Clinic.objects.create(
+        name="PNC Continuity Clinic",
+        clinic_type="PNC",
+        code="PNC-MAT-001",
+        status="ACTIVE",
+    )
+
+
+@pytest.fixture
+def pnc_resource(db):
+    from hmis.apps.scheduling.models import Resource
+
+    return Resource.objects.create(
+        name="PNC Follow-up Room",
+        resource_type="PLACE",
+        code="PNC-ROOM-001",
+        is_active=True,
+    )
+
+
+@pytest.fixture
 def mch_registration(db, sample_patient, anc_enrollment):
     from hmis.apps.mch.models import MCHRegistration
 
@@ -313,7 +337,7 @@ class TestMaternityEpisodeLinkage:
         assert delivery.partograph_id == partograph.id
         assert delivery.admission_id == admission.id
 
-    def test_create_maternity_discharge_requires_follow_up_date(
+    def test_create_maternity_discharge_requires_follow_up_date_when_scheduling_early_pnc(
         self,
         authenticated_client,
         test_user,
@@ -356,6 +380,7 @@ class TestMaternityEpisodeLinkage:
                 "admission_diagnosis": "O80",
                 "final_diagnosis": "O80",
                 "final_diagnosis_text": "Delivered with stable postpartum recovery",
+                "maternity_continuity_action": "SCHEDULE_EARLY_PNC",
                 "treatment_summary": "Observed in postpartum ward after uncomplicated vaginal delivery",
                 "patient_instructions": "Return for review as advised",
                 "pharmacy_cleared": True,
@@ -367,6 +392,151 @@ class TestMaternityEpisodeLinkage:
 
         assert response.status_code == 400
         assert "follow_up_date" in response.data
+
+    def test_create_maternity_discharge_schedules_early_pnc_follow_up(
+        self,
+        authenticated_client,
+        test_user,
+        sample_patient,
+        sample_encounter,
+        mch_registration,
+        maternity_ward,
+        maternity_bed,
+        pnc_resource,
+    ):
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.inpatient.models import Admission, Discharge
+        from hmis.apps.scheduling.models import Appointment
+
+        ipd_encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="IPD",
+            chief_complaint="Post-delivery care",
+        )
+        admission = Admission.objects.create(
+            patient=sample_patient,
+            opd_encounter=sample_encounter,
+            ipd_encounter=ipd_encounter,
+            mch_registration=mch_registration,
+            admission_date=timezone.now(),
+            admitting_diagnosis="O80",
+            admitting_diagnosis_text="Normal delivery admission",
+            admitting_officer=test_user,
+            attending_doctor=test_user,
+            ward=maternity_ward,
+            bed=maternity_bed,
+            payer_type="SHA",
+        )
+        follow_up_date = (timezone.now() + timedelta(days=7)).date()
+
+        response = authenticated_client.post(
+            reverse("inpatient:discharge-list"),
+            {
+                "admission": admission.id,
+                "discharge_type": "NORMAL",
+                "discharge_date": timezone.now().isoformat(),
+                "discharged_by": test_user.id,
+                "admission_diagnosis": "O80",
+                "final_diagnosis": "O80",
+                "final_diagnosis_text": "Delivered with stable postpartum recovery",
+                "maternity_continuity_action": "SCHEDULE_EARLY_PNC",
+                "follow_up_date": follow_up_date.isoformat(),
+                "follow_up_instructions": "Attend early PNC review in one week",
+                "treatment_summary": "Observed in postpartum ward after uncomplicated vaginal delivery",
+                "patient_instructions": "Return immediately if heavy bleeding occurs",
+                "pharmacy_cleared": True,
+                "billing_cleared": True,
+                "lab_results_acknowledged": True,
+            },
+            format="json",
+        )
+
+        assert response.status_code == 201
+
+        discharge = Discharge.objects.get(pk=response.data["id"])
+        appointment = Appointment.objects.get(pk=discharge.pnc_appointment_id)
+
+        mch_registration.refresh_from_db()
+
+        assert discharge.maternity_continuity_action == "SCHEDULE_EARLY_PNC"
+        assert discharge.maternity_continuity_status == "SCHEDULED"
+        assert discharge.pnc_appointment_id is not None
+        assert discharge.pnc_clinic_visit_id is None
+        assert appointment.patient_id == sample_patient.id
+        assert appointment.scheduled_start.date() == follow_up_date
+        assert mch_registration.status == "POSTNATAL"
+
+    def test_create_maternity_discharge_routes_directly_to_pnc_queue(
+        self,
+        authenticated_client,
+        test_user,
+        sample_patient,
+        sample_encounter,
+        mch_registration,
+        maternity_ward,
+        maternity_bed,
+        pnc_clinic,
+    ):
+        from hmis.apps.clinics.models import ClinicVisit
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.inpatient.models import Admission, Discharge
+
+        ipd_encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="IPD",
+            chief_complaint="Post-delivery care",
+        )
+        admission = Admission.objects.create(
+            patient=sample_patient,
+            opd_encounter=sample_encounter,
+            ipd_encounter=ipd_encounter,
+            mch_registration=mch_registration,
+            admission_date=timezone.now(),
+            admitting_diagnosis="O80",
+            admitting_diagnosis_text="Normal delivery admission",
+            admitting_officer=test_user,
+            attending_doctor=test_user,
+            ward=maternity_ward,
+            bed=maternity_bed,
+            payer_type="SHA",
+        )
+
+        response = authenticated_client.post(
+            reverse("inpatient:discharge-list"),
+            {
+                "admission": admission.id,
+                "discharge_type": "NORMAL",
+                "discharge_date": timezone.now().isoformat(),
+                "discharged_by": test_user.id,
+                "admission_diagnosis": "O80",
+                "final_diagnosis": "O80",
+                "final_diagnosis_text": "Delivered with stable postpartum recovery",
+                "maternity_continuity_action": "ROUTE_TO_PNC_QUEUE",
+                "follow_up_instructions": "Proceed directly to early PNC triage",
+                "treatment_summary": "Observed in postpartum ward after uncomplicated vaginal delivery",
+                "patient_instructions": "Proceed to the PNC clinic desk before leaving",
+                "pharmacy_cleared": True,
+                "billing_cleared": True,
+                "lab_results_acknowledged": True,
+            },
+            format="json",
+        )
+
+        assert response.status_code == 201
+
+        discharge = Discharge.objects.get(pk=response.data["id"])
+        clinic_visit = ClinicVisit.objects.get(pk=discharge.pnc_clinic_visit_id)
+
+        mch_registration.refresh_from_db()
+
+        assert discharge.maternity_continuity_action == "ROUTE_TO_PNC_QUEUE"
+        assert discharge.maternity_continuity_status == "QUEUED"
+        assert discharge.pnc_clinic_visit_id is not None
+        assert discharge.pnc_appointment_id is None
+        assert clinic_visit.patient_id == sample_patient.id
+        assert clinic_visit.session.clinic_id == pnc_clinic.id
+        assert clinic_visit.source_module == "MCH_PNC"
+        assert mch_registration.status == "POSTNATAL"
 
     def test_create_pnc_visit_links_to_postpartum_discharge_and_admission(
         self,

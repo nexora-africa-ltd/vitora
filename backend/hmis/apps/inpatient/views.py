@@ -1154,7 +1154,12 @@ class DischargeViewSet(viewsets.ModelViewSet):
     - PATCH /api/inpatient/discharges/{id}/ - Update discharge
     """
 
-    queryset = Discharge.objects.select_related("admission", "admission__mch_registration")
+    queryset = Discharge.objects.select_related(
+        "admission",
+        "admission__mch_registration",
+        "pnc_clinic_visit",
+        "pnc_appointment",
+    )
     serializer_class = DischargeSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

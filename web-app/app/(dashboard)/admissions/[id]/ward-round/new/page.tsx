@@ -23,7 +23,7 @@ import { useAdmission, useCreateWardRound } from '@/lib/hooks/use-inpatient';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
-import type { ConditionStatus, ReviewType } from '@/lib/types/inpatient';
+import type { ConditionStatus, MaternityContinuityAction, ReviewType } from '@/lib/types/inpatient';
 import type { AIQuickAction } from '@/lib/types/ai';
 
 const CONDITION_STATUSES: { value: ConditionStatus; label: string; description: string }[] = [
@@ -39,6 +39,13 @@ const REVIEW_TYPES: { value: ReviewType; label: string; description: string }[] 
   { value: 'CONSULTANT_REVIEW', label: 'Consultant Review', description: 'Specialist evaluation' },
   { value: 'TRANSFER_REVIEW', label: 'Transfer Assessment', description: 'Assessment before or after ward transfer' },
   { value: 'PRE_DISCHARGE', label: 'Pre-Discharge Assessment', description: 'Discharge readiness evaluation' },
+];
+
+const MATERNITY_CONTINUITY_ACTIONS: { value: MaternityContinuityAction; label: string }[] = [
+  { value: 'NONE', label: 'No postpartum workflow set' },
+  { value: 'CONTINUE_POSTPARTUM_OBSERVATION', label: 'Continue Postpartum Observation' },
+  { value: 'SCHEDULE_EARLY_PNC', label: 'Prepare Early PNC Scheduling' },
+  { value: 'ROUTE_TO_PNC_QUEUE', label: 'Prepare Direct PNC Queue Routing' },
 ];
 
 /**
@@ -83,6 +90,8 @@ export default function NewWardRoundPage() {
   const [objective, setObjective] = useState('');
   const [assessment, setAssessment] = useState('');
   const [plan, setPlan] = useState('');
+  const [maternityContinuityAction, setMaternityContinuityAction] = useState<MaternityContinuityAction>('NONE');
+  const [maternityContinuityNotes, setMaternityContinuityNotes] = useState('');
 
   // Vitals
   const [temperature, setTemperature] = useState('');
@@ -266,6 +275,8 @@ export default function NewWardRoundPage() {
         objective: objective.trim() || 'See clinical notes',
         assessment: assessment.trim() || 'See clinical notes',
         plan: plan.trim() || 'See clinical notes',
+        maternity_continuity_action: admission?.mch_registration ? maternityContinuityAction : undefined,
+        maternity_continuity_notes: admission?.mch_registration ? maternityContinuityNotes.trim() || undefined : undefined,
         temperature: temperature ? parseFloat(temperature) : undefined,
         pulse: pulse ? parseInt(pulse) : undefined,
         blood_pressure: bloodPressure || undefined,
@@ -410,6 +421,47 @@ export default function NewWardRoundPage() {
           </Select>
         </CardContent>
       </Card>
+
+      {admission.mch_registration && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-lg">Postpartum Continuity</CardTitle>
+              <HelpPopover content="Capture the next maternity workflow step while the mother is still admitted so ward rounds and discharge stay aligned." />
+            </div>
+            <CardDescription>
+              This admission is linked to {admission.mch_registration_number || `MCH #${admission.mch_registration}`}. Record the intended early PNC workflow here.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="maternity-continuity-action">Postpartum Workflow</Label>
+              <Select value={maternityContinuityAction} onValueChange={(value) => setMaternityContinuityAction(value as MaternityContinuityAction)}>
+                <SelectTrigger id="maternity-continuity-action" className="w-full md:w-[320px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MATERNITY_CONTINUITY_ACTIONS.map((action) => (
+                    <SelectItem key={action.value} value={action.value}>
+                      {action.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="maternity-continuity-notes">Postpartum Workflow Notes</Label>
+              <Textarea
+                id="maternity-continuity-notes"
+                value={maternityContinuityNotes}
+                onChange={(e) => setMaternityContinuityNotes(e.target.value)}
+                placeholder="Document what still needs to happen before postpartum transition, for example discharge teaching, breastfeeding review, or who should escort the mother to PNC."
+                rows={3}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Vitals */}
       <Card>

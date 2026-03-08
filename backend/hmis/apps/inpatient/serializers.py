@@ -5,6 +5,11 @@ Serializers for the inpatient app.
 from rest_framework import serializers
 
 from hmis.apps.encounters.models import Encounter
+from hmis.apps.mch.services.postpartum_continuity import (
+    route_registration_to_pnc_queue,
+    schedule_registration_pnc_follow_up,
+    transition_registration_to_postnatal,
+)
 
 from .models import (
     Admission,
@@ -317,6 +322,14 @@ class DischargeSerializer(serializers.ModelSerializer):
     discharge_type_display = serializers.CharField(
         source="get_discharge_type_display", read_only=True
     )
+    maternity_continuity_action_display = serializers.CharField(
+        source="get_maternity_continuity_action_display", read_only=True
+    )
+    maternity_continuity_status_display = serializers.CharField(
+        source="get_maternity_continuity_status_display", read_only=True
+    )
+    pnc_clinic_visit = serializers.IntegerField(source="pnc_clinic_visit_id", read_only=True)
+    pnc_appointment = serializers.IntegerField(source="pnc_appointment_id", read_only=True)
     length_of_stay = serializers.ReadOnlyField()
 
     class Meta:
@@ -339,6 +352,12 @@ class DischargeSerializer(serializers.ModelSerializer):
             "procedures_performed",
             "treatment_summary",
             "discharge_medications",
+            "maternity_continuity_action",
+            "maternity_continuity_action_display",
+            "maternity_continuity_status",
+            "maternity_continuity_status_display",
+            "pnc_clinic_visit",
+            "pnc_appointment",
             "follow_up_date",
             "follow_up_instructions",
             "referral_facility",
@@ -351,7 +370,12 @@ class DischargeSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = [
+            "id",
+            "maternity_continuity_status",
+            "created_at",
+            "updated_at",
+        ]
 
     def validate(self, attrs):
         admission = attrs.get("admission") or getattr(self.instance, "admission", None)
@@ -366,13 +390,92 @@ class DischargeSerializer(serializers.ModelSerializer):
             admission
             and admission.mch_registration_id
             and discharge_type in {"NORMAL", "TRANSFERRED"}
-            and follow_up_date is None
         ):
-            raise serializers.ValidationError(
-                {"follow_up_date": "Maternity discharges require a documented postpartum follow-up date."}
+            action = attrs.get("maternity_continuity_action") or getattr(
+                self.instance, "maternity_continuity_action", "NONE"
             )
+            if action not in {"SCHEDULE_EARLY_PNC", "ROUTE_TO_PNC_QUEUE"}:
+                raise serializers.ValidationError(
+                    {
+                        "maternity_continuity_action": (
+                            "Maternity discharges must either schedule early PNC or route directly to the PNC queue."
+                        )
+                    }
+                )
+            if action == "SCHEDULE_EARLY_PNC" and follow_up_date is None:
+                raise serializers.ValidationError(
+                    {"follow_up_date": "Scheduling early PNC requires a follow-up date."}
+                )
+        elif admission and not admission.mch_registration_id:
+            action = attrs.get("maternity_continuity_action") or getattr(
+                self.instance, "maternity_continuity_action", "NONE"
+            )
+            if action != "NONE":
+                raise serializers.ValidationError(
+                    {
+                        "maternity_continuity_action": (
+                            "Only maternity-linked admissions can use postpartum continuity actions."
+                        )
+                    }
+                )
 
         return attrs
+
+    def _apply_maternity_continuity(self, discharge: Discharge) -> None:
+        registration = discharge.admission.mch_registration
+        if registration is None:
+            return
+
+        transition_registration_to_postnatal(registration)
+
+        if discharge.maternity_continuity_action == "SCHEDULE_EARLY_PNC":
+            appointment = schedule_registration_pnc_follow_up(
+                registration,
+                visit_date=discharge.follow_up_date,
+                user=discharge.discharged_by,
+                notes=discharge.follow_up_instructions,
+            )
+            discharge.pnc_appointment = appointment
+            discharge.pnc_clinic_visit = None
+            discharge.maternity_continuity_status = "SCHEDULED"
+        elif discharge.maternity_continuity_action == "ROUTE_TO_PNC_QUEUE":
+            clinic_visit = route_registration_to_pnc_queue(
+                registration,
+                user=discharge.discharged_by,
+                routing_date=discharge.discharge_date.date(),
+                notes=discharge.follow_up_instructions,
+            )
+            discharge.pnc_clinic_visit = clinic_visit
+            discharge.pnc_appointment = None
+            discharge.maternity_continuity_status = "QUEUED"
+        else:
+            discharge.maternity_continuity_status = "NOT_APPLICABLE"
+
+        discharge.save(
+            update_fields=[
+                "maternity_continuity_status",
+                "pnc_clinic_visit",
+                "pnc_appointment",
+                "updated_at",
+            ]
+        )
+
+    def create(self, validated_data):
+        discharge = super().create(validated_data)
+        self._apply_maternity_continuity(discharge)
+        return discharge
+
+    def update(self, instance, validated_data):
+        discharge = super().update(instance, validated_data)
+        if discharge.admission.mch_registration_id and discharge.maternity_continuity_action in {
+            "SCHEDULE_EARLY_PNC",
+            "ROUTE_TO_PNC_QUEUE",
+        }:
+            if discharge.maternity_continuity_action == "SCHEDULE_EARLY_PNC" and discharge.pnc_appointment_id is None:
+                self._apply_maternity_continuity(discharge)
+            elif discharge.maternity_continuity_action == "ROUTE_TO_PNC_QUEUE" and discharge.pnc_clinic_visit_id is None:
+                self._apply_maternity_continuity(discharge)
+        return discharge
 
     def get_patient_name(self, obj) -> str:
         """Get patient full name."""
@@ -464,6 +567,9 @@ class WardRoundSerializer(serializers.ModelSerializer):
     review_type_display = serializers.CharField(
         source="get_review_type_display", read_only=True
     )
+    maternity_continuity_action_display = serializers.CharField(
+        source="get_maternity_continuity_action_display", read_only=True
+    )
 
     class Meta:
         model = WardRound
@@ -483,6 +589,9 @@ class WardRoundSerializer(serializers.ModelSerializer):
             "objective",
             "assessment",
             "plan",
+            "maternity_continuity_action",
+            "maternity_continuity_action_display",
+            "maternity_continuity_notes",
             "condition_status",
             "condition_status_display",
             "requires_consultant_review",
@@ -694,6 +803,9 @@ class NursingKardexSerializer(serializers.ModelSerializer):
     pressure_sore_risk_display = serializers.CharField(
         source="get_pressure_sore_risk_display", read_only=True
     )
+    maternity_continuity_action_display = serializers.CharField(
+        source="get_maternity_continuity_action_display", read_only=True
+    )
 
     class Meta:
         model = NursingKardex
@@ -709,6 +821,9 @@ class NursingKardexSerializer(serializers.ModelSerializer):
             "dietary_requirements",
             "allergies",
             "iv_access",
+            "maternity_continuity_action",
+            "maternity_continuity_action_display",
+            "maternity_continuity_notes",
             # Legacy nursing care plan fields (deprecated)
             "nursing_problems",
             "interventions",

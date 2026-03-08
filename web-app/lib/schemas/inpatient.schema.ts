@@ -53,6 +53,19 @@ export const DischargeTypeSchema = z.enum([
   'ABSCONDED',
 ]);
 
+export const MaternityContinuityActionSchema = z.enum([
+  'NONE',
+  'CONTINUE_POSTPARTUM_OBSERVATION',
+  'SCHEDULE_EARLY_PNC',
+  'ROUTE_TO_PNC_QUEUE',
+]);
+
+export const MaternityContinuityStatusSchema = z.enum([
+  'NOT_APPLICABLE',
+  'SCHEDULED',
+  'QUEUED',
+]);
+
 export const TransferReasonSchema = z.enum([
   'STEP_UP',
   'STEP_DOWN',
@@ -257,6 +270,12 @@ export const DischargeSchema = z.object({
   procedures_performed: z.string().optional(),
   treatment_summary: z.string(),
   discharge_medications: z.array(DischargeMedicationSchema),
+  maternity_continuity_action: MaternityContinuityActionSchema,
+  maternity_continuity_action_display: z.string().optional(),
+  maternity_continuity_status: MaternityContinuityStatusSchema,
+  maternity_continuity_status_display: z.string().optional(),
+  pnc_clinic_visit: z.number().nullable().optional(),
+  pnc_appointment: z.number().nullable().optional(),
   follow_up_date: z.string().nullable().optional(),
   follow_up_instructions: z.string().optional(),
   referral_facility: z.string().optional(),
@@ -335,6 +354,9 @@ export const WardRoundSchema = z.object({
   objective: z.string(),
   assessment: z.string(),
   plan: z.string(),
+  maternity_continuity_action: MaternityContinuityActionSchema.optional(),
+  maternity_continuity_action_display: z.string().optional(),
+  maternity_continuity_notes: z.string().optional(),
   // Legacy alias
   clinical_notes: z.string().optional(),
   // Vital signs (can be nested or individual)
@@ -474,6 +496,9 @@ export const NursingKardexSchema = z.object({
   diet: z.string().optional(),
   allergies: z.string().optional(),
   iv_access: z.string().optional(),
+  maternity_continuity_action: MaternityContinuityActionSchema.optional(),
+  maternity_continuity_action_display: z.string().optional(),
+  maternity_continuity_notes: z.string().optional(),
   // Risk assessments
   fall_risk: RiskLevelSchema,
   fall_risk_display: z.string().optional(),
