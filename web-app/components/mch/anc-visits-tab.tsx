@@ -35,6 +35,8 @@ import type { ANCVisitCreateData, FetalPresentation, UrineResult } from '@/lib/t
 interface ANCVisitsTabProps {
   registrationId: number;
   isDelivered?: boolean;
+  clinicVisitId?: number | null;
+  encounterId?: number | null;
 }
 
 const PRESENTATION_OPTIONS: { value: FetalPresentation; label: string }[] = [
@@ -56,7 +58,12 @@ const URINE_OPTIONS: { value: UrineResult; label: string }[] = [
   { value: '4+', label: '4+' },
 ];
 
-export function ANCVisitsTab({ registrationId, isDelivered = false }: ANCVisitsTabProps) {
+export function ANCVisitsTab({
+  registrationId,
+  isDelivered = false,
+  clinicVisitId = null,
+  encounterId = null,
+}: ANCVisitsTabProps) {
   const { user } = useAuth();
   const isAdminUser = user?.is_staff || user?.is_superuser;
   const queryClient = useQueryClient();
@@ -139,6 +146,8 @@ export function ANCVisitsTab({ registrationId, isDelivered = false }: ANCVisitsT
     e.preventDefault();
     createMutation.mutate({
       registration: registrationId,
+      encounter: encounterId ?? undefined,
+      clinic_visit: clinicVisitId ?? undefined,
       visit_date: visitDate,
       weight: weight ? parseFloat(weight) : undefined,
       blood_pressure: bloodPressure,
@@ -170,6 +179,15 @@ export function ANCVisitsTab({ registrationId, isDelivered = false }: ANCVisitsT
 
   return (
     <div className="space-y-4">
+      {clinicVisitId ? (
+        <Card className="border-sky-200 bg-sky-50/70">
+          <CardContent className="py-3 text-sm text-sky-900">
+            This ANC form is linked to clinic visit #{clinicVisitId}
+            {encounterId ? ` and encounter #${encounterId}` : ''}.
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">ANC Visits</h3>
@@ -423,6 +441,11 @@ export function ANCVisitsTab({ registrationId, isDelivered = false }: ANCVisitsT
                   <div className="flex items-center gap-1.5 mt-2 text-xs text-blue-600">
                     <Calendar className="h-3 w-3" />
                     Next visit: {formatDate(visit.next_visit_date)}
+                  </div>
+                )}
+                {visit.clinic_visit && (
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Linked clinic visit #{visit.clinic_visit}
                   </div>
                 )}
               </CardContent>

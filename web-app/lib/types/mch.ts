@@ -166,6 +166,7 @@ export interface ANCVisit {
   registration: number;
   registration_mch_number: string;
   encounter: number | null;
+  clinic_visit: number | null;
   visit_number: number;
   visit_date: string;
   gestation_weeks: number | null;
@@ -219,6 +220,7 @@ export interface ANCVisitListItem {
 export interface ANCVisitCreateData {
   registration: number;
   encounter?: number;
+  clinic_visit?: number;
   visit_number?: number;
   visit_date?: string;
   weight?: number;
@@ -612,6 +614,7 @@ export interface PNCVisit {
   registration: number;
   registration_mch_number: string;
   encounter: number | null;
+  clinic_visit: number | null;
   visit_number: number;
   visit_date: string;
   days_postpartum: number;
@@ -641,6 +644,7 @@ export interface PNCVisit {
 export interface PNCVisitListItem {
   id: number;
   registration: number;
+  clinic_visit?: number | null;
   visit_number: number;
   visit_date: string;
   days_postpartum: number;
@@ -655,6 +659,7 @@ export interface PNCVisitListItem {
 export interface PNCVisitCreateData {
   registration: number;
   encounter?: number;
+  clinic_visit?: number;
   visit_number?: number;
   visit_date?: string;
   blood_pressure?: string;

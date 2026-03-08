@@ -185,6 +185,20 @@ export const mchRegistrationsApi = {
   },
 
   /**
+   * Route mother to today's PNC clinic queue
+   */
+  routeToPNC: async (id: number, data?: { clinic_id?: number; notes?: string }): Promise<{
+    message: string;
+    clinic_visit_id: number;
+    queue_number: number;
+    clinic: string;
+    session_id: number;
+  }> => {
+    const response = await apiClient.post(`${BASE_URL}/registrations/${id}/route_to_pnc/`, data || {});
+    return response.data;
+  },
+
+  /**
    * Schedule a future ANC visit (creates appointment)
    */
   scheduleANCVisit: async (id: number, data: { date: string; notes?: string }): Promise<{
