@@ -363,6 +363,8 @@ export interface ClinicVisit {
   source_display: string;
   source_module?: string;
   source_record_id?: number | null;
+  mch_registration_id?: number | null;
+  mch_registration_number?: string;
   chief_complaint?: string;
   notes?: string;
   registered_at: string;

@@ -228,6 +228,8 @@ class ClinicVisitSerializer(serializers.ModelSerializer):
         source="assigned_clinician.get_full_name", read_only=True
     )
     registered_by_name = serializers.SerializerMethodField()
+    mch_registration_id = serializers.SerializerMethodField()
+    mch_registration_number = serializers.SerializerMethodField()
 
     class Meta:
         """Meta options for ClinicVisitSerializer."""
@@ -251,6 +253,8 @@ class ClinicVisitSerializer(serializers.ModelSerializer):
             "source_display",
             "source_module",
             "source_record_id",
+            "mch_registration_id",
+            "mch_registration_number",
             "registered_at",
             "called_at",
             "consultation_started_at",
@@ -295,6 +299,24 @@ class ClinicVisitSerializer(serializers.ModelSerializer):
         """Get the name of the user who registered this visit."""
         if obj.registered_by:
             return obj.registered_by.get_full_name() or obj.registered_by.username
+        return ""
+
+    def get_mch_registration_id(self, obj) -> int | None:
+        """Return the owning MCH registration id when the visit originated from MCH flows."""
+        if hasattr(obj, "anc_visit") and obj.anc_visit:
+            return obj.anc_visit.registration_id
+        if hasattr(obj, "pnc_visit") and obj.pnc_visit:
+            return obj.pnc_visit.registration_id
+        if obj.source_module in {"MCH_ANC", "MCH_PNC"}:
+            return obj.source_record_id
+        return None
+
+    def get_mch_registration_number(self, obj) -> str:
+        """Return the owning MCH registration number when available."""
+        if hasattr(obj, "anc_visit") and obj.anc_visit:
+            return obj.anc_visit.registration.mch_number
+        if hasattr(obj, "pnc_visit") and obj.pnc_visit:
+            return obj.pnc_visit.registration.mch_number
         return ""
 
 

@@ -29,6 +29,42 @@ Clinical templates (from [backend/data/clinical_templates](backend/data/clinical
 - Templates must be loaded into the DB (typically via `python manage.py load_clinical_templates`) for routing to return a `ClinicalTemplate`.
 - To backfill existing clinics that lack defaults, use `python manage.py populate_clinic_default_templates`.
 
+## MCH Flow Unification Operations
+
+The MCH unification rollout adds canonical `ClinicVisit` linkage for ANC and PNC workflows, plus an attendance ledger for ANC enrollments.
+
+Recommended rollout order:
+1. Run a dry-run backfill for historical ANC and PNC visits.
+2. Review the generated JSON or CSV report.
+3. Run the live backfill without `--dry-run`.
+4. Reconcile ANC enrollment counters from canonical attendance.
+5. Run the read-only validators and metrics commands to confirm the final state.
+
+```bash
+# Historical linkage dry-runs
+python manage.py backfill_mch_clinic_visits --module anc --dry-run --report-file reports/anc-backfill.json
+python manage.py backfill_mch_clinic_visits --module pnc --dry-run --report-file reports/pnc-backfill.json
+
+# Live linkage
+python manage.py backfill_mch_clinic_visits --module anc
+python manage.py backfill_mch_clinic_visits --module pnc
+
+# Enrollment reconciliation
+python manage.py reconcile_clinic_enrollment_attendance --dry-run
+python manage.py reconcile_clinic_enrollment_attendance --report-file reports/anc-enrollment-reconcile.csv
+
+# Validation and metrics
+python manage.py validate_mch_clinic_links --json
+python manage.py validate_enrollment_attendance_counts --json
+python manage.py validate_mch_encounter_consistency --json
+python manage.py mch_clinic_unification_metrics --json
+```
+
+Notes:
+- Historical synthetic clinic visits are created as completed visits with synthetic timestamps and suppressed queue broadcasts.
+- Live routed visits carry the MCH registration id directly.
+- Live linked ANC and PNC payloads expose a stable `mch_registration_id` on clinic visit responses so the web app can open the correct MCH registration even after a canonical clinic visit is already attached to an ANC or PNC record.
+
 ### Current Best-Fit Template Routing
 
 | Clinic Type / Code | Default ClinicalTemplate.name |

@@ -462,6 +462,8 @@ class ClinicVisitViewSet(viewsets.ModelViewSet):
         "patient",
         "assigned_clinician",
         "encounter",
+        "anc_visit__registration",
+        "pnc_visit__registration",
     ).all()
     permission_classes = [permissions.IsAuthenticated]
     filterset_class = ClinicVisitFilter
