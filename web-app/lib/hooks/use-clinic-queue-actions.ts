@@ -17,6 +17,7 @@ import {
 } from './use-clinics';
 import { toast } from './use-toast';
 import type { ClinicVisit } from '@/lib/types/clinic';
+import { getClinicVisitDestination } from '@/lib/utils/clinic-visit-routing';
 
 export type QueueDialogType = 'no-show' | 'cancel' | 'refer' | null;
 
@@ -107,9 +108,9 @@ export function useClinicQueueActions(
           description: `Starting consultation for ${visit.patient.full_name}.`,
         });
         onSuccess?.();
-        // Navigate to encounter if created
-        if (result.encounter) {
-          router.push(`/encounters/${result.encounter}`);
+        const destination = getClinicVisitDestination(result);
+        if (destination) {
+          router.push(destination);
         }
       } catch {
         toast({

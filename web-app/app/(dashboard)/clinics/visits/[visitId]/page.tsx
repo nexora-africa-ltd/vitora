@@ -36,6 +36,7 @@ import {
 import { toast } from '@/lib/hooks/use-toast';
 import type { ClinicVisitStatus, ClinicVisitPriority } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
+import { getClinicVisitDestination } from '@/lib/utils/clinic-visit-routing';
 
 const statusConfig: Record<ClinicVisitStatus, { label: string; className: string; icon: typeof Clock }> = {
   REGISTERED: { label: 'Registered', className: 'bg-blue-100 text-blue-800', icon: Clock },
@@ -86,11 +87,11 @@ export default function ClinicVisitDetailPage() {
 
   const handleStartConsultation = async () => {
     try {
-      await startConsultationMutation.mutateAsync(visitId);
+      const result = await startConsultationMutation.mutateAsync(visitId);
       toast({ title: 'Consultation started' });
-      // Navigate to encounter if created
-      if (visit?.patient?.id) {
-        router.push(`/encounters/new?patient_id=${visit.patient.id}`);
+      const destination = getClinicVisitDestination(result);
+      if (destination) {
+        router.push(destination);
       }
     } catch (err) {
       toast({

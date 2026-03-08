@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Baby, Calendar, CalendarPlus, ExternalLink, FileText, Heart, Loader2, Shield, Stethoscope, Syringe, TrendingUp } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
@@ -54,11 +54,28 @@ interface PageProps {
 export default function MCHRegistrationDetailPage({ params }: PageProps) {
   const { id } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { refresh, isRefreshing } = usePageRefresh();
 
   const registrationId = parseInt(id, 10);
+  const requestedTab = searchParams.get('tab');
+  const defaultTab = requestedTab === 'pnc'
+    ? 'pnc'
+    : requestedTab === 'delivery'
+      ? 'delivery'
+      : requestedTab === 'partograph'
+        ? 'partograph'
+        : 'anc';
+  const linkedClinicVisitId = Number(searchParams.get('clinic_visit_id'));
+  const linkedEncounterId = Number(searchParams.get('encounter_id'));
+  const activeClinicVisitId = Number.isFinite(linkedClinicVisitId) && linkedClinicVisitId > 0
+    ? linkedClinicVisitId
+    : null;
+  const activeEncounterId = Number.isFinite(linkedEncounterId) && linkedEncounterId > 0
+    ? linkedEncounterId
+    : null;
 
   const {
     data: registration,
@@ -99,13 +116,32 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
     onSuccess: (data) => {
       toast({
         title: 'Sent to ANC Queue',
-        description: `Queue #${data.queue_number} at ${data.clinic}.`,
+        description: `Queue #${data.queue_number} at ${data.clinic}. Opening clinic visit.`,
       });
+      router.push(`/clinics/visits/${data.clinic_visit_id}`);
     },
     onError: (error: Error & { response?: { data?: { detail?: string } } }) => {
       toast({
         title: 'Error',
         description: error.response?.data?.detail || 'Failed to send to ANC queue.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const routeToPNCMutation = useMutation({
+    mutationFn: () => mchRegistrationsApi.routeToPNC(registrationId),
+    onSuccess: (data) => {
+      toast({
+        title: 'Sent to PNC Queue',
+        description: `Queue #${data.queue_number} at ${data.clinic}. Opening clinic visit.`,
+      });
+      router.push(`/clinics/visits/${data.clinic_visit_id}`);
+    },
+    onError: (error: Error & { response?: { data?: { detail?: string } } }) => {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.detail || 'Failed to send to PNC queue.',
         variant: 'destructive',
       });
     },
@@ -192,9 +228,39 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
                   <span className="hidden sm:inline">Send to ANC Queue</span>
                 </Button>
               </div>
+            ) : isDelivered ? (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  size="sm"
+                  onClick={() => routeToPNCMutation.mutate()}
+                  disabled={routeToPNCMutation.isPending}
+                >
+                  {routeToPNCMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                  ) : (
+                    <Heart className="h-4 w-4 mr-1.5" />
+                  )}
+                  <span className="sm:hidden">PNC Queue</span>
+                  <span className="hidden sm:inline">Send to PNC Queue</span>
+                </Button>
+              </div>
             ) : undefined
           }
         />
+
+        {activeClinicVisitId ? (
+          <Card className="border-sky-200 bg-sky-50/70">
+            <CardContent className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm text-sky-900">
+                This consultation is linked to clinic visit #{activeClinicVisitId}
+                {activeEncounterId ? ` and encounter #${activeEncounterId}` : ''}.
+              </div>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/clinics/visits/${activeClinicVisitId}`}>Open Clinic Visit</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {/* Summary Bar */}
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-4 rounded-lg bg-muted/50">
@@ -335,7 +401,7 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
         )}
 
         {/* Tabs */}
-        <Tabs defaultValue="anc" className="space-y-4">
+        <Tabs defaultValue={defaultTab} className="space-y-4">
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="anc" className="gap-2">
               <Calendar className="h-4 w-4" />
@@ -378,7 +444,12 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
           </TabsList>
 
           <TabsContent value="anc">
-            <ANCVisitsTab registrationId={registrationId} isDelivered={isDelivered} />
+            <ANCVisitsTab
+              registrationId={registrationId}
+              isDelivered={isDelivered}
+              clinicVisitId={defaultTab === 'anc' ? activeClinicVisitId : null}
+              encounterId={defaultTab === 'anc' ? activeEncounterId : null}
+            />
           </TabsContent>
 
           <TabsContent value="delivery">
@@ -390,7 +461,12 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
           </TabsContent>
 
           <TabsContent value="pnc">
-            <PNCVisitsTab registrationId={registrationId} isDelivered={isDelivered} />
+            <PNCVisitsTab
+              registrationId={registrationId}
+              isDelivered={isDelivered}
+              clinicVisitId={defaultTab === 'pnc' ? activeClinicVisitId : null}
+              encounterId={defaultTab === 'pnc' ? activeEncounterId : null}
+            />
           </TabsContent>
 
           {registration.baby && (

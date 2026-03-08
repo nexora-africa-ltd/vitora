@@ -361,6 +361,8 @@ export interface ClinicVisit {
   visit_type_display: string;
   source: ClinicVisitSource;
   source_display: string;
+  source_module?: string;
+  source_record_id?: number | null;
   chief_complaint?: string;
   notes?: string;
   registered_at: string;

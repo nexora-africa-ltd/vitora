@@ -43,6 +43,8 @@ import type {
 interface PNCVisitsTabProps {
   registrationId: number;
   isDelivered?: boolean;
+  clinicVisitId?: number | null;
+  encounterId?: number | null;
 }
 
 const UTERINE_OPTIONS: { value: string; label: string }[] = [
@@ -105,7 +107,12 @@ const CONTRACEPTIVE_OPTIONS: { value: string; label: string }[] = [
   { value: 'NONE', label: 'Declined' },
 ];
 
-export function PNCVisitsTab({ registrationId, isDelivered = false }: PNCVisitsTabProps) {
+export function PNCVisitsTab({
+  registrationId,
+  isDelivered = false,
+  clinicVisitId = null,
+  encounterId = null,
+}: PNCVisitsTabProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -172,6 +179,8 @@ export function PNCVisitsTab({ registrationId, isDelivered = false }: PNCVisitsT
     e.preventDefault();
     createMutation.mutate({
       registration: registrationId,
+      encounter: encounterId ?? undefined,
+      clinic_visit: clinicVisitId ?? undefined,
       visit_date: visitDate,
       blood_pressure: bloodPressure,
       temperature: temperature ? parseFloat(temperature) : undefined,
@@ -199,6 +208,15 @@ export function PNCVisitsTab({ registrationId, isDelivered = false }: PNCVisitsT
 
   return (
     <div className="space-y-4">
+      {clinicVisitId ? (
+        <Card className="border-sky-200 bg-sky-50/70">
+          <CardContent className="py-3 text-sm text-sky-900">
+            This PNC form is linked to clinic visit #{clinicVisitId}
+            {encounterId ? ` and encounter #${encounterId}` : ''}.
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold">PNC Visits</h3>
@@ -467,6 +485,11 @@ export function PNCVisitsTab({ registrationId, isDelivered = false }: PNCVisitsT
                         {alert}
                       </Badge>
                     ))}
+                  </div>
+                )}
+                {visit.clinic_visit && (
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Linked clinic visit #{visit.clinic_visit}
                   </div>
                 )}
               </CardContent>
