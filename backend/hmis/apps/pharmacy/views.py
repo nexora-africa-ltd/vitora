@@ -644,6 +644,31 @@ class StockMovementReportView(APIView):
                 }
             )
 
+        # Get inpatient consumable usages
+        from hmis.apps.inpatient.models import InpatientConsumableUsage
+
+        consumable_usages = InpatientConsumableUsage.objects.select_related(
+            "drug", "admission", "used_by"
+        ).filter(is_reversed=False)
+        if start_date:
+            consumable_usages = consumable_usages.filter(used_at__date__gte=start_date)
+        if end_date:
+            consumable_usages = consumable_usages.filter(used_at__date__lte=end_date)
+
+        for usage in consumable_usages:
+            movements.append(
+                {
+                    "drug_name": usage.drug.get_display_name(),
+                    "movement_type": "INPATIENT_CONSUMED",
+                    "quantity": -usage.quantity_used,
+                    "date": usage.used_at.date(),
+                    "reference": (
+                        f"Admission {usage.admission.admission_number} - Usage #{usage.id}"
+                    ),
+                    "user": usage.used_by.get_full_name() or usage.used_by.username,
+                }
+            )
+
         # Get adjustments
         adjustments = StockAdjustment.objects.select_related("batch__drug", "adjusted_by")
         if start_date:

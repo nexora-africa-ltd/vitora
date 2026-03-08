@@ -29,4 +29,16 @@
 - Symptom: No inpatient consumables workflow creates `Dispensing` records or updates pharmacy stock batches.
 - Impact: Consumables used during admission are not reflected in pharmacy stock, creating inventory drift.
 - Proposed fix: Introduce a dedicated consumables stock model and an inpatient issue/use workflow that records stock movements explicitly, with tests for debit and reversal.
-- Resolution status: Not yet implemented. Requires design work beyond a small patch.
+- Resolution status: Fixed at backend/API level in current change set.
+
+### Implemented
+
+- Added `InpatientConsumableUsage` as an explicit inpatient stock-usage record linked to an admission and pharmacy stock batch.
+- Recording usage now debits the selected stock batch immediately.
+- Reversing usage restores stock to the original batch and records the reversal reason and actor.
+- Added admission API actions for create, list, and reverse.
+- Added pharmacy stock movement report entries for inpatient consumable usage.
+
+### Remaining Follow-up
+
+- Add a dedicated frontend workflow for recording inpatient consumable usage from the admission or kardex UI.

@@ -11,6 +11,7 @@ from .models import (
     AdmissionRecommendation,
     Bed,
     Discharge,
+    InpatientConsumableUsage,
     KardexHandoverNote,
     KardexShiftNote,
     NursingCarePlanEntry,
@@ -508,6 +509,33 @@ class NursingKardexAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+
+@admin.register(InpatientConsumableUsage)
+class InpatientConsumableUsageAdmin(admin.ModelAdmin):
+    """Admin interface for inpatient consumable usage records."""
+
+    list_display = [
+        "admission",
+        "drug",
+        "batch",
+        "quantity_used",
+        "used_by",
+        "used_at",
+        "is_reversed",
+    ]
+    list_filter = ["is_reversed", "used_at", "drug"]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__mrn",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+        "drug__generic_name",
+        "batch__batch_number",
+    ]
+    readonly_fields = ["created_at", "updated_at", "reversed_at"]
+    autocomplete_fields = ["admission", "drug", "batch", "used_by", "reversed_by"]
+    ordering = ["-used_at", "-created_at"]
 
 
 class KardexShiftNoteInline(admin.TabularInline):

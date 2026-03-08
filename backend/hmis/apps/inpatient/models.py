@@ -1763,6 +1763,109 @@ class KardexHandoverNote(models.Model):
         return f"Handover from {self.outgoing_nurse.username} to {self.incoming_nurse.username} - {status}"
 
 
+class InpatientConsumableUsage(TimeStampedModel):
+    """Recorded inpatient use of a stocked consumable from pharmacy inventory."""
+
+    admission = models.ForeignKey(
+        Admission,
+        on_delete=models.CASCADE,
+        related_name="consumable_usages",
+        help_text="Admission where the consumable was used",
+    )
+    drug = models.ForeignKey(
+        "pharmacy.Drug",
+        on_delete=models.PROTECT,
+        related_name="inpatient_consumable_usages",
+        help_text="Consumable item used during admission",
+    )
+    batch = models.ForeignKey(
+        "pharmacy.StockBatch",
+        on_delete=models.PROTECT,
+        related_name="inpatient_consumable_usages",
+        help_text="Stock batch debited for this usage",
+    )
+    quantity_used = models.PositiveIntegerField(
+        validators=[MinValueValidator(1)],
+        help_text="Quantity consumed from stock",
+    )
+    notes = models.TextField(blank=True, help_text="Optional usage notes")
+    used_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="recorded_inpatient_consumable_usages",
+        help_text="User who recorded the consumable use",
+    )
+    used_at = models.DateTimeField(default=timezone.now)
+
+    is_reversed = models.BooleanField(default=False)
+    reversed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reversed_inpatient_consumable_usages",
+    )
+    reversed_at = models.DateTimeField(null=True, blank=True)
+    reverse_reason = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-used_at", "-created_at"]
+        indexes = [
+            models.Index(fields=["admission", "-used_at"]),
+            models.Index(fields=["drug", "-used_at"]),
+            models.Index(fields=["is_reversed"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.drug.generic_name} x{self.quantity_used} for "
+            f"{self.admission.admission_number}"
+        )
+
+    def clean(self):
+        super().clean()
+
+        if self.batch_id and self.drug_id and self.batch.drug_id != self.drug_id:
+            raise ValidationError({"batch": "Selected batch does not belong to the selected drug."})
+
+        if self.pk is None and self.batch_id and self.quantity_used > self.batch.quantity_available:
+            raise ValidationError(
+                {
+                    "quantity_used": (
+                        f"Cannot use {self.quantity_used} units. "
+                        f"Only {self.batch.quantity_available} available in batch."
+                    )
+                }
+            )
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+
+        if self.batch_id and not self.drug_id:
+            self.drug = self.batch.drug
+
+        if is_new:
+            self.full_clean()
+            self.batch.dispense(self.quantity_used)
+
+        super().save(*args, **kwargs)
+
+    def reverse(self, user: AbstractUser, reason: str) -> None:
+        """Reverse a previously recorded consumable usage and restore stock."""
+        if self.is_reversed:
+            raise ValueError("This consumable usage has already been reversed.")
+
+        if not reason.strip():
+            raise ValueError("A reversal reason is required.")
+
+        self.batch.return_stock(self.quantity_used)
+        self.is_reversed = True
+        self.reversed_by = user
+        self.reversed_at = timezone.now()
+        self.reverse_reason = reason.strip()
+        self.save()
+
+
 class ShiftHandover(TimeStampedModel):
     """
     Formal ward-level shift handover record.
