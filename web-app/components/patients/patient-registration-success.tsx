@@ -56,7 +56,6 @@ export function PatientRegistrationSuccess({
   patient,
   onRegisterAnother,
 }: PatientRegistrationSuccessProps) {
-  const router = useRouter();
   const { toast } = useToast();
   const checkInPatient = useCheckInPatient();
   const addToQueue = useAddToQueue();
@@ -254,13 +253,13 @@ export function PatientRegistrationSuccess({
             </div>
           </div>
 
-          {/* Action buttons */}
           <TooltipProvider delayDuration={200}>
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+            {/* Action buttons */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 xl:flex-nowrap">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    className="w-full sm:flex-1"
+                    className="w-full sm:w-auto xl:flex-1"
                     size="lg"
                     onClick={handleCheckInToQueue}
                     disabled={isCheckingIn || isRoutingToClinic}
@@ -286,7 +285,7 @@ export function PatientRegistrationSuccess({
                 <TooltipTrigger asChild>
                   <Button
                     variant={showClinicSelector ? 'default' : 'outline'}
-                    className="w-full sm:flex-1"
+                    className="w-full sm:w-auto xl:flex-1"
                     size="lg"
                     onClick={() => setShowClinicSelector(!showClinicSelector)}
                     disabled={isCheckingIn || isRoutingToClinic}
@@ -303,134 +302,130 @@ export function PatientRegistrationSuccess({
                   Skip triage and route patient directly to a clinic queue.
                 </TooltipContent>
               </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href={`/patients/${patient.id}`} className="w-full sm:w-auto">
+                    <Button
+                      variant="ghost"
+                      className="h-11 w-full sm:w-11"
+                      size="icon"
+                      aria-label="View Profile"
+                    >
+                      <UserRound className="h-5 w-5" />
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>View Profile</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="h-11 w-full sm:w-11"
+                    size="icon"
+                    onClick={onRegisterAnother}
+                    aria-label="Register Another"
+                  >
+                    <UserRoundPlus className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Register Another</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/patients" className="w-full sm:w-auto">
+                    <Button
+                      variant="ghost"
+                      className="h-11 w-full sm:w-11"
+                      size="icon"
+                      aria-label="Back to Patients"
+                    >
+                      <UsersRound className="h-5 w-5" />
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>Back to Patients</TooltipContent>
+              </Tooltip>
             </div>
-          </TooltipProvider>
 
-          {/* Clinic Selector (shown when "Route to Clinic" is clicked) */}
-          {showClinicSelector && (
-            <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Select Clinic</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setShowClinicSelector(false);
-                    setClinicSearch('');
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
+            {/* Clinic Selector (shown when "Route to Clinic" is clicked) */}
+            {showClinicSelector && (
+              <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">Select Clinic</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setShowClinicSelector(false);
+                      setClinicSearch('');
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
 
-              {/* Clinic Search */}
-              <div className="relative">
-                <Input
-                  placeholder="Search clinics..."
-                  value={clinicSearch}
-                  onChange={(e) => setClinicSearch(e.target.value)}
-                  disabled={isRoutingToClinic}
-                  className="pl-8"
-                />
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              </div>
+                {/* Clinic Search */}
+                <div className="relative">
+                  <Input
+                    placeholder="Search clinics..."
+                    value={clinicSearch}
+                    onChange={(e) => setClinicSearch(e.target.value)}
+                    disabled={isRoutingToClinic}
+                    className="pl-8"
+                  />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                </div>
 
-              {/* Clinic List */}
-              <div className="max-h-48 overflow-y-auto border border-border rounded-lg bg-card">
-                {clinicsLoading ? (
-                  <div className="p-4 text-center text-muted-foreground">
-                    Loading clinics...
-                  </div>
-                ) : filteredClinics.length === 0 ? (
-                  <div className="p-4 text-center text-muted-foreground">
-                    {clinicSearch ? 'No clinics match your search' : 'No active clinics available'}
-                  </div>
-                ) : (
-                  <div className="divide-y divide-border">
-                    {filteredClinics.map((clinic) => (
-                      <button
-                        key={clinic.id}
-                        type="button"
-                        onClick={() => handleRouteToClinic(clinic)}
-                        disabled={isRoutingToClinic}
-                        className={cn(
-                          'w-full p-3 text-left transition-colors',
-                          'hover:bg-accent hover:text-accent-foreground focus:outline-none focus:bg-accent focus:text-accent-foreground',
-                          isRoutingToClinic && 'opacity-50 cursor-not-allowed'
-                        )}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium text-sm">{clinic.name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {clinic.clinic_type_display}
+                {/* Clinic List */}
+                <div className="max-h-48 overflow-y-auto border border-border rounded-lg bg-card">
+                  {clinicsLoading ? (
+                    <div className="p-4 text-center text-muted-foreground">
+                      Loading clinics...
+                    </div>
+                  ) : filteredClinics.length === 0 ? (
+                    <div className="p-4 text-center text-muted-foreground">
+                      {clinicSearch ? 'No clinics match your search' : 'No active clinics available'}
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-border">
+                      {filteredClinics.map((clinic) => (
+                        <button
+                          key={clinic.id}
+                          type="button"
+                          onClick={() => handleRouteToClinic(clinic)}
+                          disabled={isRoutingToClinic}
+                          className={cn(
+                            'w-full p-3 text-left transition-colors',
+                            'hover:bg-accent hover:text-accent-foreground focus:outline-none focus:bg-accent focus:text-accent-foreground',
+                            isRoutingToClinic && 'opacity-50 cursor-not-allowed'
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-sm">{clinic.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {clinic.clinic_type_display}
+                              </div>
                             </div>
+                            <ArrowRight className="h-4 w-4 text-muted-foreground" />
                           </div>
-                          <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {isRoutingToClinic && (
+                  <div className="text-center text-sm text-muted-foreground">
+                    Adding patient to clinic queue...
                   </div>
                 )}
               </div>
-
-              {isRoutingToClinic && (
-                <div className="text-center text-sm text-muted-foreground">
-                  Adding patient to clinic queue...
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Secondary action buttons */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href={`/patients/${patient.id}`} className="w-full sm:w-auto">
-                  <Button
-                    variant="outline"
-                    className="h-11 w-full sm:w-11"
-                    size="icon"
-                    aria-label="View Profile"
-                  >
-                    <UserRound className="h-5 w-5" />
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent>View Profile</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="h-11 w-full sm:w-11"
-                  size="icon"
-                  onClick={onRegisterAnother}
-                  aria-label="Register Another"
-                >
-                  <UserRoundPlus className="h-5 w-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Register Another</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href="/patients" className="w-full sm:w-auto">
-                  <Button
-                    variant="secondary"
-                    className="h-11 w-full sm:w-11"
-                    size="icon"
-                    aria-label="Back to Patients"
-                  >
-                    <UsersRound className="h-5 w-5" />
-                  </Button>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent>Back to Patients</TooltipContent>
-            </Tooltip>
-          </div>
+            )}
+          </TooltipProvider>
         </CardContent>
       </Card>
 
