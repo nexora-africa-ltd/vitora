@@ -10,6 +10,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { consultationQueueKeys } from '@/lib/hooks/use-consultation-queue';
 import { triageApi, type TriageAssessmentUpdateData } from '@/lib/api/triage';
 import type {
   TriageAssessment,
@@ -376,6 +377,8 @@ export function useRouteToClinic() {
       queryClient.invalidateQueries({ queryKey: triageKeys.waitingQueue() });
       // Also invalidate clinic queues
       queryClient.invalidateQueries({ queryKey: ['clinics'] });
+      queryClient.invalidateQueries({ queryKey: consultationQueueKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['encounters'] });
     },
   });
 }

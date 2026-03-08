@@ -13,6 +13,7 @@
 
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clinicsApi } from '@/lib/api/clinics';
+import { consultationQueueKeys } from '@/lib/hooks/use-consultation-queue';
 import { usePatientJourneyStore } from '@/lib/stores/patient-journey';
 import type { PaginatedResponse } from '@/lib/types';
 import type {
@@ -273,6 +274,8 @@ export function useAddToQueue() {
       queryClient.invalidateQueries({ queryKey: clinicKeys.queue(variables.clinicId) });
       queryClient.invalidateQueries({ queryKey: clinicKeys.queueStats(variables.clinicId) });
       queryClient.invalidateQueries({ queryKey: clinicKeys.dashboard(variables.clinicId) });
+      queryClient.invalidateQueries({ queryKey: consultationQueueKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['encounters'] });
 
       // Sync to patient journey store (non-blocking - don't fail mutation on store errors)
       try {

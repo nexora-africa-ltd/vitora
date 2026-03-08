@@ -639,6 +639,39 @@ class TestClinicVisitViewSet:
         assert response.data["patient"]["full_name"] is not None
         assert response.data["queue_number"] is not None
 
+    def test_create_clinic_visit_creates_consultation_ready_encounter(
+        self, authenticated_client, sample_clinic_session, sample_patient
+    ):
+        """Adding a patient to a clinic queue should create a waiting encounter immediately."""
+        from hmis.apps.encounters.models import Encounter
+
+        url = reverse("clinicvisit-list")
+        data = {
+            "session": sample_clinic_session.pk,
+            "patient": sample_patient.pk,
+            "priority": "STANDARD",
+            "visit_type": "NEW",
+            "source": "DIRECT",
+            "chief_complaint": "Cough for 1 week",
+        }
+
+        response = authenticated_client.post(url, data, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["encounter"] is not None
+
+        encounter = Encounter.objects.get(pk=response.data["encounter"])
+        assert encounter.patient == sample_patient
+        assert encounter.clinic_visit is not None
+        assert encounter.triage_status == "NOT_APPLICABLE"
+        assert encounter.consultation_status == "WAITING"
+
+        queue_response = authenticated_client.get("/api/encounters/consultation_queue/")
+
+        assert queue_response.status_code == status.HTTP_200_OK
+        encounter_ids = [e["id"] for e in queue_response.data.get("results", queue_response.data)]
+        assert encounter.id in encounter_ids
+
     # -------------------------------------------------------------------------
     # Update Visit
     # -------------------------------------------------------------------------
