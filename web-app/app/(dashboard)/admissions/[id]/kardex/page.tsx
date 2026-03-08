@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ClipboardList, Plus, AlertTriangle, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CarePlanPanel } from '@/components/encounters/care-plan-panel';
 import {
   Select,
   SelectContent,
@@ -39,11 +40,14 @@ import {
   useAddCarePlanEntry,
   useUpdateCarePlanEntry,
 } from '@/lib/hooks/use-inpatient';
+import { useAIEnabled, useAIStatus } from '@/lib/hooks/use-ai';
+import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { ConsumableUsagePanel } from '@/components/inpatient';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
 import type { CarePlanEntryStatus, MaternityContinuityAction, RiskLevel, ShiftType } from '@/lib/types/inpatient';
+import type { AIQuickAction } from '@/lib/types/ai';
 
 const RISK_LEVELS: { value: RiskLevel; label: string }[] = [
   { value: 'LOW', label: 'Low Risk' },
@@ -63,6 +67,23 @@ const MATERNITY_CONTINUITY_ACTIONS: { value: MaternityContinuityAction; label: s
   { value: 'ROUTE_TO_PNC_QUEUE', label: 'Prepare Direct PNC Queue Routing' },
 ];
 
+const KARDEX_QUICK_ACTIONS: AIQuickAction[] = [
+  {
+    id: 'kardex-care-plan',
+    label: 'Suggest care plan',
+    query: '',
+    userMessage: '📋 Generating care plan suggestions...',
+    panelAction: 'care-plan',
+  },
+  {
+    id: 'kardex-nursing-priorities',
+    label: 'Nursing priorities',
+    query:
+      'Based on the kardex details, admission diagnosis, allergies, risks, diet, isolation requirements, and current nursing notes, summarize the most important nursing priorities for this patient over the next shift.',
+    userMessage: '🩺 Summarizing nursing priorities...',
+  },
+];
+
 export default function KardexPage() {
   const params = useParams();
   const router = useRouter();
@@ -70,6 +91,14 @@ export default function KardexPage() {
   const user = useUser();
   const { toast } = useToast();
   const admissionId = Number(params.id);
+  const aiEnabled = useAIEnabled();
+  const { data: aiStatus } = useAIStatus();
+
+  const chatCtx = useOptionalAIChatContext();
+  const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
+  const setQuickActions = chatCtx?.setQuickActions;
+  const activePanelAction = chatCtx?.activePanelAction ?? null;
+  const clearPanelAction = chatCtx?.clearPanelAction;
 
   // Auto-open shift note dialog from URL param
   const action = searchParams.get('action');
@@ -124,8 +153,67 @@ export default function KardexPage() {
   const [handoverIncomingNurse, setHandoverIncomingNurse] = useState<number | undefined>(undefined);
   const [handoverPendingTasks, setHandoverPendingTasks] = useState('');
   const [handoverEscalations, setHandoverEscalations] = useState('');
+  const [autoTriggerCarePlan, setAutoTriggerCarePlan] = useState(false);
 
   const isLoading = admissionLoading || kardexLoading;
+  const hasNursingCarePlanEntries = (kardex?.care_plan_entries?.length ?? 0) > 0;
+  const isTibaBotOnline = Boolean(aiStatus?.enabled && aiStatus?.service_available);
+  const shouldShowAICarePlanPanel = !hasNursingCarePlanEntries && aiEnabled && isTibaBotOnline;
+  const patientAllergies = useMemo(
+    () => kardex?.allergies?.split(',').map((allergy) => allergy.trim()).filter(Boolean) ?? [],
+    [kardex?.allergies]
+  );
+
+  useEffect(() => {
+    if (!activePanelAction || !clearPanelAction) return;
+    if (activePanelAction === 'care-plan') {
+      setAutoTriggerCarePlan(true);
+      clearPanelAction();
+    }
+  }, [activePanelAction, clearPanelAction]);
+
+  useEffect(() => {
+    if (!setEncounterAwareContext || !admission || !kardex) return;
+
+    const daysLOS = Math.ceil(
+      (Date.now() - new Date(admission.admission_date).getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    setEncounterAwareContext(
+      {
+        patient_age: admission.patient_age ?? 0,
+        patient_sex: admission.patient_gender ?? 'O',
+        allergies: patientAllergies,
+      },
+      {
+        chief_complaint:
+          admission.admitting_diagnosis_text || admission.admitting_diagnosis || undefined,
+        admission_diagnosis:
+          admission.admitting_diagnosis_text || admission.admitting_diagnosis || undefined,
+        ward_name: admission.ward_name ?? undefined,
+        bed_number: admission.bed_number ?? undefined,
+        admission_status: admission.admission_status ?? undefined,
+        length_of_stay_days: daysLOS,
+        diet: kardex.dietary_requirements || admission.diet || undefined,
+        special_instructions:
+          kardex.isolation_required && kardex.isolation_type
+            ? `Isolation required: ${kardex.isolation_type}`
+            : admission.special_instructions || undefined,
+      }
+    );
+
+    return () => {
+      setEncounterAwareContext(null, null);
+    };
+  }, [admission, kardex, patientAllergies, setEncounterAwareContext]);
+
+  useEffect(() => {
+    if (!setQuickActions) return;
+    setQuickActions(KARDEX_QUICK_ACTIONS);
+    return () => {
+      setQuickActions([]);
+    };
+  }, [setQuickActions]);
 
   // Auto-open shift note dialog when navigating with action=shift-note
   useEffect(() => {
@@ -731,6 +819,20 @@ export default function KardexPage() {
               </DialogContent>
             </Dialog>
           </div>
+
+          {shouldShowAICarePlanPanel && (
+            <CarePlanPanel
+              admissionId={admission.id}
+              primaryDiagnosis={
+                admission.admitting_diagnosis_text || admission.admitting_diagnosis || undefined
+              }
+              patientAge={admission.patient_age ?? 0}
+              patientSex={admission.patient_gender === 'F' ? 'female' : 'male'}
+              allergies={patientAllergies}
+              autoTrigger={autoTriggerCarePlan}
+              onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
+            />
+          )}
 
           {/* Update Care Plan Entry Dialog */}
           <Dialog open={updateCpDialogOpen} onOpenChange={setUpdateCpDialogOpen}>

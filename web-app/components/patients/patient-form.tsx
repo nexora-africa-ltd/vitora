@@ -1725,7 +1725,7 @@ export function PatientForm({
                 control={form.control}
                 name="is_person_with_disability"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 sm:mt-6">
+                  <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md p-4 sm:mt-6">
                     <FormControl>
                       <Checkbox
                         checked={field.value}
