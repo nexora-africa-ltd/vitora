@@ -158,7 +158,18 @@ export const clinicsApi = {
    * Add patient to queue
    */
   addToQueue: async (clinicId: number, data: ClinicVisitCreateData): Promise<ClinicVisit> => {
-    const response = await apiClient.post<ClinicVisit>(`/api/clinics/${clinicId}/queue/`, data);
+    const payload = {
+      session: data.session,
+      patient: data.patient_id,
+      priority: data.priority,
+      visit_type: data.visit_type,
+      source: data.source,
+      chief_complaint: data.chief_complaint,
+      notes: data.notes,
+      triage_assessment: data.triage_assessment_id,
+    };
+
+    const response = await apiClient.post<ClinicVisit>(`/api/clinics/${clinicId}/queue/`, payload);
     return parseResponse(ClinicVisitSchema, response.data, { context: 'clinicsApi.addToQueue' });
   },
 

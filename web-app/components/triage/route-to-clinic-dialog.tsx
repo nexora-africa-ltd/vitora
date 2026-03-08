@@ -26,6 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAddToQueue, useInfiniteClinics } from '@/lib/hooks/use-clinics';
 import { useRouteToClinic } from '@/lib/hooks/use-triage';
 import { toast } from '@/lib/hooks/use-toast';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { CheckinSuccessModal, type CheckinSuccessData } from '@/components/patients/checkin-success-modal';
 import type { TriageAssessment } from '@/lib/types/triage';
 import type { ClinicListItem, ClinicVisitSource } from '@/lib/types/clinic';
@@ -190,7 +191,7 @@ export function RouteToClinicDialog({
       console.error('Failed to route to clinic:', error);
       toast({
         title: 'Error',
-        description: 'Failed to route patient to clinic. Please try again.',
+        description: getApiErrorMessage(error),
         variant: 'destructive',
       });
     }
