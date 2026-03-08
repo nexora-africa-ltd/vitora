@@ -762,6 +762,73 @@ class TestDispensingAPI:
         assert len(response.data) >= 1
         assert response.data[0]["quantity_dispensed"] == 30
 
+    def test_dispense_admission_linked_prescription_reduces_stock(
+        self, authenticated_client, sample_admission, test_user
+    ):
+        """Admission-linked prescription dispensing should reduce stock and update status."""
+        from hmis.apps.pharmacy.models import Drug, Prescription, PrescriptionItem, StockBatch
+
+        drug = Drug.objects.create(
+            code="ADMDISP001",
+            generic_name="Admission Dispense Drug",
+            strength="250mg",
+            form="TABLET",
+            categories=["OTHER"],
+            unit="tablet",
+        )
+
+        batch = StockBatch.objects.create(
+            drug=drug,
+            batch_number="ADMBATCH001",
+            quantity_received=100,
+            quantity_available=100,
+            expiry_date=date.today() + timedelta(days=365),
+            received_date=date.today(),
+            cost_price=Decimal("4.00"),
+            selling_price=Decimal("8.00"),
+            received_by=test_user,
+        )
+
+        prescription = Prescription.objects.create(
+            patient=sample_admission.patient,
+            encounter=sample_admission.ipd_encounter,
+            admission=sample_admission,
+            prescribed_by=test_user,
+            valid_until=date.today() + timedelta(days=30),
+        )
+        prescription_item = PrescriptionItem.objects.create(
+            prescription=prescription,
+            drug=drug,
+            quantity=10,
+            dosage="1 tablet",
+            frequency="BID",
+            duration="5 days",
+            route="PO",
+            instructions="Take after meals",
+        )
+
+        response = authenticated_client.post(
+            "/api/pharmacy/dispensings/dispense/",
+            {
+                "drug_id": drug.id,
+                "quantity": 10,
+                "patient_id": sample_admission.patient.id,
+                "prescription_item_id": prescription_item.id,
+            },
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert len(response.data) == 1
+        assert response.data[0]["quantity_dispensed"] == 10
+
+        batch.refresh_from_db()
+        prescription_item.refresh_from_db()
+        prescription.refresh_from_db()
+
+        assert batch.quantity_available == 90
+        assert prescription_item.quantity_dispensed == 10
+        assert prescription.status == "DISPENSED"
+
     def test_dispense_insufficient_stock(self, authenticated_client, test_user):
         """Dispensing with insufficient stock should fail."""
         from hmis.apps.core.models import County, SubCounty

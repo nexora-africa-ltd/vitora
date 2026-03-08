@@ -171,7 +171,7 @@ export function AdmissionOrdersTab({ admissionId, patientId, encounterId, isActi
               status: rx.status,
               statusConfig: RX_STATUS_CONFIG[rx.status],
               date: rx.prescribed_date,
-              href: `/pharmacy/prescriptions/${rx.prescription_number}`,
+              href: `/pharmacy/prescriptions/${rx.id}`,
             }))}
           />
         </div>
