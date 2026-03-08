@@ -12,8 +12,7 @@
  */
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   CheckCircle2,
@@ -25,13 +24,11 @@ import {
   Clock,
   Activity,
   FileText,
-  Search,
   Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/shared/page-header';
 import {
   Tooltip,
@@ -39,13 +36,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils/cn';
 import { useCheckInPatient } from '@/lib/hooks/use-triage';
-import { useClinics, useAddToQueue } from '@/lib/hooks/use-clinics';
 import { useToast } from '@/lib/hooks/use-toast';
 import { CheckinSuccessModal, type CheckinSuccessData } from './checkin-success-modal';
+import { RouteToClinicDialog } from '@/components/triage/route-to-clinic-dialog';
 import type { Patient } from '@/lib/types/patient';
-import type { ClinicListItem, ClinicVisitSource } from '@/lib/types/clinic';
 
 interface PatientRegistrationSuccessProps {
   patient: Patient;
@@ -58,33 +53,13 @@ export function PatientRegistrationSuccess({
 }: PatientRegistrationSuccessProps) {
   const { toast } = useToast();
   const checkInPatient = useCheckInPatient();
-  const addToQueue = useAddToQueue();
 
   const [isCheckingIn, setIsCheckingIn] = useState(false);
-  const [showClinicSelector, setShowClinicSelector] = useState(false);
-  const [clinicSearch, setClinicSearch] = useState('');
-  const [isRoutingToClinic, setIsRoutingToClinic] = useState(false);
+  const [showRouteDialog, setShowRouteDialog] = useState(false);
 
   // Success modal state
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState<CheckinSuccessData | null>(null);
-
-  // Fetch active clinics
-  const { data: clinicsData, isLoading: clinicsLoading } = useClinics({
-    is_open_today: true,
-  });
-
-  // Filter clinics by search
-  const filteredClinics = useMemo(() => {
-    const clinics = clinicsData?.results ?? [];
-    if (!clinicSearch.trim()) return clinics;
-    const search = clinicSearch.toLowerCase();
-    return clinics.filter(
-      (clinic) =>
-        clinic.name.toLowerCase().includes(search) ||
-        clinic.clinic_type_display?.toLowerCase().includes(search)
-    );
-  }, [clinicsData?.results, clinicSearch]);
 
   const handleCheckInToQueue = async () => {
     setIsCheckingIn(true);
@@ -113,44 +88,6 @@ export function PatientRegistrationSuccess({
       });
     } finally {
       setIsCheckingIn(false);
-    }
-  };
-
-  const handleRouteToClinic = async (clinic: ClinicListItem) => {
-    setIsRoutingToClinic(true);
-    try {
-      const visit = await addToQueue.mutateAsync({
-        clinicId: clinic.id,
-        data: {
-          patient_id: patient.id,
-          priority: 'STANDARD',
-          visit_type: 'NEW',
-          source: 'DIRECT' as ClinicVisitSource,
-          chief_complaint: '',
-          notes: `Direct registration - routed to ${clinic.name}`,
-        },
-      });
-
-      // Show success modal with navigation option
-      setSuccessData({
-        patientName: `${patient.first_name} ${patient.last_name}`,
-        patientMrn: patient.mrn,
-        destination: 'clinic',
-        destinationName: clinic.name,
-        destinationUrl: `/clinics/${clinic.id}/queue`,
-        queuePosition: visit.queue_number,
-        skippedTriage: true,
-      });
-      setShowSuccessModal(true);
-      setShowClinicSelector(false);
-    } catch (error) {
-      toast({
-        title: 'Failed to Route Patient',
-        description: error instanceof Error ? error.message : 'Failed to add patient to clinic queue',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsRoutingToClinic(false);
     }
   };
 
@@ -262,7 +199,7 @@ export function PatientRegistrationSuccess({
                     className="w-full sm:w-auto xl:flex-1"
                     size="lg"
                     onClick={handleCheckInToQueue}
-                    disabled={isCheckingIn || isRoutingToClinic}
+                    disabled={isCheckingIn || showRouteDialog}
                     title="Adds the patient to the triage waiting queue so vitals/triage can begin."
                   >
                     <UserPlus className="h-5 w-5 sm:mr-2" />
@@ -284,11 +221,11 @@ export function PatientRegistrationSuccess({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant={showClinicSelector ? 'default' : 'outline'}
+                    variant={showRouteDialog ? 'default' : 'outline'}
                     className="w-full sm:w-auto xl:flex-1"
                     size="lg"
-                    onClick={() => setShowClinicSelector(!showClinicSelector)}
-                    disabled={isCheckingIn || isRoutingToClinic}
+                    onClick={() => setShowRouteDialog(true)}
+                    disabled={isCheckingIn}
                     title="Skip triage and route patient directly to a clinic queue."
                   >
                     <Building2 className="h-5 w-5 sm:mr-2" />
@@ -349,85 +286,20 @@ export function PatientRegistrationSuccess({
                 <TooltipContent>Back to Patients</TooltipContent>
               </Tooltip>
             </div>
-
-            {/* Clinic Selector (shown when "Route to Clinic" is clicked) */}
-            {showClinicSelector && (
-              <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">Select Clinic</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setShowClinicSelector(false);
-                      setClinicSearch('');
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-
-                {/* Clinic Search */}
-                <div className="relative">
-                  <Input
-                    placeholder="Search clinics..."
-                    value={clinicSearch}
-                    onChange={(e) => setClinicSearch(e.target.value)}
-                    disabled={isRoutingToClinic}
-                    className="pl-8"
-                  />
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                </div>
-
-                {/* Clinic List */}
-                <div className="max-h-48 overflow-y-auto border border-border rounded-lg bg-card">
-                  {clinicsLoading ? (
-                    <div className="p-4 text-center text-muted-foreground">
-                      Loading clinics...
-                    </div>
-                  ) : filteredClinics.length === 0 ? (
-                    <div className="p-4 text-center text-muted-foreground">
-                      {clinicSearch ? 'No clinics match your search' : 'No active clinics available'}
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-border">
-                      {filteredClinics.map((clinic) => (
-                        <button
-                          key={clinic.id}
-                          type="button"
-                          onClick={() => handleRouteToClinic(clinic)}
-                          disabled={isRoutingToClinic}
-                          className={cn(
-                            'w-full p-3 text-left transition-colors',
-                            'hover:bg-accent hover:text-accent-foreground focus:outline-none focus:bg-accent focus:text-accent-foreground',
-                            isRoutingToClinic && 'opacity-50 cursor-not-allowed'
-                          )}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="font-medium text-sm">{clinic.name}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {clinic.clinic_type_display}
-                              </div>
-                            </div>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {isRoutingToClinic && (
-                  <div className="text-center text-sm text-muted-foreground">
-                    Adding patient to clinic queue...
-                  </div>
-                )}
-              </div>
-            )}
           </TooltipProvider>
         </CardContent>
       </Card>
+
+      <RouteToClinicDialog
+        open={showRouteDialog}
+        onOpenChange={setShowRouteDialog}
+        patient={{
+          id: patient.id,
+          first_name: patient.first_name,
+          last_name: patient.last_name,
+          mrn: patient.mrn,
+        }}
+      />
 
       {/* Check-in Success Modal with navigation options */}
       <CheckinSuccessModal
