@@ -139,6 +139,15 @@ export default function ClinicVisitDetailPage() {
   const statusInfo = statusConfig[visit.status] || statusConfig.REGISTERED;
   const priorityInfo = priorityConfig[visit.priority] || priorityConfig.STANDARD;
   const StatusIcon = statusInfo.icon;
+  const isMCHVisit = visit.source_module === 'MCH_ANC' || visit.source_module === 'MCH_PNC';
+  const mchTab = visit.source_module === 'MCH_PNC' ? 'pnc' : 'anc';
+  const mchRegistrationId = visit.mch_registration_id ?? null;
+  const mchRegistrationHref = mchRegistrationId
+    ? `/mch/${mchRegistrationId}?tab=${mchTab}&clinic_visit_id=${visit.id}${visit.encounter ? `&encounter_id=${visit.encounter}` : ''}`
+    : null;
+  const mchRegistrationLabel = visit.source_module === 'MCH_PNC'
+    ? 'Open Postnatal Registration'
+    : 'Open Antenatal Registration';
 
   return (
     <div className="space-y-6">
@@ -146,6 +155,34 @@ export default function ClinicVisitDetailPage() {
         title={`Visit #${visit.queue_number}`}
         helpContent="View and manage clinic visit details. Call the patient, start consultation, or complete the visit."
       />
+
+      {isMCHVisit && mchRegistrationHref ? (
+        <Card className="border-sky-200 bg-sky-50/70">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base text-sky-950">
+              <Stethoscope className="h-4 w-4" />
+              Linked MCH Workflow
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1 text-sm text-sky-950">
+              <p>
+                This clinic visit belongs to
+                {' '}
+                {visit.source_module === 'MCH_PNC' ? 'a postnatal' : 'an antenatal'}
+                {' '}
+                MCH registration.
+              </p>
+              <p className="text-sky-800/80">
+                Use the registration view to record the linked {visit.source_module === 'MCH_PNC' ? 'PNC' : 'ANC'} clinical payload.
+              </p>
+            </div>
+            <Button variant="outline" asChild>
+              <a href={mchRegistrationHref}>{mchRegistrationLabel}</a>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {/* Patient Info & Status */}
       <div className="grid gap-4 md:grid-cols-2">

@@ -149,6 +149,29 @@ python manage.py populate_clinic_default_templates
 python manage.py createsuperuser
 \`\`\`
 
+### MCH Clinic Unification Commands
+\`\`\`bash
+# Backfill canonical clinic visits for historical ANC or PNC records
+python manage.py backfill_mch_clinic_visits --module anc --dry-run
+python manage.py backfill_mch_clinic_visits --module pnc --from-date 2026-01-01 --report-file reports/pnc-backfill.json
+
+# Recompute ANC enrollment counters from canonical linked clinic visits
+python manage.py reconcile_clinic_enrollment_attendance --dry-run
+python manage.py reconcile_clinic_enrollment_attendance --report-file reports/anc-enrollment-reconcile.csv
+
+# Read-only validation and observability
+python manage.py validate_mch_clinic_links --json
+python manage.py validate_enrollment_attendance_counts --json
+python manage.py validate_mch_encounter_consistency --json
+python manage.py mch_clinic_unification_metrics --json
+\`\`\`
+
+Operational guidance:
+- Run \`backfill_mch_clinic_visits\` with \`--dry-run\` first and review the emitted report before applying changes.
+- The backfill command is idempotent and supports \`--module\`, \`--from-date\`, \`--to-date\`, \`--clinic-id\`, \`--limit\`, \`--batch-size\`, and \`--start-after-id\` for controlled rollout windows.
+- Run \`reconcile_clinic_enrollment_attendance\` after backfill to align ANC enrollment counters with canonical attendance.
+- The validation commands are read-only and intended for pre-rollout checks, post-rollout verification, and ongoing observability.
+
 ---
 
 ## 📁 Project Structure

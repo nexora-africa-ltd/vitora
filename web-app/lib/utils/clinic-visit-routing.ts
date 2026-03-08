@@ -5,12 +5,16 @@ function toPositiveNumber(value: number | null | undefined): number | null {
 }
 
 export function getClinicVisitDestination(
-  visit: Pick<ClinicVisit, 'id' | 'encounter' | 'source_module' | 'source_record_id'>
+  visit: Pick<
+    ClinicVisit,
+    'id' | 'encounter' | 'source_module' | 'source_record_id' | 'mch_registration_id'
+  >
 ): string | null {
   const encounterId = toPositiveNumber(visit.encounter);
-  const sourceRecordId = toPositiveNumber(visit.source_record_id);
+  const registrationId = toPositiveNumber(visit.mch_registration_id)
+    ?? toPositiveNumber(visit.source_record_id);
 
-  if (visit.source_module === 'MCH_ANC' && sourceRecordId) {
+  if (visit.source_module === 'MCH_ANC' && registrationId) {
     const params = new URLSearchParams({
       tab: 'anc',
       clinic_visit_id: String(visit.id),
@@ -18,10 +22,10 @@ export function getClinicVisitDestination(
     if (encounterId) {
       params.set('encounter_id', String(encounterId));
     }
-    return `/mch/${sourceRecordId}?${params.toString()}`;
+    return `/mch/${registrationId}?${params.toString()}`;
   }
 
-  if (visit.source_module === 'MCH_PNC' && sourceRecordId) {
+  if (visit.source_module === 'MCH_PNC' && registrationId) {
     const params = new URLSearchParams({
       tab: 'pnc',
       clinic_visit_id: String(visit.id),
@@ -29,7 +33,7 @@ export function getClinicVisitDestination(
     if (encounterId) {
       params.set('encounter_id', String(encounterId));
     }
-    return `/mch/${sourceRecordId}?${params.toString()}`;
+    return `/mch/${registrationId}?${params.toString()}`;
   }
 
   if (encounterId) {

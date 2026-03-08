@@ -177,6 +177,8 @@ export const ClinicVisitSchema = z.object({
   source_display: z.string(),
   source_module: z.string().optional().default(''),
   source_record_id: z.number().nullable().optional(),
+  mch_registration_id: z.number().nullable().optional(),
+  mch_registration_number: z.string().optional().default(''),
   chief_complaint: z.string().optional().default(''),
   notes: z.string().optional().default(''),
   consultation_fee_charged: z.boolean().optional(),
