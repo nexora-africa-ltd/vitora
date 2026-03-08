@@ -241,10 +241,10 @@ export function PatientRegistrationSuccess({
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link href={`/patients/${patient.id}`} className="w-full sm:w-auto">
+                  <Link href={`/patients/${patient.id}`} className="w-full lg:flex-1 xl:w-auto xl:flex-none">
                     <Button
                       variant="ghost"
-                      className="h-11 w-full sm:w-11"
+                      className="h-11 w-full xl:w-11"
                       size="icon"
                       aria-label="View Profile"
                     >
@@ -259,7 +259,7 @@ export function PatientRegistrationSuccess({
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="h-11 w-full sm:w-11"
+                    className="h-11 w-full lg:flex-1 xl:w-11 xl:flex-none"
                     size="icon"
                     onClick={onRegisterAnother}
                     aria-label="Register Another"
@@ -272,10 +272,10 @@ export function PatientRegistrationSuccess({
 
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link href="/patients" className="w-full sm:w-auto">
+                  <Link href="/patients" className="w-full lg:flex-1 xl:w-auto xl:flex-none">
                     <Button
                       variant="ghost"
-                      className="h-11 w-full sm:w-11"
+                      className="h-11 w-full xl:w-11"
                       size="icon"
                       aria-label="Back to Patients"
                     >
