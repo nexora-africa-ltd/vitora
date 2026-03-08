@@ -47,12 +47,12 @@ const chartConfig: ChartConfig = {
   respiratory_rate: { label: 'Resp Rate', color: 'hsl(var(--chart-3))' },
 };
 
-interface TemperatureChartProps {
+interface TPRChartProps {
   admissionId: number;
   isActive: boolean;
 }
 
-export function TemperatureChart({ admissionId, isActive }: TemperatureChartProps) {
+export function TPRChart({ admissionId, isActive }: TPRChartProps) {
   const { toast } = useToast();
   const { data, isLoading } = useTemperatureReadings(admissionId);
   const createReading = useCreateTemperatureReading();
@@ -102,11 +102,11 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
         respiratory_rate: rrValue,
         notes: notes || undefined,
       });
-      toast({ title: 'Temperature recorded' });
+      toast({ title: 'TPR reading recorded' });
       setDialogOpen(false);
       resetForm();
     } catch {
-      toast({ title: 'Error', description: 'Failed to record temperature', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Failed to record TPR reading', variant: 'destructive' });
     }
   };
 
@@ -125,20 +125,20 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
         <div className="flex items-center gap-2">
-          <h3 className="text-lg font-semibold">Temperature Chart</h3>
-          <HelpPopover content="Track temperature, pulse, and respiratory rate trends over time. Based on the Kenya hospital temperature chart form." />
+          <h3 className="text-lg font-semibold">TPR Chart</h3>
+          <HelpPopover content="Temperature, Pulse, and Respiration (TPR) chart. Track trends over time based on the Kenya hospital observation chart form." />
         </div>
         {isActive && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-1.5" />
-                Record Temperature
+                Record TPR
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>Record Temperature</DialogTitle>
+                <DialogTitle>Record TPR Reading</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -207,7 +207,7 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
         <Card>
           <CardContent className="py-8 text-center">
             <Thermometer className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">No temperature readings recorded yet.</p>
+            <p className="text-muted-foreground">No TPR readings recorded yet.</p>
           </CardContent>
         </Card>
       ) : (

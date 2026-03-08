@@ -12,6 +12,8 @@ from .views import (
     BloodTransfusionViewSet,
     BPMonitoringViewSet,
     DischargeViewSet,
+    FluidBalanceEntryViewSet,
+    FluidBalanceSheetViewSet,
     NursingKardexViewSet,
     ReviewRequestViewSet,
     ShiftHandoverViewSet,
@@ -41,6 +43,8 @@ router.register(r"review-requests", ReviewRequestViewSet, basename="review-reque
 router.register(r"kardex", NursingKardexViewSet, basename="kardex")
 router.register(r"shift-handovers", ShiftHandoverViewSet, basename="shift-handover")
 router.register(r"temperature-readings", TemperatureReadingViewSet, basename="temperature-reading")
+router.register(r"fluid-balance-sheets", FluidBalanceSheetViewSet, basename="fluid-balance-sheet")
+router.register(r"fluid-balance-entries", FluidBalanceEntryViewSet, basename="fluid-balance-entry")
 router.register(r"blood-transfusions", BloodTransfusionViewSet, basename="blood-transfusion")
 router.register(r"bp-readings", BPMonitoringViewSet, basename="bp-reading")
 

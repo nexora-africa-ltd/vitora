@@ -18,6 +18,8 @@ from .models import (
     BloodTransfusionObservation,
     BPMonitoringReading,
     Discharge,
+    FluidBalanceEntry,
+    FluidBalanceSheet,
     KardexHandoverNote,
     KardexShiftNote,
     NursingCarePlanEntry,
@@ -1087,14 +1089,13 @@ class ConstraintOverrideMetricsSerializer(serializers.Serializer):
 
 
 class TemperatureReadingSerializer(serializers.ModelSerializer):
-    """Serializer for temperature chart readings."""
+    """Serializer for TPR chart readings."""
 
     recorded_by_username = serializers.CharField(
         source="recorded_by.username", read_only=True
     )
     is_febrile = serializers.BooleanField(read_only=True)
     is_hypothermic = serializers.BooleanField(read_only=True)
-    fluid_balance_ml = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = TemperatureReading
@@ -1107,11 +1108,6 @@ class TemperatureReadingSerializer(serializers.ModelSerializer):
             "temperature",
             "pulse",
             "respiratory_rate",
-            "bowels",
-            "urine_output",
-            "fluid_intake_ml",
-            "urine_output_ml",
-            "fluid_balance_ml",
             "notes",
             "is_febrile",
             "is_hypothermic",
@@ -1122,7 +1118,7 @@ class TemperatureReadingSerializer(serializers.ModelSerializer):
 
 
 class TemperatureReadingCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating temperature readings."""
+    """Serializer for creating TPR readings."""
 
     class Meta:
         model = TemperatureReading
@@ -1132,10 +1128,114 @@ class TemperatureReadingCreateSerializer(serializers.ModelSerializer):
             "temperature",
             "pulse",
             "respiratory_rate",
-            "bowels",
-            "urine_output",
-            "fluid_intake_ml",
-            "urine_output_ml",
+            "notes",
+        ]
+
+
+class FluidBalanceSheetSerializer(serializers.ModelSerializer):
+    """Serializer for Ministry of Health fluid balance sheets."""
+
+    recorded_by_username = serializers.CharField(
+        source="recorded_by.username", read_only=True
+    )
+    total_intravenous_intake_ml = serializers.IntegerField(read_only=True)
+    total_alimentary_intake_ml = serializers.IntegerField(read_only=True)
+    total_other_intake_ml = serializers.IntegerField(read_only=True)
+    total_intake_ml = serializers.IntegerField(read_only=True)
+    total_vomit_output_ml = serializers.IntegerField(read_only=True)
+    total_stool_output_ml = serializers.IntegerField(read_only=True)
+    total_nasogastric_output_ml = serializers.IntegerField(read_only=True)
+    total_other_output_ml = serializers.IntegerField(read_only=True)
+    total_urine_output_ml = serializers.IntegerField(read_only=True)
+    total_output_ml = serializers.IntegerField(read_only=True)
+    net_balance_ml = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = FluidBalanceSheet
+        fields = [
+            "id",
+            "admission",
+            "chart_date",
+            "recorded_by",
+            "recorded_by_username",
+            "patient_weight_kg",
+            "intravenous_infusion_notes",
+            "other_instructions",
+            "total_intravenous_intake_ml",
+            "total_alimentary_intake_ml",
+            "total_other_intake_ml",
+            "total_intake_ml",
+            "total_vomit_output_ml",
+            "total_stool_output_ml",
+            "total_nasogastric_output_ml",
+            "total_other_output_ml",
+            "total_urine_output_ml",
+            "total_output_ml",
+            "net_balance_ml",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class FluidBalanceSheetCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating fluid balance sheets."""
+
+    class Meta:
+        model = FluidBalanceSheet
+        fields = [
+            "admission",
+            "chart_date",
+            "patient_weight_kg",
+            "intravenous_infusion_notes",
+            "other_instructions",
+        ]
+
+
+class FluidBalanceEntrySerializer(serializers.ModelSerializer):
+    """Serializer for categorized fluid balance entries."""
+
+    recorded_by_username = serializers.CharField(
+        source="recorded_by.username", read_only=True
+    )
+    entry_type_display = serializers.CharField(
+        source="get_entry_type_display", read_only=True
+    )
+
+    class Meta:
+        model = FluidBalanceEntry
+        fields = [
+            "id",
+            "fluid_balance_sheet",
+            "recorded_at",
+            "recorded_by",
+            "recorded_by_username",
+            "entry_type",
+            "entry_type_display",
+            "item_type",
+            "bottle_number",
+            "amount_ml",
+            "specific_gravity",
+            "notes",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class FluidBalanceEntryCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating fluid balance entries."""
+
+    class Meta:
+        model = FluidBalanceEntry
+        fields = [
+            "fluid_balance_sheet",
+            "recorded_at",
+            "entry_type",
+            "item_type",
+            "bottle_number",
+            "amount_ml",
+            "specific_gravity",
             "notes",
         ]
 
