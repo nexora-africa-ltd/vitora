@@ -5,6 +5,7 @@
 
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
+import { AxiosError } from 'axios';
 import { z } from 'zod';
 import {
   DepartmentSchema,
@@ -140,9 +141,16 @@ export const staffApi = {
     return parseResponse(PaginatedStaffProfileSchema, response.data, { context: 'staffApi.list' });
   },
 
-  getMe: async (): Promise<StaffProfile> => {
-    const response = await apiClient.get<StaffProfile>('/api/staff/me/');
-    return parseResponse(StaffProfileSchema, response.data, { context: 'staffApi.getMe' });
+  getMe: async (): Promise<StaffProfile | null> => {
+    try {
+      const response = await apiClient.get<StaffProfile>('/api/staff/me/');
+      return parseResponse(StaffProfileSchema, response.data, { context: 'staffApi.getMe' });
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   },
 
   get: async (id: number): Promise<StaffProfile> => {
