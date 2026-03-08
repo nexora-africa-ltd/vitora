@@ -429,12 +429,12 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
                 Record Fluids
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-xl">
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
               <DialogHeader>
                 <DialogTitle>Record Fluid Balance Entry</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4 py-4 pr-1">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="recorded-at">Recorded Time *</Label>
                     <Input
@@ -477,9 +477,9 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
 
                 <div className="grid gap-4 lg:grid-cols-2">
                   <div className={`rounded-lg border p-4 space-y-3 ${isIntakeEntry ? 'border-primary/40 bg-primary/5' : 'border-border/60'}`}>
-                    <div>
+                    <div className="flex items-center gap-2">
                       <p className="font-medium">Intake</p>
-                      <p className="text-xs text-muted-foreground">Intravenous and alimentary intake fields</p>
+                      <HelpPopover content="Use this section for intravenous and alimentary intake entries. Select the intake category, then capture the fluid/feed type, bottle number where applicable, and the infused amount." />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="item-type-intake">Type</Label>
@@ -503,9 +503,9 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
                     </div>
                   </div>
                   <div className={`rounded-lg border p-4 space-y-3 ${!isIntakeEntry ? 'border-primary/40 bg-primary/5' : 'border-border/60'}`}>
-                    <div>
+                    <div className="flex items-center gap-2">
                       <p className="font-medium">Output</p>
-                      <p className="text-xs text-muted-foreground">Vomit, stool, nasogastric, other output, and urine</p>
+                      <HelpPopover content="Use this section for vomit, stool, nasogastric losses, other output, and urine. Capture the amount for each event and include urine specific gravity when the entry type is urine." />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="item-type-output">Description</Label>
@@ -533,7 +533,7 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="weight-kg">Weight (kg)</Label>
                     <Input
