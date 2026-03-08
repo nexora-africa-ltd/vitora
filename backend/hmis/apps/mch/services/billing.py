@@ -38,6 +38,18 @@ PNC_SERVICE_CODES = {
 }
 
 
+def _resolve_created_by(explicit_user=None, fallback_user=None):
+    """Resolve the invoice creator for signal and service callers."""
+    if explicit_user is not None:
+        return explicit_user
+    if fallback_user is not None:
+        return fallback_user
+
+    from hmis.apps.billing.services.clinic_billing import _get_system_user
+
+    return _get_system_user()
+
+
 def is_linda_jamii_exempt(registration: "MCHRegistration") -> bool:
     """
     Check if MCH registration qualifies for Linda Jamii exemption.
@@ -83,6 +95,8 @@ def create_anc_visit_invoice(
 
     if services is None:
         services = ["ANC_VISIT"]
+
+    created_by = _resolve_created_by(created_by, getattr(anc_visit, "conducted_by", None))
 
     with transaction.atomic():
         # Create invoice
@@ -165,6 +179,7 @@ def create_delivery_invoice(
         service_key = "NORMAL_DELIVERY"
 
     code, description, unit_price = DELIVERY_SERVICE_CODES[service_key]
+    created_by = _resolve_created_by(created_by, getattr(delivery, "delivered_by", None))
 
     with transaction.atomic():
         invoice = Invoice.objects.create(
@@ -229,6 +244,7 @@ def create_pnc_visit_invoice(
         return None
 
     code, description, unit_price = PNC_SERVICE_CODES["PNC_VISIT"]
+    created_by = _resolve_created_by(created_by, getattr(pnc_visit, "conducted_by", None))
 
     with transaction.atomic():
         invoice = Invoice.objects.create(

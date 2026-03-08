@@ -458,6 +458,14 @@ class ANCVisit(HistoryMixin, TimeStampedModel):
         related_name="anc_visits",
         help_text="Clinical encounter for this visit",
     )
+    clinic_visit = models.OneToOneField(
+        "clinics.ClinicVisit",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="anc_visit",
+        help_text="Canonical clinic visit for this attended ANC consultation",
+    )
 
     # Visit details
     visit_number = models.PositiveSmallIntegerField(
@@ -1220,6 +1228,14 @@ class PNCVisit(HistoryMixin, TimeStampedModel):
         null=True,
         blank=True,
         related_name="pnc_visits",
+    )
+    clinic_visit = models.OneToOneField(
+        "clinics.ClinicVisit",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pnc_visit",
+        help_text="Canonical clinic visit for this attended PNC consultation",
     )
 
     # Visit details

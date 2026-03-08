@@ -427,7 +427,10 @@ def auto_create_anc_visit_invoice(sender, instance, created, **kwargs):
     try:
         from hmis.apps.mch.services.billing import create_anc_visit_invoice
 
-        invoice = create_anc_visit_invoice(instance)
+        invoice = create_anc_visit_invoice(
+            instance,
+            created_by=instance.conducted_by,
+        )
         if invoice:
             logger.info(
                 "Auto-created invoice %s for ANC visit %s",
@@ -456,7 +459,10 @@ def auto_create_pnc_visit_invoice(sender, instance, created, **kwargs):
     try:
         from hmis.apps.mch.services.billing import create_pnc_visit_invoice
 
-        invoice = create_pnc_visit_invoice(instance)
+        invoice = create_pnc_visit_invoice(
+            instance,
+            created_by=instance.conducted_by,
+        )
         if invoice:
             logger.info(
                 "Auto-created invoice %s for PNC visit %s",
@@ -499,7 +505,10 @@ def auto_create_delivery_invoice(sender, instance, created, **kwargs):
     try:
         from hmis.apps.mch.services.billing import create_delivery_invoice
 
-        invoice = create_delivery_invoice(instance)
+        invoice = create_delivery_invoice(
+            instance,
+            created_by=instance.delivered_by,
+        )
         if invoice:
             logger.info(
                 "Auto-created invoice %s for delivery %s",

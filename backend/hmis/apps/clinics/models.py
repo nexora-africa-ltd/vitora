@@ -625,6 +625,17 @@ class ClinicVisit(TimeStampedModel):
         choices=SOURCE_CHOICES,
         default="TRIAGE",
     )
+    source_module = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        help_text="Source module or workflow that created this visit (for traceability)",
+    )
+    source_record_id = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Source record identifier used during live linking and backfill reconciliation",
+    )
 
     # =========================================================================
     # Timestamps
@@ -1693,6 +1704,50 @@ class ClinicEnrollment(TimeStampedModel):
                 "type": enrollment_type,
                 "enrollment_data": self.enrollment_data,
             }
+
+
+class ClinicProgramAttendance(TimeStampedModel):
+    """Idempotent attendance ledger for enrollment summaries derived from clinic visits."""
+
+    enrollment = models.ForeignKey(
+        ClinicEnrollment,
+        on_delete=models.CASCADE,
+        related_name="attendance_events",
+    )
+    clinic_visit = models.OneToOneField(
+        ClinicVisit,
+        on_delete=models.CASCADE,
+        related_name="program_attendance",
+    )
+    attendance_date = models.DateField(
+        help_text="Canonical attendance date derived from the linked clinic visit",
+    )
+    source_module = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        help_text="Clinical module that generated the attendance event",
+    )
+    source_record_id = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Clinical payload id associated with this attendance event",
+    )
+
+    class Meta:
+        ordering = ["-attendance_date", "-created_at"]
+        verbose_name = "Clinic Program Attendance"
+        verbose_name_plural = "Clinic Program Attendance"
+        indexes = [
+            models.Index(fields=["enrollment", "attendance_date"]),
+            models.Index(fields=["source_module", "source_record_id"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.enrollment.patient} - {self.enrollment.clinic.name} "
+            f"({self.attendance_date})"
+        )
 
 
 # =============================================================================
