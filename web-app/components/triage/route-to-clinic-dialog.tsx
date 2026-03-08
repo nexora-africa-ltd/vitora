@@ -6,7 +6,8 @@
  */
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { Building2, ArrowRight, Loader2, Search } from 'lucide-react';
 import {
   Dialog,
@@ -23,7 +24,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAddToQueue, useClinics } from '@/lib/hooks/use-clinics';
+import { clinicsApi } from '@/lib/api/clinics';
+import { useAddToQueue } from '@/lib/hooks/use-clinics';
 import { useRouteToClinic } from '@/lib/hooks/use-triage';
 import { toast } from '@/lib/hooks/use-toast';
 import { CheckinSuccessModal, type CheckinSuccessData } from '@/components/patients/checkin-success-modal';
@@ -52,13 +54,57 @@ export function RouteToClinicDialog({
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState<CheckinSuccessData | null>(null);
+  const clinicScrollAreaRef = useRef<HTMLDivElement | null>(null);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  // Fetch active clinics
-  const { data: clinicsData, isLoading: clinicsLoading } = useClinics({
-    status: 'ACTIVE',
+  const {
+    data: clinicPages,
+    isLoading: clinicsLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['route-to-clinic-dialog', 'clinics', 'ACTIVE'],
+    queryFn: ({ pageParam = 1 }) =>
+      clinicsApi.list({
+        status: 'ACTIVE',
+        page: pageParam,
+      }),
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.next ? allPages.length + 1 : undefined,
+    initialPageParam: 1,
   });
 
-  const clinics = useMemo(() => clinicsData?.results ?? [], [clinicsData?.results]);
+  const clinics = useMemo(
+    () => clinicPages?.pages.flatMap((page) => page.results) ?? [],
+    [clinicPages]
+  );
+
+  useEffect(() => {
+    const viewport = clinicScrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    const sentinel = loadMoreRef.current;
+
+    if (!viewport || !sentinel || !hasNextPage) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      {
+        root: viewport,
+        rootMargin: '120px 0px',
+      }
+    );
+
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, clinics]);
 
   // Filter clinics by search query
   const filteredClinics = useMemo(() => {
@@ -193,7 +239,7 @@ export function RouteToClinicDialog({
           <DialogDescription className="text-sm sm:text-base">
             {isDirectRoute ? (
               <>
-                Route <strong>{patientName}</strong> directly to a clinic queue and skip triage.
+                Route <strong>{patientName}</strong> directly to an open clinic queue and skip triage.
               </>
             ) : (
               <>
@@ -268,7 +314,7 @@ export function RouteToClinicDialog({
             {/* Clinic Selection */}
             <div className="space-y-2">
               <Label className="text-sm">Select Clinic</Label>
-              <ScrollArea className="h-[220px] sm:h-[240px] rounded-md border">
+              <ScrollArea ref={clinicScrollAreaRef} className="h-[220px] sm:h-[240px] rounded-md border">
                 {clinicsLoading ? (
                   <div className="space-y-2 p-3">
                     {[1, 2, 3, 4].map((i) => (
@@ -316,6 +362,18 @@ export function RouteToClinicDialog({
                         </div>
                       </div>
                     ))}
+                    <div ref={loadMoreRef} className="flex justify-center py-2">
+                      {isFetchingNextPage ? (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Loading more clinics...
+                        </div>
+                      ) : hasNextPage ? (
+                        <span className="text-xs text-muted-foreground">Scroll to load more</span>
+                      ) : clinics.length > 0 ? (
+                        <span className="text-xs text-muted-foreground">All clinics loaded</span>
+                      ) : null}
+                    </div>
                   </div>
                 )}
               </ScrollArea>
