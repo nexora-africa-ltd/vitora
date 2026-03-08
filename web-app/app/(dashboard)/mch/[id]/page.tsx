@@ -359,7 +359,7 @@ export default function MCHRegistrationDetailPage({ params }: PageProps) {
 
         {/* Risk Factors */}
         {registration.risk_factors && (
-          <Card className="border-orange-200 bg-orange-50/50">
+          <Card className="border-orange-200 bg-orange">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2 text-orange-700">
                 <AlertTriangle className="h-4 w-4" />
