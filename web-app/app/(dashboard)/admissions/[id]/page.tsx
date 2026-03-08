@@ -49,7 +49,7 @@ import {
   useCreateReviewRequest,
   useAdmissionReviewRequests,
 } from '@/lib/hooks/use-inpatient';
-import { AdmissionOrdersTab, ICURiskAssessmentPanel, DischargeReadinessPanel } from '@/components/inpatient';
+import { AdmissionOrdersTab, ICURiskAssessmentPanel, DischargeReadinessPanel, ConsumableUsagePanel } from '@/components/inpatient';
 import { CarePlanPanel } from '@/components/encounters/care-plan-panel';
 import { TPRChart } from '@/components/inpatient/tpr-chart';
 import { FluidBalanceSheet } from '@/components/inpatient/fluid-balance-sheet';
@@ -788,6 +788,11 @@ export default function AdmissionDetailPage() {
 
         {/* Nursing Kardex Tab */}
         <TabsContent value="kardex" className="space-y-4">
+          <ConsumableUsagePanel
+            admissionId={admission.id}
+            isActive={admission.admission_status === 'ACTIVE'}
+          />
+
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
             <h3 className="text-lg font-semibold">Nursing Kardex</h3>
             {kardex && admission.admission_status === 'ACTIVE' && (

@@ -498,6 +498,40 @@ export interface NursingKardex {
   updated_at?: string;
 }
 
+export interface InpatientConsumableUsage {
+  id: number;
+  admission: number;
+  admission_number?: string;
+  patient_name?: string;
+  drug: number;
+  drug_name?: string;
+  batch: number;
+  batch_number?: string;
+  quantity_used: number;
+  notes?: string;
+  used_by: number;
+  used_by_username?: string;
+  used_at: string;
+  is_reversed: boolean;
+  reversed_by?: number | null;
+  reversed_by_username?: string | null;
+  reversed_at?: string | null;
+  reverse_reason?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface InpatientConsumableUsageCreateData {
+  batch: number;
+  quantity_used: number;
+  notes?: string;
+  used_at?: string;
+}
+
+export interface InpatientConsumableUsageReverseData {
+  reason: string;
+}
+
 export interface KardexUpdateData {
   mobility_status?: string;
   dietary_requirements?: string;
@@ -705,6 +739,7 @@ export type TransferListResponse = PaginatedResponse<Transfer>;
 export type WardRoundListResponse = PaginatedResponse<WardRound>;
 export type ReviewRequestListResponse = PaginatedResponse<ReviewRequest>;
 export type KardexListResponse = PaginatedResponse<NursingKardex>;
+export type InpatientConsumableUsageListResponse = InpatientConsumableUsage[];
 export type ShiftHandoverListResponse = PaginatedResponse<ShiftHandover>;
 
 // ============================================================================
