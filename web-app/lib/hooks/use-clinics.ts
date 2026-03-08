@@ -11,9 +11,10 @@
  * Queue mutations sync to patient-journey store for real-time tracking.
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clinicsApi } from '@/lib/api/clinics';
 import { usePatientJourneyStore } from '@/lib/stores/patient-journey';
+import type { PaginatedResponse } from '@/lib/types';
 import type {
   Clinic,
   ClinicListItem,
@@ -42,6 +43,7 @@ export const clinicKeys = {
   all: ['clinics'] as const,
   lists: () => [...clinicKeys.all, 'list'] as const,
   list: (params?: ClinicListParams) => [...clinicKeys.lists(), params] as const,
+  infiniteList: (params?: Omit<ClinicListParams, 'page'>) => [...clinicKeys.lists(), 'infinite', params] as const,
   details: () => [...clinicKeys.all, 'detail'] as const,
   detail: (id: number) => [...clinicKeys.details(), id] as const,
   dashboard: (id: number) => [...clinicKeys.all, 'dashboard', id] as const,
@@ -84,6 +86,23 @@ export function useClinics(params?: ClinicListParams) {
   return useQuery({
     queryKey: clinicKeys.list(params),
     queryFn: () => clinicsApi.list(params),
+  });
+}
+
+/**
+ * Fetch clinics with infinite pagination support.
+ */
+export function useInfiniteClinics(params?: Omit<ClinicListParams, 'page'>) {
+  return useInfiniteQuery<PaginatedResponse<ClinicListItem>>({
+    queryKey: clinicKeys.infiniteList(params),
+    queryFn: ({ pageParam = 1 }) =>
+      clinicsApi.list({
+        ...params,
+        page: pageParam,
+      }),
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.next ? allPages.length + 1 : undefined,
+    initialPageParam: 1,
   });
 }
 
