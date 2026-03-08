@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Droplets, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CalendarDays, Droplets, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -34,8 +34,165 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
 import type {
   FluidBalanceEntryType,
+  FluidBalanceEntry,
   FluidBalanceSheet as FluidBalanceSheetType,
 } from '@/lib/types/inpatient';
+
+const CHART_START_HOUR = 6;
+
+function toLocalDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getChartDateKey(date: Date): string {
+  const adjusted = new Date(date);
+  if (adjusted.getHours() < CHART_START_HOUR) {
+    adjusted.setDate(adjusted.getDate() - 1);
+  }
+  return toLocalDateKey(adjusted);
+}
+
+function getChartPeriodRange(chartDate: string) {
+  const start = new Date(`${chartDate}T06:00:00`);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  return { start, end };
+}
+
+function toDateTimeLocalValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function getDefaultRecordedAt(chartDate: string): string {
+  const { start, end } = getChartPeriodRange(chartDate);
+  const now = new Date();
+  if (now >= start && now < end) {
+    return toDateTimeLocalValue(now);
+  }
+  return toDateTimeLocalValue(start);
+}
+
+function formatChartPeriodLabel(chartDate: string): string {
+  const { start, end } = getChartPeriodRange(chartDate);
+  const next = new Date(end);
+  next.setMinutes(next.getMinutes() - 1);
+  return `${start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} 6:00 AM - ${next.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} 5:59 AM`;
+}
+
+function formatSheetOptionLabel(chartDate: string, currentChartDate: string): string {
+  const base = new Date(`${chartDate}T06:00:00`).toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
+  return chartDate === currentChartDate ? `${base} (Current Period)` : base;
+}
+
+function getTimeSlotLabel(hour: number): string {
+  const normalized = hour % 24;
+  const suffix = normalized >= 12 ? 'PM' : 'AM';
+  const twelveHour = normalized % 12 === 0 ? 12 : normalized % 12;
+  return `${twelveHour}${suffix}`;
+}
+
+function getSlotIndex(recordedAt: string, chartDate: string): number | null {
+  const { start, end } = getChartPeriodRange(chartDate);
+  const value = new Date(recordedAt);
+  if (value < start || value >= end) {
+    return null;
+  }
+  return Math.floor((value.getTime() - start.getTime()) / (60 * 60 * 1000));
+}
+
+type SlotRow = {
+  label: string;
+  intravenousTypes: string[];
+  intravenousBottles: string[];
+  intravenousAmountMl: number;
+  alimentaryTypes: string[];
+  alimentaryAmountMl: number;
+  vomitAmountMl: number;
+  stoolAmountMl: number;
+  nasogastricAmountMl: number;
+  otherOutputAmountMl: number;
+  urineAmountMl: number;
+  urineSpecificGravity: string[];
+};
+
+function buildSlotRows(entries: FluidBalanceEntry[], chartDate: string): SlotRow[] {
+  const rows: SlotRow[] = Array.from({ length: 24 }, (_, index) => {
+    const hour = (CHART_START_HOUR + index) % 24;
+    return {
+      label: getTimeSlotLabel(hour),
+      intravenousTypes: [],
+      intravenousBottles: [],
+      intravenousAmountMl: 0,
+      alimentaryTypes: [],
+      alimentaryAmountMl: 0,
+      vomitAmountMl: 0,
+      stoolAmountMl: 0,
+      nasogastricAmountMl: 0,
+      otherOutputAmountMl: 0,
+      urineAmountMl: 0,
+      urineSpecificGravity: [],
+    };
+  });
+
+  entries.forEach((entry) => {
+    const slotIndex = getSlotIndex(entry.recorded_at, chartDate);
+    if (slotIndex == null) {
+      return;
+    }
+    const row = rows[slotIndex];
+    if (!row) {
+      return;
+    }
+    switch (entry.entry_type) {
+      case 'INTRAVENOUS':
+        if (entry.item_type) row.intravenousTypes.push(entry.item_type);
+        if (entry.bottle_number) row.intravenousBottles.push(entry.bottle_number);
+        row.intravenousAmountMl += entry.amount_ml ?? 0;
+        break;
+      case 'ALIMENTARY':
+      case 'OTHER_INTAKE':
+        if (entry.item_type) row.alimentaryTypes.push(entry.item_type);
+        row.alimentaryAmountMl += entry.amount_ml ?? 0;
+        break;
+      case 'VOMIT':
+        row.vomitAmountMl += entry.amount_ml ?? 0;
+        break;
+      case 'STOOL':
+        row.stoolAmountMl += entry.amount_ml ?? 0;
+        break;
+      case 'NASOGASTRIC':
+        row.nasogastricAmountMl += entry.amount_ml ?? 0;
+        break;
+      case 'OTHER_OUTPUT':
+        row.otherOutputAmountMl += entry.amount_ml ?? 0;
+        break;
+      case 'URINE':
+        row.urineAmountMl += entry.amount_ml ?? 0;
+        if (entry.specific_gravity) row.urineSpecificGravity.push(entry.specific_gravity);
+        break;
+      default:
+        break;
+    }
+  });
+
+  return rows;
+}
+
+function joinUnique(values: string[]): string {
+  return [...new Set(values.filter(Boolean))].join(', ');
+}
 
 const ENTRY_TYPE_OPTIONS: { value: Exclude<FluidBalanceEntryType, 'OTHER_INTAKE'>; label: string }[] = [
   { value: 'INTRAVENOUS', label: 'Intravenous' },
@@ -58,8 +215,11 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
   const createSheet = useCreateFluidBalanceSheet();
   const updateSheet = useUpdateFluidBalanceSheet();
   const createEntry = useCreateFluidBalanceEntry();
+  const currentChartDate = getChartDateKey(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedChartDate, setSelectedChartDate] = useState(currentChartDate);
   const [entryType, setEntryType] = useState<Exclude<FluidBalanceEntryType, 'OTHER_INTAKE'>>('INTRAVENOUS');
+  const [recordedAt, setRecordedAt] = useState(getDefaultRecordedAt(currentChartDate));
   const [patientWeightKg, setPatientWeightKg] = useState('');
   const [intravenousInfusionNotes, setIntravenousInfusionNotes] = useState('');
   const [otherInstructions, setOtherInstructions] = useState('');
@@ -69,17 +229,27 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
   const [specificGravity, setSpecificGravity] = useState('');
   const [notes, setNotes] = useState('');
 
-  const today = new Date().toISOString().slice(0, 10);
   const sheets = sheetsData?.results ?? [];
-  const todaysSheet = sheets.find((sheet) => sheet.chart_date === today) ?? null;
-  const currentSheet = todaysSheet ?? sheets[0] ?? null;
-  const isCurrentSheetToday = currentSheet?.chart_date === today;
+  const availableChartDates = Array.from(
+    new Set([currentChartDate, ...sheets.map((sheet) => sheet.chart_date)])
+  ).sort((a, b) => b.localeCompare(a));
+  const currentSheet = sheets.find((sheet) => sheet.chart_date === selectedChartDate) ?? null;
+  const isSelectedCurrentPeriod = selectedChartDate === currentChartDate;
   const { data: entriesData, isLoading: entriesLoading } = useFluidBalanceEntries(currentSheet?.id);
   const entries = entriesData?.results ?? [];
   const isLoading = sheetsLoading || (typeof currentSheet?.id === 'number' && entriesLoading);
 
+  useEffect(() => {
+    setSelectedChartDate(currentChartDate);
+  }, [admissionId, currentChartDate]);
+
+  useEffect(() => {
+    setRecordedAt(getDefaultRecordedAt(selectedChartDate));
+  }, [selectedChartDate]);
+
   const resetForm = () => {
     setEntryType('INTRAVENOUS');
+    setRecordedAt(getDefaultRecordedAt(selectedChartDate));
     setPatientWeightKg('');
     setIntravenousInfusionNotes('');
     setOtherInstructions('');
@@ -91,6 +261,26 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
   };
 
   const handleSubmit = async () => {
+    if (!recordedAt) {
+      toast({
+        title: 'Missing time',
+        description: 'Select the time this entry belongs to on the chart',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const recordedAtValue = new Date(recordedAt);
+    const { start, end } = getChartPeriodRange(selectedChartDate);
+    if (recordedAtValue < start || recordedAtValue >= end) {
+      toast({
+        title: 'Time outside chart period',
+        description: 'Recorded time must fall within the selected 6am-to-6am chart period',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const amountValue = parseInt(amountMl, 10);
     if (isNaN(amountValue) || amountValue < 0) {
       toast({
@@ -128,10 +318,10 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
     let sheet: FluidBalanceSheetType;
 
     try {
-      if (!isCurrentSheetToday) {
+      if (!currentSheet) {
         sheet = await createSheet.mutateAsync({
           admission: admissionId,
-          chart_date: today,
+          chart_date: selectedChartDate,
           patient_weight_kg: weightValue,
           intravenous_infusion_notes: intravenousInfusionNotes || undefined,
           other_instructions: otherInstructions || undefined,
@@ -160,7 +350,7 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
 
       await createEntry.mutateAsync({
         fluid_balance_sheet: sheet.id,
-        recorded_at: new Date().toISOString(),
+        recorded_at: recordedAtValue.toISOString(),
         entry_type: entryType,
         item_type: itemType || undefined,
         bottle_number: entryType === 'INTRAVENOUS' ? bottleNumber || undefined : undefined,
@@ -187,7 +377,7 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
 
   const isSubmitting = createSheet.isPending || updateSheet.isPending || createEntry.isPending;
   const hasNoData = !currentSheet && entries.length === 0;
-  const currentSheetTitle = currentSheet ? `Chart Date: ${currentSheet.chart_date}` : `Chart Date: ${today}`;
+  const currentSheetTitle = currentSheet ? currentSheet.chart_date : selectedChartDate;
   const summaryRows = [
     { label: 'IV Intake', value: currentSheet?.total_intravenous_intake_ml ?? 0 },
     { label: 'Alimentary', value: currentSheet?.total_alimentary_intake_ml ?? 0 },
@@ -198,6 +388,9 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
     { label: 'Other Output', value: currentSheet?.total_other_output_ml ?? 0 },
     { label: 'Urine', value: currentSheet?.total_urine_output_ml ?? 0 },
   ];
+  const slotRows = buildSlotRows(entries, selectedChartDate);
+  const selectedPeriodLabel = formatChartPeriodLabel(selectedChartDate);
+  const isIntakeEntry = entryType === 'INTRAVENOUS' || entryType === 'ALIMENTARY';
 
   return (
     <div className="space-y-4">
@@ -206,11 +399,29 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
           <Droplets className="h-5 w-5 text-muted-foreground" />
           <div>
             <h3 className="text-lg font-semibold">Fluid Balance Chart</h3>
-            <p className="text-sm text-muted-foreground">{currentSheetTitle}</p>
+            <p className="text-sm text-muted-foreground">{selectedPeriodLabel}</p>
           </div>
           <HelpPopover content="Ministry-style fluid balance chart with categorized intake and output entries. Use separate rows for intravenous, alimentary, vomit, stool, nasogastric, other output, and urine." />
         </div>
-        {isActive && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="w-full sm:w-64">
+            <Select value={selectedChartDate} onValueChange={setSelectedChartDate}>
+              <SelectTrigger>
+                <div className="flex items-center gap-2 truncate">
+                  <CalendarDays className="h-4 w-4 opacity-70" />
+                  <SelectValue placeholder="Select chart date" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {availableChartDates.map((chartDate) => (
+                  <SelectItem key={chartDate} value={chartDate}>
+                    {formatSheetOptionLabel(chartDate, currentChartDate)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {isActive && (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="w-full sm:w-auto">
@@ -224,6 +435,15 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="recorded-at">Recorded Time *</Label>
+                    <Input
+                      id="recorded-at"
+                      type="datetime-local"
+                      value={recordedAt}
+                      onChange={(e) => setRecordedAt(e.target.value)}
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="entry-type">Entry Type *</Label>
                     <Select
@@ -255,52 +475,61 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="item-type">
-                      {entryType === 'INTRAVENOUS'
-                        ? 'IV Type'
-                        : entryType === 'ALIMENTARY'
-                          ? 'Alimentary Type'
-                          : 'Description'}
-                    </Label>
-                    <Input
-                      id="item-type"
-                      placeholder={entryType === 'INTRAVENOUS'
-                        ? 'Normal saline'
-                        : entryType === 'ALIMENTARY'
-                          ? 'Oral feeds'
-                          : 'Describe entry'}
-                      value={itemType}
-                      onChange={(e) => setItemType(e.target.value)}
-                    />
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div className={`rounded-lg border p-4 space-y-3 ${isIntakeEntry ? 'border-primary/40 bg-primary/5' : 'border-border/60'}`}>
+                    <div>
+                      <p className="font-medium">Intake</p>
+                      <p className="text-xs text-muted-foreground">Intravenous and alimentary intake fields</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="item-type-intake">Type</Label>
+                      <Input
+                        id="item-type-intake"
+                        placeholder={entryType === 'INTRAVENOUS' ? 'Normal saline' : 'Oral feeds'}
+                        value={isIntakeEntry ? itemType : ''}
+                        onChange={(e) => setItemType(e.target.value)}
+                        disabled={!isIntakeEntry}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bottle-number">Bottle Number</Label>
+                      <Input
+                        id="bottle-number"
+                        placeholder="Bottle 1"
+                        value={entryType === 'INTRAVENOUS' ? bottleNumber : ''}
+                        onChange={(e) => setBottleNumber(e.target.value)}
+                        disabled={entryType !== 'INTRAVENOUS'}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    {entryType === 'INTRAVENOUS' ? (
-                      <>
-                        <Label htmlFor="bottle-number">Bottle Number</Label>
-                        <Input
-                          id="bottle-number"
-                          placeholder="Bottle 1"
-                          value={bottleNumber}
-                          onChange={(e) => setBottleNumber(e.target.value)}
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <Label htmlFor="specific-gravity">Specific Gravity</Label>
-                        <Input
-                          id="specific-gravity"
-                          type="number"
-                          step="0.001"
-                          min="0"
-                          placeholder="1.015"
-                          value={specificGravity}
-                          onChange={(e) => setSpecificGravity(e.target.value)}
-                          disabled={entryType !== 'URINE'}
-                        />
-                      </>
-                    )}
+                  <div className={`rounded-lg border p-4 space-y-3 ${!isIntakeEntry ? 'border-primary/40 bg-primary/5' : 'border-border/60'}`}>
+                    <div>
+                      <p className="font-medium">Output</p>
+                      <p className="text-xs text-muted-foreground">Vomit, stool, nasogastric, other output, and urine</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="item-type-output">Description</Label>
+                      <Input
+                        id="item-type-output"
+                        placeholder="Describe output"
+                        value={!isIntakeEntry ? itemType : ''}
+                        onChange={(e) => setItemType(e.target.value)}
+                        disabled={isIntakeEntry}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="specific-gravity">Specific Gravity</Label>
+                      <Input
+                        id="specific-gravity"
+                        type="number"
+                        step="0.001"
+                        min="0"
+                        placeholder="1.015"
+                        value={entryType === 'URINE' ? specificGravity : ''}
+                        onChange={(e) => setSpecificGravity(e.target.value)}
+                        disabled={entryType !== 'URINE'}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -359,7 +588,8 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        )}
+            )}
+          </div>
       </div>
 
       {hasNoData ? (
@@ -403,7 +633,7 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Category Totals</CardTitle>
+              <CardTitle className="text-base">Chart Summary</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
@@ -443,37 +673,65 @@ export function FluidBalanceSheet({ admissionId, isActive }: FluidBalanceSheetPr
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Fluid Entries</CardTitle>
+              <CardTitle className="text-base">Hourly Fluid Grid</CardTitle>
             </CardHeader>
             <CardContent className="px-0 sm:px-6">
               <div className="overflow-x-auto">
-                <table className="min-w-[720px] w-full text-sm">
+                <table className="min-w-[1180px] w-full text-sm">
                   <thead>
-                    <tr className="border-b text-left">
-                      <th className="p-2 font-medium">Date/Time</th>
-                      <th className="p-2 font-medium">Category</th>
-                      <th className="p-2 font-medium">Type</th>
+                    <tr className="border-b text-left bg-muted/40">
+                      <th className="p-2 font-medium align-bottom" rowSpan={2}>Time</th>
+                      <th className="p-2 font-medium text-center" colSpan={5}>Intake (in mL)</th>
+                      <th className="p-2 font-medium text-center" colSpan={6}>Output (in mL)</th>
+                    </tr>
+                    <tr className="border-b text-left bg-muted/20">
+                      <th className="p-2 font-medium">IV Type</th>
                       <th className="p-2 font-medium">Bottle</th>
+                      <th className="p-2 font-medium">Infused</th>
+                      <th className="p-2 font-medium">Alimentary Type</th>
                       <th className="p-2 font-medium">Amount</th>
-                      <th className="p-2 font-medium">Spec. Gravity</th>
-                      <th className="p-2 font-medium">Notes</th>
-                      <th className="p-2 font-medium">By</th>
+                      <th className="p-2 font-medium">Vomit</th>
+                      <th className="p-2 font-medium">Stool</th>
+                      <th className="p-2 font-medium">N/Gast</th>
+                      <th className="p-2 font-medium">Others</th>
+                      <th className="p-2 font-medium">Urine Amount</th>
+                      <th className="p-2 font-medium">Specific Gravity</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {entries.map((entry) => (
-                      <tr key={entry.id} className="border-b last:border-0">
-                        <td className="p-2 whitespace-nowrap">{formatDateTime(entry.recorded_at)}</td>
-                        <td className="p-2">{entry.entry_type_display || entry.entry_type}</td>
-                        <td className="p-2">{entry.item_type || '—'}</td>
-                        <td className="p-2">{entry.bottle_number || '—'}</td>
-                        <td className="p-2">{entry.amount_ml != null ? `${entry.amount_ml} mL` : '—'}</td>
-                        <td className="p-2">{entry.specific_gravity || '—'}</td>
-                        <td className="p-2">{entry.notes || '—'}</td>
-                        <td className="p-2 text-muted-foreground">{entry.recorded_by_username}</td>
+                    {slotRows.map((row) => (
+                      <tr key={row.label} className="border-b last:border-0 align-top">
+                        <td className="p-2 whitespace-nowrap font-medium">{row.label}</td>
+                        <td className="p-2 whitespace-pre-wrap">{joinUnique(row.intravenousTypes)}</td>
+                        <td className="p-2 whitespace-pre-wrap">{joinUnique(row.intravenousBottles)}</td>
+                        <td className="p-2">{row.intravenousAmountMl || ''}</td>
+                        <td className="p-2 whitespace-pre-wrap">{joinUnique(row.alimentaryTypes)}</td>
+                        <td className="p-2">{row.alimentaryAmountMl || ''}</td>
+                        <td className="p-2">{row.vomitAmountMl || ''}</td>
+                        <td className="p-2">{row.stoolAmountMl || ''}</td>
+                        <td className="p-2">{row.nasogastricAmountMl || ''}</td>
+                        <td className="p-2">{row.otherOutputAmountMl || ''}</td>
+                        <td className="p-2">{row.urineAmountMl || ''}</td>
+                        <td className="p-2 whitespace-pre-wrap">{joinUnique(row.urineSpecificGravity)}</td>
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot>
+                    <tr className="border-t bg-muted/30 font-medium">
+                      <td className="p-2">Totals</td>
+                      <td className="p-2"></td>
+                      <td className="p-2"></td>
+                      <td className="p-2">{currentSheet?.total_intravenous_intake_ml ?? 0}</td>
+                      <td className="p-2"></td>
+                      <td className="p-2">{(currentSheet?.total_alimentary_intake_ml ?? 0) + (currentSheet?.total_other_intake_ml ?? 0)}</td>
+                      <td className="p-2">{currentSheet?.total_vomit_output_ml ?? 0}</td>
+                      <td className="p-2">{currentSheet?.total_stool_output_ml ?? 0}</td>
+                      <td className="p-2">{currentSheet?.total_nasogastric_output_ml ?? 0}</td>
+                      <td className="p-2">{currentSheet?.total_other_output_ml ?? 0}</td>
+                      <td className="p-2">{currentSheet?.total_urine_output_ml ?? 0}</td>
+                      <td className="p-2"></td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </CardContent>
