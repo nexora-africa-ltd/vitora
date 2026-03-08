@@ -13,7 +13,6 @@ import {
   Search,
   User,
   UserCheck,
-  ArrowRight,
   Activity,
   Stethoscope,
 } from 'lucide-react';
@@ -37,11 +36,11 @@ import {
 } from '@/components/ui/popover';
 import { useToast } from '@/lib/hooks/use-toast';
 import { usePatientSearch, usePatientLookup, useTodayCheckins, useCheckinPatient } from '@/lib/hooks/use-checkin';
-import { useClinics } from '@/lib/hooks/use-clinics';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { VISIT_REASON_OPTIONS, type VisitReason, type PatientLookupResponse, type PatientSearchResult, type CheckInResponse } from '@/lib/types/checkin';
 import { cn } from '@/lib/utils';
 import { CheckinSuccessModal } from '@/components/patients/checkin-success-modal';
+import { RouteToClinicDialog, type DirectRouteToClinicPayload } from '@/components/triage/route-to-clinic-dialog';
 
 // =============================================================================
 // Help Popover Component
@@ -72,18 +71,16 @@ function HelpPopover({ content }: { content: string }) {
 
 function PatientCheckinCard({
   patient,
-  onCheckin,
+  onTriageCheckin,
+  onOpenDirectRoute,
   isLoading,
 }: {
   patient: PatientLookupResponse;
-  onCheckin: (destination: 'TRIAGE' | number, visitReason: VisitReason, skipTriage: boolean) => void;
+  onTriageCheckin: (visitReason: VisitReason) => void;
+  onOpenDirectRoute: (context: { visitReason: VisitReason; skipTriage: boolean }) => void;
   isLoading: boolean;
 }) {
   const [visitReason, setVisitReason] = useState<VisitReason>(patient.suggested_visit_reason);
-  const [selectedClinic, setSelectedClinic] = useState<number | null>(null);
-
-  const { data: clinicsData } = useClinics({});
-  const clinics = clinicsData?.results ?? [];
 
   // Determine if this reason should skip triage
   const shouldSkipTriage = useMemo(() => {
@@ -92,13 +89,11 @@ function PatientCheckinCard({
   }, [visitReason]);
 
   const handleTriageCheckin = () => {
-    onCheckin('TRIAGE', visitReason, false);
+    onTriageCheckin(visitReason);
   };
 
   const handleDirectCheckin = () => {
-    if (selectedClinic) {
-      onCheckin(selectedClinic, visitReason, shouldSkipTriage);
-    }
+    onOpenDirectRoute({ visitReason, skipTriage: shouldSkipTriage });
   };
 
   const snapshot = patient.clinical_snapshot;
@@ -220,12 +215,12 @@ function PatientCheckinCard({
               </div>
               <div className="space-y-1">
                 {snapshot.pending_results.slice(0, 3).map((result, index) => (
-                  <div key={index} className="text-xs sm:text-sm">
+                  <div key={index} className="text-xs">
                     {result.test_name} - {result.status}
                   </div>
                 ))}
                 {snapshot.pending_results.length > 3 && (
-                  <div className="text-xs sm:text-sm text-muted-foreground">
+                  <div className="text-xs text-muted-foreground">
                     +{snapshot.pending_results.length - 3} more
                   </div>
                 )}
@@ -236,7 +231,7 @@ function PatientCheckinCard({
 
         {/* Last Visit Info */}
         {patient.last_encounter_date && (
-          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Clock className="h-4 w-4 shrink-0" />
             <span>
               Last visit: {format(new Date(patient.last_encounter_date), 'MMM d, yyyy')}
@@ -271,7 +266,7 @@ function PatientCheckinCard({
           </div>
 
           {shouldSkipTriage && (
-            <div className="text-xs sm:text-sm text-muted-foreground flex items-center gap-2 p-2 rounded-md bg-muted/50">
+            <div className="text-xs text-muted-foreground flex items-center gap-2 p-2 rounded-md bg-muted/50">
               <AlertCircle className="h-4 w-4 shrink-0" />
               This visit reason will skip triage when going directly to clinic.
             </div>
@@ -281,7 +276,7 @@ function PatientCheckinCard({
         {/* Check-in Actions */}
         <div className="space-y-3 pt-2">
           {/* Primary action - Triage check-in */}
-          <Button onClick={handleTriageCheckin} disabled={isLoading} className="w-full h-10 sm:h-11 text-sm sm:text-base">
+          <Button onClick={handleTriageCheckin} disabled={isLoading} className="w-full h-10 sm:h-11 text-sm">
             <Stethoscope className="mr-2 h-4 w-4" />
             Check-in to Triage
           </Button>
@@ -296,35 +291,15 @@ function PatientCheckinCard({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 w-full">
-            <div className="flex-1 min-w-0">
-              <Select
-                value={selectedClinic?.toString() ?? ''}
-                onValueChange={(value) => setSelectedClinic(parseInt(value, 10))}
-              >
-                <SelectTrigger className="w-full h-10 sm:h-11 text-xs sm:text-sm" aria-label="Select clinic">
-                  <SelectValue placeholder="Select clinic..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-60 overflow-y-auto">
-                  {clinics.map((clinic) => (
-                    <SelectItem key={clinic.id} value={clinic.id.toString()}>
-                      {clinic.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              variant="secondary"
-              onClick={handleDirectCheckin}
-              disabled={isLoading || !selectedClinic}
-              aria-label="Direct to clinic"
-              className="shrink-0 h-10 w-10 sm:h-11 sm:w-auto sm:px-4 p-0"
-            >
-              <ArrowRight className="h-4 w-4" />
-              <span className="hidden sm:inline ml-2">Send</span>
-            </Button>
-          </div>
+          <Button
+            variant="secondary"
+            onClick={handleDirectCheckin}
+            disabled={isLoading}
+            aria-label="Direct to clinic"
+            className="w-full h-10 sm:h-11 text-sm"
+          >
+            Select Clinic and Route
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -387,7 +362,7 @@ function PatientSearchResultsList({
                   <Badge variant="outline" className="mb-1">
                     {patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other'}
                   </Badge>
-                  <div className="text-sm text-muted-foreground">
+                    <div className="text-xs text-muted-foreground">
                     {patient.age} yrs
                   </div>
                 </div>
@@ -503,6 +478,12 @@ export default function PatientCheckinPage() {
   const [selectedPatient, setSelectedPatient] = useState<PatientSearchResult | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [checkInResult, setCheckInResult] = useState<CheckInResponse | null>(null);
+  const [isRouteDialogOpen, setIsRouteDialogOpen] = useState(false);
+  const [pendingDirectRoute, setPendingDirectRoute] = useState<{
+    visitReason: VisitReason;
+    skipTriage: boolean;
+  } | null>(null);
+  const [resetAfterDirectRoute, setResetAfterDirectRoute] = useState(false);
   const debouncedQuery = useDebounce(searchQuery, 400);
 
   // Handle pre-selected patient from query param (e.g., from duplicate modal)
@@ -555,20 +536,16 @@ export default function PatientCheckinPage() {
     setSelectedPatient(patient);
   };
 
-  const handleCheckin = async (
-    destination: 'TRIAGE' | number,
-    visitReason: VisitReason,
-    skipTriage: boolean
-  ) => {
+  const handleTriageCheckin = async (visitReason: VisitReason) => {
     if (!patientDetails) return;
 
     try {
       const result = await checkinMutation.mutateAsync({
         patientId: patientDetails.id,
         data: {
-          destination,
+          destination: 'TRIAGE',
           visit_reason: visitReason,
-          skip_triage: skipTriage,
+          skip_triage: false,
         },
       });
 
@@ -585,6 +562,45 @@ export default function PatientCheckinPage() {
         description: error instanceof Error ? error.message : 'An error occurred',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleOpenDirectRoute = (context: { visitReason: VisitReason; skipTriage: boolean }) => {
+    setPendingDirectRoute(context);
+    setIsRouteDialogOpen(true);
+  };
+
+  const handleDirectRoute = async ({ clinic, notes }: DirectRouteToClinicPayload) => {
+    if (!patientDetails || !pendingDirectRoute) {
+      return null;
+    }
+
+    const result = await checkinMutation.mutateAsync({
+      patientId: patientDetails.id,
+      data: {
+        destination: clinic.id,
+        visit_reason: pendingDirectRoute.visitReason,
+        skip_triage: pendingDirectRoute.skipTriage,
+        notes,
+      },
+    });
+
+    setCheckInResult(result);
+    setShowSuccessModal(true);
+    setResetAfterDirectRoute(true);
+
+    return null;
+  };
+
+  const handleRouteDialogOpenChange = (nextOpen: boolean) => {
+    setIsRouteDialogOpen(nextOpen);
+    if (!nextOpen) {
+      setPendingDirectRoute(null);
+      if (resetAfterDirectRoute) {
+        setSearchQuery('');
+        setSelectedPatient(null);
+        setResetAfterDirectRoute(false);
+      }
     }
   };
 
@@ -622,7 +638,7 @@ export default function PatientCheckinPage() {
               <CardContent className="py-6 sm:py-8">
                 <div className="flex items-center justify-center gap-3">
                   <div className="h-5 w-5 sm:h-6 sm:w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                  <span className="text-sm sm:text-base text-muted-foreground">Searching...</span>
+                  <span className="text-sm text-muted-foreground">Searching...</span>
                 </div>
               </CardContent>
             </Card>
@@ -673,14 +689,15 @@ export default function PatientCheckinPage() {
                   <CardContent className="py-6 sm:py-8">
                     <div className="flex items-center justify-center gap-3">
                       <div className="h-5 w-5 sm:h-6 sm:w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                      <span className="text-sm sm:text-base text-muted-foreground">Loading patient details...</span>
+                      <span className="text-sm text-muted-foreground">Loading patient details...</span>
                     </div>
                   </CardContent>
                 </Card>
               ) : patientDetails ? (
                 <PatientCheckinCard
                   patient={patientDetails}
-                  onCheckin={handleCheckin}
+                  onTriageCheckin={handleTriageCheckin}
+                  onOpenDirectRoute={handleOpenDirectRoute}
                   isLoading={checkinMutation.isPending}
                 />
               ) : null}
@@ -693,7 +710,7 @@ export default function PatientCheckinPage() {
               <CardContent className="py-8 sm:py-12 text-center">
                 <User className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-3 sm:mb-4" />
                 <h3 className="font-medium text-base sm:text-lg mb-1 sm:mb-2">Ready to Check-in</h3>
-                <p className="text-sm sm:text-base text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Enter a patient's MRN, National ID, name, or phone number to begin.
                 </p>
               </CardContent>
@@ -713,6 +730,20 @@ export default function PatientCheckinPage() {
         onOpenChange={setShowSuccessModal}
         checkInResult={checkInResult}
         onDismiss={() => setCheckInResult(null)}
+      />
+
+      <RouteToClinicDialog
+        open={isRouteDialogOpen}
+        onOpenChange={handleRouteDialogOpenChange}
+        patient={patientDetails
+          ? {
+              id: patientDetails.id,
+              first_name: patientDetails.first_name,
+              last_name: patientDetails.last_name,
+              mrn: patientDetails.mrn,
+            }
+          : null}
+        onDirectRoute={handleDirectRoute}
       />
     </div>
   );

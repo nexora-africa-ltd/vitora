@@ -559,33 +559,34 @@ test.describe('Check-in Direct to Clinic', () => {
     await expect(page.getByText('Jane Wanjiku Kamau')).toBeVisible({ timeout: 5000 });
   });
 
-  test('displays clinic selection dropdown', async ({ page }) => {
-    await expect(page.getByRole('combobox', { name: /select clinic/i })).toBeVisible();
+  test('opens the route to clinic dialog', async ({ page }) => {
+    await page.getByRole('button', { name: /direct to clinic/i }).click();
+
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByText(/route to clinic/i)).toBeVisible();
   });
 
-  test('can select a clinic from dropdown', async ({ page }) => {
-    await page.getByRole('combobox', { name: /select clinic/i }).click();
+  test('can select a clinic from the route dialog', async ({ page }) => {
+    await page.getByRole('button', { name: /direct to clinic/i }).click();
 
-    // Should show available clinics as options
-    await expect(page.getByRole('option', { name: 'General OPD' })).toBeVisible();
-    await expect(page.getByRole('option', { name: 'CCC Clinic' })).toBeVisible();
-    await expect(page.getByRole('option', { name: 'Diabetic Clinic' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /general opd/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /ccc clinic/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /diabetic clinic/i })).toBeVisible();
 
-    await page.getByRole('option', { name: 'Diabetic Clinic' }).click();
+    await page.getByRole('button', { name: /diabetic clinic/i }).click();
   });
 
-  test('direct to clinic button is disabled until clinic is selected', async ({ page }) => {
-    // The direct to clinic button should be disabled when no clinic selected
-    await expect(page.getByRole('button', { name: /direct to clinic/i })).toBeDisabled();
+  test('route action is disabled until clinic is selected', async ({ page }) => {
+    await page.getByRole('button', { name: /direct to clinic/i }).click();
+
+    await expect(page.getByRole('button', { name: /route to clinic/i })).toBeDisabled();
   });
 
   test('can check in patient directly to clinic', async ({ page }) => {
-    // Select a clinic
-    await page.getByRole('combobox', { name: /select clinic/i }).click();
-    await page.getByRole('option', { name: 'Diabetic Clinic' }).click();
-
-    // Click the direct to clinic button
     await page.getByRole('button', { name: /direct to clinic/i }).click();
+    await page.getByRole('button', { name: /diabetic clinic/i }).click();
+
+    await page.getByRole('button', { name: /route to diabetic clinic/i }).click();
 
     // Should show success
     await expect(page.getByText(/patient checked in/i)).toBeVisible({ timeout: 5000 });
@@ -846,12 +847,9 @@ test.describe('Check-in Workflow Integration', () => {
     await expect(page.getByText('Mary Otieno')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText(/lab results review/i)).toBeVisible();
 
-    // Select clinic and check in directly
-    await page.getByRole('combobox', { name: /select clinic/i }).click();
-    await page.getByRole('option', { name: 'Diabetic Clinic' }).click();
-
-    // Click direct to clinic button
     await page.getByRole('button', { name: /direct to clinic/i }).click();
+    await page.getByRole('button', { name: /diabetic clinic/i }).click();
+    await page.getByRole('button', { name: /route to diabetic clinic/i }).click();
 
     // Verify success
     await expect(page.getByText(/patient checked in/i)).toBeVisible({ timeout: 5000 });

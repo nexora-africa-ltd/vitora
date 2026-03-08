@@ -33,12 +33,18 @@ import type { ClinicListItem, ClinicVisitSource } from '@/lib/types/clinic';
 import type { Patient } from '@/lib/types/patient';
 import { cn } from '@/lib/utils/cn';
 
+export interface DirectRouteToClinicPayload {
+  clinic: ClinicListItem;
+  notes?: string;
+}
+
 interface RouteToClinicDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assessment?: TriageAssessment | null;
   patient?: Pick<Patient, 'id' | 'first_name' | 'last_name' | 'mrn'> | null;
   onSuccess?: () => void;
+  onDirectRoute?: (payload: DirectRouteToClinicPayload) => Promise<CheckinSuccessData | null | void>;
 }
 
 export function RouteToClinicDialog({
@@ -47,12 +53,14 @@ export function RouteToClinicDialog({
   assessment,
   patient,
   onSuccess,
+  onDirectRoute,
 }: RouteToClinicDialogProps) {
   const [selectedClinic, setSelectedClinic] = useState<ClinicListItem | null>(null);
   const [notes, setNotes] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState<CheckinSuccessData | null>(null);
+  const [isDirectRoutingCustom, setIsDirectRoutingCustom] = useState(false);
   const clinicScrollAreaRef = useRef<HTMLDivElement | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
@@ -123,7 +131,7 @@ export function RouteToClinicDialog({
   // Route to clinic mutation
   const { mutateAsync: routeToClinic, isPending: isRoutingTriage } = useRouteToClinic();
   const addToQueue = useAddToQueue();
-  const isRouting = isRoutingTriage || addToQueue.isPending;
+  const isRouting = isRoutingTriage || addToQueue.isPending || isDirectRoutingCustom;
 
   const patientName = assessment
     ? assessment.patient_name
@@ -138,6 +146,8 @@ export function RouteToClinicDialog({
     if (!selectedClinic || (!assessment && !patient)) return;
 
     try {
+      let nextSuccessData: CheckinSuccessData | null = null;
+
       if (assessment) {
         const result = await routeToClinic({
           assessmentId: assessment.id,
@@ -145,38 +155,47 @@ export function RouteToClinicDialog({
           notes: notes.trim() || undefined,
         });
 
-        setSuccessData({
+        nextSuccessData = {
           patientName: result.patient_name,
           patientMrn: result.patient_mrn,
           destination: 'clinic',
           destinationName: result.clinic_name,
           destinationUrl: `/clinics/${selectedClinic.id}/queue`,
           queuePosition: result.queue_number,
-        });
+        };
       } else if (patient) {
-        const directPatientName = `${patient.first_name} ${patient.last_name}`.trim();
+        if (onDirectRoute) {
+          setIsDirectRoutingCustom(true);
+          nextSuccessData = (await onDirectRoute({
+            clinic: selectedClinic,
+            notes: notes.trim() || undefined,
+          })) ?? null;
+          setIsDirectRoutingCustom(false);
+        } else {
+          const directPatientName = `${patient.first_name} ${patient.last_name}`.trim();
 
-        const visit = await addToQueue.mutateAsync({
-          clinicId: selectedClinic.id,
-          data: {
-            patient_id: patient.id,
-            priority: 'STANDARD',
-            visit_type: 'NEW',
-            source: 'DIRECT' as ClinicVisitSource,
-            chief_complaint: '',
-            notes: notes.trim() || `Direct registration - routed to ${selectedClinic.name}`,
-          },
-        });
+          const visit = await addToQueue.mutateAsync({
+            clinicId: selectedClinic.id,
+            data: {
+              patient_id: patient.id,
+              priority: 'STANDARD',
+              visit_type: 'NEW',
+              source: 'DIRECT' as ClinicVisitSource,
+              chief_complaint: '',
+              notes: notes.trim() || `Direct registration - routed to ${selectedClinic.name}`,
+            },
+          });
 
-        setSuccessData({
-          patientName: directPatientName,
-          patientMrn: patient.mrn,
-          destination: 'clinic',
-          destinationName: selectedClinic.name,
-          destinationUrl: `/clinics/${selectedClinic.id}/queue`,
-          queuePosition: visit.queue_number,
-          skippedTriage: true,
-        });
+          nextSuccessData = {
+            patientName: directPatientName,
+            patientMrn: patient.mrn,
+            destination: 'clinic',
+            destinationName: selectedClinic.name,
+            destinationUrl: `/clinics/${selectedClinic.id}/queue`,
+            queuePosition: visit.queue_number,
+            skippedTriage: true,
+          };
+        }
       }
 
       // Reset route dialog state
@@ -186,8 +205,12 @@ export function RouteToClinicDialog({
       onOpenChange(false);
 
       // Show success modal
-      setShowSuccessModal(true);
+      if (nextSuccessData) {
+        setSuccessData(nextSuccessData);
+        setShowSuccessModal(true);
+      }
     } catch (error) {
+      setIsDirectRoutingCustom(false);
       console.error('Failed to route to clinic:', error);
       toast({
         title: 'Error',
@@ -221,13 +244,13 @@ export function RouteToClinicDialog({
         }
       }}
     >
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-[600px] max-h-[85vh] overflow-hidden p-0 gap-0">
-        <DialogHeader className="px-4 pt-6 pb-4 sm:px-6">
+      <DialogContent className="flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-[600px] flex-col overflow-hidden p-0 gap-0">
+        <DialogHeader className="px-4 pt-5 pb-3 sm:px-6">
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />
             Route to Clinic
           </DialogTitle>
-          <DialogDescription className="text-sm sm:text-base">
+          <DialogDescription className="text-sm">
             {isDirectRoute ? (
               <>
                 Route <strong>{patientName}</strong> directly to an open clinic queue and skip triage.
@@ -240,8 +263,7 @@ export function RouteToClinicDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[calc(85vh-148px)]">
-          <div className="space-y-4 px-4 pb-4 sm:px-6">
+        <div className="space-y-3 px-4 pb-3 sm:px-6 sm:pb-4">
             {/* Patient Context */}
             <div className="rounded-lg border bg-muted/50 p-3">
               <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
@@ -298,14 +320,14 @@ export function RouteToClinicDialog({
                 placeholder="Search clinics..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 text-sm sm:text-base"
+                className="pl-9 text-sm"
               />
             </div>
 
             {/* Clinic Selection */}
             <div className="space-y-2">
               <Label className="text-sm">Select Clinic</Label>
-              <ScrollArea ref={clinicScrollAreaRef} className="h-[220px] sm:h-[240px] rounded-md border">
+              <ScrollArea ref={clinicScrollAreaRef} className="h-[180px] sm:h-[200px] rounded-md border">
                 {clinicsLoading ? (
                   <div className="space-y-2 p-3">
                     {[1, 2, 3, 4].map((i) => (
@@ -381,18 +403,17 @@ export function RouteToClinicDialog({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
-                className="text-sm sm:text-base"
+                className="text-sm"
               />
             </div>
-          </div>
-        </ScrollArea>
+        </div>
 
-        <div className="px-4 pb-4 sm:px-6 sm:pb-6">
-          <DialogFooter className="border-t px-0 pt-4 gap-2 sm:gap-2">
-            <Button variant="outline" onClick={handleClose} disabled={isRouting} className="w-full sm:flex-1">
+        <div className="border-t px-4 py-3 sm:px-6">
+          <DialogFooter className="gap-2 sm:justify-end">
+            <Button variant="outline" size="sm" onClick={handleClose} disabled={isRouting} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button onClick={handleRoute} disabled={!selectedClinic || isRouting} className="w-full sm:flex-1">
+            <Button size="sm" onClick={handleRoute} disabled={!selectedClinic || isRouting} className="w-full sm:w-auto">
               {isRouting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
