@@ -249,6 +249,8 @@ class ClinicVisitSerializer(serializers.ModelSerializer):
             "visit_type_display",
             "source",
             "source_display",
+            "source_module",
+            "source_record_id",
             "registered_at",
             "called_at",
             "consultation_started_at",
@@ -279,6 +281,8 @@ class ClinicVisitSerializer(serializers.ModelSerializer):
             "completed_at",
             "encounter",
             "registered_by",
+            "source_module",
+            "source_record_id",
             "created_at",
             "updated_at",
         ]
