@@ -7,6 +7,7 @@ from datetime import date as date_module
 from rest_framework import serializers
 
 from hmis.apps.clinics.models import ClinicVisit
+from hmis.apps.inpatient.models import Admission
 from hmis.apps.mch.models import (
     AEFI,
     ANCVisit,
@@ -384,6 +385,16 @@ class DeliverySerializer(serializers.ModelSerializer):
     is_low_birth_weight = serializers.BooleanField(read_only=True)
     is_macrosomia = serializers.BooleanField(read_only=True)
     alerts = serializers.SerializerMethodField()
+    partograph = serializers.PrimaryKeyRelatedField(
+        queryset=LabourPartograph.objects.select_related("registration", "admission"),
+        required=False,
+        allow_null=True,
+    )
+    admission = serializers.PrimaryKeyRelatedField(
+        queryset=Admission.objects.select_related("mch_registration", "patient"),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = Delivery
@@ -391,6 +402,8 @@ class DeliverySerializer(serializers.ModelSerializer):
             "id",
             "registration",
             "registration_mch_number",
+            "partograph",
+            "admission",
             "delivery_date",
             "delivery_time",
             "delivery_type",
@@ -422,6 +435,49 @@ class DeliverySerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "status": {"default": "COMPLETED"},
         }
+
+    def validate(self, attrs):
+        registration = attrs.get("registration") or getattr(self.instance, "registration", None)
+        partograph = (
+            attrs.get("partograph") if "partograph" in attrs else getattr(self.instance, "partograph", None)
+        )
+        admission = (
+            attrs.get("admission") if "admission" in attrs else getattr(self.instance, "admission", None)
+        )
+
+        if registration and partograph and partograph.registration_id != registration.id:
+            raise serializers.ValidationError(
+                {"partograph": "Labour partograph must belong to the same MCH registration."}
+            )
+
+        if registration and admission:
+            if admission.patient_id != registration.mother_id:
+                raise serializers.ValidationError(
+                    {"admission": "Admission patient must match the MCH registration mother."}
+                )
+            if admission.mch_registration_id and admission.mch_registration_id != registration.id:
+                raise serializers.ValidationError(
+                    {"admission": "Admission must belong to the same MCH registration."}
+                )
+
+        if partograph and admission and partograph.admission_id and partograph.admission_id != admission.id:
+            raise serializers.ValidationError(
+                {"admission": "Delivery admission must match the linked labour partograph admission."}
+            )
+
+        return attrs
+
+    def create(self, validated_data):
+        partograph = validated_data.get("partograph")
+        if partograph and validated_data.get("admission") is None and partograph.admission_id:
+            validated_data["admission"] = partograph.admission
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        partograph = validated_data.get("partograph", instance.partograph)
+        if partograph and validated_data.get("admission", instance.admission) is None and partograph.admission_id:
+            validated_data["admission"] = partograph.admission
+        return super().update(instance, validated_data)
 
     def get_delivered_by_name(self, obj):
         if obj.delivered_by:
@@ -587,6 +643,32 @@ class LabourPartographSerializer(serializers.ModelSerializer):
         if latest is None:
             return None
         return LabourPartographObservationSerializer(latest).data
+
+    def validate(self, attrs):
+        registration = attrs.get("registration") or getattr(self.instance, "registration", None)
+        admission = (
+            attrs.get("admission") if "admission" in attrs else getattr(self.instance, "admission", None)
+        )
+        encounter = (
+            attrs.get("encounter") if "encounter" in attrs else getattr(self.instance, "encounter", None)
+        )
+
+        if registration and admission:
+            if admission.patient_id != registration.mother_id:
+                raise serializers.ValidationError(
+                    {"admission": "Admission patient must match the MCH registration mother."}
+                )
+            if admission.mch_registration_id and admission.mch_registration_id != registration.id:
+                raise serializers.ValidationError(
+                    {"admission": "Admission must belong to the same MCH registration."}
+                )
+
+        if encounter and admission and admission.opd_encounter_id and admission.opd_encounter_id != encounter.id:
+            raise serializers.ValidationError(
+                {"encounter": "Labour encounter must match the linked admission OPD encounter."}
+            )
+
+        return attrs
 
 
 # =============================================================================

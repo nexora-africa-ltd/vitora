@@ -165,6 +165,9 @@ class AdmissionSerializer(serializers.ModelSerializer):
     patient_name = serializers.SerializerMethodField()
     patient_age = serializers.SerializerMethodField()
     patient_gender = serializers.SerializerMethodField()
+    mch_registration_number = serializers.CharField(
+        source="mch_registration.mch_number", read_only=True
+    )
     admitting_officer_username = serializers.CharField(
         source="admitting_officer.username", read_only=True
     )
@@ -197,6 +200,8 @@ class AdmissionSerializer(serializers.ModelSerializer):
             "patient_age",
             "patient_gender",
             "opd_encounter",
+            "mch_registration",
+            "mch_registration_number",
             "ipd_encounter",
             "recommendation",
             "admission_date",
@@ -232,6 +237,27 @@ class AdmissionSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def validate(self, attrs):
+        patient = attrs.get("patient") or getattr(self.instance, "patient", None)
+        ward = attrs.get("ward") or getattr(self.instance, "ward", None)
+        mch_registration = (
+            attrs.get("mch_registration")
+            if "mch_registration" in attrs
+            else getattr(self.instance, "mch_registration", None)
+        )
+
+        if ward and ward.ward_type == "MATERNITY" and mch_registration is None:
+            raise serializers.ValidationError(
+                {"mch_registration": "Maternity admissions require an MCH registration."}
+            )
+
+        if patient and mch_registration and mch_registration.mother_id != patient.id:
+            raise serializers.ValidationError(
+                {"mch_registration": "MCH registration mother must match the admission patient."}
+            )
+
+        return attrs
 
     def get_patient_name(self, obj) -> str:
         """Get patient full name."""
