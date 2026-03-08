@@ -17,10 +17,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   CheckCircle2,
-  Stethoscope,
-  User,
-  Plus,
   UserPlus,
+  UserRound,
+  UserRoundPlus,
+  UsersRound,
   ArrowRight,
   Clock,
   Activity,
@@ -256,11 +256,11 @@ export function PatientRegistrationSuccess({
 
           {/* Action buttons */}
           <TooltipProvider delayDuration={200}>
-            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    className="w-full"
+                    className="w-full sm:flex-1"
                     size="lg"
                     onClick={handleCheckInToQueue}
                     disabled={isCheckingIn || isRoutingToClinic}
@@ -286,7 +286,7 @@ export function PatientRegistrationSuccess({
                 <TooltipTrigger asChild>
                   <Button
                     variant={showClinicSelector ? 'default' : 'outline'}
-                    className="w-full"
+                    className="w-full sm:flex-1"
                     size="lg"
                     onClick={() => setShowClinicSelector(!showClinicSelector)}
                     disabled={isCheckingIn || isRoutingToClinic}
@@ -383,36 +383,53 @@ export function PatientRegistrationSuccess({
           )}
 
           {/* Secondary action buttons */}
-          <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3">
-            <Link href={`/patients/${patient.id}`}>
-              <Button variant="outline" className="w-full" size="lg">
-                <User className="h-5 w-5 sm:mr-2" />
-                <span className="ml-2 sm:ml-0">
-                  <span className="sm:hidden">Profile</span>
-                  <span className="hidden sm:inline">View Profile</span>
-                </span>
-              </Button>
-            </Link>
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href={`/patients/${patient.id}`} className="w-full sm:w-auto">
+                  <Button
+                    variant="outline"
+                    className="h-11 w-full sm:w-11"
+                    size="icon"
+                    aria-label="View Profile"
+                  >
+                    <UserRound className="h-5 w-5" />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>View Profile</TooltipContent>
+            </Tooltip>
 
-            <Button
-              variant="outline"
-              className="w-full"
-              size="lg"
-              onClick={onRegisterAnother}
-            >
-              <Plus className="h-5 w-5 sm:mr-2" />
-              <span className="ml-2 sm:ml-0">
-                <span className="sm:hidden">Add New</span>
-                <span className="hidden sm:inline">Register Another</span>
-              </span>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-11 w-full sm:w-11"
+                  size="icon"
+                  onClick={onRegisterAnother}
+                  aria-label="Register Another"
+                >
+                  <UserRoundPlus className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Register Another</TooltipContent>
+            </Tooltip>
 
-            <Link href="/patients" className="col-span-2 sm:col-span-1">
-              <Button variant="secondary" className="w-full" size="lg">
-                <span className="sm:hidden">Back</span>
-                <span className="hidden sm:inline">Back to Patients</span>
-              </Button>
-            </Link>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/patients" className="w-full sm:w-auto">
+                  <Button
+                    variant="secondary"
+                    className="h-11 w-full sm:w-11"
+                    size="icon"
+                    aria-label="Back to Patients"
+                  >
+                    <UsersRound className="h-5 w-5" />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>Back to Patients</TooltipContent>
+            </Tooltip>
           </div>
         </CardContent>
       </Card>
