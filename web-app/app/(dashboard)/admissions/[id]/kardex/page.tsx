@@ -42,7 +42,7 @@ import {
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
-import type { RiskLevel, ShiftType, CarePlanEntryStatus } from '@/lib/types/inpatient';
+import type { CarePlanEntryStatus, MaternityContinuityAction, RiskLevel, ShiftType } from '@/lib/types/inpatient';
 
 const RISK_LEVELS: { value: RiskLevel; label: string }[] = [
   { value: 'LOW', label: 'Low Risk' },
@@ -53,6 +53,13 @@ const RISK_LEVELS: { value: RiskLevel; label: string }[] = [
 const SHIFT_TYPES: { value: ShiftType; label: string }[] = [
   { value: 'DAY', label: 'Day Shift' },
   { value: 'NIGHT', label: 'Night Shift' },
+];
+
+const MATERNITY_CONTINUITY_ACTIONS: { value: MaternityContinuityAction; label: string }[] = [
+  { value: 'NONE', label: 'No postpartum workflow set' },
+  { value: 'CONTINUE_POSTPARTUM_OBSERVATION', label: 'Continue Postpartum Observation' },
+  { value: 'SCHEDULE_EARLY_PNC', label: 'Prepare Early PNC Scheduling' },
+  { value: 'ROUTE_TO_PNC_QUEUE', label: 'Prepare Direct PNC Queue Routing' },
 ];
 
 export default function KardexPage() {
@@ -80,6 +87,8 @@ export default function KardexPage() {
   const [dietaryRequirements, setDietaryRequirements] = useState('');
   const [allergies, setAllergies] = useState('');
   const [ivAccess, setIvAccess] = useState('');
+  const [maternityContinuityAction, setMaternityContinuityAction] = useState<MaternityContinuityAction>('NONE');
+  const [maternityContinuityNotes, setMaternityContinuityNotes] = useState('');
 
   const [fallRisk, setFallRisk] = useState<RiskLevel>('LOW');
   const [pressureSoreRisk, setPressureSoreRisk] = useState<RiskLevel>('LOW');
@@ -133,6 +142,8 @@ export default function KardexPage() {
       setDietaryRequirements(kardex.dietary_requirements || '');
       setAllergies(kardex.allergies || '');
       setIvAccess(kardex.iv_access || '');
+      setMaternityContinuityAction(kardex.maternity_continuity_action || 'NONE');
+      setMaternityContinuityNotes(kardex.maternity_continuity_notes || '');
 
       setFallRisk(kardex.fall_risk || 'LOW');
       setPressureSoreRisk(kardex.pressure_sore_risk || 'LOW');
@@ -152,6 +163,8 @@ export default function KardexPage() {
           dietary_requirements: dietaryRequirements || undefined,
           allergies: allergies || undefined,
           iv_access: ivAccess || undefined,
+          maternity_continuity_action: admission?.mch_registration ? maternityContinuityAction : undefined,
+          maternity_continuity_notes: admission?.mch_registration ? maternityContinuityNotes || undefined : undefined,
 
           fall_risk: fallRisk,
           pressure_sore_risk: pressureSoreRisk,
@@ -434,6 +447,25 @@ export default function KardexPage() {
         </Card>
       </div>
 
+      {admission.mch_registration && (
+        <Card className="border-amber-200 bg-amber-50/60">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm">Postpartum Continuity</CardTitle>
+              <HelpPopover content="Keep nursing handoff aligned with the planned postpartum workflow so discharge, early PNC, and inpatient teaching all stay connected." />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Badge variant="outline" className="w-fit border-amber-300 bg-white/70">
+              {kardex.maternity_continuity_action_display || 'No postpartum workflow set'}
+            </Badge>
+            <p className="text-sm text-muted-foreground">
+              {kardex.maternity_continuity_notes || 'No postpartum workflow notes recorded yet.'}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Edit Kardex Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -477,6 +509,30 @@ export default function KardexPage() {
                 />
               </div>
             </div>
+            {admission.mch_registration && (
+              <>
+                <div className="space-y-2">
+                  <Label>Postpartum Workflow</Label>
+                  <Select value={maternityContinuityAction} onValueChange={(value) => setMaternityContinuityAction(value as MaternityContinuityAction)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {MATERNITY_CONTINUITY_ACTIONS.map((action) => (
+                        <SelectItem key={action.value} value={action.value}>{action.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Postpartum Workflow Notes</Label>
+                  <Textarea
+                    value={maternityContinuityNotes}
+                    onChange={(e) => setMaternityContinuityNotes(e.target.value)}
+                    placeholder="Document nursing tasks that still need to happen before postpartum transition or early PNC handoff."
+                    rows={3}
+                  />
+                </div>
+              </>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Fall Risk</Label>

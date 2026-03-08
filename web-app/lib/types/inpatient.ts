@@ -170,6 +170,17 @@ export type DischargeType =
   | 'DECEASED'
   | 'ABSCONDED';
 
+export type MaternityContinuityAction =
+  | 'NONE'
+  | 'CONTINUE_POSTPARTUM_OBSERVATION'
+  | 'SCHEDULE_EARLY_PNC'
+  | 'ROUTE_TO_PNC_QUEUE';
+
+export type MaternityContinuityStatus =
+  | 'NOT_APPLICABLE'
+  | 'SCHEDULED'
+  | 'QUEUED';
+
 export interface DischargeMedication {
   drug_name: string;
   dosage: string;
@@ -196,6 +207,12 @@ export interface Discharge {
   procedures_performed?: string;
   treatment_summary: string;
   discharge_medications: DischargeMedication[];
+  maternity_continuity_action: MaternityContinuityAction;
+  maternity_continuity_action_display?: string;
+  maternity_continuity_status: MaternityContinuityStatus;
+  maternity_continuity_status_display?: string;
+  pnc_clinic_visit?: number | null;
+  pnc_appointment?: number | null;
   follow_up_date?: string | null;
   follow_up_instructions?: string;
   referral_facility?: string;
@@ -220,6 +237,7 @@ export interface DischargeCreateData {
   procedures_performed?: string;
   treatment_summary: string;
   discharge_medications?: DischargeMedication[];
+  maternity_continuity_action?: MaternityContinuityAction;
   follow_up_date?: string;
   follow_up_instructions?: string;
   referral_facility?: string;
@@ -319,6 +337,9 @@ export interface WardRound {
   objective: string;
   assessment: string;
   plan: string;
+  maternity_continuity_action?: MaternityContinuityAction;
+  maternity_continuity_action_display?: string;
+  maternity_continuity_notes?: string;
   // Legacy alias for display compatibility
   clinical_notes?: string;
   // Vital signs can be nested object or individual fields
@@ -350,6 +371,8 @@ export interface WardRoundCreateData {
   objective: string;        // Required - SOAP 'O' (SHA/FHIR compliance)
   assessment: string;       // Required - SOAP 'A' (SHA/FHIR compliance)
   plan: string;             // Required - SOAP 'P' (SHA/FHIR compliance)
+  maternity_continuity_action?: MaternityContinuityAction;
+  maternity_continuity_notes?: string;
   condition_status: ConditionStatus;
   requires_consultant_review?: boolean;
   consultant_specialty?: string;
@@ -456,6 +479,9 @@ export interface NursingKardex {
   diet?: string; // Legacy alias
   allergies?: string;
   iv_access?: string;
+  maternity_continuity_action?: MaternityContinuityAction;
+  maternity_continuity_action_display?: string;
+  maternity_continuity_notes?: string;
   // Risk assessments (CharFields with LOW/MODERATE/HIGH choices)
   fall_risk: RiskLevel;
   fall_risk_display?: string;
@@ -477,6 +503,8 @@ export interface KardexUpdateData {
   dietary_requirements?: string;
   allergies?: string;
   iv_access?: string;
+  maternity_continuity_action?: MaternityContinuityAction;
+  maternity_continuity_notes?: string;
   fall_risk?: RiskLevel;
   pressure_sore_risk?: RiskLevel;
   isolation_required?: boolean;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
@@ -25,7 +25,7 @@ import {
 import { useAdmission, useCreateDischarge } from '@/lib/hooks/use-inpatient';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
-import type { DischargeType, DischargeMedication } from '@/lib/types/inpatient';
+import type { DischargeType, DischargeMedication, MaternityContinuityAction } from '@/lib/types/inpatient';
 
 const DISCHARGE_TYPES: { value: DischargeType; label: string }[] = [
   { value: 'NORMAL', label: 'Normal Discharge' },
@@ -34,6 +34,19 @@ const DISCHARGE_TYPES: { value: DischargeType; label: string }[] = [
   { value: 'TRANSFERRED', label: 'Transfer to Another Facility' },
   { value: 'DECEASED', label: 'Deceased' },
   { value: 'ABSCONDED', label: 'Absconded/Left Without Notice' },
+];
+
+const MATERNITY_CONTINUITY_ACTIONS: { value: MaternityContinuityAction; label: string; description: string }[] = [
+  {
+    value: 'SCHEDULE_EARLY_PNC',
+    label: 'Schedule Early PNC',
+    description: 'Book the early postnatal follow-up date before discharge.',
+  },
+  {
+    value: 'ROUTE_TO_PNC_QUEUE',
+    label: 'Route Directly To PNC Queue',
+    description: 'Send the mother straight to the PNC queue from discharge.',
+  },
 ];
 
 export default function DischargePage() {
@@ -53,6 +66,7 @@ export default function DischargePage() {
   const [patientInstructions, setPatientInstructions] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
   const [medications, setMedications] = useState<DischargeMedication[]>([]);
+  const [maternityContinuityAction, setMaternityContinuityAction] = useState<MaternityContinuityAction>('NONE');
 
   // Clearance states
   const [billingClearance, setBillingClearance] = useState(false);
@@ -71,6 +85,14 @@ export default function DischargePage() {
 
   // Check if all clearances are complete
   const allClearancesComplete = billingClearance && pharmacyClearance && nursingClearance;
+  const requiresMaternityContinuityAction = !!admission?.mch_registration && ['NORMAL', 'TRANSFERRED'].includes(dischargeType);
+  const requiresScheduledFollowUpDate = requiresMaternityContinuityAction && maternityContinuityAction === 'SCHEDULE_EARLY_PNC';
+
+  useEffect(() => {
+    if (admission?.mch_registration && maternityContinuityAction === 'NONE') {
+      setMaternityContinuityAction('SCHEDULE_EARLY_PNC');
+    }
+  }, [admission?.mch_registration, maternityContinuityAction]);
 
   const addMedication = () => {
     const newMed: DischargeMedication = {
@@ -107,6 +129,24 @@ export default function DischargePage() {
       return;
     }
 
+    if (requiresMaternityContinuityAction && maternityContinuityAction === 'NONE') {
+      toast({
+        title: 'Maternity Continuity Required',
+        description: 'Choose whether to schedule early PNC or route directly to the PNC queue.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (requiresScheduledFollowUpDate && !followUpDate) {
+      toast({
+        title: 'Follow-up Date Required',
+        description: 'Scheduling early PNC requires a follow-up date.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!allClearancesComplete) {
       toast({
         title: 'Clearances Required',
@@ -127,7 +167,8 @@ export default function DischargePage() {
         final_diagnosis_text: finalDiagnosis.icd11Display?.split(' - ').slice(1).join(' - ') || finalDiagnosis.icd10Display?.split(' - ').slice(1).join(' - ') || admission.admitting_diagnosis_text || '',
         treatment_summary: dischargeSummary,
         patient_instructions: patientInstructions,
-        follow_up_date: followUpDate || undefined,
+        maternity_continuity_action: admission.mch_registration ? maternityContinuityAction : undefined,
+        follow_up_date: requiresScheduledFollowUpDate ? followUpDate || undefined : undefined,
         follow_up_instructions: followUpInstructions || undefined,
         discharge_medications: medications.filter((m) => m.drug_name),
         billing_clearance: billingClearance,
@@ -223,7 +264,7 @@ export default function DischargePage() {
             <div className="mt-4 rounded-md border border-amber-200 bg-amber-50/70 p-3 text-sm">
               <p className="font-medium text-amber-950">Maternity Episode</p>
               <p className="mt-1 text-amber-900">
-                Linked to {admission.mch_registration_number || `MCH #${admission.mch_registration}`}. Document a postpartum follow-up date before discharge.
+                Linked to {admission.mch_registration_number || `MCH #${admission.mch_registration}`}. Choose whether discharge should schedule early PNC or send the mother directly to the PNC queue.
               </p>
               <Button asChild variant="link" className="mt-1 h-auto p-0 text-amber-900">
                 <Link href={`/mch/${admission.mch_registration}`}>Open MCH registration</Link>
@@ -343,14 +384,45 @@ export default function DischargePage() {
             />
           </div>
 
+          {admission.mch_registration && (
+            <div className="space-y-4 rounded-lg border border-amber-200 bg-amber-50/60 p-4">
+              <div className="space-y-1">
+                <Label htmlFor="maternity-continuity-action">Postpartum Continuity Action *</Label>
+                <p className="text-sm text-amber-900">
+                  Make early PNC part of the discharge workflow instead of documenting follow-up only.
+                </p>
+              </div>
+              <Select
+                value={maternityContinuityAction}
+                onValueChange={(value) => setMaternityContinuityAction(value as MaternityContinuityAction)}
+              >
+                <SelectTrigger id="maternity-continuity-action">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MATERNITY_CONTINUITY_ACTIONS.map((action) => (
+                    <SelectItem key={action.value} value={action.value} title={action.description}>
+                      {action.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                {MATERNITY_CONTINUITY_ACTIONS.find((action) => action.value === maternityContinuityAction)?.description}
+              </p>
+            </div>
+          )}
+
           {/* Follow-up */}
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="follow-up-date">Follow-up Date</Label>
+              <Label htmlFor="follow-up-date">
+                {requiresScheduledFollowUpDate ? 'Early PNC Date *' : 'Follow-up Date'}
+              </Label>
               <DatePicker
                 value={followUpDate ? parseISO(followUpDate) : undefined}
                 onChange={(date) => setFollowUpDate(date ? format(date, 'yyyy-MM-dd') : '')}
-                placeholder={admission.mch_registration ? 'Select postpartum follow-up date' : 'Select follow-up date'}
+                placeholder={requiresScheduledFollowUpDate ? 'Select early PNC date' : admission.mch_registration ? 'Optional when routing directly to PNC' : 'Select follow-up date'}
               />
             </div>
             <div className="space-y-2">
@@ -359,7 +431,7 @@ export default function DischargePage() {
                 id="follow-up-instructions"
                 value={followUpInstructions}
                 onChange={(e) => setFollowUpInstructions(e.target.value)}
-                placeholder="e.g., Return to OPD in 2 weeks"
+                placeholder={admission.mch_registration ? 'e.g., Escort mother to PNC queue after pharmacy clearance' : 'e.g., Return to OPD in 2 weeks'}
               />
             </div>
           </div>
@@ -460,7 +532,7 @@ export default function DischargePage() {
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={createDischarge.isPending || !dischargeSummary || !patientInstructions || !allClearancesComplete}
+          disabled={createDischarge.isPending || !dischargeSummary || !patientInstructions || !allClearancesComplete || (requiresScheduledFollowUpDate && !followUpDate)}
         >
           <Save className="h-4 w-4 mr-2" />
           {createDischarge.isPending ? 'Discharging...' : 'Confirm Discharge'}
