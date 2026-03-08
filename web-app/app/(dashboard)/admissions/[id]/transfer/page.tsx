@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { AlertTriangle, CheckCircle2, Clock, Loader2, MoveRight, User } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -240,6 +241,17 @@ export default function TransferPage() {
               <p className="font-medium">{new Date(admission.admission_date).toLocaleDateString()}</p>
             </div>
           </div>
+          {admission.mch_registration && (
+            <div className="mt-4 rounded-md border border-amber-200 bg-amber-50/70 p-3 text-sm">
+              <p className="font-medium text-amber-950">Maternity Episode</p>
+              <p className="mt-1 text-amber-900">
+                This transfer stays within {admission.mch_registration_number || `MCH #${admission.mch_registration}`}. Use handover notes to document postpartum continuity.
+              </p>
+              <Button asChild variant="link" className="mt-1 h-auto p-0 text-amber-900">
+                <Link href={`/mch/${admission.mch_registration}`}>Open MCH registration</Link>
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 

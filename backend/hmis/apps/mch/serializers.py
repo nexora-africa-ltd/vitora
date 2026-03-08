@@ -7,7 +7,7 @@ from datetime import date as date_module
 from rest_framework import serializers
 
 from hmis.apps.clinics.models import ClinicVisit
-from hmis.apps.inpatient.models import Admission
+from hmis.apps.inpatient.models import Admission, Discharge
 from hmis.apps.mch.models import (
     AEFI,
     ANCVisit,
@@ -684,6 +684,18 @@ class PNCVisitSerializer(serializers.ModelSerializer):
     )
     conducted_by_name = serializers.SerializerMethodField()
     alerts = serializers.SerializerMethodField()
+    admission = serializers.PrimaryKeyRelatedField(
+        queryset=Admission.objects.select_related("mch_registration", "patient"),
+        required=False,
+        allow_null=True,
+    )
+    discharge = serializers.PrimaryKeyRelatedField(
+        queryset=Discharge.objects.select_related(
+            "admission", "admission__mch_registration", "admission__patient"
+        ),
+        required=False,
+        allow_null=True,
+    )
     clinic_visit = serializers.PrimaryKeyRelatedField(
         queryset=ClinicVisit.objects.select_related("session__clinic", "patient", "encounter"),
         required=False,
@@ -697,6 +709,8 @@ class PNCVisitSerializer(serializers.ModelSerializer):
             "registration",
             "registration_mch_number",
             "encounter",
+            "admission",
+            "discharge",
             "clinic_visit",
             "visit_number",
             "visit_date",
@@ -721,6 +735,51 @@ class PNCVisitSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["days_postpartum"]
+
+    def validate(self, attrs):
+        registration = attrs.get("registration") or getattr(self.instance, "registration", None)
+        admission = attrs.get("admission") if "admission" in attrs else getattr(self.instance, "admission", None)
+        discharge = attrs.get("discharge") if "discharge" in attrs else getattr(self.instance, "discharge", None)
+
+        if registration and discharge:
+            discharge_admission = discharge.admission
+            if discharge_admission.patient_id != registration.mother_id:
+                raise serializers.ValidationError(
+                    {"discharge": "Discharge admission patient must match the MCH registration mother."}
+                )
+            if discharge_admission.mch_registration_id and discharge_admission.mch_registration_id != registration.id:
+                raise serializers.ValidationError(
+                    {"discharge": "Discharge must belong to the same MCH registration."}
+                )
+
+        if registration and admission:
+            if admission.patient_id != registration.mother_id:
+                raise serializers.ValidationError(
+                    {"admission": "Admission patient must match the MCH registration mother."}
+                )
+            if admission.mch_registration_id and admission.mch_registration_id != registration.id:
+                raise serializers.ValidationError(
+                    {"admission": "Admission must belong to the same MCH registration."}
+                )
+
+        if admission and discharge and discharge.admission_id != admission.id:
+            raise serializers.ValidationError(
+                {"discharge": "Discharge must belong to the same admission linked to this PNC visit."}
+            )
+
+        return attrs
+
+    def create(self, validated_data):
+        discharge = validated_data.get("discharge")
+        if discharge and validated_data.get("admission") is None:
+            validated_data["admission"] = discharge.admission
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        discharge = validated_data.get("discharge", instance.discharge)
+        if discharge and validated_data.get("admission", instance.admission) is None:
+            validated_data["admission"] = discharge.admission
+        return super().update(instance, validated_data)
 
     def get_conducted_by_name(self, obj):
         if obj.conducted_by:

@@ -203,6 +203,7 @@ export interface ANCVisit {
 export interface ANCVisitListItem {
   id: number;
   registration: number;
+  clinic_visit?: number | null;
   visit_number: number;
   visit_date: string;
   gestation_weeks: number | null;
@@ -295,6 +296,8 @@ export interface Delivery {
   id: number;
   registration: number;
   registration_mch_number: string;
+  partograph?: number | null;
+  admission?: number | null;
   delivery_date: string;
   delivery_time: string | null;
   delivery_type: DeliveryType;
@@ -349,6 +352,8 @@ export interface DeliveryListItem {
  */
 export interface DeliveryCreateData {
   registration: number;
+  partograph?: number;
+  admission?: number;
   delivery_date?: string;
   delivery_time?: string;
   delivery_type: DeliveryType;
@@ -614,6 +619,8 @@ export interface PNCVisit {
   registration: number;
   registration_mch_number: string;
   encounter: number | null;
+  admission: number | null;
+  discharge: number | null;
   clinic_visit: number | null;
   visit_number: number;
   visit_date: string;
@@ -659,6 +666,8 @@ export interface PNCVisitListItem {
 export interface PNCVisitCreateData {
   registration: number;
   encounter?: number;
+  admission?: number;
+  discharge?: number;
   clinic_visit?: number;
   visit_number?: number;
   visit_date?: string;

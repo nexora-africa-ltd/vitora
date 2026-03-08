@@ -44,6 +44,7 @@ import { ICD11Select } from '@/components/terminology';
 import { CompatibilityOverrideDialog, BedSelectionGrid } from '@/components/inpatient';
 import { cn } from '@/lib/utils/cn';
 import type { CompatibilityViolation, CompatibilityCheckResult } from '@/lib/types/inpatient';
+import { useMCHRegistration } from '@/lib/hooks/use-mch';
 
 export default function NewAdmissionPage() {
   const router = useRouter();
@@ -53,6 +54,7 @@ export default function NewAdmissionPage() {
   // URL params
   const patientIdParam = searchParams.get('patient');
   const encounterIdParam = searchParams.get('encounter');
+  const initialMchRegistrationParam = searchParams.get('mch_registration');
   const patientId = patientIdParam ? Number(patientIdParam) : null;
   const encounterId = encounterIdParam ? Number(encounterIdParam) : null;
 
@@ -74,6 +76,12 @@ export default function NewAdmissionPage() {
   const [bedId, setBedId] = useState<string>('');
   const [autoAssignBed, setAutoAssignBed] = useState(false);
   const [payerType, setPayerType] = useState<'CASH' | 'SHA' | 'CORPORATE'>('CASH');
+  const [mchRegistrationId, setMchRegistrationId] = useState(initialMchRegistrationParam || '');
+  const selectedMchRegistrationId = useMemo(
+    () => (mchRegistrationId ? Number(mchRegistrationId) : undefined),
+    [mchRegistrationId]
+  );
+  const { data: mchRegistrationData } = useMCHRegistration(selectedMchRegistrationId);
 
   // Diagnosis state
   const [useICD11, setUseICD11] = useState(true); // Default to ICD-11 (SHA standard)
@@ -102,6 +110,12 @@ export default function NewAdmissionPage() {
     const ward = wardsList.find((w: any) => String(w.id) === wardId);
     return ward?.capacity || 0;
   }, [wards, wardId]);
+  const selectedWard = useMemo(() => {
+    const wardsList = (wards as any)?.results ?? wards ?? [];
+    return wardsList.find((w: any) => String(w.id) === wardId) ?? null;
+  }, [wards, wardId]);
+  const isMaternityWard = selectedWard?.ward_type === 'MATERNITY';
+  const mchRegistrationMatchesPatient = !mchRegistrationData || !patientId || mchRegistrationData.mother === patientId;
 
   // Show toast on generate beds success/error
   useEffect(() => {
@@ -225,9 +239,10 @@ export default function NewAdmissionPage() {
   const hasDiagnosis = useICD11
     ? !!icd11Value
     : (!!icd10Code || !!icd10Text);
+  const hasRequiredMaternityContext = !isMaternityWard || (!!mchRegistrationId && mchRegistrationMatchesPatient);
 
   // With autoAssignBed, bed selection is not required (handled by backend)
-  const canSubmit = !!patientId && !!wardId && (!!bedId || autoAssignBed) && hasDiagnosis && !!user;
+  const canSubmit = !!patientId && !!wardId && (!!bedId || autoAssignBed) && hasDiagnosis && !!user && hasRequiredMaternityContext;
 
   const admittingDiagnosis = useICD11
     ? icd11Value?.code || ''
@@ -348,6 +363,46 @@ export default function NewAdmissionPage() {
               </div>
             )}
           </div>
+
+          {isMaternityWard && (
+            <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/70 p-4">
+              <div className="space-y-1">
+                <Label htmlFor="mch-registration">MCH Registration *</Label>
+                <p className="text-sm text-muted-foreground">
+                  Maternity admissions must be linked to the pregnancy registration to preserve labour, delivery, and postpartum continuity.
+                </p>
+              </div>
+              <Input
+                id="mch-registration"
+                value={mchRegistrationId}
+                onChange={(e) => setMchRegistrationId(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="Enter MCH registration ID"
+                inputMode="numeric"
+              />
+              {mchRegistrationData && (
+                <div className="rounded-md border bg-background/80 p-3 text-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="outline">{mchRegistrationData.mch_number}</Badge>
+                    <Badge variant="secondary">{mchRegistrationData.status}</Badge>
+                  </div>
+                  <p className="mt-2 font-medium">
+                    {mchRegistrationData.mother_name}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Registered on {mchRegistrationData.registration_date}
+                  </p>
+                </div>
+              )}
+              {mchRegistrationData && !mchRegistrationMatchesPatient && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    This MCH registration belongs to a different patient. Select the matching pregnancy registration before creating the admission.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
 
           {/* Bed Assignment Section */}
           {wardId && (
@@ -560,6 +615,7 @@ export default function NewAdmissionPage() {
                 await createAdmission.mutateAsync({
                   patient: patientId,
                   ward: Number(wardId),
+                  ...(mchRegistrationId ? { mch_registration: Number(mchRegistrationId) } : {}),
                   // Include bed only if manually selected, otherwise use auto_assign_bed
                   ...(autoAssignBed
                     ? { auto_assign_bed: true }

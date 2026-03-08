@@ -1,11 +1,19 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { labourPartographObservationsApi, labourPartographsApi } from '@/lib/api/mch';
-import type {
+import { labourPartographObservationsApi, labourPartographsApi, mchRegistrationsApi } from '@/lib/api/mch';
+import type { MCHRegistration, 
   LabourPartographCreateData,
   LabourPartographObservationCreateData,
 } from '@/lib/types/mch';
+
+export function useMCHRegistration(registrationId: number | undefined) {
+  return useQuery<MCHRegistration>({
+    queryKey: ['mch-registration', registrationId ?? null],
+    queryFn: () => mchRegistrationsApi.get(registrationId!),
+    enabled: typeof registrationId === 'number',
+  });
+}
 
 export function useLabourPartographs(registrationId: number | undefined) {
   return useQuery({
