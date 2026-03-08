@@ -39,6 +39,7 @@ import {
   useAddCarePlanEntry,
   useUpdateCarePlanEntry,
 } from '@/lib/hooks/use-inpatient';
+import { ConsumableUsagePanel } from '@/components/inpatient';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
@@ -465,6 +466,11 @@ export default function KardexPage() {
           </CardContent>
         </Card>
       )}
+
+      <ConsumableUsagePanel
+        admissionId={admissionId}
+        isActive={admission.admission_status === 'ACTIVE'}
+      />
 
       {/* Edit Kardex Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
