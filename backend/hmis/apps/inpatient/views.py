@@ -24,6 +24,7 @@ from .models import (
     Discharge,
     FluidBalanceEntry,
     FluidBalanceSheet,
+    InpatientConsumableUsage,
     KardexHandoverNote,
     KardexShiftNote,
     NursingCarePlanEntry,
@@ -50,6 +51,9 @@ from .serializers import (
     FluidBalanceEntrySerializer,
     FluidBalanceSheetCreateSerializer,
     FluidBalanceSheetSerializer,
+    InpatientConsumableUsageCreateSerializer,
+    InpatientConsumableUsageReverseSerializer,
+    InpatientConsumableUsageSerializer,
     InpatientWardSerializer,
     KardexHandoverNoteSerializer,
     KardexShiftNoteSerializer,
@@ -1142,6 +1146,100 @@ class AdmissionViewSet(viewsets.ModelViewSet):
                 "prescriptions": PrescriptionSerializer(prescriptions, many=True).data,
             }
         )
+
+    @extend_schema(
+        tags=["Inpatient - Admissions"],
+        summary="List consumable usage for admission",
+        description="Get all recorded consumable stock usages for a specific admission.",
+    )
+    @action(detail=True, methods=["get"], url_path="consumable-usage")
+    def consumable_usage(self, request, pk=None):
+        """List inpatient consumable usage records for this admission."""
+        admission = self.get_object()
+        usages = admission.consumable_usages.select_related(
+            "drug", "batch", "used_by", "reversed_by"
+        )
+        serializer = InpatientConsumableUsageSerializer(usages, many=True)
+        return Response(serializer.data)
+
+    @extend_schema(
+        tags=["Inpatient - Admissions"],
+        summary="Record consumable usage for admission",
+        description="Record inpatient consumable usage against a pharmacy stock batch and debit stock.",
+    )
+    @action(detail=True, methods=["post"], url_path="record-consumable-usage")
+    def record_consumable_usage(self, request, pk=None):
+        """Create a consumable stock usage entry for this admission."""
+        admission = self.get_object()
+        serializer = InpatientConsumableUsageCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        usage = serializer.save(admission=admission, used_by=request.user)
+
+        AuditLog.log(
+            action="inpatient_consumable_usage_create",
+            user=request.user,
+            resource_type="InpatientConsumableUsage",
+            resource_id=usage.id,
+            details={
+                "admission_number": admission.admission_number,
+                "drug": usage.drug.get_display_name(),
+                "batch": usage.batch.batch_number,
+                "quantity_used": usage.quantity_used,
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        result_serializer = InpatientConsumableUsageSerializer(usage)
+        return Response(result_serializer.data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        tags=["Inpatient - Admissions"],
+        summary="Reverse recorded consumable usage",
+        description="Reverse a consumable usage entry and restore stock to the original batch.",
+    )
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path=r"reverse-consumable-usage/(?P<usage_id>\d+)",
+    )
+    def reverse_consumable_usage(self, request, pk=None, usage_id=None):
+        """Reverse a previously recorded consumable stock usage."""
+        admission = self.get_object()
+
+        try:
+            usage = admission.consumable_usages.get(id=usage_id)
+        except InpatientConsumableUsage.DoesNotExist:
+            return Response(
+                {"error": "Consumable usage not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = InpatientConsumableUsageReverseSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            usage.reverse(user=request.user, reason=serializer.validated_data["reason"])
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        AuditLog.log(
+            action="inpatient_consumable_usage_reverse",
+            user=request.user,
+            resource_type="InpatientConsumableUsage",
+            resource_id=usage.id,
+            details={
+                "admission_number": admission.admission_number,
+                "drug": usage.drug.get_display_name(),
+                "batch": usage.batch.batch_number,
+                "quantity_used": usage.quantity_used,
+                "reason": usage.reverse_reason,
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        result_serializer = InpatientConsumableUsageSerializer(usage)
+        return Response(result_serializer.data)
 
 
 class DischargeViewSet(viewsets.ModelViewSet):

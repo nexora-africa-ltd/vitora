@@ -20,6 +20,7 @@ from .models import (
     Discharge,
     FluidBalanceEntry,
     FluidBalanceSheet,
+    InpatientConsumableUsage,
     KardexHandoverNote,
     KardexShiftNote,
     NursingCarePlanEntry,
@@ -789,6 +790,71 @@ class KardexHandoverNoteSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]
+
+
+class InpatientConsumableUsageSerializer(serializers.ModelSerializer):
+    """Serializer for inpatient consumable stock usage records."""
+
+    admission_number = serializers.CharField(source="admission.admission_number", read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    drug_name = serializers.CharField(source="drug.get_display_name", read_only=True)
+    batch_number = serializers.CharField(source="batch.batch_number", read_only=True)
+    used_by_username = serializers.CharField(source="used_by.username", read_only=True)
+    reversed_by_username = serializers.CharField(source="reversed_by.username", read_only=True)
+
+    class Meta:
+        model = InpatientConsumableUsage
+        fields = [
+            "id",
+            "admission",
+            "admission_number",
+            "patient_name",
+            "drug",
+            "drug_name",
+            "batch",
+            "batch_number",
+            "quantity_used",
+            "notes",
+            "used_by",
+            "used_by_username",
+            "used_at",
+            "is_reversed",
+            "reversed_by",
+            "reversed_by_username",
+            "reversed_at",
+            "reverse_reason",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "drug",
+            "used_by",
+            "is_reversed",
+            "reversed_by",
+            "reversed_at",
+            "reverse_reason",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_patient_name(self, obj) -> str:
+        patient = obj.admission.patient
+        return f"{patient.first_name} {patient.last_name}"
+
+
+class InpatientConsumableUsageCreateSerializer(serializers.ModelSerializer):
+    """Serializer for recording inpatient consumable usage."""
+
+    class Meta:
+        model = InpatientConsumableUsage
+        fields = ["batch", "quantity_used", "notes", "used_at"]
+
+
+class InpatientConsumableUsageReverseSerializer(serializers.Serializer):
+    """Serializer for reversing a consumable usage record."""
+
+    reason = serializers.CharField()
 
 
 class NursingKardexSerializer(serializers.ModelSerializer):
