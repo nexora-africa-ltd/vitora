@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from unittest.mock import patch
 
 import pytest  # type: ignore
 from django.urls import reverse
@@ -237,3 +238,30 @@ class TestMCHClinicUnification:
         assert response.status_code == 200
         assert response.data["clinic"] == pnc_clinic.name
         assert response.data["clinic_visit_id"] is not None
+
+    def test_create_pnc_visit_uses_request_user_for_billing_fallback(
+        self,
+        authenticated_client,
+        mch_registration,
+        pnc_clinic,
+        test_user,
+        unification_flags,
+    ):
+        """Live PNC writes should supply a non-null billing creator via the service fallback."""
+        with patch("hmis.apps.mch.services.billing.create_pnc_visit_invoice") as mock_billing:
+            mock_billing.return_value = None
+
+            response = authenticated_client.post(
+                reverse("mch:mch-pnc-visit-list"),
+                {
+                    "registration": mch_registration.id,
+                    "visit_number": 1,
+                    "visit_date": date.today().isoformat(),
+                    "breastfeeding_status": "EXCLUSIVE",
+                },
+                format="json",
+            )
+
+        assert response.status_code == 201
+        assert mock_billing.call_count == 1
+        assert mock_billing.call_args.kwargs["created_by"] == test_user

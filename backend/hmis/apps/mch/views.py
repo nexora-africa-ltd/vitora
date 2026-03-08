@@ -7,6 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 from hmis.apps.mch.models import (
@@ -50,6 +51,10 @@ from hmis.apps.mch.serializers import (
     PNCVisitSerializer,
     VaccineSerializer,
     VitaminASupplementSerializer,
+)
+from hmis.apps.mch.services.clinic_unification import (
+    finalize_program_attendance_from_clinic_visit,
+    link_or_create_clinic_visit_for_mch_visit,
 )
 from hmis.apps.mch.services.immunization import generate_immunization_schedule
 
@@ -271,6 +276,70 @@ class MCHRegistrationViewSet(viewsets.ModelViewSet):
         output_serializer = MCHRegistrationSerializer(instance)
         return Response(output_serializer.data, status=status.HTTP_201_CREATED)
 
+    def _route_to_clinic(self, registration, clinic_type: str, clinic_id=None, notes: str = ""):
+        """Route an MCH registration into a clinic queue."""
+        if clinic_id:
+            clinic = Clinic.objects.filter(
+                id=clinic_id,
+                clinic_type=clinic_type,
+                status="ACTIVE",
+            ).first()
+            if not clinic:
+                return Response(
+                    {"detail": f"{clinic_type} clinic with ID {clinic_id} not found or inactive."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            clinic = Clinic.objects.filter(
+                clinic_type=clinic_type,
+                status="ACTIVE",
+            ).first()
+            if not clinic:
+                return Response(
+                    {"detail": f"No active {clinic_type} clinic found."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        session = ClinicSession.objects.filter(
+            clinic=clinic,
+            session_date=registration.registration_date,
+        ).first()
+        if not session:
+            from django.utils import timezone
+
+            session = ClinicSession.objects.create(
+                clinic=clinic,
+                session_date=registration.registration_date,
+                status="OPEN",
+                opened_at=timezone.now(),
+            )
+
+        max_queue = ClinicVisit.objects.filter(session=session).aggregate(
+            max_q=models.Max("queue_number")
+        )["max_q"] or 0
+
+        visit = ClinicVisit.objects.create(
+            session=session,
+            patient=registration.mother,
+            queue_number=max_queue + 1,
+            status="REGISTERED",
+            priority="STANDARD",
+            visit_type="FOLLOW_UP" if clinic_type == "PNC" else "SCHEDULED",
+            source="DIRECT",
+            source_module=f"MCH_{clinic_type}",
+            registered_by=self.request.user,
+            chief_complaint=notes or f"{clinic_type} visit - MCH: {registration.mch_number}",
+            notes=notes,
+        )
+
+        return Response({
+            "message": f"Mother routed to {clinic_type} queue successfully.",
+            "clinic_visit_id": visit.id,
+            "queue_number": visit.queue_number,
+            "clinic": clinic.name,
+            "session_id": session.id,
+        })
+
     @action(detail=True, methods=["post"])
     def route_to_anc(self, request, pk=None):
         """
@@ -282,85 +351,15 @@ class MCHRegistrationViewSet(viewsets.ModelViewSet):
         registration = self.get_object()
         clinic_id = request.data.get("clinic_id")
         notes = request.data.get("notes", "")
+        return self._route_to_clinic(registration, "ANC", clinic_id=clinic_id, notes=notes)
 
-        try:
-            from datetime import date as dt_date
-            from datetime import timedelta
-
-            from django.utils import timezone
-
-            from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
-
-            # Find ANC clinic
-            if clinic_id:
-                clinic = Clinic.objects.filter(
-                    id=clinic_id,
-                    clinic_type="ANC",
-                    status="ACTIVE",
-                ).first()
-                if not clinic:
-                    return Response(
-                        {"detail": f"ANC clinic with ID {clinic_id} not found or inactive."},
-                        status=status.HTTP_400_BAD_REQUEST,
-                    )
-            else:
-                clinic = Clinic.objects.filter(
-                    clinic_type="ANC",
-                    status="ACTIVE",
-                ).first()
-                if not clinic:
-                    return Response(
-                        {"detail": "No active ANC clinic found."},
-                        status=status.HTTP_404_NOT_FOUND,
-                    )
-
-            # Get or create today's session
-            today = dt_date.today()
-            session = ClinicSession.objects.filter(
-                clinic=clinic,
-                session_date=today,
-            ).first()
-
-            if not session:
-                # Create a default session for today
-                session = ClinicSession.objects.create(
-                    clinic=clinic,
-                    session_date=today,
-                    status="OPEN",
-                    opened_at=timezone.now(),
-                )
-
-            # Get next queue number
-            max_queue = ClinicVisit.objects.filter(session=session).aggregate(
-                max_q=models.Max("queue_number")
-            )["max_q"] or 0
-
-            # Create clinic visit
-            visit = ClinicVisit.objects.create(
-                session=session,
-                patient=registration.mother,
-                queue_number=max_queue + 1,
-                status="REGISTERED",
-                priority="STANDARD",
-                visit_type="SCHEDULED" if registration.anc_enrollment else "NEW",
-                source="DIRECT",
-                chief_complaint=f"ANC visit - MCH: {registration.mch_number}",
-                notes=notes,
-            )
-
-            return Response({
-                "message": "Mother routed to ANC queue successfully.",
-                "clinic_visit_id": visit.id,
-                "queue_number": visit.queue_number,
-                "clinic": clinic.name,
-                "session_id": session.id,
-            })
-
-        except Exception as exc:
-            return Response(
-                {"detail": f"Failed to route to ANC: {exc!s}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+    @action(detail=True, methods=["post"])
+    def route_to_pnc(self, request, pk=None):
+        """Route mother to PNC clinic queue."""
+        registration = self.get_object()
+        clinic_id = request.data.get("clinic_id")
+        notes = request.data.get("notes", "")
+        return self._route_to_clinic(registration, "PNC", clinic_id=clinic_id, notes=notes)
 
     @action(detail=True, methods=["post"])
     def schedule_anc_visit(self, request, pk=None):
@@ -565,7 +564,7 @@ class MCHRegistrationViewSet(viewsets.ModelViewSet):
 class ANCVisitViewSet(viewsets.ModelViewSet):
     """ViewSet for ANC visits."""
 
-    queryset = ANCVisit.objects.select_related("registration")
+    queryset = ANCVisit.objects.select_related("registration", "clinic_visit", "conducted_by")
     permission_classes = [IsAuthenticated]
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = ANCVisitFilter
@@ -578,7 +577,10 @@ class ANCVisitViewSet(viewsets.ModelViewSet):
         return ANCVisitSerializer
 
     def perform_create(self, serializer):
-        instance = serializer.save()
+        conducted_by = serializer.validated_data.get("conducted_by") or self.request.user
+        instance = serializer.save(conducted_by=conducted_by)
+        link_or_create_clinic_visit_for_mch_visit(instance, user=self.request.user)
+        finalize_program_attendance_from_clinic_visit(instance)
         AuditLog.log(
             action="anc_visit_create",
             user=self.request.user,
@@ -590,6 +592,8 @@ class ANCVisitViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         instance = serializer.save()
+        link_or_create_clinic_visit_for_mch_visit(instance, user=self.request.user)
+        finalize_program_attendance_from_clinic_visit(instance)
         AuditLog.log(
             action="anc_visit_update",
             user=self.request.user,
@@ -918,7 +922,7 @@ class LabourPartographObservationViewSet(viewsets.ModelViewSet):
 class PNCVisitViewSet(viewsets.ModelViewSet):
     """ViewSet for PNC visits."""
 
-    queryset = PNCVisit.objects.select_related("registration")
+    queryset = PNCVisit.objects.select_related("registration", "clinic_visit", "conducted_by")
     permission_classes = [IsAuthenticated]
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = PNCVisitFilter
@@ -931,7 +935,9 @@ class PNCVisitViewSet(viewsets.ModelViewSet):
         return PNCVisitSerializer
 
     def perform_create(self, serializer):
-        instance = serializer.save()
+        conducted_by = serializer.validated_data.get("conducted_by") or self.request.user
+        instance = serializer.save(conducted_by=conducted_by)
+        link_or_create_clinic_visit_for_mch_visit(instance, user=self.request.user)
         AuditLog.log(
             action="pnc_visit_create",
             user=self.request.user,
@@ -943,6 +949,7 @@ class PNCVisitViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         instance = serializer.save()
+        link_or_create_clinic_visit_for_mch_visit(instance, user=self.request.user)
         AuditLog.log(
             action="pnc_visit_update",
             user=self.request.user,

@@ -6,6 +6,7 @@ from datetime import date as date_module
 
 from rest_framework import serializers
 
+from hmis.apps.clinics.models import ClinicVisit
 from hmis.apps.mch.models import (
     AEFI,
     ANCVisit,
@@ -288,6 +289,11 @@ class ANCVisitSerializer(serializers.ModelSerializer):
     conducted_by_name = serializers.SerializerMethodField()
     alerts = serializers.SerializerMethodField()
     is_fetal_heart_rate_normal = serializers.BooleanField(read_only=True)
+    clinic_visit = serializers.PrimaryKeyRelatedField(
+        queryset=ClinicVisit.objects.select_related("session__clinic", "patient", "encounter"),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = ANCVisit
@@ -296,6 +302,7 @@ class ANCVisitSerializer(serializers.ModelSerializer):
             "registration",
             "registration_mch_number",
             "encounter",
+            "clinic_visit",
             "visit_number",
             "visit_date",
             "gestation_weeks",
@@ -595,6 +602,11 @@ class PNCVisitSerializer(serializers.ModelSerializer):
     )
     conducted_by_name = serializers.SerializerMethodField()
     alerts = serializers.SerializerMethodField()
+    clinic_visit = serializers.PrimaryKeyRelatedField(
+        queryset=ClinicVisit.objects.select_related("session__clinic", "patient", "encounter"),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = PNCVisit
@@ -603,6 +615,7 @@ class PNCVisitSerializer(serializers.ModelSerializer):
             "registration",
             "registration_mch_number",
             "encounter",
+            "clinic_visit",
             "visit_number",
             "visit_date",
             "days_postpartum",
