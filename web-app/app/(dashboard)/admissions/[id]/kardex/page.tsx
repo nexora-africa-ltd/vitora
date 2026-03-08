@@ -82,6 +82,13 @@ const KARDEX_QUICK_ACTIONS: AIQuickAction[] = [
       'Based on the kardex details, admission diagnosis, allergies, risks, diet, isolation requirements, and current nursing notes, summarize the most important nursing priorities for this patient over the next shift.',
     userMessage: '🩺 Summarizing nursing priorities...',
   },
+  {
+    id: 'kardex-shift-handover-summary',
+    label: 'Summarize shift notes',
+    query:
+      'Summarize the most recent shift notes and handover priorities for this admitted patient. Highlight urgent nursing concerns, pending tasks, escalations, isolation or safety risks, and what the incoming team should act on first.',
+    userMessage: '📝 Summarizing recent shift notes and handover priorities...',
+  },
 ];
 
 export default function KardexPage() {
@@ -163,6 +170,33 @@ export default function KardexPage() {
     () => kardex?.allergies?.split(',').map((allergy) => allergy.trim()).filter(Boolean) ?? [],
     [kardex?.allergies]
   );
+  const recentShiftNotesSummary = useMemo(() => {
+    return kardex?.shift_notes
+      ?.slice(0, 3)
+      .map((note) => {
+        const noteText = (note.content || note.notes || '').trim();
+        if (!noteText) return null;
+        return `${note.shift_display || note.shift}: ${noteText}`;
+      })
+      .filter(Boolean)
+      .join(' | ');
+  }, [kardex?.shift_notes]);
+  const recentHandoverSummary = useMemo(() => {
+    return kardex?.handover_notes
+      ?.slice(0, 2)
+      .map((note) => {
+        const pendingTasks = note.pending_tasks?.trim();
+        const escalations = note.escalations?.trim();
+        const parts = [
+          note.shift_ending ? `${note.shift_ending} handover` : 'handover',
+          pendingTasks ? `pending: ${pendingTasks}` : null,
+          escalations ? `escalations: ${escalations}` : null,
+        ].filter(Boolean);
+        return parts.join(', ');
+      })
+      .filter(Boolean)
+      .join(' | ');
+  }, [kardex?.handover_notes]);
 
   useEffect(() => {
     if (!activePanelAction || !clearPanelAction) return;
@@ -195,17 +229,27 @@ export default function KardexPage() {
         admission_status: admission.admission_status ?? undefined,
         length_of_stay_days: daysLOS,
         diet: kardex.dietary_requirements || admission.diet || undefined,
-        special_instructions:
+        special_instructions: [
           kardex.isolation_required && kardex.isolation_type
             ? `Isolation required: ${kardex.isolation_type}`
-            : admission.special_instructions || undefined,
+            : admission.special_instructions || null,
+          recentShiftNotesSummary ? `Recent shift notes: ${recentShiftNotesSummary}` : null,
+          recentHandoverSummary ? `Recent handover: ${recentHandoverSummary}` : null,
+        ].filter(Boolean).join(' | ') || undefined,
       }
     );
 
     return () => {
       setEncounterAwareContext(null, null);
     };
-  }, [admission, kardex, patientAllergies, setEncounterAwareContext]);
+  }, [
+    admission,
+    kardex,
+    patientAllergies,
+    recentHandoverSummary,
+    recentShiftNotesSummary,
+    setEncounterAwareContext,
+  ]);
 
   useEffect(() => {
     if (!setQuickActions) return;
