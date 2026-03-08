@@ -1154,7 +1154,7 @@ class DischargeViewSet(viewsets.ModelViewSet):
     - PATCH /api/inpatient/discharges/{id}/ - Update discharge
     """
 
-    queryset = Discharge.objects.all()
+    queryset = Discharge.objects.select_related("admission", "admission__mch_registration")
     serializer_class = DischargeSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -1202,7 +1202,7 @@ class TransferViewSet(viewsets.ModelViewSet):
     - POST /api/inpatient/transfers/ - Create transfer
     """
 
-    queryset = Transfer.objects.all()
+    queryset = Transfer.objects.select_related("admission", "admission__mch_registration")
     serializer_class = TransferSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

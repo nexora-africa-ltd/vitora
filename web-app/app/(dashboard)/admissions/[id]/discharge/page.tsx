@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { Save, Plus, Trash2, Clock, CheckCircle2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
@@ -218,6 +219,17 @@ export default function DischargePage() {
               </p>
             </div>
           </div>
+          {admission.mch_registration && (
+            <div className="mt-4 rounded-md border border-amber-200 bg-amber-50/70 p-3 text-sm">
+              <p className="font-medium text-amber-950">Maternity Episode</p>
+              <p className="mt-1 text-amber-900">
+                Linked to {admission.mch_registration_number || `MCH #${admission.mch_registration}`}. Document a postpartum follow-up date before discharge.
+              </p>
+              <Button asChild variant="link" className="mt-1 h-auto p-0 text-amber-900">
+                <Link href={`/mch/${admission.mch_registration}`}>Open MCH registration</Link>
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -338,7 +350,7 @@ export default function DischargePage() {
               <DatePicker
                 value={followUpDate ? parseISO(followUpDate) : undefined}
                 onChange={(date) => setFollowUpDate(date ? format(date, 'yyyy-MM-dd') : '')}
-                placeholder="Select follow-up date"
+                placeholder={admission.mch_registration ? 'Select postpartum follow-up date' : 'Select follow-up date'}
               />
             </div>
             <div className="space-y-2">

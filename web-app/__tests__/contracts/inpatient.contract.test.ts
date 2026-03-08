@@ -286,6 +286,7 @@ describe('Inpatient Contract Tests', () => {
         'id',
         'admission_number',
         'patient',
+        'mch_registration',
         'admission_date',
         'ward',
         'bed',
@@ -328,6 +329,7 @@ describe('Inpatient Contract Tests', () => {
       const criticalFields = [
         'id',
         'admission',
+        'mch_registration',
         'discharge_type',
         'discharge_date',
         'discharged_by',
@@ -370,6 +372,7 @@ describe('Inpatient Contract Tests', () => {
       const criticalFields = [
         'id',
         'admission',
+        'mch_registration',
         'source_ward',
         'source_bed',
         'destination_ward',

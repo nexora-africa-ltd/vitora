@@ -1285,6 +1285,22 @@ class PNCVisit(HistoryMixin, TimeStampedModel):
         blank=True,
         related_name="pnc_visits",
     )
+    admission = models.ForeignKey(
+        "inpatient.Admission",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pnc_visits",
+        help_text="Linked postpartum admission, if this PNC visit follows inpatient care",
+    )
+    discharge = models.ForeignKey(
+        "inpatient.Discharge",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="pnc_visits",
+        help_text="Linked inpatient discharge that this PNC follow-up references",
+    )
     clinic_visit = models.OneToOneField(
         "clinics.ClinicVisit",
         on_delete=models.SET_NULL,
@@ -1421,8 +1437,36 @@ class PNCVisit(HistoryMixin, TimeStampedModel):
     def __str__(self):
         return f"PNC Visit {self.visit_number} - {self.registration.mch_number}"
 
+    def clean(self):
+        """Validate postpartum continuity across pregnancy, admission, and discharge."""
+        errors: dict[str, str] = {}
+
+        linked_admission = self.admission
+        if self.discharge_id:
+            discharge_admission = self.discharge.admission
+            if linked_admission and discharge_admission.id != linked_admission.id:
+                errors["discharge"] = "Discharge must belong to the same admission linked to this PNC visit."
+            linked_admission = discharge_admission
+
+        if linked_admission:
+            if linked_admission.patient_id != self.registration.mother_id:
+                errors["admission"] = "Admission patient must match the MCH registration mother."
+            if (
+                linked_admission.mch_registration_id
+                and linked_admission.mch_registration_id != self.registration_id
+            ):
+                errors["admission"] = "Admission must belong to the same MCH registration."
+
+        if self.discharge_id and self.discharge.admission.patient_id != self.registration.mother_id:
+            errors["discharge"] = "Discharge admission patient must match the MCH registration mother."
+
+        if errors:
+            raise ValidationError(errors)
+
     def save(self, *args, **kwargs):
         """Auto-calculate days postpartum from delivery date."""
+        if self.discharge_id and not self.admission_id:
+            self.admission = self.discharge.admission
         deliveries = self.registration.deliveries.filter(status="COMPLETED")
         if deliveries.exists():
             latest_delivery = deliveries.order_by("-delivery_date").first()

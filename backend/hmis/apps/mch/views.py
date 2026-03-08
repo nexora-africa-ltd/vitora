@@ -925,7 +925,13 @@ class LabourPartographObservationViewSet(viewsets.ModelViewSet):
 class PNCVisitViewSet(viewsets.ModelViewSet):
     """ViewSet for PNC visits."""
 
-    queryset = PNCVisit.objects.select_related("registration", "clinic_visit", "conducted_by")
+    queryset = PNCVisit.objects.select_related(
+        "registration",
+        "admission",
+        "discharge",
+        "clinic_visit",
+        "conducted_by",
+    )
     permission_classes = [IsAuthenticated]
     filter_backends = [django_filters.DjangoFilterBackend, filters.OrderingFilter]
     filterset_class = PNCVisitFilter

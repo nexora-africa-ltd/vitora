@@ -309,6 +309,10 @@ class DischargeSerializer(serializers.ModelSerializer):
 
     admission_number = serializers.CharField(source="admission.admission_number", read_only=True)
     patient_name = serializers.SerializerMethodField()
+    mch_registration = serializers.IntegerField(source="admission.mch_registration_id", read_only=True)
+    mch_registration_number = serializers.CharField(
+        source="admission.mch_registration.mch_number", read_only=True
+    )
     discharged_by_username = serializers.CharField(source="discharged_by.username", read_only=True)
     discharge_type_display = serializers.CharField(
         source="get_discharge_type_display", read_only=True
@@ -322,6 +326,8 @@ class DischargeSerializer(serializers.ModelSerializer):
             "admission",
             "admission_number",
             "patient_name",
+            "mch_registration",
+            "mch_registration_number",
             "discharge_type",
             "discharge_type_display",
             "discharge_date",
@@ -347,6 +353,27 @@ class DischargeSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
+    def validate(self, attrs):
+        admission = attrs.get("admission") or getattr(self.instance, "admission", None)
+        discharge_type = attrs.get("discharge_type") or getattr(self.instance, "discharge_type", None)
+        follow_up_date = (
+            attrs.get("follow_up_date")
+            if "follow_up_date" in attrs
+            else getattr(self.instance, "follow_up_date", None)
+        )
+
+        if (
+            admission
+            and admission.mch_registration_id
+            and discharge_type in {"NORMAL", "TRANSFERRED"}
+            and follow_up_date is None
+        ):
+            raise serializers.ValidationError(
+                {"follow_up_date": "Maternity discharges require a documented postpartum follow-up date."}
+            )
+
+        return attrs
+
     def get_patient_name(self, obj) -> str:
         """Get patient full name."""
         patient = obj.admission.patient
@@ -358,6 +385,10 @@ class TransferSerializer(serializers.ModelSerializer):
 
     admission_number = serializers.CharField(source="admission.admission_number", read_only=True)
     patient_name = serializers.SerializerMethodField()
+    mch_registration = serializers.IntegerField(source="admission.mch_registration_id", read_only=True)
+    mch_registration_number = serializers.CharField(
+        source="admission.mch_registration.mch_number", read_only=True
+    )
     source_ward_name = serializers.CharField(source="source_ward.name", read_only=True)
     source_bed_number = serializers.CharField(source="source_bed.bed_number", read_only=True)
     destination_ward_name = serializers.CharField(source="destination_ward.name", read_only=True)
@@ -376,6 +407,8 @@ class TransferSerializer(serializers.ModelSerializer):
             "admission",
             "admission_number",
             "patient_name",
+            "mch_registration",
+            "mch_registration_number",
             "source_ward",
             "source_ward_name",
             "source_bed",
@@ -395,6 +428,23 @@ class TransferSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate(self, attrs):
+        admission = attrs.get("admission") or getattr(self.instance, "admission", None)
+        source_ward = attrs.get("source_ward") or getattr(self.instance, "source_ward", None)
+        source_bed = attrs.get("source_bed") or getattr(self.instance, "source_bed", None)
+
+        if admission and source_ward and admission.ward_id != source_ward.id:
+            raise serializers.ValidationError(
+                {"source_ward": "Source ward must match the admission's current ward."}
+            )
+
+        if admission and source_bed and admission.bed_id != source_bed.id:
+            raise serializers.ValidationError(
+                {"source_bed": "Source bed must match the admission's current bed."}
+            )
+
+        return attrs
 
     def get_patient_name(self, obj) -> str:
         """Get patient full name."""

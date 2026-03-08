@@ -95,6 +95,8 @@ export interface Admission {
   patient_age?: number | null;
   patient_gender?: 'M' | 'F' | 'O' | null;
   opd_encounter?: number | null;
+  mch_registration?: number | null;
+  mch_registration_number?: string;
   ipd_encounter?: number;
   source_encounter?: number | null; // Source OPD encounter ID
   recommendation?: number | null;
@@ -135,6 +137,7 @@ export interface Admission {
 export interface AdmissionCreateInput {
   patient: number;
   ward: number;
+  mch_registration?: number;
   /** Bed ID (required unless auto_assign_bed is true) */
   bed?: number;
   /** When true, system will auto-assign the first available bed in the ward */
@@ -180,6 +183,8 @@ export interface Discharge {
   admission: number;
   admission_number?: string;
   patient_name?: string;
+  mch_registration?: number | null;
+  mch_registration_number?: string;
   discharge_type: DischargeType;
   discharge_type_display?: string;
   discharge_date: string;
@@ -245,6 +250,8 @@ export interface Transfer {
   admission: number;
   admission_number?: string;
   patient_name?: string;
+  mch_registration?: number | null;
+  mch_registration_number?: string;
   source_ward: number;
   source_ward_name?: string;
   source_bed: number;
