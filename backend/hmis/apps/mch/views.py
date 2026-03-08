@@ -327,6 +327,7 @@ class MCHRegistrationViewSet(viewsets.ModelViewSet):
             visit_type="FOLLOW_UP" if clinic_type == "PNC" else "SCHEDULED",
             source="DIRECT",
             source_module=f"MCH_{clinic_type}",
+            source_record_id=registration.id,
             registered_by=self.request.user,
             chief_complaint=notes or f"{clinic_type} visit - MCH: {registration.mch_number}",
             notes=notes,

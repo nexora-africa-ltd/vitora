@@ -26,6 +26,9 @@ def clinic_visit_post_save(sender, instance, created, **kwargs):
     """
     Broadcast WebSocket events when ClinicVisit is created or updated.
     """
+    if getattr(instance, "_skip_broadcast", False):
+        return
+
     try:
         if created:
             # New patient added to queue
@@ -41,6 +44,9 @@ def clinic_visit_pre_save(sender, instance, **kwargs):
     """
     Track status changes to broadcast appropriate events.
     """
+    if getattr(instance, "_skip_broadcast", False):
+        return
+
     if not instance.pk:
         # New instance, will be handled in post_save
         return
@@ -58,6 +64,9 @@ def clinic_visit_status_change(sender, instance, created, **kwargs):
     """
     Broadcast events when visit status changes.
     """
+    if getattr(instance, "_skip_broadcast", False):
+        return
+
     if created:
         # Handled by clinic_visit_post_save
         return
