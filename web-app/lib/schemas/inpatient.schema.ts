@@ -517,6 +517,33 @@ export const NursingKardexSchema = z.object({
 
 export type NursingKardexSchemaType = z.infer<typeof NursingKardexSchema>;
 
+export const InpatientConsumableUsageSchema = z.object({
+  id: z.number(),
+  admission: z.number(),
+  admission_number: z.string().optional(),
+  patient_name: z.string().optional(),
+  drug: z.number(),
+  drug_name: z.string().optional(),
+  batch: z.number(),
+  batch_number: z.string().optional(),
+  quantity_used: z.number(),
+  notes: z.string().optional(),
+  used_by: z.number(),
+  used_by_username: z.string().optional(),
+  used_at: z.string(),
+  is_reversed: z.boolean(),
+  reversed_by: z.number().nullable().optional(),
+  reversed_by_username: z.string().nullable().optional(),
+  reversed_at: z.string().nullable().optional(),
+  reverse_reason: z.string().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export type InpatientConsumableUsageSchemaType = z.infer<typeof InpatientConsumableUsageSchema>;
+
+export const InpatientConsumableUsageArraySchema = z.array(InpatientConsumableUsageSchema);
+
 // Legacy aliases
 export const NursingNoteSchema = KardexShiftNoteSchema;
 export const NursingOrderSchema = NursingKardexSchema;

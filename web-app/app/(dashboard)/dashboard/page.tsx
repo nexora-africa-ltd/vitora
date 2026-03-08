@@ -264,7 +264,7 @@ export default function DashboardPage() {
                 lastUpdate={lastUpdate}
                 showLabel
                 size="sm"
-                className="rounded-md border bg-background px-3 py-2"
+                className="rounded-md bg-background px-3 py-2"
               />
               <Button variant="outline" size="sm" asChild>
                 <Link href="/triage">

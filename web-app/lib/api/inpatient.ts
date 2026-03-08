@@ -18,6 +18,8 @@ import {
   NursingCarePlanEntrySchema,
   KardexShiftNoteSchema,
   KardexHandoverNoteSchema,
+  InpatientConsumableUsageArraySchema,
+  InpatientConsumableUsageSchema,
   ShiftHandoverSchema,
   PaginatedWardSchema,
   PaginatedBedSchema,
@@ -64,6 +66,9 @@ import type {
   DischargeListParams,
   DischargeListResponse,
   InpatientWard,
+  InpatientConsumableUsage,
+  InpatientConsumableUsageCreateData,
+  InpatientConsumableUsageReverseData,
   KardexHandoverNote,
   KardexHandoverNoteCreateData,
   KardexListParams,
@@ -556,6 +561,51 @@ export const inpatientApi = {
       `/api/inpatient/admissions/${admissionId}/prescriptions/`
     );
     return response.data;
+  },
+
+  /**
+   * Get recorded consumable usage for an admission.
+   */
+  async getAdmissionConsumableUsage(admissionId: number): Promise<InpatientConsumableUsage[]> {
+    const response = await apiClient.get<InpatientConsumableUsage[]>(
+      `/api/inpatient/admissions/${admissionId}/consumable-usage/`
+    );
+    return parseResponse(InpatientConsumableUsageArraySchema, response.data, {
+      context: 'inpatientApi.getAdmissionConsumableUsage',
+    });
+  },
+
+  /**
+   * Record consumable usage for an admission.
+   */
+  async recordAdmissionConsumableUsage(
+    admissionId: number,
+    data: InpatientConsumableUsageCreateData
+  ): Promise<InpatientConsumableUsage> {
+    const response = await apiClient.post<InpatientConsumableUsage>(
+      `/api/inpatient/admissions/${admissionId}/record-consumable-usage/`,
+      data
+    );
+    return parseResponse(InpatientConsumableUsageSchema, response.data, {
+      context: 'inpatientApi.recordAdmissionConsumableUsage',
+    });
+  },
+
+  /**
+   * Reverse a consumable usage record for an admission.
+   */
+  async reverseAdmissionConsumableUsage(
+    admissionId: number,
+    usageId: number,
+    data: InpatientConsumableUsageReverseData
+  ): Promise<InpatientConsumableUsage> {
+    const response = await apiClient.post<InpatientConsumableUsage>(
+      `/api/inpatient/admissions/${admissionId}/reverse-consumable-usage/${usageId}/`,
+      data
+    );
+    return parseResponse(InpatientConsumableUsageSchema, response.data, {
+      context: 'inpatientApi.reverseAdmissionConsumableUsage',
+    });
   },
 
   // ============================================================================

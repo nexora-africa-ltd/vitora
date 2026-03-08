@@ -93,6 +93,14 @@ class StockBatchAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
+    search_fields = (
+        "batch_number",
+        "barcode",
+        "drug__generic_name",
+        "drug__code",
+        "supplier",
+        "purchase_order",
+    )
     date_hierarchy = "created_at"
 
 

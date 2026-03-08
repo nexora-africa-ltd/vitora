@@ -25,10 +25,13 @@ import type {
   FluidBalanceSheetCreateData,
   FluidBalanceSheetUpdateData,
   InpatientWard,
+  InpatientConsumableUsageCreateData,
   KardexHandoverNoteCreateData,
   KardexListParams,
   KardexShiftNoteCreateData,
   KardexUpdateData,
+  InpatientConsumableUsageReverseData,
+  InpatientConsumableUsage,
   NursingKardex,
   NursingCarePlanEntry,
   NursingCarePlanEntryCreateData,
@@ -85,6 +88,8 @@ export const inpatientQueryKeys = {
   kardexById: (id: number) => [...inpatientQueryKeys.all, 'kardex', id] as const,
   kardexByAdmission: (admissionId: number) =>
     [...inpatientQueryKeys.all, 'kardex', 'admission', admissionId] as const,
+  admissionConsumableUsage: (admissionId: number) =>
+    [...inpatientQueryKeys.admission(admissionId), 'consumable-usage'] as const,
   shiftHandovers: (params?: ShiftHandoverListParams) =>
     [...inpatientQueryKeys.all, 'shift-handovers', params] as const,
   shiftHandover: (id: number) => [...inpatientQueryKeys.all, 'shift-handovers', id] as const,
@@ -682,6 +687,51 @@ export function useAdmissionPrescriptions(admissionId: number | undefined) {
     queryKey: [...inpatientQueryKeys.admission(admissionId!), 'prescriptions'] as const,
     queryFn: () => inpatientApi.getAdmissionPrescriptions(admissionId!),
     enabled: typeof admissionId === 'number',
+  });
+}
+
+export function useAdmissionConsumableUsage(admissionId: number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.admissionConsumableUsage(admissionId!),
+    queryFn: () => inpatientApi.getAdmissionConsumableUsage(admissionId!),
+    enabled: typeof admissionId === 'number',
+  });
+}
+
+export function useRecordAdmissionConsumableUsage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ admissionId, data }: { admissionId: number; data: InpatientConsumableUsageCreateData }) =>
+      inpatientApi.recordAdmissionConsumableUsage(admissionId, data),
+    onSuccess: (usage) => {
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.admissionConsumableUsage(usage.admission),
+      });
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admission(usage.admission) });
+      queryClient.invalidateQueries({ queryKey: ['stock-batches'] });
+    },
+  });
+}
+
+export function useReverseAdmissionConsumableUsage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      admissionId,
+      usageId,
+      data,
+    }: {
+      admissionId: number;
+      usageId: number;
+      data: InpatientConsumableUsageReverseData;
+    }) => inpatientApi.reverseAdmissionConsumableUsage(admissionId, usageId, data),
+    onSuccess: (usage) => {
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.admissionConsumableUsage(usage.admission),
+      });
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admission(usage.admission) });
+      queryClient.invalidateQueries({ queryKey: ['stock-batches'] });
+    },
   });
 }
 
