@@ -1129,12 +1129,19 @@ export function PatientForm({
     }
   };
 
-  const resetCRSearch = () => {
+  const resetVerificationState = useCallback(() => {
     setCrClient(null);
     setCrSearched(false);
+    setPendingShaDetails(null);
+    setShaEligibility({ checked: false, isEligible: true });
+    setDuplicateCheckResult(null);
+    setDuplicateAcknowledged(false);
+    setShowDuplicateModal(false);
+    setShowVerificationDialog(false);
+    setShowShaDetailsDialog(false);
     form.setValue('cr_number', '');
     form.setValue('sha_number', '');
-  };
+  }, [form]);
 
   const isFormLoading = isLoading || isSubmitting;
 
@@ -1193,7 +1200,7 @@ export function PatientForm({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={resetCRSearch}
+                    onClick={resetVerificationState}
                   >
                     Clear
                   </Button>
@@ -1368,11 +1375,11 @@ export function PatientForm({
                         identificationNumber={field.value || ''}
                         onTypeChange={(type) => {
                           form.setValue('identification_type', type);
-                          resetCRSearch();
+                          resetVerificationState();
                         }}
                         onNumberChange={(value) => {
                           field.onChange(value);
-                          if (crClient) resetCRSearch();
+                          resetVerificationState();
                         }}
                         onBlur={handleIdInputBlur}
                         onKeyDown={handleIdInputKeyDown}

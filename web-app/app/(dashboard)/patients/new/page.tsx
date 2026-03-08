@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { AxiosError } from 'axios';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, User } from 'lucide-react';
 import { SHALogo } from '@/components/ui/sha-logo';
@@ -12,6 +13,7 @@ import { PatientRegistrationSuccess } from '@/components/patients/patient-regist
 import { SHAVerificationModal } from '@/components/billing/sha';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { patientsApi } from '@/lib/api/patients';
 import { useCreatePatient } from '@/lib/hooks/use-patients';
 import { useRegisterInCR } from '@/lib/hooks/use-sha';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -21,6 +23,30 @@ import type { PatientCreateData, Patient } from '@/lib/types/patient';
 import type { ClientRegistryClient, DirectEligibilityCheckResponse } from '@/lib/types/sha';
 
 const IDEMPOTENCY_FORM_ID = 'patient-registration';
+
+function isDuplicateRegistrationError(error: unknown): boolean {
+  const message = getApiErrorMessage(error).toLowerCase();
+  if (message.includes('already exists') || message.includes('already registered') || message.includes('duplicate')) {
+    return true;
+  }
+
+  if (error instanceof AxiosError && error.response?.data && typeof error.response.data === 'object') {
+    const data = error.response.data as Record<string, unknown>;
+    return Object.entries(data).some(([, value]) => {
+      if (!Array.isArray(value)) {
+        return false;
+      }
+
+      return value.some(
+        (item) =>
+          typeof item === 'string' &&
+          (item.toLowerCase().includes('already exists') || item.toLowerCase().includes('duplicate'))
+      );
+    });
+  }
+
+  return false;
+}
 
 export default function NewPatientPage() {
   const router = useRouter();
@@ -86,6 +112,24 @@ export default function NewPatientPage() {
         }
       }
     } catch (error) {
+      if (data.identification_number && isDuplicateRegistrationError(error)) {
+        try {
+          const duplicateResult = await patientsApi.checkDuplicate({
+            identification_number: data.identification_number,
+            identification_type: data.identification_type,
+          });
+
+          const existingPatient = duplicateResult.matches[0];
+          if (duplicateResult.match_type === 'exact_id' && existingPatient) {
+            clearIdempotencyKey(IDEMPOTENCY_FORM_ID);
+            router.push(`/patients/checkin?select=${encodeURIComponent(existingPatient.mrn)}`);
+            return;
+          }
+        } catch (duplicateError) {
+          console.error('Duplicate redirect lookup failed:', duplicateError);
+        }
+      }
+
       // On error, idempotency key persists for retry
       toast({
         title: 'Registration failed',
