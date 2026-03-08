@@ -714,6 +714,22 @@ class Delivery(HistoryMixin, TimeStampedModel):
         related_name="deliveries",
         help_text="MCH registration this delivery belongs to",
     )
+    partograph = models.OneToOneField(
+        "mch.LabourPartograph",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="delivery",
+        help_text="Labour partograph that culminated in this delivery",
+    )
+    admission = models.ForeignKey(
+        "inpatient.Admission",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="deliveries",
+        help_text="Maternity admission linked to this delivery",
+    )
 
     # Delivery details
     delivery_date = models.DateField(
@@ -845,6 +861,31 @@ class Delivery(HistoryMixin, TimeStampedModel):
             f"Delivery {self.delivery_date} - "
             f"{self.registration.mch_number} ({self.get_delivery_outcome_display()})"
         )
+
+    def clean(self):
+        """Validate linkage consistency across pregnancy, labour, and admission."""
+        errors: dict[str, str] = {}
+
+        if self.partograph_id:
+            if self.partograph.registration_id != self.registration_id:
+                errors["partograph"] = "Labour partograph must belong to the same MCH registration."
+            if self.admission_id and self.partograph.admission_id and self.partograph.admission_id != self.admission_id:
+                errors["admission"] = "Delivery admission must match the linked labour partograph admission."
+
+        if self.admission_id:
+            if self.admission.patient_id != self.registration.mother_id:
+                errors["admission"] = "Admission patient must match the MCH registration mother."
+            if self.admission.mch_registration_id and self.admission.mch_registration_id != self.registration_id:
+                errors["admission"] = "Admission must belong to the same MCH registration."
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        """Keep delivery admission aligned with the linked labour record when possible."""
+        if self.partograph_id and not self.admission_id and self.partograph.admission_id:
+            self.admission_id = self.partograph.admission_id
+        super().save(*args, **kwargs)
 
     @property
     def is_low_birth_weight(self) -> bool | None:
@@ -990,6 +1031,21 @@ class LabourPartograph(HistoryMixin, TimeStampedModel):
 
     def __str__(self):
         return f"Partograph {self.registration.mch_number} ({self.status})"
+
+    def clean(self):
+        """Validate labour-to-admission linkage consistency."""
+        errors: dict[str, str] = {}
+
+        if self.admission_id:
+            if self.admission.patient_id != self.registration.mother_id:
+                errors["admission"] = "Admission patient must match the MCH registration mother."
+            if self.admission.mch_registration_id and self.admission.mch_registration_id != self.registration_id:
+                errors["admission"] = "Admission must belong to the same MCH registration."
+            if self.encounter_id and self.admission.opd_encounter_id and self.admission.opd_encounter_id != self.encounter_id:
+                errors["encounter"] = "Labour encounter must match the linked admission OPD encounter when both are set."
+
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
         if self.parity is None and self.registration.anc_enrollment:

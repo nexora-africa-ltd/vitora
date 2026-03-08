@@ -629,6 +629,14 @@ class Admission(TimeStampedModel):
         related_name="admission_from_opd",
         help_text="OPD encounter that led to admission (if applicable)",
     )
+    mch_registration = models.ForeignKey(
+        "mch.MCHRegistration",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="admissions",
+        help_text="Pregnancy registration linked to this maternity admission",
+    )
     ipd_encounter = models.OneToOneField(
         "encounters.Encounter",
         on_delete=models.PROTECT,

@@ -613,6 +613,8 @@ class DeliveryViewSet(viewsets.ModelViewSet):
         "registration__mother",
         "delivered_by",
         "baby_patient",
+        "admission",
+        "partograph",
     )
     permission_classes = [IsAuthenticated]
     filter_backends = [
