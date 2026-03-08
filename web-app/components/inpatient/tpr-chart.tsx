@@ -33,6 +33,7 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
   useTemperatureReadings,
   useCreateTemperatureReading,
@@ -65,6 +66,7 @@ export function TPRChart({ admissionId, isActive }: TPRChartProps) {
   const [notes, setNotes] = useState('');
 
   const readings = data?.results ?? [];
+  const recentReadings = readings.slice(0, 10);
 
   // Chart data: reverse to show chronological order (oldest first)
   const chartData = [...readings].reverse().map((r) => ({
@@ -290,35 +292,71 @@ export function TPRChart({ admissionId, isActive }: TPRChartProps) {
               <CardTitle className="text-base">Recent Readings</CardTitle>
             </CardHeader>
             <CardContent className="px-0 sm:px-6">
-              <div className="overflow-x-auto">
-                <table className="min-w-[400px] w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left">
-                      <th className="p-2 font-medium">Date/Time</th>
-                      <th className="p-2 font-medium">Temp (°C)</th>
-                      <th className="p-2 font-medium">Pulse</th>
-                      <th className="p-2 font-medium">RR</th>
-                      <th className="p-2 font-medium">By</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {readings.slice(0, 10).map((r) => (
-                      <tr key={r.id} className="border-b last:border-0">
-                        <td className="p-2 whitespace-nowrap">{formatDateTime(r.recorded_at)}</td>
-                        <td className="p-2">
-                          <span className={r.is_febrile ? 'text-destructive font-semibold' : r.is_hypothermic ? 'text-blue-600 font-semibold' : ''}>
-                            {Number(r.temperature).toFixed(1)}°C
-                          </span>
-                          {r.is_febrile && <Badge variant="destructive" className="ml-1 text-xs">Febrile</Badge>}
-                        </td>
-                        <td className="p-2">{r.pulse ?? '—'}</td>
-                        <td className="p-2">{r.respiratory_rate ?? '—'}</td>
-                        <td className="p-2 text-muted-foreground">{r.recorded_by_username}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ResponsiveTable
+                data={recentReadings}
+                keyExtractor={(item) => item.id}
+                columns={[
+                  {
+                    key: 'recorded_at',
+                    header: 'Date/Time',
+                    cell: (item: TemperatureReading) => (
+                      <span className="whitespace-nowrap">{formatDateTime(item.recorded_at)}</span>
+                    ),
+                  },
+                  {
+                    key: 'temperature',
+                    header: 'Temp (°C)',
+                    cell: (item: TemperatureReading) => (
+                      <div>
+                        <span className={item.is_febrile ? 'text-destructive font-semibold' : item.is_hypothermic ? 'text-blue-600 font-semibold' : ''}>
+                          {Number(item.temperature).toFixed(1)}°C
+                        </span>
+                        {item.is_febrile && <Badge variant="destructive" className="ml-1 text-xs">Febrile</Badge>}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'pulse',
+                    header: 'Pulse',
+                    cell: (item: TemperatureReading) => item.pulse ?? '—',
+                  },
+                  {
+                    key: 'respiratory_rate',
+                    header: 'RR',
+                    cell: (item: TemperatureReading) => item.respiratory_rate ?? '—',
+                  },
+                  {
+                    key: 'recorded_by_username',
+                    header: 'By',
+                    className: 'text-muted-foreground',
+                    cell: (item: TemperatureReading) => item.recorded_by_username ?? '—',
+                  },
+                ]}
+                mobileCard={(item: TemperatureReading) => (
+                  <Card className="p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium whitespace-nowrap">{formatDateTime(item.recorded_at)}</p>
+                        <p className="text-xs text-muted-foreground mt-1">Recorded by {item.recorded_by_username ?? '—'}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className={item.is_febrile ? 'text-destructive font-semibold' : item.is_hypothermic ? 'text-blue-600 font-semibold' : 'font-semibold'}>
+                          {Number(item.temperature).toFixed(1)}°C
+                        </p>
+                        {item.is_febrile && <Badge variant="destructive" className="mt-1 text-xs">Febrile</Badge>}
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Pulse:</span> {item.pulse ?? '—'}
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">RR:</span> {item.respiratory_rate ?? '—'}
+                      </div>
+                    </div>
+                  </Card>
+                )}
+              />
             </CardContent>
           </Card>
         </>
