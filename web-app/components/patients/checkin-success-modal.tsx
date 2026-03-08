@@ -146,16 +146,18 @@ export function CheckinSuccessModal({
           )}
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
-          <Button variant="outline" onClick={handleDismiss} className="w-full sm:w-auto">
-            <X className="mr-2 h-4 w-4" />
-            Stay Here
-          </Button>
-          <Button onClick={handleGoToDestination} className="w-full sm:w-auto">
-            <ArrowRight className="mr-2 h-4 w-4" />
-            Go to {data.destinationName}
-          </Button>
-        </DialogFooter>
+        <div className="pb-2">
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <Button variant="outline" onClick={handleDismiss} className="w-full sm:w-auto">
+              <X className="mr-2 h-4 w-4" />
+              Stay Here
+            </Button>
+            <Button onClick={handleGoToDestination} className="w-full sm:w-auto">
+              <ArrowRight className="mr-2 h-4 w-4" />
+              Go to {data.destinationName}
+            </Button>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
