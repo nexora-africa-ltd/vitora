@@ -814,11 +814,6 @@ export const TemperatureReadingSchema = z.object({
   temperature: z.string(),
   pulse: z.number().nullable().optional(),
   respiratory_rate: z.number().nullable().optional(),
-  bowels: z.string().optional(),
-  urine_output: z.string().optional(),
-  fluid_intake_ml: z.number().nullable().optional(),
-  urine_output_ml: z.number().nullable().optional(),
-  fluid_balance_ml: z.number().nullable().optional(),
   notes: z.string().optional(),
   is_febrile: z.boolean().optional(),
   is_hypothermic: z.boolean().optional(),
@@ -831,6 +826,72 @@ export const PaginatedTemperatureReadingSchema = z.object({
   next: z.string().nullable(),
   previous: z.string().nullable(),
   results: z.array(TemperatureReadingSchema),
+});
+
+export const FluidBalanceEntryTypeSchema = z.enum([
+  'INTRAVENOUS',
+  'ALIMENTARY',
+  'OTHER_INTAKE',
+  'VOMIT',
+  'STOOL',
+  'NASOGASTRIC',
+  'OTHER_OUTPUT',
+  'URINE',
+]);
+
+export const FluidBalanceSheetSchema = z.object({
+  id: z.number(),
+  admission: z.number(),
+  chart_date: z.string(),
+  recorded_by: z.number(),
+  recorded_by_username: z.string().optional(),
+  patient_weight_kg: z.string().nullable().optional(),
+  intravenous_infusion_notes: z.string().optional(),
+  other_instructions: z.string().optional(),
+  total_intravenous_intake_ml: z.number().optional(),
+  total_alimentary_intake_ml: z.number().optional(),
+  total_other_intake_ml: z.number().optional(),
+  total_intake_ml: z.number().optional(),
+  total_vomit_output_ml: z.number().optional(),
+  total_stool_output_ml: z.number().optional(),
+  total_nasogastric_output_ml: z.number().optional(),
+  total_other_output_ml: z.number().optional(),
+  total_urine_output_ml: z.number().optional(),
+  total_output_ml: z.number().optional(),
+  net_balance_ml: z.number().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export const PaginatedFluidBalanceSheetSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(FluidBalanceSheetSchema),
+});
+
+export const FluidBalanceEntrySchema = z.object({
+  id: z.number(),
+  fluid_balance_sheet: z.number(),
+  recorded_at: z.string(),
+  recorded_by: z.number(),
+  recorded_by_username: z.string().optional(),
+  entry_type: FluidBalanceEntryTypeSchema,
+  entry_type_display: z.string().optional(),
+  item_type: z.string().optional(),
+  bottle_number: z.string().optional(),
+  amount_ml: z.number().nullable().optional(),
+  specific_gravity: z.string().nullable().optional(),
+  notes: z.string().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export const PaginatedFluidBalanceEntrySchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(FluidBalanceEntrySchema),
 });
 
 export const TransfusionObservationIntervalSchema = z.enum([

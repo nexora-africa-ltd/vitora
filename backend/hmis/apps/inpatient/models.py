@@ -1947,11 +1947,10 @@ class TemperatureReading(TimeStampedModel):
     """
     Individual temperature reading for an inpatient's temperature chart.
 
-    Based on the Kenya hospital temperature chart form, this tracks:
+    Based on the Kenya hospital TPR chart form, this tracks:
     - Temperature (°C)
     - Pulse rate (BPM)
     - Respiratory rate (breaths/min)
-    - Bowels and urine output
 
     Readings are plotted on a chart over days of disease/admission.
     """
@@ -1992,27 +1991,6 @@ class TemperatureReading(TimeStampedModel):
         validators=[MinValueValidator(0)],
     )
 
-    # Additional observations (from the physical chart)
-    bowels = models.CharField(
-        max_length=100,
-        blank=True,
-        help_text="Bowel movement status (e.g., Normal, Constipated, Diarrhoea)",
-    )
-    urine_output = models.CharField(
-        max_length=100,
-        blank=True,
-        help_text="Urine output (e.g., Normal, Reduced, Nil)",
-    )
-    fluid_intake_ml = models.PositiveIntegerField(
-        null=True,
-        blank=True,
-        help_text="Measured fluid intake in mL for this charting interval",
-    )
-    urine_output_ml = models.PositiveIntegerField(
-        null=True,
-        blank=True,
-        help_text="Measured urine output in mL for this charting interval",
-    )
     notes = models.TextField(
         blank=True,
         help_text="Additional observations or notes",
@@ -2042,13 +2020,193 @@ class TemperatureReading(TimeStampedModel):
         """Temperature <= 35.0°C is considered hypothermic."""
         return self.temperature <= Decimal("35.0")
 
-    @property
-    def fluid_balance_ml(self) -> int | None:
-        """Return net fluid balance for the charting interval."""
-        if self.fluid_intake_ml is None and self.urine_output_ml is None:
-            return None
 
-        return (self.fluid_intake_ml or 0) - (self.urine_output_ml or 0)
+class FluidBalanceSheet(TimeStampedModel):
+    """Daily Ministry of Health fluid balance chart for an admission."""
+
+    admission = models.ForeignKey(
+        Admission,
+        on_delete=models.CASCADE,
+        related_name="fluid_balance_sheets",
+        help_text="Admission this fluid balance sheet belongs to",
+    )
+    chart_date = models.DateField(
+        help_text="Date for the 24-hour fluid balance sheet",
+    )
+    recorded_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="fluid_balance_sheets",
+        help_text="User who created the sheet",
+    )
+    patient_weight_kg = models.DecimalField(
+        max_digits=5,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.0"))],
+        help_text="Patient weight in kilograms for this sheet",
+    )
+    intravenous_infusion_notes = models.TextField(
+        blank=True,
+        help_text="Intravenous infusion details noted on the chart",
+    )
+    other_instructions = models.TextField(
+        blank=True,
+        help_text="Other instructions recorded on the chart",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-chart_date", "-created_at"]
+        verbose_name = "Fluid Balance Sheet"
+        verbose_name_plural = "Fluid Balance Sheets"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["admission", "chart_date"],
+                name="unique_fluid_balance_sheet_per_admission_day",
+            )
+        ]
+        indexes = [models.Index(fields=["admission", "-chart_date"])]
+
+    def __str__(self):
+        return f"Fluid balance {self.chart_date:%Y-%m-%d} for {self.admission.patient}"
+
+    def _entry_total(self, *entry_types: str) -> int:
+        total = self.entries.filter(entry_type__in=entry_types).aggregate(
+            total=models.Sum("amount_ml")
+        )["total"]
+        return int(total or 0)
+
+    @property
+    def total_intravenous_intake_ml(self) -> int:
+        return self._entry_total(FluidBalanceEntry.EntryType.INTRAVENOUS)
+
+    @property
+    def total_alimentary_intake_ml(self) -> int:
+        return self._entry_total(FluidBalanceEntry.EntryType.ALIMENTARY)
+
+    @property
+    def total_other_intake_ml(self) -> int:
+        return self._entry_total(FluidBalanceEntry.EntryType.OTHER_INTAKE)
+
+    @property
+    def total_intake_ml(self) -> int:
+        return (
+            self.total_intravenous_intake_ml
+            + self.total_alimentary_intake_ml
+            + self.total_other_intake_ml
+        )
+
+    @property
+    def total_vomit_output_ml(self) -> int:
+        return self._entry_total(FluidBalanceEntry.EntryType.VOMIT)
+
+    @property
+    def total_stool_output_ml(self) -> int:
+        return self._entry_total(FluidBalanceEntry.EntryType.STOOL)
+
+    @property
+    def total_nasogastric_output_ml(self) -> int:
+        return self._entry_total(FluidBalanceEntry.EntryType.NASOGASTRIC)
+
+    @property
+    def total_other_output_ml(self) -> int:
+        return self._entry_total(FluidBalanceEntry.EntryType.OTHER_OUTPUT)
+
+    @property
+    def total_urine_output_ml(self) -> int:
+        return self._entry_total(FluidBalanceEntry.EntryType.URINE)
+
+    @property
+    def total_output_ml(self) -> int:
+        return (
+            self.total_vomit_output_ml
+            + self.total_stool_output_ml
+            + self.total_nasogastric_output_ml
+            + self.total_other_output_ml
+            + self.total_urine_output_ml
+        )
+
+    @property
+    def net_balance_ml(self) -> int:
+        return self.total_intake_ml - self.total_output_ml
+
+
+class FluidBalanceEntry(TimeStampedModel):
+    """Individual categorized entry within a daily fluid balance sheet."""
+
+    class EntryType(models.TextChoices):
+        INTRAVENOUS = "INTRAVENOUS", "Intravenous"
+        ALIMENTARY = "ALIMENTARY", "Alimentary"
+        OTHER_INTAKE = "OTHER_INTAKE", "Other Intake"
+        VOMIT = "VOMIT", "Vomit"
+        STOOL = "STOOL", "Stool"
+        NASOGASTRIC = "NASOGASTRIC", "Naso Gastric"
+        OTHER_OUTPUT = "OTHER_OUTPUT", "Other Output"
+        URINE = "URINE", "Urine"
+
+    fluid_balance_sheet = models.ForeignKey(
+        FluidBalanceSheet,
+        on_delete=models.CASCADE,
+        related_name="entries",
+        help_text="Fluid balance sheet this entry belongs to",
+    )
+    recorded_at = models.DateTimeField(
+        help_text="When the fluid entry was recorded",
+    )
+    recorded_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="fluid_balance_entries",
+        help_text="Nurse/clinician who recorded the entry",
+    )
+    entry_type = models.CharField(
+        max_length=20,
+        choices=EntryType.choices,
+        help_text="Category of fluid balance entry",
+    )
+    item_type = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Type/name of fluid, feed, or output item",
+    )
+    bottle_number = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Bottle number for IV intake where applicable",
+    )
+    amount_ml = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Measured amount in mL",
+    )
+    specific_gravity = models.DecimalField(
+        max_digits=4,
+        decimal_places=3,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.000"))],
+        help_text="Urine specific gravity where applicable",
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Additional notes for this fluid balance entry",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-recorded_at", "-created_at"]
+        verbose_name = "Fluid Balance Entry"
+        verbose_name_plural = "Fluid Balance Entries"
+        indexes = [
+            models.Index(fields=["fluid_balance_sheet", "-recorded_at"]),
+            models.Index(fields=["fluid_balance_sheet", "entry_type"]),
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.get_entry_type_display()} at {self.recorded_at:%Y-%m-%d %H:%M} "
+            f"for {self.fluid_balance_sheet.admission.patient}"
+        )
 
 
 class BloodTransfusionObservation(TimeStampedModel):

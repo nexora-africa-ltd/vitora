@@ -19,6 +19,11 @@ import type {
   Discharge,
   DischargeCreateData,
   DischargeListParams,
+  FluidBalanceEntry,
+  FluidBalanceEntryCreateData,
+  FluidBalanceSheet,
+  FluidBalanceSheetCreateData,
+  FluidBalanceSheetUpdateData,
   InpatientWard,
   KardexHandoverNoteCreateData,
   KardexListParams,
@@ -85,6 +90,11 @@ export const inpatientQueryKeys = {
   shiftHandover: (id: number) => [...inpatientQueryKeys.all, 'shift-handovers', id] as const,
   temperatureReadings: (admissionId: number) =>
     [...inpatientQueryKeys.all, 'temperature-readings', admissionId] as const,
+  fluidBalanceSheets: (params?: { admission?: number; chart_date?: string; page?: number; page_size?: number }) =>
+    [...inpatientQueryKeys.all, 'fluid-balance-sheets', params] as const,
+  fluidBalanceSheet: (id: number) => [...inpatientQueryKeys.all, 'fluid-balance-sheets', id] as const,
+  fluidBalanceEntries: (params?: { fluid_balance_sheet?: number; entry_type?: string; page?: number; page_size?: number }) =>
+    [...inpatientQueryKeys.all, 'fluid-balance-entries', params] as const,
   bloodTransfusions: (admissionId: number) =>
     [...inpatientQueryKeys.all, 'blood-transfusions', admissionId] as const,
   bloodTransfusion: (id: number) =>
@@ -694,6 +704,65 @@ export function useCreateTemperatureReading() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: inpatientQueryKeys.temperatureReadings(variables.admission),
+      });
+    },
+  });
+}
+
+export function useFluidBalanceSheets(admissionId: number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.fluidBalanceSheets({ admission: admissionId!, page_size: 30 }),
+    queryFn: () => inpatientApi.listFluidBalanceSheets({ admission: admissionId!, page_size: 30 }),
+    enabled: typeof admissionId === 'number',
+  });
+}
+
+export function useFluidBalanceEntries(sheetId: number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.fluidBalanceEntries({ fluid_balance_sheet: sheetId!, page_size: 200 }),
+    queryFn: () => inpatientApi.listFluidBalanceEntries({ fluid_balance_sheet: sheetId!, page_size: 200 }),
+    enabled: typeof sheetId === 'number',
+  });
+}
+
+export function useCreateFluidBalanceSheet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: FluidBalanceSheetCreateData) => inpatientApi.createFluidBalanceSheet(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [...inpatientQueryKeys.all, 'fluid-balance-sheets'],
+      });
+    },
+  });
+}
+
+export function useUpdateFluidBalanceSheet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: FluidBalanceSheetUpdateData }) =>
+      inpatientApi.updateFluidBalanceSheet(id, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.fluidBalanceSheet(variables.id),
+      });
+      queryClient.invalidateQueries({
+        queryKey: [...inpatientQueryKeys.all, 'fluid-balance-sheets'],
+      });
+    },
+  });
+}
+
+export function useCreateFluidBalanceEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: FluidBalanceEntryCreateData) => inpatientApi.createFluidBalanceEntry(data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.fluidBalanceEntries({ fluid_balance_sheet: variables.fluid_balance_sheet, page_size: 200 }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: [...inpatientQueryKeys.all, 'fluid-balance-sheets'],
       });
     },
   });

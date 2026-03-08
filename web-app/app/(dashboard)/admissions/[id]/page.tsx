@@ -51,7 +51,8 @@ import {
 } from '@/lib/hooks/use-inpatient';
 import { AdmissionOrdersTab, ICURiskAssessmentPanel, DischargeReadinessPanel } from '@/components/inpatient';
 import { CarePlanPanel } from '@/components/encounters/care-plan-panel';
-import { TemperatureChart } from '@/components/inpatient/temperature-chart';
+import { TPRChart } from '@/components/inpatient/tpr-chart';
+import { FluidBalanceSheet } from '@/components/inpatient/fluid-balance-sheet';
 import { BloodTransfusionChart } from '@/components/inpatient/blood-transfusion-chart';
 import { BPMonitoringChart } from '@/components/inpatient/bp-monitoring-chart';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
@@ -876,7 +877,12 @@ export default function AdmissionDetailPage() {
 
         {/* Observation Charts Tab */}
         <TabsContent value="charts" className="space-y-6">
-          <TemperatureChart
+          <TPRChart
+            admissionId={admission.id}
+            isActive={admission.admission_status === 'ACTIVE'}
+          />
+          <Separator />
+          <FluidBalanceSheet
             admissionId={admission.id}
             isActive={admission.admission_status === 'ACTIVE'}
           />

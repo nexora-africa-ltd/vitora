@@ -33,6 +33,10 @@ import {
   CompatibilityCheckResultSchema,
   TemperatureReadingSchema,
   PaginatedTemperatureReadingSchema,
+  FluidBalanceSheetSchema,
+  PaginatedFluidBalanceSheetSchema,
+  FluidBalanceEntrySchema,
+  PaginatedFluidBalanceEntrySchema,
   BloodTransfusionSchema,
   PaginatedBloodTransfusionSchema,
   TransfusionObservationEntrySchema,
@@ -95,6 +99,13 @@ import type {
   TemperatureReading,
   TemperatureReadingCreateData,
   TemperatureReadingListResponse,
+  FluidBalanceSheet,
+  FluidBalanceSheetCreateData,
+  FluidBalanceSheetListResponse,
+  FluidBalanceSheetUpdateData,
+  FluidBalanceEntry,
+  FluidBalanceEntryCreateData,
+  FluidBalanceEntryListResponse,
   BloodTransfusion,
   BloodTransfusionCreateData,
   BloodTransfusionListResponse,
@@ -594,6 +605,55 @@ export const inpatientApi = {
     const response = await apiClient.post('/api/inpatient/temperature-readings/', data);
     return parseResponse(TemperatureReadingSchema, response.data, {
       context: 'inpatientApi.createTemperatureReading',
+    });
+  },
+
+  async listFluidBalanceSheets(
+    params?: { admission?: number; chart_date?: string; page?: number; page_size?: number }
+  ): Promise<FluidBalanceSheetListResponse> {
+    const response = await apiClient.get('/api/inpatient/fluid-balance-sheets/', { params });
+    return parseResponse(PaginatedFluidBalanceSheetSchema, response.data, {
+      context: 'inpatientApi.listFluidBalanceSheets',
+    });
+  },
+
+  async getFluidBalanceSheet(id: number): Promise<FluidBalanceSheet> {
+    const response = await apiClient.get(`/api/inpatient/fluid-balance-sheets/${id}/`);
+    return parseResponse(FluidBalanceSheetSchema, response.data, {
+      context: 'inpatientApi.getFluidBalanceSheet',
+    });
+  },
+
+  async createFluidBalanceSheet(data: FluidBalanceSheetCreateData): Promise<FluidBalanceSheet> {
+    const response = await apiClient.post('/api/inpatient/fluid-balance-sheets/', data);
+    return parseResponse(FluidBalanceSheetSchema, response.data, {
+      context: 'inpatientApi.createFluidBalanceSheet',
+    });
+  },
+
+  async updateFluidBalanceSheet(
+    id: number,
+    data: FluidBalanceSheetUpdateData
+  ): Promise<FluidBalanceSheet> {
+    const response = await apiClient.patch(`/api/inpatient/fluid-balance-sheets/${id}/`, data);
+    return parseResponse(FluidBalanceSheetSchema, response.data, {
+      context: 'inpatientApi.updateFluidBalanceSheet',
+    });
+  },
+
+  async listFluidBalanceEntries(
+    params?: { fluid_balance_sheet?: number; entry_type?: string; page?: number; page_size?: number }
+  ): Promise<FluidBalanceEntryListResponse> {
+    const response = await apiClient.get('/api/inpatient/fluid-balance-entries/', { params });
+    return parseResponse(PaginatedFluidBalanceEntrySchema, response.data, {
+      context: 'inpatientApi.listFluidBalanceEntries',
+    });
+  },
+
+  async createFluidBalanceEntry(data: FluidBalanceEntryCreateData): Promise<FluidBalanceEntry> {
+    const response = await apiClient.post('/api/inpatient/fluid-balance-entries/', data);
+    return parseResponse(FluidBalanceEntrySchema, response.data, {
+      context: 'inpatientApi.createFluidBalanceEntry',
     });
   },
 

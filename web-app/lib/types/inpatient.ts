@@ -886,11 +886,6 @@ export interface TemperatureReading {
   temperature: string; // Decimal comes as string from API
   pulse?: number | null;
   respiratory_rate?: number | null;
-  bowels?: string;
-  urine_output?: string;
-  fluid_intake_ml?: number | null;
-  urine_output_ml?: number | null;
-  fluid_balance_ml?: number | null;
   notes?: string;
   is_febrile?: boolean;
   is_hypothermic?: boolean;
@@ -904,10 +899,82 @@ export interface TemperatureReadingCreateData {
   temperature: number | string;
   pulse?: number | null;
   respiratory_rate?: number | null;
-  bowels?: string;
-  urine_output?: string;
-  fluid_intake_ml?: number | null;
-  urine_output_ml?: number | null;
+  notes?: string;
+}
+
+export type FluidBalanceEntryType =
+  | 'INTRAVENOUS'
+  | 'ALIMENTARY'
+  | 'OTHER_INTAKE'
+  | 'VOMIT'
+  | 'STOOL'
+  | 'NASOGASTRIC'
+  | 'OTHER_OUTPUT'
+  | 'URINE';
+
+export interface FluidBalanceSheet {
+  id: number;
+  admission: number;
+  chart_date: string;
+  recorded_by: number;
+  recorded_by_username?: string;
+  patient_weight_kg?: string | null;
+  intravenous_infusion_notes?: string;
+  other_instructions?: string;
+  total_intravenous_intake_ml?: number;
+  total_alimentary_intake_ml?: number;
+  total_other_intake_ml?: number;
+  total_intake_ml?: number;
+  total_vomit_output_ml?: number;
+  total_stool_output_ml?: number;
+  total_nasogastric_output_ml?: number;
+  total_other_output_ml?: number;
+  total_urine_output_ml?: number;
+  total_output_ml?: number;
+  net_balance_ml?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface FluidBalanceSheetCreateData {
+  admission: number;
+  chart_date: string;
+  patient_weight_kg?: number | string | null;
+  intravenous_infusion_notes?: string;
+  other_instructions?: string;
+}
+
+export interface FluidBalanceSheetUpdateData {
+  patient_weight_kg?: number | string | null;
+  intravenous_infusion_notes?: string;
+  other_instructions?: string;
+}
+
+export interface FluidBalanceEntry {
+  id: number;
+  fluid_balance_sheet: number;
+  recorded_at: string;
+  recorded_by: number;
+  recorded_by_username?: string;
+  entry_type: FluidBalanceEntryType;
+  entry_type_display?: string;
+  item_type?: string;
+  bottle_number?: string;
+  amount_ml?: number | null;
+  specific_gravity?: string | null;
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface FluidBalanceEntryCreateData {
+  fluid_balance_sheet: number;
+  recorded_at: string;
+  entry_type: FluidBalanceEntryType;
+  item_type?: string;
+  bottle_number?: string;
+  amount_ml?: number | null;
+  specific_gravity?: number | string | null;
   notes?: string;
 }
 
@@ -1037,5 +1104,7 @@ export interface BPMonitoringReadingCreateData {
 }
 
 export type TemperatureReadingListResponse = PaginatedResponse<TemperatureReading>;
+export type FluidBalanceSheetListResponse = PaginatedResponse<FluidBalanceSheet>;
+export type FluidBalanceEntryListResponse = PaginatedResponse<FluidBalanceEntry>;
 export type BloodTransfusionListResponse = PaginatedResponse<BloodTransfusion>;
 export type BPMonitoringReadingListResponse = PaginatedResponse<BPMonitoringReading>;

@@ -22,6 +22,8 @@ from .models import (
     BloodTransfusionObservation,
     BPMonitoringReading,
     Discharge,
+    FluidBalanceEntry,
+    FluidBalanceSheet,
     KardexHandoverNote,
     KardexShiftNote,
     NursingCarePlanEntry,
@@ -44,6 +46,10 @@ from .serializers import (
     BPMonitoringReadingSerializer,
     ConstraintOverrideMetricsSerializer,
     DischargeSerializer,
+    FluidBalanceEntryCreateSerializer,
+    FluidBalanceEntrySerializer,
+    FluidBalanceSheetCreateSerializer,
+    FluidBalanceSheetSerializer,
     InpatientWardSerializer,
     KardexHandoverNoteSerializer,
     KardexShiftNoteSerializer,
@@ -1836,6 +1842,94 @@ class TemperatureReadingViewSet(viewsets.ModelViewSet):
             details={
                 "admission_id": instance.admission_id,
                 "temperature": str(instance.temperature),
+            },
+            ip_address=get_client_ip(self.request),
+        )
+
+
+class FluidBalanceSheetViewSet(viewsets.ModelViewSet):
+    """ViewSet for daily fluid balance sheets."""
+
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["admission", "chart_date"]
+    ordering_fields = ["chart_date", "created_at"]
+    ordering = ["-chart_date", "-created_at"]
+
+    def get_queryset(self):
+        return FluidBalanceSheet.objects.select_related(
+            "admission", "admission__patient", "recorded_by"
+        ).prefetch_related("entries", "entries__recorded_by")
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return FluidBalanceSheetCreateSerializer
+        return FluidBalanceSheetSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        instance = self.get_queryset().get(pk=serializer.instance.pk)
+        output_serializer = FluidBalanceSheetSerializer(instance)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_create(self, serializer):
+        instance = serializer.save(recorded_by=self.request.user)
+        AuditLog.log(
+            action="fluid_balance_sheet_create",
+            user=self.request.user,
+            resource_type="FluidBalanceSheet",
+            resource_id=instance.id,
+            details={
+                "admission_id": instance.admission_id,
+                "chart_date": instance.chart_date.isoformat(),
+            },
+            ip_address=get_client_ip(self.request),
+        )
+
+
+class FluidBalanceEntryViewSet(viewsets.ModelViewSet):
+    """ViewSet for categorized fluid balance entries."""
+
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["fluid_balance_sheet", "entry_type"]
+    ordering_fields = ["recorded_at", "created_at"]
+    ordering = ["-recorded_at", "-created_at"]
+
+    def get_queryset(self):
+        return FluidBalanceEntry.objects.select_related(
+            "fluid_balance_sheet",
+            "fluid_balance_sheet__admission",
+            "fluid_balance_sheet__admission__patient",
+            "recorded_by",
+        )
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return FluidBalanceEntryCreateSerializer
+        return FluidBalanceEntrySerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        instance = self.get_queryset().get(pk=serializer.instance.pk)
+        output_serializer = FluidBalanceEntrySerializer(instance)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_create(self, serializer):
+        instance = serializer.save(recorded_by=self.request.user)
+        AuditLog.log(
+            action="fluid_balance_entry_create",
+            user=self.request.user,
+            resource_type="FluidBalanceEntry",
+            resource_id=instance.id,
+            details={
+                "fluid_balance_sheet_id": instance.fluid_balance_sheet_id,
+                "entry_type": instance.entry_type,
+                "amount_ml": instance.amount_ml,
             },
             ip_address=get_client_ip(self.request),
         )

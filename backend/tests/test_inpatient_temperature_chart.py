@@ -1,6 +1,4 @@
-"""Tests for inpatient temperature chart intake and output tracking."""
-
-from datetime import timedelta
+"""Tests for inpatient TPR chart readings."""
 
 import pytest  # type: ignore
 from django.urls import reverse
@@ -9,23 +7,21 @@ from django.utils import timezone
 
 @pytest.mark.django_db
 class TestTemperatureReadingAPI:
-    """Tests for measured fluid input/output on temperature readings."""
+    """Tests for TPR chart readings."""
 
-    def test_create_temperature_reading_with_measured_io(
+    def test_create_temperature_reading_with_vitals_only(
         self,
         authenticated_client,
         sample_admission,
     ):
-        """Should persist fluid intake and urine output measurements in mL."""
+        """Should persist TPR vitals without fluid balance fields."""
         payload = {
             "admission": sample_admission.id,
             "recorded_at": timezone.now().isoformat(),
             "temperature": "37.4",
             "pulse": 88,
             "respiratory_rate": 20,
-            "fluid_intake_ml": 1500,
-            "urine_output_ml": 900,
-            "notes": "IV fluids running",
+            "notes": "Patient stable",
         }
 
         response = authenticated_client.post(
@@ -35,27 +31,31 @@ class TestTemperatureReadingAPI:
         )
 
         assert response.status_code == 201
-        assert response.data["fluid_intake_ml"] == 1500
-        assert response.data["urine_output_ml"] == 900
-        assert response.data["fluid_balance_ml"] == 600
+        assert response.data["temperature"] == "37.4"
+        assert response.data["pulse"] == 88
+        assert response.data["respiratory_rate"] == 20
+        assert "bowels" not in response.data
+        assert "urine_output" not in response.data
+        assert "fluid_intake_ml" not in response.data
+        assert "urine_output_ml" not in response.data
+        assert "fluid_balance_ml" not in response.data
 
-    def test_list_temperature_readings_includes_measured_io_fields(
+    def test_list_temperature_readings_excludes_fluid_fields(
         self,
         authenticated_client,
         sample_admission,
         test_user,
     ):
-        """Should expose measured I/O fields in the temperature reading list."""
+        """Should expose only TPR fields in the temperature reading list."""
         from hmis.apps.inpatient.models import TemperatureReading
 
         TemperatureReading.objects.create(
             admission=sample_admission,
-            recorded_at=timezone.now() - timedelta(hours=2),
+            recorded_at=timezone.now(),
             recorded_by=test_user,
             temperature="36.9",
-            fluid_intake_ml=1000,
-            urine_output_ml=700,
-            bowels="Normal",
+            pulse=76,
+            respiratory_rate=18,
         )
 
         response = authenticated_client.get(
@@ -66,6 +66,11 @@ class TestTemperatureReadingAPI:
         assert response.status_code == 200
         assert response.data["count"] == 1
         result = response.data["results"][0]
-        assert result["fluid_intake_ml"] == 1000
-        assert result["urine_output_ml"] == 700
-        assert result["fluid_balance_ml"] == 300
+        assert result["temperature"] == "36.9"
+        assert result["pulse"] == 76
+        assert result["respiratory_rate"] == 18
+        assert "bowels" not in result
+        assert "urine_output" not in result
+        assert "fluid_intake_ml" not in result
+        assert "urine_output_ml" not in result
+        assert "fluid_balance_ml" not in result
