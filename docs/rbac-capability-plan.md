@@ -842,13 +842,13 @@ const isActionAllowed = (action: ActionKey): boolean => {
 ## Implementation Phases
 
 ### Phase 1: RBAC Foundation (Week 1)
-- [ ] Create `web-app/lib/permissions/constants.ts`
-- [ ] Create `web-app/lib/permissions/actions.ts`
-- [ ] Update `usePermissions` hook with `canAccessModule()` and `canPerformAction()`
-- [ ] Add `moduleKey` to navigation config
-- [ ] Filter sidebar based on RBAC
+- [x] Create `web-app/lib/permissions/constants.ts`
+- [x] Create `web-app/lib/permissions/actions.ts`
+- [x] Update `usePermissions` hook with `canAccessModule()` and `canPerformAction()`
+- [x] Add `moduleKey` to navigation config
+- [x] Filter sidebar based on RBAC
 - [ ] Add route guards for protected pages
-- [ ] Write unit tests for permission logic
+- [x] Write unit tests for permission logic
 
 **Effort**: 8-12 hours  
 **Dependencies**: None  
@@ -857,42 +857,42 @@ const isActionAllowed = (action: ActionKey): boolean => {
 ### Phase 2: Action Permissions (Week 2)
 - [ ] Implement `canPerformAction()` in all relevant components
 - [ ] Add permission-based button visibility (inpatient, pharmacy, lab, billing)
-- [ ] Add API-level permission checks (backend)
+- [x] Add API-level permission checks (backend)
 - [ ] Create `PermissionGate` component for declarative permission checks
-- [ ] Write E2E tests for permission-restricted actions
+- [x] Write E2E tests for permission-restricted actions
 
 **Effort**: 12-16 hours  
 **Dependencies**: Phase 1  
 **Deliverables**: Action buttons show/hide based on role
 
 ### Phase 3: Facility Model (Week 3)
-- [ ] Create `Facility` model with migrations
-- [ ] Add `primary_facility` to `StaffProfile`
-- [ ] Create `FacilitySerializer` and API endpoints
+- [x] Create `Facility` model with migrations
+- [x] Add `primary_facility` to `StaffProfile`
+- [x] Create `FacilitySerializer` and API endpoints
 - [ ] Seed data with Kenya MFL facility levels
-- [ ] Create admin interface for facility management
+- [x] Create admin interface for facility management
 
 **Effort**: 8-12 hours  
 **Dependencies**: None (can parallel with Phase 1-2)  
 **Deliverables**: Facility model in database
 
 ### Phase 4: Capability Context (Week 4)
-- [ ] Create `FacilityContext` provider
-- [ ] Add facility to auth response (`/api/me/`)
+- [x] Create `FacilityContext` provider
+- [x] Add facility to auth response (`/api/me/`)
 - [ ] Add `facilityModule` to navigation config
 - [ ] Combine RBAC + Capability filtering in sidebar
-- [ ] Write integration tests
+- [x] Write integration tests
 
 **Effort**: 8-12 hours  
 **Dependencies**: Phase 3  
 **Deliverables**: Capability-filtered navigation working
 
 ### Phase 5: Polish & Documentation (Week 5)
-- [ ] Create admin UI for role permissions_matrix
-- [ ] Create admin UI for facility module toggles
+- [x] Create admin UI for role permissions_matrix
+- [x] Create admin UI for facility module toggles
 - [ ] Write user documentation
 - [ ] Add permission debugging tools (dev mode)
-- [ ] Performance optimization (caching)
+- [x] Performance optimization (caching)
 
 **Effort**: 8-12 hours  
 **Dependencies**: Phases 1-4  

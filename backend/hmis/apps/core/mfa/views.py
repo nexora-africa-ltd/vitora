@@ -355,36 +355,14 @@ class MFAVerifyView(APIView):
         )
 
         # Get user's role from StaffProfile or Django groups
-        role = None
-        if hasattr(user, "staff_profile") and user.staff_profile:
-            role = (
-                user.staff_profile.primary_role.code
-                if user.staff_profile.primary_role
-                else None
-            )
-        elif user.groups.exists():
-            # Fall back to first Django group as role
-            role = user.groups.first().name.upper().replace(" ", "_")
-
-        # Superusers get ADMIN role
-        if user.is_superuser:
-            role = "ADMIN"
+        # Use shared helper for consistent auth response shape
+        from hmis.apps.core.views import _build_user_info
 
         return Response(
             {
                 "access": str(refresh.access_token),
                 "refresh": str(refresh),
-                "user": {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                    "is_staff": user.is_staff,
-                    "is_superuser": user.is_superuser,
-                    "role": role,
-                    "permissions": list(user.get_all_permissions()),
-                },
+                "user": _build_user_info(user),
             }
         )
 

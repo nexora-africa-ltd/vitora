@@ -11,6 +11,7 @@
 
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
+import type { FacilityModules } from '@/lib/auth/context';
 import {
   MFAStatusSchema,
   TOTPSetupSchema,
@@ -56,7 +57,16 @@ export interface MFAVerifyUser {
   is_staff: boolean;
   is_superuser?: boolean;
   role?: string | null;
+  role_category?: string | null;
   permissions: string[];
+  facility?: {
+    id: number;
+    mfl_code: string;
+    name: string;
+    level: string;
+    modules: FacilityModules;
+    sha_contracted: boolean;
+  } | null;
 }
 
 export interface MFAVerifyResponse {

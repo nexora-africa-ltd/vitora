@@ -69,6 +69,30 @@ export const MFAVerifyRequestSchema = z.object({
 export type MFAVerifyRequestSchemaType = z.infer<typeof MFAVerifyRequestSchema>;
 
 // User schema for MFA verify response (matches auth context User type)
+const FacilityModulesSchema = z.object({
+  outpatient: z.boolean(),
+  inpatient: z.boolean(),
+  emergency: z.boolean(),
+  pharmacy: z.boolean(),
+  laboratory: z.boolean(),
+  imaging: z.boolean(),
+  theatre: z.boolean(),
+  dialysis: z.boolean(),
+  icu: z.boolean(),
+  maternity: z.boolean(),
+  mortuary: z.boolean(),
+  blood_bank: z.boolean(),
+});
+
+const UserFacilitySchema = z.object({
+  id: z.number(),
+  mfl_code: z.string(),
+  name: z.string(),
+  level: z.string(),
+  modules: FacilityModulesSchema,
+  sha_contracted: z.boolean(),
+});
+
 export const MFAVerifyUserSchema = z.object({
   id: z.number(),
   username: z.string(),
@@ -78,7 +102,9 @@ export const MFAVerifyUserSchema = z.object({
   is_staff: z.boolean(),
   is_superuser: z.boolean().optional(),
   role: z.string().nullable().optional(),
+  role_category: z.string().nullable().optional(),
   permissions: z.array(z.string()),
+  facility: UserFacilitySchema.nullable().optional(),
 });
 
 export const MFAVerifyResponseSchema = z.object({
