@@ -167,16 +167,18 @@ function useIsActive(href: string, pathname: string) {
  * Filter nav items based on user RBAC permissions and facility capabilities.
  * Items with a moduleKey are hidden if the user cannot access that module.
  * Items with a facilityModule are hidden if the facility doesn't support it.
+ * Children with an actionKey are hidden if the user's role lacks that action.
  * Parent groups with no visible children are also hidden.
  */
 function useFilteredNavItems(): NavItemType[] {
-  const { canAccessModule } = usePermissions();
+  const { canAccessModule, canPerformAction } = usePermissions();
   const { hasModule } = useFacility();
 
   return useMemo(() => {
-    const isAllowed = (item: { moduleKey?: string; facilityModule?: string }): boolean => {
+    const isAllowed = (item: { moduleKey?: string; facilityModule?: string; actionKey?: string }): boolean => {
       if (item.moduleKey && !canAccessModule(item.moduleKey as any)) return false;
       if (item.facilityModule && !hasModule(item.facilityModule as any)) return false;
+      if (item.actionKey && !canPerformAction(item.actionKey as any)) return false;
       return true;
     };
 
@@ -204,7 +206,7 @@ function useFilteredNavItems(): NavItemType[] {
     return mainNavItems
       .map(filterItem)
       .filter((item): item is NavItemType => item !== null);
-  }, [canAccessModule, hasModule]);
+  }, [canAccessModule, canPerformAction, hasModule]);
 }
 
 // -----------------------------------------------------------------------------
