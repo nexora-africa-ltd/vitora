@@ -44,7 +44,7 @@ import {
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Prescription, PrescriptionStatus, PrescriptionItem } from '@/lib/types/pharmacy';
 import { DispenseDialog } from './dispensing/dispense-dialog';
-import { PermissionGate } from '@/components/shared/permission-gate';
+import { ActionButton } from '@/components/shared/action-button';
 
 interface PrescriptionsTableProps {
   prescriptions: Prescription[];
@@ -247,8 +247,8 @@ export function PrescriptionsTable({
                         <p className="text-xs text-muted-foreground">{item.duration}</p>
                       </div>
                       {item.remaining_quantity > 0 && !item.is_cancelled ? (
-                        <PermissionGate action="pharmacy.dispense">
-                        <Button
+                        <ActionButton
+                          action="pharmacy.dispense"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
@@ -261,8 +261,7 @@ export function PrescriptionsTable({
                         >
                           <Pill className="h-3.5 w-3.5 mr-1" />
                           Dispense
-                        </Button>
-                        </PermissionGate>
+                        </ActionButton>
                       ) : item.is_cancelled ? (
                         <Badge variant="outline" className="shrink-0">Cancelled</Badge>
                       ) : (
@@ -496,8 +495,8 @@ export function PrescriptionsTable({
                     </div>
                     <div className="shrink-0 ml-3">
                       {item.remaining_quantity > 0 && !item.is_cancelled ? (
-                        <PermissionGate action="pharmacy.dispense">
-                        <Button
+                        <ActionButton
+                          action="pharmacy.dispense"
                           size="sm"
                           onClick={() => {
                             setDispenseDialog({
@@ -509,8 +508,7 @@ export function PrescriptionsTable({
                         >
                           <Pill className="h-4 w-4 mr-1.5" />
                           Dispense
-                        </Button>
-                        </PermissionGate>
+                        </ActionButton>
                       ) : item.is_cancelled ? (
                         <Badge variant="outline">Cancelled</Badge>
                       ) : (
