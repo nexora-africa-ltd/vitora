@@ -46,3 +46,9 @@ export {
   type AIChatContextValue,
   type AIChatProviderProps,
 } from './ai-chat-context';
+
+// Facility Context
+export {
+  FacilityProvider,
+  useFacility,
+} from './facility-context';

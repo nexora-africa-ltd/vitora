@@ -10,6 +10,7 @@ import { NavigationProgress } from '@/components/layout/navigation-progress';
 import { DemoBanner, DemoWatermark } from '@/components/shared/demo-banner';
 import { NewVersionToast } from '@/components/shared/new-version-toast';
 import { PageRefreshProvider } from '@/lib/context/page-refresh-context';
+import { FacilityProvider } from '@/lib/context/facility-context';
 import { createQueryClient } from '@/lib/query-client';
 import { initChunkErrorHandler } from '@/lib/utils/chunk-error-handler';
 
@@ -55,6 +56,7 @@ export function Providers({ children }: ProvidersProps) {
           disableTransitionOnChange
         >
           <AuthProvider>
+            <FacilityProvider>
             {/* Demo mode banner - shows in staging environment */}
             <DemoBanner />
             <Suspense fallback={null}>
@@ -66,6 +68,7 @@ export function Providers({ children }: ProvidersProps) {
             <NewVersionToast />
             {/* Demo watermark - subtle indicator for screenshots */}
             <DemoWatermark />
+            </FacilityProvider>
           </AuthProvider>
         </ThemeProvider>
       </PageRefreshProvider>

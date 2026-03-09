@@ -70,6 +70,66 @@ def _get_client_ip(request) -> str | None:
     return request.META.get("REMOTE_ADDR")
 
 
+def _build_user_info(user) -> dict:
+    """
+    Build the canonical user info dict for auth responses.
+
+    Used by token obtain, MFA verify, and /api/staff/me/ endpoints to
+    ensure a consistent shape that includes role, role_category,
+    permissions, and facility data.
+    """
+    # Resolve role and role_category from StaffProfile
+    role = None
+    role_category = None
+    facility_data = None
+
+    if hasattr(user, "staff_profile"):
+        try:
+            profile = user.staff_profile
+        except StaffProfile.DoesNotExist:
+            profile = None
+
+        if profile:
+            if profile.primary_role:
+                role = profile.primary_role.code
+                role_category = profile.primary_role.category
+
+            # Build facility payload
+            if profile.primary_facility:
+                fac = profile.primary_facility
+                facility_data = {
+                    "id": fac.id,
+                    "mfl_code": fac.mfl_code,
+                    "name": fac.name,
+                    "level": fac.level,
+                    "modules": fac.modules,
+                    "sha_contracted": fac.sha_contracted,
+                }
+
+    # Fall back to Django groups for role
+    if role is None and user.groups.exists():
+        group = user.groups.first()
+        role = group.name.upper().replace(" ", "_")
+
+    # Superusers get ADMIN role
+    if user.is_superuser:
+        role = "ADMIN"
+
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "is_staff": user.is_staff,
+        "is_superuser": user.is_superuser,
+        "role": role,
+        "role_category": role_category,
+        "permissions": list(user.get_all_permissions()),
+        "facility": facility_data,
+    }
+
+
 def _query_param_truthy(value: str | None) -> bool:
     """Parse common truthy query parameter values."""
     if value is None:
@@ -356,33 +416,8 @@ class AuditedTokenObtainPairView(TokenObtainPairView):
                     response.data["mfa_required"] = False
 
                 # Get user's role from StaffProfile or Django groups
-                role = None
-                if hasattr(user, "staff_profile") and user.staff_profile:
-                    role = (
-                        user.staff_profile.primary_role.code
-                        if user.staff_profile.primary_role
-                        else None
-                    )
-                elif user.groups.exists():
-                    # Fall back to first Django group as role
-                    role = user.groups.first().name.upper().replace(" ", "_")
-
-                # Superusers get ADMIN role
-                if user.is_superuser:
-                    role = "ADMIN"
-
-                # Add user info to response
-                response.data["user"] = {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                    "is_staff": user.is_staff,
-                    "is_superuser": user.is_superuser,
-                    "role": role,
-                    "permissions": list(user.get_all_permissions()),
-                }
+                # Add user info to response (includes role, role_category, facility)
+                response.data["user"] = _build_user_info(user)
             except User.DoesNotExist:
                 pass
         else:
@@ -717,7 +752,10 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
 
         if request.method == "GET":
             serializer = self.get_serializer(staff_profile)
-            return Response(serializer.data)
+            data = serializer.data
+            # Merge canonical user info (role, role_category, permissions, facility)
+            data["user_info"] = _build_user_info(request.user)
+            return Response(data)
 
         elif request.method == "PATCH":
             # Limit fields that can be updated by staff themselves

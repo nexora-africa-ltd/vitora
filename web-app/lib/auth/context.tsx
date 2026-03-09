@@ -2,6 +2,32 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 
+// Facility modules matching backend Facility.modules property
+export interface FacilityModules {
+  outpatient: boolean;
+  inpatient: boolean;
+  emergency: boolean;
+  pharmacy: boolean;
+  laboratory: boolean;
+  imaging: boolean;
+  theatre: boolean;
+  dialysis: boolean;
+  icu: boolean;
+  maternity: boolean;
+  mortuary: boolean;
+  blood_bank: boolean;
+}
+
+// User's facility info included in auth response
+export interface UserFacility {
+  id: number;
+  mfl_code: string;
+  name: string;
+  level: string;
+  modules: FacilityModules;
+  sha_contracted: boolean;
+}
+
 // User type matching Django backend
 export interface User {
   id: number;
@@ -13,6 +39,8 @@ export interface User {
   is_superuser?: boolean;
   permissions: string[];
   role?: string;  // User role (ADMIN, NURSE, DOCTOR, BILLING_CLERK, etc.)
+  role_category?: string;  // Role category (CLINICAL, ADMINISTRATIVE, etc.)
+  facility?: UserFacility | null;  // Primary facility with module capabilities
 }
 
 // Auth tokens
@@ -148,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         last_name: '',
         is_staff: false,
         permissions: [],
+        facility: null,
       };
 
       // Store in localStorage
@@ -203,6 +232,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         is_superuser: response.user.is_superuser,
         permissions: response.user.permissions,
         role: response.user.role ?? undefined,
+        role_category: response.user.role_category ?? undefined,
+        facility: response.user.facility ?? null,
       };
 
       // Store in localStorage
