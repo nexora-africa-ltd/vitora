@@ -12,6 +12,24 @@ jest.mock('@/lib/auth/hooks', () => ({
   useLogout: jest.fn(() => jest.fn()),
 }));
 
+// Mock usePermissions to grant all access (superuser)
+jest.mock('@/lib/hooks/use-permissions', () => ({
+  usePermissions: jest.fn(() => ({
+    canAccessModule: () => true,
+    canPerformAction: () => true,
+    hasPermission: () => true,
+    canEditPatient: true,
+    canEditIdentity: true,
+    canCreateInvoice: true,
+    canCreateEncounter: true,
+    canViewSensitive: true,
+    role: 'ADMIN',
+    roleCategory: null,
+    isAuthenticated: true,
+    isSuperuser: true,
+  })),
+}));
+
 // Mock ScrollArea to avoid Radix React 19 issues
 jest.mock('@/components/ui/scroll-area', () => {
   const MockScrollArea = React.forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string }>(
@@ -108,7 +126,8 @@ describe('Sidebar', () => {
     expect(screen.getAllByText('Encounters').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Inpatient').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Pharmacy').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Diagnostics').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Laboratory').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Imaging').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Theatre').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Finance').length).toBeGreaterThan(0);
   });
@@ -181,21 +200,17 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: /admissions/i })).toHaveAttribute('href', '/admissions');
   });
 
-  it('should have Diagnostics menu with Laboratory and Imaging children', () => {
+  it('should have Laboratory and Imaging as separate menus', () => {
     render(<Sidebar {...defaultProps} />);
 
-    // Diagnostics parent should be visible
-    expect(screen.getByText('Diagnostics')).toBeInTheDocument();
+    // Laboratory and Imaging parents should be visible
+    expect(screen.getAllByText('Laboratory').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Imaging').length).toBeGreaterThan(0);
 
-    // Children should be visible
-    expect(screen.getByText('Laboratory')).toBeInTheDocument();
-    expect(screen.getByText('Imaging')).toBeInTheDocument();
-
-    // Children should be links with correct hrefs (use getAllByRole to handle potential duplicates)
-    const labLinks = screen.getAllByRole('link', { name: /laboratory/i });
-    expect(labLinks.some(link => link.getAttribute('href') === '/laboratory')).toBe(true);
-    const imagingLinks = screen.getAllByRole('link', { name: /imaging/i });
-    expect(imagingLinks.some(link => link.getAttribute('href') === '/imaging')).toBe(true);
+    // Lab children should include a Dashboard link to /laboratory
+    const dashboardLinks = screen.getAllByRole('link', { name: /^dashboard$/i });
+    expect(dashboardLinks.some(link => link.getAttribute('href') === '/laboratory')).toBe(true);
+    expect(dashboardLinks.some(link => link.getAttribute('href') === '/imaging')).toBe(true);
   });
 
   it('should have Theatre menu with Schedule, Checklists, Cases, and Reports children (feature-flagged)', () => {

@@ -480,6 +480,12 @@ export const mainNavItems: NavItemType[] = [
 ];
 ```
 
+> **✅ Phase 3 Implemented** (March 9, 2026)
+> - Added `moduleKey?: ModuleKey` to `NavItem` and `NavItemWithChildren` interfaces.
+> - Annotated all 15 nav items with their `moduleKey` (dashboard, checkin, patients, triage, emergency, surveillance, clinics, encounters, inpatient, pharmacy, laboratory, imaging, theatre, billing, admin).
+> - Nav items without a module key (MCH, Allied Health, Quality, CDS, AI Assistant) remain visible to all users.
+> - Zero TypeScript errors.
+
 ### Phase 4: Sidebar Filtering
 
 **File**: `web-app/components/layout/sidebar.tsx`
@@ -523,6 +529,15 @@ function useFilteredNavItems() {
   }, [canAccessModule, facility]);
 }
 ```
+
+> **✅ Phase 4 Implemented** (March 9, 2026)
+> - Added `useFilteredNavItems()` hook to `web-app/components/layout/sidebar.tsx`.
+> - Filters both top-level items and children within parent groups based on `canAccessModule()`.
+> - Parent groups with no visible children are automatically hidden.
+> - Sidebar renders `filteredNavItems` instead of raw `mainNavItems`.
+> - Auto-open logic respects filtered parents (won't try to open a removed group).
+> - Updated sidebar tests: added `usePermissions` mock (superuser = all access), fixed stale "Diagnostics" references to match current nav structure.
+> - All 14 sidebar tests pass, all 14 permission tests pass, zero TypeScript errors.
 
 ---
 

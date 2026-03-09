@@ -36,12 +36,14 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ScrollMoreButton } from '@/components/ui/scroll-more-button';
 import { useLogout } from '@/lib/auth/hooks';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import {
   mainNavItems,
   bottomNavItems,
   hasChildren,
   findParentForPath,
   type NavItem,
+  type NavItemType,
   type NavItemWithChildren,
 } from '@/lib/config/navigation';
 
@@ -158,6 +160,47 @@ function useIsActive(href: string, pathname: string) {
     }
     return pathname === href || pathname.startsWith(`${href}/`);
   }, [href, pathname]);
+}
+
+/**
+ * Filter nav items based on user RBAC permissions.
+ * Items with a moduleKey are hidden if the user cannot access that module.
+ * Parent groups with no visible children are also hidden.
+ */
+function useFilteredNavItems(): NavItemType[] {
+  const { canAccessModule } = usePermissions();
+
+  return useMemo(() => {
+    const filterItem = (item: NavItemType): NavItemType | null => {
+      // Check RBAC (user role)
+      if (item.moduleKey && !canAccessModule(item.moduleKey)) {
+        return null;
+      }
+
+      // For parent items with children, filter children too
+      if (hasChildren(item)) {
+        const filteredChildren = item.children
+          .map((child): NavItem | null => {
+            if (child.moduleKey && !canAccessModule(child.moduleKey)) {
+              return null;
+            }
+            return child;
+          })
+          .filter((c): c is NavItem => c !== null);
+
+        // Hide parent if no children remain
+        if (filteredChildren.length === 0) return null;
+
+        return { ...item, children: filteredChildren };
+      }
+
+      return item;
+    };
+
+    return mainNavItems
+      .map(filterItem)
+      .filter((item): item is NavItemType => item !== null);
+  }, [canAccessModule]);
 }
 
 // -----------------------------------------------------------------------------
@@ -324,6 +367,7 @@ export function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const logout = useLogout();
+  const filteredNavItems = useFilteredNavItems();
 
   const navScrollAreaRef = useRef<HTMLDivElement | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -351,6 +395,12 @@ export function Sidebar({
     [pathname]
   );
 
+  // Also track which filtered parent labels exist so we don't auto-open removed items
+  const filteredParentLabels = useMemo(
+    () => new Set(filteredNavItems.filter(hasChildren).map(i => i.label)),
+    [filteredNavItems]
+  );
+
   const [openMenus, setOpenMenus] = useState<string[]>(
     activeParent ? [activeParent] : []
   );
@@ -361,11 +411,11 @@ export function Sidebar({
     // Auto-open the current parent when navigation changes into a new section,
     // but do not force it to stay open (users should be able to collapse it
     // even if a child route is currently active).
-    if (activeParent && lastAutoOpenedParentRef.current !== activeParent) {
+    if (activeParent && filteredParentLabels.has(activeParent) && lastAutoOpenedParentRef.current !== activeParent) {
       setOpenMenus((prev) => (prev.includes(activeParent) ? prev : [...prev, activeParent]));
       lastAutoOpenedParentRef.current = activeParent;
     }
-  }, [activeParent]);
+  }, [activeParent, filteredParentLabels]);
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -405,7 +455,7 @@ export function Sidebar({
               className="h-full min-h-0 px-3 [&_[data-slot=scroll-area-viewport]]:overscroll-contain [&_[data-slot=scroll-area-viewport]]:touch-pan-y"
             >
               <div className="space-y-1 py-2">
-                {mainNavItems.map((item) =>
+                {filteredNavItems.map((item) =>
                   hasChildren(item) ? (
                     <NavGroup
                       key={item.label}
