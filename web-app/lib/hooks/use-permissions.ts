@@ -81,10 +81,10 @@ export interface PermissionsResult {
 const ADMIN_ROLES = ['ADMIN', 'SUPERUSER', 'SYSTEM_ADMIN'];
 
 /** Clinical roles that should NOT edit patient identity */
-const CLINICAL_ROLES = ['NURSE', 'DOCTOR', 'CLINICAL_OFFICER', 'PHARMACIST', 'LAB_TECHNICIAN'];
+const CLINICAL_ROLES = ['NURSE', 'DOCTOR', 'CLINICAL_OFFICER', 'PHARMACIST', 'LAB_TECH'];
 
 /** Roles that can edit patient identity */
-const IDENTITY_EDIT_ROLES = ['ADMIN', 'SUPERUSER', 'REGISTRATION_CLERK', 'RECORDS_OFFICER'];
+const IDENTITY_EDIT_ROLES = ['ADMIN', 'SUPERUSER', 'RECEPTIONIST', 'RECORDS_CLERK'];
 
 /**
  * Permission mapping from simple names to Django permission format

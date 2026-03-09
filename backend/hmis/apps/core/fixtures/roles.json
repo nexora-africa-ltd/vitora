@@ -741,5 +741,274 @@
       "created_at": "2026-01-01T00:00:00Z",
       "updated_at": "2026-01-01T00:00:00Z"
     }
+  },
+  {
+    "model": "auth.group",
+    "pk": 25,
+    "fields": {
+      "name": "Pharmacy Technologist"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 25,
+    "fields": {
+      "code": "PHARMACY_TECH",
+      "name": "Pharmacy Technologist",
+      "category": "TECHNICAL",
+      "description": "Licensed pharmacy technologist (PPB registered). Assists pharmacists with dispensing, stock management, and prescription processing.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "Prescription": {"create": false, "read": true, "update": false, "delete": false},
+        "DrugDispensing": {"create": true, "read": true, "update": true, "delete": false},
+        "PharmacyInventory": {"create": true, "read": true, "update": true, "delete": false}
+      },
+      "hierarchy_level": 5,
+      "parent_role": null,
+      "django_group": 25,
+      "requires_license": true,
+      "license_body": "PPB",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 26,
+    "fields": {
+      "name": "Laboratory Scientist"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 26,
+    "fields": {
+      "code": "LAB_SCIENTIST",
+      "name": "Laboratory Scientist",
+      "category": "TECHNICAL",
+      "description": "Licensed medical laboratory scientist (KMLTTB registered). Performs and verifies complex laboratory investigations, supervises lab technicians.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "LabOrder": {"create": false, "read": true, "update": true, "delete": false},
+        "LabResult": {"create": true, "read": true, "update": true, "delete": false, "verify": true, "release": true}
+      },
+      "hierarchy_level": 3,
+      "parent_role": null,
+      "django_group": 26,
+      "requires_license": true,
+      "license_body": "KMLTTB",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 27,
+    "fields": {
+      "name": "Pathologist"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 27,
+    "fields": {
+      "code": "PATHOLOGIST",
+      "name": "Pathologist",
+      "category": "CLINICAL",
+      "description": "Licensed pathologist (KMPDB registered). Specialist doctor who interprets and verifies laboratory results, performs histopathology, and provides clinical consultation on diagnostic findings.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": true},
+        "LabOrder": {"create": true, "read": true, "update": true, "delete": false},
+        "LabResult": {"create": true, "read": true, "update": true, "delete": false, "verify": true, "release": true}
+      },
+      "hierarchy_level": 2,
+      "parent_role": null,
+      "django_group": 27,
+      "requires_license": true,
+      "license_body": "KMPDB",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 28,
+    "fields": {
+      "name": "Phlebotomist"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 28,
+    "fields": {
+      "code": "PHLEBOTOMIST",
+      "name": "Phlebotomist",
+      "category": "TECHNICAL",
+      "description": "Trained phlebotomist specializing in venipuncture and specimen collection. Works under supervision of laboratory staff.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "LabOrder": {"create": false, "read": true, "update": false, "delete": false},
+        "LabResult": {"create": false, "read": false, "update": false, "delete": false}
+      },
+      "hierarchy_level": 5,
+      "parent_role": null,
+      "django_group": 28,
+      "requires_license": false,
+      "license_body": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 29,
+    "fields": {
+      "name": "Cashier"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 29,
+    "fields": {
+      "code": "CASHIER",
+      "name": "Cashier",
+      "category": "ADMINISTRATIVE",
+      "description": "Revenue collection and payment processing staff. Handles cash, M-Pesa, card, and bank transfer payments.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "Invoice": {"create": true, "read": true, "update": false, "delete": false},
+        "Payment": {"create": true, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 5,
+      "parent_role": null,
+      "django_group": 29,
+      "requires_license": false,
+      "license_body": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 30,
+    "fields": {
+      "name": "Billing Supervisor"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 30,
+    "fields": {
+      "code": "BILLING_SUPERVISOR",
+      "name": "Billing Supervisor",
+      "category": "MANAGEMENT",
+      "description": "Supervises billing operations including invoice approval, discount authorization, void approvals, and SHA claims oversight.",
+      "permissions_matrix": {
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false},
+        "Invoice": {"create": true, "read": true, "update": true, "delete": true},
+        "Payment": {"create": true, "read": true, "update": true, "delete": false},
+        "SHAClaim": {"create": true, "read": true, "update": true, "delete": false}
+      },
+      "hierarchy_level": 3,
+      "parent_role": null,
+      "django_group": 30,
+      "requires_license": false,
+      "license_body": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 31,
+    "fields": {
+      "name": "Store Keeper"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 31,
+    "fields": {
+      "code": "STORE_KEEPER",
+      "name": "Store Keeper",
+      "category": "ADMINISTRATIVE",
+      "description": "Manages central stores, receiving goods, stock adjustments, and inventory control across pharmacy and general supplies.",
+      "permissions_matrix": {
+        "PharmacyInventory": {"create": true, "read": true, "update": true, "delete": false},
+        "StockReceive": {"create": true, "read": true, "update": true, "delete": false}
+      },
+      "hierarchy_level": 5,
+      "parent_role": null,
+      "django_group": 31,
+      "requires_license": false,
+      "license_body": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 32,
+    "fields": {
+      "name": "HR Officer"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 32,
+    "fields": {
+      "code": "HR_OFFICER",
+      "name": "HR Officer",
+      "category": "ADMINISTRATIVE",
+      "description": "Human resources officer managing staff profiles, onboarding, leave, and personnel records.",
+      "permissions_matrix": {
+        "StaffProfile": {"create": true, "read": true, "update": true, "delete": false},
+        "Department": {"create": false, "read": true, "update": false, "delete": false}
+      },
+      "hierarchy_level": 4,
+      "parent_role": null,
+      "django_group": 32,
+      "requires_license": false,
+      "license_body": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "auth.group",
+    "pk": 33,
+    "fields": {
+      "name": "Compliance Officer"
+    }
+  },
+  {
+    "model": "core.role",
+    "pk": 33,
+    "fields": {
+      "code": "COMPLIANCE_OFFICER",
+      "name": "Compliance Officer",
+      "category": "MANAGEMENT",
+      "description": "Responsible for regulatory compliance, audit log review, data protection (Kenya DPA 2019), and quality assurance oversight.",
+      "permissions_matrix": {
+        "AuditLog": {"create": false, "read": true, "update": false, "delete": false},
+        "Patient": {"create": false, "read": true, "update": false, "delete": false, "view_sensitive": false}
+      },
+      "hierarchy_level": 3,
+      "parent_role": null,
+      "django_group": 33,
+      "requires_license": false,
+      "license_body": "",
+      "is_active": true,
+      "created_at": "2026-01-01T00:00:00Z",
+      "updated_at": "2026-01-01T00:00:00Z"
+    }
   }
 ]

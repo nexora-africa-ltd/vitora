@@ -156,11 +156,11 @@ describe('usePermissions Hook', () => {
       expect(result.current.canEditIdentity).toBe(false);
     });
 
-    it('should allow identity editing to REGISTRATION_CLERK role', async () => {
+    it('should allow identity editing to RECEPTIONIST role', async () => {
       mockUseAuth.mockReturnValue({
         user: {
           ...mockUser,
-          role: 'REGISTRATION_CLERK',
+          role: 'RECEPTIONIST',
           permissions: ['view_patient', 'edit_patient', 'manage_patient_identity']
         },
         isAuthenticated: true,
