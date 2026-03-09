@@ -32,6 +32,7 @@ import type { TriageAssessment } from '@/lib/types/triage';
 import type { ClinicListItem, ClinicVisitSource } from '@/lib/types/clinic';
 import type { Patient } from '@/lib/types/patient';
 import { cn } from '@/lib/utils/cn';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 
 export interface DirectRouteToClinicPayload {
   clinic: ClinicListItem;
@@ -58,6 +59,7 @@ export function RouteToClinicDialog({
   const [selectedClinic, setSelectedClinic] = useState<ClinicListItem | null>(null);
   const [notes, setNotes] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState<CheckinSuccessData | null>(null);
   const [isDirectRoutingCustom, setIsDirectRoutingCustom] = useState(false);
@@ -72,6 +74,7 @@ export function RouteToClinicDialog({
     fetchNextPage,
   } = useInfiniteClinics({
     status: 'ACTIVE',
+    ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
   });
 
   const clinics = useMemo(
@@ -105,28 +108,23 @@ export function RouteToClinicDialog({
     return () => observer.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage, clinics.length]);
 
-  // Filter clinics by search query
-  const filteredClinics = useMemo(() => {
-    if (!searchQuery.trim()) return clinics;
-    const query = searchQuery.toLowerCase();
-    return clinics.filter(
-      (clinic) =>
-        clinic.name.toLowerCase().includes(query) ||
-        clinic.clinic_type_display.toLowerCase().includes(query) ||
-        clinic.code.toLowerCase().includes(query)
-    );
-  }, [clinics, searchQuery]);
-
-  // Group clinics by type
+  // Group clinics by type (filtering is now server-side via search param)
   const clinicsByType = useMemo(() => {
     const grouped: Record<string, ClinicListItem[]> = {};
-    filteredClinics.forEach((clinic) => {
+    clinics.forEach((clinic) => {
       const type = clinic.clinic_type_display;
       if (!grouped[type]) grouped[type] = [];
       grouped[type].push(clinic);
     });
     return grouped;
-  }, [filteredClinics]);
+  }, [clinics]);
+
+  // Eagerly fetch remaining pages when search narrows results
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage && debouncedSearch.trim()) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, debouncedSearch, fetchNextPage, clinics.length]);
 
   // Route to clinic mutation
   const { mutateAsync: routeToClinic, isPending: isRoutingTriage } = useRouteToClinic();
@@ -334,9 +332,9 @@ export function RouteToClinicDialog({
                       <Skeleton key={i} className="h-12 w-full" />
                     ))}
                   </div>
-                ) : filteredClinics.length === 0 ? (
+                ) : clinics.length === 0 ? (
                   <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground">
-                    {searchQuery ? 'No clinics match your search' : 'No active clinics available'}
+                    {debouncedSearch ? 'No clinics match your search' : 'No active clinics available'}
                   </div>
                 ) : (
                   <div className="p-2 space-y-3">
