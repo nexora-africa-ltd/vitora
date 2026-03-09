@@ -51,6 +51,7 @@ import {
 import { printInvoice } from '@/lib/documents';
 import { SHALogo } from '@/components/ui/sha-logo';
 import { ClaimSubmissionButton, ClaimStatusBadge } from '@/components/billing/sha';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import type { Invoice, InvoiceItem, InvoiceStatus } from '@/lib/types/billing';
 import type { Claim } from '@/lib/types/sha';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
@@ -532,10 +533,12 @@ export function InvoiceDetail({
 
         {/* Apply Discount (Draft only) */}
         {canEdit && onApplyDiscount && (
+          <PermissionGate action="billing.apply_discount">
           <Button variant="outline" onClick={() => onApplyDiscount(invoice)}>
             <Percent className="h-4 w-4 mr-2" />
             Discount
           </Button>
+          </PermissionGate>
         )}
 
         {/* Finalize (Draft only) */}
@@ -575,6 +578,7 @@ export function InvoiceDetail({
 
         {/* Cancel (Draft/Pending only) */}
         {canCancel && (
+          <PermissionGate action="billing.void_invoice">
           <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
             <AlertDialogTrigger asChild>
               <Button variant="outline" className="border-red-500 text-red-600 hover:bg-red-50">
@@ -604,14 +608,17 @@ export function InvoiceDetail({
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+          </PermissionGate>
         )}
 
         {/* Record Payment */}
         {canRecordPayment && (
+          <PermissionGate action="billing.record_payment">
           <Button onClick={() => onRecordPayment(invoice)}>
             <CreditCard className="h-4 w-4 mr-2" />
             Record Payment
           </Button>
+          </PermissionGate>
         )}
 
         {/* Paid Badge */}

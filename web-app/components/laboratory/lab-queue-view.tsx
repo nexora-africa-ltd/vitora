@@ -68,6 +68,7 @@ import { formatRelativeTime } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import { EmptyState } from '@/components/shared/empty-state';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import {
   SampleCollectionDialog,
@@ -882,6 +883,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
 
                   {/* PENDING: Collect Sample */}
                   {selectedQueueEntry.queue_status === 'PENDING' && (
+                    <PermissionGate action="laboratory.collect_sample">
                     <Button
                       className="w-full justify-start"
                       onClick={() => {
@@ -892,10 +894,12 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                       <Syringe className="h-4 w-4 mr-2" />
                       Collect Sample
                     </Button>
+                    </PermissionGate>
                   )}
 
                   {/* COLLECTED: Start Processing */}
                   {selectedQueueEntry.queue_status === 'COLLECTED' && (
+                    <PermissionGate action="laboratory.enter_results">
                     <Button
                       className="w-full justify-start"
                       onClick={() => {
@@ -906,11 +910,13 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                       <Play className="h-4 w-4 mr-2" />
                       Start Processing
                     </Button>
+                    </PermissionGate>
                   )}
 
                   {/* PROCESSING: Enter Results */}
                   {selectedQueueEntry.queue_status === 'PROCESSING' && (
                     <>
+                      <PermissionGate action="laboratory.enter_results">
                       <Button
                         className="w-full justify-start"
                         onClick={() => {
@@ -921,6 +927,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                         <Beaker className="h-4 w-4 mr-2" />
                         Enter Results
                       </Button>
+                      </PermissionGate>
                       <Button
                         className="w-full justify-start"
                         variant="outline"

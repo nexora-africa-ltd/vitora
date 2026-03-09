@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AuthGuard } from '@/lib/auth/guard';
+import { AuthGuard, RouteGuard } from '@/lib/auth/guard';
 import { SyncProvider } from '@/lib/context/sync-context';
 import { AIChatProvider } from '@/lib/context/ai-chat-context';
 import { IdleTimerProvider } from '@/components/shared/idle-timer-provider';
 import { AIChatWidget } from '@/components/shared/ai-chat-widget';
+import { PermissionDebugPanel } from '@/components/shared/permission-debug-panel';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { cn } from '@/lib/utils/cn';
@@ -66,7 +67,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 {/* Page content */}
                 <main className="min-h-[calc(100vh-4rem)] p-4 md:p-6 xl:p-8">
-                  {children}
+                  <RouteGuard>{children}</RouteGuard>
                 </main>
               </div>
 
@@ -80,6 +81,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
               {/* TibaBot AI floating widget */}
               <AIChatWidget />
+              {/* Permission debug panel (dev only) */}
+              <PermissionDebugPanel />
               {/* Sync current page route into AI chat context */}
               <AIPageContextSync />
             </div>

@@ -37,6 +37,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ScrollMoreButton } from '@/components/ui/scroll-more-button';
 import { useLogout } from '@/lib/auth/hooks';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useFacility } from '@/lib/context/facility-context';
 import {
   mainNavItems,
   bottomNavItems,
@@ -163,27 +164,30 @@ function useIsActive(href: string, pathname: string) {
 }
 
 /**
- * Filter nav items based on user RBAC permissions.
+ * Filter nav items based on user RBAC permissions and facility capabilities.
  * Items with a moduleKey are hidden if the user cannot access that module.
+ * Items with a facilityModule are hidden if the facility doesn't support it.
  * Parent groups with no visible children are also hidden.
  */
 function useFilteredNavItems(): NavItemType[] {
   const { canAccessModule } = usePermissions();
+  const { hasModule } = useFacility();
 
   return useMemo(() => {
+    const isAllowed = (item: { moduleKey?: string; facilityModule?: string }): boolean => {
+      if (item.moduleKey && !canAccessModule(item.moduleKey as any)) return false;
+      if (item.facilityModule && !hasModule(item.facilityModule as any)) return false;
+      return true;
+    };
+
     const filterItem = (item: NavItemType): NavItemType | null => {
-      // Check RBAC (user role)
-      if (item.moduleKey && !canAccessModule(item.moduleKey)) {
-        return null;
-      }
+      if (!isAllowed(item)) return null;
 
       // For parent items with children, filter children too
       if (hasChildren(item)) {
         const filteredChildren = item.children
           .map((child): NavItem | null => {
-            if (child.moduleKey && !canAccessModule(child.moduleKey)) {
-              return null;
-            }
+            if (!isAllowed(child)) return null;
             return child;
           })
           .filter((c): c is NavItem => c !== null);
@@ -200,7 +204,7 @@ function useFilteredNavItems(): NavItemType[] {
     return mainNavItems
       .map(filterItem)
       .filter((item): item is NavItemType => item !== null);
-  }, [canAccessModule]);
+  }, [canAccessModule, hasModule]);
 }
 
 // -----------------------------------------------------------------------------

@@ -53,6 +53,7 @@ import { AdmissionOrdersTab, ICURiskAssessmentPanel, DischargeReadinessPanel, Co
 import { CarePlanPanel } from '@/components/encounters/care-plan-panel';
 import { TPRChart } from '@/components/inpatient/tpr-chart';
 import { FluidBalanceSheet } from '@/components/inpatient/fluid-balance-sheet';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { BloodTransfusionChart } from '@/components/inpatient/blood-transfusion-chart';
 import { BPMonitoringChart } from '@/components/inpatient/bp-monitoring-chart';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
@@ -448,18 +449,22 @@ export default function AdmissionDetailPage() {
             </DialogContent>
           </Dialog>
 
+          <PermissionGate action="inpatient.transfer">
           <Button variant="outline" asChild>
             <Link href={`/admissions/${admission.id}/transfer`}>
               <MoveRight className="h-4 w-4 mr-2" />
               Transfer
             </Link>
           </Button>
+          </PermissionGate>
+          <PermissionGate action="inpatient.discharge">
           <Button variant="default" asChild>
             <Link href={`/admissions/${admission.id}/discharge`}>
               <LogOut className="h-4 w-4 mr-2" />
               Discharge
             </Link>
           </Button>
+          </PermissionGate>
         </div>
       )}
 
