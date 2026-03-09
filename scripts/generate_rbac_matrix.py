@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 """
-Generate RBAC Matrix CSVs for Google Sheets import.
+Generate RBAC Matrix as an Excel workbook for Google Sheets import.
 
-Produces three CSV files:
-1. action-permissions-matrix.csv   — Action-level permissions (rows) × Roles (columns)
-2. module-access-matrix.csv        — Module access (rows) × Roles (columns)
-3. facility-module-matrix.csv      — Facility module availability by KEPH level
+Produces docs/rbac-permissions-matrix.xlsx with three sheets:
+1. Action Permissions   — Action-level permissions (rows) × Roles (columns)
+2. Module Access        — Module access (rows) × Roles (columns)
+3. Facility Modules     — Facility module availability by KEPH level
 
 Roles are loaded from backend/hmis/apps/core/fixtures/roles.json (single source of truth).
-Pre-marked with current implementation from the codebase.
-Clinician consultant can validate by toggling checkboxes in Google Sheets.
+Boolean cells have data-validation checkboxes and conditional formatting (green/red).
 """
-import csv
 import json
 import os
 
@@ -339,264 +337,301 @@ MODULE_DESCRIPTIONS = {
 
 
 def main():
+    from openpyxl import Workbook
+    from openpyxl.formatting.rule import CellIsRule
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+    from openpyxl.worksheet.datavalidation import DataValidation
+
     output_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
+    output_file = os.path.join(output_dir, "rbac-permissions-matrix.xlsx")
+
+    wb = Workbook()
+
+    # Shared styles
+    header_font = Font(bold=True, size=11)
+    title_font = Font(bold=True, size=14, color="FFFFFF")
+    subtitle_font = Font(italic=True, size=10, color="666666")
+    category_font = Font(bold=True, size=9, color="555555")
+    code_font = Font(size=8, color="999999", italic=True)
+    title_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    header_fill = PatternFill(start_color="D6E4F0", end_color="D6E4F0", fill_type="solid")
+    green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+    red_fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+    green_font = Font(color="006100")
+    red_font = Font(color="9C0006")
+    thin_border = Border(
+        left=Side(style="thin", color="CCCCCC"),
+        right=Side(style="thin", color="CCCCCC"),
+        top=Side(style="thin", color="CCCCCC"),
+        bottom=Side(style="thin", color="CCCCCC"),
+    )
+
+    # Checkbox data validation (TRUE/FALSE)
+    checkbox_dv = DataValidation(type="list", formula1='"TRUE,FALSE"', allow_blank=False)
+    checkbox_dv.showErrorMessage = True
+    checkbox_dv.errorTitle = "Invalid"
+    checkbox_dv.error = "Use TRUE or FALSE"
+
+    def style_title_row(ws, row, max_col):
+        for col in range(1, max_col + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.font = title_font
+            cell.fill = title_fill
+            cell.alignment = Alignment(horizontal="left")
+
+    def style_header_row(ws, row, max_col):
+        for col in range(1, max_col + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center", wrap_text=True)
+            cell.border = thin_border
+
+    def add_conditional_formatting(ws, min_col, max_col, min_row, max_row):
+        cell_range = (
+            f"{get_column_letter(min_col)}{min_row}:"
+            f"{get_column_letter(max_col)}{max_row}"
+        )
+        ws.conditional_formatting.add(
+            cell_range,
+            CellIsRule(operator="equal", formula=['"TRUE"'], fill=green_fill, font=green_font),
+        )
+        ws.conditional_formatting.add(
+            cell_range,
+            CellIsRule(operator="equal", formula=['"FALSE"'], fill=red_fill, font=red_font),
+        )
 
     # =========================================================================
     # Sheet 1: Action Permissions Matrix
     # =========================================================================
-    action_file = os.path.join(output_dir, "rbac-action-permissions-matrix.csv")
-    with open(action_file, "w", newline="") as f:
-        writer = csv.writer(f)
+    ws1 = wb.active
+    ws1.title = "Action Permissions"
+    ws1.sheet_properties.tabColor = "1F4E79"
 
-        # Header rows
-        writer.writerow(
-            ["VITORA HMIS — Action Permissions Matrix"]
-            + [""] * len(ALL_ROLES)
-        )
-        writer.writerow(
-            ["Pre-marked with current implementation. Check (TRUE) or uncheck (FALSE) to validate."]
-            + [""] * len(ALL_ROLES)
-        )
-        writer.writerow([])  # blank spacer
+    num_roles = len(ALL_ROLES)
+    max_col = 3 + num_roles
 
-        # Role categories row
-        writer.writerow(
-            ["", "", ""]
-            + [ROLE_CATEGORIES[r] for r in ALL_ROLES]
-        )
-        # Column headers
-        writer.writerow(
-            ["Module", "Action", "Description"]
-            + [ROLE_DISPLAY_NAMES[r] for r in ALL_ROLES]
-        )
-        writer.writerow(
-            ["", "", ""]
-            + [r for r in ALL_ROLES]  # code row for reference
-        )
+    # Row 1: Title
+    ws1.cell(row=1, column=1, value="VITORA HMIS — Action Permissions Matrix")
+    ws1.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_col)
+    style_title_row(ws1, 1, max_col)
 
-        # Data rows grouped by module
-        current_module = None
-        for action_key, allowed_roles in ACTION_PERMISSIONS.items():
-            module = action_key.split(".")[0]
-            action_name = action_key.split(".")[1]
+    # Row 2: Subtitle
+    ws1.cell(row=2, column=1, value="Toggle TRUE/FALSE to validate against your facility's real-life role assignments.")
+    ws1.cell(row=2, column=1).font = subtitle_font
 
-            # Module separator
-            if module != current_module:
-                if current_module is not None:
-                    writer.writerow([])  # blank row between modules
-                current_module = module
+    # Row 3: Category headers
+    for i, role in enumerate(ALL_ROLES):
+        cell = ws1.cell(row=3, column=4 + i, value=ROLE_CATEGORIES[role])
+        cell.font = category_font
+        cell.alignment = Alignment(horizontal="center")
 
-            description = ACTION_DESCRIPTIONS.get(action_key, action_name)
-            row = [module.upper(), action_key, description]
-            for role in ALL_ROLES:
-                row.append("TRUE" if role in allowed_roles else "FALSE")
-            writer.writerow(row)
+    # Row 4: Column headers
+    ws1.cell(row=4, column=1, value="Module")
+    ws1.cell(row=4, column=2, value="Action")
+    ws1.cell(row=4, column=3, value="Description")
+    for i, role in enumerate(ALL_ROLES):
+        ws1.cell(row=4, column=4 + i, value=ROLE_DISPLAY_NAMES[role])
+    style_header_row(ws1, 4, max_col)
 
-    print(f"✅ Created: {action_file}")
+    # Row 5: Role codes
+    for i, role in enumerate(ALL_ROLES):
+        cell = ws1.cell(row=5, column=4 + i, value=role)
+        cell.font = code_font
+        cell.alignment = Alignment(horizontal="center")
+
+    # Data rows
+    row_num = 6
+    data_start_row = row_num
+    current_module = None
+    for action_key, allowed_roles in ACTION_PERMISSIONS.items():
+        module = action_key.split(".")[0]
+        if module != current_module:
+            current_module = module
+
+        description = ACTION_DESCRIPTIONS.get(action_key, action_key.split(".")[1])
+        ws1.cell(row=row_num, column=1, value=module.upper()).font = Font(bold=True)
+        ws1.cell(row=row_num, column=2, value=action_key)
+        ws1.cell(row=row_num, column=3, value=description)
+        for i, role in enumerate(ALL_ROLES):
+            cell = ws1.cell(row=row_num, column=4 + i)
+            cell.value = "TRUE" if role in allowed_roles else "FALSE"
+            cell.alignment = Alignment(horizontal="center")
+            cell.border = thin_border
+        row_num += 1
+    data_end_row = row_num - 1
+
+    # Add validation and formatting to boolean cells
+    ws1.add_data_validation(checkbox_dv)
+    bool_range = f"{get_column_letter(4)}{data_start_row}:{get_column_letter(max_col)}{data_end_row}"
+    checkbox_dv.add(bool_range)
+    add_conditional_formatting(ws1, 4, max_col, data_start_row, data_end_row)
+
+    # Column widths
+    ws1.column_dimensions["A"].width = 14
+    ws1.column_dimensions["B"].width = 30
+    ws1.column_dimensions["C"].width = 36
+    for i in range(num_roles):
+        ws1.column_dimensions[get_column_letter(4 + i)].width = 12
+
+    ws1.freeze_panes = "D6"
 
     # =========================================================================
     # Sheet 2: Module Access Matrix
     # =========================================================================
-    module_file = os.path.join(output_dir, "rbac-module-access-matrix.csv")
-    with open(module_file, "w", newline="") as f:
-        writer = csv.writer(f)
+    ws2 = wb.create_sheet("Module Access")
+    ws2.sheet_properties.tabColor = "2E75B6"
 
-        # Header rows
-        writer.writerow(
-            ["VITORA HMIS — Module Access Matrix (Sidebar Visibility)"]
-            + [""] * len(ALL_ROLES)
-        )
-        writer.writerow(
-            ["Can this role SEE this module in the sidebar? Pre-marked with current implementation."]
-            + [""] * len(ALL_ROLES)
-        )
-        writer.writerow([])
+    max_col2 = 2 + num_roles
 
-        # Role categories row
-        writer.writerow(
-            ["", ""]
-            + [ROLE_CATEGORIES[r] for r in ALL_ROLES]
-        )
-        # Column headers
-        writer.writerow(
-            ["Module", "Description"]
-            + [ROLE_DISPLAY_NAMES[r] for r in ALL_ROLES]
-        )
-        writer.writerow(
-            ["", ""]
-            + [r for r in ALL_ROLES]
-        )
+    ws2.cell(row=1, column=1, value="VITORA HMIS — Module Access Matrix (Sidebar Visibility)")
+    ws2.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_col2)
+    style_title_row(ws2, 1, max_col2)
 
-        for module_key, description in MODULE_DESCRIPTIONS.items():
-            access = MODULE_ROLE_ACCESS.get(module_key, [])
-            row = [module_key, description]
-            for role in ALL_ROLES:
-                if access == "ALL":
-                    row.append("TRUE")
-                else:
-                    row.append("TRUE" if role in access else "FALSE")
-            writer.writerow(row)
+    ws2.cell(row=2, column=1, value="Can this role SEE this module in the sidebar?")
+    ws2.cell(row=2, column=1).font = subtitle_font
 
-    print(f"✅ Created: {module_file}")
+    for i, role in enumerate(ALL_ROLES):
+        cell = ws2.cell(row=3, column=3 + i, value=ROLE_CATEGORIES[role])
+        cell.font = category_font
+        cell.alignment = Alignment(horizontal="center")
+
+    ws2.cell(row=4, column=1, value="Module")
+    ws2.cell(row=4, column=2, value="Description")
+    for i, role in enumerate(ALL_ROLES):
+        ws2.cell(row=4, column=3 + i, value=ROLE_DISPLAY_NAMES[role])
+    style_header_row(ws2, 4, max_col2)
+
+    for i, role in enumerate(ALL_ROLES):
+        cell = ws2.cell(row=5, column=3 + i, value=role)
+        cell.font = code_font
+        cell.alignment = Alignment(horizontal="center")
+
+    checkbox_dv2 = DataValidation(type="list", formula1='"TRUE,FALSE"', allow_blank=False)
+    checkbox_dv2.showErrorMessage = True
+    ws2.add_data_validation(checkbox_dv2)
+
+    row_num = 6
+    data_start_row2 = row_num
+    for module_key, description in MODULE_DESCRIPTIONS.items():
+        access = MODULE_ROLE_ACCESS.get(module_key, [])
+        ws2.cell(row=row_num, column=1, value=module_key).font = Font(bold=True)
+        ws2.cell(row=row_num, column=2, value=description)
+        for i, role in enumerate(ALL_ROLES):
+            cell = ws2.cell(row=row_num, column=3 + i)
+            cell.value = "TRUE" if (access == "ALL" or role in access) else "FALSE"
+            cell.alignment = Alignment(horizontal="center")
+            cell.border = thin_border
+        row_num += 1
+    data_end_row2 = row_num - 1
+
+    bool_range2 = f"{get_column_letter(3)}{data_start_row2}:{get_column_letter(max_col2)}{data_end_row2}"
+    checkbox_dv2.add(bool_range2)
+    add_conditional_formatting(ws2, 3, max_col2, data_start_row2, data_end_row2)
+
+    ws2.column_dimensions["A"].width = 16
+    ws2.column_dimensions["B"].width = 40
+    for i in range(num_roles):
+        ws2.column_dimensions[get_column_letter(3 + i)].width = 12
+    ws2.freeze_panes = "C6"
 
     # =========================================================================
     # Sheet 3: Facility Module Matrix by KEPH Level
     # =========================================================================
-    facility_file = os.path.join(output_dir, "rbac-facility-module-matrix.csv")
-    with open(facility_file, "w", newline="") as f:
-        writer = csv.writer(f)
+    ws3 = wb.create_sheet("Facility Modules")
+    ws3.sheet_properties.tabColor = "548235"
 
-        levels = list(KEPH_LEVELS.keys())
-        modules = list(next(iter(KEPH_LEVELS.values())).keys())
+    levels = list(KEPH_LEVELS.keys())
+    keph_modules = list(next(iter(KEPH_LEVELS.values())).keys())
+    max_col3 = 1 + len(levels)
 
-        # Header rows
-        writer.writerow(
-            ["VITORA HMIS — Facility Module Availability by KEPH Level"]
-            + [""] * len(levels)
-        )
-        writer.writerow(
-            ["Which modules are available at each Kenya facility level? Validate against your facility."]
-            + [""] * len(levels)
-        )
-        writer.writerow([])
+    ws3.cell(row=1, column=1, value="VITORA HMIS — Facility Module Availability by KEPH Level")
+    ws3.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max_col3)
+    style_title_row(ws3, 1, max_col3)
 
-        # Column headers
-        writer.writerow(["Module"] + levels)
+    ws3.cell(row=2, column=1, value="Which modules are available at each Kenya KEPH facility level?")
+    ws3.cell(row=2, column=1).font = subtitle_font
 
-        for mod in modules:
-            row = [mod]
-            for level_name in levels:
-                row.append("TRUE" if KEPH_LEVELS[level_name][mod] else "FALSE")
-            writer.writerow(row)
+    ws3.cell(row=3, column=1, value="Module")
+    for i, level in enumerate(levels):
+        ws3.cell(row=3, column=2 + i, value=level)
+    style_header_row(ws3, 3, max_col3)
 
-    print(f"✅ Created: {facility_file}")
+    checkbox_dv3 = DataValidation(type="list", formula1='"TRUE,FALSE"', allow_blank=False)
+    checkbox_dv3.showErrorMessage = True
+    ws3.add_data_validation(checkbox_dv3)
+
+    row_num = 4
+    data_start_row3 = row_num
+    for mod in keph_modules:
+        ws3.cell(row=row_num, column=1, value=mod).font = Font(bold=True)
+        for i, level_name in enumerate(levels):
+            cell = ws3.cell(row=row_num, column=2 + i)
+            cell.value = "TRUE" if KEPH_LEVELS[level_name][mod] else "FALSE"
+            cell.alignment = Alignment(horizontal="center")
+            cell.border = thin_border
+        row_num += 1
+    data_end_row3 = row_num - 1
+
+    bool_range3 = f"{get_column_letter(2)}{data_start_row3}:{get_column_letter(max_col3)}{data_end_row3}"
+    checkbox_dv3.add(bool_range3)
+    add_conditional_formatting(ws3, 2, max_col3, data_start_row3, data_end_row3)
+
+    ws3.column_dimensions["A"].width = 16
+    for i in range(len(levels)):
+        ws3.column_dimensions[get_column_letter(2 + i)].width = 28
+    ws3.freeze_panes = "B4"
 
     # =========================================================================
-    # Sheet 4: Combined single CSV with all three matrices separated by headers
-    # (easiest for importing to a single Google Sheet with multiple tabs)
+    # Sheet 4: Role Reference (all 33 roles from fixture)
     # =========================================================================
-    combined_file = os.path.join(output_dir, "rbac-complete-matrix.csv")
-    with open(combined_file, "w", newline="") as f:
-        writer = csv.writer(f)
+    ws4 = wb.create_sheet("Role Reference")
+    ws4.sheet_properties.tabColor = "BF8F00"
 
-        max_cols = 3 + len(ALL_ROLES)
+    ws4.cell(row=1, column=1, value="VITORA HMIS — Role Reference (from roles.json fixture)")
+    ws4.merge_cells(start_row=1, start_column=1, end_row=1, end_column=7)
+    style_title_row(ws4, 1, 7)
 
-        # ── SECTION 1: Action Permissions ──
-        writer.writerow(
-            ["═══ SHEET 1: ACTION PERMISSIONS MATRIX ═══"] + [""] * (max_cols - 1)
-        )
-        writer.writerow(
-            [
-                "Pre-marked with current Vitora HMIS implementation (March 2026)."
-            ]
-            + [""] * (max_cols - 1)
-        )
-        writer.writerow(
-            [
-                "Instructions: In Google Sheets, select the TRUE/FALSE cells → Data → Data Validation → Checkbox."
-            ]
-            + [""] * (max_cols - 1)
-        )
-        writer.writerow(
-            [
-                "Then toggle checkboxes to match your facility's real-life setup."
-            ]
-            + [""] * (max_cols - 1)
-        )
-        writer.writerow([])
+    ws4.cell(row=2, column=1, value="All roles loaded from backend/hmis/apps/core/fixtures/roles.json — single source of truth.")
+    ws4.cell(row=2, column=1).font = subtitle_font
 
-        writer.writerow(
-            ["", "", ""] + [ROLE_CATEGORIES[r] for r in ALL_ROLES]
-        )
-        writer.writerow(
-            ["Module", "Action", "Description"]
-            + [ROLE_DISPLAY_NAMES[r] for r in ALL_ROLES]
-        )
-        writer.writerow(["", "", ""] + ALL_ROLES)
+    ref_headers = ["PK", "Code", "Name", "Category", "License Required", "License Body", "Hierarchy Level"]
+    for i, h in enumerate(ref_headers):
+        ws4.cell(row=3, column=1 + i, value=h)
+    style_header_row(ws4, 3, 7)
 
-        current_module = None
-        for action_key, allowed_roles in ACTION_PERMISSIONS.items():
-            module = action_key.split(".")[0]
-            if module != current_module:
-                if current_module is not None:
-                    writer.writerow([])
-                current_module = module
+    for row_idx, entry in enumerate(_role_entries, start=4):
+        fields = entry["fields"]
+        ws4.cell(row=row_idx, column=1, value=entry["pk"])
+        ws4.cell(row=row_idx, column=2, value=fields["code"]).font = Font(name="Consolas", size=10)
+        ws4.cell(row=row_idx, column=3, value=fields["name"])
+        ws4.cell(row=row_idx, column=4, value=fields["category"])
+        ws4.cell(row=row_idx, column=5, value="Yes" if fields.get("requires_license") else "No")
+        ws4.cell(row=row_idx, column=6, value=fields.get("license_body", ""))
+        ws4.cell(row=row_idx, column=7, value=fields.get("hierarchy_level", ""))
+        for col in range(1, 8):
+            ws4.cell(row=row_idx, column=col).border = thin_border
 
-            description = ACTION_DESCRIPTIONS.get(
-                action_key, action_key.split(".")[1]
-            )
-            row = [module.upper(), action_key, description]
-            for role in ALL_ROLES:
-                row.append("TRUE" if role in allowed_roles else "FALSE")
-            writer.writerow(row)
+    ws4.column_dimensions["A"].width = 6
+    ws4.column_dimensions["B"].width = 24
+    ws4.column_dimensions["C"].width = 32
+    ws4.column_dimensions["D"].width = 18
+    ws4.column_dimensions["E"].width = 16
+    ws4.column_dimensions["F"].width = 14
+    ws4.column_dimensions["G"].width = 16
+    ws4.freeze_panes = "A4"
 
-        # spacing
-        writer.writerow([])
-        writer.writerow([])
-
-        # ── SECTION 2: Module Access ──
-        writer.writerow(
-            ["═══ SHEET 2: MODULE (SIDEBAR) ACCESS MATRIX ═══"]
-            + [""] * (max_cols - 1)
-        )
-        writer.writerow(
-            ["Can this role SEE this module in the sidebar navigation?"]
-            + [""] * (max_cols - 1)
-        )
-        writer.writerow([])
-
-        writer.writerow(["", ""] + [ROLE_CATEGORIES[r] for r in ALL_ROLES])
-        writer.writerow(
-            ["Module", "Description"]
-            + [ROLE_DISPLAY_NAMES[r] for r in ALL_ROLES]
-        )
-        writer.writerow(["", ""] + ALL_ROLES)
-
-        for module_key, description in MODULE_DESCRIPTIONS.items():
-            access = MODULE_ROLE_ACCESS.get(module_key, [])
-            row = [module_key, description]
-            for role in ALL_ROLES:
-                if access == "ALL":
-                    row.append("TRUE")
-                else:
-                    row.append("TRUE" if role in access else "FALSE")
-            writer.writerow(row)
-
-        # spacing
-        writer.writerow([])
-        writer.writerow([])
-
-        # ── SECTION 3: Facility Modules ──
-        levels = list(KEPH_LEVELS.keys())
-        modules = list(next(iter(KEPH_LEVELS.values())).keys())
-
-        writer.writerow(
-            ["═══ SHEET 3: FACILITY MODULE AVAILABILITY (KEPH LEVELS) ═══"]
-            + [""] * (max_cols - 1)
-        )
-        writer.writerow(
-            [
-                "Which modules are available at each Kenya KEPH facility level?"
-            ]
-            + [""] * (max_cols - 1)
-        )
-        writer.writerow([])
-        writer.writerow(["Module"] + levels)
-
-        for mod in modules:
-            row = [mod]
-            for level_name in levels:
-                row.append(
-                    "TRUE" if KEPH_LEVELS[level_name][mod] else "FALSE"
-                )
-            writer.writerow(row)
-
-    print(f"✅ Created: {combined_file}")
+    # =========================================================================
+    # Save
+    # =========================================================================
+    wb.save(output_file)
+    print(f"✅ Created: {output_file}")
     print()
     print("📋 Next steps:")
-    print("   1. Open Google Sheets → File → Import → Upload the CSV")
-    print("   2. Select the TRUE/FALSE cells")
-    print("   3. Data → Data Validation → Criteria: Checkbox")
+    print("   1. Upload to Google Drive → Open with Google Sheets")
+    print("   2. TRUE/FALSE cells have data validation — click to toggle")
+    print("   3. Green = allowed, Red = denied (conditional formatting)")
     print("   4. Share with clinician consultant for validation")
 
 
