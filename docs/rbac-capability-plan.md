@@ -847,7 +847,7 @@ const isActionAllowed = (action: ActionKey): boolean => {
 - [x] Update `usePermissions` hook with `canAccessModule()` and `canPerformAction()`
 - [x] Add `moduleKey` to navigation config
 - [x] Filter sidebar based on RBAC
-- [ ] Add route guards for protected pages
+- [x] Add route guards for protected pages (`RouteGuard` + `getModuleForRoute`)
 - [x] Write unit tests for permission logic
 
 **Effort**: 8-12 hours  
@@ -855,10 +855,10 @@ const isActionAllowed = (action: ActionKey): boolean => {
 **Deliverables**: Role-filtered navigation working
 
 ### Phase 2: Action Permissions (Week 2)
-- [ ] Implement `canPerformAction()` in all relevant components
-- [ ] Add permission-based button visibility (inpatient, pharmacy, lab, billing)
+- [x] Implement `canPerformAction()` in all relevant components
+- [x] Add permission-based button visibility (inpatient, pharmacy, lab, billing)
 - [x] Add API-level permission checks (backend)
-- [ ] Create `PermissionGate` component for declarative permission checks
+- [x] Create `PermissionGate` component for declarative permission checks
 - [x] Write E2E tests for permission-restricted actions
 
 **Effort**: 12-16 hours  
@@ -869,7 +869,7 @@ const isActionAllowed = (action: ActionKey): boolean => {
 - [x] Create `Facility` model with migrations
 - [x] Add `primary_facility` to `StaffProfile`
 - [x] Create `FacilitySerializer` and API endpoints
-- [ ] Seed data with Kenya MFL facility levels
+- [x] Seed data with Kenya MFL facility levels (`seed_facilities` management command)
 - [x] Create admin interface for facility management
 
 **Effort**: 8-12 hours  
@@ -879,8 +879,8 @@ const isActionAllowed = (action: ActionKey): boolean => {
 ### Phase 4: Capability Context (Week 4)
 - [x] Create `FacilityContext` provider
 - [x] Add facility to auth response (`/api/me/`)
-- [ ] Add `facilityModule` to navigation config
-- [ ] Combine RBAC + Capability filtering in sidebar
+- [x] Add `facilityModule` to navigation config
+- [x] Combine RBAC + Capability filtering in sidebar
 - [x] Write integration tests
 
 **Effort**: 8-12 hours  
@@ -890,8 +890,8 @@ const isActionAllowed = (action: ActionKey): boolean => {
 ### Phase 5: Polish & Documentation (Week 5)
 - [x] Create admin UI for role permissions_matrix
 - [x] Create admin UI for facility module toggles
-- [ ] Write user documentation
-- [ ] Add permission debugging tools (dev mode)
+- [x] Write user documentation (see `docs/rbac-capability-guide.md`)
+- [x] Add permission debugging tools (`PermissionDebugPanel`, dev mode)
 - [x] Performance optimization (caching)
 
 **Effort**: 8-12 hours  
@@ -1257,6 +1257,6 @@ const FEATURE_FLAGS = {
 
 ---
 
-**Document Status**: Draft  
-**Last Updated**: February 25, 2026  
-**Next Review**: After Phase 1 implementation
+**Document Status**: Complete — All phases implemented  
+**Last Updated**: March 9, 2026  
+**Next Review**: Post-pilot review

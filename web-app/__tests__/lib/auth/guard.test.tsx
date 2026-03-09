@@ -6,12 +6,18 @@
  * These tests focus only on permission checking.
  */
 import { render, screen } from '@testing-library/react';
-import { PermissionGuard, AuthGuard } from '@/lib/auth/guard';
+import { PermissionGuard, AuthGuard, RouteGuard, getModuleForRoute } from '@/lib/auth/guard';
 import { useAuth } from '@/lib/auth/context';
 
 // Mock the auth context
 jest.mock('@/lib/auth/context', () => ({
   useAuth: jest.fn(),
+}));
+
+// Mock next/navigation
+const mockPathname = jest.fn(() => '/');
+jest.mock('next/navigation', () => ({
+  usePathname: () => mockPathname(),
 }));
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
@@ -131,5 +137,130 @@ describe('AuthGuard (deprecated)', () => {
 
     // AuthGuard is now a no-op - auth is handled by middleware
     expect(screen.getByText('Protected Content')).toBeInTheDocument();
+  });
+});
+
+// =============================================================================
+// getModuleForRoute — pure function tests
+// =============================================================================
+
+describe('getModuleForRoute', () => {
+  it('maps /pharmacy to pharmacy', () => {
+    expect(getModuleForRoute('/pharmacy')).toBe('pharmacy');
+  });
+
+  it('maps /pharmacy/dispensing to pharmacy', () => {
+    expect(getModuleForRoute('/pharmacy/dispensing')).toBe('pharmacy');
+  });
+
+  it('maps /laboratory to laboratory', () => {
+    expect(getModuleForRoute('/laboratory')).toBe('laboratory');
+  });
+
+  it('maps /admissions to inpatient', () => {
+    expect(getModuleForRoute('/admissions')).toBe('inpatient');
+  });
+
+  it('maps /admissions/123/discharge to inpatient', () => {
+    expect(getModuleForRoute('/admissions/123/discharge')).toBe('inpatient');
+  });
+
+  it('maps /transactions/invoices to billing', () => {
+    expect(getModuleForRoute('/transactions/invoices')).toBe('billing');
+  });
+
+  it('maps /encounters to encounters', () => {
+    expect(getModuleForRoute('/encounters')).toBe('encounters');
+  });
+
+  it('maps /surveillance to surveillance', () => {
+    expect(getModuleForRoute('/surveillance')).toBe('surveillance');
+  });
+
+  it('maps /admin to admin', () => {
+    expect(getModuleForRoute('/admin')).toBe('admin');
+  });
+
+  it('returns null for /dashboard', () => {
+    expect(getModuleForRoute('/dashboard')).toBeNull();
+  });
+
+  it('returns null for root /', () => {
+    expect(getModuleForRoute('/')).toBeNull();
+  });
+
+  it('returns null for unmatched routes', () => {
+    expect(getModuleForRoute('/some-random-page')).toBeNull();
+  });
+});
+
+// =============================================================================
+// RouteGuard — integration tests
+// =============================================================================
+
+describe('RouteGuard', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockPathname.mockReturnValue('/');
+  });
+
+  it('renders children on unrestricted route', () => {
+    mockUseAuth.mockReturnValue(
+      createMockAuthState({ user: createMockUser({ permissions: [] }) })
+    );
+
+    mockPathname.mockReturnValue('/dashboard');
+
+    render(
+      <RouteGuard>
+        <div>Dashboard</div>
+      </RouteGuard>
+    );
+
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+  });
+
+  it('renders children when user can access the module', () => {
+    mockUseAuth.mockReturnValue(
+      createMockAuthState({
+        user: createMockUser({
+          permissions: ['view_patient'],
+          role: 'ADMIN',
+          is_superuser: true,
+        }),
+      })
+    );
+
+    mockPathname.mockReturnValue('/pharmacy');
+
+    render(
+      <RouteGuard>
+        <div>Pharmacy Page</div>
+      </RouteGuard>
+    );
+
+    expect(screen.getByText('Pharmacy Page')).toBeInTheDocument();
+  });
+
+  it('shows Access Denied on restricted route when user lacks module access', () => {
+    mockUseAuth.mockReturnValue(
+      createMockAuthState({
+        user: createMockUser({
+          permissions: [],
+          role: 'BILLING_CLERK',
+        }),
+      })
+    );
+
+    mockPathname.mockReturnValue('/pharmacy');
+
+    render(
+      <RouteGuard>
+        <div>Pharmacy Page</div>
+      </RouteGuard>
+    );
+
+    expect(screen.queryByText('Pharmacy Page')).not.toBeInTheDocument();
+    expect(screen.getByText('Access Denied')).toBeInTheDocument();
   });
 });

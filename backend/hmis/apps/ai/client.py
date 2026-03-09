@@ -49,7 +49,7 @@ class TibaBotClient:
         self.base_url: str = getattr(
             settings,
             "TIBABOT_API_URL",
-            "https://tibabot.hmis.nexora.africa",
+            "https://tibabot.vitora.nexora.africa",
         )
         self.api_key: str = getattr(settings, "TIBABOT_API_KEY", "")
         self.timeout: int = getattr(settings, "TIBABOT_TIMEOUT", 30)

@@ -746,7 +746,7 @@ FACILITY_HAS_PHARMACY = (
 # Feature flag: Set to true to enable AI proxy endpoints (/api/ai/*).
 # When false, all /api/ai/* endpoints return 404.
 TIBABOT_ENABLED = os.getenv("TIBABOT_ENABLED", "false").lower() == "true"
-TIBABOT_API_URL = os.getenv("TIBABOT_API_URL", "https://tibabot.hmis.nexora.africa")
+TIBABOT_API_URL = os.getenv("TIBABOT_API_URL", "https://tibabot.vitora.nexora.africa")
 TIBABOT_API_KEY = os.getenv("TIBABOT_API_KEY", "")
 TIBABOT_TIMEOUT = int(os.getenv("TIBABOT_TIMEOUT", "30"))
 

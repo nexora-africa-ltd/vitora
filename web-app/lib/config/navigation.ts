@@ -65,6 +65,7 @@ import {
   ENABLE_AI,
 } from '@/lib/utils/constants';
 import type { ModuleKey } from '@/lib/permissions/constants';
+import type { FacilityModules } from '@/lib/auth/context';
 
 export interface NavItem {
   label: string;
@@ -72,6 +73,8 @@ export interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   /** RBAC: required module permission key */
   moduleKey?: ModuleKey;
+  /** Capability: required facility module */
+  facilityModule?: keyof FacilityModules;
   badge?: number;
 }
 
@@ -80,6 +83,8 @@ export interface NavItemWithChildren {
   icon: React.ComponentType<{ className?: string }>;
   /** RBAC: required module permission key */
   moduleKey?: ModuleKey;
+  /** Capability: required facility module */
+  facilityModule?: keyof FacilityModules;
   children: NavItem[];
   /** When set, the item is only included if the flag is true. */
   featureFlag?: boolean;
@@ -121,6 +126,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Emergency',
     icon: Siren,
     moduleKey: 'emergency',
+    facilityModule: 'emergency',
     children: [
       { label: 'Dashboard', href: '/emergency', icon: LayoutDashboard },
       { label: 'Bed Board', href: '/emergency/bed-board', icon: BedDouble },
@@ -143,6 +149,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Clinics',
     icon: Activity,
     moduleKey: 'clinics',
+    facilityModule: 'outpatient',
     children: [
       { label: 'All Clinics', href: '/clinics', icon: Building2 },
       { label: 'General OPD', href: '/clinics/general-opd', icon: StethoscopeIcon },
@@ -157,6 +164,7 @@ const _allNavItems: NavItemType[] = [
   {
     label: 'MCH',
     icon: Baby,
+    facilityModule: 'maternity',
     children: [
       { label: 'Registrations', href: '/mch', icon: ClipboardList },
       { label: 'Deliveries', href: '/mch/deliveries', icon: Venus },
@@ -169,6 +177,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Encounters',
     icon: Stethoscope,
     moduleKey: 'encounters',
+    facilityModule: 'outpatient',
     children: [
       { label: 'All Encounters', href: '/encounters', icon: Stethoscope },
       { label: 'New Encounter', href: '/encounters/new', icon: ClipboardList },
@@ -178,6 +187,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Inpatient',
     icon: BedDouble,
     moduleKey: 'inpatient',
+    facilityModule: 'inpatient',
     children: [
       { label: 'Wards', href: '/wards', icon: Building2 },
       { label: 'Admissions', href: '/admissions', icon: ClipboardList },
@@ -191,6 +201,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Pharmacy',
     icon: Pill,
     moduleKey: 'pharmacy',
+    facilityModule: 'pharmacy',
     children: [
       { label: 'Dashboard', href: '/pharmacy', icon: LayoutDashboard },
       { label: 'Dispensing', href: '/pharmacy/dispensing', icon: FlaskConical },
@@ -204,6 +215,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Laboratory',
     icon: Microscope,
     moduleKey: 'laboratory',
+    facilityModule: 'laboratory',
     children: [
       { label: 'Dashboard', href: '/laboratory', icon: LayoutDashboard },
       { label: 'Lab Reports', href: '/laboratory/reports', icon: FileText },
@@ -214,6 +226,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Imaging',
     icon: ScanLine,
     moduleKey: 'imaging',
+    facilityModule: 'imaging',
     children: [
       { label: 'Dashboard', href: '/imaging', icon: LayoutDashboard },
       { label: 'Imaging Orders', href: '/imaging/orders', icon: ClipboardList },
@@ -236,6 +249,7 @@ const _allNavItems: NavItemType[] = [
     label: 'Theatre',
     icon: Scissors,
     moduleKey: 'theatre',
+    facilityModule: 'theatre',
     featureFlag: ENABLE_THEATRE,
     children: [
       { label: 'Schedule', href: '/theatre/schedule', icon: CalendarDays },

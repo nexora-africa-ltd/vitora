@@ -30,6 +30,15 @@ jest.mock('@/lib/hooks/use-permissions', () => ({
   })),
 }));
 
+// Mock useFacility to allow all modules
+jest.mock('@/lib/context/facility-context', () => ({
+  useFacility: jest.fn(() => ({
+    facility: null,
+    isLoading: false,
+    hasModule: () => true,
+  })),
+}));
+
 // Mock ScrollArea to avoid Radix React 19 issues
 jest.mock('@/components/ui/scroll-area', () => {
   const MockScrollArea = React.forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string }>(
