@@ -1,37 +1,56 @@
 /**
  * usePermissions Hook
  *
- * Provides role-based access control (RBAC) for patient identity editing
- * and other sensitive operations in the Vitora HMIS.
+ * Two-layer RBAC for Vitora HMIS:
+ *
+ * Layer 1 – Module Access (navigation visibility):
+ *   canAccessModule('pharmacy')  → checks Django permission via MODULE_PERMISSIONS
+ *
+ * Layer 2 – Action Permissions (button/feature visibility):
+ *   canPerformAction('pharmacy.dispense') → checks role against ACTION_PERMISSIONS
+ *
+ * Also preserves legacy convenience booleans (canEditPatient, canCreateInvoice, …)
+ * and a generic hasPermission() for ad-hoc checks.
  *
  * Permission Hierarchy:
- * - ADMIN role bypasses all permission checks
- * - Superusers (is_superuser=true) have all permissions
- * - Clinical roles (NURSE, DOCTOR) cannot edit patient identity by default
- * - Registration clerks can edit demographics with manage_patient_identity permission
- * - Billing clerks can create invoices but not clinical data
- *
- * Permission Format:
- * Backend sends permissions as "app_label.codename" (e.g., "patients.change_patient")
- * This hook checks both the full format and just the codename for flexibility.
+ * - Superusers (is_superuser=true) bypass all checks
+ * - ADMIN roles bypass all checks
+ * - Other users checked against permissions list / role
  *
  * Usage:
  * ```tsx
- * const { canEditPatient, canEditIdentity, hasPermission } = usePermissions();
+ * const { canAccessModule, canPerformAction, hasPermission } = usePermissions();
  *
- * if (canEditPatient) {
- *   // Show edit button
- * }
+ * // Sidebar filtering
+ * if (canAccessModule('pharmacy')) { /* show nav item *\/ }
+ *
+ * // Action gating
+ * if (canPerformAction('pharmacy.dispense')) { /* show dispense button *\/ }
  * ```
  */
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/context';
+import { MODULE_PERMISSIONS, type ModuleKey } from '@/lib/permissions/constants';
+import { ACTION_PERMISSIONS, type ActionKey } from '@/lib/permissions/actions';
 
 // =============================================================================
 // Types
 // =============================================================================
 
 export interface PermissionsResult {
+  // --- Layer 1: Module access (navigation filtering) ---
+  /** Check if user can access a sidebar module */
+  canAccessModule: (module: ModuleKey) => boolean;
+
+  // --- Layer 2: Action permissions (button/feature visibility) ---
+  /** Check if user's role can perform a specific action */
+  canPerformAction: (action: ActionKey) => boolean;
+
+  // --- Generic ---
+  /** Check for a specific Django permission by name */
+  hasPermission: (permission: string) => boolean;
+
+  // --- Legacy convenience booleans ---
   /** Can edit patient medical/demographic info (not identity) */
   canEditPatient: boolean;
   /** Can edit patient identity (name, DOB, national_id) - more restricted */
@@ -42,10 +61,12 @@ export interface PermissionsResult {
   canCreateEncounter: boolean;
   /** Can view sensitive patients (HIV, GBV, Mental Health) */
   canViewSensitive: boolean;
-  /** Check for a specific permission by name */
-  hasPermission: (permission: string) => boolean;
-  /** User's role */
+
+  // --- User context ---
+  /** User's role code (e.g. 'DOCTOR', 'NURSE') */
   role: string | null;
+  /** User's role category (e.g. 'CLINICAL', 'ADMINISTRATIVE') */
+  roleCategory: string | null;
   /** Whether user is authenticated */
   isAuthenticated: boolean;
   /** Whether user is a superuser (has all permissions) */
@@ -108,104 +129,108 @@ const PERMISSION_MAP: Record<string, string[]> = {
 export function usePermissions(): PermissionsResult {
   const { user, isAuthenticated } = useAuth();
 
+  const isSuperuser = useMemo(() => {
+    if (!user) return false;
+    const userRole = user.role || '';
+    return user.is_superuser === true || (user.is_staff === true && userRole === 'ADMIN');
+  }, [user]);
+
+  const isAdmin = useMemo(() => {
+    return isSuperuser || ADMIN_ROLES.includes(user?.role || '');
+  }, [user, isSuperuser]);
+
+  const hasPermission = useCallback((permission: string): boolean => {
+    if (!isAuthenticated || !user) return false;
+    if (isSuperuser || isAdmin) return true;
+
+    const userPermissions = user.permissions || [];
+
+    // Check direct match
+    if (userPermissions.includes(permission)) return true;
+
+    // Check mapped permissions
+    const mappedPerms = PERMISSION_MAP[permission];
+    if (mappedPerms) {
+      return mappedPerms.some(p => userPermissions.includes(p));
+    }
+
+    // Check codename-only match (e.g. "change_patient" matches "patients.change_patient")
+    return userPermissions.some(p => {
+      const codename = p.includes('.') ? p.split('.')[1] : p;
+      return codename === permission;
+    });
+  }, [user, isAuthenticated, isSuperuser, isAdmin]);
+
+  const canAccessModule = useCallback((module: ModuleKey): boolean => {
+    if (!isAuthenticated) return false;
+    if (isSuperuser) return true;
+
+    const requiredPerm = MODULE_PERMISSIONS[module];
+    if (!requiredPerm) return true; // null = no permission required (e.g. dashboard)
+
+    return hasPermission(requiredPerm);
+  }, [isAuthenticated, isSuperuser, hasPermission]);
+
+  const canPerformAction = useCallback((action: ActionKey): boolean => {
+    if (!isAuthenticated || !user) return false;
+    if (isSuperuser) return true;
+
+    const allowedRoles = ACTION_PERMISSIONS[action];
+    if (!allowedRoles) return false;
+
+    const userRole = user.role || '';
+    return (allowedRoles as readonly string[]).includes(userRole);
+  }, [user, isAuthenticated, isSuperuser]);
+
   return useMemo(() => {
     // Unauthenticated users have no permissions
     if (!isAuthenticated || !user) {
       return {
+        canAccessModule: () => false,
+        canPerformAction: () => false,
+        hasPermission: () => false,
         canEditPatient: false,
         canEditIdentity: false,
         canCreateInvoice: false,
         canCreateEncounter: false,
         canViewSensitive: false,
-        hasPermission: () => false,
         role: null,
+        roleCategory: null,
         isAuthenticated: false,
         isSuperuser: false,
       };
     }
 
     const userRole = user.role || '';
-    const userPermissions = user.permissions || [];
-    // Check is_superuser first (explicit), then fall back to is_staff for older data
-    const isSuperuser = user.is_superuser === true || (user.is_staff === true && userRole === 'ADMIN');
-    const isAdmin = isSuperuser || ADMIN_ROLES.includes(userRole);
     const isClinical = CLINICAL_ROLES.includes(userRole);
     const canEditIdentityByRole = IDENTITY_EDIT_ROLES.includes(userRole);
 
-    /**
-     * Check if user has a specific permission
-     * Handles both simple names (edit_patient) and Django format (patients.change_patient)
-     * Superusers and Admin roles bypass this check
-     */
-    const hasPermission = (permission: string): boolean => {
-      // Superusers have all permissions
-      if (isSuperuser || isAdmin) return true;
-
-      // Check direct match first
-      if (userPermissions.includes(permission)) return true;
-
-      // Check mapped permissions
-      const mappedPerms = PERMISSION_MAP[permission];
-      if (mappedPerms) {
-        return mappedPerms.some(p => userPermissions.includes(p));
-      }
-
-      // Check if permission exists as codename (after the dot)
-      // e.g., looking for "change_patient" should match "patients.change_patient"
-      return userPermissions.some(p => {
-        const codename = p.includes('.') ? p.split('.')[1] : p;
-        return codename === permission;
-      });
-    };
-
-    /**
-     * Can edit patient (medical info, demographics except identity)
-     * Requires 'edit_patient' / 'patients.change_patient' permission or admin role
-     */
     const canEditPatient = isAdmin || isSuperuser || hasPermission('edit_patient');
 
-    /**
-     * Can edit patient identity (name, DOB, national_id)
-     * More restricted - requires 'manage_patient_identity' permission
-     * - Admin/Superuser: always allowed
-     * - Clinical roles: only with explicit manage_patient_identity permission
-     * - Non-clinical roles: allowed if in IDENTITY_EDIT_ROLES or has permission
-     */
     const hasIdentityPermission = hasPermission('manage_patient_identity');
     const canEditIdentity = isAdmin || isSuperuser || hasIdentityPermission || (
       !isClinical && canEditIdentityByRole
     );
 
-    /**
-     * Can create invoices
-     * Requires 'create_invoice' / 'billing.add_invoice' permission
-     */
     const canCreateInvoice = isAdmin || isSuperuser || hasPermission('create_invoice');
-
-    /**
-     * Can create encounters
-     * Requires 'create_encounter' / 'encounters.add_encounter' permission
-     */
     const canCreateEncounter = isAdmin || isSuperuser || hasPermission('create_encounter');
-
-    /**
-     * Can view sensitive patients (HIV, GBV, Mental Health)
-     * Requires 'view_sensitive_patient' permission
-     */
     const canViewSensitive = isAdmin || isSuperuser || hasPermission('view_sensitive_patient');
 
     return {
+      canAccessModule,
+      canPerformAction,
+      hasPermission,
       canEditPatient,
       canEditIdentity,
       canCreateInvoice,
       canCreateEncounter,
       canViewSensitive,
-      hasPermission,
       role: userRole,
+      roleCategory: (user as unknown as { role_category?: string }).role_category ?? null,
       isAuthenticated: true,
       isSuperuser,
     };
-  }, [user, isAuthenticated]);
+  }, [user, isAuthenticated, isSuperuser, isAdmin, hasPermission, canAccessModule, canPerformAction]);
 }
 
 // =============================================================================
