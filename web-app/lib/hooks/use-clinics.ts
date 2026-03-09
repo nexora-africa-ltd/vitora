@@ -96,10 +96,10 @@ export function useClinics(params?: ClinicListParams) {
 export function useInfiniteClinics(params?: Omit<ClinicListParams, 'page'>) {
   return useInfiniteQuery<PaginatedResponse<ClinicListItem>>({
     queryKey: clinicKeys.infiniteList(params),
-    queryFn: ({ pageParam = 1 }) =>
+    queryFn: ({ pageParam }) =>
       clinicsApi.list({
         ...params,
-        page: pageParam,
+        page: pageParam as number,
       }),
     getNextPageParam: (lastPage, allPages) =>
       lastPage.next ? allPages.length + 1 : undefined,

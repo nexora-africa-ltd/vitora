@@ -198,6 +198,11 @@ export const MODULE_PERMISSIONS = {
 export type ModuleKey = keyof typeof MODULE_PERMISSIONS;
 ```
 
+> **✅ Phase 1 Implemented** (March 9, 2026)
+> - Created `web-app/lib/permissions/constants.ts` — `MODULE_PERMISSIONS` mapping 15 sidebar modules to Django permissions (or `null` for dashboard), plus `ModuleKey` type.
+> - Created `web-app/lib/permissions/actions.ts` — `ACTION_PERMISSIONS` mapping 35 fine-grained actions across 7 modules (Inpatient, Pharmacy, Laboratory, Imaging, Billing, Encounters, Admin) to allowed roles, plus `ActionKey` type.
+> - Both files compile cleanly with `npx tsc --noEmit`.
+
 **File**: `web-app/lib/permissions/actions.ts`
 
 ```typescript
@@ -348,6 +353,15 @@ export function usePermissions(): PermissionsResult {
   ]);
 }
 ```
+
+> **✅ Phase 2 Implemented** (March 9, 2026)
+> - Enhanced `web-app/lib/hooks/use-permissions.ts` with two new capabilities:
+>   - `canAccessModule(module)` — Layer 1 check against `MODULE_PERMISSIONS` (Django permission lookup, superuser bypass, `null` = open access).
+>   - `canPerformAction(action)` — Layer 2 check against `ACTION_PERMISSIONS` (role-based lookup, superuser bypass).
+>   - `roleCategory` — Exposed in return value (reads `role_category` from user object).
+> - Refactored `hasPermission`, `isSuperuser`, `isAdmin` to stable `useCallback`/`useMemo` for proper dependency tracking.
+> - All legacy properties preserved (`canEditPatient`, `canEditIdentity`, `canCreateInvoice`, `canCreateEncounter`, `canViewSensitive`).
+> - All 14 existing tests pass, zero TypeScript errors.
 
 ### Phase 3: Navigation with Module Keys
 
