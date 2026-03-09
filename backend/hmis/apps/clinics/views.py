@@ -230,6 +230,7 @@ class ClinicViewSet(viewsets.ModelViewSet):
     queryset = Clinic.objects.all()
     permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
     filterset_class = ClinicFilter
+    search_fields = ["name", "code", "clinic_type", "description"]
 
     def get_permissions(self):
         """Return appropriate permissions for each action."""
