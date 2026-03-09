@@ -10,38 +10,40 @@
  */
 
 import { useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useFacility } from '@/lib/context/facility-context';
 import { MODULE_PERMISSIONS, type ModuleKey } from '@/lib/permissions/constants';
 import { ACTION_PERMISSIONS, type ActionKey } from '@/lib/permissions/actions';
+import { facilitiesApi, toUserFacility } from '@/lib/api/facilities';
 import { Bug, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export function PermissionDebugPanel() {
+  const isDevelopment = process.env.NODE_ENV === 'development';
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'modules' | 'actions' | 'facility'>('modules');
   const [filter, setFilter] = useState('');
   const { role, roleCategory, isSuperuser, canAccessModule, canPerformAction, isAuthenticated } = usePermissions();
-  const { facility, hasModule } = useFacility();
-
-  // Only show in development
-  if (process.env.NODE_ENV !== 'development') return null;
-  if (!isAuthenticated) return null;
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed bottom-4 left-4 z-[9999] bg-amber-500 text-white rounded-full p-2 shadow-lg hover:bg-amber-600 transition-colors"
-        title="Permission Debug Panel"
-      >
-        <Bug className="h-4 w-4" />
-      </button>
-    );
-  }
+  const {
+    facility,
+    assignedFacility,
+    facilityOverride,
+    isUsingFacilityOverride,
+    hasModule,
+    setFacilityOverride,
+    clearFacilityOverride,
+  } = useFacility();
 
   const moduleKeys = Object.keys(MODULE_PERMISSIONS) as ModuleKey[];
   const actionKeys = Object.keys(ACTION_PERMISSIONS) as ActionKey[];
@@ -60,6 +62,44 @@ export function PermissionDebugPanel() {
         lowerFilter ? k.toLowerCase().includes(lowerFilter) : true,
       )
     : [];
+
+  const facilitiesQuery = useQuery({
+    queryKey: ['debug-facilities'],
+    queryFn: () => facilitiesApi.list({ page_size: 100, ordering: 'name' }),
+    enabled: isDevelopment && isAuthenticated && open,
+  });
+
+  const switchFacilityMutation = useMutation({
+    mutationFn: async (facilityId: number) => facilitiesApi.get(facilityId),
+    onSuccess: (selectedFacility) => {
+      setFacilityOverride(toUserFacility(selectedFacility));
+    },
+  });
+
+  const handleFacilitySelection = async (value: string) => {
+    if (value === 'assigned') {
+      clearFacilityOverride();
+      return;
+    }
+
+    await switchFacilityMutation.mutateAsync(Number(value));
+  };
+
+  // Only show in development
+  if (!isDevelopment) return null;
+  if (!isAuthenticated) return null;
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="fixed bottom-4 left-4 z-[9999] bg-amber-500 text-white rounded-full p-2 shadow-lg hover:bg-amber-600 transition-colors"
+        title="Permission Debug Panel"
+      >
+        <Bug className="h-4 w-4" />
+      </button>
+    );
+  }
 
   return (
     <div className="fixed bottom-4 left-4 z-[9999] flex h-[60vh] w-80 flex-col overflow-hidden rounded-lg border bg-background shadow-xl">
@@ -92,6 +132,12 @@ export function PermissionDebugPanel() {
           <span className="text-muted-foreground">Facility:</span>
           <span className="text-right truncate max-w-[160px]">{facility?.name || 'None'}</span>
         </div>
+        {isUsingFacilityOverride && facilityOverride && (
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Mode:</span>
+            <Badge variant="secondary" className="text-[10px]">OVERRIDE</Badge>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -162,6 +208,33 @@ export function PermissionDebugPanel() {
 
           {activeTab === 'facility' && (
             <>
+              <div className="space-y-2 rounded-md border border-primary/10 bg-muted/20 p-2">
+                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Development facility switcher
+                </p>
+                <Select
+                  value={isUsingFacilityOverride && facilityOverride ? String(facilityOverride.id) : 'assigned'}
+                  onValueChange={(value) => void handleFacilitySelection(value)}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select facility context" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="assigned">
+                      {assignedFacility ? `Assigned: ${assignedFacility.name}` : 'Assigned: none'}
+                    </SelectItem>
+                    {facilitiesQuery.data?.results.map((item) => (
+                      <SelectItem key={item.id} value={String(item.id)}>
+                        {item.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  Switches the effective facility context in development only. Current: {facility?.name || 'none'}
+                </p>
+              </div>
+
               {!facility ? (
                 <p className="text-xs text-muted-foreground p-2">No facility assigned — all modules allowed.</p>
               ) : filteredFacilityEntries.length === 0 ? (

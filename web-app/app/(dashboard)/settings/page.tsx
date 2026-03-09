@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SHASettingsTab } from '@/components/settings/sha-settings';
 import { MFASettingsTab } from '@/components/settings/mfa-settings';
+import { FacilitySettingsTab } from '@/components/settings/facility-settings';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 
@@ -72,19 +73,7 @@ export default function SettingsPage() {
 
         {/* Facility Settings */}
         <TabsContent value="facility" className="space-y-4 mt-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base sm:text-lg">Facility Information</CardTitle>
-                <HelpPopover content="Configure your healthcare facility details, location, and operating hours." />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Facility settings will be available in a future update.
-              </p>
-            </CardContent>
-          </Card>
+          <FacilitySettingsTab />
         </TabsContent>
 
         {/* Notification Settings */}

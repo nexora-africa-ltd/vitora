@@ -222,6 +222,8 @@ Click it to see:
 - **Actions tab**: Which action keys are ALLOW/DENY
 - **Facility tab**: Which facility capability modules are ON/OFF
 
+The facility tab also includes a development-only facility switcher. This temporarily overrides the effective facility context in the frontend so developers can test capability gating against a different facility without reassigning the user in the database.
+
 This helps developers verify that permissions are configured correctly without needing to check the database.
 
 ---
