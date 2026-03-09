@@ -15,6 +15,7 @@ from .history_views import EncounterHistoryView, PatientHistoryView
 from .views import (
     AuditLogViewSet,
     DepartmentViewSet,
+    FacilityViewSet,
     FeatureFlagViewSet,
     FrontendEventViewSet,
     NotificationViewSet,
@@ -33,6 +34,7 @@ router.register(r"roles", RoleViewSet, basename="role")
 router.register(r"staff", StaffProfileViewSet, basename="staffprofile")
 router.register(r"notifications", NotificationViewSet, basename="notification")
 router.register(r"features", FeatureFlagViewSet, basename="featureflag")
+router.register(r"facilities", FacilityViewSet, basename="facility")
 
 urlpatterns = [
     # Dashboard statistics

@@ -13,6 +13,7 @@ from .models import (
     CodeSystem,
     County,
     Department,
+    Facility,
     FeatureFlag,
     FrontendEvent,
     Notification,
@@ -261,6 +262,9 @@ class StaffProfileSerializer(serializers.ModelSerializer):
     primary_department_name = serializers.CharField(
         source="primary_department.name", read_only=True
     )
+    primary_facility_name = serializers.CharField(
+        source="primary_facility.name", read_only=True, default=None
+    )
     is_license_valid = serializers.SerializerMethodField()
 
     class Meta:
@@ -284,6 +288,9 @@ class StaffProfileSerializer(serializers.ModelSerializer):
             "primary_department",
             "primary_department_name",
             "secondary_departments",
+            "primary_facility",
+            "primary_facility_name",
+            "secondary_facilities",
             "hwr_id",
             "license_number",
             "license_expiry",
@@ -347,6 +354,8 @@ class StaffProfileUpdateSerializer(serializers.ModelSerializer):
             "primary_department",
             "department",
             "secondary_departments",
+            "primary_facility",
+            "secondary_facilities",
             "hwr_id",
             "license_number",
             "license_expiry",
@@ -614,3 +623,213 @@ class FeatureFlagSerializer(serializers.ModelSerializer):
         model = FeatureFlag
         fields = ["id", "name", "is_enabled", "description"]
         read_only_fields = fields
+
+
+# ============================================================================
+# Facility Serializers (RBAC Capability Plan – Phase 1)
+# ============================================================================
+
+
+class FacilityListSerializer(serializers.ModelSerializer):
+    """
+    Lightweight serializer for facility list views.
+
+    Returns essential identification and location data without the full
+    module capability matrix, keeping list payloads compact.  The
+    ``county_name`` and ``sub_county_name`` source fields are included so
+    the frontend can display human-readable location text without an
+    extra lookup.
+    """
+
+    county_name = serializers.CharField(source="county.name", read_only=True)
+    sub_county_name = serializers.CharField(source="sub_county.name", read_only=True)
+
+    class Meta:
+        """Meta options for FacilityListSerializer."""
+
+        model = Facility
+        fields = [
+            "id",
+            "mfl_code",
+            "name",
+            "level",
+            "ownership",
+            "county",
+            "county_name",
+            "sub_county",
+            "sub_county_name",
+            "sha_contracted",
+            "is_active",
+        ]
+        read_only_fields = ["id"]
+
+
+class FacilityDetailSerializer(serializers.ModelSerializer):
+    """
+    Full serializer for facility detail / retrieve views.
+
+    Includes the complete module capability map (``modules``) as a nested
+    dictionary, plus resolved location names.  ``enabled_module_names``
+    provides a convenience list of only the enabled modules for quick
+    frontend rendering.
+    """
+
+    county_name = serializers.CharField(source="county.name", read_only=True)
+    sub_county_name = serializers.CharField(source="sub_county.name", read_only=True)
+    ward_name = serializers.CharField(
+        source="ward.name", read_only=True, default=None
+    )
+    modules = serializers.DictField(read_only=True)
+    enabled_module_names = serializers.ListField(
+        child=serializers.CharField(), read_only=True
+    )
+
+    class Meta:
+        """Meta options for FacilityDetailSerializer."""
+
+        model = Facility
+        fields = [
+            "id",
+            "mfl_code",
+            "name",
+            "level",
+            "ownership",
+            # Location
+            "county",
+            "county_name",
+            "sub_county",
+            "sub_county_name",
+            "ward",
+            "ward_name",
+            # SHA
+            "sha_contracted",
+            "sha_contract_expiry",
+            "sha_facility_code",
+            # Modules
+            "modules",
+            "enabled_module_names",
+            # Individual module flags (for admin editing)
+            "has_outpatient",
+            "has_inpatient",
+            "has_emergency",
+            "has_pharmacy",
+            "has_laboratory",
+            "has_imaging",
+            "has_theatre",
+            "has_dialysis",
+            "has_icu",
+            "has_maternity",
+            "has_mortuary",
+            "has_blood_bank",
+            # Status & timestamps
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "modules",
+            "enabled_module_names",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class FacilityCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating a new facility.
+
+    Accepts all writable fields.  Validates that ``sub_county`` belongs to
+    the chosen ``county``, and that ``ward`` (when provided) belongs to
+    the chosen ``sub_county``.
+
+    If no module flags are explicitly set, the ``create`` method will
+    apply the KEPH-level defaults via ``Facility.default_modules_for_level``.
+    """
+
+    class Meta:
+        """Meta options for FacilityCreateSerializer."""
+
+        model = Facility
+        fields = [
+            "mfl_code",
+            "name",
+            "level",
+            "ownership",
+            # Location
+            "county",
+            "sub_county",
+            "ward",
+            # SHA
+            "sha_contracted",
+            "sha_contract_expiry",
+            "sha_facility_code",
+            # Modules
+            "has_outpatient",
+            "has_inpatient",
+            "has_emergency",
+            "has_pharmacy",
+            "has_laboratory",
+            "has_imaging",
+            "has_theatre",
+            "has_dialysis",
+            "has_icu",
+            "has_maternity",
+            "has_mortuary",
+            "has_blood_bank",
+            # Status
+            "is_active",
+        ]
+
+    def validate(self, attrs: dict) -> dict:
+        """
+        Cross-field validation for location hierarchy consistency.
+
+        Ensures:
+        * ``sub_county`` belongs to ``county``.
+        * ``ward`` (if given) belongs to ``sub_county``.
+        """
+        county = attrs.get("county")
+        sub_county = attrs.get("sub_county")
+        ward = attrs.get("ward")
+
+        if county and sub_county and sub_county.county_id != county.id:
+            raise serializers.ValidationError(
+                {"sub_county": "Sub-county must belong to the selected county."}
+            )
+        if sub_county and ward and ward.sub_county_id != sub_county.id:
+            raise serializers.ValidationError(
+                {"ward": "Ward must belong to the selected sub-county."}
+            )
+
+        return attrs
+
+    def create(self, validated_data: dict) -> Facility:
+        """
+        Create facility, applying KEPH-level module defaults when no
+        module flags are explicitly provided in the request payload.
+        """
+        # Detect whether the caller explicitly set any module flag
+        module_fields = [
+            "has_outpatient",
+            "has_inpatient",
+            "has_emergency",
+            "has_pharmacy",
+            "has_laboratory",
+            "has_imaging",
+            "has_theatre",
+            "has_dialysis",
+            "has_icu",
+            "has_maternity",
+            "has_mortuary",
+            "has_blood_bank",
+        ]
+        any_module_set = any(f in self.initial_data for f in module_fields)
+
+        if not any_module_set:
+            level = validated_data.get("level", "1")
+            defaults = Facility.default_modules_for_level(level)
+            for module_name, enabled in defaults.items():
+                validated_data[f"has_{module_name}"] = enabled
+
+        return super().create(validated_data)

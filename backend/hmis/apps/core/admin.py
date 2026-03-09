@@ -11,6 +11,7 @@ from .models import (
     County,
     Department,
     ExternalCodeMapping,
+    Facility,
     FeatureFlag,
     NetworkStatus,
     Role,
@@ -695,3 +696,151 @@ class ExternalCodeMappingAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+
+# ============================================================================
+# Facility Admin (RBAC Capability Plan – Phase 1)
+# ============================================================================
+
+
+@admin.register(Facility)
+class FacilityAdmin(admin.ModelAdmin):
+    """
+    Admin configuration for the Facility model.
+
+    Provides a rich admin interface for managing healthcare facilities,
+    including:
+    * Searchable list with key identification fields.
+    * Colour-coded KEPH level badges.
+    * Fieldset grouping for identity, location, SHA, modules and status.
+    * Read-only timestamp fields.
+    """
+
+    list_display = [
+        "mfl_code",
+        "name",
+        "level_badge",
+        "ownership",
+        "county",
+        "sha_contracted",
+        "is_active",
+    ]
+    list_filter = [
+        "level",
+        "ownership",
+        "county",
+        "sha_contracted",
+        "is_active",
+        "has_inpatient",
+        "has_emergency",
+        "has_laboratory",
+        "has_pharmacy",
+    ]
+    search_fields = ["name", "mfl_code", "sha_facility_code"]
+    ordering = ["name"]
+    readonly_fields = ["created_at", "updated_at"]
+
+    fieldsets = (
+        (
+            "Identity",
+            {
+                "fields": (
+                    "mfl_code",
+                    "name",
+                    "level",
+                    "ownership",
+                )
+            },
+        ),
+        (
+            "Location (Kenya Administrative Hierarchy)",
+            {
+                "fields": (
+                    "county",
+                    "sub_county",
+                    "ward",
+                )
+            },
+        ),
+        (
+            "SHA Registration",
+            {
+                "fields": (
+                    "sha_contracted",
+                    "sha_contract_expiry",
+                    "sha_facility_code",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Enabled Service Modules",
+            {
+                "fields": (
+                    "has_outpatient",
+                    "has_inpatient",
+                    "has_emergency",
+                    "has_pharmacy",
+                    "has_laboratory",
+                    "has_imaging",
+                    "has_theatre",
+                    "has_dialysis",
+                    "has_icu",
+                    "has_maternity",
+                    "has_mortuary",
+                    "has_blood_bank",
+                ),
+                "description": "Toggle the clinical service modules available "
+                "at this facility. These flags drive the sidebar navigation in "
+                "the web frontend.",
+            },
+        ),
+        (
+            "Status",
+            {
+                "fields": (
+                    "is_active",
+                )
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    @admin.display(description="Level")
+    def level_badge(self, obj):
+        """
+        Display KEPH level as a colour-coded badge in the admin list.
+
+        Colour coding:
+        * Level 1-2 (Community/Dispensary): green
+        * Level 3 (Health Centre): blue
+        * Level 4 (Sub-County Hospital): orange
+        * Level 5-6 (Referral Hospitals): red
+        """
+        from django.utils.html import format_html
+
+        colours = {
+            "1": "#28a745",
+            "2": "#28a745",
+            "3": "#007bff",
+            "4": "#fd7e14",
+            "5": "#dc3545",
+            "6": "#dc3545",
+        }
+        colour = colours.get(obj.level, "#6c757d")
+        label = obj.get_level_display()
+        return format_html(
+            '<span style="background:{}; color:#fff; padding:2px 8px; '
+            'border-radius:4px; font-size:11px;">{}</span>',
+            colour,
+            label,
+        )

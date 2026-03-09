@@ -25,6 +25,7 @@ from .models import (
     CodeSystem,
     County,
     Department,
+    Facility,
     FeatureFlag,
     FrontendEvent,
     Notification,
@@ -39,6 +40,9 @@ from .serializers import (
     CodeSystemSerializer,
     CountySerializer,
     DepartmentSerializer,
+    FacilityCreateSerializer,
+    FacilityDetailSerializer,
+    FacilityListSerializer,
     FeatureFlagSerializer,
     FrontendEventBatchSerializer,
     FrontendEventSerializer,
@@ -46,14 +50,14 @@ from .serializers import (
     OrgChartPayloadSerializer,
     PermissionSerializer,
     RoleSerializer,
-    StaffProfileUpdateSerializer,
     StaffProfileSerializer,
+    StaffProfileUpdateSerializer,
     SubCountySerializer,
-    UserPermissionsSerializer,
-    WardSerializer,
     UsernameCheckResponseSerializer,
     UsernameSuggestionRequestSerializer,
     UsernameSuggestionResponseSerializer,
+    UserPermissionsSerializer,
+    WardSerializer,
 )
 
 
@@ -1367,3 +1371,198 @@ class FeatureFlagViewSet(ListModelMixin, viewsets.GenericViewSet):
             return Response(FeatureFlagSerializer(flag).data)
         except FeatureFlag.DoesNotExist:
             return Response({"name": name, "is_enabled": False, "description": ""})
+
+
+# ============================================================================
+# Facility ViewSet (RBAC Capability Plan – Phase 1)
+# ============================================================================
+
+
+class FacilityViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for healthcare facility CRUD operations.
+
+    Provides list, retrieve, create, update, and delete endpoints for
+    ``Facility`` records.  The viewset uses separate serializers for
+    different actions:
+
+    * **list** – ``FacilityListSerializer`` (compact, no module details).
+    * **retrieve** – ``FacilityDetailSerializer`` (full, with modules map).
+    * **create** – ``FacilityCreateSerializer`` (validates location hierarchy
+      and applies KEPH-level module defaults).
+    * **update / partial_update** – ``FacilityDetailSerializer``.
+
+    **Permissions:**
+
+    * All authenticated users can list and retrieve facilities.
+    * Only admin users can create, update, or delete facilities.
+
+    **Filtering & Search:**
+
+    * Filter by ``level``, ``ownership``, ``county``, ``is_active``,
+      ``sha_contracted``, and individual module flags.
+    * Search by ``name`` or ``mfl_code``.
+    * Order by ``name``, ``level``, ``mfl_code``, or ``created_at``.
+    """
+
+    queryset = Facility.objects.select_related("county", "sub_county", "ward").all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "mfl_code"]
+    ordering_fields = ["name", "level", "mfl_code", "created_at"]
+    ordering = ["name"]
+
+    def get_serializer_class(self):
+        """
+        Return the appropriate serializer based on the current action.
+
+        * ``list`` → ``FacilityListSerializer``
+        * ``create`` → ``FacilityCreateSerializer``
+        * Everything else → ``FacilityDetailSerializer``
+        """
+        if self.action == "list":
+            return FacilityListSerializer
+        if self.action == "create":
+            return FacilityCreateSerializer
+        return FacilityDetailSerializer
+
+    def get_permissions(self):
+        """
+        Set permissions based on action.
+
+        List and retrieve are available to any authenticated user.
+        Write operations require admin privileges.
+        """
+        if self.action in ["create", "update", "partial_update", "destroy"]:
+            permission_classes = [IsAdminUser]
+        else:
+            permission_classes = [IsAuthenticated]
+        return [permission() for permission in permission_classes]
+
+    def get_queryset(self):
+        """
+        Optionally filter the queryset based on query parameters.
+
+        Supports filtering by:
+        * ``level`` – KEPH facility level.
+        * ``ownership`` – Ownership type.
+        * ``county`` – County ID.
+        * ``is_active`` – Active status.
+        * ``sha_contracted`` – SHA contract status.
+        * Any ``has_*`` module flag (e.g. ``?has_laboratory=true``).
+        """
+        qs = super().get_queryset()
+
+        # Simple exact-match filters
+        for param in ["level", "ownership", "county", "is_active", "sha_contracted"]:
+            value = self.request.query_params.get(param)
+            if value is not None:
+                # Convert string booleans for boolean fields
+                if param in ("is_active", "sha_contracted"):
+                    value = _query_param_truthy(value)
+                qs = qs.filter(**{param: value})
+
+        # Module capability filters
+        module_fields = [
+            "has_outpatient",
+            "has_inpatient",
+            "has_emergency",
+            "has_pharmacy",
+            "has_laboratory",
+            "has_imaging",
+            "has_theatre",
+            "has_dialysis",
+            "has_icu",
+            "has_maternity",
+            "has_mortuary",
+            "has_blood_bank",
+        ]
+        for field in module_fields:
+            value = self.request.query_params.get(field)
+            if value is not None:
+                qs = qs.filter(**{field: _query_param_truthy(value)})
+
+        return qs
+
+    def perform_create(self, serializer):
+        """Create facility and log the action for audit compliance."""
+        facility = serializer.save()
+        AuditLog.log(
+            action="facility_created",
+            user=self.request.user,
+            resource_type="Facility",
+            resource_id=facility.id,
+            ip_address=_get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "name": facility.name,
+                "mfl_code": facility.mfl_code,
+                "level": facility.level,
+            },
+        )
+
+    def perform_update(self, serializer):
+        """Update facility and log the action for audit compliance."""
+        facility = serializer.save()
+        AuditLog.log(
+            action="facility_updated",
+            user=self.request.user,
+            resource_type="Facility",
+            resource_id=facility.id,
+            ip_address=_get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "name": facility.name,
+                "mfl_code": facility.mfl_code,
+                "updated_fields": list(serializer.validated_data.keys()),
+            },
+        )
+
+    def perform_destroy(self, instance):
+        """Delete facility and log the action for audit compliance."""
+        AuditLog.log(
+            action="facility_deleted",
+            user=self.request.user,
+            resource_type="Facility",
+            resource_id=instance.id,
+            ip_address=_get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            details={
+                "name": instance.name,
+                "mfl_code": instance.mfl_code,
+            },
+        )
+        instance.delete()
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="level",
+                type=OpenApiTypes.STR,
+                description="KEPH facility level (1–6)",
+            ),
+        ],
+        responses={200: inline_serializer(
+            "DefaultModulesResponse",
+            fields={
+                "level": serializers.CharField(),
+                "modules": serializers.DictField(),
+            },
+        )},
+    )
+    @action(detail=False, methods=["get"])
+    def default_modules(self, request):
+        """
+        Return the default module flags for a given KEPH facility level.
+
+        This endpoint is useful for the frontend to pre-populate module
+        checkboxes when creating a new facility.
+
+        Query Parameters:
+            level (str): KEPH level ("1" through "6").
+
+        Returns:
+            JSON with ``level`` and ``modules`` dictionary.
+        """
+        level = request.query_params.get("level", "1")
+        modules = Facility.default_modules_for_level(level)
+        return Response({"level": level, "modules": modules})
