@@ -58,6 +58,8 @@ import {
   Thermometer,
   UserPlus2,
   ListOrdered,
+  ArrowLeftRight,
+  TestTubes,
 } from 'lucide-react';
 
 import {
@@ -162,6 +164,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Surgical Clinic', href: '/clinics/surgical', icon: Scissors },
       { label: 'Chronic Care', href: '/clinics/chronic-care', icon: HeartPulse },
       { label: 'Immunization', href: '/clinics/immunization', icon: Syringe },
+      { label: 'Enrollments', href: '/clinics/enrollments', icon: ClipboardList, actionKey: 'clinics.manage_queue' },
     ],
   },
   {
@@ -185,6 +188,7 @@ const _allNavItems: NavItemType[] = [
     children: [
       { label: 'All Encounters', href: '/encounters', icon: Stethoscope },
       { label: 'New Encounter', href: '/encounters/new', icon: ClipboardList },
+      { label: 'Referrals', href: '/referrals', icon: ArrowLeftRight, actionKey: 'encounters.refer' },
     ],
   },
   {
@@ -195,6 +199,7 @@ const _allNavItems: NavItemType[] = [
     children: [
       { label: 'Wards', href: '/wards', icon: Building2, actionKey: 'inpatient.view_ward' },
       { label: 'Admissions', href: '/admissions', icon: ClipboardList, actionKey: 'inpatient.view_admissions' },
+      { label: 'Handover', href: '/admissions/handover', icon: ArrowLeftRight, actionKey: 'inpatient.view_ward' },
       { label: 'Reviews', href: '/inpatient/reviews', icon: FileText, actionKey: 'inpatient.view_reviews' },
       { label: 'Kardex', href: '/inpatient/kardex', icon: ClipboardList, actionKey: 'inpatient.view_kardex' },
       { label: 'Rounds', href: '/inpatient/rounds', icon: Stethoscope, actionKey: 'inpatient.make_rounds' },
@@ -212,6 +217,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Prescriptions', href: '/pharmacy/prescriptions', icon: FileText, actionKey: 'pharmacy.view_prescriptions' },
       { label: 'Drug Catalog', href: '/pharmacy/drugs', icon: Pill, actionKey: 'pharmacy.view_drugs' },
       { label: 'Stock Receive', href: '/pharmacy/stock/receive', icon: ClipboardList, actionKey: 'pharmacy.manage_stock' },
+      { label: 'Adjustments', href: '/pharmacy/stock/adjustments', icon: Scale, actionKey: 'pharmacy.manage_stock' },
       { label: 'Reports', href: '/pharmacy/reports', icon: BarChart3, actionKey: 'pharmacy.view_reports' },
     ],
   },
@@ -222,6 +228,9 @@ const _allNavItems: NavItemType[] = [
     facilityModule: 'laboratory',
     children: [
       { label: 'Dashboard', href: '/laboratory', icon: LayoutDashboard, actionKey: 'laboratory.view_dashboard' },
+      { label: 'Orders', href: '/laboratory/orders', icon: ClipboardList, actionKey: 'laboratory.view_orders' },
+      { label: 'Validations', href: '/laboratory/validations', icon: CheckSquare, actionKey: 'laboratory.verify_results' },
+      { label: 'Test Catalog', href: '/laboratory/tests', icon: TestTubes, actionKey: 'laboratory.view_dashboard' },
       { label: 'Lab Reports', href: '/laboratory/reports', icon: FileText, actionKey: 'laboratory.view_reports' },
       { label: 'Lab Analytics', href: '/laboratory/analytics', icon: BarChart3, actionKey: 'laboratory.view_analytics' },
     ],
@@ -233,6 +242,7 @@ const _allNavItems: NavItemType[] = [
     facilityModule: 'imaging',
     children: [
       { label: 'Dashboard', href: '/imaging', icon: LayoutDashboard, actionKey: 'imaging.view_dashboard' },
+      { label: 'Worklist', href: '/imaging/worklist', icon: ListOrdered, actionKey: 'imaging.view_orders' },
       { label: 'Imaging Orders', href: '/imaging/orders', icon: ClipboardList, actionKey: 'imaging.view_orders' },
       { label: 'DICOM Studies', href: '/imaging/studies', icon: ImageIcon, actionKey: 'imaging.view_studies' },
     ],
