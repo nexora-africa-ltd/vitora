@@ -27,6 +27,7 @@ export const patientKeys = {
   detail: (id: number) => [...patientKeys.details(), id] as const,
   emergencyContacts: (id: number) => [...patientKeys.detail(id), 'emergency-contacts'] as const,
   encounters: (id: number) => [...patientKeys.detail(id), 'encounters'] as const,
+  qrCode: (id: number) => [...patientKeys.detail(id), 'qr-code'] as const,
   duplicateCheck: (params: DuplicateCheckParams) => [...patientKeys.all, 'duplicate-check', params] as const,
 };
 
@@ -169,5 +170,18 @@ export function useDuplicateCheck(
     enabled: options?.enabled !== false && hasSearchCriteria,
     staleTime: 60000, // 1 minute - duplicates don't change often
     gcTime: 300000, // 5 minutes cache
+  });
+}
+
+/**
+ * Hook for fetching a patient's QR code.
+ * Only fetches when enabled (e.g., when dialog is open).
+ */
+export function usePatientQRCode(patientId: number, enabled = false) {
+  return useQuery({
+    queryKey: patientKeys.qrCode(patientId),
+    queryFn: () => patientsApi.getQRCode(patientId),
+    enabled: !!patientId && enabled,
+    staleTime: Infinity, // QR is deterministic from MRN, never changes
   });
 }

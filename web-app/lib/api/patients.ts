@@ -13,6 +13,7 @@ import {
   PaginatedPatientSchema,
   EmergencyContactArrayResponseSchema,
   PatientEncounterArrayResponseSchema,
+  PatientQRCodeSchema,
 } from '@/lib/schemas/patient.schema';
 import type { Patient, PatientCreateData, PatientUpdateData, PatientListParams, EmergencyContact, PatientEncounter, DuplicateCheckResult, DuplicateCheckParams } from '@/lib/types/patient';
 import type { PaginatedResponse } from '@/lib/types';
@@ -157,5 +158,17 @@ export const patientsApi = {
     );
 
     return response.data;
+  },
+
+  /**
+   * Get QR code data URI for a patient (encodes MRN for scanning)
+   */
+  async getQRCode(
+    id: number
+  ): Promise<{ qr_data_uri: string; qr_payload: string; mrn: string; patient_name: string }> {
+    const response = await apiClient.get(`/api/patients/${id}/qr-code/`);
+    return parseResponse(PatientQRCodeSchema, response.data, {
+      context: 'patientsApi.getQRCode',
+    });
   },
 };

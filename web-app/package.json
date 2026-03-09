@@ -81,6 +81,7 @@
     "date-fns": "^3.6.0",
     "dicom-parser": "^1.8.21",
     "embla-carousel-react": "^8.6.0",
+    "html5-qrcode": "^2.3.8",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.562.0",

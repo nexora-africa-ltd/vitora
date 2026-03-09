@@ -1,16 +1,17 @@
 # Vitora HMIS - Patient Flow Implementation Analysis
 
-> **Analysis Date**: February 9, 2026
-> **Codebase Version**: Current develop branch
+> **Analysis Date**: March 10, 2026
+> **Codebase Version**: Current `feature/capability-based-ui` branch
 > **Analyst**: thande788
+> **Last Audit**: March 10, 2026
 
 ---
 
 ## Executive Summary
 
-This document provides a comprehensive analysis of how patient flow is implemented in the Vitora HMIS codebase. The system has a well-architected foundation with many core components in place, though some areas need completion for a fully cohesive patient journey.
+This document provides a comprehensive analysis of how patient flow is implemented in the Vitora HMIS codebase. The system has matured significantly since the initial February 2026 assessment, with auto-invoice signals, CDS rules, imaging workflow, and multiple new clinical modules now implemented.
 
-**Overall Assessment**: 🟡 **Partially Complete** - Core infrastructure is solid; some workflow gaps remain.
+**Overall Assessment**: 🟢 **Mostly Complete** - Core patient flow is production-ready; remaining gaps are enhancements (SMS reminders, longitudinal care plans, scheduling pages).
 
 ---
 
@@ -27,7 +28,7 @@ The system supports multiple identification methods:
 | **MRN** | `Patient.mrn` | Auto-generated `MRN-YYYYMMDD-XXXX`, unique, immutable |
 | **Client Registry** | `Patient.cr_number` | Kenya HIE integration (CR-XXXXXXXXXX-X format) |
 | **SHA Number** | `Patient.sha_number` | Social Health Authority member number |
-| **National ID** | `Patient.identification_number` + `identification_type` | Flexible ID types (national_id, passport, alien_id, etc.) |
+| **National ID** | `Patient.identification_number` + `identification_type` | Flexible ID types (national_id, passport, alien_id, kra_pin, mandate_number, temporary_id, birth_certificate, cr_number) |
 | **Phone Number** | `Patient.phone_number` | Searchable, normalized |
 
 **Patient Lookup Service** ([checkin/views.py#L63-L112](../backend/hmis/apps/checkin/views.py)):
@@ -51,13 +52,19 @@ models.UniqueConstraint(
 ```
 
 ### Frontend Contract
-- **Type**: [web-app/lib/types/patient.ts](../web-app/lib/types/patient.ts) - `Patient`, `IdentificationType`
+- **Type**: [web-app/lib/types/patient.ts](../web-app/lib/types/patient.ts) - `Patient`, `PatientCreateData`, `IdentificationType`, `DuplicateCheckResult`
 - **API**: [web-app/lib/api/patients.ts](../web-app/lib/api/patients.ts) - `patientsApi`
-- **Schema**: [web-app/lib/schemas/patient.schema.ts](../web-app/lib/schemas/patient.schema.ts) - Zod validation
+- **Schema**: [web-app/lib/schemas/patient.schema.ts](../web-app/lib/schemas/patient.schema.ts) - Zod validation (✅ fully implemented)
+
+### QR Identity Support ✅ **Implemented**
+- Backend endpoint: `GET /api/patients/{id}/qr-code/`
+- QR payload format: `VITORA:MRN:{mrn}`
+- Patient detail page embeds a QR preview beside the MRN with expand, print, and download actions
+- Check-in page includes camera-based QR scanning that decodes the patient QR and auto-populates lookup
 
 ### Gaps
 - ❌ **Biometric integration** - Field exists in CheckIn but no implementation
-- ❌ **QR code patient ID** - qr_utils.py exists in core but not tied to patient lookup
+- ✅ **QR-based patient identification** - Implemented end-to-end for patient details and check-in lookup
 
 ---
 
@@ -164,6 +171,7 @@ class CheckInStateHistory(models.Model):
 - **Page**: [web-app/app/(dashboard)/patients/checkin/page.tsx](../web-app/app/(dashboard)/patients/checkin/page.tsx)
 - **API**: [web-app/lib/api/checkin.ts](../web-app/lib/api/checkin.ts)
 - **Types**: [web-app/lib/types/checkin.ts](../web-app/lib/types/checkin.ts)
+- **QR scanning**: [web-app/components/patients/qr-scanner-dialog.tsx](../web-app/components/patients/qr-scanner-dialog.tsx) integrated into the check-in search flow
 
 ### Gaps
 - ⚠️ **Demographic update at check-in** - Not explicitly prompted; patient record can be edited separately
@@ -292,7 +300,11 @@ models.UniqueConstraint(
 
 ### Frontend Contract
 - **Types**: [web-app/lib/types/encounter.ts#L181-L226](../web-app/lib/types/encounter.ts)
-- **API**: `encountersApi.transition(id, { to_status, reason })`
+- **API**: `encountersApi.transition(id, { to_status, reason })`, `encountersApi.claim()`, `encountersApi.release()`, `encountersApi.quickConsultation()`
+- **Schema**: [web-app/lib/schemas/encounter.schema.ts](../web-app/lib/schemas/encounter.schema.ts) - Zod validation (✅ fully implemented)
+
+### ⚠️ Known Issue: Frontend/Backend Status Mismatch
+The frontend `encounter.ts` lists `COMPLETED` as a status alongside `CLOSED`, but the backend `Encounter.STATUS_CHOICES` does NOT include `COMPLETED`. This mismatch should be resolved by removing `COMPLETED` from the frontend types or adding it to the backend.
 
 ---
 
@@ -501,11 +513,42 @@ class Drug(models.Model):
 - Stock batch tracking for dispensing
 - KEML/NHIF code integration
 
-### 8.3 Imaging Orders ⚠️ **Partially Implemented**
+### 8.3 Imaging Orders ✅ **Well Implemented**
 
 **Location**: [backend/hmis/apps/imaging/](../backend/hmis/apps/imaging/)
 
-The imaging module exists but is less mature than lab/pharmacy.
+The imaging module has matured significantly since the initial assessment:
+
+**ImagingOrder Status Workflow**:
+```python
+ORDER_STATUS = [
+    ("DRAFT", "Draft"),
+    ("ORDERED", "Ordered"),
+    ("SCHEDULED", "Scheduled"),
+    ("IN_PROGRESS", "In Progress"),
+    ("COMPLETED", "Completed"),
+    ("REPORTED", "Reported"),
+    ("CANCELLED", "Cancelled"),
+]
+
+# Valid transitions enforced
+STATUS_TRANSITIONS = {
+    "DRAFT": ["ORDERED", "CANCELLED"],
+    "ORDERED": ["SCHEDULED", "IN_PROGRESS", "CANCELLED"],
+    "SCHEDULED": ["IN_PROGRESS", "CANCELLED"],
+    "IN_PROGRESS": ["COMPLETED"],
+    "COMPLETED": ["REPORTED"],
+    "REPORTED": [],
+    "CANCELLED": [],
+}
+```
+
+**Key Features**:
+- `ImagingProcedure` catalog with RadLex and LOINC codes
+- DICOM/PACS integration fields (`accession_number`, `study_instance_uid`)
+- Priority levels (ROUTINE, URGENT, STAT)
+- Auto-invoice signal creates `InvoiceItem` when `ImagingOrderItem` is saved
+- **Frontend pages**: Orders, Procedures, Studies, Worklist at `/imaging/`
 
 ---
 
@@ -553,7 +596,10 @@ Evidence of billing as first-class citizen:
 4. Encounter can close before payment (billing is separate workflow)
 
 ### Gap
-- ⚠️ **Auto-invoice generation from orders** - Items must be manually added or service integration needs completion
+- ✅ **Auto-invoice generation from orders** - Implemented via Django signals:
+  - `pharmacy/signals.py`: `post_save` on `PrescriptionItem` creates `InvoiceItem`
+  - `imaging/signals.py`: `post_save` on `ImagingOrderItem` creates `InvoiceItem`
+  - Lab orders: handled via `LabOrder.add_test()` method
 
 ---
 
@@ -634,8 +680,100 @@ class Notification(models.Model):
 ```
 
 ### Gap
-- ❌ **Patient-facing reminders** - No SMS/email appointment reminders yet
-- ⚠️ **Care plan as spanning entity** - Currently per-encounter, not longitudinal
+- ⚠️ **Patient-facing reminders** - SMS gateway exists (`core/sms_gateway.py` with tests) but no Celery Beat scheduled task for automated appointment reminders yet. `reminder_sent` field not yet on `Appointment` model.
+- ⚠️ **Care plan as spanning entity** - Currently per-encounter, not longitudinal. No `CarePlan` model exists. AI-generated care plans are stored via TibaBot but lack a dedicated model.
+
+---
+
+## 11. Clinical Decision Support (CDS)
+
+### Current Implementation ✅ **Well Implemented**
+
+**Location**: [backend/hmis/apps/cds/models.py](../backend/hmis/apps/cds/models.py)
+
+**CDSRule Model**:
+- Generic rule engine using JSON Logic stored in `condition` field
+- Rule categories include: `DRUG_ALLERGY`, `DRUG_DRUG`, `CRITICAL_LAB`, `VITAL_SIGN`, `GUIDELINE`
+- Supports severity levels and auto-evaluation
+
+**Frontend**:
+- [enhanced-cds-panel.tsx](../web-app/components/encounters/enhanced-cds-panel.tsx) provides real-time rule evaluation
+- Displays vitals alerts, drug-allergy interactions during consultations
+
+---
+
+## 12. Referrals
+
+### Current Implementation ✅ **Well Implemented**
+
+**Location**: [backend/hmis/apps/referrals/models.py](../backend/hmis/apps/referrals/models.py)
+
+**ClinicalReferral Model**:
+- Unified referral system supporting: `ALLIED_HEALTH`, `SPECIALTY_CLINIC`, `ADMISSION`, `EXTERNAL`
+- Lifecycle: `DRAFT` → `PENDING` → `ACCEPTED` → `IN_PROGRESS` → `COMPLETED`
+- Frontend page at `/referrals/`
+
+---
+
+## 13. New Clinical Modules (Since Feb 2026)
+
+### 13.1 MCH (Maternal & Child Health) ✅ **Implemented**
+
+**Location**: [backend/hmis/apps/mch/](../backend/hmis/apps/mch/)
+
+Models: `MCHRegistration`, `ANCVisit`, `Delivery`, `PNCVisit`, `GrowthMeasurement`, `Vaccine`, `ImmunizationRecord`, `VitaminASupplement`, `AEFI`, `HEIFollowUp`, `HEIPCRTest`
+
+Frontend pages at `/mch/`: deliveries, growth, hei, immunizations
+
+### 13.2 Surveillance ✅ **Implemented**
+
+**Location**: [backend/hmis/apps/surveillance/](../backend/hmis/apps/surveillance/)
+
+Models: `NotifiableDisease` (MOH 502), `DiseaseCase`. Implements IDSR weekly reporting.
+
+Frontend pages at `/surveillance/`: cases, alerts, idsr, ihr
+
+### 13.3 Quality Reporting ✅ **Implemented**
+
+**Location**: [backend/hmis/apps/quality/](../backend/hmis/apps/quality/)
+
+Models: `QuarterlyReport`, `AnnualReport`, `QualityMeasure`, `QualityMeasureResult`. DHA Quality Reporting (Sprint 2.C).
+
+Frontend pages at `/quality/`: measures, reports
+
+### 13.4 Counselling ⚠️ **Backend Only**
+
+**Location**: [backend/hmis/apps/counselling/](../backend/hmis/apps/counselling/)
+
+Models: `CounsellingType`, `CounsellingReferral`, `CounsellingSession`. No frontend pages yet.
+
+### 13.5 Social Work ⚠️ **Backend Only**
+
+**Location**: [backend/hmis/apps/social_work/](../backend/hmis/apps/social_work/)
+
+Models: `SocialWorkReferral`, `SocialWorkCase`, `CaseNote`, `SocialWorkIntervention`. No frontend pages yet.
+
+### 13.6 Nutrition ⚠️ **Backend Only**
+
+**Location**: [backend/hmis/apps/nutrition/](../backend/hmis/apps/nutrition/)
+
+Models: `NutritionConsultation`, `DietPlan`. No frontend pages yet.
+
+### 13.7 Inpatient ✅ **Implemented**
+
+**Location**: [backend/hmis/apps/inpatient/](../backend/hmis/apps/inpatient/)
+
+Includes ward management, bed tracking, admissions, nursing kardex with care plans.
+
+---
+
+## 14. Real-Time / WebSocket Integration
+
+### Current Implementation ✅ **Implemented**
+
+- **Backend**: Django Channels with `ClinicQueueConsumer` for real-time queue updates
+- **Frontend**: [use-websocket.ts](../web-app/lib/hooks/use-websocket.ts) implements `useClinicQueueSocket`
+- Queue position changes pushed to connected clients in real-time
 
 ---
 
@@ -646,13 +784,17 @@ class Notification(models.Model):
 | 1. Patient Identification | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
 | 2. Visit Context | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
 | 3. Admin Check-In | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
-| 4. Clinical Snapshot | ✅ Complete | ✅ Complete | ⚠️ Persistence gap | 🟡 **Mostly Ready** |
-| 5. Encounter State Machine | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
+| 4. Clinical Snapshot | ✅ Complete | ✅ Complete | ⚠️ Not persisted with encounter | 🟡 **Mostly Ready** |
+| 5. Encounter State Machine | ✅ Complete | ⚠️ COMPLETED/CLOSED mismatch | ⚠️ Type mismatch | 🟡 **Mostly Ready** |
 | 6. Triage Flow | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
 | 7. Clinical Encounter | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
-| 8. Orders & Fulfillment | ✅ Complete | ⚠️ Partial | ⚠️ Partial | 🟡 **Mostly Ready** |
-| 9. Billing Integration | ✅ Complete | ⚠️ Partial | ⚠️ Partial | 🟡 **Mostly Ready** |
-| 10. Post-Visit Continuity | ⚠️ Basic | ⚠️ Basic | ❌ Reminders missing | 🟡 **Needs Work** |
+| 8. Orders & Fulfillment | ✅ Complete | ✅ Complete | ✅ Auto-invoice signals | 🟢 **Ready** |
+| 9. Billing Integration | ✅ Complete | ✅ Complete | ✅ Auto-invoice signals | 🟢 **Ready** |
+| 10. Post-Visit Continuity | ⚠️ SMS gateway exists, no scheduler | ⚠️ No scheduling pages | ⚠️ Reminders not automated | 🟡 **Needs Work** |
+| 11. CDS (Drug Interactions) | ✅ Complete | ✅ Complete | ✅ Real-time panel | 🟢 **Ready** |
+| 12. Referrals | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
+| 13. MCH | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
+| 14. Real-Time Queue | ✅ WebSocket | ✅ useClinicQueueSocket | ✅ Complete | 🟢 **Ready** |
 
 ---
 
@@ -706,67 +848,40 @@ This section provides detailed, actionable implementation guidance to close all 
 **Current State:**
 - ✅ `InvoiceItem` model links to `LabOrder`, `Dispensing`, `ImagingOrder`
 - ✅ Django signals auto-create items when orders are placed
+- ✅ `InvoiceItem.ItemType.IMAGING` added with `imaging_order` FK
 
 **Implementation (Done):**
 
-1. **Added IMAGING type to InvoiceItem.ItemType:**
-   - `InvoiceItem.ItemType.IMAGING = "imaging"` added
-   - `imaging_order` FK added to link InvoiceItem → ImagingOrder
+1. **Pharmacy signal** ([pharmacy/signals.py](../backend/hmis/apps/pharmacy/signals.py)):
+   - `@receiver(post_save, sender=PrescriptionItem)` auto-creates `InvoiceItem`
 
-2. **Pharmacy dispensing signal** ([pharmacy/signals.py](../backend/hmis/apps/pharmacy/signals.py)):
-   - `@receiver(post_save, sender=Dispensing)` handles billing
-   - For prescription-based dispensing: Links dispensing to existing invoice item (created by PrescriptionItem signal)
-   - For direct/OTC dispensing: Creates new invoice item with drug details and pricing
-
-3. **Imaging order signal** ([imaging/signals.py](../backend/hmis/apps/imaging/signals.py)):
-   - `@receiver(post_save, sender=ImagingOrderItem)` auto-creates billing
-   - Creates InvoiceItem with procedure name, cost, and SHA intervention code
+2. **Imaging signal** ([imaging/signals.py](../backend/hmis/apps/imaging/signals.py)):
+   - `@receiver(post_save, sender=ImagingOrderItem)` auto-creates `InvoiceItem`
    - Only adds to DRAFT invoices (finalized invoices not modified)
 
-4. **Lab orders:** Already handled via `LabOrder.add_test()` method (no signal needed)
+3. **Lab orders:** Handled via `LabOrder.add_test()` method
 
-**Files modified:**
-- `backend/hmis/apps/billing/models.py` - Added IMAGING type + imaging_order FK
-- `backend/hmis/apps/pharmacy/signals.py` - Added Dispensing billing signal
-- `backend/hmis/apps/imaging/signals.py` - Created imaging billing signal
-- `backend/hmis/apps/imaging/apps.py` - Registered signals
-- `backend/tests/billing/test_auto_invoice_signals.py` - 11 TDD tests
-
-**Migrations:**
-- `billing.0020_add_imaging_order_to_invoiceitem`
-- `billing.0021_change_imaging_order_on_delete`
-
-**Effort:** Completed | **Tests:** 11 passing
+**Effort:** Completed | **Tests:** Passing
 
 ---
 
-#### 3. Implement Patient SMS/Email Reminders
+#### 3. Implement Patient SMS/Email Reminders ⚠️ **Partially Complete**
 
-**Problem:** No patient-facing notifications for appointment reminders, follow-up dates, or medication refills. This leads to no-shows and treatment gaps.
+**Problem:** No automated patient-facing notifications for appointment reminders, follow-up dates, or medication refills. This leads to no-shows and treatment gaps.
 
 **Current State:**
 - ✅ `Notification` model exists for staff notifications
 - ✅ `Appointment` model has `scheduled_start`
-- ❌ No SMS/email gateway integration
-- ❌ No scheduled task for sending reminders
+- ✅ SMS gateway implemented (`core/sms_gateway.py` with tests)
+- ❌ No `reminder_sent` field on `Appointment` model
+- ❌ No Celery Beat scheduled task for automated reminders
 
-**Implementation:**
+**Remaining Implementation:**
 
-1. **Add SMS gateway (Africa's Talking recommended for Kenya):**
+1. **Add `reminder_sent` field to Appointment model:**
    ```python
-   # backend/hmis/apps/core/sms_gateway.py
-   import africastalking
-   
-   class SMSGateway:
-       def __init__(self):
-           africastalking.initialize(
-               username=settings.AT_USERNAME,
-               api_key=settings.AT_API_KEY
-           )
-           self.sms = africastalking.SMS
-       
-       def send_reminder(self, phone: str, message: str):
-           self.sms.send(message, [phone], sender_id=settings.SMS_SENDER_ID)
+   # backend/hmis/apps/scheduling/models.py
+   reminder_sent = models.BooleanField(default=False)
    ```
 
 2. **Create Celery task for reminders:**
@@ -926,51 +1041,44 @@ This section provides detailed, actionable implementation guidance to close all 
 
 ---
 
-#### 7. Drug-Drug Interaction Checking
+#### 7. Drug-Drug Interaction Checking ✅ **Completed**
 
-**Problem:** No automated clinical decision support for drug interactions. Contraindications are manual.
+**Problem:** No automated clinical decision support for drug interactions.
 
-**Implementation Options:**
+**Current State:**
+- ✅ `CDSRule` model supports `DRUG_ALLERGY` and `DRUG_DRUG` rule categories via JSON Logic
+- ✅ Frontend `enhanced-cds-panel.tsx` provides real-time rule evaluation during consultations
+- ✅ Rules evaluated against patient context (current medications, allergies)
 
-1. **Option A: Rule-based (simpler):**
-   - Create `DrugInteraction` table with known interactions
-   - Check on prescription creation
-   - Flag warnings in Rx form
-
-2. **Option B: External API (comprehensive):**
-   - Integrate with OpenFDA Drug Interactions API
-   - Or use commercial API (Lexicomp, First Databank)
-
-**Effort:** 8-16 hours depending on approach
+**Remaining consideration:** Population of the rule database with comprehensive drug interaction data (potentially from external sources like OpenFDA or First Databank).
 
 ---
 
-#### 8. Complete Imaging Module
+#### 8. Complete Imaging Module ✅ **Completed**
 
-**Problem:** Imaging module is less mature than lab/pharmacy. Missing status workflow validation, result entry, and frontend integration.
-
-**Implementation:**
-- Mirror lab module architecture
-- Add status transitions with validation
-- Create result entry interface
-- Complete frontend pages
-
-**Effort:** 16-24 hours
+**Current State:**
+- ✅ `ImagingProcedure` catalog with RadLex and LOINC codes
+- ✅ `ImagingOrder` with full status workflow (DRAFT → ORDERED → SCHEDULED → IN_PROGRESS → COMPLETED → REPORTED)
+- ✅ `STATUS_TRANSITIONS` dictionary enforces valid workflows
+- ✅ DICOM/PACS integration fields (`accession_number`, `study_instance_uid`)
+- ✅ Auto-invoice signal for billing integration
+- ✅ Frontend pages: Orders, Procedures, Studies, Worklist
 
 ---
 
 ### 🟢 LOW PRIORITY (Nice-to-Have)
 
-#### 9. QR Code Patient Check-In
+#### 9. QR Code Patient Check-In ✅ **Completed**
 
-**Current State:** `core/qr_utils.py` exists but not wired to patient flow.
+**Current State:**
+- ✅ Patient QR endpoint returns a unique QR per patient derived from MRN
+- ✅ Patient detail page embeds the QR inline beside the MRN with expand, print, and download actions
+- ✅ Check-in page includes QR scanner dialog for camera-based lookup
+- ✅ Scanner decodes `VITORA:MRN:{mrn}` payloads and auto-populates the patient search field
 
-**Implementation:**
-- Generate QR code on patient card (contains MRN)
-- Add QR scanner button to check-in page
-- Decode and auto-populate patient lookup
-
-**Effort:** 4-6 hours
+**Notes:**
+- QR codes are generated on demand, so existing patients do not require a backfill job as long as they already have an MRN.
+- Remaining related work is limited to optional batch-print workflows for registration desks.
 
 ---
 
@@ -985,14 +1093,12 @@ This section provides detailed, actionable implementation guidance to close all 
 
 ---
 
-#### 11. Real-Time Queue Display (WebSocket)
+#### 11. Real-Time Queue Display (WebSocket) ✅ **Completed**
 
-**Implementation:**
-- Use Django Channels for WebSocket
-- Create waiting room display page
-- Push queue updates when patients called
-
-**Effort:** 12-16 hours
+**Current State:**
+- ✅ Django Channels `ClinicQueueConsumer` for WebSocket
+- ✅ Frontend `useClinicQueueSocket` hook for real-time queue updates
+- ✅ Queue position changes pushed to connected clients
 
 ---
 
@@ -1030,22 +1136,24 @@ The current navigation structure in [navigation.ts](../web-app/lib/config/naviga
 
 | Issue | Location | Impact | Recommendation |
 |-------|----------|--------|----------------|
-| **Check-in buried** | Under Patients menu | Staff must navigate to find check-in | ✅ **Already fixed** - Check-in is now top-level |
+| **Check-in placement** | Top-level nav | ✅ **Fixed** - Check-in is now top-level | N/A |
 | **No patient context bar** | All pages | When in patient context, no persistent patient info | Add persistent patient header when viewing patient-related pages |
 | **Encounters ≠ Clinics confusion** | Separate nav items | Staff unsure which to use | Consider merging or adding visual connection |
-| **Triage → Encounter transition** | Manual navigation | After triage, staff must manually find encounter | Auto-redirect to encounter after triage completion |
+| **Triage → Encounter transition** | Triage route step | After triage, nurse is routed to `triage/assess/[id]/[encounter]/route` for final routing decisions | Consider auto-redirect to clinic queue after routing step |
 | **No "active patient" indicator** | Sidebar | No way to quickly return to current patient | Add "Current Patient" quick-access in sidebar |
+| **Missing scheduling pages** | Only backend exists | No frontend pages for appointment management | Build scheduling UI (`/scheduling/`) |
+| **Missing counselling/social-work/nutrition pages** | Only backend exists | No frontend for these clinical modules | Build frontend pages as demand grows |
 
 ### Recommended UX Improvements
 
-#### 1. Patient Context Header (High Value)
+#### 1. Patient Context Header (High Value) ⚠ Partial
 
 **Problem:** When working on a patient (encounter, labs, pharmacy), there's no persistent context showing which patient is active.
 
 **Solution:** Add a sticky patient context bar below the header when in patient scope:
 
 ```tsx
-// web-app/components/layout/patient-context-bar.tsx
+// web-app/components/layout/patient-shell-header.tsx
 // Displays: Photo | Name | MRN | Age/Gender | Allergies (red if any) | Quick actions
 // Visible on: /patients/[id]/*, /encounters/[id]/*, and linked pages
 ```
@@ -1088,16 +1196,15 @@ Standard Mode          │  Clinical Mode
 
 ---
 
-#### 3. Auto-Redirect After Triage
+#### 3. Auto-Redirect After Triage ⚠️ **Partially Implemented**
 
-**Problem:** After completing triage, nurse must manually navigate to encounters or clinic queue.
+**Current State:** Triage completion redirects to `triage/assess/[id]/[encounter]/route` for final routing decisions (destination selection).
 
-**Solution:**
+**Remaining:** After the routing step, auto-redirect to the destination clinic queue instead of leaving the nurse on the route page.
+
 ```tsx
-// After triage submission success:
+// After routing step submission:
 router.push(`/clinics/${destinationClinic}/queue`);
-// Or if encounter created:
-router.push(`/encounters/${encounterId}`);
 ```
 
 **Effort:** 1-2 hours
@@ -1148,12 +1255,14 @@ router.push(`/encounters/${encounterId}`);
 
 | Aspect | Verdict | Reasoning |
 |--------|---------|-----------|
-| **Overall structure** | ✅ Keep as-is | Logical grouping, no major issues |
-| **Module organization** | ✅ Keep as-is | Clinics/Diagnostics/Finance separation is correct |
+| **Overall structure** | ✅ Keep as-is | Logical grouping, 11+ top-level modules, no major issues |
+| **Module organization** | ✅ Keep as-is | Clinics/Diagnostics/Finance/Surveillance separation is correct |
 | **Add patient context bar** | 🔴 **YES - High Priority** | Reduces errors, improves continuity |
 | **Add recent/current patient** | 🟡 **YES - Medium Priority** | Quick navigation to active work |
 | **Workflow mode toggle** | 🟢 **Consider later** | Major change, needs user research |
-| **Auto-redirect after triage** | 🔴 **YES - Quick win** | Reduces clicks, matches workflow |
+| **Auto-redirect after triage routing** | 🟡 **YES - Quick win** | Partially done, finish last step |
+| **Scheduling pages** | 🔴 **YES - High Priority** | Backend exists, no UI yet |
+| **Counselling/Social Work/Nutrition pages** | 🟡 **Medium Priority** | Backend exists, build as demand grows |
 
 ### Summary: No Major Refactor Needed
 
@@ -1165,31 +1274,38 @@ The navigation is well-structured. Focus on **additions** (patient context bar, 
 
 | Week | Focus | Deliverables |
 |------|-------|--------------|
-| **Week 1** | Clinical Safety | 1. Clinical snapshot in encounter, 2. Auto-redirect after triage |
-| **Week 2** | Revenue Integrity | 3. Auto-billing from orders, 4. Insurance eligibility check |
-| **Week 3** | Patient Engagement | 5. SMS reminder integration |
-| **Week 4** | UX Polish | 6. Patient context bar, 7. Current patient in sidebar |
-| **Week 5** | Chronic Care | 8. Longitudinal care plan model |
-| **Week 6** | Completeness | 9. Imaging module completion, 10. Persist snapshot |
+| **Week 1** | Type Safety | 1. Fix COMPLETED/CLOSED frontend/backend mismatch |
+| **Week 2** | UX Polish | 2. Patient context bar, 3. Current patient in sidebar |
+| **Week 3** | Scheduling UI | 4. Build scheduling frontend pages |
+| **Week 4** | Automated Reminders | 5. Celery Beat task + `reminder_sent` field on Appointment |
+| **Week 5** | Chronic Care | 6. Longitudinal care plan model |
+| **Week 6** | Clinical Modules | 7. Counselling/Social Work/Nutrition frontend pages |
 
 ---
 
 ## Appendix: Gap Closure Checklist
 
-| # | Gap | Status | PR Link |
-|---|-----|--------|---------|
-| 1 | Clinical snapshot in encounter view | ✅ Done | |
-| 2 | Auto-invoice from orders | ⬜ TODO | |
-| 3 | SMS/email reminders | ⬜ TODO | |
-| 4 | Persist snapshot with encounter | ⬜ TODO | |
-| 5 | Longitudinal care plan | ⬜ TODO | |
+| # | Gap | Status | Notes |
+|---|-----|--------|-------|
+| 1 | Clinical snapshot in encounter view | ✅ Done | Banner + endpoint implemented |
+| 2 | Auto-invoice from orders | ✅ Done | Signals for pharmacy, imaging, lab |
+| 3 | SMS/email reminders | ⚠️ Partial | SMS gateway exists; needs Celery task + `reminder_sent` field |
+| 4 | Persist snapshot with encounter | ⬜ TODO | `clinical_snapshot_at_start` field not yet on Encounter model |
+| 5 | Longitudinal care plan | ⬜ TODO | No `CarePlan` model exists |
 | 6 | Insurance eligibility at check-in | ⬜ TODO | |
-| 7 | Drug interaction checking | ⬜ TODO | |
-| 8 | Imaging module completion | ⬜ TODO | |
-| 9 | QR code check-in | ⬜ TODO | |
+| 7 | Drug interaction checking | ✅ Done | CDS rules + enhanced-cds-panel.tsx |
+| 8 | Imaging module completion | ✅ Done | Full workflow + frontend pages |
+| 9 | QR code check-in | ✅ Done | Unique patient QR, inline display, scanner dialog, and auto-lookup implemented |
 | 10 | Biometric integration | ⬜ TODO | |
-| 11 | Real-time queue display | ⬜ TODO | |
+| 11 | Real-time queue display | ✅ Done | WebSocket + useClinicQueueSocket |
 | 12 | ARCHIVED encounter state | ⬜ TODO | |
 | 13 | Patient context bar (UX) | ⬜ TODO | |
 | 14 | Current patient in sidebar (UX) | ⬜ TODO | |
-| 15 | Auto-redirect after triage (UX) | ⬜ TODO | |
+| 15 | Auto-redirect after triage (UX) | ⚠️ Partial | Route step exists, needs final redirect |
+| 16 | Fix COMPLETED/CLOSED type mismatch | ⬜ TODO | Frontend has COMPLETED; backend doesn't |
+| 17 | Scheduling frontend pages | ⬜ TODO | Backend exists, no UI |
+| 18 | Counselling/Social Work/Nutrition pages | ⬜ TODO | Backend exists, no UI |
+| 19 | Referrals module | ✅ Done | Backend + frontend page |
+| 20 | MCH module | ✅ Done | Backend + frontend pages |
+| 21 | Surveillance module | ✅ Done | Backend + frontend pages |
+| 22 | Quality reporting | ✅ Done | Backend + frontend pages |

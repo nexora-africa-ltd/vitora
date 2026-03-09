@@ -548,6 +548,29 @@ class PatientViewSet(ModelHistoryMixin, IdempotentCreateMixin, viewsets.ModelVie
 
         return Response(timeline_data)
 
+    @action(detail=True, methods=["get"], url_path="qr-code")
+    def qr_code(self, request, pk=None):
+        """
+        Generate a QR code containing the patient's MRN.
+
+        Returns a data URI (base64 PNG) that encodes the patient MRN
+        for scanning at check-in.
+        """
+        from hmis.apps.core.qr_utils import generate_qr_data_uri
+
+        patient = self.get_object()
+        qr_payload = f"VITORA:MRN:{patient.mrn}"
+        qr_data_uri = generate_qr_data_uri(qr_payload, box_size=6, border=2)
+
+        return Response(
+            {
+                "qr_data_uri": qr_data_uri,
+                "qr_payload": qr_payload,
+                "mrn": patient.mrn,
+                "patient_name": f"{patient.first_name} {patient.last_name}",
+            }
+        )
+
     @action(detail=True, methods=["get"], url_path="lab-results")
     def lab_results(self, request, pk=None):
         """
