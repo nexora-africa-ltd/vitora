@@ -40,6 +40,7 @@ import { useDebounce } from '@/lib/hooks/use-debounce';
 import { VISIT_REASON_OPTIONS, type VisitReason, type PatientLookupResponse, type PatientSearchResult, type CheckInResponse } from '@/lib/types/checkin';
 import { cn } from '@/lib/utils';
 import { CheckinSuccessModal } from '@/components/patients/checkin-success-modal';
+import { QRScannerDialog } from '@/components/patients/qr-scanner-dialog';
 import { RouteToClinicDialog, type DirectRouteToClinicPayload } from '@/components/triage/route-to-clinic-dialog';
 
 // =============================================================================
@@ -620,15 +621,24 @@ export default function PatientCheckinPage() {
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
         {/* Main Column - Search and Patient Card */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-6 order-1">
-          {/* Search Input */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="MRN, National ID, or Phone..."
-              className="pl-10 h-11 sm:h-12 text-base sm:text-lg"
-              autoFocus
+          {/* Search Input + QR Scanner */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="MRN, National ID, or Phone..."
+                className="pl-10 h-11 sm:h-12 text-base sm:text-lg"
+                autoFocus
+              />
+            </div>
+            <QRScannerDialog
+              onScan={(mrn) => {
+                setSearchQuery(mrn);
+                setSelectedPatient(null);
+              }}
+              label="Scan QR"
             />
           </div>
 

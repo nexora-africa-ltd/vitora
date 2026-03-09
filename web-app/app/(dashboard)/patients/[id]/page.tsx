@@ -44,6 +44,7 @@ import { calculateAge, formatDate, formatPhoneNumber } from '@/lib/utils/format'
 import { PatientEncounters } from '@/components/patients/patient-encounters';
 import { EmergencyContactsList } from '@/components/patients/emergency-contacts-list';
 import { QuickCheckinDialog } from '@/components/patients/quick-checkin-dialog';
+import { PatientQRCode } from '@/components/patients/patient-qr-code';
 import { PatientImagingSection } from '@/components/patients/patient-imaging-section';
 import { PatientAllergiesTab } from '@/components/patients/allergies';
 import { PatientAlliedHealthTab } from '@/components/patients/allied-health';
@@ -128,26 +129,36 @@ export default function PatientDetailPage() {
         />
 
         {/* Patient Summary Bar */}
-        <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
-          <div className="flex min-w-0 flex-col gap-1">
-            <p className="truncate font-mono text-sm font-medium">
-              MRN: {patient.mrn}
-              {patient.sha_number && (
-                <span className="text-muted-foreground"> • SHA: {patient.sha_number}</span>
-              )}
-            </p>
-            <p className="text-xs text-muted-foreground sm:text-sm">
-              {genderLabels[patient.gender] || patient.gender} •{' '}
-              {calculateAge(patient.date_of_birth)} years
-              {patient.phone_number && ` • ${formatPhoneNumber(patient.phone_number)}`}
-            </p>
+        <div className="flex flex-col gap-3 rounded-lg bg-muted/50 p-3 sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <PatientQRCode
+                patientId={patient.id}
+                patientName={`${patient.first_name} ${patient.last_name}`}
+                mrn={patient.mrn}
+                variant="inline"
+              />
+              <div className="flex min-w-0 flex-col gap-1">
+                <p className="truncate font-mono text-sm font-medium">
+                  MRN: {patient.mrn}
+                  {patient.sha_number && (
+                    <span className="text-muted-foreground"> • SHA: {patient.sha_number}</span>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground sm:text-sm">
+                  {genderLabels[patient.gender] || patient.gender} •{' '}
+                  {calculateAge(patient.date_of_birth)} years
+                  {patient.phone_number && ` • ${formatPhoneNumber(patient.phone_number)}`}
+                </p>
+              </div>
+            </div>
+            <Badge
+              variant={patient.consent_given ? 'default' : 'secondary'}
+              className="w-fit shrink-0 self-start sm:self-auto"
+            >
+              {patient.consent_given ? 'Consented' : 'Consent Pending'}
+            </Badge>
           </div>
-          <Badge
-            variant={patient.consent_given ? 'default' : 'secondary'}
-            className="w-fit shrink-0 self-start sm:self-auto"
-          >
-            {patient.consent_given ? 'Consented' : 'Consent Pending'}
-          </Badge>
         </div>
 
         {/* Action Buttons - Stack on mobile */}
@@ -314,6 +325,7 @@ export default function PatientDetailPage() {
               />
             </CardContent>
           </Card>
+
         </div>
 
         {/* Consent Status */}

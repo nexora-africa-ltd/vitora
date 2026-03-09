@@ -276,6 +276,16 @@ export const PatientEncounterArrayResponseSchema = z.object({
   results: z.array(PatientEncounterSchema),
 });
 
+/**
+ * Patient QR code response
+ */
+export const PatientQRCodeSchema = z.object({
+  qr_data_uri: z.string(),
+  qr_payload: z.string(),
+  mrn: z.string(),
+  patient_name: z.string(),
+});
+
 // =============================================================================
 // TYPE EXPORTS (inferred from schemas)
 // =============================================================================
@@ -286,3 +296,4 @@ export type EmergencyContactSchemaType = z.infer<typeof EmergencyContactSchema>;
 export type PatientCreateDataSchemaType = z.infer<typeof PatientCreateDataSchema>;
 export type PatientUpdateDataSchemaType = z.infer<typeof PatientUpdateDataSchema>;
 export type PatientEncounterSchemaType = z.infer<typeof PatientEncounterSchema>;
+export type PatientQRCodeSchemaType = z.infer<typeof PatientQRCodeSchema>;
