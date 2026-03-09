@@ -20,13 +20,14 @@ from hmis.apps.core.views import (
     CodeSystemViewSet,
     CountyViewSet,
     DepartmentViewSet,
-    me_permissions,
+    FacilityViewSet,
     NotificationViewSet,
     PermissionViewSet,
     RoleViewSet,
     StaffProfileViewSet,
     SubCountyViewSet,
     WardViewSet,
+    me_permissions,
 )
 from hmis.apps.encounters.views import (
     ApplyTemplateView,
@@ -94,6 +95,9 @@ router.register(r"permissions", PermissionViewSet, basename="permission")
 
 # Notification endpoints
 router.register(r"notifications", NotificationViewSet, basename="notification")
+
+# Facility endpoint (Capability-Based Experience)
+router.register(r"facilities", FacilityViewSet, basename="facility")
 
 # Location routes under /api/locations/
 location_router = routers.DefaultRouter()

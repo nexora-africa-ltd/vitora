@@ -1250,6 +1250,22 @@ class StaffProfile(models.Model):
         help_text="Additional departments",
     )
 
+    # Facility assignment (Capability-Based Experience)
+    primary_facility = models.ForeignKey(
+        "Facility",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="staff",
+        help_text="Primary work facility",
+    )
+    secondary_facilities = models.ManyToManyField(
+        "Facility",
+        blank=True,
+        related_name="secondary_staff",
+        help_text="Additional facilities (for multi-site workers)",
+    )
+
     # Professional details (Kenya-specific)
     hwr_id = models.CharField(
         max_length=50,
@@ -1377,6 +1393,20 @@ class StaffProfile(models.Model):
         departments = [self.primary_department]
         departments.extend(list(self.secondary_departments.all()))
         return departments
+
+    def get_all_facilities(self) -> list:
+        """
+        Get primary + secondary facilities.
+
+        Returns:
+            list: All assigned facilities (primary first, then secondaries).
+                  Empty list if no primary facility is set.
+        """
+        facilities = []
+        if self.primary_facility:
+            facilities.append(self.primary_facility)
+        facilities.extend(list(self.secondary_facilities.all()))
+        return facilities
 
     def has_permission(self, action: str, resource: str) -> bool:
         """
@@ -1993,3 +2023,348 @@ class FeatureFlag(models.Model):
             return cls.objects.values_list("is_enabled", flat=True).get(name=name)
         except cls.DoesNotExist:
             return False
+
+
+# ============================================================================
+# Facility Model (RBAC Capability Plan – Phase 1)
+# ============================================================================
+
+
+class Facility(TimeStampedModel):
+    """
+    Healthcare facility with enabled service modules.
+
+    Represents a physical healthcare facility registered on the Kenya Master
+    Facility List (MFL).  The model captures:
+
+    * **Identity** – MFL code, official name, KEPH level, and ownership type.
+    * **Location** – Links to the Kenya three-tier administrative hierarchy
+      (County → Sub-County → Ward).
+    * **SHA integration** – Whether the facility is contracted by the Social
+      Health Authority for claims processing.
+    * **Capability modules** – Explicit boolean flags indicating which clinical
+      service modules are enabled at this facility.  These flags drive the
+      capability-based sidebar filtering in the web frontend so that users
+      only see navigation items relevant to their facility's services.
+
+    The ``modules`` property returns all capability flags as a dictionary,
+    suitable for serialization in API responses.  The ``default_modules_for_level``
+    class method provides sensible defaults when creating a new facility based
+    on its KEPH level.
+    """
+
+    # ------------------------------------------------------------------
+    # Choice Constants
+    # ------------------------------------------------------------------
+
+    class FacilityLevel(models.TextChoices):
+        """
+        Kenya Essential Package for Health (KEPH) facility levels.
+
+        Level 1 – Community health units (no physical infrastructure).
+        Level 2 – Dispensaries and clinics.
+        Level 3 – Health centres and maternity/nursing homes.
+        Level 4 – Sub-county and medium-sized hospitals.
+        Level 5 – County referral hospitals.
+        Level 6 – National referral hospitals.
+        """
+
+        LEVEL_1 = "1", "Level 1 – Community Unit"
+        LEVEL_2 = "2", "Level 2 – Dispensary"
+        LEVEL_3 = "3", "Level 3 – Health Centre"
+        LEVEL_4 = "4", "Level 4 – Sub-County Hospital"
+        LEVEL_5 = "5", "Level 5 – County Referral Hospital"
+        LEVEL_6 = "6", "Level 6 – National Referral Hospital"
+
+    class OwnershipType(models.TextChoices):
+        """
+        Facility ownership categories as defined by the Ministry of Health.
+
+        GOK     – Government of Kenya (public) facilities.
+        FBO     – Faith-Based Organization facilities.
+        NGO     – Non-Governmental Organization facilities.
+        PRIVATE – Private-practice / commercial facilities.
+        """
+
+        GOK = "GOK", "Government of Kenya"
+        FBO = "FBO", "Faith-Based Organization"
+        NGO = "NGO", "Non-Governmental Organization"
+        PRIVATE = "PRIVATE", "Private Practice"
+
+    # ------------------------------------------------------------------
+    # Identity
+    # ------------------------------------------------------------------
+
+    mfl_code = models.CharField(
+        max_length=20,
+        unique=True,
+        help_text="Kenya Master Facility List (MFL) code – the unique identifier "
+        "assigned to every registered health facility by the MoH.",
+    )
+    name = models.CharField(
+        max_length=200,
+        help_text="Official facility name as registered on the MFL.",
+    )
+    level = models.CharField(
+        max_length=1,
+        choices=FacilityLevel.choices,
+        help_text="KEPH level (1–6) determining the scope of services offered.",
+    )
+    ownership = models.CharField(
+        max_length=20,
+        choices=OwnershipType.choices,
+        help_text="Ownership category (GOK, FBO, NGO, or Private).",
+    )
+
+    # ------------------------------------------------------------------
+    # Location (Kenya administrative hierarchy)
+    # ------------------------------------------------------------------
+
+    county = models.ForeignKey(
+        "County",
+        on_delete=models.PROTECT,
+        related_name="facilities",
+        help_text="County where the facility is located.",
+    )
+    sub_county = models.ForeignKey(
+        "SubCounty",
+        on_delete=models.PROTECT,
+        related_name="facilities",
+        help_text="Sub-county where the facility is located.",
+    )
+    ward = models.ForeignKey(
+        "Ward",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="facilities",
+        help_text="Ward where the facility is located (optional).",
+    )
+
+    # ------------------------------------------------------------------
+    # SHA (Social Health Authority) Registration
+    # ------------------------------------------------------------------
+
+    sha_contracted = models.BooleanField(
+        default=False,
+        help_text="Whether the facility is contracted by the Social Health "
+        "Authority (SHA) for claims processing.",
+    )
+    sha_contract_expiry = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date when the current SHA contract expires.",
+    )
+    sha_facility_code = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="SHA-specific facility code used in claims submission.",
+    )
+
+    # ------------------------------------------------------------------
+    # Enabled Modules (Capability-Based Experience)
+    # ------------------------------------------------------------------
+    # Explicit booleans are used instead of a JSONField so that Django
+    # can enforce type safety and queries remain straightforward
+    # (e.g. ``Facility.objects.filter(has_laboratory=True)``).
+
+    has_outpatient = models.BooleanField(
+        default=True,
+        help_text="Outpatient Department (OPD) services.",
+    )
+    has_inpatient = models.BooleanField(
+        default=False,
+        help_text="Inpatient (ward admission) services.",
+    )
+    has_emergency = models.BooleanField(
+        default=False,
+        help_text="Emergency / Casualty department.",
+    )
+    has_pharmacy = models.BooleanField(
+        default=True,
+        help_text="Pharmacy / dispensing services.",
+    )
+    has_laboratory = models.BooleanField(
+        default=False,
+        help_text="Laboratory / diagnostics services.",
+    )
+    has_imaging = models.BooleanField(
+        default=False,
+        help_text="Radiology / imaging services.",
+    )
+    has_theatre = models.BooleanField(
+        default=False,
+        help_text="Surgical theatre / operating room.",
+    )
+    has_dialysis = models.BooleanField(
+        default=False,
+        help_text="Renal dialysis unit.",
+    )
+    has_icu = models.BooleanField(
+        default=False,
+        help_text="Intensive Care Unit (ICU).",
+    )
+    has_maternity = models.BooleanField(
+        default=False,
+        help_text="Maternity / obstetrics services.",
+    )
+    has_mortuary = models.BooleanField(
+        default=False,
+        help_text="Mortuary / funeral services.",
+    )
+    has_blood_bank = models.BooleanField(
+        default=False,
+        help_text="Blood bank / transfusion services.",
+    )
+
+    # ------------------------------------------------------------------
+    # Status
+    # ------------------------------------------------------------------
+
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether the facility is currently operational.",
+    )
+
+    # ------------------------------------------------------------------
+    # Meta & Magic Methods
+    # ------------------------------------------------------------------
+
+    class Meta:
+        """Meta options for Facility."""
+
+        verbose_name = "Facility"
+        verbose_name_plural = "Facilities"
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        """Return the facility name and MFL code for human-readable display."""
+        return f"{self.name} ({self.mfl_code})"
+
+    # ------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------
+
+    @property
+    def modules(self) -> dict[str, bool]:
+        """
+        Return enabled service modules as a flat dictionary.
+
+        This is used by the ``FacilitySerializer`` to expose the capability
+        map in API responses, which in turn powers the sidebar filtering on
+        the frontend.
+
+        Returns:
+            Dictionary mapping module name → enabled boolean.
+        """
+        return {
+            "outpatient": self.has_outpatient,
+            "inpatient": self.has_inpatient,
+            "emergency": self.has_emergency,
+            "pharmacy": self.has_pharmacy,
+            "laboratory": self.has_laboratory,
+            "imaging": self.has_imaging,
+            "theatre": self.has_theatre,
+            "dialysis": self.has_dialysis,
+            "icu": self.has_icu,
+            "maternity": self.has_maternity,
+            "mortuary": self.has_mortuary,
+            "blood_bank": self.has_blood_bank,
+        }
+
+    @property
+    def enabled_module_names(self) -> list[str]:
+        """
+        Return a list of *enabled* module names (convenience helper).
+
+        Example::
+
+            >>> facility.enabled_module_names
+            ['outpatient', 'pharmacy', 'laboratory']
+        """
+        return [name for name, enabled in self.modules.items() if enabled]
+
+    # ------------------------------------------------------------------
+    # Class Methods
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def default_modules_for_level(cls, level: str) -> dict[str, bool]:
+        """
+        Return sensible default module flags for a given KEPH level.
+
+        These defaults mirror the Kenya MoH guidelines on which services
+        are typically available at each facility tier.  They are used when
+        creating a new facility to pre-populate the capability flags.
+
+        Args:
+            level: KEPH level string ("1" through "6").
+
+        Returns:
+            Dictionary mapping module name → default boolean.
+        """
+        all_modules = {
+            "outpatient": False,
+            "inpatient": False,
+            "emergency": False,
+            "pharmacy": False,
+            "laboratory": False,
+            "imaging": False,
+            "theatre": False,
+            "dialysis": False,
+            "icu": False,
+            "maternity": False,
+            "mortuary": False,
+            "blood_bank": False,
+        }
+
+        level_overrides: dict[str, dict[str, bool]] = {
+            "1": {"outpatient": True, "pharmacy": True},
+            "2": {"outpatient": True, "pharmacy": True},
+            "3": {
+                "outpatient": True,
+                "pharmacy": True,
+                "laboratory": True,
+                "maternity": True,
+            },
+            "4": {
+                "outpatient": True,
+                "inpatient": True,
+                "emergency": True,
+                "pharmacy": True,
+                "laboratory": True,
+                "imaging": True,
+                "theatre": True,
+                "maternity": True,
+            },
+            "5": {
+                "outpatient": True,
+                "inpatient": True,
+                "emergency": True,
+                "pharmacy": True,
+                "laboratory": True,
+                "imaging": True,
+                "theatre": True,
+                "icu": True,
+                "maternity": True,
+                "dialysis": True,
+            },
+            "6": {
+                "outpatient": True,
+                "inpatient": True,
+                "emergency": True,
+                "pharmacy": True,
+                "laboratory": True,
+                "imaging": True,
+                "theatre": True,
+                "icu": True,
+                "maternity": True,
+                "dialysis": True,
+                "blood_bank": True,
+                "mortuary": True,
+            },
+        }
+
+        overrides = level_overrides.get(level, {"outpatient": True, "pharmacy": True})
+        return {**all_modules, **overrides}

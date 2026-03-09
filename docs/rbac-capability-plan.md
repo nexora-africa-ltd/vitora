@@ -661,6 +661,18 @@ class Facility(TimeStampedModel):
         return defaults.get(level, {'outpatient': True, 'pharmacy': True})
 ```
 
+> **✅ Phase 1 Implemented** (March 9, 2026)
+> - Added `Facility` model to `backend/hmis/apps/core/models.py` with `FacilityLevel` and `OwnershipType` TextChoices enums, MFL code (unique), location FKs (County/SubCounty/Ward with PROTECT), SHA registration fields, 12 explicit boolean module flags, `is_active` status.
+> - `modules` property returns all 12 flags as a dictionary; `enabled_module_names` returns only enabled module names.
+> - `default_modules_for_level()` class method provides KEPH-level defaults (Level 1–2: outpatient+pharmacy; Level 6: all modules).
+> - Three serializers: `FacilityListSerializer` (compact), `FacilityDetailSerializer` (full with modules map), `FacilityCreateSerializer` (location hierarchy validation, auto-applies KEPH defaults when no module flags provided).
+> - `FacilityViewSet` with action-based serializer selection, admin-only write permissions, query-param filtering (level, ownership, county, `has_*` module flags), search by name/MFL code, audit logging on create/update/delete.
+> - Custom `/api/facilities/default_modules/?level=N` action for frontend module pre-population.
+> - `FacilityAdmin` with colour-coded KEPH level badges, module flag list filters, grouped fieldsets.
+> - Migration `0023_facility_model` applied.
+> - **36 tests** (9 model, 6 serializer, 21 API) — all passing.
+> - Registered on main router at `/api/facilities/`.
+
 ### Phase 2: Link Staff to Facility
 
 **Update**: `backend/hmis/apps/core/models.py` - StaffProfile
