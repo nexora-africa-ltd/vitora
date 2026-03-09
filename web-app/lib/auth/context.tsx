@@ -63,6 +63,7 @@ export interface AuthContextValue extends AuthState {
   logout: () => void;
   refreshToken: () => Promise<void>;
   verifyMFA: (mfaToken: string, options: { token?: string; backupCode?: string }) => Promise<void>;
+  updateUserFacility: (facility: UserFacility | null) => void;
 }
 
 // Login result type
@@ -98,22 +99,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: true,
   });
 
+  const syncUserFromBackend = useCallback(async (fallbackUser: User): Promise<User> => {
+    try {
+      const { apiClient } = await import('@/lib/api/client');
+      const response = await apiClient.get('/api/staff/me/');
+      const userInfo = response.data?.user_info;
+
+      if (!userInfo || typeof userInfo !== 'object') {
+        return fallbackUser;
+      }
+
+      const syncedUser: User = {
+        id: typeof userInfo.id === 'number' ? userInfo.id : fallbackUser.id,
+        username: typeof userInfo.username === 'string' ? userInfo.username : fallbackUser.username,
+        email: typeof userInfo.email === 'string' ? userInfo.email : fallbackUser.email,
+        first_name: typeof userInfo.first_name === 'string' ? userInfo.first_name : fallbackUser.first_name,
+        last_name: typeof userInfo.last_name === 'string' ? userInfo.last_name : fallbackUser.last_name,
+        is_staff: typeof userInfo.is_staff === 'boolean' ? userInfo.is_staff : fallbackUser.is_staff,
+        is_superuser: typeof userInfo.is_superuser === 'boolean' ? userInfo.is_superuser : fallbackUser.is_superuser,
+        permissions: Array.isArray(userInfo.permissions)
+          ? userInfo.permissions.filter((permission): permission is string => typeof permission === 'string')
+          : fallbackUser.permissions,
+        role: typeof userInfo.role === 'string' ? userInfo.role : fallbackUser.role,
+        role_category: typeof userInfo.role_category === 'string' ? userInfo.role_category : fallbackUser.role_category,
+        facility: userInfo.facility && typeof userInfo.facility === 'object'
+          ? userInfo.facility as UserFacility
+          : null,
+      };
+
+      localStorage.setItem(USER_KEY, JSON.stringify(syncedUser));
+      return syncedUser;
+    } catch {
+      return fallbackUser;
+    }
+  }, []);
+
   // Initialize from localStorage on mount
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       try {
         const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
         const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
         const userStr = localStorage.getItem(USER_KEY);
 
         if (accessToken && refreshToken && userStr) {
-          const user = JSON.parse(userStr) as User;
+          const storedUser = JSON.parse(userStr) as User;
           setState({
-            user,
+            user: storedUser,
             tokens: { access: accessToken, refresh: refreshToken },
             isAuthenticated: true,
             isLoading: false,
           });
+
+          const syncedUser = await syncUserFromBackend(storedUser);
+          if (JSON.stringify(syncedUser) !== JSON.stringify(storedUser)) {
+            setState((prev) => ({
+              ...prev,
+              user: syncedUser,
+            }));
+          }
         } else {
           setState((prev) => ({ ...prev, isLoading: false }));
         }
@@ -126,8 +170,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    initializeAuth();
-  }, []);
+    void initializeAuth();
+  }, [syncUserFromBackend]);
 
   // Login function
   const login = useCallback(async (username: string, password: string): Promise<LoginResult> => {
@@ -338,6 +382,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }));
   }, [logout]);
 
+  const updateUserFacility = useCallback((facility: UserFacility | null) => {
+    setState((prev) => {
+      if (!prev.user) {
+        return prev;
+      }
+
+      const nextUser = { ...prev.user, facility };
+      localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
+
+      return {
+        ...prev,
+        user: nextUser,
+      };
+    });
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -346,6 +406,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         refreshToken,
         verifyMFA,
+        updateUserFacility,
       }}
     >
       {children}
