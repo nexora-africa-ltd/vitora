@@ -431,6 +431,11 @@ class StaffProfileCreateSerializer(serializers.Serializer):
         allow_null=True,
         source="primary_role",
     )
+    primary_facility = serializers.PrimaryKeyRelatedField(
+        queryset=Facility.objects.filter(is_active=True),
+        required=False,
+        allow_null=True,
+    )
     phone_number = serializers.CharField(max_length=20, required=False, allow_blank=True)
     hwr_id = serializers.CharField(max_length=50, required=False, allow_blank=True)
     license_number = serializers.CharField(max_length=50, required=False, allow_blank=True)

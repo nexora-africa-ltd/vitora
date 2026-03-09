@@ -696,6 +696,16 @@ class StaffProfile(models.Model):
     )
 ```
 
+> **✅ Phase 2 Implemented** (March 9, 2026)
+> - Added `primary_facility` FK (nullable, `PROTECT`) and `secondary_facilities` M2M to `StaffProfile` in `backend/hmis/apps/core/models.py`.
+> - Added `get_all_facilities()` method returning primary + secondary facilities (primary first, deduplicated).
+> - Updated `StaffProfileSerializer` with `primary_facility_name` (resolved read-only) and `secondary_facilities` (nested `FacilityListSerializer`, read-only).
+> - Updated `StaffProfileUpdateSerializer` and `StaffProfileCreateSerializer` to accept `primary_facility` and `secondary_facilities` fields.
+> - Updated `StaffProfileViewSet` with `select_related("primary_facility")` and `prefetch_related("secondary_facilities")` for query optimisation; added `primary_facility` to filterset fields.
+> - Updated `StaffProfileAdmin` with `primary_facility` in list display/filters, `filter_horizontal` for secondary facilities, and a dedicated "Facility Assignment" fieldset.
+> - Migration `0024_staff_facility_link` applied.
+> - **20 tests** (9 model, 4 serializer, 7 API) — covering FK/M2M assignment, `get_all_facilities()`, `PROTECT` delete guard, reverse relations, serializer field resolution, API CRUD with facility, and staff-by-facility filtering.
+
 ### Phase 3: Facility API & Context
 
 **File**: `backend/hmis/apps/core/serializers.py`

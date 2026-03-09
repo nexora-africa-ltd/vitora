@@ -335,6 +335,7 @@ class StaffProfileAdmin(admin.ModelAdmin):
         "get_user_full_name",
         "primary_role",
         "primary_department",
+        "primary_facility",
         "employment_status",
         "employment_type",
         "is_license_valid_display",
@@ -342,6 +343,7 @@ class StaffProfileAdmin(admin.ModelAdmin):
     list_filter = [
         "primary_role",
         "primary_department",
+        "primary_facility",
         "employment_status",
         "employment_type",
         "primary_role__requires_license",
@@ -357,7 +359,7 @@ class StaffProfileAdmin(admin.ModelAdmin):
     ]
     ordering = ["user__last_name", "user__first_name"]
     readonly_fields = ["created_at", "updated_at", "is_license_valid_display"]
-    filter_horizontal = ["secondary_roles", "secondary_departments"]
+    filter_horizontal = ["secondary_roles", "secondary_departments", "secondary_facilities"]
 
     actions = ["activate_staff", "deactivate_staff", "suspend_staff", "export_to_csv"]
 
@@ -380,6 +382,15 @@ class StaffProfileAdmin(admin.ModelAdmin):
                     "secondary_roles",
                     "primary_department",
                     "secondary_departments",
+                )
+            },
+        ),
+        (
+            "Facility Assignment",
+            {
+                "fields": (
+                    "primary_facility",
+                    "secondary_facilities",
                 )
             },
         ),

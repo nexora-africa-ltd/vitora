@@ -5,6 +5,7 @@ Views for core app.
 from django.contrib.auth.models import Permission
 from django.contrib.auth.signals import user_logged_in, user_login_failed
 from django.utils.dateparse import parse_date, parse_datetime
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     OpenApiParameter,
@@ -612,13 +613,14 @@ class StaffProfileViewSet(viewsets.ModelViewSet):
     """
 
     queryset = StaffProfile.objects.select_related(
-        "user", "primary_role", "primary_department", "supervisor"
-    ).prefetch_related("secondary_roles", "secondary_departments")
+        "user", "primary_role", "primary_department", "primary_facility", "supervisor"
+    ).prefetch_related("secondary_roles", "secondary_departments", "secondary_facilities")
     serializer_class = StaffProfileSerializer
-    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = [
         "primary_role",
         "primary_department",
+        "primary_facility",
         "employment_status",
         "primary_role__requires_license",
     ]
