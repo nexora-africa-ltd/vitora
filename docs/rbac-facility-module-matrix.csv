@@ -1,0 +1,16 @@
+VITORA HMIS — Facility Module Availability by KEPH Level,,,,,,
+Which modules are available at each Kenya facility level? Validate against your facility.,,,,,,
+
+Module,Level 1 – Community Unit,Level 2 – Dispensary,Level 3 – Health Centre,Level 4 – Sub-County Hospital,Level 5 – County Referral,Level 6 – National Referral
+outpatient,TRUE,TRUE,TRUE,TRUE,TRUE,TRUE
+inpatient,FALSE,FALSE,FALSE,TRUE,TRUE,TRUE
+emergency,FALSE,FALSE,FALSE,TRUE,TRUE,TRUE
+pharmacy,FALSE,TRUE,TRUE,TRUE,TRUE,TRUE
+laboratory,FALSE,FALSE,TRUE,TRUE,TRUE,TRUE
+imaging,FALSE,FALSE,FALSE,TRUE,TRUE,TRUE
+theatre,FALSE,FALSE,FALSE,TRUE,TRUE,TRUE
+icu,FALSE,FALSE,FALSE,FALSE,TRUE,TRUE
+maternity,FALSE,FALSE,TRUE,TRUE,TRUE,TRUE
+dialysis,FALSE,FALSE,FALSE,FALSE,TRUE,TRUE
+blood_bank,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE
+mortuary,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE

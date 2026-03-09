@@ -22,9 +22,9 @@ export const ACTION_PERMISSIONS = {
   'pharmacy.adjust_inventory': ['PHARMACIST', 'STORE_KEEPER'],
 
   // === Laboratory Module ===
-  'laboratory.view_orders': ['LAB_TECHNICIAN', 'LAB_SCIENTIST', 'DOCTOR', 'NURSE'],
-  'laboratory.collect_sample': ['LAB_TECHNICIAN', 'PHLEBOTOMIST', 'NURSE'],
-  'laboratory.enter_results': ['LAB_TECHNICIAN', 'LAB_SCIENTIST'],
+  'laboratory.view_orders': ['LAB_TECH', 'LAB_SCIENTIST', 'DOCTOR', 'NURSE'],
+  'laboratory.collect_sample': ['LAB_TECH', 'PHLEBOTOMIST', 'NURSE'],
+  'laboratory.enter_results': ['LAB_TECH', 'LAB_SCIENTIST'],
   'laboratory.verify_results': ['LAB_SCIENTIST', 'PATHOLOGIST'],
   'laboratory.release_results': ['LAB_SCIENTIST', 'PATHOLOGIST'],
 
