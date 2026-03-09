@@ -65,6 +65,7 @@ import {
   ENABLE_AI,
 } from '@/lib/utils/constants';
 import type { ModuleKey } from '@/lib/permissions/constants';
+import type { ActionKey } from '@/lib/permissions/actions';
 import type { FacilityModules } from '@/lib/auth/context';
 
 export interface NavItem {
@@ -73,6 +74,8 @@ export interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   /** RBAC: required module permission key */
   moduleKey?: ModuleKey;
+  /** Fine-grained action permission — hides this child if user lacks the action */
+  actionKey?: ActionKey;
   /** Capability: required facility module */
   facilityModule?: keyof FacilityModules;
   badge?: number;
@@ -116,10 +119,10 @@ const _allNavItems: NavItemType[] = [
     icon: Thermometer,
     moduleKey: 'triage',
     children: [
-      { label: 'Queue', href: '/triage', icon: ListOrdered },
-      { label: 'New Triage', href: '/triage/new', icon: Thermometer },
-      { label: 'Reports', href: '/triage/reports', icon: BarChart3 },
-      { label: 'Settings', href: '/triage/settings', icon: Settings },
+      { label: 'Queue', href: '/triage', icon: ListOrdered, actionKey: 'triage.view_queue' },
+      { label: 'New Triage', href: '/triage/new', icon: Thermometer, actionKey: 'triage.assess' },
+      { label: 'Reports', href: '/triage/reports', icon: BarChart3, actionKey: 'triage.view_reports' },
+      { label: 'Settings', href: '/triage/settings', icon: Settings, actionKey: 'triage.manage_settings' },
     ],
   },
   {
@@ -128,8 +131,8 @@ const _allNavItems: NavItemType[] = [
     moduleKey: 'emergency',
     facilityModule: 'emergency',
     children: [
-      { label: 'Dashboard', href: '/emergency', icon: LayoutDashboard },
-      { label: 'Bed Board', href: '/emergency/bed-board', icon: BedDouble },
+      { label: 'Dashboard', href: '/emergency', icon: LayoutDashboard, actionKey: 'emergency.view_dashboard' },
+      { label: 'Bed Board', href: '/emergency/bed-board', icon: BedDouble, actionKey: 'emergency.view_bed_board' },
     ],
   },
   {
@@ -137,12 +140,12 @@ const _allNavItems: NavItemType[] = [
     icon: Flag,
     moduleKey: 'surveillance',
     children: [
-      { label: 'Dashboard', href: '/surveillance', icon: LayoutDashboard },
-      { label: 'Notifiable Cases', href: '/surveillance/cases', icon: AlertTriangle },
-      { label: 'Alerts', href: '/surveillance/alerts', icon: CircleAlert },
-      { label: 'IDSR Reports', href: '/surveillance/idsr', icon: BarChart3 },
-      { label: 'IHR Compliance', href: '/surveillance/ihr', icon: Globe },
-      { label: 'Thresholds', href: '/surveillance/thresholds', icon: SquareActivity },
+      { label: 'Dashboard', href: '/surveillance', icon: LayoutDashboard, actionKey: 'surveillance.view_dashboard' },
+      { label: 'Notifiable Cases', href: '/surveillance/cases', icon: AlertTriangle, actionKey: 'surveillance.report_case' },
+      { label: 'Alerts', href: '/surveillance/alerts', icon: CircleAlert, actionKey: 'surveillance.view_alerts' },
+      { label: 'IDSR Reports', href: '/surveillance/idsr', icon: BarChart3, actionKey: 'surveillance.submit_idsr' },
+      { label: 'IHR Compliance', href: '/surveillance/ihr', icon: Globe, actionKey: 'surveillance.submit_ihr' },
+      { label: 'Thresholds', href: '/surveillance/thresholds', icon: SquareActivity, actionKey: 'surveillance.manage_thresholds' },
     ],
   },
   {
@@ -164,13 +167,14 @@ const _allNavItems: NavItemType[] = [
   {
     label: 'MCH',
     icon: Baby,
+    moduleKey: 'mch',
     facilityModule: 'maternity',
     children: [
-      { label: 'Registrations', href: '/mch', icon: ClipboardList },
-      { label: 'Deliveries', href: '/mch/deliveries', icon: Venus },
-      { label: 'Growth Charts', href: '/mch/growth', icon: BarChart3 },
-      { label: 'Immunizations', href: '/mch/immunizations', icon: Syringe },
-      { label: 'HEI Follow-up', href: '/mch/hei', icon: HeartPulse },
+      { label: 'Registrations', href: '/mch', icon: ClipboardList, actionKey: 'mch.register' },
+      { label: 'Deliveries', href: '/mch/deliveries', icon: Venus, actionKey: 'mch.record_delivery' },
+      { label: 'Growth Charts', href: '/mch/growth', icon: BarChart3, actionKey: 'mch.view_growth' },
+      { label: 'Immunizations', href: '/mch/immunizations', icon: Syringe, actionKey: 'mch.immunize' },
+      { label: 'HEI Follow-up', href: '/mch/hei', icon: HeartPulse, actionKey: 'mch.hei_followup' },
     ],
   },
   {
@@ -189,12 +193,12 @@ const _allNavItems: NavItemType[] = [
     moduleKey: 'inpatient',
     facilityModule: 'inpatient',
     children: [
-      { label: 'Wards', href: '/wards', icon: Building2 },
-      { label: 'Admissions', href: '/admissions', icon: ClipboardList },
-      { label: 'Reviews', href: '/inpatient/reviews', icon: FileText },
-      { label: 'Kardex', href: '/inpatient/kardex', icon: ClipboardList },
-      { label: 'Rounds', href: '/inpatient/rounds', icon: Stethoscope },
-      { label: 'Supervisor Alerts', href: '/inpatient/alerts', icon: AlertTriangle },
+      { label: 'Wards', href: '/wards', icon: Building2, actionKey: 'inpatient.view_ward' },
+      { label: 'Admissions', href: '/admissions', icon: ClipboardList, actionKey: 'inpatient.view_admissions' },
+      { label: 'Reviews', href: '/inpatient/reviews', icon: FileText, actionKey: 'inpatient.view_reviews' },
+      { label: 'Kardex', href: '/inpatient/kardex', icon: ClipboardList, actionKey: 'inpatient.view_kardex' },
+      { label: 'Rounds', href: '/inpatient/rounds', icon: Stethoscope, actionKey: 'inpatient.make_rounds' },
+      { label: 'Supervisor Alerts', href: '/inpatient/alerts', icon: AlertTriangle, actionKey: 'inpatient.view_alerts' },
     ],
   },
   {
@@ -203,12 +207,12 @@ const _allNavItems: NavItemType[] = [
     moduleKey: 'pharmacy',
     facilityModule: 'pharmacy',
     children: [
-      { label: 'Dashboard', href: '/pharmacy', icon: LayoutDashboard },
-      { label: 'Dispensing', href: '/pharmacy/dispensing', icon: FlaskConical },
-      { label: 'Prescriptions', href: '/pharmacy/prescriptions', icon: FileText },
-      { label: 'Drug Catalog', href: '/pharmacy/drugs', icon: Pill },
-      { label: 'Stock Receive', href: '/pharmacy/stock/receive', icon: ClipboardList },
-      { label: 'Reports', href: '/pharmacy/reports', icon: BarChart3 },
+      { label: 'Dashboard', href: '/pharmacy', icon: LayoutDashboard, actionKey: 'pharmacy.view_dashboard' },
+      { label: 'Dispensing', href: '/pharmacy/dispensing', icon: FlaskConical, actionKey: 'pharmacy.dispense' },
+      { label: 'Prescriptions', href: '/pharmacy/prescriptions', icon: FileText, actionKey: 'pharmacy.view_prescriptions' },
+      { label: 'Drug Catalog', href: '/pharmacy/drugs', icon: Pill, actionKey: 'pharmacy.view_drugs' },
+      { label: 'Stock Receive', href: '/pharmacy/stock/receive', icon: ClipboardList, actionKey: 'pharmacy.manage_stock' },
+      { label: 'Reports', href: '/pharmacy/reports', icon: BarChart3, actionKey: 'pharmacy.view_reports' },
     ],
   },
   {
@@ -217,9 +221,9 @@ const _allNavItems: NavItemType[] = [
     moduleKey: 'laboratory',
     facilityModule: 'laboratory',
     children: [
-      { label: 'Dashboard', href: '/laboratory', icon: LayoutDashboard },
-      { label: 'Lab Reports', href: '/laboratory/reports', icon: FileText },
-      { label: 'Lab Analytics', href: '/laboratory/analytics', icon: BarChart3 },
+      { label: 'Dashboard', href: '/laboratory', icon: LayoutDashboard, actionKey: 'laboratory.view_dashboard' },
+      { label: 'Lab Reports', href: '/laboratory/reports', icon: FileText, actionKey: 'laboratory.view_reports' },
+      { label: 'Lab Analytics', href: '/laboratory/analytics', icon: BarChart3, actionKey: 'laboratory.view_analytics' },
     ],
   },
   {
@@ -228,21 +232,22 @@ const _allNavItems: NavItemType[] = [
     moduleKey: 'imaging',
     facilityModule: 'imaging',
     children: [
-      { label: 'Dashboard', href: '/imaging', icon: LayoutDashboard },
-      { label: 'Imaging Orders', href: '/imaging/orders', icon: ClipboardList },
-      { label: 'DICOM Studies', href: '/imaging/studies', icon: ImageIcon },
+      { label: 'Dashboard', href: '/imaging', icon: LayoutDashboard, actionKey: 'imaging.view_dashboard' },
+      { label: 'Imaging Orders', href: '/imaging/orders', icon: ClipboardList, actionKey: 'imaging.view_orders' },
+      { label: 'DICOM Studies', href: '/imaging/studies', icon: ImageIcon, actionKey: 'imaging.view_studies' },
     ],
   },
   {
     label: 'Allied Health',
     icon: HeartPlus,
+    moduleKey: 'allied_health',
     children: [
-      { label: 'Dashboard', href: '/allied-health', icon: LayoutDashboard },
-      { label: 'Physiotherapy', href: '/allied-health/physiotherapy', icon: Dumbbell },
-      { label: 'Nutrition', href: '/allied-health/nutrition', icon: Apple },
-      { label: 'Occupational Therapy', href: '/allied-health/occupational-therapy', icon: HeartHandshake },
-      { label: 'Social Work', href: '/allied-health/social-work', icon: UsersRound },
-      { label: 'Counselling', href: '/allied-health/counselling', icon: BookHeart },
+      { label: 'Dashboard', href: '/allied-health', icon: LayoutDashboard, actionKey: 'allied_health.view_dashboard' },
+      { label: 'Physiotherapy', href: '/allied-health/physiotherapy', icon: Dumbbell, actionKey: 'allied_health.assess_physio' },
+      { label: 'Nutrition', href: '/allied-health/nutrition', icon: Apple, actionKey: 'allied_health.assess_nutrition' },
+      { label: 'Occupational Therapy', href: '/allied-health/occupational-therapy', icon: HeartHandshake, actionKey: 'allied_health.assess_occupational' },
+      { label: 'Social Work', href: '/allied-health/social-work', icon: UsersRound, actionKey: 'allied_health.counsel' },
+      { label: 'Counselling', href: '/allied-health/counselling', icon: BookHeart, actionKey: 'allied_health.counsel' },
     ],
   },
   {
@@ -252,10 +257,10 @@ const _allNavItems: NavItemType[] = [
     facilityModule: 'theatre',
     featureFlag: ENABLE_THEATRE,
     children: [
-      { label: 'Schedule', href: '/theatre/schedule', icon: CalendarDays },
-      { label: 'Checklists', href: '/theatre/checklists', icon: CheckSquare },
-      { label: 'Cases', href: '/theatre/cases', icon: ClipboardList },
-      { label: 'Reports', href: '/theatre/reports', icon: BarChart3 },
+      { label: 'Schedule', href: '/theatre/schedule', icon: CalendarDays, actionKey: 'theatre.view_schedule' },
+      { label: 'Checklists', href: '/theatre/checklists', icon: CheckSquare, actionKey: 'theatre.view_checklists' },
+      { label: 'Cases', href: '/theatre/cases', icon: ClipboardList, actionKey: 'theatre.schedule_case' },
+      { label: 'Reports', href: '/theatre/reports', icon: BarChart3, actionKey: 'theatre.view_reports' },
     ],
   },
   {
@@ -263,40 +268,43 @@ const _allNavItems: NavItemType[] = [
     icon: BadgeCent,
     moduleKey: 'billing',
     children: [
-      { label: 'Dashboard', href: '/finance/overview', icon: ChartNoAxesGantt },
-      { label: 'Invoices', href: '/transactions/invoices', icon: FileText },
-      { label: 'Proformas', href: '/transactions/proformas', icon: Clock },
-      { label: 'Payments', href: '/transactions/payments', icon: CreditCard },
-      { label: 'Receipts', href: '/transactions/receipts', icon: Receipt },
-      { label: 'SHA Claims', href: '/transactions/sha-claims', icon: SHAIcon },
-      { label: 'Insurance', href: '/insurance', icon: Shield },
-      { label: 'Reports', href: '/transactions/reports', icon: BarChart3 },
-      { label: 'Reconciliation', href: '/transactions/reconciliation', icon: Scale },
+      { label: 'Dashboard', href: '/finance/overview', icon: ChartNoAxesGantt, actionKey: 'billing.view_dashboard' },
+      { label: 'Invoices', href: '/transactions/invoices', icon: FileText, actionKey: 'billing.view_invoices' },
+      { label: 'Proformas', href: '/transactions/proformas', icon: Clock, actionKey: 'billing.view_proformas' },
+      { label: 'Payments', href: '/transactions/payments', icon: CreditCard, actionKey: 'billing.record_payment' },
+      { label: 'Receipts', href: '/transactions/receipts', icon: Receipt, actionKey: 'billing.view_receipts' },
+      { label: 'SHA Claims', href: '/transactions/sha-claims', icon: SHAIcon, actionKey: 'billing.submit_sha_claim' },
+      { label: 'Insurance', href: '/insurance', icon: Shield, actionKey: 'billing.view_insurance' },
+      { label: 'Reports', href: '/transactions/reports', icon: BarChart3, actionKey: 'billing.view_reports' },
+      { label: 'Reconciliation', href: '/transactions/reconciliation', icon: Scale, actionKey: 'billing.reconcile' },
     ],
   },
   {
     label: 'Quality',
     icon: CheckSquare,
+    moduleKey: 'quality',
     children: [
-      { label: 'Dashboard', href: '/quality', icon: LayoutDashboard },
-      { label: 'Measures', href: '/quality/measures', icon: Target },
-      { label: 'Quarterly Reports', href: '/quality/reports/quarterly', icon: BarChart3 },
-      { label: 'Annual Reports', href: '/quality/reports/annual', icon: FileText },
+      { label: 'Dashboard', href: '/quality', icon: LayoutDashboard, actionKey: 'quality.view_dashboard' },
+      { label: 'Measures', href: '/quality/measures', icon: Target, actionKey: 'quality.view_measures' },
+      { label: 'Quarterly Reports', href: '/quality/reports/quarterly', icon: BarChart3, actionKey: 'quality.view_reports' },
+      { label: 'Annual Reports', href: '/quality/reports/annual', icon: FileText, actionKey: 'quality.view_reports' },
     ],
   },
   {
     label: 'CDS',
     icon: BrainCircuit,
+    moduleKey: 'cds',
     children: [
-      { label: 'Dashboard', href: '/cds', icon: LayoutDashboard },
-      { label: 'Rules', href: '/cds/rules', icon: Shield },
-      { label: 'Alerts', href: '/cds/alerts', icon: AlertTriangle },
+      { label: 'Dashboard', href: '/cds', icon: LayoutDashboard, actionKey: 'cds.view_dashboard' },
+      { label: 'Rules', href: '/cds/rules', icon: Shield, actionKey: 'cds.manage_rules' },
+      { label: 'Alerts', href: '/cds/alerts', icon: AlertTriangle, actionKey: 'cds.view_alerts' },
     ],
   },
   {
     label: 'AI Assistant',
     href: '/ai',
     icon: BrainCircuit,
+    moduleKey: 'ai',
     featureFlag: ENABLE_AI,
   } as NavItem & { featureFlag?: boolean },
   {
@@ -304,12 +312,12 @@ const _allNavItems: NavItemType[] = [
     icon: ShieldUser,
     moduleKey: 'admin',
     children: [
-      { label: 'Overview', href: '/admin/overview', icon: LayoutDashboard },
-      { label: 'Departments', href: '/admin/departments', icon: Building2 },
-      { label: 'Roles', href: '/admin/roles', icon: ShieldUser },
-      { label: 'Staff', href: '/admin/staff', icon: UserCog },
-      { label: 'Audit Logs', href: '/admin/audit-logs', icon: ScrollText },
-      { label: 'Reports', href: '/reports', icon: FileText },
+      { label: 'Overview', href: '/admin/overview', icon: LayoutDashboard, actionKey: 'admin.view_overview' },
+      { label: 'Departments', href: '/admin/departments', icon: Building2, actionKey: 'admin.manage_departments' },
+      { label: 'Roles', href: '/admin/roles', icon: ShieldUser, actionKey: 'admin.manage_roles' },
+      { label: 'Staff', href: '/admin/staff', icon: UserCog, actionKey: 'admin.manage_staff' },
+      { label: 'Audit Logs', href: '/admin/audit-logs', icon: ScrollText, actionKey: 'admin.view_audit_logs' },
+      { label: 'Reports', href: '/reports', icon: FileText, actionKey: 'admin.view_reports' },
     ],
   },
 ];
