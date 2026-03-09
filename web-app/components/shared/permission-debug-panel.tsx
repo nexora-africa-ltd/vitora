@@ -14,15 +14,16 @@ import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useFacility } from '@/lib/context/facility-context';
 import { MODULE_PERMISSIONS, type ModuleKey } from '@/lib/permissions/constants';
 import { ACTION_PERMISSIONS, type ActionKey } from '@/lib/permissions/actions';
-import { Bug, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Bug, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 
 export function PermissionDebugPanel() {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'modules' | 'actions' | 'facility'>('modules');
+  const [filter, setFilter] = useState('');
   const { role, roleCategory, isSuperuser, canAccessModule, canPerformAction, isAuthenticated } = usePermissions();
   const { facility, hasModule } = useFacility();
 
@@ -44,9 +45,24 @@ export function PermissionDebugPanel() {
 
   const moduleKeys = Object.keys(MODULE_PERMISSIONS) as ModuleKey[];
   const actionKeys = Object.keys(ACTION_PERMISSIONS) as ActionKey[];
+  const lowerFilter = filter.toLowerCase();
+
+  const filteredModuleKeys = lowerFilter
+    ? moduleKeys.filter((k) => k.toLowerCase().includes(lowerFilter))
+    : moduleKeys;
+
+  const filteredActionKeys = lowerFilter
+    ? actionKeys.filter((k) => k.toLowerCase().includes(lowerFilter))
+    : actionKeys;
+
+  const filteredFacilityEntries = facility
+    ? Object.entries(facility.modules).filter(([k]) =>
+        lowerFilter ? k.toLowerCase().includes(lowerFilter) : true,
+      )
+    : [];
 
   return (
-    <div className="fixed bottom-4 left-4 z-[9999] w-80 max-h-[60vh] bg-background border rounded-lg shadow-xl flex flex-col">
+    <div className="fixed bottom-4 left-4 z-[9999] flex h-[60vh] w-80 flex-col overflow-hidden rounded-lg border bg-background shadow-xl">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b">
         <div className="flex items-center gap-2">
@@ -83,7 +99,7 @@ export function PermissionDebugPanel() {
         {(['modules', 'actions', 'facility'] as const).map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => { setActiveTab(tab); setFilter(''); }}
             className={`flex-1 text-xs py-2 capitalize ${
               activeTab === tab
                 ? 'border-b-2 border-primary font-medium'
@@ -95,10 +111,32 @@ export function PermissionDebugPanel() {
         ))}
       </div>
 
+      {/* Filter */}
+      <div className="px-2 pt-2">
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Input
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder={`Filter ${activeTab}...`}
+            className="h-7 text-xs pl-7 pr-7"
+          />
+          {filter && (
+            <button
+              onClick={() => setFilter('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              title="Clear filter"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Content */}
-      <ScrollArea className="flex-1 max-h-[300px]">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="p-2 space-y-1">
-          {activeTab === 'modules' && moduleKeys.map((key) => {
+          {activeTab === 'modules' && filteredModuleKeys.map((key) => {
             const allowed = canAccessModule(key);
             return (
               <div key={key} className="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-muted/50">
@@ -110,7 +148,7 @@ export function PermissionDebugPanel() {
             );
           })}
 
-          {activeTab === 'actions' && actionKeys.map((key) => {
+          {activeTab === 'actions' && filteredActionKeys.map((key) => {
             const allowed = canPerformAction(key);
             return (
               <div key={key} className="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-muted/50">
@@ -126,8 +164,10 @@ export function PermissionDebugPanel() {
             <>
               {!facility ? (
                 <p className="text-xs text-muted-foreground p-2">No facility assigned — all modules allowed.</p>
+              ) : filteredFacilityEntries.length === 0 ? (
+                <p className="text-xs text-muted-foreground p-2">No matching modules.</p>
               ) : (
-                Object.entries(facility.modules).map(([key, enabled]) => {
+                filteredFacilityEntries.map(([key, enabled]) => {
                   const gateResult = hasModule(key as any);
                   return (
                     <div key={key} className="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-muted/50">
@@ -140,6 +180,13 @@ export function PermissionDebugPanel() {
                 })
               )}
             </>
+          )}
+
+          {activeTab === 'modules' && filteredModuleKeys.length === 0 && (
+            <p className="text-xs text-muted-foreground p-2">No matching modules.</p>
+          )}
+          {activeTab === 'actions' && filteredActionKeys.length === 0 && (
+            <p className="text-xs text-muted-foreground p-2">No matching actions.</p>
           )}
         </div>
       </ScrollArea>

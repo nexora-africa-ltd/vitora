@@ -7,7 +7,7 @@ import { AlertTriangle, Check, Clock, User, MapPin, X } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -130,11 +130,8 @@ export function SupervisorAlertsPanel({ className }: SupervisorAlertsPanelProps)
                 </Badge>
               )}
             </CardTitle>
-            <HelpPopover content="Critical constraint violations that were overridden during admission. Supervisors should acknowledge and review these alerts." />
+            <HelpPopover content="Critical constraint violations that were overridden during admission. Supervisors should acknowledge and review these alerts. Admission constraint violations requiring supervisor review." />
           </div>
-          <CardDescription>
-            Admission constraint violations requiring supervisor review
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="pending">
@@ -192,7 +189,7 @@ export function SupervisorAlertsPanel({ className }: SupervisorAlertsPanelProps)
             </div>
             <DialogDescription>
               Confirm you have reviewed the critical constraint violation for admission{' '}
-              <strong>{selectedAlert?.admission_number}</strong>
+              <strong>{selectedAlert?.admission_number}</strong>.
             </DialogDescription>
           </DialogHeader>
 
