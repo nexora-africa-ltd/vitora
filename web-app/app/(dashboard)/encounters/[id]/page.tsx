@@ -40,6 +40,7 @@ import { ClinicalSnapshotBanner } from '@/components/encounters/clinical-snapsho
 import { EncounterAuditTrail } from '@/components/encounters/encounter-audit-trail';
 import { EncounterAlliedHealthContent } from '@/components/encounters/encounter-allied-health-content';
 import { EncounterReferralsContent } from '@/components/encounters/encounter-referrals-content';
+import { EncounterChiefComplaintCard } from '@/components/encounters/encounter-chief-complaint-card';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import Link from 'next/link';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
@@ -333,18 +334,7 @@ export default function EncounterDetailPage() {
 
       <ClinicalSnapshotBanner encounterId={encounterId} />
 
-      {/* Chief Complaint */}
-      <Card>
-        <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
-          <CardTitle className="text-base sm:text-lg flex items-center gap-2">
-            <Stethoscope className="h-4 w-4 sm:h-5 sm:w-5" />
-            Chief Complaint
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="px-3 sm:px-6">
-          <p className="text-sm sm:text-base">{encounter.chief_complaint}</p>
-        </CardContent>
-      </Card>
+      <EncounterChiefComplaintCard encounter={encounter} />
 
       {/* Vitals */}
       <VitalsDisplay encounter={encounter} />
