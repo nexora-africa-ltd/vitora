@@ -359,11 +359,10 @@ def sample_bed(db, sample_inpatient_ward):
 
 
 # ============================================================================
-# Pharmacy Fixtures - Import from conftest_pharmacy
+# Pharmacy Fixtures - loaded from tests/pharmacy/conftest.py
 # ============================================================================
 
-# Import pharmacy fixtures
-pytest_plugins = ["tests.conftest_pharmacy"]
+pytest_plugins = ["tests.pharmacy.pharmacy_fixtures"]
 
 
 # ============================================================================

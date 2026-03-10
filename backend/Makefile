@@ -17,11 +17,20 @@ help:
 	@echo "  test-fast     - Run tests without coverage"
 	@echo "  test-unit     - Run unit tests only"
 	@echo "  test-integration - Run integration tests only"
+	@echo "  test-contracts - Run serializer contract tests"
 	@echo "  test-fhir     - Run FHIR validation tests"
 	@echo "  test-shr      - Run SHA SHR compliance tests"
 	@echo "  test-fhir-integration - Run FHIR server integration tests"
 	@echo "  test-fhir-all - Run all FHIR tests (schema + integration)"
 	@echo "  test-fhir-full - Full cycle: start server, test, stop"
+	@echo ""
+	@echo "Per-app tests (fast, no coverage):"
+	@echo "  test-encounters  test-patients    test-triage"
+	@echo "  test-lab         test-pharmacy    test-imaging"
+	@echo "  test-clinics     test-billing     test-inpatient"
+	@echo "  test-ai          test-cds         test-rbac"
+	@echo "  test-mch         test-scheduling  test-checkin"
+	@echo "  test-surveillance test-dashboard  test-notifications"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  lint          - Run all linters (ruff, black check, isort check)"
@@ -94,7 +103,61 @@ test-integration:
 	poetry run pytest -m integration
 
 test-contracts:
-	poetry run pytest tests/test_contracts.py -v --no-cov
+	poetry run pytest tests/contracts/ -v --no-cov
+
+test-encounters:
+	poetry run pytest tests/encounters/ --no-cov --tb=short -q
+
+test-patients:
+	poetry run pytest tests/patients/ --no-cov --tb=short -q
+
+test-triage:
+	poetry run pytest tests/triage/ --no-cov --tb=short -q
+
+test-lab:
+	poetry run pytest tests/laboratory/ --no-cov --tb=short -q
+
+test-pharmacy:
+	poetry run pytest tests/pharmacy/ --no-cov --tb=short -q
+
+test-imaging:
+	poetry run pytest tests/imaging/ --no-cov --tb=short -q
+
+test-clinics:
+	poetry run pytest tests/clinics/ --no-cov --tb=short -q
+
+test-billing:
+	poetry run pytest tests/billing/ --no-cov --tb=short -q
+
+test-inpatient:
+	poetry run pytest tests/inpatient/ --no-cov --tb=short -q
+
+test-ai:
+	poetry run pytest tests/ai/ --no-cov --tb=short -q
+
+test-cds:
+	poetry run pytest tests/cds/ --no-cov --tb=short -q
+
+test-rbac:
+	poetry run pytest tests/rbac/ --no-cov --tb=short -q
+
+test-mch:
+	poetry run pytest tests/mch/ --no-cov --tb=short -q
+
+test-scheduling:
+	poetry run pytest tests/scheduling/ --no-cov --tb=short -q
+
+test-checkin:
+	poetry run pytest tests/checkin/ --no-cov --tb=short -q
+
+test-surveillance:
+	poetry run pytest tests/surveillance/ --no-cov --tb=short -q
+
+test-dashboard:
+	poetry run pytest tests/dashboard/ --no-cov --tb=short -q
+
+test-notifications:
+	poetry run pytest tests/notifications/ --no-cov --tb=short -q
 
 test-fhir:
 	poetry run pytest tests/core/test_fhir_validator.py tests/billing/test_shr_compliance/ -v --cov=hmis.apps.core.services.fhir_validator --cov-report=term-missing
