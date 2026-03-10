@@ -1,50 +1,52 @@
-# Welcome to your Expo app 👋
+# Vitora Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Expo Router mobile client for Vitora HMIS. This app is being rebuilt by converting the web app's backend contracts, auth flow, and patient workflows to a native experience instead of starting from an unrelated Expo starter.
 
-## Get started
+## Current scope
 
-1. Install dependencies
+- JWT authentication against the Django backend
+- Runtime backend URL configuration for emulator, simulator, or physical device
+- Dashboard shell with live counts
+- Patient list, detail, and registration flows
+- Encounter list synced from the same `/api/encounters/` endpoint used by the web app
 
-   ```bash
-   npm install
-   ```
+## Setup
 
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+1. Install dependencies.
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+2. Point the mobile app at the backend.
 
-## Learn more
+Option A: set an environment variable before starting Expo.
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+EXPO_PUBLIC_API_URL=http://127.0.0.1:9088 npm start
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Option B: update the connection URL inside the sign-in or settings screen.
 
-## Join the community
+Notes:
 
-Join our community of developers creating universal apps.
+- Android emulator default fallback: `http://10.0.2.2:9088`
+- iOS simulator and web fallback: `http://127.0.0.1:9088`
+- Physical devices need your machine's LAN IP, for example `http://192.168.1.20:9088`
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+3. Start the app.
+
+```bash
+npm start
+```
+
+## Quality checks
+
+```bash
+npm run lint
+npm run typecheck
+```
+
+## EAS
+
+`eas build:configure` is already in place. The app slug and project metadata now point at the Vitora mobile client, so you can continue with development builds once the native flows are stable.
