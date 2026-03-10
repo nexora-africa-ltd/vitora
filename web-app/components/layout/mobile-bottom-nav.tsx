@@ -4,76 +4,195 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 import {
+  Stethoscope,
   LayoutDashboard,
   UserCheck,
   Thermometer,
   Pill,
   Users,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/cn';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useTodayCheckins } from '@/lib/hooks/use-checkin';
+import { useTriageQueue } from '@/lib/hooks/use-triage';
 
 /**
- * Bottom tab configuration — the 5 highest-frequency workflow actions.
- * Order matters: left-to-right maps to most common user journey.
+ * Base tabs used to build the mobile workflow footer.
  */
-const BOTTOM_TABS = [
+const STATIC_TABS = [
   { label: 'Home', href: '/', icon: LayoutDashboard, moduleKey: 'dashboard' },
   { label: 'Check-in', href: '/patients/checkin', icon: UserCheck, moduleKey: 'checkin' },
-  { label: 'Triage', href: '/triage', icon: Thermometer, moduleKey: 'triage' },
-  { label: 'Pharmacy', href: '/pharmacy', icon: Pill, moduleKey: 'pharmacy' },
+  { label: 'Encounters', href: '/encounters', icon: Stethoscope, moduleKey: 'encounters' },
   { label: 'Patients', href: '/patients', icon: Users, moduleKey: 'patients' },
 ] as const;
+
+const TRIAGE_TAB = {
+  label: 'Triage',
+  href: '/triage',
+  icon: Thermometer,
+  moduleKey: 'triage',
+  badgeKey: 'triage' as const,
+};
+
+const PHARMACY_TAB = {
+  label: 'Pharmacy',
+  href: '/pharmacy',
+  icon: Pill,
+  moduleKey: 'pharmacy',
+};
+
+type BottomTab = {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  moduleKey: string;
+  badgeKey?: 'checkin' | 'triage';
+};
 
 /**
  * Telegram-style fixed bottom navigation bar for mobile and tablet.
  * Hidden on xl+ where the sidebar is persistently visible.
  */
-export function MobileBottomNav() {
+export function MobileBottomNav({ hidden = false }: { hidden?: boolean }) {
   const pathname = usePathname();
-  const { canAccessModule } = usePermissions();
+  const { canAccessModule, canPerformAction } = usePermissions();
+  const { data: todayCheckins } = useTodayCheckins({ page_size: 1 });
+  const { data: triageQueue } = useTriageQueue();
 
-  const visibleTabs = useMemo(
-    () => BOTTOM_TABS.filter((tab) => canAccessModule(tab.moduleKey as never)),
-    [canAccessModule]
+  const badgeCounts = useMemo(
+    () => ({
+      checkin: todayCheckins?.count ?? 0,
+      triage: triageQueue?.count ?? 0,
+    }),
+    [todayCheckins?.count, triageQueue?.count]
   );
 
-  if (visibleTabs.length === 0) return null;
+  const hasTriageWorkflow = canAccessModule('triage' as never)
+    && canPerformAction('triage.view_queue' as never);
+  const hasPharmacyWorkflow = canAccessModule('pharmacy' as never)
+    && canPerformAction('pharmacy.dispense' as never);
+
+  const visibleTabs = useMemo(
+    () => {
+      const workflowTab: BottomTab | null = hasPharmacyWorkflow && !hasTriageWorkflow
+        ? PHARMACY_TAB
+        : hasTriageWorkflow
+          ? TRIAGE_TAB
+          : hasPharmacyWorkflow
+            ? PHARMACY_TAB
+            : canAccessModule('encounters' as never)
+              ? {
+                  label: 'Encounters',
+                  href: '/encounters',
+                  icon: Stethoscope,
+                  moduleKey: 'encounters',
+                }
+              : null;
+
+      const tabs: BottomTab[] = [];
+
+      for (const tab of STATIC_TABS.slice(0, 2)) {
+        if (canAccessModule(tab.moduleKey as never)) {
+          tabs.push({
+            ...tab,
+            badgeKey: tab.href === '/patients/checkin' ? 'checkin' : undefined,
+          });
+        }
+      }
+
+      if (workflowTab && canAccessModule(workflowTab.moduleKey as never)) {
+        tabs.push(workflowTab);
+      }
+
+      for (const tab of STATIC_TABS.slice(2)) {
+        if (workflowTab?.href === tab.href) continue;
+        if (canAccessModule(tab.moduleKey as never)) {
+          tabs.push(tab);
+        }
+      }
+
+      return tabs.slice(0, 5);
+    },
+    [canAccessModule, hasPharmacyWorkflow, hasTriageWorkflow]
+  );
+
+  if (hidden || visibleTabs.length === 0) return null;
+
+  const primaryIndex = visibleTabs.length >= 3 ? 2 : Math.floor(visibleTabs.length / 2);
 
   return (
     <nav
-      className="fixed bottom-0 inset-x-0 z-40 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 xl:hidden"
+      className="fixed inset-x-3 bottom-3 z-40 xl:hidden"
       role="navigation"
       aria-label="Mobile navigation"
     >
-      <div className="flex items-center justify-around h-14">
-        {visibleTabs.map((tab) => {
+      <div className="relative overflow-hidden rounded-[28px] border border-border/70 bg-background/90 px-2 py-2 shadow-[0_14px_40px_rgba(15,23,42,0.18)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
+        <div
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.10),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_40%)]"
+          aria-hidden="true"
+        />
+
+        <div className="relative flex items-end justify-around gap-1">
+        {visibleTabs.map((tab, index) => {
           const isActive = tab.href === '/'
             ? pathname === '/' || pathname === '/dashboard'
             : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+          const isPrimary = index === primaryIndex;
+          const badgeCount = tab.badgeKey ? badgeCounts[tab.badgeKey] : 0;
 
           return (
             <Link
               key={tab.href}
               href={tab.href}
               className={cn(
-                'flex flex-col items-center justify-center gap-0.5 min-w-0 flex-1 h-full text-[10px] sm:text-xs transition-colors',
+                'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] sm:text-xs transition-all duration-200',
+                isPrimary && 'mx-0.5 -translate-y-3',
                 isActive
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/15'
+                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
               )}
               aria-current={isActive ? 'page' : undefined}
             >
-              <tab.icon
+              {badgeCount > 0 && (
+                <Badge
+                  variant={tab.badgeKey === 'triage' ? 'destructive' : 'default'}
+                  size="sm"
+                  className="absolute right-2 top-1 min-w-5 justify-center px-1.5"
+                >
+                  {badgeCount > 99 ? '99+' : badgeCount}
+                </Badge>
+              )}
+              <span
                 className={cn(
-                  'h-5 w-5 shrink-0',
-                  isActive && 'stroke-[2.5]'
+                  'flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200',
+                  isPrimary && 'h-11 w-11 shadow-lg',
+                  isPrimary && isActive && 'bg-primary text-primary-foreground',
+                  isPrimary && !isActive && 'bg-card ring-1 ring-border/80',
+                  !isPrimary && isActive ? 'bg-primary/12' : !isPrimary ? 'bg-transparent' : ''
                 )}
-              />
-              <span className="truncate">{tab.label}</span>
+              >
+                <tab.icon
+                  className={cn(
+                    'h-5 w-5 shrink-0',
+                    isPrimary && 'h-[22px] w-[22px]',
+                    isPrimary && isActive ? 'text-primary-foreground' : '',
+                    isActive && 'stroke-[2.5]'
+                  )}
+                />
+              </span>
+              <span
+                className={cn(
+                  'max-w-full truncate font-medium',
+                  isPrimary && 'text-[11px]'
+                )}
+              >
+                {tab.label}
+              </span>
             </Link>
           );
         })}
+        </div>
       </div>
 
       {/* Safe area inset for notched devices (iOS) */}
