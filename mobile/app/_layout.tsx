@@ -6,23 +6,33 @@ import 'react-native-reanimated';
 
 import { AuthProvider } from '@/lib/auth/auth-context';
 import { queryClient } from '@/lib/query/client';
-import { appTheme } from '@/constants/theme';
+import { AppThemeProvider, useAppTheme } from '@/lib/theme/theme-context';
 
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
 export default function RootLayout() {
+  return (
+    <AppThemeProvider>
+      <RootLayoutContent />
+    </AppThemeProvider>
+  );
+}
+
+function RootLayoutContent() {
+  const { isDarkMode, theme } = useAppTheme();
+
   const navigationTheme = {
     ...DefaultTheme,
     colors: {
       ...DefaultTheme.colors,
-      background: appTheme.colors.background,
-      card: appTheme.colors.surface,
-      border: appTheme.colors.border,
-      primary: appTheme.colors.primary,
-      text: appTheme.colors.text,
-      notification: appTheme.colors.accent,
+      background: theme.colors.background,
+      card: theme.colors.surface,
+      border: theme.colors.border,
+      primary: theme.colors.primary,
+      text: theme.colors.text,
+      notification: theme.colors.accent,
     },
   };
 
@@ -42,7 +52,7 @@ export default function RootLayout() {
             <Stack.Screen name="patients/[id]" options={{ presentation: 'card' }} />
             <Stack.Screen name="patients/new" options={{ presentation: 'modal' }} />
           </Stack>
-          <StatusBar style="dark" />
+          <StatusBar style={isDarkMode ? 'light' : 'dark'} />
         </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>

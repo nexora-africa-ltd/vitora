@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { AppButton, AppTextInput, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
-import { appTheme } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
+import { useAppTheme } from '@/lib/theme/theme-context';
 
 export default function SettingsScreen() {
   const { apiBaseUrl, logout, updateApiBaseUrl, user } = useAuth();
+  const { isDarkMode, toggleTheme, theme } = useAppTheme();
   const [backendUrl, setBackendUrl] = useState(apiBaseUrl);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   async function handleSave() {
     await updateApiBaseUrl(backendUrl);
@@ -41,6 +43,13 @@ export default function SettingsScreen() {
         </Text>
       </SectionCard>
 
+      <SectionCard title="Appearance" subtitle="Choose the app color mode stored on this device.">
+        <View style={styles.roleRow}>
+          <Pill label={isDarkMode ? 'Dark mode' : 'Light mode'} tone={isDarkMode ? 'warning' : 'neutral'} />
+        </View>
+        <AppButton label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'} onPress={() => void toggleTheme()} variant="secondary" />
+      </SectionCard>
+
       <SectionCard title="Session" subtitle="Log out to clear secure tokens and reset cached backend data.">
         <AppButton label="Log out" onPress={handleLogout} variant="danger" />
       </SectionCard>
@@ -48,14 +57,15 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: ReturnType<typeof useAppTheme>['theme']) {
+  return StyleSheet.create({
   userName: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 18,
     fontWeight: '700',
   },
   metaText: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 13,
   },
   roleRow: {
@@ -64,8 +74,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   helperText: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 13,
     lineHeight: 18,
   },
-});
+  });
+}

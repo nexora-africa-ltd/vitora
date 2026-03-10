@@ -5,11 +5,12 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { ICD10Picker } from '@/components/icd10-picker';
 import { AppButton, AppPicker, AppTextInput, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
-import { appTheme } from '@/constants/theme';
+import type { AppTheme } from '@/constants/theme';
 import { encountersApi } from '@/lib/api/encounters';
 import { clearEditDraft, getEditDraft, saveEditDraft } from '@/lib/encounter-draft-storage';
 import { buildBloodPressure, ENCOUNTER_TYPE_OPTIONS, getEncounterPillTone, getEncounterStatusLabel, splitBloodPressure } from '@/lib/encounters';
 import { queryClient } from '@/lib/query/client';
+import { useAppTheme } from '@/lib/theme/theme-context';
 import type { DiagnosisInput, Encounter, ICD10Code, TreatmentPlan, TreatmentPlanInput } from '@/lib/types/encounter';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 
@@ -156,6 +157,8 @@ function buildTreatmentPlanFormState(treatmentPlan: TreatmentPlan | null): Treat
 }
 
 export default function EditEncounterScreen() {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const params = useLocalSearchParams<{ id: string }>();
   const encounterId = Number(params.id);
   const [encounterForm, setEncounterForm] = useState<EncounterFormState | null>(null);
@@ -602,7 +605,8 @@ export default function EditEncounterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
   inlineRow: {
     flexDirection: 'row',
     gap: 12,
@@ -614,14 +618,14 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   helperText: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 13,
     lineHeight: 18,
   },
   cardBlock: {
-    backgroundColor: appTheme.colors.elevated,
-    borderColor: appTheme.colors.border,
-    borderRadius: appTheme.radius.sm,
+    backgroundColor: theme.colors.elevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
     gap: 6,
     padding: 12,
@@ -636,20 +640,21 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   cardTitle: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 15,
     fontWeight: '700',
   },
   cardMeta: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 12,
   },
   bodyText: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 14,
     lineHeight: 20,
   },
   inlineButtonRow: {
     gap: 8,
   },
-});
+  });
+}

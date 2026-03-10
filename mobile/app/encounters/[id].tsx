@@ -1,11 +1,11 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, DataRow, EmptyState, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
-import { appTheme } from '@/constants/theme';
+import type { AppTheme } from '@/constants/theme';
 import { toApiError } from '@/lib/api/client';
 import { clinicVisitsApi } from '@/lib/api/clinic-visits';
 import { encountersApi } from '@/lib/api/encounters';
@@ -13,9 +13,12 @@ import { triageApi } from '@/lib/api/triage';
 import { hasEditDraft } from '@/lib/encounter-draft-storage';
 import { canCancel, canFinalize, canStartProgress, getEncounterPillTone, getEncounterStatusLabel, getFinalizeGuidance, mapEncounterTransitionError } from '@/lib/encounters';
 import { queryClient } from '@/lib/query/client';
+import { useAppTheme } from '@/lib/theme/theme-context';
 import { formatDate, formatDateTime, formatGender } from '@/lib/utils/format';
 
 export default function EncounterDetailScreen() {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const params = useLocalSearchParams<{ id: string }>();
   const encounterId = Number(params.id);
   const [hasLocalDraft, setHasLocalDraft] = useState(false);
@@ -100,6 +103,16 @@ export default function EncounterDetailScreen() {
     mutationFn: () => encountersApi.cancel(encounterId, 'Cancelled from mobile encounter workflow.'),
     onSuccess: async (updatedEncounter) => {
       await invalidateEncounterContext(updatedEncounter.patient);
+    },
+  });
+
+  const startClinicConsultationMutation = useMutation({
+    mutationFn: (clinicVisitId: number) => clinicVisitsApi.startConsultation(clinicVisitId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['clinic-visit', clinicVisitId] }),
+        invalidateEncounterContext(encounterQuery.data?.patient),
+      ]);
     },
   });
 
@@ -250,6 +263,20 @@ export default function EncounterDetailScreen() {
               <DataRow label="Consultation started" value={formatDateTime(clinicVisitQuery.data.consultation_started_at)} />
               <DataRow label="Assigned clinician" value={clinicVisitQuery.data.assigned_clinician_name} />
               <DataRow label="Queue notes" value={clinicVisitQuery.data.notes} />
+              {['REGISTERED', 'WAITING', 'CALLED'].includes(clinicVisitQuery.data.status) ? (
+                <AppButton
+                  label={startClinicConsultationMutation.isPending ? 'Starting consultation...' : 'Start consultation'}
+                  onPress={async () => {
+                    try {
+                      await startClinicConsultationMutation.mutateAsync(clinicVisitQuery.data.id);
+                    } catch (error) {
+                      const apiError = toApiError(error);
+                      Alert.alert('Unable to start clinic consultation', apiError.message);
+                    }
+                  }}
+                  disabled={startClinicConsultationMutation.isPending}
+                />
+              ) : null}
             </View>
           ) : (
             <EmptyState title="Clinic queue details unavailable" description="The encounter is linked to a clinic visit, but the clinic visit record could not be loaded." />
@@ -396,34 +423,35 @@ export default function EncounterDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
   vitalsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
   },
   vitalsTile: {
-    backgroundColor: appTheme.colors.elevated,
-    borderColor: appTheme.colors.border,
-    borderRadius: appTheme.radius.sm,
+    backgroundColor: theme.colors.elevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
     gap: 6,
     minWidth: '47%',
     padding: 12,
   },
   vitalsLabel: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
   },
   vitalsValue: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 15,
     fontWeight: '700',
   },
   alertText: {
-    color: appTheme.colors.danger,
+    color: theme.colors.danger,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -441,24 +469,24 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   cardBlock: {
-    backgroundColor: appTheme.colors.elevated,
-    borderColor: appTheme.colors.border,
-    borderRadius: appTheme.radius.sm,
+    backgroundColor: theme.colors.elevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
     gap: 6,
     padding: 12,
   },
   cardTitle: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 15,
     fontWeight: '700',
   },
   cardMeta: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 12,
   },
   bodyText: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -466,8 +494,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sectionLabel: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 14,
     fontWeight: '700',
   },
-});
+  });
+}

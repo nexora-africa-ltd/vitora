@@ -1,14 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, DataRow, EmptyState, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
-import { appTheme } from '@/constants/theme';
+import type { AppTheme } from '@/constants/theme';
 import { getEncounterPillTone, getEncounterStatusLabel } from '@/lib/encounters';
 import { patientsApi } from '@/lib/api/patients';
+import { useAppTheme } from '@/lib/theme/theme-context';
 import { buildPatientName, formatDate, formatGender } from '@/lib/utils/format';
 
 export default function PatientDetailScreen() {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const params = useLocalSearchParams<{ id: string }>();
   const patientId = Number(params.id);
 
@@ -101,9 +105,10 @@ export default function PatientDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
   encounterItem: {
-    borderBottomColor: appTheme.colors.border,
+    borderBottomColor: theme.colors.border,
     borderBottomWidth: 1,
     gap: 4,
     paddingBottom: 12,
@@ -117,16 +122,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   encounterType: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 15,
     fontWeight: '700',
   },
   encounterComplaint: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 14,
   },
   encounterMeta: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 12,
   },
-});
+  });
+}

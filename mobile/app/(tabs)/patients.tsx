@@ -1,14 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, AppTextInput, EmptyState, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
-import { appTheme } from '@/constants/theme';
+import type { AppTheme } from '@/constants/theme';
 import { patientsApi } from '@/lib/api/patients';
+import { useAppTheme } from '@/lib/theme/theme-context';
 import { buildPatientName, formatDate, formatGender } from '@/lib/utils/format';
 
 export default function PatientsScreen() {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [searchInput, setSearchInput] = useState('');
   const [searchValue, setSearchValue] = useState('');
 
@@ -66,11 +69,12 @@ export default function PatientsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
   patientCard: {
-    backgroundColor: appTheme.colors.elevated,
-    borderColor: appTheme.colors.border,
-    borderRadius: appTheme.radius.md,
+    backgroundColor: theme.colors.elevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
     borderWidth: 1,
     gap: 6,
     padding: 14,
@@ -88,16 +92,17 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   patientName: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 16,
     fontWeight: '700',
   },
   patientMeta: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 12,
   },
   patientSummary: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 14,
   },
-});
+  });
+}

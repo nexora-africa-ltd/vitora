@@ -2,11 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
 
 import { LoadingState, ScreenContainer } from '@/components/app-ui';
-import { appTheme } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
+import { useAppTheme } from '@/lib/theme/theme-context';
 
 export default function TabLayout() {
   const { isAuthenticated, isHydrating } = useAuth();
+  const { theme } = useAppTheme();
 
   if (isHydrating) {
     return (
@@ -24,11 +25,11 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: appTheme.colors.primary,
-        tabBarInactiveTintColor: appTheme.colors.mutedText,
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.mutedText,
         tabBarStyle: {
-          backgroundColor: appTheme.colors.surface,
-          borderTopColor: appTheme.colors.border,
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.border,
           height: 72,
           paddingBottom: 12,
           paddingTop: 10,
