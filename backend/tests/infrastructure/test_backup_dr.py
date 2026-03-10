@@ -20,8 +20,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
+
 # Add scripts directory to path for importing
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
+sys.path.insert(0, str(SCRIPTS_DIR))
 
 from backup_monitor import BackupInfo, BackupMonitor, MonitoringResult
 
@@ -592,17 +594,17 @@ class TestBackupScriptValidation:
 
     def test_backup_script_exists(self):
         """Should have backup.sh script."""
-        script_path = Path(__file__).parent.parent / "scripts" / "backup.sh"
+        script_path = SCRIPTS_DIR / "backup.sh"
         assert script_path.exists(), "backup.sh script should exist"
 
     def test_backup_script_executable(self):
         """Should have executable permissions."""
-        script_path = Path(__file__).parent.parent / "scripts" / "backup.sh"
+        script_path = SCRIPTS_DIR / "backup.sh"
         assert os.access(script_path, os.X_OK), "backup.sh should be executable"
 
     def test_backup_script_syntax(self):
         """Should have valid bash syntax."""
-        script_path = Path(__file__).parent.parent / "scripts" / "backup.sh"
+        script_path = SCRIPTS_DIR / "backup.sh"
 
         result = subprocess.run(
             ["bash", "-n", str(script_path)],
@@ -614,17 +616,17 @@ class TestBackupScriptValidation:
 
     def test_restore_script_exists(self):
         """Should have restore.sh script."""
-        script_path = Path(__file__).parent.parent / "scripts" / "restore.sh"
+        script_path = SCRIPTS_DIR / "restore.sh"
         assert script_path.exists(), "restore.sh script should exist"
 
     def test_restore_script_executable(self):
         """Should have executable permissions."""
-        script_path = Path(__file__).parent.parent / "scripts" / "restore.sh"
+        script_path = SCRIPTS_DIR / "restore.sh"
         assert os.access(script_path, os.X_OK), "restore.sh should be executable"
 
     def test_restore_script_syntax(self):
         """Should have valid bash syntax."""
-        script_path = Path(__file__).parent.parent / "scripts" / "restore.sh"
+        script_path = SCRIPTS_DIR / "restore.sh"
 
         result = subprocess.run(
             ["bash", "-n", str(script_path)],
@@ -640,7 +642,7 @@ class TestBackupScriptHelp:
 
     def test_backup_script_help(self):
         """Should display help without errors."""
-        script_path = Path(__file__).parent.parent / "scripts" / "backup.sh"
+        script_path = SCRIPTS_DIR / "backup.sh"
 
         result = subprocess.run(
             ["bash", str(script_path), "--help"],
@@ -653,7 +655,7 @@ class TestBackupScriptHelp:
 
     def test_restore_script_help(self):
         """Should display help without errors."""
-        script_path = Path(__file__).parent.parent / "scripts" / "restore.sh"
+        script_path = SCRIPTS_DIR / "restore.sh"
 
         result = subprocess.run(
             ["bash", str(script_path), "--help"],
