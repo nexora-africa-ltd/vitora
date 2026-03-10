@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { DataRow, EmptyState, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { AppButton, DataRow, EmptyState, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
 import { appTheme } from '@/constants/theme';
 import { encountersApi } from '@/lib/api/encounters';
 import { getEncounterPillTone, getEncounterStatusLabel } from '@/lib/encounters';
@@ -15,6 +15,18 @@ export default function EncounterDetailScreen() {
   const encounterQuery = useQuery({
     queryKey: ['encounter', encounterId],
     queryFn: () => encountersApi.get(encounterId),
+    enabled: Number.isFinite(encounterId),
+  });
+
+  const diagnosesQuery = useQuery({
+    queryKey: ['encounter-diagnoses', encounterId],
+    queryFn: () => encountersApi.getDiagnoses(encounterId),
+    enabled: Number.isFinite(encounterId),
+  });
+
+  const treatmentPlanQuery = useQuery({
+    queryKey: ['encounter-treatment-plan', encounterId],
+    queryFn: () => encountersApi.getTreatmentPlan(encounterId),
     enabled: Number.isFinite(encounterId),
   });
 
@@ -45,6 +57,10 @@ export default function EncounterDetailScreen() {
       >
         <Pill label={getEncounterStatusLabel(encounter.status)} tone={getEncounterPillTone(encounter)} />
       </HeroCard>
+
+      <SectionCard title="Encounter actions" subtitle="Continue this visit by updating documentation, diagnoses, and the treatment plan.">
+        <AppButton label="Edit encounter" onPress={() => router.push(`/encounters/${encounter.id}/edit` as never)} />
+      </SectionCard>
 
       <SectionCard title="Summary">
         <DataRow label="Chief complaint" value={encounter.chief_complaint} />
@@ -102,6 +118,58 @@ export default function EncounterDetailScreen() {
         <DataRow label="Notes" value={encounter.notes} />
       </SectionCard>
 
+      <SectionCard title="Diagnoses" subtitle="Primary, secondary, and differential diagnoses recorded for this encounter.">
+        {(diagnosesQuery.data ?? []).length === 0 ? (
+          <EmptyState title="No diagnoses" description="No diagnoses have been recorded for this encounter yet." />
+        ) : (
+          (diagnosesQuery.data ?? []).map((diagnosis) => (
+            <View key={diagnosis.id} style={styles.cardBlock}>
+              <View style={styles.rowBetween}>
+                <View style={styles.flexOne}>
+                  <Text style={styles.cardTitle}>{diagnosis.icd10_description || diagnosis.free_text_diagnosis || 'Diagnosis'}</Text>
+                  <Text style={styles.cardMeta}>
+                    {diagnosis.icd10_code_display || diagnosis.icd11_code || 'Free text diagnosis'} · {diagnosis.certainty}
+                  </Text>
+                </View>
+                <Pill label={diagnosis.diagnosis_type} tone={diagnosis.diagnosis_type === 'PRIMARY' ? 'primary' : 'neutral'} />
+              </View>
+              {diagnosis.notes ? <Text style={styles.bodyText}>{diagnosis.notes}</Text> : null}
+            </View>
+          ))
+        )}
+      </SectionCard>
+
+      <SectionCard title="Treatment plan" subtitle="Plan text, follow-up, and medication summary for this visit.">
+        {!treatmentPlanQuery.data ? (
+          <EmptyState title="No treatment plan" description="This encounter does not have a treatment plan yet." />
+        ) : (
+          <View style={styles.planStack}>
+            <DataRow label="Clinical plan" value={treatmentPlanQuery.data.clinical_notes} />
+            <DataRow label="Follow-up instructions" value={treatmentPlanQuery.data.follow_up_instructions} />
+            <DataRow label="Follow-up date" value={formatDate(treatmentPlanQuery.data.follow_up_date)} />
+            <DataRow label="Diet recommendations" value={treatmentPlanQuery.data.diet_recommendations} />
+            <DataRow label="Activity restrictions" value={treatmentPlanQuery.data.activity_restrictions} />
+            <DataRow label="Referral specialty" value={treatmentPlanQuery.data.referral_specialty} />
+            <DataRow label="Referral notes" value={treatmentPlanQuery.data.referral_notes} />
+            {(treatmentPlanQuery.data.medications ?? []).length > 0 ? (
+              <View style={styles.planStack}>
+                <Text style={styles.sectionLabel}>Medications</Text>
+                {treatmentPlanQuery.data.medications.map((medication) => (
+                  <View key={medication.id} style={styles.cardBlock}>
+                    <View style={styles.rowBetween}>
+                      <Text style={styles.cardTitle}>{medication.name}</Text>
+                      <Pill label={medication.route} tone="neutral" />
+                    </View>
+                    <Text style={styles.cardMeta}>{medication.dosage} · {medication.frequency} · {medication.duration}</Text>
+                    {medication.instructions ? <Text style={styles.bodyText}>{medication.instructions}</Text> : null}
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        )}
+      </SectionCard>
+
       <SectionCard title="Workflow">
         <DataRow label="Triage requirement" value={encounter.triage_requirement} />
         <DataRow label="Triage status" value={encounter.triage_status} />
@@ -142,6 +210,45 @@ const styles = StyleSheet.create({
   alertText: {
     color: appTheme.colors.danger,
     fontSize: 13,
+    fontWeight: '700',
+  },
+  rowBetween: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  flexOne: {
+    flex: 1,
+    marginRight: 12,
+  },
+  cardBlock: {
+    backgroundColor: appTheme.colors.elevated,
+    borderColor: appTheme.colors.border,
+    borderRadius: appTheme.radius.sm,
+    borderWidth: 1,
+    gap: 6,
+    padding: 12,
+  },
+  cardTitle: {
+    color: appTheme.colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  cardMeta: {
+    color: appTheme.colors.mutedText,
+    fontSize: 12,
+  },
+  bodyText: {
+    color: appTheme.colors.text,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  planStack: {
+    gap: 12,
+  },
+  sectionLabel: {
+    color: appTheme.colors.text,
+    fontSize: 14,
     fontWeight: '700',
   },
 });

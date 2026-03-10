@@ -35,6 +35,7 @@ export default function RootLayout() {
             <Stack.Screen name="sign-in" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="encounters/[id]" options={{ presentation: 'card' }} />
+            <Stack.Screen name="encounters/[id]/edit" options={{ presentation: 'card' }} />
             <Stack.Screen name="encounters/new" options={{ presentation: 'modal' }} />
             <Stack.Screen name="patients/[id]" options={{ presentation: 'card' }} />
             <Stack.Screen name="patients/new" options={{ presentation: 'modal' }} />
