@@ -9,6 +9,7 @@ import { AIChatWidget } from '@/components/shared/ai-chat-widget';
 import { PermissionDebugPanel } from '@/components/shared/permission-debug-panel';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
+import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav';
 import { cn } from '@/lib/utils/cn';
 import { usePageContextForAI } from '@/lib/hooks/use-page-context-for-ai';
 
@@ -66,7 +67,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 />
 
                 {/* Page content */}
-                <main className="min-h-[calc(100vh-4rem)] p-4 md:p-6 xl:p-8">
+                <main className="min-h-[calc(100vh-4rem)] p-4 md:p-6 xl:p-8 pb-20 xl:pb-8">
                   <RouteGuard>{children}</RouteGuard>
                 </main>
               </div>
@@ -78,6 +79,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   onClick={() => setMobileSidebarOpen(false)}
                 />
               )}
+
+              {/* Mobile bottom navigation (Telegram-style) */}
+              <MobileBottomNav />
 
               {/* TibaBot AI floating widget */}
               <AIChatWidget />
