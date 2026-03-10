@@ -47,6 +47,11 @@ export default function EncountersScreen() {
                 </View>
                 <Pill label={getEncounterStatusLabel(encounter.status)} tone={getEncounterPillTone(encounter)} />
               </View>
+              {encounter.triage_category ? (
+                <View style={styles.triageRow}>
+                  <Pill label={`Triage ${encounter.triage_category}`} tone={encounter.triage_category === 'RED' || encounter.triage_category === 'ORANGE' ? 'danger' : encounter.triage_category === 'YELLOW' ? 'warning' : 'neutral'} />
+                </View>
+              ) : null}
               <Text style={styles.chiefComplaint}>{encounter.chief_complaint}</Text>
               {encounter.alerts ? <Text style={styles.alertText}>{encounter.alerts}</Text> : null}
               <Text style={styles.encounterMeta}>Created {formatDateTime(encounter.created_at)}</Text>
@@ -91,6 +96,9 @@ const styles = StyleSheet.create({
   chiefComplaint: {
     color: appTheme.colors.text,
     fontSize: 14,
+  },
+  triageRow: {
+    alignItems: 'flex-start',
   },
   alertText: {
     color: appTheme.colors.danger,

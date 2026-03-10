@@ -56,6 +56,7 @@ export default function DashboardScreen() {
 
       <SectionCard title="Quick actions" subtitle="Start from the highest-volume bedside tasks first.">
         <View style={styles.actionGrid}>
+          <AppButton label="Check-in patient" onPress={() => router.push('/checkin' as never)} />
           <AppButton label="Register patient" onPress={() => router.push('/patients/new' as never)} />
           <AppButton label="Start encounter" onPress={() => router.push('/encounters/new' as never)} variant="secondary" />
           <AppButton label="Browse patients" onPress={() => router.push('/(tabs)/patients' as never)} variant="secondary" />
