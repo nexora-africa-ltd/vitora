@@ -1,6 +1,6 @@
 # Vitora HMIS — Mobile App Development Plan
 
-**Version**: 1.0  
+**Version**: 1.1  
 **Date**: March 11, 2026  
 **Platform**: React Native (Expo 54) + Expo Router  
 **Backend**: Django REST API (900+ tests, 82%+ coverage)  
@@ -36,12 +36,16 @@
 | Encounter list, detail, create, edit (vitals, history, SOAP) | Done |
 | Diagnosis CRUD (free-text, type, certainty) | Done |
 | Treatment plan create/update (clinical notes, referrals) | Done |
-| Offline draft persistence for **new** encounters (AsyncStorage) | Done |
+| Encounter workflow actions (start progress, finalize, cancel) | Done |
+| ICD-10 diagnosis search and picker | Done |
+| Triage assessment (KETA workflow) | Done |
+| Patient check-in flow | Done |
+| Offline draft persistence for **new and edit** encounter forms (AsyncStorage) | Done |
 | Settings tab (logout, backend URL) | Done |
 
 ### Architecture
 
-- **Navigation**: 4-tab layout — Dashboard, Patients, Encounters, Settings
+- **Navigation**: 4-tab layout — Dashboard, Patients, Encounters, Settings, with stack routes for check-in and encounter triage/edit flows
 - **Data fetching**: Zod-validated API client with `parseResponse()` + `@tanstack/react-query`
 - **Design system**: `app-ui.tsx` (HeroCard, SectionCard, MetricCard, Pill, AppButton, AppTextInput, AppPicker, etc.)
 - **Theme**: "Vitora Sand" background (`#F4EFE5`), teal primary (`#0F766E`), orange accent (`#E08A5C`)
@@ -50,10 +54,10 @@
 
 | Module | Web App | Mobile | Priority |
 |--------|---------|--------|----------|
-| Encounter status transitions (finalize/cancel) | Full state machine | **Missing** | P0 |
-| ICD-10/ICD-11 diagnosis search | Full integration | Free-text only | P0 |
-| Triage (KETA-based) | Full module | **Missing** | P0 |
-| Check-in flow | Full module | **Missing** | P0 |
+| Encounter status transitions (finalize/cancel/start progress) | Full state machine | Implemented for core mobile actions; generic transition UI still limited | P0 |
+| ICD-10/ICD-11 diagnosis search | Full integration | ICD-10 search and selection implemented; ICD-11 remains absent | P0 |
+| Triage (KETA-based) | Full module | Implemented | P0 |
+| Check-in flow | Full module | Implemented with triage or direct-clinic routing | P0 |
 | Laboratory (orders, results) | Full workflow | **Missing** | P1 |
 | Pharmacy (prescriptions, dispensing) | Full workflow | **Missing** | P1 |
 | Offline-first with local DB | N/A (web is online-only) | Planned, not wired | P1 |
@@ -71,18 +75,37 @@
 
 ## Phase 1: Clinical Core Completion (Weeks 1–4)
 
-> **Goal**: Make mobile clinically functional for OPD consultations end-to-end. A clinician can check in a patient, triage, consult, diagnose with ICD codes, prescribe, and close the encounter — all from mobile.
+> **Goal**: Make mobile clinically functional for OPD consultations end-to-end. A clinician can check in a patient, triage, consult, diagnose with ICD codes, document treatment, and close the encounter from mobile. Prescription and dispensing workflows remain part of Phase 2.
+
+### Phase 1 Status
+
+**Overall status**: Core Phase 1 implementation is in place.
+
+**Verification completed**:
+- `npm run typecheck` passes
+- `npm run lint` passes
+- Targeted Jest coverage passes for check-in API, triage API, and ICD-10 picker selection
+
+**Residual validation gaps before broad rollout**:
+- No automated UI/integration coverage yet for encounter status actions (`Start progress`, `Finalize visit`, `Cancel encounter`)
+- No automated restart-flow test for edit draft restore and clear behavior
+- Generic encounter `transition()` support exists in the API client, but the mobile UI currently exposes only the core actions needed for consultation flow
 
 ### 1.1 Encounter Workflow Actions (Week 1)
 
 **Scope**: Enable clinicians to finalize, cancel, and transition encounter status from mobile.
 
-**Tasks**:
-- Add `finalize()`, `cancel()`, `startProgress()`, `transition()` to the encounter API client
-- Build status action buttons on encounter detail screen (Finalize Visit, Cancel, Start Progress)
-- Add guard helpers (`canFinalize()`, `canCancel()`) that check current status before allowing actions
-- Show confirmation dialogs before destructive actions (cancel, finalize)
-- Invalidate encounter + dashboard queries after successful transitions
+**Implementation status**: Complete for the core encounter workflow.
+
+**Implemented**:
+- Added `finalize()`, `cancel()`, `startProgress()`, and `transition()` to the encounter API client
+- Built encounter detail action buttons for `Start progress`, `Finalize visit`, and `Cancel encounter`
+- Added status guard helpers including `canFinalize()`, `canCancel()`, and `canStartProgress()`
+- Added confirmation dialogs and backend-aware finalize guidance before destructive or terminal actions
+- Invalidates encounter, encounter list, triage, dashboard, and patient encounter queries after successful mutations
+
+**Notes**:
+- The generic `transition()` client method is available for future workflow expansion, but the current screen intentionally exposes only the core consultation actions
 
 **Files to touch**:
 - `lib/api/encounters.ts` — new action methods
@@ -94,11 +117,16 @@
 
 **Scope**: Replace free-text-only diagnosis input with searchable ICD-10 code picker.
 
-**Tasks**:
-- Add `searchICD10(query)` method to encounter API client (`GET /api/encounters/icd10-codes/?search=`)
-- Build `ICD10Picker` component: TextInput with 300ms debounce → FlatList search results → select to populate
-- Integrate picker into the edit screen diagnosis form (keep free-text as fallback)
-- Show ICD-10 code badges on diagnosis cards in encounter detail view
+**Implementation status**: Complete.
+
+**Implemented**:
+- Added `searchICD10(query)` to the encounter API client with paginated Zod validation
+- Built reusable `ICD10Picker` with debounced search and selectable results
+- Integrated the picker into the encounter edit diagnosis form while preserving free-text fallback
+- Shows ICD-10 code badges in encounter detail and edit views
+
+**Notes**:
+- Mobile currently uses ICD-10 only; ICD-11 support remains out of scope for Phase 1
 
 **Files to touch**:
 - `lib/api/encounters.ts` — `searchICD10()` method
@@ -111,12 +139,17 @@
 
 **Scope**: Add triage recording with Kenya Emergency Triage Assessment (KETA) acuity levels.
 
-**Tasks**:
-- Build triage API client (`GET/POST /api/triage/assessments/`)
-- Define triage types + Zod schemas (TriageAssessment, KETA 5-level scale, TriageVitals)
-- Create triage assessment screen accessible from encounter detail
-- Show triage acuity badge/summary on encounter cards and detail view
-- Validate vitals ranges (temperature, heart rate, respiratory rate, SpO2, GCS)
+**Implementation status**: Complete.
+
+**Implemented**:
+- Built triage API client with list, encounter lookup, create, and complete actions
+- Added triage types and Zod schemas for assessments, alerts, vitals, and KETA levels
+- Created encounter-linked triage screen with KETA acuity capture and completion workflow
+- Shows triage acuity badges on encounter cards and summary/detail sections
+- Validates vitals and GCS ranges client-side before posting to the backend
+
+**Notes**:
+- The mobile triage flow supports both manual category override and completion of an existing triage record
 
 **Files to touch**:
 - `lib/api/triage.ts` — new API client
@@ -130,11 +163,14 @@
 
 **Scope**: Quick patient check-in that creates an encounter and optionally starts triage.
 
-**Tasks**:
-- Build check-in API client (`POST /api/checkin/`)
-- Create check-in screen: patient search → select → create encounter → optional triage
-- Add "Check-in Patient" action to dashboard quick actions
-- Add "Start Consultation" shortcut on patient detail screen
+**Implementation status**: Complete.
+
+**Implemented**:
+- Built check-in API client with patient search, patient lookup, and encounter creation
+- Created check-in screen with patient search, clinical snapshot, visit context, and routing controls
+- Supports routing to triage or directly to an active clinic with immediate post-check-in navigation
+- Added `Check-in patient` quick action to the dashboard
+- Added `Start consultation` shortcut on patient detail that deep-links into check-in with the patient preselected
 
 **Files to touch**:
 - `lib/api/checkin.ts` — new client
@@ -149,11 +185,13 @@
 
 **Scope**: Extend offline draft storage to encounter **edit** forms, not just new encounters.
 
-**Tasks**:
-- Add `saveEditDraft(encounterId, form)`, `getEditDraft(encounterId)`, `clearEditDraft(encounterId)` to draft storage
-- Wire auto-save (250ms debounce) into encounter edit screen
-- Restore draft on re-entry, clear on successful save
-- Show "Unsaved changes" indicator on encounter detail when a draft exists
+**Implementation status**: Complete.
+
+**Implemented**:
+- Added `saveEditDraft(encounterId, form)`, `getEditDraft(encounterId)`, `clearEditDraft(encounterId)`, and `hasEditDraft(encounterId)` to draft storage
+- Wired 250ms debounced auto-save into encounter edit state
+- Restores local draft state on editor re-entry and clears it after successful encounter saves or explicit discard
+- Shows an `Unsaved changes` section on encounter detail when a local draft exists
 
 **Files to touch**:
 - `lib/encounter-draft-storage.ts` — edit draft methods
@@ -162,19 +200,33 @@
 
 ### Exit / Acceptance Criteria — Phase 1
 
-| # | Criterion | Verification |
-|---|-----------|-------------|
-| 1 | Clinician can finalize and cancel encounters from mobile | Finalize a `STARTED` encounter → status becomes `COMPLETED` |
-| 2 | Status guards prevent invalid transitions | Attempt to finalize a `CANCELLED` encounter → error shown |
-| 3 | Diagnoses can be searched and selected from ICD-10 codes | Type "malaria" → ICD-10 results appear → select populates diagnosis |
-| 4 | Free-text diagnosis still works as fallback | Enter text without selecting ICD-10 → diagnosis saves |
-| 5 | Triage assessment can be recorded with KETA acuity levels | Record KETA level (Emergency/Priority/Queue) → badge shown |
-| 6 | Patient can be checked in from dashboard | Dashboard → Check-in → search patient → encounter created |
-| 7 | Edit form state survives app restart | Edit encounter → kill app → reopen → draft restored |
-| 8 | `npm run typecheck` passes with zero errors | CI/local verification |
-| 9 | `npm run lint` passes with zero warnings | CI/local verification |
-| 10 | All new API methods use Zod-validated `parseResponse()` | Code review |
-| 11 | Encounter detail shows triage badge and ICD-10 codes on diagnoses | Visual inspection |
+| # | Criterion | Status | Verification |
+|---|-----------|--------|-------------|
+| 1 | Clinician can finalize and cancel encounters from mobile | Implemented | Mobile encounter detail exposes `Finalize visit` and `Cancel encounter` actions with guarded confirmations |
+| 2 | Status guards prevent invalid transitions | Implemented | Guard helpers and backend-aware error mapping prevent invalid actions from appearing or succeeding silently |
+| 3 | Diagnoses can be searched and selected from ICD-10 codes | Verified | Targeted Jest test covers ICD-10 search results and selection |
+| 4 | Free-text diagnosis still works as fallback | Implemented | Edit flow allows saving diagnosis with free text only when no ICD-10 code is selected |
+| 5 | Triage assessment can be recorded with KETA acuity levels | Verified | Triage screen, schema, validation, and targeted API test are in place |
+| 6 | Patient can be checked in from dashboard | Verified | Dashboard quick action routes into check-in; targeted API test covers check-in payload and response handling |
+| 7 | Edit form state survives app restart | Implemented, manual verification still advised | Edit drafts are auto-saved locally and restored on re-entry; no automated restart-flow test exists yet |
+| 8 | `npm run typecheck` passes with zero errors | Verified | Local verification completed |
+| 9 | `npm run lint` passes with zero warnings | Verified | Local verification completed |
+| 10 | All new API methods use Zod-validated `parseResponse()` | Verified | Encounter, triage, and check-in clients validate responses through Zod schemas |
+| 11 | Encounter detail shows triage badge and ICD-10 codes on diagnoses | Implemented | Encounter list/detail render triage badges and ICD-10 diagnosis pills |
+
+### Phase 1 Decision
+
+**Recommendation**: Safe to proceed to Phase 2.
+
+**Why this is safe**:
+- The planned Phase 1 implementation is present in the mobile app and the core flows compile and lint cleanly
+- Targeted automated tests cover the new API and ICD-10 search behavior
+- Remaining gaps are validation-depth issues, not missing core functionality
+
+**Carry-forward items for early Phase 2**:
+- Add UI or integration coverage for encounter workflow actions
+- Add a manual or automated restart test for edit-draft persistence
+- Decide whether broader encounter state transitions need explicit mobile controls beyond `startProgress`, `finalize`, and `cancel`
 
 ---
 

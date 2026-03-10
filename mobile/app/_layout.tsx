@@ -49,8 +49,14 @@ function RootLayoutContent() {
             <Stack.Screen name="encounters/[id]/triage" options={{ presentation: 'card' }} />
             <Stack.Screen name="encounters/[id]/edit" options={{ presentation: 'card' }} />
             <Stack.Screen name="encounters/new" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="laboratory/index" options={{ presentation: 'card' }} />
+            <Stack.Screen name="laboratory/[id]" options={{ presentation: 'card' }} />
+            <Stack.Screen name="laboratory/new" options={{ presentation: 'modal' }} />
             <Stack.Screen name="patients/[id]" options={{ presentation: 'card' }} />
             <Stack.Screen name="patients/new" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="pharmacy/index" options={{ presentation: 'card' }} />
+            <Stack.Screen name="pharmacy/[id]" options={{ presentation: 'card' }} />
+            <Stack.Screen name="pharmacy/new" options={{ presentation: 'modal' }} />
           </Stack>
           <StatusBar style={isDarkMode ? 'light' : 'dark'} />
         </ThemeProvider>

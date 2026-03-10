@@ -62,10 +62,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="more"
+        options={{
+          title: 'More',
+          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="ellipsis-horizontal" size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
-          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="settings-outline" size={size} />,
+          href: null,
         }}
       />
     </Tabs>
