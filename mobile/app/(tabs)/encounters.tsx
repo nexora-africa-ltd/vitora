@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { EmptyState, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { AppButton, EmptyState, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
 import { appTheme } from '@/constants/theme';
+import { getEncounterPillTone, getEncounterStatusLabel } from '@/lib/encounters';
 import { encountersApi } from '@/lib/api/encounters';
 import { formatDateTime } from '@/lib/utils/format';
 
@@ -24,23 +26,31 @@ export default function EncountersScreen() {
 
   return (
     <ScreenContainer>
+      <SectionCard title="Encounter actions" subtitle="Start a new visit or continue reviewing active ones.">
+        <AppButton label="New encounter" onPress={() => router.push('/encounters/new' as never)} />
+      </SectionCard>
+
       <SectionCard title="Encounters" subtitle="This view is fed directly from /api/encounters/ and highlights active clinical work.">
         {encounters.length === 0 ? (
           <EmptyState title="No encounters yet" description="Once clinicians create encounters from the backend, they will appear here." />
         ) : (
           encounters.map((encounter) => (
-            <View key={encounter.id} style={styles.encounterCard}>
+            <Pressable
+              key={encounter.id}
+              onPress={() => router.push(`/encounters/${encounter.id}` as never)}
+              style={({ pressed }) => [styles.encounterCard, pressed && styles.cardPressed]}
+            >
               <View style={styles.encounterTopRow}>
                 <View style={styles.titleBlock}>
                   <Text style={styles.encounterTitle}>{encounter.patient_name || 'Unknown patient'}</Text>
                   <Text style={styles.encounterMeta}>{encounter.patient_mrn || 'MRN pending'} · {encounter.encounter_type}</Text>
                 </View>
-                <Pill label={encounter.status.replace(/_/g, ' ')} tone={encounter.has_critical_vitals ? 'danger' : 'warning'} />
+                <Pill label={getEncounterStatusLabel(encounter.status)} tone={getEncounterPillTone(encounter)} />
               </View>
               <Text style={styles.chiefComplaint}>{encounter.chief_complaint}</Text>
               {encounter.alerts ? <Text style={styles.alertText}>{encounter.alerts}</Text> : null}
               <Text style={styles.encounterMeta}>Created {formatDateTime(encounter.created_at)}</Text>
-            </View>
+            </Pressable>
           ))
         )}
       </SectionCard>
@@ -56,6 +66,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 6,
     padding: 14,
+  },
+  cardPressed: {
+    opacity: 0.82,
   },
   encounterTopRow: {
     alignItems: 'center',
