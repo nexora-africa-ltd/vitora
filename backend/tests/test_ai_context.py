@@ -20,6 +20,14 @@ from django.test import override_settings
 from rest_framework import status
 
 
+@pytest.fixture
+def authenticated_client(api_client, test_user):
+    """Authenticated AI client with an allowed conversational AI role."""
+    test_user.role = "DOCTOR"
+    api_client.force_authenticate(user=test_user)
+    return api_client
+
+
 # =============================================================================
 # Context enrichment tests
 # =============================================================================
@@ -213,6 +221,20 @@ class TestClinicalChatEndpoint:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @override_settings(TIBABOT_ENABLED=True)
+    def test_forbids_unauthorized_roles(self, api_client, test_user):
+        """Should reject authenticated users whose role is not allowed to use AI chat."""
+        test_user.role = "NURSE"
+        api_client.force_authenticate(user=test_user)
+
+        response = api_client.post(
+            "/api/ai/clinical/chat/",
+            {"message": "test"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    @override_settings(TIBABOT_ENABLED=True)
     def test_validates_message_required(self, authenticated_client):
         """Should reject requests without a message."""
         response = authenticated_client.post(
@@ -334,6 +356,20 @@ class TestClinicalAssistEndpoint:
             format="json",
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_forbids_unauthorized_roles(self, api_client, test_user):
+        """Should reject authenticated users whose role is not allowed to use AI assist."""
+        test_user.role = "NURSE"
+        api_client.force_authenticate(user=test_user)
+
+        response = api_client.post(
+            "/api/ai/clinical/assist/",
+            {"query": "test"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     @override_settings(TIBABOT_ENABLED=True)
     def test_validates_query_required(self, authenticated_client):
@@ -851,6 +887,20 @@ class TestAIFeedbackEndpoint:
             format="json",
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_forbids_unauthorized_roles(self, api_client, test_user):
+        """Should reject authenticated users whose role is not allowed to use AI chat."""
+        test_user.role = "NURSE"
+        api_client.force_authenticate(user=test_user)
+
+        response = api_client.post(
+            "/api/ai/feedback/",
+            {"message_id": "msg-1", "feedback": "up"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     @override_settings(TIBABOT_ENABLED=True)
     def test_validates_required_fields(self, authenticated_client):
