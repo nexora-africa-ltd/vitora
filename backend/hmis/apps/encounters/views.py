@@ -668,6 +668,12 @@ class EncounterViewSet(ModelHistoryMixin, viewsets.ModelViewSet):
 
         encounter = self.get_object()
 
+        if not request.user.has_perm("encounters.change_encounter"):
+            return Response(
+                {"detail": "You do not have permission to edit chief complaint."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         # Get data from request
         new_complaint = request.data.get("chief_complaint", "").strip()
         edit_reason = request.data.get("edit_reason", "").strip()

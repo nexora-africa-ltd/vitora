@@ -843,6 +843,13 @@ class TestTriageEdgeCases:
 class TestChiefComplaintEditAuditTrail:
     """Test the chief complaint edit feature with audit trail."""
 
+    @staticmethod
+    def _grant_change_encounter_permission(user):
+        from django.contrib.auth.models import Permission
+
+        permission = Permission.objects.get(codename="change_encounter")
+        user.user_permissions.add(permission)
+
     def test_chief_complaint_edit_reason_choices_exist(self):
         """Verify chief complaint edit reason choices are defined."""
         from hmis.apps.encounters.models import Encounter
@@ -880,9 +887,13 @@ class TestChiefComplaintEditAuditTrail:
         assert hasattr(encounter, "chief_complaint_edited_by")
         assert hasattr(encounter, "chief_complaint_edited_at")
 
-    def test_edit_chief_complaint_stores_original(self, authenticated_client, sample_patient):
+    def test_edit_chief_complaint_stores_original(
+        self, authenticated_client, test_user, sample_patient
+    ):
         """Test that editing chief complaint stores the original value."""
         from hmis.apps.encounters.models import Encounter
+
+        self._grant_change_encounter_permission(test_user)
 
         # Create encounter
         encounter = Encounter.objects.create(
@@ -910,9 +921,13 @@ class TestChiefComplaintEditAuditTrail:
         assert encounter.chief_complaint_edited_by is not None
         assert encounter.chief_complaint_edited_at is not None
 
-    def test_edit_chief_complaint_requires_reason(self, authenticated_client, sample_patient):
+    def test_edit_chief_complaint_requires_reason(
+        self, authenticated_client, test_user, sample_patient
+    ):
         """Test that editing chief complaint requires a reason."""
         from hmis.apps.encounters.models import Encounter
+
+        self._grant_change_encounter_permission(test_user)
 
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -933,10 +948,12 @@ class TestChiefComplaintEditAuditTrail:
         assert "reason" in response.data.get("detail", "").lower()
 
     def test_edit_chief_complaint_other_requires_details(
-        self, authenticated_client, sample_patient
+        self, authenticated_client, test_user, sample_patient
     ):
         """Test that 'OTHER' reason requires specification."""
         from hmis.apps.encounters.models import Encounter
+
+        self._grant_change_encounter_permission(test_user)
 
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -961,10 +978,12 @@ class TestChiefComplaintEditAuditTrail:
         )
 
     def test_edit_chief_complaint_other_with_details_succeeds(
-        self, authenticated_client, sample_patient
+        self, authenticated_client, test_user, sample_patient
     ):
         """Test that 'OTHER' reason with details succeeds."""
         from hmis.apps.encounters.models import Encounter
+
+        self._grant_change_encounter_permission(test_user)
 
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -988,10 +1007,12 @@ class TestChiefComplaintEditAuditTrail:
         assert "trust" in encounter.chief_complaint_edit_reason_other
 
     def test_edit_chief_complaint_preserves_first_original(
-        self, authenticated_client, sample_patient
+        self, authenticated_client, test_user, sample_patient
     ):
         """Test that multiple edits preserve the first original value."""
         from hmis.apps.encounters.models import Encounter
+
+        self._grant_change_encounter_permission(test_user)
 
         encounter = Encounter.objects.create(
             patient=sample_patient,
@@ -1023,3 +1044,27 @@ class TestChiefComplaintEditAuditTrail:
         assert encounter.chief_complaint == "Third version"
         assert encounter.chief_complaint_original == "First original complaint"
         assert encounter.chief_complaint_edit_reason == "CLARIFICATION"
+
+    def test_edit_chief_complaint_requires_change_encounter_permission(
+        self, authenticated_client, sample_patient
+    ):
+        """Users without change_encounter permission should not edit chief complaint."""
+        from hmis.apps.encounters.models import Encounter
+
+        encounter = Encounter.objects.create(
+            patient=sample_patient,
+            encounter_type="OPD",
+            chief_complaint="Original complaint",
+        )
+
+        response = authenticated_client.post(
+            f"/api/encounters/{encounter.id}/edit_chief_complaint/",
+            {
+                "chief_complaint": "Updated complaint",
+                "edit_reason": "CLARIFICATION",
+            },
+            format="json",
+        )
+
+        assert response.status_code == 403
+        assert "permission" in response.data.get("detail", "").lower()
