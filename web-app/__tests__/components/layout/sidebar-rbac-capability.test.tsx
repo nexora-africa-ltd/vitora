@@ -20,6 +20,10 @@ const mockUseNavigationMode = jest.fn(() => ({
   navigationMode: 'standard',
   isClinicalNavigationEligible: true,
 }));
+const mockPatientJourneyState = {
+  selectedPatientId: null as number | null,
+  activePatients: {} as Record<number, unknown>,
+};
 
 jest.mock('next/navigation', () => ({
   usePathname: jest.fn(() => '/'),
@@ -59,6 +63,12 @@ jest.mock('@/lib/context/navigation-mode-context', () => ({
   useNavigationMode: () => mockUseNavigationMode(),
 }));
 
+jest.mock('@/lib/stores/patient-journey', () => ({
+  usePatientJourneyStore: jest.fn((selector: (state: typeof mockPatientJourneyState) => unknown) =>
+    selector(mockPatientJourneyState)
+  ),
+}));
+
 // Mock Radix UI components to avoid portals/state issues in tests
 jest.mock('@/components/ui/scroll-area', () => {
   const MockScrollArea = React.forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string }>(
@@ -75,6 +85,14 @@ jest.mock('@/components/ui/tooltip', () => ({
   TooltipTrigger: ({ children, asChild }: { children: React.ReactNode; asChild?: boolean }) =>
     asChild ? children : React.createElement('span', null, children),
   TooltipContent: () => null,
+}));
+
+jest.mock('@/components/ui/popover', () => ({
+  Popover: ({ children }: { children: React.ReactNode }) => children,
+  PopoverTrigger: ({ children, asChild }: { children: React.ReactNode; asChild?: boolean }) =>
+    asChild ? children : React.createElement('span', null, children),
+  PopoverContent: ({ children }: { children: React.ReactNode }) =>
+    React.createElement('div', { 'data-testid': 'popover-content' }, children),
 }));
 
 jest.mock('@/components/ui/collapsible', () => {
@@ -110,6 +128,8 @@ beforeEach(() => {
   mockCanAccessModule.mockReturnValue(true);
   mockCanPerformAction.mockReturnValue(true);
   mockHasModule.mockReturnValue(true);
+  mockPatientJourneyState.selectedPatientId = null;
+  mockPatientJourneyState.activePatients = {};
   mockUseNavigationMode.mockReturnValue({
     navigationMode: 'standard',
     isClinicalNavigationEligible: true,

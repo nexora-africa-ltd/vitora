@@ -14,6 +14,9 @@ import {
   ChevronLeft,
   ChevronDown,
   LogOut,
+  Pin,
+  Stethoscope,
+  User,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
@@ -25,6 +28,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -32,6 +40,9 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ScrollMoreButton } from '@/components/ui/scroll-more-button';
 import { useLogout } from '@/lib/auth/hooks';
+import { usePermissions } from '@/lib/hooks/use-permissions';
+import { usePatientJourneyStore } from '@/lib/stores/patient-journey';
+import { calculateAge } from '@/lib/utils/format';
 import {
   bottomNavItems,
   hasChildren,
@@ -175,6 +186,224 @@ function useIsActive(href: string, pathname: string, searchParamsString: string)
 
     return true;
   }, [href, pathname, searchParamsString]);
+}
+
+const GENDER_SHORT_LABELS: Record<string, string> = {
+  M: 'Male',
+  F: 'Female',
+  O: 'Other',
+};
+
+const STAGE_STATUS_CONFIG: Partial<Record<string, { label: string; description: string; dotClassName: string }>> = {
+  REGISTERED: {
+    label: 'Registered',
+    description: 'Patient has been registered in the system.',
+    dotClassName: 'bg-slate-400',
+  },
+  CHECKED_IN: {
+    label: 'Checked In',
+    description: 'Patient has arrived and completed check-in.',
+    dotClassName: 'bg-cyan-500',
+  },
+  AWAITING_TRIAGE: {
+    label: 'Awaiting Triage',
+    description: 'Patient is waiting for initial triage assessment.',
+    dotClassName: 'bg-amber-500',
+  },
+  IN_TRIAGE: {
+    label: 'In Triage',
+    description: 'Patient is currently being assessed in triage.',
+    dotClassName: 'bg-blue-500',
+  },
+  AWAITING_CONSULTATION: {
+    label: 'Awaiting Consultation',
+    description: 'Triage is complete and the patient is waiting for a clinician.',
+    dotClassName: 'bg-violet-500',
+  },
+  IN_CONSULTATION: {
+    label: 'In Consultation',
+    description: 'Patient is currently with a clinician.',
+    dotClassName: 'bg-emerald-500',
+  },
+  AWAITING_LAB: {
+    label: 'Awaiting Lab',
+    description: 'Lab work has been ordered and the patient is waiting for processing.',
+    dotClassName: 'bg-fuchsia-500',
+  },
+  LAB_IN_PROGRESS: {
+    label: 'Lab In Progress',
+    description: 'Lab processing is underway.',
+    dotClassName: 'bg-fuchsia-600',
+  },
+  LAB_RESULTS_READY: {
+    label: 'Lab Results Ready',
+    description: 'Lab results are available for review.',
+    dotClassName: 'bg-lime-500',
+  },
+  AWAITING_IMAGING: {
+    label: 'Awaiting Imaging',
+    description: 'Imaging has been requested and is pending.',
+    dotClassName: 'bg-sky-500',
+  },
+  IMAGING_IN_PROGRESS: {
+    label: 'Imaging In Progress',
+    description: 'Imaging study is currently being performed.',
+    dotClassName: 'bg-sky-600',
+  },
+  IMAGING_RESULTS_READY: {
+    label: 'Imaging Results Ready',
+    description: 'Imaging results are ready for review.',
+    dotClassName: 'bg-teal-500',
+  },
+  AWAITING_PHARMACY: {
+    label: 'Awaiting Pharmacy',
+    description: 'Medication order is waiting for dispensing.',
+    dotClassName: 'bg-orange-500',
+  },
+  PHARMACY_DISPENSING: {
+    label: 'Pharmacy Dispensing',
+    description: 'Medication is currently being prepared or dispensed.',
+    dotClassName: 'bg-orange-600',
+  },
+  PHARMACY_READY: {
+    label: 'Pharmacy Ready',
+    description: 'Medication is ready for collection.',
+    dotClassName: 'bg-yellow-500',
+  },
+  AWAITING_BILLING: {
+    label: 'Awaiting Billing',
+    description: 'Patient is waiting for billing review or payment.',
+    dotClassName: 'bg-rose-400',
+  },
+  ADMITTED: {
+    label: 'Admitted',
+    description: 'Patient has been admitted to inpatient care.',
+    dotClassName: 'bg-red-500',
+  },
+  DISCHARGED: {
+    label: 'Discharged',
+    description: 'Patient visit has been completed and discharge finalized.',
+    dotClassName: 'bg-slate-500',
+  },
+};
+
+function getStageStatus(stage: string) {
+  return STAGE_STATUS_CONFIG[stage] ?? {
+    label: stage.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase()),
+    description: 'Patient journey stage is currently active.',
+    dotClassName: 'bg-slate-400',
+  };
+}
+
+function StageStatusDot({ stage }: { stage: string }) {
+  const status = getStageStatus(stage);
+
+  return (
+    <Popover>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="relative inline-flex h-4 w-4 items-center justify-center rounded-full transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              aria-label={status.label}
+            >
+              <span className={cn('absolute inline-flex h-2.5 w-2.5 animate-ping rounded-full opacity-75', status.dotClassName)} />
+              <span className={cn('relative inline-flex h-2.5 w-2.5 rounded-full shadow-sm', status.dotClassName)} />
+            </button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">{status.label}</TooltipContent>
+      </Tooltip>
+      <PopoverContent align="end" className="w-56 p-3">
+        <div className="flex items-start gap-3">
+          <span className={cn('mt-0.5 inline-flex h-3.5 w-3.5 shrink-0 rounded-full', status.dotClassName)} />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">{status.label}</p>
+            <p className="text-xs leading-relaxed text-muted-foreground">{status.description}</p>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function CurrentPatientCard({ onMobileClose }: { onMobileClose: () => void }) {
+  const { canAccessModule } = usePermissions();
+  const currentPatient = usePatientJourneyStore((state) => {
+    if (!state.selectedPatientId) return null;
+    return state.activePatients[state.selectedPatientId] ?? null;
+  });
+  const [dismissedPatientId, setDismissedPatientId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (currentPatient?.id !== dismissedPatientId) {
+      setDismissedPatientId(null);
+    }
+  }, [currentPatient?.id, dismissedPatientId]);
+
+  if (!currentPatient || !canAccessModule('patients' as never) || dismissedPatientId === currentPatient.id) {
+    return null;
+  }
+
+  const age = currentPatient.date_of_birth ? calculateAge(currentPatient.date_of_birth) : null;
+  const gender = currentPatient.gender
+    ? GENDER_SHORT_LABELS[currentPatient.gender] ?? currentPatient.gender
+    : null;
+  const demographics = [currentPatient.mrn, age !== null ? `${age}y` : null, gender].filter(Boolean);
+
+  return (
+    <section className="px-3 pb-3" aria-label="Current patient" data-testid="current-patient-card">
+      <div className="relative overflow-hidden rounded-2xl border border-cyan-500/15 bg-gradient-to-br from-cyan-500/8 via-card to-card p-3 shadow-sm">
+        <button
+          type="button"
+          aria-label="Dismiss current patient card"
+          className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          onClick={() => setDismissedPatientId(currentPatient.id)}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 pr-8 text-xs font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">
+              <Pin className="h-3.5 w-3.5" />
+              <span>Current Patient</span>
+              <StageStatusDot stage={currentPatient.stage} />
+            </div>
+
+            <div className="mt-2 flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <User className="h-4 w-4" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">{currentPatient.name}</p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">{demographics.join(' • ')}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          <Button asChild size="sm" variant="outline" className="flex-1">
+            <Link href={`/patients/${currentPatient.id}`} onClick={onMobileClose}>
+              View
+            </Link>
+          </Button>
+
+          {currentPatient.encounter_id && canAccessModule('encounters' as never) ? (
+            <Button asChild size="sm" className="flex-1">
+              <Link href={`/encounters/${currentPatient.encounter_id}`} onClick={onMobileClose}>
+                <Stethoscope className="h-3.5 w-3.5" />
+                Encounter
+              </Link>
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -419,6 +648,8 @@ export function Sidebar({
               <X className="h-5 w-5" />
             </Button>
           </div>
+
+          {!collapsed && <CurrentPatientCard onMobileClose={onMobileClose} />}
 
           <div className="relative flex-1 min-h-0">
             {/* Top fade gradient when scrolled */}
