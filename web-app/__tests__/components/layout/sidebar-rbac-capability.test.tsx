@@ -13,10 +13,17 @@ import { Sidebar } from '@/components/layout/sidebar';
 // --- Mock setup ---
 
 const mockCanAccessModule = jest.fn(() => true);
+const mockCanPerformAction = jest.fn(() => true);
 const mockHasModule = jest.fn(() => true);
+const mockSearchParams = jest.fn(() => new URLSearchParams());
+const mockUseNavigationMode = jest.fn(() => ({
+  navigationMode: 'standard',
+  isClinicalNavigationEligible: true,
+}));
 
 jest.mock('next/navigation', () => ({
   usePathname: jest.fn(() => '/'),
+  useSearchParams: () => mockSearchParams(),
 }));
 
 jest.mock('@/lib/auth/hooks', () => ({
@@ -26,7 +33,7 @@ jest.mock('@/lib/auth/hooks', () => ({
 jest.mock('@/lib/hooks/use-permissions', () => ({
   usePermissions: jest.fn(() => ({
     canAccessModule: mockCanAccessModule,
-    canPerformAction: () => true,
+    canPerformAction: mockCanPerformAction,
     hasPermission: () => true,
     canEditPatient: true,
     canEditIdentity: true,
@@ -46,6 +53,10 @@ jest.mock('@/lib/context/facility-context', () => ({
     isLoading: false,
     hasModule: mockHasModule,
   })),
+}));
+
+jest.mock('@/lib/context/navigation-mode-context', () => ({
+  useNavigationMode: () => mockUseNavigationMode(),
 }));
 
 // Mock Radix UI components to avoid portals/state issues in tests
@@ -97,7 +108,13 @@ const defaultProps = {
 beforeEach(() => {
   jest.clearAllMocks();
   mockCanAccessModule.mockReturnValue(true);
+  mockCanPerformAction.mockReturnValue(true);
   mockHasModule.mockReturnValue(true);
+  mockUseNavigationMode.mockReturnValue({
+    navigationMode: 'standard',
+    isClinicalNavigationEligible: true,
+  });
+  mockSearchParams.mockReturnValue(new URLSearchParams());
   Object.defineProperty(window, 'localStorage', {
     value: { getItem: jest.fn(() => null), setItem: jest.fn() },
     writable: true,
@@ -121,6 +138,14 @@ describe('Sidebar RBAC filtering', () => {
     render(<Sidebar {...defaultProps} />);
 
     expect(screen.queryByText('Laboratory')).not.toBeInTheDocument();
+  });
+
+  it('hides AI Assistant when action access is denied', () => {
+    mockCanPerformAction.mockImplementation((action: string) => action !== 'ai.use_chat');
+
+    render(<Sidebar {...defaultProps} />);
+
+    expect(screen.queryByText('AI Assistant')).not.toBeInTheDocument();
   });
 });
 
@@ -178,5 +203,42 @@ describe('Sidebar combined RBAC + capability filtering', () => {
     expect(screen.getAllByText('Laboratory').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Inpatient').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Imaging').length).toBeGreaterThan(0);
+  });
+
+  it('shows workflow-oriented items in clinical mode for eligible users', () => {
+    mockUseNavigationMode.mockReturnValue({
+      navigationMode: 'clinical',
+      isClinicalNavigationEligible: true,
+    });
+
+    render(<Sidebar {...defaultProps} />);
+
+    expect(screen.getAllByText("Today's Queue").length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Waiting for Triage').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Waiting for Consult').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Pending Results').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Pharmacy')).not.toBeInTheDocument();
+  });
+
+  it('falls back to standard module items in standard mode', () => {
+    render(<Sidebar {...defaultProps} />);
+
+    expect(screen.queryByText("Today's Queue")).not.toBeInTheDocument();
+    expect(screen.getAllByText('Pharmacy').length).toBeGreaterThan(0);
+  });
+
+  it('hides outpatient workflow items when the facility lacks outpatient capability', () => {
+    mockUseNavigationMode.mockReturnValue({
+      navigationMode: 'clinical',
+      isClinicalNavigationEligible: true,
+    });
+    mockHasModule.mockImplementation((key: string) => key !== 'outpatient');
+
+    render(<Sidebar {...defaultProps} />);
+
+    expect(screen.getAllByText("Today's Queue").length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Waiting for Triage').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Waiting for Consult')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pending Results')).not.toBeInTheDocument();
   });
 });

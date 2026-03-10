@@ -113,6 +113,23 @@ describe('EncounterTable', () => {
     expect(screen.getByText('No encounters found')).toBeInTheDocument();
   });
 
+  it('should show custom empty-state copy when provided', () => {
+    render(
+      <EncounterTable
+        {...defaultProps}
+        encounters={[]}
+        emptyTitle="No encounters are currently waiting on results."
+        emptyDescription="Results will appear here once ordered investigations are still pending review."
+      />
+    );
+
+    expect(screen.getByTestId('empty-state')).toBeInTheDocument();
+    expect(screen.getByText('No encounters are currently waiting on results.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Results will appear here once ordered investigations are still pending review.')
+    ).toBeInTheDocument();
+  });
+
   it('should render multiple encounters', () => {
     const secondEncounter = {
       ...mockEncounter,

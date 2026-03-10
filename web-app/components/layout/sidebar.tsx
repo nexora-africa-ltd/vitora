@@ -4,24 +4,20 @@ import React, {
   useState,
   useRef,
   useEffect,
-  useCallback,
   useMemo,
   memo,
 } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import {
   ChevronLeft,
-  ChevronRight,
   ChevronDown,
-  ChevronUp,
   LogOut,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import {
   Tooltip,
   TooltipContent,
@@ -36,10 +32,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ScrollMoreButton } from '@/components/ui/scroll-more-button';
 import { useLogout } from '@/lib/auth/hooks';
-import { usePermissions } from '@/lib/hooks/use-permissions';
-import { useFacility } from '@/lib/context/facility-context';
 import {
-  mainNavItems,
   bottomNavItems,
   hasChildren,
   findParentForPath,
@@ -47,6 +40,7 @@ import {
   type NavItemType,
   type NavItemWithChildren,
 } from '@/lib/config/navigation';
+import { useNavigationItems } from '@/lib/hooks/use-navigation-items';
 
 const SIDEBAR_COLLAPSED_KEY = 'vitora-sidebar-collapsed';
 
@@ -62,6 +56,7 @@ interface NavLinkProps {
   isChild?: boolean;
   collapsed: boolean;
   pathname: string;
+  searchParamsString: string;
   onMobileClose: () => void;
 }
 
@@ -150,7 +145,7 @@ function useSidebarPersistence(
   }, [collapsed]);
 }
 
-function useIsActive(href: string, pathname: string) {
+function useIsActive(href: string, pathname: string, searchParamsString: string) {
   return useMemo(() => {
     if (href === '/') {
       return (
@@ -159,54 +154,27 @@ function useIsActive(href: string, pathname: string) {
         pathname.startsWith('/dashboard/')
       );
     }
-    return pathname === href || pathname.startsWith(`${href}/`);
-  }, [href, pathname]);
-}
+    const [hrefPath, hrefQuery] = href.split('?');
 
-/**
- * Filter nav items based on user RBAC permissions and facility capabilities.
- * Items with a moduleKey are hidden if the user cannot access that module.
- * Items with a facilityModule are hidden if the facility doesn't support it.
- * Children with an actionKey are hidden if the user's role lacks that action.
- * Parent groups with no visible children are also hidden.
- */
-function useFilteredNavItems(): NavItemType[] {
-  const { canAccessModule, canPerformAction } = usePermissions();
-  const { hasModule } = useFacility();
+    if (!hrefQuery) {
+      return pathname === href || pathname.startsWith(`${href}/`);
+    }
 
-  return useMemo(() => {
-    const isAllowed = (item: { moduleKey?: string; facilityModule?: string; actionKey?: string }): boolean => {
-      if (item.moduleKey && !canAccessModule(item.moduleKey as any)) return false;
-      if (item.facilityModule && !hasModule(item.facilityModule as any)) return false;
-      if (item.actionKey && !canPerformAction(item.actionKey as any)) return false;
-      return true;
-    };
+    if (pathname !== hrefPath) {
+      return false;
+    }
 
-    const filterItem = (item: NavItemType): NavItemType | null => {
-      if (!isAllowed(item)) return null;
+    const currentParams = new URLSearchParams(searchParamsString);
+    const targetParams = new URLSearchParams(hrefQuery);
 
-      // For parent items with children, filter children too
-      if (hasChildren(item)) {
-        const filteredChildren = item.children
-          .map((child): NavItem | null => {
-            if (!isAllowed(child)) return null;
-            return child;
-          })
-          .filter((c): c is NavItem => c !== null);
-
-        // Hide parent if no children remain
-        if (filteredChildren.length === 0) return null;
-
-        return { ...item, children: filteredChildren };
+    for (const [key, value] of targetParams.entries()) {
+      if (currentParams.get(key) !== value) {
+        return false;
       }
+    }
 
-      return item;
-    };
-
-    return mainNavItems
-      .map(filterItem)
-      .filter((item): item is NavItemType => item !== null);
-  }, [canAccessModule, canPerformAction, hasModule]);
+    return true;
+  }, [href, pathname, searchParamsString]);
 }
 
 // -----------------------------------------------------------------------------
@@ -218,9 +186,10 @@ const NavLink = memo(function NavLink({
   isChild = false,
   collapsed,
   pathname,
+  searchParamsString,
   onMobileClose,
 }: NavLinkProps) {
-  const isActive = useIsActive(item.href, pathname);
+  const isActive = useIsActive(item.href, pathname, searchParamsString);
   const Icon = item.icon;
 
   const baseStyles =
@@ -353,6 +322,7 @@ const NavGroup = memo(function NavGroup({
             isChild
             collapsed={collapsed}
             pathname={pathname}
+            searchParamsString=""
             onMobileClose={onMobileClose}
           />
         ))}
@@ -372,8 +342,10 @@ export function Sidebar({
   onMobileClose,
 }: SidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const logout = useLogout();
-  const filteredNavItems = useFilteredNavItems();
+  const filteredNavItems = useNavigationItems();
+  const searchParamsString = searchParams.toString();
 
   const navScrollAreaRef = useRef<HTMLDivElement | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -484,6 +456,7 @@ export function Sidebar({
                       item={item}
                       collapsed={collapsed}
                       pathname={pathname}
+                      searchParamsString={searchParamsString}
                       onMobileClose={onMobileClose}
                     />
                   )

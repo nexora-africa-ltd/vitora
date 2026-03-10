@@ -138,7 +138,7 @@ function useDraggable() {
 
 export function AIChatWidget() {
   const aiEnabled = useAIEnabled();
-  const { hasPermission } = usePermissions();
+  const { canPerformAction } = usePermissions();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -176,8 +176,8 @@ export function AIChatWidget() {
 
   // Permission check — only show for users with clinical chat permission
   const canUseChat = useMemo(
-    () => hasPermission('ai.use_clinical_chat'),
-    [hasPermission]
+    () => canPerformAction('ai.use_chat'),
+    [canPerformAction]
   );
 
   // Handle sending a message

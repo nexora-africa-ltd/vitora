@@ -2,7 +2,10 @@
 
 import { usePathname } from 'next/navigation';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { useFacility, type FacilityContextValue } from '@/lib/context/facility-context';
+import type { FacilityModules } from '@/lib/auth/context';
 import type { ModuleKey } from '@/lib/permissions/constants';
+import type { ActionKey } from '@/lib/permissions/actions';
 
 interface PermissionGuardProps {
   children: React.ReactNode;
@@ -69,33 +72,50 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
  * Routes not listed here are accessible to any authenticated user.
  * Order matters: more specific prefixes should come first.
  */
-const ROUTE_MODULE_MAP: [string, ModuleKey][] = [
-  ['/pharmacy', 'pharmacy'],
-  ['/laboratory', 'laboratory'],
-  ['/imaging', 'imaging'],
-  ['/admissions', 'inpatient'],
-  ['/wards', 'inpatient'],
-  ['/inpatient', 'inpatient'],
-  ['/transactions', 'billing'],
-  ['/finance', 'billing'],
-  ['/insurance', 'billing'],
-  ['/encounters', 'encounters'],
-  ['/triage', 'triage'],
-  ['/emergency', 'emergency'],
-  ['/surveillance', 'surveillance'],
-  ['/clinics', 'clinics'],
-  ['/theatre', 'theatre'],
-  ['/admin', 'admin'],
-  ['/patients', 'patients'],
+interface RouteAccessRequirement {
+  moduleKey?: ModuleKey;
+  facilityModule?: keyof FacilityModules;
+  actionKey?: ActionKey;
+}
+
+const ROUTE_ACCESS_MAP: [string, RouteAccessRequirement][] = [
+  ['/pharmacy', { moduleKey: 'pharmacy', facilityModule: 'pharmacy' }],
+  ['/laboratory', { moduleKey: 'laboratory', facilityModule: 'laboratory' }],
+  ['/imaging', { moduleKey: 'imaging', facilityModule: 'imaging' }],
+  ['/admissions', { moduleKey: 'inpatient', facilityModule: 'inpatient' }],
+  ['/wards', { moduleKey: 'inpatient', facilityModule: 'inpatient' }],
+  ['/inpatient', { moduleKey: 'inpatient', facilityModule: 'inpatient' }],
+  ['/transactions', { moduleKey: 'billing' }],
+  ['/finance', { moduleKey: 'billing' }],
+  ['/insurance', { moduleKey: 'billing' }],
+  ['/encounters', { moduleKey: 'encounters', facilityModule: 'outpatient' }],
+  ['/triage', { moduleKey: 'triage' }],
+  ['/emergency', { moduleKey: 'emergency', facilityModule: 'emergency' }],
+  ['/surveillance', { moduleKey: 'surveillance' }],
+  ['/clinics', { moduleKey: 'clinics', facilityModule: 'outpatient' }],
+  ['/theatre', { moduleKey: 'theatre', facilityModule: 'theatre' }],
+  ['/mch', { moduleKey: 'mch', facilityModule: 'maternity' }],
+  ['/ai', { actionKey: 'ai.use_chat' }],
+  ['/admin', { moduleKey: 'admin' }],
+  ['/patients', { moduleKey: 'patients' }],
 ];
 
 /**
  * Resolve a pathname to its required ModuleKey, if any.
  */
 export function getModuleForRoute(pathname: string): ModuleKey | null {
-  for (const [prefix, moduleKey] of ROUTE_MODULE_MAP) {
+  for (const [prefix, requirement] of ROUTE_ACCESS_MAP) {
     if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
-      return moduleKey;
+      return requirement.moduleKey ?? null;
+    }
+  }
+  return null;
+}
+
+function getRouteAccessRequirement(pathname: string): RouteAccessRequirement | null {
+  for (const [prefix, requirement] of ROUTE_ACCESS_MAP) {
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
+      return requirement;
     }
   }
   return null;
@@ -116,12 +136,21 @@ interface RouteGuardProps {
  */
 export function RouteGuard({ children, fallback }: RouteGuardProps) {
   const pathname = usePathname();
-  const { canAccessModule, isAuthenticated } = usePermissions();
+  const { canAccessModule, canPerformAction, isAuthenticated } = usePermissions();
+  const { hasModule } = useFacility();
 
   if (!isAuthenticated) return <>{children}</>;
 
-  const requiredModule = getModuleForRoute(pathname);
-  if (requiredModule && !canAccessModule(requiredModule)) {
+  const requirement = getRouteAccessRequirement(pathname);
+  if (requirement?.moduleKey && !canAccessModule(requirement.moduleKey)) {
+    return fallback ?? <AccessDenied />;
+  }
+
+  if (requirement?.facilityModule && !hasModule(requirement.facilityModule)) {
+    return fallback ?? <AccessDenied />;
+  }
+
+  if (requirement?.actionKey && !canPerformAction(requirement.actionKey)) {
     return fallback ?? <AccessDenied />;
   }
 

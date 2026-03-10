@@ -2,9 +2,16 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Sidebar } from '@/components/layout/sidebar';
 
+const mockSearchParams = jest.fn(() => new URLSearchParams());
+const mockUseNavigationMode = jest.fn(() => ({
+  navigationMode: 'standard',
+  isClinicalNavigationEligible: true,
+}));
+
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
   usePathname: jest.fn(() => '/'),
+  useSearchParams: () => mockSearchParams(),
 }));
 
 // Mock auth hooks
@@ -37,6 +44,10 @@ jest.mock('@/lib/context/facility-context', () => ({
     isLoading: false,
     hasModule: () => true,
   })),
+}));
+
+jest.mock('@/lib/context/navigation-mode-context', () => ({
+  useNavigationMode: () => mockUseNavigationMode(),
 }));
 
 // Mock ScrollArea to avoid Radix React 19 issues
@@ -115,6 +126,11 @@ describe('Sidebar', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedUsePathname.mockReturnValue('/');
+    mockSearchParams.mockReturnValue(new URLSearchParams());
+    mockUseNavigationMode.mockReturnValue({
+      navigationMode: 'standard',
+      isClinicalNavigationEligible: true,
+    });
     // Reset localStorage mock
     Object.defineProperty(window, 'localStorage', {
       value: {
@@ -192,6 +208,37 @@ describe('Sidebar', () => {
     render(<Sidebar {...defaultProps} mobileOpen={true} />);
     const aside = screen.getByRole('complementary');
     expect(aside).toHaveClass('translate-x-0');
+  });
+
+  it('should render workflow items instead of module groups in clinical mode', () => {
+    mockUseNavigationMode.mockReturnValue({
+      navigationMode: 'clinical',
+      isClinicalNavigationEligible: true,
+    });
+
+    render(<Sidebar {...defaultProps} />);
+
+    expect(screen.getAllByText("Today's Queue").length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Pending Results').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Pharmacy')).not.toBeInTheDocument();
+    expect(screen.queryByText('Finance')).not.toBeInTheDocument();
+  });
+
+  it('should mark the matching workflow item active when the current URL includes query params', () => {
+    mockUseNavigationMode.mockReturnValue({
+      navigationMode: 'clinical',
+      isClinicalNavigationEligible: true,
+    });
+    mockedUsePathname.mockReturnValue('/encounters');
+    mockSearchParams.mockReturnValue(new URLSearchParams('tab=all&status=RESULTS_PENDING'));
+
+    render(<Sidebar {...defaultProps} />);
+
+    const pendingResultsLink = screen.getByRole('link', { name: /pending results/i });
+    expect(pendingResultsLink).toHaveAttribute('aria-current', 'page');
+
+    const inProgressLink = screen.getByRole('link', { name: /in progress/i });
+    expect(inProgressLink).not.toHaveAttribute('aria-current', 'page');
   });
 
   it('should have Inpatient menu with Wards and Admissions children', () => {

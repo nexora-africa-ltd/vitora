@@ -232,6 +232,85 @@ describe('usePermissions Hook', () => {
   });
 
   // ===========================================================================
+  // 5b. Triage Module Access
+  // ===========================================================================
+  describe('Triage Module Access', () => {
+    it('should allow triage module access for users with view_triage_queue permission', async () => {
+      mockUseAuth.mockReturnValue({
+        user: { ...mockUser, role: 'RECEPTIONIST', permissions: ['triage.view_triage_queue'] },
+        isAuthenticated: true,
+      } as any);
+
+      const { usePermissions } = await import('@/lib/hooks/use-permissions');
+      const { result } = renderHook(() => usePermissions());
+
+      expect(result.current.canAccessModule('triage')).toBe(true);
+    });
+
+    it('should allow triage module access for users with perform_triage permission', async () => {
+      mockUseAuth.mockReturnValue({
+        user: { ...mockUser, role: 'NURSE', permissions: ['triage.perform_triage'] },
+        isAuthenticated: true,
+      } as any);
+
+      const { usePermissions } = await import('@/lib/hooks/use-permissions');
+      const { result } = renderHook(() => usePermissions());
+
+      expect(result.current.canAccessModule('triage')).toBe(true);
+    });
+  });
+
+  describe('Broadened Module Access', () => {
+    it('should allow billing module access for users with SHA claim permissions', async () => {
+      mockUseAuth.mockReturnValue({
+        user: { ...mockUser, role: 'BILLING_CLERK', permissions: ['billing.submit_sha_claim'] },
+        isAuthenticated: true,
+      } as any);
+
+      const { usePermissions } = await import('@/lib/hooks/use-permissions');
+      const { result } = renderHook(() => usePermissions());
+
+      expect(result.current.canAccessModule('billing')).toBe(true);
+    });
+
+    it('should allow inpatient module access for users with ward-only permissions', async () => {
+      mockUseAuth.mockReturnValue({
+        user: { ...mockUser, role: 'NURSE', permissions: ['inpatient.view_ward'] },
+        isAuthenticated: true,
+      } as any);
+
+      const { usePermissions } = await import('@/lib/hooks/use-permissions');
+      const { result } = renderHook(() => usePermissions());
+
+      expect(result.current.canAccessModule('inpatient')).toBe(true);
+    });
+
+    it('should allow surveillance module access for users with alert or IHR permissions', async () => {
+      mockUseAuth.mockReturnValue({
+        user: { ...mockUser, role: 'SURVEILLANCE_OFFICER', permissions: ['surveillance.notify_ihr_to_who'] },
+        isAuthenticated: true,
+      } as any);
+
+      const { usePermissions } = await import('@/lib/hooks/use-permissions');
+      const { result } = renderHook(() => usePermissions());
+
+      expect(result.current.canAccessModule('surveillance')).toBe(true);
+    });
+
+    it('should allow theatre module access for users with scheduling view permissions', async () => {
+      mockUseAuth.mockReturnValue({
+        user: { ...mockUser, role: 'SURGEON', permissions: ['scheduling.view_schedule'] },
+        isAuthenticated: true,
+      } as any);
+
+      const { usePermissions } = await import('@/lib/hooks/use-permissions');
+      const { result } = renderHook(() => usePermissions());
+
+      expect(result.current.canAccessModule('theatre')).toBe(true);
+    });
+  });
+
+  // ===========================================================================
   // 6. Unauthenticated Users
   // ===========================================================================
   describe('Unauthenticated Users', () => {

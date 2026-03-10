@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SHASettingsTab } from '@/components/settings/sha-settings';
 import { MFASettingsTab } from '@/components/settings/mfa-settings';
 import { FacilitySettingsTab } from '@/components/settings/facility-settings';
+import { AppearanceSettings } from '@/components/settings/appearance-settings';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 
@@ -95,19 +96,7 @@ export default function SettingsPage() {
 
         {/* Appearance Settings */}
         <TabsContent value="appearance" className="space-y-4 mt-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base sm:text-lg">Appearance</CardTitle>
-                <HelpPopover content="Customize theme, colors, and display preferences for the application." />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Appearance settings will be available in a future update.
-              </p>
-            </CardContent>
-          </Card>
+          <AppearanceSettings />
         </TabsContent>
       </Tabs>
     </div>
