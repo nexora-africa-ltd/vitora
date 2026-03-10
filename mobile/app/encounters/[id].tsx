@@ -9,12 +9,40 @@ import type { AppTheme } from '@/constants/theme';
 import { toApiError } from '@/lib/api/client';
 import { clinicVisitsApi } from '@/lib/api/clinic-visits';
 import { encountersApi } from '@/lib/api/encounters';
+import { laboratoryApi } from '@/lib/api/laboratory';
+import { pharmacyApi } from '@/lib/api/pharmacy';
 import { triageApi } from '@/lib/api/triage';
 import { hasEditDraft } from '@/lib/encounter-draft-storage';
 import { canCancel, canFinalize, canStartProgress, getEncounterPillTone, getEncounterStatusLabel, getFinalizeGuidance, mapEncounterTransitionError } from '@/lib/encounters';
 import { queryClient } from '@/lib/query/client';
 import { useAppTheme } from '@/lib/theme/theme-context';
 import { formatDate, formatDateTime, formatGender } from '@/lib/utils/format';
+
+function getLabStatusTone(status: string): 'primary' | 'warning' | 'danger' | 'neutral' {
+  if (status === 'COMPLETED') {
+    return 'primary';
+  }
+  if (status === 'CANCELLED' || status === 'REJECTED') {
+    return 'danger';
+  }
+  if (status === 'IN_PROGRESS' || status === 'SPECIMEN_COLLECTED') {
+    return 'warning';
+  }
+  return 'neutral';
+}
+
+function getPrescriptionTone(status: string): 'primary' | 'warning' | 'danger' | 'neutral' {
+  if (status === 'DISPENSED') {
+    return 'primary';
+  }
+  if (status === 'PARTIAL') {
+    return 'warning';
+  }
+  if (status === 'CANCELLED' || status === 'EXPIRED') {
+    return 'danger';
+  }
+  return 'neutral';
+}
 
 export default function EncounterDetailScreen() {
   const { theme } = useAppTheme();
@@ -44,6 +72,18 @@ export default function EncounterDetailScreen() {
   const triageQuery = useQuery({
     queryKey: ['encounter-triage', encounterId],
     queryFn: () => triageApi.getByEncounter(encounterId),
+    enabled: Number.isFinite(encounterId),
+  });
+
+  const labOrdersQuery = useQuery({
+    queryKey: ['encounter-lab-orders', encounterId],
+    queryFn: () => laboratoryApi.listEncounterOrders(encounterId),
+    enabled: Number.isFinite(encounterId),
+  });
+
+  const prescriptionsQuery = useQuery({
+    queryKey: ['encounter-prescriptions', encounterId],
+    queryFn: () => pharmacyApi.listPrescriptions({ encounter: encounterId, page: 1, page_size: 50 }),
     enabled: Number.isFinite(encounterId),
   });
 
@@ -227,6 +267,8 @@ export default function EncounterDetailScreen() {
       <SectionCard title="Encounter actions" subtitle="Continue this visit by updating documentation, diagnoses, treatment, and status workflow.">
         <AppButton label="Edit encounter" onPress={() => router.push(`/encounters/${encounter.id}/edit` as never)} />
         {!triageAssessment ? <AppButton label="Record triage" variant="secondary" onPress={() => router.push(`/encounters/${encounter.id}/triage` as never)} /> : null}
+        <AppButton label="Order labs" variant="secondary" onPress={() => router.push(`/laboratory/new?encounterId=${encounter.id}&patientId=${encounter.patient}` as never)} />
+        <AppButton label="Create prescription" variant="secondary" onPress={() => router.push(`/pharmacy/new?encounterId=${encounter.id}&patientId=${encounter.patient}` as never)} />
         {canStartProgress(encounter.status) ? <AppButton label={startProgressMutation.isPending ? 'Starting progress...' : 'Start progress'} variant="secondary" onPress={confirmStartProgress} disabled={startProgressMutation.isPending} /> : null}
         {canFinalize(encounter.status) ? <AppButton label={finalizeMutation.isPending ? 'Finalizing...' : 'Finalize visit'} onPress={confirmFinalize} disabled={finalizeMutation.isPending} /> : null}
         {canCancel(encounter.status) ? <AppButton label={cancelMutation.isPending ? 'Cancelling...' : 'Cancel encounter'} variant="danger" onPress={confirmCancel} disabled={cancelMutation.isPending} /> : null}
@@ -374,6 +416,52 @@ export default function EncounterDetailScreen() {
               <Text key={alert.id} style={styles.alertText}>{alert.message}</Text>
             ))}
           </View>
+        )}
+      </SectionCard>
+
+      <SectionCard title="Lab orders" subtitle="Requests linked to this encounter can be reviewed or extended from the bedside.">
+        {labOrdersQuery.isLoading ? (
+          <LoadingState message="Loading encounter lab orders..." />
+        ) : (labOrdersQuery.data ?? []).length === 0 ? (
+          <EmptyState title="No lab orders" description="Create the first lab request for this encounter to start tracking specimen and result workflow." />
+        ) : (
+          (labOrdersQuery.data ?? []).map((order) => (
+            <View key={order.order_number} style={styles.cardBlock}>
+              <View style={styles.rowBetween}>
+                <View style={styles.flexOne}>
+                  <Text style={styles.cardTitle}>{order.order_number}</Text>
+                  <Text style={styles.cardMeta}>{order.priority.replace(/_/g, ' ')} · {order.items.length} test{order.items.length === 1 ? '' : 's'}</Text>
+                </View>
+                <Pill label={order.status.replace(/_/g, ' ')} tone={getLabStatusTone(order.status)} />
+              </View>
+              {order.clinical_notes ? <Text style={styles.bodyText}>{order.clinical_notes}</Text> : null}
+              <Text style={styles.cardMeta}>Ordered {formatDateTime(order.ordered_at)}</Text>
+              <AppButton label="Open lab order" variant="ghost" onPress={() => router.push(`/laboratory/${encodeURIComponent(order.order_number)}` as never)} />
+            </View>
+          ))
+        )}
+      </SectionCard>
+
+      <SectionCard title="Prescriptions" subtitle="Medication orders from this encounter feed directly into the dispensing queue.">
+        {prescriptionsQuery.isLoading ? (
+          <LoadingState message="Loading encounter prescriptions..." />
+        ) : (prescriptionsQuery.data?.results ?? []).length === 0 ? (
+          <EmptyState title="No prescriptions" description="Create a prescription from this encounter to send medications to pharmacy." />
+        ) : (
+          (prescriptionsQuery.data?.results ?? []).map((prescription) => (
+            <View key={prescription.id} style={styles.cardBlock}>
+              <View style={styles.rowBetween}>
+                <View style={styles.flexOne}>
+                  <Text style={styles.cardTitle}>{prescription.prescription_number}</Text>
+                  <Text style={styles.cardMeta}>{prescription.items.length} item{prescription.items.length === 1 ? '' : 's'} · valid until {formatDate(prescription.valid_until)}</Text>
+                </View>
+                <Pill label={prescription.status.replace(/_/g, ' ')} tone={getPrescriptionTone(prescription.status)} />
+              </View>
+              {prescription.clinical_notes ? <Text style={styles.bodyText}>{prescription.clinical_notes}</Text> : null}
+              <Text style={styles.cardMeta}>Prescribed {formatDateTime(prescription.prescribed_at || prescription.created_at)}</Text>
+              <AppButton label="Open prescription" variant="ghost" onPress={() => router.push(`/pharmacy/${prescription.id}` as never)} />
+            </View>
+          ))
         )}
       </SectionCard>
 
