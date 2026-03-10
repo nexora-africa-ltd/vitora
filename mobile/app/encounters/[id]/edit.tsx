@@ -3,13 +3,15 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
+import { ICD10Picker } from '@/components/icd10-picker';
 import { AppButton, AppPicker, AppTextInput, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
 import { appTheme } from '@/constants/theme';
 import { encountersApi } from '@/lib/api/encounters';
+import { clearEditDraft, getEditDraft, saveEditDraft } from '@/lib/encounter-draft-storage';
 import { buildBloodPressure, ENCOUNTER_TYPE_OPTIONS, getEncounterPillTone, getEncounterStatusLabel, splitBloodPressure } from '@/lib/encounters';
 import { queryClient } from '@/lib/query/client';
-import type { DiagnosisInput, TreatmentPlanInput } from '@/lib/types/encounter';
-import { formatDate } from '@/lib/utils/format';
+import type { DiagnosisInput, Encounter, ICD10Code, TreatmentPlan, TreatmentPlanInput } from '@/lib/types/encounter';
+import { formatDate, formatDateTime } from '@/lib/utils/format';
 
 type EncounterFormState = {
   encounterType: (typeof ENCOUNTER_TYPE_OPTIONS)[number]['value'];
@@ -32,8 +34,20 @@ type EncounterFormState = {
   historyOfPresentIllness: string;
   physicalExamination: string;
   assessment: string;
+  disposition: string;
+  dispositionNotes: string;
   notes: string;
 };
+
+const dispositionItems = [
+  { label: 'No disposition selected', value: '' },
+  { label: 'Advice Only', value: 'ADVICE_ONLY' },
+  { label: 'Treated & Discharged', value: 'TREATED_DISCHARGED' },
+  { label: 'Referred to Specialist', value: 'REFERRED' },
+  { label: 'Admitted', value: 'ADMITTED' },
+  { label: 'Follow-up Scheduled', value: 'FOLLOW_UP_SCHEDULED' },
+  { label: 'Left against medical advice', value: 'LEFT_AMA' },
+] as const;
 
 type DiagnosisFormState = {
   id: number | null;
@@ -54,6 +68,13 @@ type TreatmentPlanFormState = {
   referralSpecialty: string;
   referralNotes: string;
   status: NonNullable<TreatmentPlanInput['status']>;
+};
+
+type EditEncounterDraftState = {
+  encounterForm: EncounterFormState;
+  diagnosisForm: DiagnosisFormState;
+  treatmentPlanForm: TreatmentPlanFormState;
+  selectedIcd10Code: ICD10Code | null;
 };
 
 function toOptionalNumber(value: string): number | undefined {
@@ -86,12 +107,64 @@ const emptyTreatmentPlanForm: TreatmentPlanFormState = {
   status: 'DRAFT',
 };
 
+function buildEncounterFormState(encounter: Encounter): EncounterFormState {
+  const bp = splitBloodPressure(encounter.blood_pressure);
+
+  return {
+    encounterType: encounter.encounter_type,
+    encounterDate: encounter.encounter_date,
+    chiefComplaint: encounter.chief_complaint,
+    temperature: encounter.temperature != null ? String(encounter.temperature) : '',
+    pulse: encounter.pulse != null ? String(encounter.pulse) : '',
+    bloodPressureSystolic: bp.systolic,
+    bloodPressureDiastolic: bp.diastolic,
+    respiratoryRate: encounter.respiratory_rate != null ? String(encounter.respiratory_rate) : '',
+    spo2: encounter.spo2 != null ? String(encounter.spo2) : '',
+    weight: encounter.weight != null ? String(encounter.weight) : '',
+    height: encounter.height != null ? String(encounter.height) : '',
+    allergies: encounter.allergies ?? '',
+    chronicConditions: encounter.chronic_conditions ?? '',
+    currentMedications: encounter.current_medications ?? '',
+    pastSurgeries: encounter.past_surgeries ?? '',
+    familyHistory: encounter.family_history ?? '',
+    socialHistory: encounter.social_history ?? '',
+    historyOfPresentIllness: encounter.history_of_present_illness ?? '',
+    physicalExamination: encounter.physical_examination ?? '',
+    assessment: encounter.assessment ?? '',
+    disposition: encounter.disposition ?? '',
+    dispositionNotes: encounter.disposition_notes ?? '',
+    notes: encounter.notes ?? '',
+  };
+}
+
+function buildTreatmentPlanFormState(treatmentPlan: TreatmentPlan | null): TreatmentPlanFormState {
+  if (!treatmentPlan) {
+    return emptyTreatmentPlanForm;
+  }
+
+  return {
+    clinicalNotes: treatmentPlan.clinical_notes ?? '',
+    followUpInstructions: treatmentPlan.follow_up_instructions ?? '',
+    followUpDate: treatmentPlan.follow_up_date ?? '',
+    dietRecommendations: treatmentPlan.diet_recommendations ?? '',
+    activityRestrictions: treatmentPlan.activity_restrictions ?? '',
+    referralNeeded: treatmentPlan.referral_needed,
+    referralSpecialty: treatmentPlan.referral_specialty ?? '',
+    referralNotes: treatmentPlan.referral_notes ?? '',
+    status: treatmentPlan.status,
+  };
+}
+
 export default function EditEncounterScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const encounterId = Number(params.id);
   const [encounterForm, setEncounterForm] = useState<EncounterFormState | null>(null);
   const [diagnosisForm, setDiagnosisForm] = useState<DiagnosisFormState>(emptyDiagnosisForm);
   const [treatmentPlanForm, setTreatmentPlanForm] = useState<TreatmentPlanFormState>(emptyTreatmentPlanForm);
+  const [selectedIcd10Code, setSelectedIcd10Code] = useState<ICD10Code | null>(null);
+  const [isDraftHydrated, setIsDraftHydrated] = useState(false);
+  const [didRestoreDraft, setDidRestoreDraft] = useState(false);
+  const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
 
   const encounterQuery = useQuery({
     queryKey: ['encounter', encounterId],
@@ -112,53 +185,65 @@ export default function EditEncounterScreen() {
   });
 
   useEffect(() => {
-    if (!encounterQuery.data) {
-      return;
+    let active = true;
+
+    async function hydrateDraft() {
+      const draft = await getEditDraft<EditEncounterDraftState>(encounterId);
+      if (!active) {
+        return;
+      }
+
+      if (draft?.form) {
+        setEncounterForm(draft.form.encounterForm);
+        setDiagnosisForm(draft.form.diagnosisForm);
+        setTreatmentPlanForm(draft.form.treatmentPlanForm);
+        setSelectedIcd10Code(draft.form.selectedIcd10Code ?? null);
+        setDraftRestoredAt(draft.savedAt);
+        setDidRestoreDraft(true);
+      }
+
+      setIsDraftHydrated(true);
     }
 
-    const bp = splitBloodPressure(encounterQuery.data.blood_pressure);
-    setEncounterForm({
-      encounterType: encounterQuery.data.encounter_type,
-      encounterDate: encounterQuery.data.encounter_date,
-      chiefComplaint: encounterQuery.data.chief_complaint,
-      temperature: encounterQuery.data.temperature != null ? String(encounterQuery.data.temperature) : '',
-      pulse: encounterQuery.data.pulse != null ? String(encounterQuery.data.pulse) : '',
-      bloodPressureSystolic: bp.systolic,
-      bloodPressureDiastolic: bp.diastolic,
-      respiratoryRate: encounterQuery.data.respiratory_rate != null ? String(encounterQuery.data.respiratory_rate) : '',
-      spo2: encounterQuery.data.spo2 != null ? String(encounterQuery.data.spo2) : '',
-      weight: encounterQuery.data.weight != null ? String(encounterQuery.data.weight) : '',
-      height: encounterQuery.data.height != null ? String(encounterQuery.data.height) : '',
-      allergies: encounterQuery.data.allergies ?? '',
-      chronicConditions: encounterQuery.data.chronic_conditions ?? '',
-      currentMedications: encounterQuery.data.current_medications ?? '',
-      pastSurgeries: encounterQuery.data.past_surgeries ?? '',
-      familyHistory: encounterQuery.data.family_history ?? '',
-      socialHistory: encounterQuery.data.social_history ?? '',
-      historyOfPresentIllness: encounterQuery.data.history_of_present_illness ?? '',
-      physicalExamination: encounterQuery.data.physical_examination ?? '',
-      assessment: encounterQuery.data.assessment ?? '',
-      notes: encounterQuery.data.notes ?? '',
-    });
-  }, [encounterQuery.data]);
+    void hydrateDraft();
+
+    return () => {
+      active = false;
+    };
+  }, [encounterId]);
 
   useEffect(() => {
-    if (!treatmentPlanQuery.data) {
+    if (!encounterQuery.data || didRestoreDraft) {
       return;
     }
 
-    setTreatmentPlanForm({
-      clinicalNotes: treatmentPlanQuery.data.clinical_notes ?? '',
-      followUpInstructions: treatmentPlanQuery.data.follow_up_instructions ?? '',
-      followUpDate: treatmentPlanQuery.data.follow_up_date ?? '',
-      dietRecommendations: treatmentPlanQuery.data.diet_recommendations ?? '',
-      activityRestrictions: treatmentPlanQuery.data.activity_restrictions ?? '',
-      referralNeeded: treatmentPlanQuery.data.referral_needed,
-      referralSpecialty: treatmentPlanQuery.data.referral_specialty ?? '',
-      referralNotes: treatmentPlanQuery.data.referral_notes ?? '',
-      status: treatmentPlanQuery.data.status,
-    });
-  }, [treatmentPlanQuery.data]);
+    setEncounterForm(buildEncounterFormState(encounterQuery.data));
+  }, [didRestoreDraft, encounterQuery.data]);
+
+  useEffect(() => {
+    if (didRestoreDraft) {
+      return;
+    }
+
+    setTreatmentPlanForm(buildTreatmentPlanFormState(treatmentPlanQuery.data ?? null));
+  }, [didRestoreDraft, treatmentPlanQuery.data]);
+
+  useEffect(() => {
+    if (!isDraftHydrated || !encounterForm) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      void saveEditDraft(encounterId, {
+        encounterForm,
+        diagnosisForm,
+        treatmentPlanForm,
+        selectedIcd10Code,
+      });
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [diagnosisForm, encounterForm, encounterId, isDraftHydrated, selectedIcd10Code, treatmentPlanForm]);
 
   const saveEncounterMutation = useMutation({
     mutationFn: async () => {
@@ -186,15 +271,20 @@ export default function EditEncounterScreen() {
         history_of_present_illness: encounterForm.historyOfPresentIllness.trim() || undefined,
         physical_examination: encounterForm.physicalExamination.trim() || undefined,
         assessment: encounterForm.assessment.trim() || undefined,
+        disposition: encounterForm.disposition.trim() || undefined,
+        disposition_notes: encounterForm.dispositionNotes.trim() || undefined,
         notes: encounterForm.notes.trim() || undefined,
       });
     },
     onSuccess: async () => {
+      await clearEditDraft(encounterId);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['encounter', encounterId] }),
         queryClient.invalidateQueries({ queryKey: ['encounters'] }),
         queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] }),
       ]);
+      setDraftRestoredAt(null);
+      setDidRestoreDraft(false);
       Alert.alert('Encounter updated', 'Encounter notes and vitals have been saved.');
     },
   });
@@ -202,15 +292,16 @@ export default function EditEncounterScreen() {
   const saveDiagnosisMutation = useMutation({
     mutationFn: async () => {
       const payload: DiagnosisInput = {
+        icd10_code: selectedIcd10Code?.id ?? undefined,
         diagnosis_type: diagnosisForm.diagnosisType,
         certainty: diagnosisForm.certainty,
-        free_text_diagnosis: diagnosisForm.freeTextDiagnosis.trim(),
-        notes: diagnosisForm.notes.trim(),
+        free_text_diagnosis: diagnosisForm.freeTextDiagnosis.trim() || undefined,
+        notes: diagnosisForm.notes.trim() || undefined,
         is_confirmed: diagnosisForm.isConfirmed,
       };
 
-      if (!payload.free_text_diagnosis) {
-        throw new Error('A diagnosis description is required.');
+      if (!payload.free_text_diagnosis && !payload.icd10_code) {
+        throw new Error('Select an ICD-10 code or enter a free-text diagnosis.');
       }
 
       if (diagnosisForm.id) {
@@ -220,7 +311,11 @@ export default function EditEncounterScreen() {
       return encountersApi.createDiagnosis(encounterId, payload);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['encounter-diagnoses', encounterId] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['encounter-diagnoses', encounterId] }),
+        queryClient.invalidateQueries({ queryKey: ['encounter', encounterId] }),
+      ]);
+      setSelectedIcd10Code(null);
       setDiagnosisForm(emptyDiagnosisForm);
     },
   });
@@ -228,7 +323,10 @@ export default function EditEncounterScreen() {
   const deleteDiagnosisMutation = useMutation({
     mutationFn: (diagnosisId: number) => encountersApi.deleteDiagnosis(encounterId, diagnosisId),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['encounter-diagnoses', encounterId] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['encounter-diagnoses', encounterId] }),
+        queryClient.invalidateQueries({ queryKey: ['encounter', encounterId] }),
+      ]);
     },
   });
 
@@ -299,7 +397,48 @@ export default function EditEncounterScreen() {
     []
   );
 
-  if (encounterQuery.isLoading || !encounterForm) {
+  async function discardDraft() {
+    if (!encounterQuery.data) {
+      return;
+    }
+
+    await clearEditDraft(encounterId);
+    setEncounterForm(buildEncounterFormState(encounterQuery.data));
+    setTreatmentPlanForm(buildTreatmentPlanFormState(treatmentPlanQuery.data ?? null));
+    setDiagnosisForm(emptyDiagnosisForm);
+    setSelectedIcd10Code(null);
+    setDraftRestoredAt(null);
+    setDidRestoreDraft(false);
+  }
+
+  function beginEditingDiagnosis(diagnosis: Awaited<ReturnType<typeof encountersApi.getDiagnoses>>[number]) {
+    setDiagnosisForm({
+      id: diagnosis.id,
+      diagnosisType: diagnosis.diagnosis_type,
+      certainty: diagnosis.certainty,
+      freeTextDiagnosis: diagnosis.free_text_diagnosis || diagnosis.icd10_description || '',
+      notes: diagnosis.notes || '',
+      isConfirmed: diagnosis.is_confirmed,
+    });
+
+    if (diagnosis.icd10_code && diagnosis.icd10_code_display) {
+      setSelectedIcd10Code({
+        id: diagnosis.icd10_code,
+        code: diagnosis.icd10_code_display,
+        description: diagnosis.icd10_description || diagnosis.free_text_diagnosis || diagnosis.icd10_code_display,
+        short_description: diagnosis.icd10_description || null,
+        long_description: diagnosis.icd10_description || null,
+        category: null,
+        chapter: null,
+        is_billable: false,
+        is_active: true,
+      });
+    } else {
+      setSelectedIcd10Code(null);
+    }
+  }
+
+  if (encounterQuery.isLoading || !isDraftHydrated || !encounterForm) {
     return (
       <ScreenContainer>
         <LoadingState message="Loading encounter editor..." />
@@ -325,6 +464,13 @@ export default function EditEncounterScreen() {
       >
         <Pill label={getEncounterStatusLabel(encounter.status)} tone={getEncounterPillTone(encounter)} />
       </HeroCard>
+
+      {draftRestoredAt ? (
+        <SectionCard title="Draft restored" subtitle="Encounter editing was restored from local storage on this device.">
+          <Text style={styles.helperText}>Last saved {formatDateTime(draftRestoredAt)}.</Text>
+          <AppButton label="Discard local draft" variant="ghost" onPress={() => void discardDraft()} />
+        </SectionCard>
+      ) : null}
 
       <SectionCard title="Encounter documentation" subtitle="Continue the visit by updating vitals, history, and clinician notes.">
         <AppPicker label="Encounter type" selectedValue={encounterForm.encounterType} onValueChange={(value) => setEncounterForm((current) => current ? { ...current, encounterType: value } : current)} items={ENCOUNTER_TYPE_OPTIONS} />
@@ -357,6 +503,8 @@ export default function EditEncounterScreen() {
         <AppTextInput label="History of present illness" value={encounterForm.historyOfPresentIllness} onChangeText={(value) => setEncounterForm((current) => current ? { ...current, historyOfPresentIllness: value } : current)} multiline />
         <AppTextInput label="Physical examination" value={encounterForm.physicalExamination} onChangeText={(value) => setEncounterForm((current) => current ? { ...current, physicalExamination: value } : current)} multiline />
         <AppTextInput label="Assessment" value={encounterForm.assessment} onChangeText={(value) => setEncounterForm((current) => current ? { ...current, assessment: value } : current)} multiline />
+        <AppPicker label="Disposition" selectedValue={encounterForm.disposition} onValueChange={(value) => setEncounterForm((current) => current ? { ...current, disposition: value } : current)} items={dispositionItems as unknown as { label: string; value: string }[]} />
+        <AppTextInput label="Disposition notes" value={encounterForm.dispositionNotes} onChangeText={(value) => setEncounterForm((current) => current ? { ...current, dispositionNotes: value } : current)} multiline />
         <AppTextInput label="Notes" value={encounterForm.notes} onChangeText={(value) => setEncounterForm((current) => current ? { ...current, notes: value } : current)} multiline />
         <AppButton label={saveEncounterMutation.isPending ? 'Saving encounter...' : 'Save encounter updates'} onPress={async () => {
           try {
@@ -373,20 +521,13 @@ export default function EditEncounterScreen() {
             <View style={styles.rowBetween}>
               <View style={styles.flexOne}>
                 <Text style={styles.cardTitle}>{diagnosis.icd10_description || diagnosis.free_text_diagnosis || 'Diagnosis'}</Text>
-                <Text style={styles.cardMeta}>{diagnosis.diagnosis_type} · {diagnosis.certainty}</Text>
+                <Text style={styles.cardMeta}>{diagnosis.icd10_code_display || 'Free text'} · {diagnosis.diagnosis_type} · {diagnosis.certainty}</Text>
               </View>
               <View style={styles.inlineButtonRow}>
                 <AppButton
                   label="Edit"
                   variant="ghost"
-                  onPress={() => setDiagnosisForm({
-                    id: diagnosis.id,
-                    diagnosisType: diagnosis.diagnosis_type,
-                    certainty: diagnosis.certainty,
-                    freeTextDiagnosis: diagnosis.free_text_diagnosis || diagnosis.icd10_description || '',
-                    notes: diagnosis.notes || '',
-                    isConfirmed: diagnosis.is_confirmed,
-                  })}
+                  onPress={() => beginEditingDiagnosis(diagnosis)}
                 />
                 <AppButton
                   label="Delete"
@@ -407,6 +548,16 @@ export default function EditEncounterScreen() {
 
         <AppPicker label="Diagnosis type" selectedValue={diagnosisForm.diagnosisType} onValueChange={(value) => setDiagnosisForm((current) => ({ ...current, diagnosisType: value }))} items={diagnosisTypeItems} />
         <AppPicker label="Certainty" selectedValue={diagnosisForm.certainty} onValueChange={(value) => setDiagnosisForm((current) => ({ ...current, certainty: value }))} items={diagnosisCertaintyItems} />
+        <ICD10Picker
+          value={diagnosisForm.freeTextDiagnosis}
+          onChangeText={(value) => setDiagnosisForm((current) => ({ ...current, freeTextDiagnosis: value }))}
+          onSelect={(code) => {
+            setSelectedIcd10Code(code);
+            setDiagnosisForm((current) => ({ ...current, freeTextDiagnosis: code.description }));
+          }}
+          selectedCode={selectedIcd10Code}
+        />
+        {selectedIcd10Code ? <AppButton label="Clear ICD-10 selection" variant="ghost" onPress={() => setSelectedIcd10Code(null)} /> : null}
         <AppTextInput label="Diagnosis" value={diagnosisForm.freeTextDiagnosis} onChangeText={(value) => setDiagnosisForm((current) => ({ ...current, freeTextDiagnosis: value }))} placeholder="Free-text diagnosis or syndrome" multiline />
         <AppTextInput label="Diagnosis notes" value={diagnosisForm.notes} onChangeText={(value) => setDiagnosisForm((current) => ({ ...current, notes: value }))} multiline />
         <AppPicker label="Confirmed" selectedValue={diagnosisForm.isConfirmed ? 'true' : 'false'} onValueChange={(value) => setDiagnosisForm((current) => ({ ...current, isConfirmed: value === 'true' }))} items={booleanItems} />
@@ -418,7 +569,10 @@ export default function EditEncounterScreen() {
               Alert.alert('Unable to save diagnosis', error instanceof Error ? error.message : 'Diagnosis save failed.');
             }
           }} disabled={saveDiagnosisMutation.isPending} />
-          {diagnosisForm.id ? <AppButton label="Cancel edit" variant="ghost" onPress={() => setDiagnosisForm(emptyDiagnosisForm)} /> : null}
+          {diagnosisForm.id ? <AppButton label="Cancel edit" variant="ghost" onPress={() => {
+            setDiagnosisForm(emptyDiagnosisForm);
+            setSelectedIcd10Code(null);
+          }} /> : null}
         </View>
       </SectionCard>
 
@@ -458,6 +612,11 @@ const styles = StyleSheet.create({
   },
   actions: {
     paddingBottom: 28,
+  },
+  helperText: {
+    color: appTheme.colors.mutedText,
+    fontSize: 13,
+    lineHeight: 18,
   },
   cardBlock: {
     backgroundColor: appTheme.colors.elevated,
