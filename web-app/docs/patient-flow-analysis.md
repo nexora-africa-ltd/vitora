@@ -1259,7 +1259,7 @@ The current navigation structure in [navigation.ts](../web-app/lib/config/naviga
 | **Sidebar structure** | Logical grouping (Clinical → Diagnostics → Finance → Admin) |
 | **Collapsible nav groups** | Reduces cognitive load |
 | **Active state highlighting** | Clear cyan accent, border indicator |
-| **Mobile responsiveness** | Proper overlay sidebar with backdrop |
+| **Mobile responsiveness** | Proper overlay sidebar with backdrop + Telegram-style bottom nav bar |
 | **Breadcrumbs** | Auto-generated from path |
 | **Dark mode** | Consistent theming |
 
@@ -1341,66 +1341,48 @@ router.push(`/clinics/${destinationClinic}/queue`);
 
 ---
 
-#### 4. Bottom Navigation Bar (Mobile) — Telegram-Style
+#### 4. Bottom Navigation Bar (Mobile) — Telegram-Style ✅ **Completed**
 
 **Problem:** On mobile, common actions (check-in, new encounter, triage) require opening the sidebar hamburger menu. This adds friction to the most frequent clinical workflows.
 
-**Solution:** Add a fixed bottom navigation bar (visible only below `md` breakpoint) similar to Telegram's mobile footer. The bar contains 4-5 primary tabs representing the most-used workflow steps:
+**Implementation:** [web-app/components/layout/mobile-bottom-nav.tsx](../web-app/components/layout/mobile-bottom-nav.tsx)
+
+A floating, rounded (28px radius) bottom navigation bar rendered inside the dashboard layout. Hidden on `xl+` where the sidebar is persistent, and also hidden when the mobile sidebar overlay is open to avoid visual conflicts.
 
 ```
 ┌──────────────────────────────────────────────────┐
 │ Page content...                                  │
 │                                                  │
-├──────────────────────────────────────────────────┤
-│  🏠        📋        🩺        💊        👤     │
-│  Home    Check-in   Triage   Pharmacy  Patients  │
+│   ╭──────────────────────────────────────────╮   │
+│   │  🏠       📋       🩺(↑)     📄        👤  │   │
+│   │  Home   Check-in  Triage  Encounters Patients│
+│   ╰──────────────────────────────────────────╯   │
 └──────────────────────────────────────────────────┘
 ```
 
-**Design principles:**
-- Fixed to bottom, always visible on mobile (hidden on `md+` where sidebar is accessible)
-- 5 tabs max to avoid crowding — pick the highest-frequency actions
-- Active tab highlighted with primary color (cyan accent)
-- Badge indicators for pending counts (e.g., triage queue size, unverified lab results)
-- Tap-and-hold on "Check-in" opens QR scanner shortcut
+**Features implemented:**
 
-**Suggested tabs:**
-| Tab | Icon | Route | Badge |
-|-----|------|-------|-------|
-| Home | `Home` | `/` | — |
-| Check-in | `ClipboardCheck` | `/patients/checkin` | Today's queue count |
-| Triage | `HeartPulse` | `/triage` | Waiting patients |
-| Pharmacy | `Pill` | `/pharmacy` | Pending dispensing |
-| Patients | `Users` | `/patients` | — |
+| Feature | Details |
+|---------|---------|
+| **Floating rounded tray** | Inset 12px from edges, `rounded-[28px]`, frosted glass backdrop blur, subtle shadow and radial gradient |
+| **Role-based center tab** | Center (3rd) tab is the user's primary workflow: Triage for nurses, Pharmacy for pharmacists, Encounters as fallback |
+| **Live badges** | Check-in tab shows today's check-in count via `useTodayCheckins`; Triage tab shows queue size via `useTriageQueue` (auto-refreshes) |
+| **Center tab emphasis** | Center tab scaled 1.05×, larger icon circle, stronger active styling (filled primary when active) |
+| **Sidebar-aware** | Hidden while mobile sidebar is open (`hidden={mobileSidebarOpen}` prop) |
+| **RBAC filtering** | Tabs only shown if user has the required `moduleKey` + `actionKey` via `usePermissions()` |
+| **Active state** | Active tab gets `bg-primary/10`, ring, and bolder icon stroke |
+| **Safe area** | Supports iOS notch via `env(safe-area-inset-bottom)` |
+| **Content clearance** | Main content has `pb-24 xl:pb-8` to avoid overlap |
 
-**Implementation:**
-```tsx
-// web-app/components/layout/mobile-bottom-nav.tsx
-// Visible only on mobile (below md breakpoint)
-// Uses next/navigation usePathname() for active state
-// Rendered inside root layout, below main content
-<nav className="fixed bottom-0 inset-x-0 z-40 border-t bg-background md:hidden">
-  <div className="flex items-center justify-around h-14">
-    {tabs.map(tab => (
-      <Link key={tab.href} href={tab.href}
-        className={cn("flex flex-col items-center gap-0.5 text-xs",
-          isActive ? "text-primary" : "text-muted-foreground"
-        )}>
-        <tab.icon className="h-5 w-5" />
-        <span>{tab.label}</span>
-        {tab.badge > 0 && <Badge className="absolute -top-1 -right-1">{tab.badge}</Badge>}
-      </Link>
-    ))}
-  </div>
-</nav>
-```
+**Tab composition (up to 5 tabs):**
 
-**Considerations:**
-- Add `pb-14` (or `pb-16`) padding to main content on mobile to prevent the footer from overlapping page content
-- Tabs should be role-aware — a pharmacy user sees Pharmacy highlighted; a nurse sees Triage
-- The sidebar hamburger remains available for accessing secondary modules (imaging, billing, admin, etc.)
-
-**Effort:** 4-6 hours
+| Slot | Default | Condition |
+|------|---------|-----------|
+| 1 | Home | Always (if `dashboard` module access) |
+| 2 | Check-in | If `checkin` module access |
+| 3 (center) | Triage / Pharmacy / Encounters | Role-based: Triage if nurse, Pharmacy if pharmacist, Encounters otherwise |
+| 4 | Encounters | If not already in center slot |
+| 5 | Patients | If `patients` module access |
 
 ---
 
@@ -1494,3 +1476,4 @@ The navigation is well-structured. Focus on **additions** (patient context bar, 
 | 26 | Allied health (Physio, OT) | ✅ Done | Backend + frontend pages |
 | 27 | Wait-time breach monitoring | ✅ Done | WaitTimeBreach + Escalation models, WebSocket alerts |
 | 28 | Lab queue automation | ✅ Done | Auto queue entry, specimen generation, status sync via signals |
+| 29 | Mobile bottom navigation bar | ✅ Done | Floating rounded tray, role-based center tab, live badges, sidebar-aware visibility |
