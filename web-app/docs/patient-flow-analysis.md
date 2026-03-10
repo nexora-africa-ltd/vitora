@@ -502,6 +502,44 @@ if original.assigned_clinician != self.assigned_clinician and original.status ==
 - CLOSED and CANCELLED encounters cannot be edited
 - `can_edit()` method enforces this
 
+### Chief Complaint Edit Audit Trail ✅ **Implemented**
+
+The encounter workflow now supports audited chief complaint edits directly from the encounter detail page.
+
+**Backend enforcement**:
+```python
+POST /api/encounters/{id}/edit_chief_complaint/
+
+# Requirements:
+- authenticated user
+- `encounters.change_encounter` permission
+- non-empty `chief_complaint`
+- mandatory `edit_reason`
+- `edit_reason_other` required when reason = "OTHER"
+```
+
+**Audit fields captured on Encounter**:
+- `chief_complaint_original`
+- `chief_complaint_edited`
+- `chief_complaint_edit_reason`
+- `chief_complaint_edit_reason_other`
+- `chief_complaint_edited_by`
+- `chief_complaint_edited_at`
+
+**Frontend behavior**:
+- Encounter detail page exposes an inline `Edit` action for users with `encounters.edit`
+- Current RBAC mapping allows this for `DOCTOR`, `CLINICAL_OFFICER`, and `ADMIN`
+- UI only exposes the edit affordance when `triage_status === COMPLETED`
+- UI hides editing for `CLOSED` and `CANCELLED` encounters
+- Edits use a dedicated dialog that requires a reason and preserves the audit trail
+
+**Key files**:
+- [backend/hmis/apps/encounters/views.py](../backend/hmis/apps/encounters/views.py)
+- [backend/tests/test_encounter_triage_consultation.py](../backend/tests/test_encounter_triage_consultation.py)
+- [web-app/components/encounters/encounter-chief-complaint-card.tsx](../components/encounters/encounter-chief-complaint-card.tsx)
+- [web-app/components/encounters/chief-complaint-edit-dialog.tsx](../components/encounters/chief-complaint-edit-dialog.tsx)
+- [web-app/app/(dashboard)/encounters/[id]/page.tsx](../app/(dashboard)/encounters/[id]/page.tsx)
+
 ### Frontend API
 ```typescript
 // Get related encounters
