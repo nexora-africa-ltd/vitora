@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils/cn';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useTodayCheckins } from '@/lib/hooks/use-checkin';
-import { useTriageQueue } from '@/lib/hooks/use-triage';
+import { useWaitingQueue } from '@/lib/hooks/use-triage';
 
 /**
  * Base tabs used to build the mobile workflow footer.
@@ -58,14 +58,14 @@ export function MobileBottomNav({ hidden = false }: { hidden?: boolean }) {
   const pathname = usePathname();
   const { canAccessModule, canPerformAction } = usePermissions();
   const { data: todayCheckins } = useTodayCheckins({ page_size: 1 });
-  const { data: triageQueue } = useTriageQueue();
+  const { data: waitingTriageQueue } = useWaitingQueue({ status: 'WAITING_TRIAGE' });
 
   const badgeCounts = useMemo(
     () => ({
       checkin: todayCheckins?.count ?? 0,
-      triage: triageQueue?.count ?? 0,
+      triage: waitingTriageQueue?.count ?? 0,
     }),
-    [todayCheckins?.count, triageQueue?.count]
+    [todayCheckins?.count, waitingTriageQueue?.count]
   );
 
   const hasTriageWorkflow = canAccessModule('triage' as never)

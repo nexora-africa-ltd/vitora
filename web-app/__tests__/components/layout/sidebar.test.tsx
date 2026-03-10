@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { Sidebar } from '@/components/layout/sidebar';
 
 const mockSearchParams = jest.fn(() => new URLSearchParams());
@@ -7,6 +7,12 @@ const mockUseNavigationMode = jest.fn(() => ({
   navigationMode: 'standard',
   isClinicalNavigationEligible: true,
 }));
+const mockCanAccessModule = jest.fn(() => true);
+const mockCanPerformAction = jest.fn(() => true);
+const mockPatientJourneyState = {
+  selectedPatientId: null as number | null,
+  activePatients: {} as Record<number, unknown>,
+};
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
@@ -22,8 +28,8 @@ jest.mock('@/lib/auth/hooks', () => ({
 // Mock usePermissions to grant all access (superuser)
 jest.mock('@/lib/hooks/use-permissions', () => ({
   usePermissions: jest.fn(() => ({
-    canAccessModule: () => true,
-    canPerformAction: () => true,
+    canAccessModule: mockCanAccessModule,
+    canPerformAction: mockCanPerformAction,
     hasPermission: () => true,
     canEditPatient: true,
     canEditIdentity: true,
@@ -50,6 +56,12 @@ jest.mock('@/lib/context/navigation-mode-context', () => ({
   useNavigationMode: () => mockUseNavigationMode(),
 }));
 
+jest.mock('@/lib/stores/patient-journey', () => ({
+  usePatientJourneyStore: jest.fn((selector: (state: typeof mockPatientJourneyState) => unknown) =>
+    selector(mockPatientJourneyState)
+  ),
+}));
+
 // Mock ScrollArea to avoid Radix React 19 issues
 jest.mock('@/components/ui/scroll-area', () => {
   const MockScrollArea = React.forwardRef<HTMLDivElement, { children: React.ReactNode; className?: string }>(
@@ -67,6 +79,14 @@ jest.mock('@/components/ui/tooltip', () => ({
   TooltipTrigger: ({ children, asChild }: { children: React.ReactNode; asChild?: boolean }) =>
     asChild ? children : React.createElement('span', null, children),
   TooltipContent: () => null,
+}));
+
+jest.mock('@/components/ui/popover', () => ({
+  Popover: ({ children }: { children: React.ReactNode }) => children,
+  PopoverTrigger: ({ children, asChild }: { children: React.ReactNode; asChild?: boolean }) =>
+    asChild ? children : React.createElement('span', null, children),
+  PopoverContent: ({ children }: { children: React.ReactNode }) =>
+    React.createElement('div', { 'data-testid': 'popover-content' }, children),
 }));
 
 // Mock Collapsible (lightweight) with trigger click support.
@@ -127,6 +147,10 @@ describe('Sidebar', () => {
     jest.clearAllMocks();
     mockedUsePathname.mockReturnValue('/');
     mockSearchParams.mockReturnValue(new URLSearchParams());
+    mockCanAccessModule.mockReturnValue(true);
+    mockCanPerformAction.mockReturnValue(true);
+    mockPatientJourneyState.selectedPatientId = null;
+    mockPatientJourneyState.activePatients = {};
     mockUseNavigationMode.mockReturnValue({
       navigationMode: 'standard',
       isClinicalNavigationEligible: true,
@@ -339,5 +363,140 @@ describe('Sidebar', () => {
     // Clicking the group trigger should close it and it should remain closed
     fireEvent.click(screen.getByRole('button', { name: 'Finance' }));
     expect(financeGroup).toHaveAttribute('data-open', 'false');
+  });
+
+  it('renders the current patient card when a selected active patient exists', () => {
+    mockPatientJourneyState.selectedPatientId = 42;
+    mockPatientJourneyState.activePatients = {
+      42: {
+        id: 42,
+        mrn: 'MRN-20260310-0042',
+        name: 'Jane Smith',
+        date_of_birth: '1990-03-10',
+        gender: 'F',
+        encounter_id: 77,
+        stage: 'IN_CONSULTATION',
+      },
+    };
+
+    render(<Sidebar {...defaultProps} />);
+
+    const card = screen.getByTestId('current-patient-card');
+
+    expect(screen.getByTestId('current-patient-card')).toBeInTheDocument();
+    expect(screen.getByText('Current Patient')).toBeInTheDocument();
+    expect(screen.getByText('Jane Smith')).toBeInTheDocument();
+    expect(screen.getByText(/MRN-20260310-0042/)).toBeInTheDocument();
+    expect(within(card).getByRole('link', { name: /^view$/i })).toHaveAttribute('href', '/patients/42');
+    expect(within(card).getByRole('link', { name: /encounter/i })).toHaveAttribute('href', '/encounters/77');
+  });
+
+  it('does not render the current patient card when no patient is selected', () => {
+    render(<Sidebar {...defaultProps} />);
+
+    expect(screen.queryByTestId('current-patient-card')).not.toBeInTheDocument();
+  });
+
+  it('does not render the current patient card when the sidebar is collapsed', () => {
+    mockPatientJourneyState.selectedPatientId = 42;
+    mockPatientJourneyState.activePatients = {
+      42: {
+        id: 42,
+        mrn: 'MRN-20260310-0042',
+        name: 'Jane Smith',
+        date_of_birth: '1990-03-10',
+        gender: 'F',
+        encounter_id: 77,
+        stage: 'IN_CONSULTATION',
+      },
+    };
+
+    render(<Sidebar {...defaultProps} collapsed={true} />);
+
+    expect(screen.queryByTestId('current-patient-card')).not.toBeInTheDocument();
+  });
+
+  it('omits the encounter action when the current patient has no active encounter', () => {
+    mockPatientJourneyState.selectedPatientId = 42;
+    mockPatientJourneyState.activePatients = {
+      42: {
+        id: 42,
+        mrn: 'MRN-20260310-0042',
+        name: 'Jane Smith',
+        date_of_birth: '1990-03-10',
+        gender: 'F',
+        encounter_id: null,
+        stage: 'CHECKED_IN',
+      },
+    };
+
+    render(<Sidebar {...defaultProps} />);
+
+    const card = screen.getByTestId('current-patient-card');
+
+    expect(within(card).getByRole('link', { name: /^view$/i })).toHaveAttribute('href', '/patients/42');
+    expect(within(card).queryByRole('link', { name: /encounter/i })).not.toBeInTheDocument();
+  });
+
+  it('dismisses the current patient card when the close button is clicked', () => {
+    mockPatientJourneyState.selectedPatientId = 42;
+    mockPatientJourneyState.activePatients = {
+      42: {
+        id: 42,
+        mrn: 'MRN-20260310-0042',
+        name: 'Jane Smith',
+        date_of_birth: '1990-03-10',
+        gender: 'F',
+        encounter_id: 77,
+        stage: 'IN_CONSULTATION',
+      },
+    };
+
+    render(<Sidebar {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /dismiss current patient card/i }));
+
+    expect(screen.queryByTestId('current-patient-card')).not.toBeInTheDocument();
+  });
+
+  it('hides the current patient card when patient module access is denied', () => {
+    mockCanAccessModule.mockImplementation((module: string) => module !== 'patients');
+    mockPatientJourneyState.selectedPatientId = 42;
+    mockPatientJourneyState.activePatients = {
+      42: {
+        id: 42,
+        mrn: 'MRN-20260310-0042',
+        name: 'Jane Smith',
+        date_of_birth: '1990-03-10',
+        gender: 'F',
+        encounter_id: 77,
+        stage: 'IN_CONSULTATION',
+      },
+    };
+
+    render(<Sidebar {...defaultProps} />);
+
+    expect(screen.queryByTestId('current-patient-card')).not.toBeInTheDocument();
+  });
+
+  it('hides the encounter shortcut when encounter module access is denied', () => {
+    mockCanAccessModule.mockImplementation((module: string) => module !== 'encounters');
+    mockPatientJourneyState.selectedPatientId = 42;
+    mockPatientJourneyState.activePatients = {
+      42: {
+        id: 42,
+        mrn: 'MRN-20260310-0042',
+        name: 'Jane Smith',
+        date_of_birth: '1990-03-10',
+        gender: 'F',
+        encounter_id: 77,
+        stage: 'IN_CONSULTATION',
+      },
+    };
+
+    render(<Sidebar {...defaultProps} />);
+
+    const card = screen.getByTestId('current-patient-card');
+    expect(within(card).queryByRole('link', { name: /encounter/i })).not.toBeInTheDocument();
   });
 });
