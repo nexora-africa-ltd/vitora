@@ -48,7 +48,7 @@ class TestDefaultRolesFixture:
     @pytest.fixture
     def fixture_path(self):
         """Get path to roles fixture."""
-        return Path(__file__).parent.parent / "hmis" / "apps" / "core" / "fixtures" / "roles.json"
+        return Path(__file__).parent.parent.parent / "hmis" / "apps" / "core" / "fixtures" / "roles.json"
 
     def test_fixture_file_exists(self, fixture_path):
         """Should have roles.json fixture file in core/fixtures/."""
@@ -176,7 +176,7 @@ class TestDefaultRolesFixture:
         call_command("loaddata", str(fixture_path), verbosity=0)
 
         # Categories aligned with base.py RBAC_HIERARCHY_LEVELS
-        valid_categories = ["CLINICAL", "ADMINISTRATIVE", "TECHNICAL", "MANAGEMENT", "COMMUNITY"]
+        valid_categories = ["CLINICAL", "ADMINISTRATIVE", "TECHNICAL", "MANAGEMENT", "COMMUNITY", "ALLIED_HEALTH"]
 
         for role in Role.objects.all():
             assert (

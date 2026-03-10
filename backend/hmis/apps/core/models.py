@@ -1048,6 +1048,7 @@ class Role(models.Model):
         ("TECHNICAL", "Technical Staff"),
         ("MANAGEMENT", "Management"),
         ("COMMUNITY", "Community Health"),
+        ("ALLIED_HEALTH", "Allied Health"),
     ]
 
     code = models.CharField(
