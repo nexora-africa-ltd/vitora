@@ -1,14 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, EmptyState, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
-import { appTheme } from '@/constants/theme';
+import type { AppTheme } from '@/constants/theme';
 import { getEncounterPillTone, getEncounterStatusLabel } from '@/lib/encounters';
 import { encountersApi } from '@/lib/api/encounters';
+import { useAppTheme } from '@/lib/theme/theme-context';
 import { formatDateTime } from '@/lib/utils/format';
 
 export default function EncountersScreen() {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const encountersQuery = useQuery({
     queryKey: ['encounters'],
     queryFn: () => encountersApi.list({ page: 1, page_size: 20, ordering: '-encounter_date' }),
@@ -63,11 +67,12 @@ export default function EncountersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
   encounterCard: {
-    backgroundColor: appTheme.colors.elevated,
-    borderColor: appTheme.colors.border,
-    borderRadius: appTheme.radius.md,
+    backgroundColor: theme.colors.elevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
     borderWidth: 1,
     gap: 6,
     padding: 14,
@@ -85,24 +90,25 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   encounterTitle: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 16,
     fontWeight: '700',
   },
   encounterMeta: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 12,
   },
   chiefComplaint: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 14,
   },
   triageRow: {
     alignItems: 'flex-start',
   },
   alertText: {
-    color: appTheme.colors.danger,
+    color: theme.colors.danger,
     fontSize: 13,
     fontWeight: '700',
   },
-});
+  });
+}

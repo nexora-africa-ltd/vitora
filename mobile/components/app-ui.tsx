@@ -1,9 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
+import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 
-import { appTheme } from '@/constants/theme';
+import type { AppTheme } from '@/constants/theme';
+import { useAppTheme } from '@/lib/theme/theme-context';
 
 type ScreenContainerProps = {
   children: React.ReactNode;
@@ -40,6 +42,8 @@ type AppPickerProps<T extends string | number> = {
 };
 
 export function ScreenContainer({ children, contentContainerStyle, scroll = true }: ScreenContainerProps) {
+  const styles = useSharedStyles();
+
   if (!scroll) {
     return <SafeAreaView style={styles.safeArea}>{children}</SafeAreaView>;
   }
@@ -54,8 +58,11 @@ export function ScreenContainer({ children, contentContainerStyle, scroll = true
 }
 
 export function HeroCard({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children?: React.ReactNode }) {
+  const { isDarkMode } = useAppTheme();
+  const styles = useSharedStyles();
+
   return (
-    <LinearGradient colors={['#17324D', '#0F766E', '#E08A5C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
+    <LinearGradient colors={isDarkMode ? ['#10253A', '#0A4F4E', '#A7572F'] : ['#17324D', '#0F766E', '#E08A5C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
       <Text style={styles.heroEyebrow}>{eyebrow}</Text>
       <Text style={styles.heroTitle}>{title}</Text>
       <Text style={styles.heroDescription}>{description}</Text>
@@ -65,6 +72,8 @@ export function HeroCard({ eyebrow, title, description, children }: { eyebrow: s
 }
 
 export function SectionCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  const styles = useSharedStyles();
+
   return (
     <View style={styles.sectionCard}>
       <View style={styles.sectionHeader}>
@@ -77,7 +86,9 @@ export function SectionCard({ title, subtitle, children }: { title: string; subt
 }
 
 export function MetricCard({ label, value, tone = 'primary' }: { label: string; value: string; tone?: 'primary' | 'accent' | 'secondary' }) {
-  const accentColor = tone === 'accent' ? appTheme.colors.accent : tone === 'secondary' ? appTheme.colors.secondary : appTheme.colors.primary;
+  const { theme } = useAppTheme();
+  const styles = useSharedStyles();
+  const accentColor = tone === 'accent' ? theme.colors.accent : tone === 'secondary' ? theme.colors.secondary : theme.colors.primary;
   return (
     <View style={styles.metricCard}>
       <View style={[styles.metricBar, { backgroundColor: accentColor }]} />
@@ -88,6 +99,7 @@ export function MetricCard({ label, value, tone = 'primary' }: { label: string; 
 }
 
 export function AppButton({ label, onPress, disabled = false, variant = 'primary' }: AppButtonProps) {
+  const styles = useSharedStyles();
   const buttonStyles = [
     styles.button,
     variant === 'secondary' && styles.buttonSecondary,
@@ -117,6 +129,9 @@ export function AppTextInput({
   keyboardType = 'default',
   multiline = false,
 }: AppTextInputProps) {
+  const { theme } = useAppTheme();
+  const styles = useSharedStyles();
+
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -126,7 +141,7 @@ export function AppTextInput({
         multiline={multiline}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={appTheme.colors.mutedText}
+        placeholderTextColor={theme.colors.mutedText}
         secureTextEntry={secureTextEntry}
         style={[styles.input, multiline && styles.inputMultiline]}
         value={value}
@@ -136,6 +151,8 @@ export function AppTextInput({
 }
 
 export function AppPicker<T extends string | number>({ label, selectedValue, items, onValueChange, enabled = true }: AppPickerProps<T>) {
+  const styles = useSharedStyles();
+
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -151,6 +168,8 @@ export function AppPicker<T extends string | number>({ label, selectedValue, ite
 }
 
 export function DataRow({ label, value }: { label: string; value: string | null | undefined }) {
+  const styles = useSharedStyles();
+
   return (
     <View style={styles.dataRow}>
       <Text style={styles.dataLabel}>{label}</Text>
@@ -160,6 +179,7 @@ export function DataRow({ label, value }: { label: string; value: string | null 
 }
 
 export function Pill({ label, tone = 'primary' }: { label: string; tone?: 'primary' | 'warning' | 'danger' | 'neutral' }) {
+  const styles = useSharedStyles();
   const toneStyles = [
     tone === 'primary' && styles.pillPrimary,
     tone === 'warning' && styles.pillWarning,
@@ -175,15 +195,20 @@ export function Pill({ label, tone = 'primary' }: { label: string; tone?: 'prima
 }
 
 export function LoadingState({ message }: { message: string }) {
+  const { theme } = useAppTheme();
+  const styles = useSharedStyles();
+
   return (
     <View style={styles.feedbackState}>
-      <ActivityIndicator color={appTheme.colors.primary} size="large" />
+      <ActivityIndicator color={theme.colors.primary} size="large" />
       <Text style={styles.feedbackTitle}>{message}</Text>
     </View>
   );
 }
 
 export function EmptyState({ title, description }: { title: string; description: string }) {
+  const styles = useSharedStyles();
+
   return (
     <View style={styles.feedbackState}>
       <Text style={styles.feedbackTitle}>{title}</Text>
@@ -192,19 +217,26 @@ export function EmptyState({ title, description }: { title: string; description:
   );
 }
 
-const styles = StyleSheet.create({
+function useSharedStyles() {
+  const { isDarkMode, theme } = useAppTheme();
+
+  return useMemo(() => createStyles(theme, isDarkMode), [isDarkMode, theme]);
+}
+
+function createStyles(theme: AppTheme, isDarkMode: boolean) {
+  return StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: appTheme.colors.background,
+    backgroundColor: theme.colors.background,
   },
   screenContent: {
-    padding: appTheme.spacing.lg,
-    gap: appTheme.spacing.lg,
+    padding: theme.spacing.lg,
+    gap: theme.spacing.lg,
   },
   heroCard: {
-    borderRadius: appTheme.radius.lg,
-    padding: appTheme.spacing.xl,
-    gap: appTheme.spacing.xs,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.xl,
+    gap: theme.spacing.xs,
   },
   heroEyebrow: {
     color: '#E7F6F4',
@@ -214,7 +246,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   heroTitle: {
-    color: appTheme.colors.elevated,
+    color: '#FFFFFF',
     fontSize: 28,
     fontWeight: '800',
   },
@@ -224,71 +256,71 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   heroChildren: {
-    marginTop: appTheme.spacing.sm,
+    marginTop: theme.spacing.sm,
   },
   sectionCard: {
-    backgroundColor: appTheme.colors.surface,
-    borderColor: appTheme.colors.border,
-    borderRadius: appTheme.radius.md,
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
     borderWidth: 1,
-    gap: appTheme.spacing.md,
-    padding: appTheme.spacing.lg,
+    gap: theme.spacing.md,
+    padding: theme.spacing.lg,
   },
   sectionHeader: {
     gap: 4,
   },
   sectionTitle: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 18,
     fontWeight: '700',
   },
   sectionSubtitle: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 13,
     lineHeight: 18,
   },
   metricCard: {
-    backgroundColor: appTheme.colors.elevated,
-    borderRadius: appTheme.radius.md,
+    backgroundColor: theme.colors.elevated,
+    borderRadius: theme.radius.md,
     gap: 10,
     minHeight: 112,
     overflow: 'hidden',
-    padding: appTheme.spacing.md,
+    padding: theme.spacing.md,
   },
   metricBar: {
-    borderRadius: appTheme.radius.pill,
+    borderRadius: theme.radius.pill,
     height: 6,
     width: 48,
   },
   metricLabel: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
   },
   metricValue: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 28,
     fontWeight: '800',
   },
   button: {
     alignItems: 'center',
-    backgroundColor: appTheme.colors.primary,
-    borderRadius: appTheme.radius.pill,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.pill,
     justifyContent: 'center',
     minHeight: 48,
     paddingHorizontal: 20,
   },
   buttonSecondary: {
-    backgroundColor: '#D7EEE7',
+    backgroundColor: isDarkMode ? '#18313A' : '#D7EEE7',
   },
   buttonGhost: {
     backgroundColor: 'transparent',
-    borderColor: appTheme.colors.border,
+    borderColor: theme.colors.border,
     borderWidth: 1,
   },
   buttonDanger: {
-    backgroundColor: appTheme.colors.danger,
+    backgroundColor: theme.colors.danger,
   },
   buttonDisabled: {
     opacity: 0.45,
@@ -297,27 +329,27 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.99 }],
   },
   buttonLabel: {
-    color: appTheme.colors.elevated,
+    color: isDarkMode ? '#0F1720' : theme.colors.elevated,
     fontSize: 15,
     fontWeight: '700',
   },
   buttonLabelDark: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
   },
   fieldGroup: {
     gap: 8,
   },
   fieldLabel: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 13,
     fontWeight: '700',
   },
   input: {
-    backgroundColor: appTheme.colors.elevated,
-    borderColor: appTheme.colors.border,
-    borderRadius: appTheme.radius.sm,
+    backgroundColor: theme.colors.elevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 15,
     minHeight: 48,
     paddingHorizontal: 14,
@@ -331,9 +363,9 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   pickerShell: {
-    backgroundColor: appTheme.colors.elevated,
-    borderColor: appTheme.colors.border,
-    borderRadius: appTheme.radius.sm,
+    backgroundColor: theme.colors.elevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
     overflow: 'hidden',
   },
@@ -341,36 +373,36 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   dataLabel: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 12,
     fontWeight: '700',
     textTransform: 'uppercase',
   },
   dataValue: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 15,
     lineHeight: 21,
   },
   pill: {
     alignSelf: 'flex-start',
-    borderRadius: appTheme.radius.pill,
+    borderRadius: theme.radius.pill,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   pillPrimary: {
-    backgroundColor: '#D7EEE7',
+    backgroundColor: isDarkMode ? '#18313A' : '#D7EEE7',
   },
   pillWarning: {
-    backgroundColor: '#F6E6C8',
+    backgroundColor: isDarkMode ? '#45361A' : '#F6E6C8',
   },
   pillDanger: {
-    backgroundColor: '#F6D4D0',
+    backgroundColor: isDarkMode ? '#452320' : '#F6D4D0',
   },
   pillNeutral: {
-    backgroundColor: '#E7E2DA',
+    backgroundColor: isDarkMode ? '#233240' : '#E7E2DA',
   },
   pillLabel: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -381,15 +413,16 @@ const styles = StyleSheet.create({
     paddingVertical: 28,
   },
   feedbackTitle: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 16,
     fontWeight: '700',
     textAlign: 'center',
   },
   feedbackDescription: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',
   },
-});
+  });
+}

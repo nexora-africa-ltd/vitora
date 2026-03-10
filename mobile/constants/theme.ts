@@ -13,9 +13,16 @@ export const palette = {
   warning: '#C67A00',
   danger: '#B9382F',
   white: '#FFFFFF',
+  charcoal: '#0F1720',
+  graphite: '#162330',
+  midnight: '#0C141C',
+  mist: '#C5D0D8',
+  lineDark: '#274051',
+  tealMist: '#7CC7C1',
+  orangeMist: '#F0B18B',
 };
 
-export const appTheme = {
+export const lightTheme = {
   colors: {
     background: palette.sand,
     surface: palette.parchment,
@@ -46,22 +53,57 @@ export const appTheme = {
   },
 };
 
+export const darkTheme = {
+  colors: {
+    background: palette.midnight,
+    surface: palette.charcoal,
+    elevated: palette.graphite,
+    text: '#EEF4F7',
+    mutedText: palette.mist,
+    primary: palette.tealMist,
+    primaryDark: palette.teal,
+    secondary: '#8EB9E3',
+    accent: palette.orangeMist,
+    border: palette.lineDark,
+    success: '#4FC485',
+    warning: '#E0AC3A',
+    danger: '#E2786E',
+  },
+  radius: {
+    sm: 12,
+    md: 18,
+    lg: 26,
+    pill: 999,
+  },
+  spacing: {
+    xs: 8,
+    sm: 12,
+    md: 16,
+    lg: 20,
+    xl: 28,
+  },
+} as const;
+
+export type AppTheme = typeof lightTheme;
+
+export const appTheme = lightTheme;
+
 export const Colors = {
   light: {
-    text: appTheme.colors.text,
-    background: appTheme.colors.background,
-    tint: appTheme.colors.primary,
-    icon: appTheme.colors.mutedText,
-    tabIconDefault: appTheme.colors.mutedText,
-    tabIconSelected: appTheme.colors.primary,
+    text: lightTheme.colors.text,
+    background: lightTheme.colors.background,
+    tint: lightTheme.colors.primary,
+    icon: lightTheme.colors.mutedText,
+    tabIconDefault: lightTheme.colors.mutedText,
+    tabIconSelected: lightTheme.colors.primary,
   },
   dark: {
-    text: appTheme.colors.text,
-    background: appTheme.colors.background,
-    tint: appTheme.colors.primary,
-    icon: appTheme.colors.mutedText,
-    tabIconDefault: appTheme.colors.mutedText,
-    tabIconSelected: appTheme.colors.primary,
+    text: darkTheme.colors.text,
+    background: darkTheme.colors.background,
+    tint: darkTheme.colors.primary,
+    icon: darkTheme.colors.mutedText,
+    tabIconDefault: darkTheme.colors.mutedText,
+    tabIconSelected: darkTheme.colors.primary,
   },
 };
 

@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { appTheme } from '@/constants/theme';
+import type { AppTheme } from '@/constants/theme';
 import { encountersApi } from '@/lib/api/encounters';
+import { useAppTheme } from '@/lib/theme/theme-context';
 import type { ICD10Code } from '@/lib/types/encounter';
 
 type ICD10PickerProps = {
@@ -16,6 +17,8 @@ type ICD10PickerProps = {
 };
 
 export function ICD10Picker({ value, onChangeText, onSelect, selectedCode, disabled = false, debounceMs = 300 }: ICD10PickerProps) {
+  const { isDarkMode, theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme, isDarkMode), [isDarkMode, theme]);
   const [debouncedQuery, setDebouncedQuery] = useState(value.trim());
   const [isFocused, setIsFocused] = useState(false);
 
@@ -50,7 +53,7 @@ export function ICD10Picker({ value, onChangeText, onSelect, selectedCode, disab
         onChangeText={onChangeText}
         onFocus={() => setIsFocused(true)}
         placeholder="Search malaria, pneumonia, hypertension..."
-        placeholderTextColor={appTheme.colors.mutedText}
+        placeholderTextColor={theme.colors.mutedText}
         style={[styles.input, disabled && styles.inputDisabled]}
         value={value}
       />
@@ -64,7 +67,7 @@ export function ICD10Picker({ value, onChangeText, onSelect, selectedCode, disab
 
       {searchQuery.isFetching && isFocused ? (
         <View style={styles.feedbackRow}>
-          <ActivityIndicator color={appTheme.colors.primary} size="small" />
+          <ActivityIndicator color={theme.colors.primary} size="small" />
           <Text style={styles.feedbackText}>Searching ICD-10 codes…</Text>
         </View>
       ) : null}
@@ -101,21 +104,22 @@ export function ICD10Picker({ value, onChangeText, onSelect, selectedCode, disab
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme, isDarkMode: boolean) {
+  return StyleSheet.create({
   wrapper: {
     gap: 8,
   },
   label: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 13,
     fontWeight: '700',
   },
   input: {
-    backgroundColor: appTheme.colors.elevated,
-    borderColor: appTheme.colors.border,
-    borderRadius: appTheme.radius.sm,
+    backgroundColor: theme.colors.elevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 15,
     minHeight: 48,
     paddingHorizontal: 14,
@@ -125,19 +129,19 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   selectedCard: {
-    backgroundColor: '#D7EEE7',
-    borderRadius: appTheme.radius.sm,
+    backgroundColor: isDarkMode ? '#18313A' : '#D7EEE7',
+    borderRadius: theme.radius.sm,
     gap: 4,
     padding: 12,
   },
   selectedCode: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 12,
     fontWeight: '800',
     textTransform: 'uppercase',
   },
   selectedDescription: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 14,
     lineHeight: 20,
   },
@@ -147,40 +151,41 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   feedbackText: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 13,
   },
   helperText: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 12,
     lineHeight: 18,
   },
   resultsShell: {
-    backgroundColor: appTheme.colors.elevated,
-    borderColor: appTheme.colors.border,
-    borderRadius: appTheme.radius.sm,
+    backgroundColor: theme.colors.elevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
     overflow: 'hidden',
   },
   resultRow: {
-    borderBottomColor: appTheme.colors.border,
+    borderBottomColor: theme.colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
     gap: 4,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
   resultRowPressed: {
-    backgroundColor: '#F0E8DA',
+    backgroundColor: isDarkMode ? '#1D3142' : '#F0E8DA',
   },
   resultCode: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 12,
     fontWeight: '800',
     textTransform: 'uppercase',
   },
   resultDescription: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 14,
     lineHeight: 20,
   },
-});
+  });
+}

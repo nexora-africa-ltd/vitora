@@ -1,13 +1,16 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Redirect, router } from 'expo-router';
 
 import { AppButton, AppTextInput, HeroCard, ScreenContainer, SectionCard } from '@/components/app-ui';
-import { appTheme } from '@/constants/theme';
 import { useAuth } from '@/lib/auth/auth-context';
+import type { AppTheme } from '@/constants/theme';
+import { useAppTheme } from '@/lib/theme/theme-context';
 
 export default function SignInScreen() {
   const { apiBaseUrl, isAuthenticated, isHydrating, login, updateApiBaseUrl } = useAuth();
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [backendUrl, setBackendUrl] = useState(apiBaseUrl);
@@ -75,7 +78,8 @@ export default function SignInScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
   content: {
     paddingTop: 24,
   },
@@ -88,8 +92,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   helperText: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 13,
     lineHeight: 18,
   },
-});
+  });
+}

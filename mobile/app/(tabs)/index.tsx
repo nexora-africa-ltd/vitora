@@ -1,16 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, HeroCard, LoadingState, MetricCard, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
-import { appTheme } from '@/constants/theme';
+import type { AppTheme } from '@/constants/theme';
 import { encountersApi } from '@/lib/api/encounters';
 import { patientsApi } from '@/lib/api/patients';
 import { useAuth } from '@/lib/auth/auth-context';
+import { useAppTheme } from '@/lib/theme/theme-context';
 import { formatDateTime } from '@/lib/utils/format';
 
 export default function DashboardScreen() {
   const { apiBaseUrl, user } = useAuth();
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const summaryQuery = useQuery({
     queryKey: ['dashboard-summary'],
@@ -83,7 +87,8 @@ export default function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
   heroMetaRow: {
     gap: 12,
   },
@@ -99,11 +104,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyText: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 14,
   },
   timelineItem: {
-    borderBottomColor: appTheme.colors.border,
+    borderBottomColor: theme.colors.border,
     borderBottomWidth: 1,
     gap: 4,
     paddingBottom: 12,
@@ -114,18 +119,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   timelineTitle: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     flex: 1,
     fontSize: 16,
     fontWeight: '700',
     marginRight: 12,
   },
   timelineSubtitle: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 14,
   },
   timelineMeta: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 12,
   },
-});
+  });
+}

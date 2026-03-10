@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, AppPicker, AppTextInput, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
-import { appTheme } from '@/constants/theme';
+import type { AppTheme } from '@/constants/theme';
 import { encountersApi } from '@/lib/api/encounters';
 import { triageApi } from '@/lib/api/triage';
 import { queryClient } from '@/lib/query/client';
+import { useAppTheme } from '@/lib/theme/theme-context';
 import type { TriageAssessmentCreateData, TriageAssignedArea, TriageLevel, TriageMentalStatus } from '@/lib/types/triage';
 import { formatDateTime } from '@/lib/utils/format';
 
@@ -105,6 +106,8 @@ function toOptionalNumber(value: string): number | null | undefined {
 }
 
 export default function TriageAssessmentScreen() {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const params = useLocalSearchParams<{ id: string }>();
   const encounterId = Number(params.id);
   const [form, setForm] = useState<TriageFormState>({
@@ -384,7 +387,8 @@ export default function TriageAssessmentScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
   inlineRow: {
     flexDirection: 'row',
     gap: 12,
@@ -393,18 +397,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 18,
     fontWeight: '800',
   },
   helperText: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 13,
     lineHeight: 18,
   },
   alertText: {
-    color: appTheme.colors.danger,
+    color: theme.colors.danger,
     fontSize: 13,
     fontWeight: '700',
   },
-});
+  });
+}

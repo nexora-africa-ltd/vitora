@@ -4,10 +4,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, AppPicker, AppTextInput, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
-import { appTheme } from '@/constants/theme';
+import type { AppTheme } from '@/constants/theme';
 import { checkinApi } from '@/lib/api/checkin';
 import { clinicsApi } from '@/lib/api/clinics';
 import { queryClient } from '@/lib/query/client';
+import { useAppTheme } from '@/lib/theme/theme-context';
 import type { CheckInIdentityMethod, CheckInPatientLookup, CheckInPatientSearchResult, CheckInRoutingMode, CheckInVisitReason, CheckInVisitType } from '@/lib/types/checkin';
 import { formatDate } from '@/lib/utils/format';
 
@@ -60,6 +61,8 @@ const booleanItems = [
 ] as const;
 
 export default function CheckInScreen() {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const params = useLocalSearchParams<{ patientId?: string }>();
   const initialPatientId = params.patientId ? Number(params.patientId) : null;
 
@@ -281,11 +284,12 @@ export default function CheckInScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(theme: AppTheme) {
+  return StyleSheet.create({
   resultCard: {
-    backgroundColor: appTheme.colors.elevated,
-    borderColor: appTheme.colors.border,
-    borderRadius: appTheme.radius.sm,
+    backgroundColor: theme.colors.elevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
     gap: 4,
     padding: 12,
@@ -294,31 +298,32 @@ const styles = StyleSheet.create({
     opacity: 0.82,
   },
   resultTitle: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 15,
     fontWeight: '700',
   },
   resultMeta: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 12,
     lineHeight: 18,
   },
   patientTitle: {
-    color: appTheme.colors.text,
+    color: theme.colors.text,
     fontSize: 18,
     fontWeight: '800',
   },
   helperText: {
-    color: appTheme.colors.mutedText,
+    color: theme.colors.mutedText,
     fontSize: 13,
     lineHeight: 18,
   },
   alertText: {
-    color: appTheme.colors.danger,
+    color: theme.colors.danger,
     fontSize: 13,
     fontWeight: '700',
   },
   stack: {
     gap: 6,
   },
-});
+  });
+}
