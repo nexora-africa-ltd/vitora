@@ -24,7 +24,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from pydicom.uid import generate_uid
 from rest_framework import status
 
-from tests.dicom_test_utils import create_test_dicom_file, create_test_dicom_study
+from tests.imaging.dicom_test_utils import create_test_dicom_file, create_test_dicom_study
 
 # ============================================================================
 # Fixtures

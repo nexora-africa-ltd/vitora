@@ -18,7 +18,7 @@ from django.conf import settings
 from django.test import override_settings
 from pydicom.uid import generate_uid
 
-from tests.dicom_test_utils import (
+from tests.imaging.dicom_test_utils import (
     create_minimal_dicom_file,
     create_multi_frame_dicom,
     create_test_dicom_file,
