@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, AppPicker, AppTextInput, HeroCard, LoadingState, ScreenContainer, SectionCard } from '@/components/app-ui';
 import { encountersApi } from '@/lib/api/encounters';
+import { clearNewEncounterDraft, getNewEncounterDraft, saveNewEncounterDraft } from '@/lib/encounter-draft-storage';
 import { patientsApi } from '@/lib/api/patients';
 import { buildBloodPressure, ENCOUNTER_TYPE_OPTIONS } from '@/lib/encounters';
 import { queryClient } from '@/lib/query/client';
@@ -49,6 +50,8 @@ export default function NewEncounterScreen() {
   const params = useLocalSearchParams<{ patientId?: string }>();
   const preselectedPatientId = params.patientId ? Number(params.patientId) : 0;
   const today = new Date().toISOString().split('T')[0] ?? '';
+  const [isDraftHydrated, setIsDraftHydrated] = useState(false);
+  const [draftRestoredAt, setDraftRestoredAt] = useState<string | null>(null);
 
   const [form, setForm] = useState<FormState>({
     patient: Number.isFinite(preselectedPatientId) ? preselectedPatientId : 0,
@@ -74,6 +77,46 @@ export default function NewEncounterScreen() {
     assessment: '',
     notes: '',
   });
+
+  useEffect(() => {
+    let active = true;
+
+    async function hydrateDraft() {
+      const draft = await getNewEncounterDraft<FormState>();
+      if (!active) {
+        return;
+      }
+
+      if (draft?.form) {
+        setForm((current) => ({
+          ...draft.form,
+          patient: draft.form.patient || current.patient || (Number.isFinite(preselectedPatientId) ? preselectedPatientId : 0),
+          encounterDate: draft.form.encounterDate || today,
+        }));
+        setDraftRestoredAt(draft.savedAt);
+      }
+
+      setIsDraftHydrated(true);
+    }
+
+    void hydrateDraft();
+
+    return () => {
+      active = false;
+    };
+  }, [preselectedPatientId, today]);
+
+  useEffect(() => {
+    if (!isDraftHydrated) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      void saveNewEncounterDraft(form);
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [form, isDraftHydrated]);
 
   const patientsQuery = useQuery({
     queryKey: ['encounter-form-patients'],
@@ -133,6 +176,7 @@ export default function NewEncounterScreen() {
         notes: form.notes.trim() || undefined,
       }),
     onSuccess: async (encounter) => {
+      await clearNewEncounterDraft();
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['encounters'] }),
         queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] }),
@@ -169,7 +213,7 @@ export default function NewEncounterScreen() {
     }
   }
 
-  if (patientsQuery.isLoading || preselectedPatientQuery.isLoading) {
+  if (patientsQuery.isLoading || preselectedPatientQuery.isLoading || !isDraftHydrated) {
     return (
       <ScreenContainer>
         <LoadingState message="Preparing encounter form..." />
@@ -184,6 +228,44 @@ export default function NewEncounterScreen() {
         title="Capture bedside consultation"
         description={`This creates a real encounter through /api/encounters/ using the same core fields as the web workflow. Date: ${formatDate(form.encounterDate)}`}
       />
+
+      {draftRestoredAt ? (
+        <SectionCard title="Draft restored" subtitle="Encounter capture was restored from local device storage after restart or connectivity loss.">
+          <Text style={styles.helperText}>Last saved {formatDate(draftRestoredAt)}.</Text>
+          <AppButton
+            label="Discard local draft"
+            variant="ghost"
+            onPress={async () => {
+              await clearNewEncounterDraft();
+              setDraftRestoredAt(null);
+              setForm({
+                patient: Number.isFinite(preselectedPatientId) ? preselectedPatientId : 0,
+                encounterType: 'OPD',
+                encounterDate: today,
+                chiefComplaint: '',
+                temperature: '',
+                pulse: '',
+                bloodPressureSystolic: '',
+                bloodPressureDiastolic: '',
+                respiratoryRate: '',
+                spo2: '',
+                weight: '',
+                height: '',
+                allergies: '',
+                chronicConditions: '',
+                currentMedications: '',
+                pastSurgeries: '',
+                familyHistory: '',
+                socialHistory: '',
+                historyOfPresentIllness: '',
+                physicalExamination: '',
+                assessment: '',
+                notes: '',
+              });
+            }}
+          />
+        </SectionCard>
+      ) : null}
 
       <SectionCard title="Core details" subtitle="These fields match the first steps of the web encounter flow.">
         <AppPicker label="Patient" selectedValue={form.patient} onValueChange={(value) => updateField('patient', value)} items={patientOptions} />
@@ -245,5 +327,8 @@ const styles = StyleSheet.create({
   },
   actions: {
     paddingBottom: 28,
+  },
+  helperText: {
+    fontSize: 13,
   },
 });
