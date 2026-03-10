@@ -2,15 +2,23 @@ import { useMemo, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { AppButton, AppTextInput, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { AppButton, AppPicker, AppTextInput, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useAppTheme } from '@/lib/theme/theme-context';
 
 export default function SettingsScreen() {
   const { apiBaseUrl, logout, updateApiBaseUrl, user } = useAuth();
-  const { isDarkMode, toggleTheme, theme } = useAppTheme();
+  const { isDarkMode, mode, resolvedMode, setMode, theme } = useAppTheme();
   const [backendUrl, setBackendUrl] = useState(apiBaseUrl);
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const appearanceItems = useMemo(
+    () => [
+      { label: 'Use system setting', value: 'system' },
+      { label: 'Light', value: 'light' },
+      { label: 'Dark', value: 'dark' },
+    ],
+    []
+  );
 
   async function handleSave() {
     await updateApiBaseUrl(backendUrl);
@@ -43,11 +51,12 @@ export default function SettingsScreen() {
         </Text>
       </SectionCard>
 
-      <SectionCard title="Appearance" subtitle="Choose the app color mode stored on this device.">
+      <SectionCard title="Appearance" subtitle="Default behavior follows the system theme unless you override it here.">
         <View style={styles.roleRow}>
-          <Pill label={isDarkMode ? 'Dark mode' : 'Light mode'} tone={isDarkMode ? 'warning' : 'neutral'} />
+          <Pill label={`Active: ${resolvedMode === 'dark' ? 'Dark' : 'Light'}`} tone={isDarkMode ? 'warning' : 'neutral'} />
+          <Pill label={mode === 'system' ? 'Following system' : 'Manual override'} tone="primary" />
         </View>
-        <AppButton label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'} onPress={() => void toggleTheme()} variant="secondary" />
+        <AppPicker label="Theme mode" selectedValue={mode} onValueChange={(value) => void setMode(value as 'system' | 'light' | 'dark')} items={appearanceItems} />
       </SectionCard>
 
       <SectionCard title="Session" subtitle="Log out to clear secure tokens and reset cached backend data.">

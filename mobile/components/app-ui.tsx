@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useMemo } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 
@@ -151,13 +151,68 @@ export function AppTextInput({
 }
 
 export function AppPicker<T extends string | number>({ label, selectedValue, items, onValueChange, enabled = true }: AppPickerProps<T>) {
+  const { theme } = useAppTheme();
   const styles = useSharedStyles();
+
+  if (Platform.OS === 'web') {
+    const selectedStringValue = String(selectedValue);
+
+    return (
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>{label}</Text>
+        <select
+          disabled={!enabled}
+          value={selectedStringValue}
+          onChange={(event) => {
+            const nextValue = event.target.value;
+            const matchingItem = items.find((item) => String(item.value) === nextValue);
+            if (matchingItem) {
+              onValueChange(matchingItem.value);
+            }
+          }}
+          style={{
+            width: '100%',
+            minHeight: 48,
+            borderRadius: theme.radius.sm,
+            border: `1px solid ${theme.colors.border}`,
+            backgroundColor: theme.colors.elevated,
+            color: theme.colors.text,
+            padding: '0 14px',
+            fontSize: 15,
+            outline: 'none',
+            opacity: enabled ? 1 : 0.55,
+          }}
+        >
+          {items.map((item) => (
+            <option
+              key={`${label}-${String(item.value)}`}
+              value={String(item.value)}
+              style={{
+                backgroundColor: theme.colors.elevated,
+                color: theme.colors.text,
+              }}
+            >
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <View style={[styles.pickerShell, !enabled && styles.inputDisabled]}>
-        <Picker enabled={enabled} selectedValue={selectedValue} onValueChange={(value) => onValueChange(value as T)}>
+        <Picker
+          dropdownIconColor={theme.colors.mutedText}
+          enabled={enabled}
+          itemStyle={styles.pickerItem}
+          mode={Platform.OS === 'android' ? 'dropdown' : undefined}
+          selectedValue={selectedValue}
+          style={styles.picker}
+          onValueChange={(value) => onValueChange(value as T)}
+        >
           {items.map((item) => (
             <Picker.Item key={`${label}-${String(item.value)}`} label={item.label} value={item.value} />
           ))}
@@ -368,6 +423,13 @@ function createStyles(theme: AppTheme, isDarkMode: boolean) {
     borderRadius: theme.radius.sm,
     borderWidth: 1,
     overflow: 'hidden',
+  },
+  picker: {
+    color: theme.colors.text,
+    minHeight: 48,
+  },
+  pickerItem: {
+    color: theme.colors.text,
   },
   dataRow: {
     gap: 4,
