@@ -19,6 +19,7 @@ import uuid
 
 from django.utils import timezone
 from rest_framework import permissions, status
+from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -85,6 +86,16 @@ logger = logging.getLogger(__name__)
 # Accepted verbosity values — aligned with TibaBot's API.
 _VALID_VERBOSITY = {"concise", "standard", "educational"}
 
+# Allowed roles for the conversational AI surface. These mirror the frontend
+# ai.use_chat action gate so direct API access cannot bypass UI restrictions.
+_AI_CHAT_ALLOWED_ROLES = {
+    "DOCTOR",
+    "CLINICAL_OFFICER",
+    "PHARMACIST",
+    "LAB_SCIENTIST",
+    "ADMIN",
+}
+
 
 # =============================================================================
 # Helpers
@@ -130,6 +141,31 @@ def _build_audit_value_preview(value: object) -> dict[str, str]:
         "accepted_value_type": value_type,
         "accepted_value_preview": sanitized[:120],
     }
+
+
+def _resolve_request_role_code(request: Request) -> str | None:
+    """Resolve a normalized role code for the authenticated user."""
+    if not getattr(request, "user", None) or not request.user.is_authenticated:
+        return None
+
+    if request.user.is_superuser:
+        return "ADMIN"
+
+    role_code = build_user_context(request).get("role")
+    if isinstance(role_code, str) and role_code:
+        return role_code
+
+    return None
+
+
+class CanUseAIChat(BasePermission):
+    """Restrict conversational AI endpoints to approved clinical roles."""
+
+    message = "You do not have permission to use AI chat."
+
+    def has_permission(self, request: Request, view: APIView) -> bool:
+        role_code = _resolve_request_role_code(request)
+        return role_code in _AI_CHAT_ALLOWED_ROLES
 
 
 class AISuggestionAuditView(AIFeatureGatedMixin, APIView):
@@ -348,7 +384,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
     }
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanUseAIChat]
 
     def post(self, request: Request) -> Response:
         serializer = ClinicalChatRequestSerializer(data=request.data)
@@ -533,7 +569,7 @@ class ClinicalAssistView(AIFeatureGatedMixin, APIView):
     before forwarding to TibaBot.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanUseAIChat]
 
     def post(self, request: Request) -> Response:
         serializer = ClinicalAssistRequestSerializer(data=request.data)
@@ -635,7 +671,7 @@ class ClinicalChatSessionListView(AIFeatureGatedMixin, APIView):
     }
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanUseAIChat]
 
     def get(self, request: Request) -> Response:
         sessions = ChatSession.objects.filter(user=request.user)
@@ -669,7 +705,7 @@ class ClinicalChatSessionDetailView(AIFeatureGatedMixin, APIView):
     Returns 204 No Content.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanUseAIChat]
 
     def get(self, request: Request, session_id: str) -> Response:
         session = self._get_session(request.user, session_id)
@@ -877,7 +913,7 @@ class AIFeedbackView(AIFeatureGatedMixin, APIView):
     Forwards to TibaBot's POST /feedback and returns {status, message, feedback_id}.
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanUseAIChat]
 
     def post(self, request: Request) -> Response:
         serializer = AIFeedbackRequestSerializer(data=request.data)

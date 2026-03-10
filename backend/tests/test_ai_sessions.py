@@ -27,6 +27,14 @@ from hmis.apps.ai.models import ChatMessage, ChatSession
 User = get_user_model()
 
 
+@pytest.fixture
+def authenticated_client(api_client, test_user):
+    """Authenticated AI client with an allowed conversational AI role."""
+    test_user.role = "DOCTOR"
+    api_client.force_authenticate(user=test_user)
+    return api_client
+
+
 # =============================================================================
 # Helpers
 # =============================================================================
@@ -270,6 +278,15 @@ class TestClinicalChatSessionListEndpoint:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     @override_settings(TIBABOT_ENABLED=True)
+    def test_forbids_unauthorized_roles(self, api_client, test_user):
+        test_user.role = "NURSE"
+        api_client.force_authenticate(user=test_user)
+
+        response = api_client.get("/api/ai/clinical/chat/sessions/")
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    @override_settings(TIBABOT_ENABLED=True)
     def test_returns_empty_sessions(self, authenticated_client):
         response = authenticated_client.get("/api/ai/clinical/chat/sessions/")
         assert response.status_code == status.HTTP_200_OK
@@ -349,6 +366,16 @@ class TestClinicalChatSessionDetailEndpoint:
         fake_id = str(uuid.uuid4())
         response = api_client.get(f"/api/ai/clinical/chat/session/{fake_id}/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @override_settings(TIBABOT_ENABLED=True)
+    def test_forbids_unauthorized_roles(self, api_client, test_user):
+        test_user.role = "NURSE"
+        api_client.force_authenticate(user=test_user)
+        fake_id = str(uuid.uuid4())
+
+        response = api_client.get(f"/api/ai/clinical/chat/session/{fake_id}/")
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     @override_settings(TIBABOT_ENABLED=True)
     def test_get_session_detail(self, authenticated_client, test_user):
