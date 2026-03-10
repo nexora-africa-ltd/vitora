@@ -19,6 +19,7 @@ from django.core.management.base import CommandError
 pytestmark = pytest.mark.django_db
 
 User = get_user_model()
+CLINICAL_TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "data" / "clinical_templates"
 
 
 # ============================================================================
@@ -418,7 +419,7 @@ class TestKenyaTemplatesLoading:
     def test_kenya_templates_directory_exists(self):
         """Test that Kenya templates directory exists."""
 
-        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        templates_dir = CLINICAL_TEMPLATES_DIR
 
         # This test may fail initially - templates dir needs to be created
         # Keeping test to ensure we create the directory
@@ -472,7 +473,7 @@ class TestKenyaTemplatesLoading:
     def test_tb_assessment_template_exists(self):
         """Test that TB assessment template JSON file exists."""
 
-        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        templates_dir = CLINICAL_TEMPLATES_DIR
         tb_file = templates_dir / "tb_assessment.json"
 
         assert tb_file.exists(), f"TB assessment template not found at {tb_file}"
@@ -482,7 +483,7 @@ class TestKenyaTemplatesLoading:
 
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
-        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        templates_dir = CLINICAL_TEMPLATES_DIR
 
         out = StringIO()
         call_command("load_clinical_templates", f"--dir={templates_dir}", stdout=out)
@@ -498,7 +499,7 @@ class TestKenyaTemplatesLoading:
     def test_gbv_assessment_template_exists(self):
         """Test that GBV assessment template JSON file exists."""
 
-        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        templates_dir = CLINICAL_TEMPLATES_DIR
         gbv_file = templates_dir / "gbv_assessment.json"
 
         assert gbv_file.exists(), f"GBV assessment template not found at {gbv_file}"
@@ -508,7 +509,7 @@ class TestKenyaTemplatesLoading:
 
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
-        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        templates_dir = CLINICAL_TEMPLATES_DIR
 
         out = StringIO()
         call_command("load_clinical_templates", f"--dir={templates_dir}", stdout=out)
@@ -519,7 +520,7 @@ class TestKenyaTemplatesLoading:
     def test_sexual_assault_template_exists(self):
         """Test that sexual assault (PRC) template JSON file exists."""
 
-        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        templates_dir = CLINICAL_TEMPLATES_DIR
         sa_file = templates_dir / "sexual_assault.json"
 
         assert sa_file.exists(), f"Sexual assault template not found at {sa_file}"
@@ -529,7 +530,7 @@ class TestKenyaTemplatesLoading:
 
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
-        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        templates_dir = CLINICAL_TEMPLATES_DIR
 
         out = StringIO()
         call_command("load_clinical_templates", f"--dir={templates_dir}", stdout=out)
@@ -542,7 +543,7 @@ class TestKenyaTemplatesLoading:
     def test_rta_template_exists(self):
         """Test that road traffic accident template JSON file exists."""
 
-        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        templates_dir = CLINICAL_TEMPLATES_DIR
         rta_file = templates_dir / "road_traffic_accident.json"
 
         assert rta_file.exists(), f"RTA template not found at {rta_file}"
@@ -552,7 +553,7 @@ class TestKenyaTemplatesLoading:
 
         from hmis.apps.clinical_templates.models import ClinicalTemplate
 
-        templates_dir = Path(__file__).parent.parent / "data" / "clinical_templates"
+        templates_dir = CLINICAL_TEMPLATES_DIR
 
         out = StringIO()
         call_command("load_clinical_templates", f"--dir={templates_dir}", stdout=out)
