@@ -193,6 +193,7 @@ export interface EncounterListParams {
   page_size?: number;
   patient?: number;
   status?: string;
+  encounter_date?: string;
   encounter_type?: string;
   visit_reason?: string;
   ordering?: string;

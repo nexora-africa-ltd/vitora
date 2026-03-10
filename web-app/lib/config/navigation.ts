@@ -315,6 +315,7 @@ const _allNavItems: NavItemType[] = [
     href: '/ai',
     icon: BrainCircuit,
     moduleKey: 'ai',
+    actionKey: 'ai.use_chat',
     featureFlag: ENABLE_AI,
   } as NavItem & { featureFlag?: boolean },
   {

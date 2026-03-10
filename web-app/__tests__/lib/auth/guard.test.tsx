@@ -8,10 +8,15 @@
 import { render, screen } from '@testing-library/react';
 import { PermissionGuard, AuthGuard, RouteGuard, getModuleForRoute } from '@/lib/auth/guard';
 import { useAuth } from '@/lib/auth/context';
+import { useFacility } from '@/lib/context/facility-context';
 
 // Mock the auth context
 jest.mock('@/lib/auth/context', () => ({
   useAuth: jest.fn(),
+}));
+
+jest.mock('@/lib/context/facility-context', () => ({
+  useFacility: jest.fn(),
 }));
 
 // Mock next/navigation
@@ -21,6 +26,7 @@ jest.mock('next/navigation', () => ({
 }));
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+const mockUseFacility = useFacility as jest.MockedFunction<typeof useFacility>;
 
 const createMockUser = (overrides: Partial<ReturnType<typeof useAuth>['user']> = {}) => ({
   id: 1,
@@ -47,6 +53,16 @@ const createMockAuthState = (overrides: Partial<ReturnType<typeof useAuth>> = {}
 describe('PermissionGuard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseFacility.mockReturnValue({
+      facility: null,
+      assignedFacility: null,
+      facilityOverride: null,
+      isUsingFacilityOverride: false,
+      isLoading: false,
+      hasModule: jest.fn(() => true),
+      setFacilityOverride: jest.fn(),
+      clearFacilityOverride: jest.fn(),
+    });
   });
 
   it('should show access denied for missing required permission', () => {
@@ -202,6 +218,16 @@ describe('RouteGuard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPathname.mockReturnValue('/');
+    mockUseFacility.mockReturnValue({
+      facility: null,
+      assignedFacility: null,
+      facilityOverride: null,
+      isUsingFacilityOverride: false,
+      isLoading: false,
+      hasModule: jest.fn(() => true),
+      setFacilityOverride: jest.fn(),
+      clearFacilityOverride: jest.fn(),
+    });
   });
 
   it('renders children on unrestricted route', () => {
@@ -262,5 +288,165 @@ describe('RouteGuard', () => {
 
     expect(screen.queryByText('Pharmacy Page')).not.toBeInTheDocument();
     expect(screen.getByText('Access Denied')).toBeInTheDocument();
+  });
+
+  it('shows Access Denied when the facility capability is disabled for the route', () => {
+    mockUseAuth.mockReturnValue(
+      createMockAuthState({
+        user: createMockUser({
+          permissions: ['view_lab_results', 'laboratory.view_labresult'],
+          role: 'LAB_TECH',
+        }),
+      })
+    );
+
+    mockUseFacility.mockReturnValue({
+      facility: { id: 1, name: 'Test Facility', modules: { laboratory: false } },
+      assignedFacility: null,
+      facilityOverride: null,
+      isUsingFacilityOverride: false,
+      isLoading: false,
+      hasModule: jest.fn((module: string) => module !== 'laboratory'),
+      setFacilityOverride: jest.fn(),
+      clearFacilityOverride: jest.fn(),
+    } as any);
+
+    mockPathname.mockReturnValue('/laboratory');
+
+    render(
+      <RouteGuard>
+        <div>Laboratory Page</div>
+      </RouteGuard>
+    );
+
+    expect(screen.queryByText('Laboratory Page')).not.toBeInTheDocument();
+    expect(screen.getByText('Access Denied')).toBeInTheDocument();
+  });
+
+  it('allows the theatre route when the user has scheduling view permission', () => {
+    mockUseAuth.mockReturnValue(
+      createMockAuthState({
+        user: createMockUser({
+          permissions: ['scheduling.view_schedule'],
+          role: 'SURGEON',
+        }),
+      })
+    );
+
+    mockPathname.mockReturnValue('/theatre/schedule');
+
+    render(
+      <RouteGuard>
+        <div>Theatre Page</div>
+      </RouteGuard>
+    );
+
+    expect(screen.getByText('Theatre Page')).toBeInTheDocument();
+  });
+
+  it('allows the finance route when the user has SHA claim permission', () => {
+    mockUseAuth.mockReturnValue(
+      createMockAuthState({
+        user: createMockUser({
+          permissions: ['billing.submit_sha_claim'],
+          role: 'BILLING_CLERK',
+        }),
+      })
+    );
+
+    mockPathname.mockReturnValue('/transactions/sha-claims');
+
+    render(
+      <RouteGuard>
+        <div>SHA Claims Page</div>
+      </RouteGuard>
+    );
+
+    expect(screen.getByText('SHA Claims Page')).toBeInTheDocument();
+  });
+
+  it('allows the inpatient route when the user only has ward permissions', () => {
+    mockUseAuth.mockReturnValue(
+      createMockAuthState({
+        user: createMockUser({
+          permissions: ['inpatient.view_ward'],
+          role: 'NURSE',
+        }),
+      })
+    );
+
+    mockPathname.mockReturnValue('/wards');
+
+    render(
+      <RouteGuard>
+        <div>Ward Page</div>
+      </RouteGuard>
+    );
+
+    expect(screen.getByText('Ward Page')).toBeInTheDocument();
+  });
+
+  it('allows the surveillance route when the user has IHR permissions', () => {
+    mockUseAuth.mockReturnValue(
+      createMockAuthState({
+        user: createMockUser({
+          permissions: ['surveillance.notify_ihr_to_who'],
+          role: 'SURVEILLANCE_OFFICER',
+        }),
+      })
+    );
+
+    mockPathname.mockReturnValue('/surveillance/ihr');
+
+    render(
+      <RouteGuard>
+        <div>IHR Page</div>
+      </RouteGuard>
+    );
+
+    expect(screen.getByText('IHR Page')).toBeInTheDocument();
+  });
+
+  it('shows Access Denied on the AI route when the user lacks ai.use_chat action access', () => {
+    mockUseAuth.mockReturnValue(
+      createMockAuthState({
+        user: createMockUser({
+          permissions: [],
+          role: 'NURSE',
+        }),
+      })
+    );
+
+    mockPathname.mockReturnValue('/ai');
+
+    render(
+      <RouteGuard>
+        <div>AI Page</div>
+      </RouteGuard>
+    );
+
+    expect(screen.queryByText('AI Page')).not.toBeInTheDocument();
+    expect(screen.getByText('Access Denied')).toBeInTheDocument();
+  });
+
+  it('allows the AI route when the user has ai.use_chat action access', () => {
+    mockUseAuth.mockReturnValue(
+      createMockAuthState({
+        user: createMockUser({
+          permissions: [],
+          role: 'DOCTOR',
+        }),
+      })
+    );
+
+    mockPathname.mockReturnValue('/ai');
+
+    render(
+      <RouteGuard>
+        <div>AI Page</div>
+      </RouteGuard>
+    );
+
+    expect(screen.getByText('AI Page')).toBeInTheDocument();
   });
 });

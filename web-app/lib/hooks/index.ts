@@ -249,6 +249,11 @@ export {
   type QueueDialogType,
 } from './use-clinic-queue-actions';
 
+export {
+  useClinicalWorkflowCounts,
+  type ClinicalWorkflowCounts,
+} from './use-clinical-workflow';
+
 // Patient Allied Health hooks - fetch allied health data by patient
 export {
   patientAlliedHealthKeys,

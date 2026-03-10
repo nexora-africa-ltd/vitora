@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus, Filter, Calendar, Users, ClipboardList, Activity, Clock, Play, UserX } from 'lucide-react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/shared/page-header';
@@ -36,20 +36,140 @@ import { formatRelativeTime } from '@/lib/utils/format';
 import { ENCOUNTER_TYPES, ENCOUNTER_STATUS } from '@/lib/utils/constants';
 import type { Encounter } from '@/lib/types/encounter';
 
+type EncountersTab = 'queue' | 'active' | 'all';
+
+interface EncounterWorkflowPresentation {
+  title: string;
+  helpContent: string;
+  emptyTitle: string;
+  emptyDescription: string;
+}
+
+function resolveEncounterTab(value: string | null): EncountersTab {
+  if (value === 'queue' || value === 'active' || value === 'all') {
+    return value;
+  }
+  return 'queue';
+}
+
+function getEncounterWorkflowPresentation(
+  activeTab: EncountersTab,
+  status: string,
+  workflowDate: string
+): EncounterWorkflowPresentation {
+  if (activeTab === 'all' && status === 'RESULTS_PENDING') {
+    return {
+      title: 'Pending Results',
+      helpContent:
+        'Review encounters that are waiting on laboratory or imaging results before clinical closure can continue.',
+      emptyTitle: 'No encounters are currently waiting on results.',
+      emptyDescription:
+        'Return here when ordered investigations are still pending review into the encounter workflow.',
+    };
+  }
+
+  if (activeTab === 'all' && status === 'READY_TO_CLOSE') {
+    return {
+      title: 'Ready to Close',
+      helpContent:
+        'Review encounters that have completed workups and are ready for final clinician closure tasks.',
+      emptyTitle: 'No encounters are ready to close right now.',
+      emptyDescription:
+        'Completed workups will appear here once they are ready for final review and closure.',
+    };
+  }
+
+  if (activeTab === 'all' && status === 'IN_PROGRESS') {
+    return {
+      title: 'In Progress',
+      helpContent:
+        'Track encounter records that are actively being worked on and may still need clinician follow-through.',
+      emptyTitle: 'No encounters are currently in progress.',
+      emptyDescription:
+        'Active consultations and open encounter work will appear here while they are still underway.',
+    };
+  }
+
+  if (activeTab === 'all' && status === 'CLOSED' && workflowDate === 'today') {
+    return {
+      title: 'Completed Today',
+      helpContent:
+        'Review encounters closed today for handover checks, follow-up actions, and end-of-day clinical audit.',
+      emptyTitle: 'No encounters have been completed today.',
+      emptyDescription:
+        'Closed encounters from today will appear here once they have been fully completed.',
+    };
+  }
+
+  if (activeTab === 'queue') {
+    return {
+      title: 'Waiting for Consult',
+      helpContent:
+        'Claim consult-ready patients from the consultation queue and start the next clinical review without module hunting.',
+      emptyTitle: 'No patients are waiting for consultation.',
+      emptyDescription:
+        'Consult-ready patients will appear here once they have cleared the earlier workflow steps.',
+    };
+  }
+
+  return {
+    title: 'Encounters',
+    helpContent:
+      'Manage patient consultations and clinical encounters. Use the queue for active consultations or browse all encounters.',
+    emptyTitle: 'No encounters found',
+    emptyDescription: 'Try adjusting your filters or create a new encounter.',
+  };
+}
+
 export default function EncountersPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<string>('queue');
-  const [status, setStatus] = useState<string>('');
+  const initialTab = useMemo(
+    () => resolveEncounterTab(searchParams.get('tab')),
+    [searchParams]
+  );
+  const initialStatus = useMemo(
+    () => searchParams.get('status') ?? '',
+    [searchParams]
+  );
+  const initialWorkflowDate = useMemo(
+    () => searchParams.get('date') ?? '',
+    [searchParams]
+  );
+
+  const [activeTab, setActiveTab] = useState<EncountersTab>(initialTab);
+  const [status, setStatus] = useState<string>(initialStatus);
+  const [workflowDate, setWorkflowDate] = useState<string>(initialWorkflowDate);
   const [encounterType, setEncounterType] = useState<string>('');
   const [page, setPage] = useState(1);
   const [showOnlyMine, setShowOnlyMine] = useState(true);
   const pageSize = 10;
 
+  const encounterDateFilter = useMemo(() => {
+    if (workflowDate !== 'today') {
+      return undefined;
+    }
+    return new Date().toISOString().split('T')[0];
+  }, [workflowDate]);
+
+  const workflowPresentation = useMemo(
+    () => getEncounterWorkflowPresentation(activeTab, status, workflowDate),
+    [activeTab, status, workflowDate]
+  );
+
+  useEffect(() => {
+    setActiveTab(resolveEncounterTab(searchParams.get('tab')));
+    setStatus(searchParams.get('status') ?? '');
+    setWorkflowDate(searchParams.get('date') ?? '');
+    setPage(1);
+  }, [searchParams]);
+
   const { data, isLoading, error } = useEncounters({
     page,
     page_size: pageSize,
     status: status || undefined,
+    encounter_date: encounterDateFilter,
     encounter_type: encounterType || undefined,
     ordering: '-encounter_date',
   });
@@ -94,8 +214,8 @@ export default function EncountersPage() {
   return (
     <div className="container mx-auto px-3 py-4 sm:px-4 sm:py-6 space-y-4 sm:space-y-6">
       <PageHeader
-        title="Encounters"
-        helpContent="Manage patient consultations and clinical encounters. Use the queue for active consultations or browse all encounters."
+        title={workflowPresentation.title}
+        helpContent={workflowPresentation.helpContent}
         actions={
           <Button onClick={() => router.push('/encounters/new')} className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
@@ -105,7 +225,7 @@ export default function EncountersPage() {
         }
       />
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as EncountersTab)} className="space-y-4">
         <TabsList className="grid w-full max-w-lg grid-cols-3 h-auto">
           <TabsTrigger value="queue" className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm py-2">
             <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
@@ -289,6 +409,7 @@ export default function EncountersPage() {
               value={status}
               onValueChange={(value) => {
                 setStatus(value === 'all' ? '' : value);
+                setWorkflowDate('');
                 setPage(1);
               }}
             >
@@ -336,6 +457,8 @@ export default function EncountersPage() {
             page={page}
             totalPages={totalPages}
             onPageChange={setPage}
+            emptyTitle={workflowPresentation.emptyTitle}
+            emptyDescription={workflowPresentation.emptyDescription}
           />
         </TabsContent>
       </Tabs>

@@ -168,6 +168,10 @@ export function usePermissions(): PermissionsResult {
     const requiredPerm = MODULE_PERMISSIONS[module];
     if (!requiredPerm) return true; // null = no permission required (e.g. dashboard)
 
+    if (Array.isArray(requiredPerm)) {
+      return requiredPerm.some((permission) => hasPermission(permission));
+    }
+
     return hasPermission(requiredPerm);
   }, [isAuthenticated, isSuperuser, hasPermission]);
 

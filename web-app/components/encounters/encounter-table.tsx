@@ -19,6 +19,8 @@ interface EncounterTableProps {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  emptyTitle?: string;
+  emptyDescription?: string;
 }
 
 export function EncounterTable({
@@ -28,6 +30,8 @@ export function EncounterTable({
   page,
   totalPages,
   onPageChange,
+  emptyTitle = 'No encounters found',
+  emptyDescription = 'Try adjusting your filters or create a new encounter.',
 }: EncounterTableProps) {
   const router = useRouter();
 
@@ -51,8 +55,8 @@ export function EncounterTable({
   if (!isLoading && encounters.length === 0) {
     return (
       <EmptyState
-        title="No encounters found"
-        description="Try adjusting your filters or create a new encounter."
+        title={emptyTitle}
+        description={emptyDescription}
         action={{
           label: 'New Encounter',
           onClick: () => router.push('/encounters/new'),
@@ -193,7 +197,7 @@ export function EncounterTable({
         keyExtractor={(encounter) => encounter.id}
         onRowClick={(encounter) => router.push(`/encounters/${encounter.id}`)}
         isLoading={isLoading}
-        emptyMessage="No encounters found"
+        emptyMessage={emptyTitle}
         mobileCard={renderMobileCard}
         rowClassName={(encounter) =>
           hasCriticalVitals(encounter) ? 'bg-destructive/10' : ''
