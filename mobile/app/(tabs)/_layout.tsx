@@ -1,33 +1,70 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { Redirect, Tabs } from 'expo-router';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { LoadingState, ScreenContainer } from '@/components/app-ui';
+import { appTheme } from '@/constants/theme';
+import { useAuth } from '@/lib/auth/auth-context';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { isAuthenticated, isHydrating } = useAuth();
+
+  if (isHydrating) {
+    return (
+      <ScreenContainer>
+        <LoadingState message="Preparing the mobile workspace..." />
+      </ScreenContainer>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href={'/sign-in' as never} />;
+  }
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarActiveTintColor: appTheme.colors.primary,
+        tabBarInactiveTintColor: appTheme.colors.mutedText,
+        tabBarStyle: {
+          backgroundColor: appTheme.colors.surface,
+          borderTopColor: appTheme.colors.border,
+          height: 72,
+          paddingBottom: 12,
+          paddingTop: 10,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '700',
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Dashboard',
+          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="grid-outline" size={size} />,
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="patients"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Patients',
+          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="people-outline" size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="encounters"
+        options={{
+          title: 'Encounters',
+          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="pulse-outline" size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color, size }) => <Ionicons color={color} name="settings-outline" size={size} />,
         }}
       />
     </Tabs>

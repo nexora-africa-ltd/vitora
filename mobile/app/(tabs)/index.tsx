@@ -1,98 +1,129 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { AppButton, HeroCard, LoadingState, MetricCard, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { appTheme } from '@/constants/theme';
+import { encountersApi } from '@/lib/api/encounters';
+import { patientsApi } from '@/lib/api/patients';
+import { useAuth } from '@/lib/auth/auth-context';
+import { formatDateTime } from '@/lib/utils/format';
 
-export default function HomeScreen() {
+export default function DashboardScreen() {
+  const { apiBaseUrl, user } = useAuth();
+
+  const summaryQuery = useQuery({
+    queryKey: ['dashboard-summary'],
+    queryFn: async () => {
+      const [patients, encounters] = await Promise.all([
+        patientsApi.list({ page: 1, page_size: 1 }),
+        encountersApi.list({ page: 1, page_size: 5, ordering: '-encounter_date' }),
+      ]);
+
+      return {
+        patientCount: patients.count,
+        encounterCount: encounters.count,
+        recentEncounters: encounters.results,
+      };
+    },
+  });
+
+  if (summaryQuery.isLoading) {
+    return (
+      <ScreenContainer>
+        <LoadingState message="Loading the mobile clinical dashboard..." />
+      </ScreenContainer>
+    );
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <ScreenContainer>
+      <HeroCard
+        eyebrow="Connected"
+        title={`Hello ${user?.first_name || user?.username || 'Clinician'}`}
+        description={user?.facility ? `${user.facility.name} is linked to this mobile workspace.` : 'No facility is attached to this account yet.'}
+      >
+        <View style={styles.heroMetaRow}>
+          <Pill label={user?.role || 'Role pending'} tone="neutral" />
+          <Text style={styles.connectionText}>{apiBaseUrl}</Text>
+        </View>
+      </HeroCard>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <View style={styles.metricsRow}>
+        <MetricCard label="Patients" value={String(summaryQuery.data?.patientCount ?? 0)} tone="primary" />
+        <MetricCard label="Encounters" value={String(summaryQuery.data?.encounterCount ?? 0)} tone="accent" />
+      </View>
+
+      <SectionCard title="Quick actions" subtitle="Start from the highest-volume bedside tasks first.">
+        <View style={styles.actionGrid}>
+          <AppButton label="Register patient" onPress={() => router.push('/patients/new' as never)} />
+          <AppButton label="Browse patients" onPress={() => router.push('/(tabs)/patients' as never)} variant="secondary" />
+        </View>
+      </SectionCard>
+
+      <SectionCard title="Recent encounters" subtitle="The latest items come directly from /api/encounters/.">
+        {(summaryQuery.data?.recentEncounters ?? []).length === 0 ? (
+          <Text style={styles.emptyText}>No encounters have been recorded yet.</Text>
+        ) : (
+          (summaryQuery.data?.recentEncounters ?? []).map((encounter) => (
+            <View key={encounter.id} style={styles.timelineItem}>
+              <View style={styles.timelineTopRow}>
+                <Text style={styles.timelineTitle}>{encounter.patient_name || 'Unknown patient'}</Text>
+                <Pill label={encounter.status.replace(/_/g, ' ')} tone={encounter.has_critical_vitals ? 'danger' : 'primary'} />
+              </View>
+              <Text style={styles.timelineSubtitle}>{encounter.encounter_type} · {encounter.chief_complaint}</Text>
+              <Text style={styles.timelineMeta}>{formatDateTime(encounter.created_at)}</Text>
+            </View>
+          ))
+        )}
+      </SectionCard>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  heroMetaRow: {
+    gap: 12,
+  },
+  connectionText: {
+    color: '#F8EFE6',
+    fontSize: 12,
+  },
+  metricsRow: {
     flexDirection: 'row',
+    gap: 12,
+  },
+  actionGrid: {
+    gap: 12,
+  },
+  emptyText: {
+    color: appTheme.colors.mutedText,
+    fontSize: 14,
+  },
+  timelineItem: {
+    borderBottomColor: appTheme.colors.border,
+    borderBottomWidth: 1,
+    gap: 4,
+    paddingBottom: 12,
+  },
+  timelineTopRow: {
     alignItems: 'center',
-    gap: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  timelineTitle: {
+    color: appTheme.colors.text,
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '700',
+    marginRight: 12,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  timelineSubtitle: {
+    color: appTheme.colors.mutedText,
+    fontSize: 14,
+  },
+  timelineMeta: {
+    color: appTheme.colors.mutedText,
+    fontSize: 12,
   },
 });

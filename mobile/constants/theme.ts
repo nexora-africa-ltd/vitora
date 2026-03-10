@@ -1,53 +1,73 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
+export const palette = {
+  sand: '#F4EFE5',
+  parchment: '#FFF9F1',
+  ink: '#13212C',
+  slate: '#5D6B75',
+  teal: '#0F766E',
+  tealDeep: '#0A4F4E',
+  navy: '#17324D',
+  orange: '#E08A5C',
+  orangeDeep: '#A7572F',
+  line: '#DED5C8',
+  success: '#1E8E5A',
+  warning: '#C67A00',
+  danger: '#B9382F',
+  white: '#FFFFFF',
+};
 
-import { Platform } from 'react-native';
-
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
-
-export const Colors = {
-  light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+export const appTheme = {
+  colors: {
+    background: palette.sand,
+    surface: palette.parchment,
+    elevated: palette.white,
+    text: palette.ink,
+    mutedText: palette.slate,
+    primary: palette.teal,
+    primaryDark: palette.tealDeep,
+    secondary: palette.navy,
+    accent: palette.orange,
+    border: palette.line,
+    success: palette.success,
+    warning: palette.warning,
+    danger: palette.danger,
   },
-  dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+  radius: {
+    sm: 12,
+    md: 18,
+    lg: 26,
+    pill: 999,
+  },
+  spacing: {
+    xs: 8,
+    sm: 12,
+    md: 16,
+    lg: 20,
+    xl: 28,
   },
 };
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
+export const Colors = {
+  light: {
+    text: appTheme.colors.text,
+    background: appTheme.colors.background,
+    tint: appTheme.colors.primary,
+    icon: appTheme.colors.mutedText,
+    tabIconDefault: appTheme.colors.mutedText,
+    tabIconSelected: appTheme.colors.primary,
   },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
+  dark: {
+    text: appTheme.colors.text,
+    background: appTheme.colors.background,
+    tint: appTheme.colors.primary,
+    icon: appTheme.colors.mutedText,
+    tabIconDefault: appTheme.colors.mutedText,
+    tabIconSelected: appTheme.colors.primary,
   },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-  },
-});
+};
+
+export const Fonts = {
+  sans: 'System',
+  serif: 'Georgia',
+  rounded: 'System',
+  mono: 'Courier',
+};
