@@ -67,7 +67,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 />
 
                 {/* Page content */}
-                <main className="min-h-[calc(100vh-4rem)] p-4 md:p-6 xl:p-8 pb-20 xl:pb-8">
+                <main className="min-h-[calc(100vh-4rem)] p-4 pb-24 md:p-6 xl:p-8 xl:pb-8">
                   <RouteGuard>{children}</RouteGuard>
                 </main>
               </div>
@@ -81,7 +81,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
 
               {/* Mobile bottom navigation (Telegram-style) */}
-              <MobileBottomNav />
+              <MobileBottomNav hidden={mobileSidebarOpen} />
 
               {/* TibaBot AI floating widget */}
               <AIChatWidget />
