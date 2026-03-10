@@ -127,7 +127,7 @@ export function MobileBottomNav({ hidden = false }: { hidden?: boolean }) {
       role="navigation"
       aria-label="Mobile navigation"
     >
-      <div className="relative overflow-hidden rounded-[28px] border border-border/70 bg-background/90 px-2 py-2 shadow-[0_14px_40px_rgba(15,23,42,0.18)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
+      <div className="relative overflow-hidden rounded-[28px] border border-border/70 bg-background/90 px-2 py-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.18)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
         <div
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.10),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_40%)]"
           aria-hidden="true"
@@ -146,8 +146,8 @@ export function MobileBottomNav({ hidden = false }: { hidden?: boolean }) {
               key={tab.href}
               href={tab.href}
               className={cn(
-                'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] sm:text-xs transition-all duration-200',
-                isPrimary && 'mx-0.5 -translate-y-3',
+                'relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-1.5 text-[9px] sm:text-[10px] transition-all duration-200',
+                isPrimary && 'mx-0.5 scale-[1.05]',
                 isActive
                   ? 'bg-primary/10 text-primary shadow-sm ring-1 ring-primary/15'
                   : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
@@ -165,8 +165,8 @@ export function MobileBottomNav({ hidden = false }: { hidden?: boolean }) {
               )}
               <span
                 className={cn(
-                  'flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200',
-                  isPrimary && 'h-11 w-11 shadow-lg',
+                  'flex h-7 w-7 items-center justify-center rounded-full transition-all duration-200',
+                  isPrimary && 'h-9 w-9 shadow-lg',
                   isPrimary && isActive && 'bg-primary text-primary-foreground',
                   isPrimary && !isActive && 'bg-card ring-1 ring-border/80',
                   !isPrimary && isActive ? 'bg-primary/12' : !isPrimary ? 'bg-transparent' : ''
@@ -174,8 +174,8 @@ export function MobileBottomNav({ hidden = false }: { hidden?: boolean }) {
               >
                 <tab.icon
                   className={cn(
-                    'h-5 w-5 shrink-0',
-                    isPrimary && 'h-[22px] w-[22px]',
+                    'h-4.5 w-4.5 shrink-0',
+                    isPrimary && 'h-5 w-5',
                     isPrimary && isActive ? 'text-primary-foreground' : '',
                     isActive && 'stroke-[2.5]'
                   )}
@@ -184,7 +184,7 @@ export function MobileBottomNav({ hidden = false }: { hidden?: boolean }) {
               <span
                 className={cn(
                   'max-w-full truncate font-medium',
-                  isPrimary && 'text-[11px]'
+                  isPrimary && 'text-[10px]'
                 )}
               >
                 {tab.label}
