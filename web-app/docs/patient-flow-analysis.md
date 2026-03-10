@@ -3,15 +3,15 @@
 > **Analysis Date**: March 10, 2026
 > **Codebase Version**: Current `feature/capability-based-ui` branch
 > **Analyst**: thande788
-> **Last Audit**: March 10, 2026
+> **Last Audit**: March 10, 2026 (updated March 10, 2026)
 
 ---
 
 ## Executive Summary
 
-This document provides a comprehensive analysis of how patient flow is implemented in the Vitora HMIS codebase. The system has matured significantly since the initial February 2026 assessment, with auto-invoice signals, CDS rules, imaging workflow, and multiple new clinical modules now implemented.
+This document provides a comprehensive analysis of how patient flow is implemented in the Vitora HMIS codebase. The system has matured significantly since the initial February 2026 assessment, with auto-invoice signals, CDS rules, imaging workflow, allied health services (physiotherapy, OT, nutrition, counselling, social work), theatre scheduling, emergency dashboard, AI-assisted clinical support, and advanced triage monitoring (wait-time breach tracking, escalations) now implemented.
 
-**Overall Assessment**: 🟢 **Mostly Complete** - Core patient flow is production-ready; remaining gaps are enhancements (SMS reminders, longitudinal care plans, scheduling pages).
+**Overall Assessment**: 🟢 **Mostly Complete** - Core patient flow is production-ready; remaining gaps are enhancements (SMS reminders, longitudinal care plans, scheduling UI, insurance eligibility at check-in).
 
 ---
 
@@ -61,6 +61,10 @@ models.UniqueConstraint(
 - QR payload format: `VITORA:MRN:{mrn}`
 - Patient detail page embeds a QR preview beside the MRN with expand, print, and download actions
 - Check-in page includes camera-based QR scanning that decodes the patient QR and auto-populates lookup
+
+### Consent Tracking ✅ **Enhanced**
+- `consent_deferred` field added to `Patient` model (Kenya DPA compliance)
+- Tracks patients where consent must be obtained before discharge
 
 ### Gaps
 - ❌ **Biometric integration** - Field exists in CheckIn but no implementation
@@ -306,6 +310,22 @@ models.UniqueConstraint(
 ### ⚠️ Known Issue: Frontend/Backend Status Mismatch
 The frontend `encounter.ts` lists `COMPLETED` as a status alongside `CLOSED`, but the backend `Encounter.STATUS_CHOICES` does NOT include `COMPLETED`. This mismatch should be resolved by removing `COMPLETED` from the frontend types or adding it to the backend.
 
+### Encounter Dispositions ✅ **Implemented**
+
+The encounter model supports structured dispositions:
+
+```python
+# EncounterDisposition choices
+ADVICE_ONLY        # Patient advised, no treatment needed
+TREATED_DISCHARGED # Treated and discharged
+REFERRED           # Referred to another facility/specialty
+ADMITTED           # Admitted to inpatient
+FOLLOW_UP_SCHEDULED # Follow-up appointment created
+LEFT_AMA           # Left against medical advice
+```
+
+**Mandatory notes required for**: `ADVICE_ONLY`, `LEFT_AMA`, `REFERRED`.
+
 ---
 
 ## 6. Triage / Vitals Flow
@@ -393,6 +413,47 @@ vitals_recorded_at = DateTimeField()
 if self.triage_requirement == "MANDATORY" and self.triage_status == "BYPASSED":
     raise ValidationError("Mandatory triage cannot be bypassed...")
 ```
+
+### Wait Time Breach Monitoring ✅ **Implemented**
+
+**Location**: [backend/hmis/apps/triage/models.py](../backend/hmis/apps/triage/models.py)
+
+```python
+class WaitTimeBreach(models.Model):
+    """Automatically records KETA target breaches."""
+    SEVERITY_CHOICES = [
+        ("CRITICAL", "RED > 0 min"),
+        ("URGENT", "ORANGE > 10 min"),
+        ("WARNING", "YELLOW > 60 min"),
+        ("INFO", "GREEN/BLUE informational"),
+    ]
+    STATUS_CHOICES = [
+        ("ACTIVE", "Active breach"),
+        ("ACKNOWLEDGED", "Acknowledged by staff"),
+        ("ESCALATED", "Escalated to supervisor"),
+        ("RESOLVED", "Resolved"),
+    ]
+```
+
+### Escalation Workflow ✅ **Implemented**
+
+```python
+class Escalation(models.Model):
+    """Records staff escalation actions for triage breaches."""
+    TYPE_CHOICES = [
+        ("CHARGE_NURSE", "Escalate to charge nurse"),
+        ("ADDITIONAL_STAFF", "Request additional staff"),
+        ("SUPERVISOR", "Escalate to supervisor"),
+    ]
+    STATUS_CHOICES = [
+        ("PENDING", "Pending"),
+        ("IN_PROGRESS", "In Progress"),
+        ("RESOLVED", "Resolved"),
+        ("DISMISSED", "Dismissed"),
+    ]
+```
+
+The triage Celery task broadcasts `emergency.wait.breach` alerts via WebSocket to the `emergency_queue` group for real-time dashboard updates.
 
 ---
 
@@ -600,6 +661,10 @@ Evidence of billing as first-class citizen:
   - `pharmacy/signals.py`: `post_save` on `PrescriptionItem` creates `InvoiceItem`
   - `imaging/signals.py`: `post_save` on `ImagingOrderItem` creates `InvoiceItem`
   - Lab orders: handled via `LabOrder.add_test()` method
+- ✅ **Lab queue automation** - `laboratory/signals.py` handles:
+  - `create_lab_queue_entry`: Auto-creates `LabQueue` entry when in-house `LabOrder` is placed
+  - `create_specimen_for_queue`: Auto-generates `Specimen` record and barcode when queue entry is created
+  - `update_order_status_on_result`: Synchronizes order/queue status as results are entered (transitions `IN_PROGRESS` → `REVIEW`)
 
 ---
 
@@ -741,39 +806,101 @@ Models: `QuarterlyReport`, `AnnualReport`, `QualityMeasure`, `QualityMeasureResu
 
 Frontend pages at `/quality/`: measures, reports
 
-### 13.4 Counselling ⚠️ **Backend Only**
+### 13.4 Allied Health Services ✅ **Implemented** (Backend + Frontend)
 
+All allied health modules now have both backend models and frontend pages consolidated under `/allied-health/`.
+
+#### Physiotherapy
+**Location**: [backend/hmis/apps/physiotherapy/](../backend/hmis/apps/physiotherapy/)
+
+Models: `PhysiotherapyTreatmentType`, `PhysiotherapyOrder`, `PhysiotherapySession`
+
+Frontend pages at `/allied-health/physiotherapy/`: orders, sessions, treatment-types
+
+#### Occupational Therapy
+**Location**: [backend/hmis/apps/occupational_therapy/](../backend/hmis/apps/occupational_therapy/)
+
+Models: `OTTreatmentType`, `OccupationalTherapyOrder`, `OTSession`
+
+Frontend pages at `/allied-health/occupational-therapy/`: orders, sessions
+
+#### Counselling ✅ **Now Has Frontend**
 **Location**: [backend/hmis/apps/counselling/](../backend/hmis/apps/counselling/)
 
-Models: `CounsellingType`, `CounsellingReferral`, `CounsellingSession`. No frontend pages yet.
+Models: `CounsellingType`, `CounsellingReferral`, `CounsellingSession`
 
-### 13.5 Social Work ⚠️ **Backend Only**
+Frontend pages at `/allied-health/counselling/`: referrals, sessions
 
+#### Social Work ✅ **Now Has Frontend**
 **Location**: [backend/hmis/apps/social_work/](../backend/hmis/apps/social_work/)
 
-Models: `SocialWorkReferral`, `SocialWorkCase`, `CaseNote`, `SocialWorkIntervention`. No frontend pages yet.
+Models: `SocialWorkReferral`, `SocialWorkCase`, `CaseNote`, `SocialWorkIntervention`
 
-### 13.6 Nutrition ⚠️ **Backend Only**
+Frontend pages at `/allied-health/social-work/`: cases, referrals
 
+#### Nutrition ✅ **Now Has Frontend**
 **Location**: [backend/hmis/apps/nutrition/](../backend/hmis/apps/nutrition/)
 
-Models: `NutritionConsultation`, `DietPlan`. No frontend pages yet.
+Models: `NutritionConsultation`, `DietPlan`
 
-### 13.7 Inpatient ✅ **Implemented**
+Frontend pages at `/allied-health/nutrition/`: consultations, diet-plans
+
+### 13.5 Inpatient ✅ **Implemented**
 
 **Location**: [backend/hmis/apps/inpatient/](../backend/hmis/apps/inpatient/)
 
 Includes ward management, bed tracking, admissions, nursing kardex with care plans.
 
+### 13.6 Theatre / Surgical Scheduling ✅ **Implemented** (Frontend)
+
+No dedicated backend `theatre` app — surgical scheduling is handled via the `scheduling` app's `Resource` model (type `THEATRE` under `PLACE` resources).
+
+Frontend pages at `/theatre/`: schedule, checklists, cases, reports. Gated by `ENABLE_THEATRE` feature flag.
+
+### 13.7 Emergency Dashboard ✅ **Implemented** (Frontend)
+
+No dedicated backend `emergency` app — ER functionality is served by the `triage` app, including `EmergencyQueueConsumer` for real-time WebSocket updates.
+
+Frontend pages at `/emergency/`: zone-based bed board, real-time queue.
+
+### 13.8 AI Assistant (TibaBot) ✅ **Implemented**
+
+**Location**: [backend/hmis/apps/ai/](../backend/hmis/apps/ai/)
+
+Models:
+- `ChatSession`, `ChatMessage` — persistent clinical chat history
+- `AICarePlanResult`, `AICDSResult`, `AILabInterpretResult`, `AIDischargeResult`, `AIICURiskResult` — cached AI-generated clinical outputs
+
+Frontend: AI Assistant page at `/ai/`
+
+API endpoints:
+```
+GET  /api/ai/results/care-plans/?encounter_id={id}
+GET  /api/ai/results/cds/?encounter_id={id}
+GET  /api/ai/results/lab-interpretations/?encounter_id={id}
+GET  /api/ai/results/discharge/?admission_id={id}
+GET  /api/ai/results/icu-risk/?admission_id={id}
+```
+
 ---
 
 ## 14. Real-Time / WebSocket Integration
 
-### Current Implementation ✅ **Implemented**
+### Current Implementation ✅ **Expanded**
 
-- **Backend**: Django Channels with `ClinicQueueConsumer` for real-time queue updates
-- **Frontend**: [use-websocket.ts](../web-app/lib/hooks/use-websocket.ts) implements `useClinicQueueSocket`
-- Queue position changes pushed to connected clients in real-time
+The system now has multiple Django Channels consumers beyond the original clinic queue:
+
+| App | Consumer | WebSocket Path | Purpose |
+|-----|----------|---------------|--------|
+| **Clinics** | `ClinicQueueConsumer` | `ws/clinics/{id}/queue/` | Real-time queue position changes |
+| **Triage** | `EmergencyQueueConsumer` | `ws/emergency/queue/` | ER dashboard, critical patients, zone stats, wait-time breach alerts |
+| **Laboratory** | `LabEncounterConsumer` | `ws/lab/encounter/{id}/` | Result entry, verification, critical alerts, order completion |
+| **Surveillance** | `SurveillanceAlertConsumer` | `ws/surveillance/alerts/` | Notifiable diseases, outbreaks, overdue notification deadlines |
+| **MCH** | `LabourPartographConsumer` | `ws/mch/partograph/{id}/` | Real-time labour partograph updates |
+| **Inpatient** | `WardCompatibilityConsumer` | `ws/inpatient/ward/{id}/` | Ward capacity changes, compatibility violations |
+| **Inpatient** | `SupervisorAlertConsumer` | `ws/inpatient/supervisor/` | Supervisor escalation alerts |
+
+- **Frontend**: [use-websocket.ts](../web-app/lib/hooks/use-websocket.ts) implements WebSocket hooks
 
 ---
 
@@ -786,15 +913,19 @@ Includes ward management, bed tracking, admissions, nursing kardex with care pla
 | 3. Admin Check-In | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
 | 4. Clinical Snapshot | ✅ Complete | ✅ Complete | ⚠️ Not persisted with encounter | 🟡 **Mostly Ready** |
 | 5. Encounter State Machine | ✅ Complete | ⚠️ COMPLETED/CLOSED mismatch | ⚠️ Type mismatch | 🟡 **Mostly Ready** |
-| 6. Triage Flow | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
+| 6. Triage Flow | ✅ Complete (+ breach/escalation) | ✅ Complete | ✅ Complete | 🟢 **Ready** |
 | 7. Clinical Encounter | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
-| 8. Orders & Fulfillment | ✅ Complete | ✅ Complete | ✅ Auto-invoice signals | 🟢 **Ready** |
+| 8. Orders & Fulfillment | ✅ Complete | ✅ Complete | ✅ Auto-invoice + lab queue signals | 🟢 **Ready** |
 | 9. Billing Integration | ✅ Complete | ✅ Complete | ✅ Auto-invoice signals | 🟢 **Ready** |
 | 10. Post-Visit Continuity | ⚠️ SMS gateway exists, no scheduler | ⚠️ No scheduling pages | ⚠️ Reminders not automated | 🟡 **Needs Work** |
 | 11. CDS (Drug Interactions) | ✅ Complete | ✅ Complete | ✅ Real-time panel | 🟢 **Ready** |
 | 12. Referrals | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
-| 13. MCH | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
-| 14. Real-Time Queue | ✅ WebSocket | ✅ useClinicQueueSocket | ✅ Complete | 🟢 **Ready** |
+| 13a. MCH | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
+| 13b. Allied Health | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
+| 13c. Theatre | ✅ Via scheduling | ✅ Complete | ✅ Feature-flagged | 🟢 **Ready** |
+| 13d. Emergency Dashboard | ✅ Via triage | ✅ Complete | ✅ WebSocket | 🟢 **Ready** |
+| 13e. AI Assistant | ✅ Complete | ✅ Complete | ✅ Complete | 🟢 **Ready** |
+| 14. Real-Time (WebSocket) | ✅ 7 consumers | ✅ Hooks | ✅ Complete | 🟢 **Ready** |
 
 ---
 
@@ -1142,7 +1273,6 @@ The current navigation structure in [navigation.ts](../web-app/lib/config/naviga
 | **Triage → Encounter transition** | Triage route step | After triage, nurse is routed to `triage/assess/[id]/[encounter]/route` for final routing decisions | Consider auto-redirect to clinic queue after routing step |
 | **No "active patient" indicator** | Sidebar | No way to quickly return to current patient | Add "Current Patient" quick-access in sidebar |
 | **Missing scheduling pages** | Only backend exists | No frontend pages for appointment management | Build scheduling UI (`/scheduling/`) |
-| **Missing counselling/social-work/nutrition pages** | Only backend exists | No frontend for these clinical modules | Build frontend pages as demand grows |
 
 ### Recommended UX Improvements
 
@@ -1211,16 +1341,66 @@ router.push(`/clinics/${destinationClinic}/queue`);
 
 ---
 
-#### 4. Quick Actions Floating Button (Mobile)
+#### 4. Bottom Navigation Bar (Mobile) — Telegram-Style
 
-**Problem:** On mobile, common actions (check-in, new encounter) require navigation through sidebar.
+**Problem:** On mobile, common actions (check-in, new encounter, triage) require opening the sidebar hamburger menu. This adds friction to the most frequent clinical workflows.
 
-**Solution:** Add a floating action button (FAB) on mobile with quick actions:
-- Quick Check-in (opens search modal)
-- Emergency Encounter
-- Scan QR
+**Solution:** Add a fixed bottom navigation bar (visible only below `md` breakpoint) similar to Telegram's mobile footer. The bar contains 4-5 primary tabs representing the most-used workflow steps:
 
-**Effort:** 3-4 hours
+```
+┌──────────────────────────────────────────────────┐
+│ Page content...                                  │
+│                                                  │
+├──────────────────────────────────────────────────┤
+│  🏠        📋        🩺        💊        👤     │
+│  Home    Check-in   Triage   Pharmacy  Patients  │
+└──────────────────────────────────────────────────┘
+```
+
+**Design principles:**
+- Fixed to bottom, always visible on mobile (hidden on `md+` where sidebar is accessible)
+- 5 tabs max to avoid crowding — pick the highest-frequency actions
+- Active tab highlighted with primary color (cyan accent)
+- Badge indicators for pending counts (e.g., triage queue size, unverified lab results)
+- Tap-and-hold on "Check-in" opens QR scanner shortcut
+
+**Suggested tabs:**
+| Tab | Icon | Route | Badge |
+|-----|------|-------|-------|
+| Home | `Home` | `/` | — |
+| Check-in | `ClipboardCheck` | `/patients/checkin` | Today's queue count |
+| Triage | `HeartPulse` | `/triage` | Waiting patients |
+| Pharmacy | `Pill` | `/pharmacy` | Pending dispensing |
+| Patients | `Users` | `/patients` | — |
+
+**Implementation:**
+```tsx
+// web-app/components/layout/mobile-bottom-nav.tsx
+// Visible only on mobile (below md breakpoint)
+// Uses next/navigation usePathname() for active state
+// Rendered inside root layout, below main content
+<nav className="fixed bottom-0 inset-x-0 z-40 border-t bg-background md:hidden">
+  <div className="flex items-center justify-around h-14">
+    {tabs.map(tab => (
+      <Link key={tab.href} href={tab.href}
+        className={cn("flex flex-col items-center gap-0.5 text-xs",
+          isActive ? "text-primary" : "text-muted-foreground"
+        )}>
+        <tab.icon className="h-5 w-5" />
+        <span>{tab.label}</span>
+        {tab.badge > 0 && <Badge className="absolute -top-1 -right-1">{tab.badge}</Badge>}
+      </Link>
+    ))}
+  </div>
+</nav>
+```
+
+**Considerations:**
+- Add `pb-14` (or `pb-16`) padding to main content on mobile to prevent the footer from overlapping page content
+- Tabs should be role-aware — a pharmacy user sees Pharmacy highlighted; a nurse sees Triage
+- The sidebar hamburger remains available for accessing secondary modules (imaging, billing, admin, etc.)
+
+**Effort:** 4-6 hours
 
 ---
 
@@ -1262,7 +1442,6 @@ router.push(`/clinics/${destinationClinic}/queue`);
 | **Workflow mode toggle** | 🟢 **Consider later** | Major change, needs user research |
 | **Auto-redirect after triage routing** | 🟡 **YES - Quick win** | Partially done, finish last step |
 | **Scheduling pages** | 🔴 **YES - High Priority** | Backend exists, no UI yet |
-| **Counselling/Social Work/Nutrition pages** | 🟡 **Medium Priority** | Backend exists, build as demand grows |
 
 ### Summary: No Major Refactor Needed
 
@@ -1270,7 +1449,7 @@ The navigation is well-structured. Focus on **additions** (patient context bar, 
 
 ---
 
-## Implementation Roadmap
+## Implementation Roadmap (Remaining Gaps)
 
 | Week | Focus | Deliverables |
 |------|-------|--------------|
@@ -1279,7 +1458,7 @@ The navigation is well-structured. Focus on **additions** (patient context bar, 
 | **Week 3** | Scheduling UI | 4. Build scheduling frontend pages |
 | **Week 4** | Automated Reminders | 5. Celery Beat task + `reminder_sent` field on Appointment |
 | **Week 5** | Chronic Care | 6. Longitudinal care plan model |
-| **Week 6** | Clinical Modules | 7. Counselling/Social Work/Nutrition frontend pages |
+| **Week 6** | Data Integrity | 7. Persist clinical snapshot with encounter, 8. Insurance eligibility at check-in |
 
 ---
 
@@ -1297,15 +1476,21 @@ The navigation is well-structured. Focus on **additions** (patient context bar, 
 | 8 | Imaging module completion | ✅ Done | Full workflow + frontend pages |
 | 9 | QR code check-in | ✅ Done | Unique patient QR, inline display, scanner dialog, and auto-lookup implemented |
 | 10 | Biometric integration | ⬜ TODO | |
-| 11 | Real-time queue display | ✅ Done | WebSocket + useClinicQueueSocket |
+| 11 | Real-time queue display | ✅ Done | 7 WebSocket consumers across clinics, triage, lab, surveillance, MCH, inpatient |
 | 12 | ARCHIVED encounter state | ⬜ TODO | |
 | 13 | Patient context bar (UX) | ⬜ TODO | |
 | 14 | Current patient in sidebar (UX) | ⬜ TODO | |
 | 15 | Auto-redirect after triage (UX) | ⚠️ Partial | Route step exists, needs final redirect |
 | 16 | Fix COMPLETED/CLOSED type mismatch | ⬜ TODO | Frontend has COMPLETED; backend doesn't |
 | 17 | Scheduling frontend pages | ⬜ TODO | Backend exists, no UI |
-| 18 | Counselling/Social Work/Nutrition pages | ⬜ TODO | Backend exists, no UI |
+| 18 | Counselling/Social Work/Nutrition pages | ✅ Done | Frontend pages now under `/allied-health/` |
 | 19 | Referrals module | ✅ Done | Backend + frontend page |
 | 20 | MCH module | ✅ Done | Backend + frontend pages |
 | 21 | Surveillance module | ✅ Done | Backend + frontend pages |
 | 22 | Quality reporting | ✅ Done | Backend + frontend pages |
+| 23 | Theatre / Surgical scheduling | ✅ Done | Frontend at `/theatre/`, backend via scheduling resources |
+| 24 | Emergency dashboard | ✅ Done | Frontend at `/emergency/`, WebSocket via triage consumers |
+| 25 | AI Assistant (TibaBot) | ✅ Done | Chat, care plans, CDS, lab interp, discharge, ICU risk |
+| 26 | Allied health (Physio, OT) | ✅ Done | Backend + frontend pages |
+| 27 | Wait-time breach monitoring | ✅ Done | WaitTimeBreach + Escalation models, WebSocket alerts |
+| 28 | Lab queue automation | ✅ Done | Auto queue entry, specimen generation, status sync via signals |
