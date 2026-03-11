@@ -99,3 +99,30 @@ export function getSupportWorkspaceTitle(user: AuthUser | null): string {
   }
   return 'Support modules';
 }
+
+export function hasInpatientRole(user: AuthUser | null): boolean {
+  const tokens = userTokens(user);
+  return (
+    user?.is_staff === true ||
+    ['nurse', 'nursing', 'inpatient', 'ward', 'doctor', 'clinical', 'clinician', 'medical'].some(
+      (token) => tokens.has(token)
+    )
+  );
+}
+
+export function getInpatientLauncherConfig(user: AuthUser | null): ModuleLauncherConfig {
+  if (hasInpatientRole(user)) {
+    return {
+      label: 'Wards & admissions',
+      description:
+        'View ward occupancy, manage beds, and access bedside nursing workflows — kardex, rounds, and vitals.',
+      variant: 'primary',
+    };
+  }
+
+  return {
+    label: 'Inpatient overview',
+    description: 'View ward occupancy and admitted patient summaries.',
+    variant: 'secondary',
+  };
+}

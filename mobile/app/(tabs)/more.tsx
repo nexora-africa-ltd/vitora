@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, HeroCard, ScreenContainer, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
-import { getLaboratoryLauncherConfig, getPharmacyLauncherConfig, getSupportWorkspaceTitle } from '@/lib/auth/role-access';
+import { getInpatientLauncherConfig, getLaboratoryLauncherConfig, getPharmacyLauncherConfig, getSupportWorkspaceTitle } from '@/lib/auth/role-access';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useAppTheme } from '@/lib/theme/theme-context';
 
@@ -14,6 +14,7 @@ export default function MoreScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const laboratoryLauncher = useMemo(() => getLaboratoryLauncherConfig(user), [user]);
   const pharmacyLauncher = useMemo(() => getPharmacyLauncherConfig(user), [user]);
+  const inpatientLauncher = useMemo(() => getInpatientLauncherConfig(user), [user]);
   const workspaceTitle = useMemo(() => getSupportWorkspaceTitle(user), [user]);
 
   return (
@@ -30,6 +31,13 @@ export default function MoreScreen() {
           <Text style={styles.helperText}>{laboratoryLauncher.description}</Text>
           <AppButton label={pharmacyLauncher.label} onPress={() => router.push('/pharmacy' as never)} variant={pharmacyLauncher.variant} />
           <Text style={styles.helperText}>{pharmacyLauncher.description}</Text>
+        </View>
+      </SectionCard>
+
+      <SectionCard title="Inpatient" subtitle="Ward management, bed boards, and bedside nursing workflows.">
+        <View style={styles.launcherStack}>
+          <AppButton label={inpatientLauncher.label} onPress={() => router.push('/inpatient' as never)} variant={inpatientLauncher.variant} />
+          <Text style={styles.helperText}>{inpatientLauncher.description}</Text>
         </View>
       </SectionCard>
 

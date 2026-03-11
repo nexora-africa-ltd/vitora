@@ -59,6 +59,14 @@ function RootLayoutContent() {
               <Stack.Screen name="pharmacy/index" options={{ presentation: 'card' }} />
               <Stack.Screen name="pharmacy/[id]" options={{ presentation: 'card' }} />
               <Stack.Screen name="pharmacy/new" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="inpatient/index" options={{ presentation: 'card' }} />
+              <Stack.Screen name="inpatient/[wardId]" options={{ presentation: 'card' }} />
+              <Stack.Screen name="inpatient/admissions/index" options={{ presentation: 'card' }} />
+              <Stack.Screen name="inpatient/admissions/[id]" options={{ presentation: 'card' }} />
+              <Stack.Screen name="inpatient/nursing/kardex" options={{ presentation: 'card' }} />
+              <Stack.Screen name="inpatient/nursing/rounds" options={{ presentation: 'card' }} />
+              <Stack.Screen name="inpatient/nursing/vitals" options={{ presentation: 'card' }} />
+              <Stack.Screen name="inpatient/nursing/mar" options={{ presentation: 'card' }} />
               <Stack.Screen name="sync/conflicts" options={{ presentation: 'card' }} />
             </Stack>
             <StatusBar style={isDarkMode ? 'light' : 'dark'} />
