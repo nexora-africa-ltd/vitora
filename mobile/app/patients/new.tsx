@@ -4,9 +4,12 @@ import { Alert, StyleSheet, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { AppButton, AppPicker, AppTextInput, HeroCard, LoadingState, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { toApiError } from '@/lib/api/client';
 import { locationsApi } from '@/lib/api/locations';
 import { patientsApi } from '@/lib/api/patients';
+import { getOfflineCounties, getOfflineSubCounties, getOfflineWards, queueOfflinePatientCreate, upsertPatients, upsertReferenceData } from '@/lib/db';
 import { queryClient } from '@/lib/query/client';
+import { isOfflineSyncError } from '@/lib/sync/conflicts';
 
 type FormState = {
   firstName: string;
@@ -51,18 +54,45 @@ export default function NewPatientScreen() {
 
   const countiesQuery = useQuery({
     queryKey: ['counties'],
-    queryFn: () => locationsApi.getCounties(),
+    queryFn: async () => {
+      const cached = await getOfflineCounties();
+      if (cached.length > 0) {
+        return cached;
+      }
+
+      const remote = await locationsApi.getCounties();
+      await upsertReferenceData({ counties: remote });
+      return remote;
+    },
   });
 
   const subCountiesQuery = useQuery({
     queryKey: ['sub-counties', form.county],
-    queryFn: () => locationsApi.getSubCounties(form.county),
+    queryFn: async () => {
+      const cached = await getOfflineSubCounties(form.county);
+      if (cached.length > 0) {
+        return cached;
+      }
+
+      const remote = await locationsApi.getSubCounties(form.county);
+      await upsertReferenceData({ subCounties: remote });
+      return remote;
+    },
     enabled: Boolean(form.county),
   });
 
   const wardsQuery = useQuery({
     queryKey: ['wards', form.subCounty],
-    queryFn: () => locationsApi.getWards(form.subCounty),
+    queryFn: async () => {
+      const cached = await getOfflineWards(form.subCounty);
+      if (cached.length > 0) {
+        return cached;
+      }
+
+      const remote = await locationsApi.getWards(form.subCounty);
+      await upsertReferenceData({ wards: remote });
+      return remote;
+    },
     enabled: Boolean(form.subCounty),
   });
 
@@ -95,6 +125,7 @@ export default function NewPatientScreen() {
         emergency_contact_relationship: form.emergencyContactRelationship.trim() || undefined,
       }),
     onSuccess: async (patient) => {
+      await upsertPatients([patient]);
       await queryClient.invalidateQueries({ queryKey: ['patients'] });
       router.replace(`/patients/${patient.id}` as never);
     },
@@ -133,7 +164,32 @@ export default function NewPatientScreen() {
     try {
       await createPatientMutation.mutateAsync();
     } catch (error) {
-      Alert.alert('Unable to create patient', error instanceof Error ? error.message : 'The backend rejected the registration payload.');
+      const apiError = toApiError(error);
+      if (isOfflineSyncError(apiError)) {
+        const queuedPatient = await queueOfflinePatientCreate({
+          first_name: form.firstName.trim(),
+          middle_name: form.middleName.trim() || undefined,
+          last_name: form.lastName.trim(),
+          date_of_birth: form.dateOfBirth.trim(),
+          gender: form.gender,
+          phone_number: form.phoneNumber.trim() || undefined,
+          identification_type: form.identificationType || undefined,
+          identification_number: form.identificationNumber.trim() || undefined,
+          county: form.county,
+          sub_county: form.subCounty,
+          ward: form.ward || undefined,
+          village: form.village.trim() || undefined,
+          referral_source: form.referralSource,
+          emergency_contact_name: form.emergencyContactName.trim() || undefined,
+          emergency_contact_phone: form.emergencyContactPhone.trim() || undefined,
+          emergency_contact_relationship: form.emergencyContactRelationship.trim() || undefined,
+        });
+        Alert.alert('Saved offline', 'The patient was stored on this device and will sync automatically when connectivity returns.');
+        router.replace(`/patients/${queuedPatient.id}` as never);
+        return;
+      }
+
+      Alert.alert('Unable to create patient', apiError.message || 'The backend rejected the registration payload.');
     }
   }
 
@@ -150,7 +206,7 @@ export default function NewPatientScreen() {
       <HeroCard
         eyebrow="New registration"
         title="Create patient record"
-        description="This mobile form posts to /api/patients/ and reuses the same county, sub-county, and ward hierarchy as the web app."
+        description="This mobile form now stores patients locally first when needed, then syncs them to /api/patients/ once connectivity returns."
       />
 
       <SectionCard title="Identity">

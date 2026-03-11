@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, AppTextInput, EmptyState, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { SyncIndicator } from '@/components/sync-indicator';
 import type { AppTheme } from '@/constants/theme';
-import { patientsApi } from '@/lib/api/patients';
+import { useLocalPatients } from '@/lib/hooks/use-local-patients';
 import { useAppTheme } from '@/lib/theme/theme-context';
 import { buildPatientName, formatDate, formatGender } from '@/lib/utils/format';
 
@@ -20,10 +20,7 @@ export default function PatientsScreen() {
     return () => clearTimeout(timeout);
   }, [searchInput]);
 
-  const patientQuery = useQuery({
-    queryKey: ['patients', searchValue],
-    queryFn: () => patientsApi.list({ page: 1, page_size: 20, search: searchValue || undefined, ordering: '-created_at' }),
-  });
+  const patientQuery = useLocalPatients({ search: searchValue, limit: 20 });
 
   if (patientQuery.isLoading) {
     return (
@@ -33,16 +30,18 @@ export default function PatientsScreen() {
     );
   }
 
-  const patients = patientQuery.data?.results ?? [];
+  const patients = patientQuery.patients;
 
   return (
     <ScreenContainer>
-      <SectionCard title="Patients" subtitle="Search by MRN, name, or ID using the same backend filters as the web client.">
+      <SyncIndicator />
+
+      <SectionCard title="Patients" subtitle="Search the local registry by MRN, name, or ID. Online sync keeps this cache fresh in the background.">
         <AppTextInput label="Search patients" value={searchInput} onChangeText={setSearchInput} placeholder="MRN, name, ID, or phone" autoCapitalize="none" />
         <AppButton label="New patient" onPress={() => router.push('/patients/new' as never)} />
       </SectionCard>
 
-      <SectionCard title="Registry" subtitle={`${patientQuery.data?.count ?? 0} patients available from the backend.`}>
+      <SectionCard title="Registry" subtitle={`${patientQuery.count} patients cached on this device.`}>
         {patients.length === 0 ? (
           <EmptyState title="No patients found" description="Try a broader search, or register a new patient from this device." />
         ) : (
@@ -57,7 +56,10 @@ export default function PatientsScreen() {
                   <Text style={styles.patientName}>{buildPatientName(patient)}</Text>
                   <Text style={styles.patientMeta}>{patient.mrn}</Text>
                 </View>
-                {patient.is_sensitive ? <Pill label="Sensitive" tone="danger" /> : null}
+                <View style={styles.pillRow}>
+                  {patient.sync_state !== 'synced' ? <Pill label="Queued" tone={patient.sync_state === 'conflict' ? 'danger' : 'warning'} /> : null}
+                  {patient.is_sensitive ? <Pill label="Sensitive" tone="danger" /> : null}
+                </View>
               </View>
               <Text style={styles.patientSummary}>{formatGender(patient.gender)} · DOB {formatDate(patient.date_of_birth)}</Text>
               <Text style={styles.patientSummary}>{patient.county_name || 'County unavailable'} · {patient.phone_number || 'No phone recorded'}</Text>
@@ -86,6 +88,10 @@ function createStyles(theme: AppTheme) {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  pillRow: {
+    alignItems: 'flex-end',
+    gap: 6,
   },
   patientTitleBlock: {
     flex: 1,

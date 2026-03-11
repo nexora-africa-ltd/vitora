@@ -5,10 +5,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, DataRow, EmptyState, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { SyncIndicator } from '@/components/sync-indicator';
 import type { AppTheme } from '@/constants/theme';
 import { toApiError } from '@/lib/api/client';
 import { clinicVisitsApi } from '@/lib/api/clinic-visits';
 import { encountersApi } from '@/lib/api/encounters';
+import { useLocalEncounter } from '@/lib/hooks/use-local-encounters';
 import { laboratoryApi } from '@/lib/api/laboratory';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 import { triageApi } from '@/lib/api/triage';
@@ -50,48 +52,45 @@ export default function EncounterDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const encounterId = Number(params.id);
   const [hasLocalDraft, setHasLocalDraft] = useState(false);
-
-  const encounterQuery = useQuery({
-    queryKey: ['encounter', encounterId],
-    queryFn: () => encountersApi.get(encounterId),
-    enabled: Number.isFinite(encounterId),
-  });
+  const encounterQuery = useLocalEncounter(encounterId);
+  const encounter = encounterQuery.encounter;
+  const canLoadRemoteDependents = Boolean(encounter && encounterId > 0 && encounter.sync_state === 'synced');
 
   const diagnosesQuery = useQuery({
     queryKey: ['encounter-diagnoses', encounterId],
     queryFn: () => encountersApi.getDiagnoses(encounterId),
-    enabled: Number.isFinite(encounterId),
+    enabled: canLoadRemoteDependents,
   });
 
   const treatmentPlanQuery = useQuery({
     queryKey: ['encounter-treatment-plan', encounterId],
     queryFn: () => encountersApi.getTreatmentPlan(encounterId),
-    enabled: Number.isFinite(encounterId),
+    enabled: canLoadRemoteDependents,
   });
 
   const triageQuery = useQuery({
     queryKey: ['encounter-triage', encounterId],
     queryFn: () => triageApi.getByEncounter(encounterId),
-    enabled: Number.isFinite(encounterId),
+    enabled: canLoadRemoteDependents,
   });
 
   const labOrdersQuery = useQuery({
     queryKey: ['encounter-lab-orders', encounterId],
     queryFn: () => laboratoryApi.listEncounterOrders(encounterId),
-    enabled: Number.isFinite(encounterId),
+    enabled: canLoadRemoteDependents,
   });
 
   const prescriptionsQuery = useQuery({
     queryKey: ['encounter-prescriptions', encounterId],
     queryFn: () => pharmacyApi.listPrescriptions({ encounter: encounterId, page: 1, page_size: 50 }),
-    enabled: Number.isFinite(encounterId),
+    enabled: canLoadRemoteDependents,
   });
 
-  const clinicVisitId = encounterQuery.data?.clinic_visit_id ?? null;
+  const clinicVisitId = encounter?.clinic_visit_id ?? null;
   const clinicVisitQuery = useQuery({
     queryKey: ['clinic-visit', clinicVisitId],
     queryFn: () => clinicVisitsApi.get(clinicVisitId as number),
-    enabled: Boolean(clinicVisitId),
+    enabled: Boolean(clinicVisitId) && canLoadRemoteDependents,
   });
 
   useFocusEffect(
@@ -151,7 +150,7 @@ export default function EncounterDetailScreen() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['clinic-visit', clinicVisitId] }),
-        invalidateEncounterContext(encounterQuery.data?.patient),
+        invalidateEncounterContext(encounter?.patient),
       ]);
     },
   });
@@ -164,15 +163,14 @@ export default function EncounterDetailScreen() {
     );
   }
 
-  if (!encounterQuery.data) {
+  if (!encounter) {
     return (
       <ScreenContainer>
-        <EmptyState title="Encounter not found" description="This encounter could not be loaded from the backend." />
+        <EmptyState title="Encounter not found" description="This encounter is not available in the local cache yet." />
       </ScreenContainer>
     );
   }
 
-  const encounter = encounterQuery.data;
   const triageAssessment = triageQuery.data;
   const finalizeGuidance = getFinalizeGuidance({
     hasDiagnosis: (diagnosesQuery.data?.length ?? 0) > 0,
@@ -202,7 +200,7 @@ export default function EncounterDetailScreen() {
     if (!finalizeGuidance.ready) {
       Alert.alert(finalizeGuidance.title, `${finalizeGuidance.message} Open Edit Encounter to resolve this before retrying.`, [
         { text: 'Stay here', style: 'cancel' },
-        { text: 'Open edit', onPress: () => router.push(`/encounters/${encounter.id}/edit` as never) },
+        { text: 'Open edit', onPress: () => router.push(`/encounters/${encounterId}/edit` as never) },
       ]);
       return;
     }
@@ -244,12 +242,17 @@ export default function EncounterDetailScreen() {
 
   return (
     <ScreenContainer>
+      <SyncIndicator />
+
       <HeroCard
         eyebrow="Encounter"
         title={encounter.patient_name || encounter.patient_mrn || `Encounter #${encounter.id}`}
         description={`${encounter.encounter_type_display || encounter.encounter_type} · ${encounter.patient_mrn || 'MRN pending'} · ${formatDate(encounter.encounter_date)}`}
       >
-        <Pill label={getEncounterStatusLabel(encounter.status)} tone={getEncounterPillTone(encounter)} />
+        <View style={styles.heroPills}>
+          {encounter.sync_state !== 'synced' ? <Pill label="Pending sync" tone={encounter.sync_state === 'conflict' ? 'danger' : 'warning'} /> : null}
+          <Pill label={getEncounterStatusLabel(encounter.status)} tone={getEncounterPillTone(encounter)} />
+        </View>
       </HeroCard>
 
       {hasLocalDraft ? (
@@ -258,20 +261,28 @@ export default function EncounterDetailScreen() {
         </SectionCard>
       ) : null}
 
+      {!canLoadRemoteDependents ? (
+        <SectionCard title="Awaiting sync" subtitle="This encounter is stored locally and will gain full downstream workflow actions after the server confirms it.">
+          <DataRow label="Sync state" value={encounter.sync_state.replace(/_/g, ' ')} />
+          <DataRow label="Chief complaint" value={encounter.chief_complaint} />
+          <DataRow label="Created at" value={formatDateTime(encounter.created_at)} />
+        </SectionCard>
+      ) : null}
+
       <SectionCard title="Finalize readiness" subtitle="Mobile close-out guidance based on the backend encounter validation rules.">
         <Pill label={finalizeGuidance.ready ? 'Ready to finalize' : 'Needs more documentation'} tone={finalizeGuidance.ready ? 'primary' : 'warning'} />
         <Text style={styles.bodyText}>{finalizeGuidance.message}</Text>
-        {!finalizeGuidance.ready ? <AppButton label="Update disposition or notes" variant="secondary" onPress={() => router.push(`/encounters/${encounter.id}/edit` as never)} /> : null}
+        {!finalizeGuidance.ready ? <AppButton label="Update disposition or notes" variant="secondary" onPress={() => router.push(`/encounters/${encounter.id}/edit` as never)} disabled={!canLoadRemoteDependents} /> : null}
       </SectionCard>
 
       <SectionCard title="Encounter actions" subtitle="Continue this visit by updating documentation, diagnoses, treatment, and status workflow.">
-        <AppButton label="Edit encounter" onPress={() => router.push(`/encounters/${encounter.id}/edit` as never)} />
-        {!triageAssessment ? <AppButton label="Record triage" variant="secondary" onPress={() => router.push(`/encounters/${encounter.id}/triage` as never)} /> : null}
-        <AppButton label="Order labs" variant="secondary" onPress={() => router.push(`/laboratory/new?encounterId=${encounter.id}&patientId=${encounter.patient}` as never)} />
-        <AppButton label="Create prescription" variant="secondary" onPress={() => router.push(`/pharmacy/new?encounterId=${encounter.id}&patientId=${encounter.patient}` as never)} />
-        {canStartProgress(encounter.status) ? <AppButton label={startProgressMutation.isPending ? 'Starting progress...' : 'Start progress'} variant="secondary" onPress={confirmStartProgress} disabled={startProgressMutation.isPending} /> : null}
-        {canFinalize(encounter.status) ? <AppButton label={finalizeMutation.isPending ? 'Finalizing...' : 'Finalize visit'} onPress={confirmFinalize} disabled={finalizeMutation.isPending} /> : null}
-        {canCancel(encounter.status) ? <AppButton label={cancelMutation.isPending ? 'Cancelling...' : 'Cancel encounter'} variant="danger" onPress={confirmCancel} disabled={cancelMutation.isPending} /> : null}
+        <AppButton label="Edit encounter" onPress={() => router.push(`/encounters/${encounter.id}/edit` as never)} disabled={!canLoadRemoteDependents} />
+        {!triageAssessment ? <AppButton label="Record triage" variant="secondary" onPress={() => router.push(`/encounters/${encounter.id}/triage` as never)} disabled={!canLoadRemoteDependents} /> : null}
+        <AppButton label="Order labs" variant="secondary" onPress={() => router.push(`/laboratory/new?encounterId=${encounter.id}&patientId=${encounter.patient}` as never)} disabled={!canLoadRemoteDependents} />
+        <AppButton label="Create prescription" variant="secondary" onPress={() => router.push(`/pharmacy/new?encounterId=${encounter.id}&patientId=${encounter.patient}` as never)} disabled={!canLoadRemoteDependents} />
+        {canStartProgress(encounter.status) ? <AppButton label={startProgressMutation.isPending ? 'Starting progress...' : 'Start progress'} variant="secondary" onPress={confirmStartProgress} disabled={startProgressMutation.isPending || !canLoadRemoteDependents} /> : null}
+        {canFinalize(encounter.status) ? <AppButton label={finalizeMutation.isPending ? 'Finalizing...' : 'Finalize visit'} onPress={confirmFinalize} disabled={finalizeMutation.isPending || !canLoadRemoteDependents} /> : null}
+        {canCancel(encounter.status) ? <AppButton label={cancelMutation.isPending ? 'Cancelling...' : 'Cancel encounter'} variant="danger" onPress={confirmCancel} disabled={cancelMutation.isPending || !canLoadRemoteDependents} /> : null}
       </SectionCard>
 
       <SectionCard title="Summary">
@@ -513,6 +524,9 @@ export default function EncounterDetailScreen() {
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
+  heroPills: {
+    gap: 8,
+  },
   vitalsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

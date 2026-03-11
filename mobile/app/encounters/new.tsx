@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, AppPicker, AppTextInput, HeroCard, LoadingState, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { toApiError } from '@/lib/api/client';
 import { encountersApi } from '@/lib/api/encounters';
+import { queueOfflineEncounterCreate, upsertEncounters } from '@/lib/db';
 import { clearNewEncounterDraft, getNewEncounterDraft, saveNewEncounterDraft } from '@/lib/encounter-draft-storage';
-import { patientsApi } from '@/lib/api/patients';
+import { useLocalPatient, useLocalPatients } from '@/lib/hooks/use-local-patients';
 import { buildBloodPressure, ENCOUNTER_TYPE_OPTIONS } from '@/lib/encounters';
 import { queryClient } from '@/lib/query/client';
+import { isOfflineSyncError } from '@/lib/sync/conflicts';
 import { buildPatientName, formatDate } from '@/lib/utils/format';
 
 type FormState = {
@@ -118,29 +121,21 @@ export default function NewEncounterScreen() {
     return () => clearTimeout(timeout);
   }, [form, isDraftHydrated]);
 
-  const patientsQuery = useQuery({
-    queryKey: ['encounter-form-patients'],
-    queryFn: () => patientsApi.list({ page: 1, page_size: 100, ordering: '-created_at' }),
-  });
-
-  const preselectedPatientQuery = useQuery({
-    queryKey: ['encounter-form-patient', preselectedPatientId],
-    queryFn: () => patientsApi.get(preselectedPatientId),
-    enabled: Boolean(preselectedPatientId),
-  });
+  const patientsQuery = useLocalPatients({ limit: 100 });
+  const preselectedPatientQuery = useLocalPatient(preselectedPatientId);
 
   const patientOptions = useMemo(() => {
     const entries = new Map<number, { label: string; value: number }>();
     entries.set(0, { label: 'Select patient', value: 0 });
 
-    if (preselectedPatientQuery.data) {
-      entries.set(preselectedPatientQuery.data.id, {
-        label: `${buildPatientName(preselectedPatientQuery.data)} · ${preselectedPatientQuery.data.mrn}`,
-        value: preselectedPatientQuery.data.id,
+    if (preselectedPatientQuery.patient) {
+      entries.set(preselectedPatientQuery.patient.id, {
+        label: `${buildPatientName(preselectedPatientQuery.patient)} · ${preselectedPatientQuery.patient.mrn}`,
+        value: preselectedPatientQuery.patient.id,
       });
     }
 
-    for (const patient of patientsQuery.data?.results ?? []) {
+    for (const patient of patientsQuery.patients) {
       entries.set(patient.id, {
         label: `${buildPatientName(patient)} · ${patient.mrn}`,
         value: patient.id,
@@ -148,7 +143,7 @@ export default function NewEncounterScreen() {
     }
 
     return Array.from(entries.values());
-  }, [patientsQuery.data?.results, preselectedPatientQuery.data]);
+  }, [patientsQuery.patients, preselectedPatientQuery.patient]);
 
   const createEncounterMutation = useMutation({
     mutationFn: () =>
@@ -176,6 +171,7 @@ export default function NewEncounterScreen() {
         notes: form.notes.trim() || undefined,
       }),
     onSuccess: async (encounter) => {
+      await upsertEncounters([encounter]);
       await clearNewEncounterDraft();
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['encounters'] }),
@@ -209,7 +205,38 @@ export default function NewEncounterScreen() {
     try {
       await createEncounterMutation.mutateAsync();
     } catch (error) {
-      Alert.alert('Unable to create encounter', error instanceof Error ? error.message : 'The backend rejected the encounter payload.');
+      const apiError = toApiError(error);
+      if (isOfflineSyncError(apiError)) {
+        const queuedEncounter = await queueOfflineEncounterCreate({
+          patient: form.patient,
+          encounter_type: form.encounterType,
+          encounter_date: form.encounterDate,
+          chief_complaint: form.chiefComplaint.trim(),
+          temperature: toOptionalNumber(form.temperature),
+          pulse: toOptionalNumber(form.pulse),
+          blood_pressure: buildBloodPressure(form.bloodPressureSystolic, form.bloodPressureDiastolic),
+          respiratory_rate: toOptionalNumber(form.respiratoryRate),
+          spo2: toOptionalNumber(form.spo2),
+          weight: toOptionalNumber(form.weight),
+          height: toOptionalNumber(form.height),
+          allergies: form.allergies.trim() || undefined,
+          chronic_conditions: form.chronicConditions.trim() || undefined,
+          current_medications: form.currentMedications.trim() || undefined,
+          past_surgeries: form.pastSurgeries.trim() || undefined,
+          family_history: form.familyHistory.trim() || undefined,
+          social_history: form.socialHistory.trim() || undefined,
+          history_of_present_illness: form.historyOfPresentIllness.trim() || undefined,
+          physical_examination: form.physicalExamination.trim() || undefined,
+          assessment: form.assessment.trim() || undefined,
+          notes: form.notes.trim() || undefined,
+        });
+        await clearNewEncounterDraft();
+        Alert.alert('Saved offline', 'The encounter was queued on this device and will sync automatically when connectivity returns.');
+        router.replace(`/encounters/${queuedEncounter.id}` as never);
+        return;
+      }
+
+      Alert.alert('Unable to create encounter', apiError.message || 'The backend rejected the encounter payload.');
     }
   }
 
@@ -226,7 +253,7 @@ export default function NewEncounterScreen() {
       <HeroCard
         eyebrow="New encounter"
         title="Capture bedside consultation"
-        description={`This creates a real encounter through /api/encounters/ using the same core fields as the web workflow. Date: ${formatDate(form.encounterDate)}`}
+        description={`This now creates encounters locally first when needed, then syncs them to /api/encounters/. Date: ${formatDate(form.encounterDate)}`}
       />
 
       {draftRestoredAt ? (

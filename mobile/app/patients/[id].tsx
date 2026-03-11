@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -6,7 +5,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppButton, DataRow, EmptyState, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
 import { getEncounterPillTone, getEncounterStatusLabel } from '@/lib/encounters';
-import { patientsApi } from '@/lib/api/patients';
+import { useLocalEncounters } from '@/lib/hooks/use-local-encounters';
+import { useLocalPatient } from '@/lib/hooks/use-local-patients';
 import { useAppTheme } from '@/lib/theme/theme-context';
 import { buildPatientName, formatDate, formatGender } from '@/lib/utils/format';
 
@@ -16,17 +16,8 @@ export default function PatientDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const patientId = Number(params.id);
 
-  const patientQuery = useQuery({
-    queryKey: ['patient', patientId],
-    queryFn: () => patientsApi.get(patientId),
-    enabled: Number.isFinite(patientId),
-  });
-
-  const encountersQuery = useQuery({
-    queryKey: ['patient-encounters', patientId],
-    queryFn: () => patientsApi.getEncounters(patientId),
-    enabled: Number.isFinite(patientId),
-  });
+  const patientQuery = useLocalPatient(patientId);
+  const encountersQuery = useLocalEncounters({ patientId });
 
   if (patientQuery.isLoading) {
     return (
@@ -36,15 +27,15 @@ export default function PatientDetailScreen() {
     );
   }
 
-  if (!patientQuery.data) {
+  if (!patientQuery.patient) {
     return (
       <ScreenContainer>
-        <EmptyState title="Patient not found" description="This record could not be loaded from the backend." />
+        <EmptyState title="Patient not found" description="This record is not available in the local cache yet." />
       </ScreenContainer>
     );
   }
 
-  const patient = patientQuery.data;
+  const patient = patientQuery.patient;
 
   return (
     <ScreenContainer>
@@ -53,7 +44,10 @@ export default function PatientDetailScreen() {
         title={buildPatientName(patient)}
         description={`${patient.mrn} · ${formatGender(patient.gender)} · DOB ${formatDate(patient.date_of_birth)}`}
       >
-        {patient.is_sensitive ? <Pill label="Sensitive patient" tone="danger" /> : null}
+        <View style={styles.heroPills}>
+          {patient.sync_state !== 'synced' ? <Pill label="Pending sync" tone={patient.sync_state === 'conflict' ? 'danger' : 'warning'} /> : null}
+          {patient.is_sensitive ? <Pill label="Sensitive patient" tone="danger" /> : null}
+        </View>
       </HeroCard>
 
       <SectionCard title="Encounter actions" subtitle="Continue reviewing this patient or start a new visit from the bedside.">
@@ -82,10 +76,10 @@ export default function PatientDetailScreen() {
       </SectionCard>
 
       <SectionCard title="Encounter history" subtitle="Recent encounter activity linked to this patient.">
-        {(encountersQuery.data ?? []).length === 0 ? (
+        {encountersQuery.encounters.length === 0 ? (
           <EmptyState title="No encounters" description="This patient does not have encounter history yet." />
         ) : (
-          (encountersQuery.data ?? []).map((encounter) => (
+          encountersQuery.encounters.map((encounter) => (
             <Pressable
               key={encounter.id}
               onPress={() => router.push(`/encounters/${encounter.id}` as never)}
@@ -93,7 +87,10 @@ export default function PatientDetailScreen() {
             >
               <View style={styles.encounterHeader}>
                 <Text style={styles.encounterType}>{encounter.encounter_type}</Text>
-                <Pill label={getEncounterStatusLabel(encounter.status)} tone={getEncounterPillTone(encounter)} />
+                <View style={styles.encounterPills}>
+                  {encounter.sync_state !== 'synced' ? <Pill label="Queued" tone={encounter.sync_state === 'conflict' ? 'danger' : 'warning'} /> : null}
+                  <Pill label={getEncounterStatusLabel(encounter.status)} tone={getEncounterPillTone(encounter)} />
+                </View>
               </View>
               <Text style={styles.encounterComplaint}>{encounter.chief_complaint}</Text>
               <Text style={styles.encounterMeta}>{formatDate(encounter.encounter_date)}</Text>
@@ -107,6 +104,9 @@ export default function PatientDetailScreen() {
 
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
+  heroPills: {
+    gap: 8,
+  },
   encounterItem: {
     borderBottomColor: theme.colors.border,
     borderBottomWidth: 1,
@@ -120,6 +120,10 @@ function createStyles(theme: AppTheme) {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  encounterPills: {
+    alignItems: 'flex-end',
+    gap: 6,
   },
   encounterType: {
     color: theme.colors.text,

@@ -1,22 +1,19 @@
-import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, EmptyState, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { SyncIndicator } from '@/components/sync-indicator';
 import type { AppTheme } from '@/constants/theme';
 import { getEncounterPillTone, getEncounterStatusLabel } from '@/lib/encounters';
-import { encountersApi } from '@/lib/api/encounters';
+import { useLocalEncounters } from '@/lib/hooks/use-local-encounters';
 import { useAppTheme } from '@/lib/theme/theme-context';
 import { formatDateTime } from '@/lib/utils/format';
 
 export default function EncountersScreen() {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const encountersQuery = useQuery({
-    queryKey: ['encounters'],
-    queryFn: () => encountersApi.list({ page: 1, page_size: 20, ordering: '-encounter_date' }),
-  });
+  const encountersQuery = useLocalEncounters({ limit: 20 });
 
   if (encountersQuery.isLoading) {
     return (
@@ -26,15 +23,17 @@ export default function EncountersScreen() {
     );
   }
 
-  const encounters = encountersQuery.data?.results ?? [];
+  const encounters = encountersQuery.encounters;
 
   return (
     <ScreenContainer>
+      <SyncIndicator />
+
       <SectionCard title="Encounter actions" subtitle="Start a new visit or continue reviewing active ones.">
         <AppButton label="New encounter" onPress={() => router.push('/encounters/new' as never)} />
       </SectionCard>
 
-      <SectionCard title="Encounters" subtitle="This view is fed directly from /api/encounters/ and highlights active clinical work.">
+      <SectionCard title="Encounters" subtitle="This view is now local-first and keeps queued offline visits visible until they reach the server.">
         {encounters.length === 0 ? (
           <EmptyState title="No encounters yet" description="Once clinicians create encounters from the backend, they will appear here." />
         ) : (
@@ -49,7 +48,10 @@ export default function EncountersScreen() {
                   <Text style={styles.encounterTitle}>{encounter.patient_name || 'Unknown patient'}</Text>
                   <Text style={styles.encounterMeta}>{encounter.patient_mrn || 'MRN pending'} · {encounter.encounter_type}</Text>
                 </View>
-                <Pill label={getEncounterStatusLabel(encounter.status)} tone={getEncounterPillTone(encounter)} />
+                <View style={styles.statusStack}>
+                  {encounter.sync_state !== 'synced' ? <Pill label="Queued" tone={encounter.sync_state === 'conflict' ? 'danger' : 'warning'} /> : null}
+                  <Pill label={getEncounterStatusLabel(encounter.status)} tone={getEncounterPillTone(encounter)} />
+                </View>
               </View>
               {encounter.triage_category ? (
                 <View style={styles.triageRow}>
@@ -84,6 +86,10 @@ function createStyles(theme: AppTheme) {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  statusStack: {
+    alignItems: 'flex-end',
+    gap: 6,
   },
   titleBlock: {
     flex: 1,

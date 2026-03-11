@@ -4,10 +4,10 @@ import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, HeroCard, LoadingState, MetricCard, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { SyncIndicator } from '@/components/sync-indicator';
 import type { AppTheme } from '@/constants/theme';
-import { encountersApi } from '@/lib/api/encounters';
-import { patientsApi } from '@/lib/api/patients';
 import { useAuth } from '@/lib/auth/auth-context';
+import { listLocalEncounters, listLocalPatients } from '@/lib/db';
 import { useAppTheme } from '@/lib/theme/theme-context';
 import { formatDateTime } from '@/lib/utils/format';
 
@@ -20,14 +20,14 @@ export default function DashboardScreen() {
     queryKey: ['dashboard-summary'],
     queryFn: async () => {
       const [patients, encounters] = await Promise.all([
-        patientsApi.list({ page: 1, page_size: 1 }),
-        encountersApi.list({ page: 1, page_size: 5, ordering: '-encounter_date' }),
+        listLocalPatients(),
+        listLocalEncounters({ limit: 5 }),
       ]);
 
       return {
         patientCount: patients.count,
         encounterCount: encounters.count,
-        recentEncounters: encounters.results,
+        recentEncounters: encounters.records,
       };
     },
   });
@@ -43,15 +43,17 @@ export default function DashboardScreen() {
   return (
     <ScreenContainer>
       <HeroCard
-        eyebrow="Connected"
+        eyebrow="Offline ready"
         title={`Hello ${user?.first_name || user?.username || 'Clinician'}`}
-        description={user?.facility ? `${user.facility.name} is linked to this mobile workspace.` : 'No facility is attached to this account yet.'}
+        description={user?.facility ? `${user.facility.name} is linked to this device, and Phase 3 now keeps patient and encounter snapshots available locally.` : 'No facility is attached to this account yet.'}
       >
         <View style={styles.heroMetaRow}>
           <Pill label={user?.role || 'Role pending'} tone="neutral" />
           <Text style={styles.connectionText}>{apiBaseUrl}</Text>
         </View>
       </HeroCard>
+
+      <SyncIndicator />
 
       <View style={styles.metricsRow}>
         <MetricCard label="Patients" value={String(summaryQuery.data?.patientCount ?? 0)} tone="primary" />
@@ -67,7 +69,7 @@ export default function DashboardScreen() {
         </View>
       </SectionCard>
 
-      <SectionCard title="Recent encounters" subtitle="The latest items come directly from /api/encounters/.">
+      <SectionCard title="Recent encounters" subtitle="This feed now renders from the local mobile cache and refreshes through the sync engine.">
         {(summaryQuery.data?.recentEncounters ?? []).length === 0 ? (
           <Text style={styles.emptyText}>No encounters have been recorded yet.</Text>
         ) : (
