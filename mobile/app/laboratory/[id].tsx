@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, DataRow, EmptyState, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { LabInterpretCard } from '@/components/lab-interpret-card';
 import type { AppTheme } from '@/constants/theme';
 import { laboratoryApi } from '@/lib/api/laboratory';
 import { toApiError } from '@/lib/api/client';
@@ -226,6 +227,13 @@ export default function LaboratoryDetailScreen() {
             </View>
           ))
         )}
+      </SectionCard>
+
+      <SectionCard title="AI interpretation" subtitle="TibaBot can provide clinical interpretation of numeric lab results.">
+        <LabInterpretCard
+          orderItems={order.items}
+          clinicalContext={order.clinical_notes ?? undefined}
+        />
       </SectionCard>
     </ScreenContainer>
   );
