@@ -1,0 +1,401 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { queryClient } from '@/lib/query/client';
+import type { EncounterCreateData } from '@/lib/types/encounter';
+import type { County, SubCounty, Ward } from '@/lib/types/location';
+import type { PatientCreateData } from '@/lib/types/patient';
+
+import { buildOfflineEncounterRecord, matchesEncounterSearch, sortEncounters, toLocalEncounterRecord } from './models/encounter';
+import { buildOfflinePatientRecord, matchesPatientSearch, sortPatients, toLocalPatientRecord } from './models/patient';
+import { createEmptyOfflineDatabase, OFFLINE_DB_STORAGE_KEY, type LocalEncounterRecord, type LocalPatientRecord, type OfflineDatabase, type SyncQueueEntry } from './schema';
+
+type PatientListOptions = {
+  limit?: number;
+  search?: string;
+};
+
+type EncounterListOptions = {
+  limit?: number;
+  patientId?: number;
+  search?: string;
+};
+
+const LOCAL_QUERY_KEYS = [
+  ['dashboard-summary'],
+  ['local-patient'],
+  ['local-patients'],
+  ['local-encounter'],
+  ['local-encounters'],
+  ['offline-reference-data'],
+  ['sync-status'],
+] as const;
+
+function createLocalId(): number {
+  return -Math.floor(Date.now() + Math.random() * 1000);
+}
+
+function createQueueEntryId(): string {
+  return `queue-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+async function invalidateOfflineQueries() {
+  await Promise.all(
+    LOCAL_QUERY_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey }))
+  );
+}
+
+function normalizeDatabase(payload: string | null): OfflineDatabase {
+  if (!payload) {
+    return createEmptyOfflineDatabase();
+  }
+
+  try {
+    const parsed = JSON.parse(payload) as Partial<OfflineDatabase>;
+    const next = createEmptyOfflineDatabase();
+    return {
+      ...next,
+      ...parsed,
+      counties: parsed.counties ?? next.counties,
+      diagnoses: parsed.diagnoses ?? next.diagnoses,
+      encounters: parsed.encounters ?? next.encounters,
+      patients: parsed.patients ?? next.patients,
+      queue: parsed.queue ?? next.queue,
+      subCounties: parsed.subCounties ?? next.subCounties,
+      wards: parsed.wards ?? next.wards,
+      meta: {
+        ...next.meta,
+        ...parsed.meta,
+        id_remaps: {
+          encounters: parsed.meta?.id_remaps?.encounters ?? next.meta.id_remaps.encounters,
+          patients: parsed.meta?.id_remaps?.patients ?? next.meta.id_remaps.patients,
+        },
+      },
+    };
+  } catch {
+    return createEmptyOfflineDatabase();
+  }
+}
+
+export async function getOfflineDatabase(): Promise<OfflineDatabase> {
+  const payload = await AsyncStorage.getItem(OFFLINE_DB_STORAGE_KEY);
+  return normalizeDatabase(payload);
+}
+
+async function persistOfflineDatabase(database: OfflineDatabase): Promise<OfflineDatabase> {
+  await AsyncStorage.setItem(OFFLINE_DB_STORAGE_KEY, JSON.stringify(database));
+  await invalidateOfflineQueries();
+  return database;
+}
+
+export async function updateOfflineDatabase(mutator: (database: OfflineDatabase) => void): Promise<OfflineDatabase> {
+  const database = await getOfflineDatabase();
+  mutator(database);
+  return persistOfflineDatabase(database);
+}
+
+export async function clearOfflineDatabase(): Promise<void> {
+  await AsyncStorage.removeItem(OFFLINE_DB_STORAGE_KEY);
+  await invalidateOfflineQueries();
+}
+
+export async function listLocalPatients(options: PatientListOptions = {}): Promise<{ count: number; records: LocalPatientRecord[] }> {
+  const database = await getOfflineDatabase();
+  const filtered = database.patients.filter((patient) => matchesPatientSearch(patient, options.search ?? ''));
+  const records = typeof options.limit === 'number' ? filtered.slice(0, options.limit) : filtered;
+  return { count: filtered.length, records };
+}
+
+export async function getLocalPatient(id: number): Promise<LocalPatientRecord | null> {
+  const database = await getOfflineDatabase();
+  const direct = database.patients.find((patient) => patient.id === id);
+  if (direct) {
+    return direct;
+  }
+
+  const remappedId = database.meta.id_remaps.patients[String(id)];
+  if (typeof remappedId === 'number') {
+    return database.patients.find((patient) => patient.id === remappedId) ?? null;
+  }
+
+  return null;
+}
+
+export async function listLocalEncounters(options: EncounterListOptions = {}): Promise<{ count: number; records: LocalEncounterRecord[] }> {
+  const database = await getOfflineDatabase();
+  const resolvedPatientId = typeof options.patientId === 'number'
+    ? database.meta.id_remaps.patients[String(options.patientId)] ?? options.patientId
+    : undefined;
+
+  const filtered = database.encounters.filter((encounter) => {
+    if (typeof resolvedPatientId === 'number' && encounter.patient !== resolvedPatientId) {
+      return false;
+    }
+
+    if (!options.search) {
+      return true;
+    }
+
+    return matchesEncounterSearch(encounter, options.search);
+  });
+
+  const records = typeof options.limit === 'number' ? filtered.slice(0, options.limit) : filtered;
+  return { count: filtered.length, records };
+}
+
+export async function getLocalEncounter(id: number): Promise<LocalEncounterRecord | null> {
+  const database = await getOfflineDatabase();
+  const direct = database.encounters.find((encounter) => encounter.id === id);
+  if (direct) {
+    return direct;
+  }
+
+  const remappedId = database.meta.id_remaps.encounters[String(id)];
+  if (typeof remappedId === 'number') {
+    return database.encounters.find((encounter) => encounter.id === remappedId) ?? null;
+  }
+
+  return null;
+}
+
+export async function getOfflineCounties(): Promise<County[]> {
+  const database = await getOfflineDatabase();
+  return database.counties;
+}
+
+export async function getOfflineSubCounties(countyId: number): Promise<SubCounty[]> {
+  const database = await getOfflineDatabase();
+  return database.subCounties.filter((subCounty) => subCounty.county === countyId);
+}
+
+export async function getOfflineWards(subCountyId: number): Promise<Ward[]> {
+  const database = await getOfflineDatabase();
+  return database.wards.filter((ward) => ward.sub_county === subCountyId);
+}
+
+export async function upsertReferenceData(input: { counties?: County[]; subCounties?: SubCounty[]; wards?: Ward[] }): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    if (input.counties) {
+      const countyMap = new Map(database.counties.map((county) => [county.id, county]));
+      for (const county of input.counties) {
+        countyMap.set(county.id, county);
+      }
+      database.counties = Array.from(countyMap.values()).sort((left, right) => left.name.localeCompare(right.name));
+    }
+
+    if (input.subCounties) {
+      const subCountyMap = new Map(database.subCounties.map((subCounty) => [subCounty.id, subCounty]));
+      for (const subCounty of input.subCounties) {
+        subCountyMap.set(subCounty.id, subCounty);
+      }
+      database.subCounties = Array.from(subCountyMap.values()).sort((left, right) => left.name.localeCompare(right.name));
+    }
+
+    if (input.wards) {
+      const wardMap = new Map(database.wards.map((ward) => [ward.id, ward]));
+      for (const ward of input.wards) {
+        wardMap.set(ward.id, ward);
+      }
+      database.wards = Array.from(wardMap.values()).sort((left, right) => left.name.localeCompare(right.name));
+    }
+  });
+}
+
+export async function upsertPatients(records: LocalPatientRecord[] | Parameters<typeof toLocalPatientRecord>[0][], syncedAt?: string): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    const patientMap = new Map(database.patients.map((patient) => [patient.id, patient]));
+
+    for (const record of records) {
+      const nextRecord = 'sync_state' in record ? record : toLocalPatientRecord(record, syncedAt);
+      patientMap.set(nextRecord.id, nextRecord);
+    }
+
+    database.patients = sortPatients(Array.from(patientMap.values()));
+  });
+}
+
+export async function upsertEncounters(records: LocalEncounterRecord[] | Parameters<typeof toLocalEncounterRecord>[0][], syncedAt?: string): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    const encounterMap = new Map(database.encounters.map((encounter) => [encounter.id, encounter]));
+
+    for (const record of records) {
+      const nextRecord = 'sync_state' in record ? record : toLocalEncounterRecord(record, syncedAt);
+      encounterMap.set(nextRecord.id, nextRecord);
+    }
+
+    database.encounters = sortEncounters(Array.from(encounterMap.values()));
+  });
+}
+
+export async function queueOfflinePatientCreate(data: PatientCreateData): Promise<LocalPatientRecord> {
+  const database = await getOfflineDatabase();
+  const localId = createLocalId();
+  const queuedPatient = buildOfflinePatientRecord(localId, data, {
+    county: database.counties.find((county) => county.id === data.county),
+    subCounty: database.subCounties.find((subCounty) => subCounty.id === data.sub_county),
+    ward: typeof data.ward === 'number' ? database.wards.find((ward) => ward.id === data.ward) : null,
+  });
+
+  database.patients = sortPatients([queuedPatient, ...database.patients]);
+  database.queue.push({
+    id: createQueueEntryId(),
+    attempts: 0,
+    created_at: queuedPatient.created_at,
+    entity: 'patient',
+    last_error: null,
+    local_id: localId,
+    operation: 'create',
+    payload: data,
+    status: 'pending',
+  });
+
+  await persistOfflineDatabase(database);
+  return queuedPatient;
+}
+
+export async function queueOfflineEncounterCreate(data: EncounterCreateData): Promise<LocalEncounterRecord> {
+  const database = await getOfflineDatabase();
+  const localId = createLocalId();
+  const patient = database.patients.find((record) => record.id === data.patient) ?? null;
+  const queuedEncounter = buildOfflineEncounterRecord(localId, data, patient);
+
+  database.encounters = sortEncounters([queuedEncounter, ...database.encounters]);
+  database.queue.push({
+    id: createQueueEntryId(),
+    attempts: 0,
+    created_at: queuedEncounter.created_at,
+    entity: 'encounter',
+    last_error: null,
+    local_id: localId,
+    operation: 'create',
+    payload: data,
+    status: 'pending',
+  });
+
+  await persistOfflineDatabase(database);
+  return queuedEncounter;
+}
+
+export async function getPendingSyncQueue(): Promise<SyncQueueEntry[]> {
+  const database = await getOfflineDatabase();
+  return [...database.queue].sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at));
+}
+
+export async function replaceQueuedPatient(localId: number, nextPatient: Parameters<typeof toLocalPatientRecord>[0], syncedAt: string): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    const resolvedPatient = toLocalPatientRecord(nextPatient, syncedAt);
+    database.meta.id_remaps.patients[String(localId)] = resolvedPatient.id;
+    database.patients = sortPatients([
+      resolvedPatient,
+      ...database.patients.filter((patient) => patient.id !== localId && patient.id !== resolvedPatient.id),
+    ]);
+    database.encounters = sortEncounters(
+      database.encounters.map((encounter) => {
+        if (encounter.patient !== localId) {
+          return encounter;
+        }
+
+        return {
+          ...encounter,
+          patient: resolvedPatient.id,
+          patient_id: resolvedPatient.id,
+          patient_name: resolvedPatient.full_name ?? encounter.patient_name,
+          patient_mrn: resolvedPatient.mrn,
+          patient_gender: resolvedPatient.gender,
+          patient_date_of_birth: resolvedPatient.date_of_birth,
+          patient_age: resolvedPatient.age,
+          updated_at: syncedAt,
+        };
+      })
+    );
+    database.queue = database.queue
+      .filter((entry) => !(entry.entity === 'patient' && entry.local_id === localId))
+      .map((entry) => {
+        if (entry.entity !== 'encounter') {
+          return entry;
+        }
+
+        const payload = entry.payload as EncounterCreateData;
+        if (payload.patient !== localId) {
+          return entry;
+        }
+
+        return {
+          ...entry,
+          payload: {
+            ...payload,
+            patient: resolvedPatient.id,
+          },
+        };
+      });
+  });
+}
+
+export async function replaceQueuedEncounter(localId: number, nextEncounter: Parameters<typeof toLocalEncounterRecord>[0], syncedAt: string): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    const resolvedEncounter = toLocalEncounterRecord(nextEncounter, syncedAt);
+    database.meta.id_remaps.encounters[String(localId)] = resolvedEncounter.id;
+    database.encounters = sortEncounters([
+      resolvedEncounter,
+      ...database.encounters.filter((encounter) => encounter.id !== localId && encounter.id !== resolvedEncounter.id),
+    ]);
+    database.queue = database.queue.filter((entry) => !(entry.entity === 'encounter' && entry.local_id === localId));
+  });
+}
+
+export async function updateQueueEntryState(entryId: string, updates: Partial<Pick<SyncQueueEntry, 'attempts' | 'last_error' | 'status'>>): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    database.queue = database.queue.map((entry) => {
+      if (entry.id !== entryId) {
+        return entry;
+      }
+
+      return {
+        ...entry,
+        ...updates,
+      };
+    });
+  });
+}
+
+export async function updateLocalPatientSyncState(localId: number, input: Partial<Pick<LocalPatientRecord, 'sync_error' | 'sync_state'>>): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    database.patients = database.patients.map((patient) => {
+      if (patient.id !== localId) {
+        return patient;
+      }
+
+      return {
+        ...patient,
+        ...input,
+      };
+    });
+  });
+}
+
+export async function updateLocalEncounterSyncState(localId: number, input: Partial<Pick<LocalEncounterRecord, 'sync_error' | 'sync_state'>>): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    database.encounters = database.encounters.map((encounter) => {
+      if (encounter.id !== localId) {
+        return encounter;
+      }
+
+      return {
+        ...encounter,
+        ...input,
+      };
+    });
+  });
+}
+
+export async function setOfflineSyncMetadata(input: Partial<OfflineDatabase['meta']>): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    database.meta = {
+      ...database.meta,
+      ...input,
+      id_remaps: {
+        encounters: input.id_remaps?.encounters ?? database.meta.id_remaps.encounters,
+        patients: input.id_remaps?.patients ?? database.meta.id_remaps.patients,
+      },
+    };
+  });
+}

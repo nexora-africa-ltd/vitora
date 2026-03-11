@@ -17,6 +17,9 @@ lib64/
 # Exception: Allow mobile-app source code
 !mobile-app/lib/
 !mobile-app/__tests__/lib/
+# Exception: Allow Expo mobile source code
+!mobile/lib/
+!mobile/lib/**
 # Exception: Allow web-app source code
 !web-app/lib/
 # Exception: Allow web-app test libraries

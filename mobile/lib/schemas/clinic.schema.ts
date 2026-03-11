@@ -1,0 +1,63 @@
+import { z } from 'zod';
+
+export const ClinicSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  clinic_type: z.string(),
+  clinic_type_display: z.string().optional().nullable(),
+  code: z.string(),
+  location: z.string().optional().nullable(),
+  status: z.string(),
+  is_sensitive: z.boolean(),
+  is_open_today: z.boolean(),
+  is_scheduled_today: z.boolean(),
+});
+
+export const PaginatedClinicSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(ClinicSchema),
+});
+
+export const ClinicVisitSchema = z.object({
+  id: z.number(),
+  session: z.number(),
+  patient: z.object({
+    id: z.number(),
+    mrn: z.string(),
+    full_name: z.string().optional().nullable(),
+  }).optional().nullable(),
+  patient_name: z.string().optional().nullable(),
+  patient_mrn: z.string().optional().nullable(),
+  clinic_name: z.string(),
+  queue_number: z.number(),
+  status: z.string(),
+  status_display: z.string().optional().nullable(),
+  priority: z.string().optional().nullable(),
+  priority_display: z.string().optional().nullable(),
+  visit_type: z.string().optional().nullable(),
+  visit_type_display: z.string().optional().nullable(),
+  source: z.string().optional().nullable(),
+  source_display: z.string().optional().nullable(),
+  source_module: z.string().optional().nullable(),
+  source_record_id: z.number().optional().nullable(),
+  registered_at: z.string().optional().nullable(),
+  called_at: z.string().optional().nullable(),
+  consultation_started_at: z.string().optional().nullable(),
+  completed_at: z.string().optional().nullable(),
+  encounter: z.number().optional().nullable(),
+  triage_assessment: z.number().optional().nullable(),
+  referred_from: z.number().optional().nullable(),
+  referred_to_clinic: z.number().optional().nullable(),
+  referral_reason: z.string().optional().nullable(),
+  assigned_clinician: z.number().optional().nullable(),
+  assigned_clinician_name: z.string().optional().nullable(),
+  registered_by: z.number().optional().nullable(),
+  registered_by_name: z.string().optional().nullable(),
+  chief_complaint: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  wait_time_minutes: z.number().optional().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
