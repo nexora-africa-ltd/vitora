@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, AppPicker, AppTextInput, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { QRScannerDialog } from '@/components/qr-scanner-dialog';
 import type { AppTheme } from '@/constants/theme';
 import { checkinApi } from '@/lib/api/checkin';
 import { clinicsApi } from '@/lib/api/clinics';
@@ -234,8 +235,9 @@ export default function CheckInScreen() {
         <Pill label={selectedPatient ? 'Patient selected' : 'Awaiting patient'} tone={selectedPatient ? 'primary' : 'warning'} />
       </HeroCard>
 
-      <SectionCard title="Find patient" subtitle="Search by MRN, ID, phone number, or name.">
+      <SectionCard title="Find patient" subtitle="Search by MRN, ID, phone number, or name — or scan a QR code.">
         <AppTextInput label="Search patient" value={searchQuery} onChangeText={setSearchQuery} placeholder="Jane Doe, MRN-..., 07..." autoCapitalize="words" />
+        <QRScannerDialog label="Scan patient QR code" onScan={(mrn) => setSearchQuery(mrn)} />
 
         {searchResultsQuery.isFetching || isLookingUpPatient ? <Text style={styles.helperText}>Searching patient records…</Text> : null}
 

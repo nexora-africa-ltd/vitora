@@ -1,25 +1,43 @@
+/**
+ * Vitora brand palette — derived from web-app/globals.css design tokens.
+ *
+ * Primary: Deep Burgundy — professional, authoritative
+ * Secondary: Teal — healthcare trust, calm
+ * Accent: Warm Gold — warmth, Kenya sun
+ */
 export const palette = {
-  sand: '#F4EFE5',
-  parchment: '#FFF9F1',
-  ink: '#13212C',
-  slate: '#5D6B75',
-  teal: '#0F766E',
-  tealDeep: '#0A4F4E',
-  navy: '#17324D',
-  orange: '#E08A5C',
-  orangeDeep: '#A7572F',
-  line: '#DED5C8',
-  success: '#1E8E5A',
-  warning: '#C67A00',
-  danger: '#B9382F',
+  // Backgrounds & surfaces
+  sand: '#EDEAD9',           // hsl(40 41% 93%) — web --background
+  parchment: '#FFFFFF',      // web --card (pure white)
+  ink: '#0B1526',            // hsl(222.2 84% 4.9%) — web --foreground
+  slate: '#64748B',          // hsl(215.4 16.3% 46.9%) — web --muted-foreground
   white: '#FFFFFF',
+
+  // Brand
+  burgundy: '#3D000F',      // hsl(346 100% 12%) — web --primary
+  burgundyDeep: '#2E000B',   // hsl(346 100% 9%) — web --primary-700
+  teal: '#1A4D5C',           // hsl(196 53% 23%) — web --secondary
+  gold: '#D4A574',           // hsl(32 33% 65%) — web --accent
+  goldDeep: '#B8875A',       // hsl(32 33% 51%) — web --accent-700
+
+  // Borders
+  line: '#DDE3EA',           // hsl(214.3 31.8% 91.4%) — web --border
+  lineDark: '#273449',       // hsl(217.2 32.6% 17.5%) — web dark --border
+
+  // Semantic
+  success: '#2E7D4A',       // hsl(145 46% 34%) — web --success
+  warning: '#E6A023',       // hsl(40 96% 53%) — web --warning
+  danger: '#C62828',        // hsl(0 65% 47%) — web --critical
+
+  // Dark-mode surfaces (kept darker for OLED)
   charcoal: '#0F1720',
   graphite: '#162330',
-  midnight: '#0C141C',
-  mist: '#C5D0D8',
-  lineDark: '#274051',
-  tealMist: '#7CC7C1',
-  orangeMist: '#F0B18B',
+  midnight: '#0B1526',       // matches ink / web dark --background
+
+  // Dark-mode foregrounds (slightly boosted for mobile contrast)
+  mist: '#9CAFC0',           // hsl(215 20.2% 65.1%) — web dark --muted-foreground
+  burgundyMist: '#8C3350',   // hsl(346 100% 20%) lightened for dark bg
+  goldMist: '#C4935F',       // hsl(32 33% 55%) — web dark --accent
 };
 
 export const lightTheme = {
@@ -29,10 +47,10 @@ export const lightTheme = {
     elevated: palette.white,
     text: palette.ink,
     mutedText: palette.slate,
-    primary: palette.teal,
-    primaryDark: palette.tealDeep,
-    secondary: palette.navy,
-    accent: palette.orange,
+    primary: palette.burgundy,
+    primaryDark: palette.burgundyDeep,
+    secondary: palette.teal,
+    accent: palette.gold,
     border: palette.line,
     success: palette.success,
     warning: palette.warning,
@@ -58,16 +76,16 @@ export const darkTheme = {
     background: palette.midnight,
     surface: palette.charcoal,
     elevated: palette.graphite,
-    text: '#EEF4F7',
+    text: '#F1F5F9',             // hsl(210 40% 98%) — web dark --foreground
     mutedText: palette.mist,
-    primary: palette.tealMist,
-    primaryDark: palette.teal,
-    secondary: '#8EB9E3',
-    accent: palette.orangeMist,
+    primary: palette.burgundyMist,
+    primaryDark: palette.burgundy,
+    secondary: '#4DA0B8',        // hsl(196 53% 35%) — web dark --secondary
+    accent: palette.goldMist,
     border: palette.lineDark,
-    success: '#4FC485',
-    warning: '#E0AC3A',
-    danger: '#E2786E',
+    success: '#3DA366',          // hsl(145 46% 40%) — web dark --success
+    warning: '#D4930E',          // hsl(40 96% 45%) — web dark --warning
+    danger: '#E2786E',           // softened for dark bg readability
   },
   radius: {
     sm: 12,

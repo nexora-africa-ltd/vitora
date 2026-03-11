@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, DataRow, EmptyState, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { PatientQRCode } from '@/components/patient-qr-code';
 import type { AppTheme } from '@/constants/theme';
 import { getEncounterPillTone, getEncounterStatusLabel } from '@/lib/encounters';
 import { useLocalEncounters } from '@/lib/hooks/use-local-encounters';
@@ -53,6 +54,10 @@ export default function PatientDetailScreen() {
       <SectionCard title="Encounter actions" subtitle="Continue reviewing this patient or start a new visit from the bedside.">
         <AppButton label="Start consultation" onPress={() => router.push(`/checkin?patientId=${patient.id}` as never)} />
         <AppButton label="New encounter for this patient" onPress={() => router.push(`/encounters/new?patientId=${patient.id}` as never)} />
+      </SectionCard>
+
+      <SectionCard title="Patient QR Code" subtitle="Show this code at check-in for fast identification.">
+        <PatientQRCode patientId={patient.id} mrn={patient.mrn} patientName={buildPatientName(patient)} />
       </SectionCard>
 
       <SectionCard title="Demographics">

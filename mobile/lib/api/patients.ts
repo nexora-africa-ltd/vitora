@@ -25,4 +25,9 @@ export const patientsApi = {
     const parsed = parseResponse(PatientEncounterArraySchema, response.data, { context: 'patients.getEncounters' });
     return parsed.results;
   },
+
+  async getQRCode(patientId: number): Promise<{ qr_data_uri: string; qr_payload: string; mrn: string; patient_name: string }> {
+    const response = await apiClient.get(`/api/patients/${patientId}/qr-code/`);
+    return response.data;
+  },
 };

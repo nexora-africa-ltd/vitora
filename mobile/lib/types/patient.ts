@@ -17,10 +17,10 @@ export interface Patient {
   phone_number?: string | null;
   email?: string | null;
   address?: string | null;
-  county: number;
-  county_name?: string;
-  sub_county: number;
-  sub_county_name?: string;
+  county: number | null;
+  county_name?: string | null;
+  sub_county: number | null;
+  sub_county_name?: string | null;
   ward?: number | null;
   ward_name?: string | null;
   village?: string | null;

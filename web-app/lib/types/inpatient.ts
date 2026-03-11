@@ -107,16 +107,16 @@ export interface Admission {
   admitting_officer_username?: string;
   admitted_by_username?: string; // Alias for admitting_officer_username
   attending_doctor?: number | null;
-  attending_doctor_username?: string;
+  attending_doctor_username?: string | null;
   ward: number;
   ward_name?: string;
-  bed: number;
-  bed_number?: string;
+  bed: number | null;
+  bed_number?: string | null;
   admission_status: AdmissionStatus;
   admission_status_display?: string;
   payer_type: AdmissionPayerType;
   payer_type_display?: string;
-  insurance_details?: Record<string, unknown>;
+  insurance_details?: Record<string, unknown> | null;
   // Constraint override fields
   constraint_override?: boolean;
   constraint_override_reason?: string | null;
