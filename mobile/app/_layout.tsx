@@ -6,6 +6,7 @@ import 'react-native-reanimated';
 
 import { AuthProvider } from '@/lib/auth/auth-context';
 import { queryClient } from '@/lib/query/client';
+import { SyncStatusProvider } from '@/lib/sync/status';
 import { AppThemeProvider, useAppTheme } from '@/lib/theme/theme-context';
 
 export const unstable_settings = {
@@ -39,27 +40,29 @@ function RootLayoutContent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider value={navigationTheme}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="sign-in" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="checkin" options={{ presentation: 'card' }} />
-            <Stack.Screen name="encounters/[id]" options={{ presentation: 'card' }} />
-            <Stack.Screen name="encounters/[id]/triage" options={{ presentation: 'card' }} />
-            <Stack.Screen name="encounters/[id]/edit" options={{ presentation: 'card' }} />
-            <Stack.Screen name="encounters/new" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="laboratory/index" options={{ presentation: 'card' }} />
-            <Stack.Screen name="laboratory/[id]" options={{ presentation: 'card' }} />
-            <Stack.Screen name="laboratory/new" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="patients/[id]" options={{ presentation: 'card' }} />
-            <Stack.Screen name="patients/new" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="pharmacy/index" options={{ presentation: 'card' }} />
-            <Stack.Screen name="pharmacy/[id]" options={{ presentation: 'card' }} />
-            <Stack.Screen name="pharmacy/new" options={{ presentation: 'modal' }} />
-          </Stack>
-          <StatusBar style={isDarkMode ? 'light' : 'dark'} />
-        </ThemeProvider>
+        <SyncStatusProvider>
+          <ThemeProvider value={navigationTheme}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="sign-in" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="checkin" options={{ presentation: 'card' }} />
+              <Stack.Screen name="encounters/[id]" options={{ presentation: 'card' }} />
+              <Stack.Screen name="encounters/[id]/triage" options={{ presentation: 'card' }} />
+              <Stack.Screen name="encounters/[id]/edit" options={{ presentation: 'card' }} />
+              <Stack.Screen name="encounters/new" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="laboratory/index" options={{ presentation: 'card' }} />
+              <Stack.Screen name="laboratory/[id]" options={{ presentation: 'card' }} />
+              <Stack.Screen name="laboratory/new" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="patients/[id]" options={{ presentation: 'card' }} />
+              <Stack.Screen name="patients/new" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="pharmacy/index" options={{ presentation: 'card' }} />
+              <Stack.Screen name="pharmacy/[id]" options={{ presentation: 'card' }} />
+              <Stack.Screen name="pharmacy/new" options={{ presentation: 'modal' }} />
+            </Stack>
+            <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+          </ThemeProvider>
+        </SyncStatusProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
