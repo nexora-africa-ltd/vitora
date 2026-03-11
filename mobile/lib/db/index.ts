@@ -7,7 +7,7 @@ import type { PatientCreateData } from '@/lib/types/patient';
 
 import { buildOfflineEncounterRecord, matchesEncounterSearch, sortEncounters, toLocalEncounterRecord } from './models/encounter';
 import { buildOfflinePatientRecord, matchesPatientSearch, sortPatients, toLocalPatientRecord } from './models/patient';
-import { createEmptyOfflineDatabase, OFFLINE_DB_STORAGE_KEY, type LocalEncounterRecord, type LocalPatientRecord, type OfflineDatabase, type SyncQueueEntry } from './schema';
+import { createEmptyOfflineDatabase, CURRENT_SCHEMA_VERSION, OFFLINE_DB_STORAGE_KEY, SCHEMA_MIGRATIONS, type LocalEncounterRecord, type LocalPatientRecord, type OfflineDatabase, type SyncQueueEntry } from './schema';
 
 type PatientListOptions = {
   limit?: number;
@@ -50,24 +50,37 @@ function normalizeDatabase(payload: string | null): OfflineDatabase {
   }
 
   try {
-    const parsed = JSON.parse(payload) as Partial<OfflineDatabase>;
+    const parsed = JSON.parse(payload) as Record<string, unknown>;
+    const storedVersion = (parsed.meta as Record<string, unknown> | undefined)?.schema_version;
+    const version = typeof storedVersion === 'number' ? storedVersion : 1;
+
+    // Run migrations sequentially from stored version to current
+    for (let v = version + 1; v <= CURRENT_SCHEMA_VERSION; v++) {
+      const migration = SCHEMA_MIGRATIONS[v];
+      if (migration) {
+        migration(parsed);
+      }
+    }
+
     const next = createEmptyOfflineDatabase();
+    const typedParsed = parsed as Partial<OfflineDatabase>;
     return {
       ...next,
-      ...parsed,
-      counties: parsed.counties ?? next.counties,
-      diagnoses: parsed.diagnoses ?? next.diagnoses,
-      encounters: parsed.encounters ?? next.encounters,
-      patients: parsed.patients ?? next.patients,
-      queue: parsed.queue ?? next.queue,
-      subCounties: parsed.subCounties ?? next.subCounties,
-      wards: parsed.wards ?? next.wards,
+      ...typedParsed,
+      counties: typedParsed.counties ?? next.counties,
+      diagnoses: typedParsed.diagnoses ?? next.diagnoses,
+      encounters: typedParsed.encounters ?? next.encounters,
+      patients: typedParsed.patients ?? next.patients,
+      queue: typedParsed.queue ?? next.queue,
+      subCounties: typedParsed.subCounties ?? next.subCounties,
+      wards: typedParsed.wards ?? next.wards,
       meta: {
         ...next.meta,
-        ...parsed.meta,
+        ...typedParsed.meta,
+        schema_version: CURRENT_SCHEMA_VERSION,
         id_remaps: {
-          encounters: parsed.meta?.id_remaps?.encounters ?? next.meta.id_remaps.encounters,
-          patients: parsed.meta?.id_remaps?.patients ?? next.meta.id_remaps.patients,
+          encounters: typedParsed.meta?.id_remaps?.encounters ?? next.meta.id_remaps.encounters,
+          patients: typedParsed.meta?.id_remaps?.patients ?? next.meta.id_remaps.patients,
         },
       },
     };
@@ -277,7 +290,9 @@ export async function queueOfflineEncounterCreate(data: EncounterCreateData): Pr
 
 export async function getPendingSyncQueue(): Promise<SyncQueueEntry[]> {
   const database = await getOfflineDatabase();
-  return [...database.queue].sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at));
+  return [...database.queue]
+    .filter((entry) => entry.status !== 'failed')
+    .sort((left, right) => Date.parse(left.created_at) - Date.parse(right.created_at));
 }
 
 export async function replaceQueuedPatient(localId: number, nextPatient: Parameters<typeof toLocalPatientRecord>[0], syncedAt: string): Promise<void> {
@@ -397,5 +412,47 @@ export async function setOfflineSyncMetadata(input: Partial<OfflineDatabase['met
         patients: input.id_remaps?.patients ?? database.meta.id_remaps.patients,
       },
     };
+  });
+}
+
+export async function getConflictAndFailedEntries(): Promise<SyncQueueEntry[]> {
+  const database = await getOfflineDatabase();
+  return database.queue.filter((entry) => entry.status === 'conflict' || entry.status === 'failed');
+}
+
+export async function discardQueueEntry(entryId: string): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    const entry = database.queue.find((e) => e.id === entryId);
+    if (!entry) return;
+
+    // Remove the local record that was never synced
+    if (entry.entity === 'patient') {
+      database.patients = database.patients.filter((p) => p.id !== entry.local_id);
+    } else {
+      database.encounters = database.encounters.filter((e) => e.id !== entry.local_id);
+    }
+
+    database.queue = database.queue.filter((e) => e.id !== entryId);
+  });
+}
+
+export async function retryQueueEntry(entryId: string): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    database.queue = database.queue.map((entry) => {
+      if (entry.id !== entryId) return entry;
+      return { ...entry, attempts: 0, last_error: null, status: 'pending' as const };
+    });
+
+    // Also reset the local record sync state
+    const entry = database.queue.find((e) => e.id === entryId);
+    if (entry?.entity === 'patient') {
+      database.patients = database.patients.map((p) =>
+        p.id === entry.local_id ? { ...p, sync_error: null, sync_state: 'pending_create' as const } : p
+      );
+    } else if (entry?.entity === 'encounter') {
+      database.encounters = database.encounters.map((e) =>
+        e.id === entry.local_id ? { ...e, sync_error: null, sync_state: 'pending_create' as const } : e
+      );
+    }
   });
 }

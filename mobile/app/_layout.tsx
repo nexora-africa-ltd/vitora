@@ -59,6 +59,7 @@ function RootLayoutContent() {
               <Stack.Screen name="pharmacy/index" options={{ presentation: 'card' }} />
               <Stack.Screen name="pharmacy/[id]" options={{ presentation: 'card' }} />
               <Stack.Screen name="pharmacy/new" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="sync/conflicts" options={{ presentation: 'card' }} />
             </Stack>
             <StatusBar style={isDarkMode ? 'light' : 'dark'} />
           </ThemeProvider>

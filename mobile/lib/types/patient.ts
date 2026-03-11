@@ -59,6 +59,7 @@ export interface PatientListParams {
   page_size?: number;
   search?: string;
   ordering?: string;
+  modified_after?: string;
 }
 
 export interface PatientEncounter {

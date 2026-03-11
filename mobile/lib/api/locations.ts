@@ -14,8 +14,18 @@ export const locationsApi = {
     return parseResponse(SubCountyArraySchema, response.data, { context: 'locations.getSubCounties' });
   },
 
+  async getAllSubCounties(): Promise<SubCounty[]> {
+    const response = await apiClient.get('/api/locations/sub-counties/');
+    return parseResponse(SubCountyArraySchema, response.data, { context: 'locations.getAllSubCounties' });
+  },
+
   async getWards(subCountyId: number): Promise<Ward[]> {
     const response = await apiClient.get('/api/locations/wards/', { params: { sub_county: subCountyId } });
     return parseResponse(WardArraySchema, response.data, { context: 'locations.getWards' });
+  },
+
+  async getAllWards(): Promise<Ward[]> {
+    const response = await apiClient.get('/api/locations/wards/');
+    return parseResponse(WardArraySchema, response.data, { context: 'locations.getAllWards' });
   },
 };

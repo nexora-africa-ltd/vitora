@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Vitora Mobile",
-    "slug": "hmis-android",
+    "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -53,9 +53,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "6ba7c6f6-9765-45e5-98c3-00580d8b1c17"
+        "projectId": "0143ad07-d3cc-4e36-a28f-5c78347bdeaa"
       }
     },
-    "owner": "thande788"
+    "owner": "vitora"
   }
 }

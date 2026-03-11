@@ -8,6 +8,7 @@ import { getOfflineSyncSnapshot, runOfflineSync } from './engine';
 type SyncStatusValue = {
   conflictCount: number;
   error: string | null;
+  failedCount: number;
   isHydrating: boolean;
   isOnline: boolean;
   lastSyncedAt: string | null;
@@ -23,6 +24,7 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
   const [status, setStatus] = useState<SyncStatusValue>({
     conflictCount: 0,
     error: null,
+    failedCount: 0,
     isHydrating: true,
     isOnline: false,
     lastSyncedAt: null,
@@ -41,6 +43,7 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
       ...current,
       conflictCount: snapshot.conflictCount,
       error: snapshot.error,
+      failedCount: snapshot.failedCount,
       isHydrating: false,
       isOnline,
       lastSyncedAt: snapshot.lastSyncedAt,
@@ -77,6 +80,7 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
         ...current,
         conflictCount: summary.conflictCount,
         error: summary.error,
+        failedCount: summary.failedCount,
         isHydrating: false,
         isOnline: true,
         lastSyncedAt: summary.lastSyncedAt,
@@ -109,6 +113,7 @@ export function SyncStatusProvider({ children }: { children: React.ReactNode }) 
         ...current,
         conflictCount: 0,
         error: null,
+        failedCount: 0,
         isHydrating: false,
         lastSyncedAt: null,
         pendingCount: 0,

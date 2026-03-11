@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { clearOfflineDatabase, getLocalEncounter, getLocalPatient, listLocalEncounters, listLocalPatients, queueOfflineEncounterCreate, queueOfflinePatientCreate, replaceQueuedPatient, upsertEncounters, upsertPatients, upsertReferenceData } from '@/lib/db';
+import { clearOfflineDatabase, discardQueueEntry, getConflictAndFailedEntries, getLocalEncounter, getLocalPatient, getOfflineDatabase, listLocalEncounters, listLocalPatients, queueOfflineEncounterCreate, queueOfflinePatientCreate, replaceQueuedPatient, retryQueueEntry, updateQueueEntryState, upsertEncounters, upsertPatients, upsertReferenceData } from '@/lib/db';
+import { CURRENT_SCHEMA_VERSION, OFFLINE_DB_STORAGE_KEY } from '@/lib/db/schema';
 
 describe('offline database', () => {
   beforeEach(async () => {
@@ -104,5 +105,162 @@ describe('offline database', () => {
 
     expect(result.count).toBe(1);
     expect(result.records[0]?.id).toBe(201);
+  });
+
+  it('returns empty results when no data is stored', async () => {
+    const patients = await listLocalPatients();
+    const encounters = await listLocalEncounters();
+
+    expect(patients.count).toBe(0);
+    expect(patients.records).toHaveLength(0);
+    expect(encounters.count).toBe(0);
+    expect(encounters.records).toHaveLength(0);
+  });
+
+  it('normalizes corrupt JSON to an empty database', async () => {
+    await AsyncStorage.setItem(OFFLINE_DB_STORAGE_KEY, 'not-json-at-all');
+
+    const database = await getOfflineDatabase();
+
+    expect(database.patients).toHaveLength(0);
+    expect(database.encounters).toHaveLength(0);
+    expect(database.meta.schema_version).toBe(CURRENT_SCHEMA_VERSION);
+  });
+
+  it('runs schema migrations on old data', async () => {
+    // Simulate v1 data (no schema_version field)
+    const v1Data = {
+      counties: [],
+      diagnoses: [],
+      encounters: [],
+      meta: {
+        id_remaps: { encounters: {}, patients: {} },
+        last_pull_at: null,
+        last_push_at: null,
+        last_seeded_at: null,
+        last_successful_sync_at: null,
+        last_sync_error: null,
+      },
+      patients: [],
+      queue: [
+        {
+          id: 'queue-old-1',
+          attempts: 8,
+          created_at: '2026-01-01T00:00:00Z',
+          entity: 'patient',
+          last_error: 'Some error',
+          local_id: -100,
+          operation: 'create',
+          payload: {},
+          status: 'pending',
+        },
+      ],
+      subCounties: [],
+      wards: [],
+    };
+    await AsyncStorage.setItem(OFFLINE_DB_STORAGE_KEY, JSON.stringify(v1Data));
+
+    const database = await getOfflineDatabase();
+
+    // Migration v2 should set schema_version and mark excessively-attempted entries as failed
+    expect(database.meta.schema_version).toBe(CURRENT_SCHEMA_VERSION);
+    expect(database.queue[0]?.status).toBe('failed');
+  });
+
+  it('upserts reference data including sub-counties and wards', async () => {
+    await upsertReferenceData({
+      counties: [{ id: 1, code: 1, name: 'Nairobi' }],
+      subCounties: [{ id: 10, county: 1, name: 'Westlands' }, { id: 11, county: 1, name: 'Langata' }],
+      wards: [{ id: 100, sub_county: 10, name: 'Kitisuru' }],
+    });
+
+    const database = await getOfflineDatabase();
+
+    expect(database.counties).toHaveLength(1);
+    expect(database.subCounties).toHaveLength(2);
+    expect(database.wards).toHaveLength(1);
+  });
+
+  it('returns conflict and failed queue entries', async () => {
+    await upsertReferenceData({
+      counties: [{ id: 1, code: 1, name: 'Nairobi' }],
+      subCounties: [{ id: 10, county: 1, name: 'Westlands' }],
+    });
+
+    const patient = await queueOfflinePatientCreate({
+      first_name: 'Test',
+      last_name: 'User',
+      date_of_birth: '1990-01-01',
+      gender: 'M',
+      county: 1,
+      sub_county: 10,
+      referral_source: 'self',
+    });
+
+    // Mark entry as conflict
+    const database = await getOfflineDatabase();
+    const entryId = database.queue[0]!.id;
+    await updateQueueEntryState(entryId, { status: 'conflict', last_error: 'Conflict detected' });
+
+    const issues = await getConflictAndFailedEntries();
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.status).toBe('conflict');
+  });
+
+  it('discards a queue entry and removes the associated local record', async () => {
+    await upsertReferenceData({
+      counties: [{ id: 1, code: 1, name: 'Nairobi' }],
+      subCounties: [{ id: 10, county: 1, name: 'Westlands' }],
+    });
+
+    const patient = await queueOfflinePatientCreate({
+      first_name: 'ToDiscard',
+      last_name: 'Patient',
+      date_of_birth: '1990-01-01',
+      gender: 'F',
+      county: 1,
+      sub_county: 10,
+      referral_source: 'self',
+    });
+
+    let database = await getOfflineDatabase();
+    const entryId = database.queue[0]!.id;
+
+    await discardQueueEntry(entryId);
+
+    database = await getOfflineDatabase();
+    expect(database.queue).toHaveLength(0);
+    expect(database.patients.find((p) => p.id === patient.id)).toBeUndefined();
+  });
+
+  it('retries a failed queue entry by resetting attempts and status', async () => {
+    await upsertReferenceData({
+      counties: [{ id: 1, code: 1, name: 'Nairobi' }],
+      subCounties: [{ id: 10, county: 1, name: 'Westlands' }],
+    });
+
+    await queueOfflinePatientCreate({
+      first_name: 'Retry',
+      last_name: 'Patient',
+      date_of_birth: '1990-01-01',
+      gender: 'M',
+      county: 1,
+      sub_county: 10,
+      referral_source: 'self',
+    });
+
+    let database = await getOfflineDatabase();
+    const entryId = database.queue[0]!.id;
+
+    // Mark as failed with high attempt count
+    await updateQueueEntryState(entryId, { status: 'failed', attempts: 5, last_error: 'Permanently failed' });
+
+    await retryQueueEntry(entryId);
+
+    database = await getOfflineDatabase();
+    const entry = database.queue.find((e) => e.id === entryId);
+    expect(entry?.status).toBe('pending');
+    expect(entry?.attempts).toBe(0);
+    expect(entry?.last_error).toBeNull();
   });
 });

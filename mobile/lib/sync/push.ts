@@ -7,8 +7,11 @@ import type { PatientCreateData } from '@/lib/types/patient';
 
 import { getSyncFailureMessage, isConflictError, isOfflineSyncError } from './conflicts';
 
+const MAX_SYNC_ATTEMPTS = 5;
+
 type PushSummary = {
   conflicts: number;
+  failed: number;
   pushed: number;
 };
 
@@ -16,11 +19,40 @@ export async function pushPendingSyncQueue(): Promise<PushSummary> {
   const queue = await getPendingSyncQueue();
   let pushed = 0;
   let conflicts = 0;
+  let failed = 0;
   const pushedAt = new Date().toISOString();
 
   for (const queuedEntry of queue) {
     const latestEntry = (await getPendingSyncQueue()).find((entry) => entry.id === queuedEntry.id);
     if (!latestEntry) {
+      continue;
+    }
+
+    // Skip permanently failed entries
+    if (latestEntry.status === 'failed') {
+      continue;
+    }
+
+    // Check if max retries exceeded
+    if (latestEntry.attempts >= MAX_SYNC_ATTEMPTS) {
+      await updateQueueEntryState(latestEntry.id, {
+        last_error: `Permanently failed after ${MAX_SYNC_ATTEMPTS} attempts.`,
+        status: 'failed',
+      });
+
+      if (latestEntry.entity === 'patient') {
+        await updateLocalPatientSyncState(latestEntry.local_id, {
+          sync_error: `Permanently failed after ${MAX_SYNC_ATTEMPTS} attempts.`,
+          sync_state: 'sync_error',
+        });
+      } else {
+        await updateLocalEncounterSyncState(latestEntry.local_id, {
+          sync_error: `Permanently failed after ${MAX_SYNC_ATTEMPTS} attempts.`,
+          sync_state: 'sync_error',
+        });
+      }
+
+      failed += 1;
       continue;
     }
 
@@ -85,5 +117,5 @@ export async function pushPendingSyncQueue(): Promise<PushSummary> {
     last_push_at: pushedAt,
   });
 
-  return { conflicts, pushed };
+  return { conflicts, failed, pushed };
 }
