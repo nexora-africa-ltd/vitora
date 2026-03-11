@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { EmptyState, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { AppButton, EmptyState, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
 import { inpatientApi } from '@/lib/api/inpatient';
 import { useAppTheme } from '@/lib/theme/theme-context';
@@ -41,6 +41,12 @@ export default function AdmissionsListScreen() {
         eyebrow="Inpatient"
         title="Admissions"
         description="Active admissions. Tap a patient to view details, round notes, and manage discharge."
+      />
+
+      <AppButton
+        label="Admit new patient"
+        onPress={() => router.push('/inpatient/admissions/new' as never)}
+        variant="primary"
       />
 
       {admissionsQuery.isLoading && <LoadingState message="Loading admissions..." />}

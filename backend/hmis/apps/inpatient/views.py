@@ -27,6 +27,7 @@ from .models import (
     InpatientConsumableUsage,
     KardexHandoverNote,
     KardexShiftNote,
+    MedicationAdministration,
     NursingCarePlanEntry,
     NursingKardex,
     ReviewRequest,
@@ -71,6 +72,9 @@ from .serializers import (
     TransfusionObservationEntrySerializer,
     WardRoundSerializer,
     WardUpdatesResponseSerializer,
+    MedicationAdministrationSerializer,
+    MedicationAdministrationCreateSerializer,
+    MedicationAdministrationActionSerializer,
 )
 from .services.bed_assignment import NoBedAvailableError, bed_assignment_service
 from .services.compatibility import ward_compatibility_service
@@ -2202,3 +2206,99 @@ class BPMonitoringViewSet(viewsets.ModelViewSet):
             },
             ip_address=get_client_ip(self.request),
         )
+
+
+class MedicationAdministrationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Medication Administration Record (MAR) entries.
+
+    Provides CRUD for MAR entries linked to admissions and
+    prescription items. Supports filtering by admission and status.
+    """
+
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ["admission", "status", "prescription_item"]
+    ordering_fields = ["scheduled_time", "created_at"]
+    ordering = ["-scheduled_time"]
+
+    def get_queryset(self):
+        return MedicationAdministration.objects.select_related(
+            "admission",
+            "admission__patient",
+            "prescription_item",
+            "prescription_item__drug",
+            "administered_by",
+        )
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return MedicationAdministrationCreateSerializer
+        if self.action == "record_administration":
+            return MedicationAdministrationActionSerializer
+        return MedicationAdministrationSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Return the full read serializer after creating a MAR entry."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        instance = self.get_queryset().get(pk=serializer.instance.pk)
+        output_serializer = MedicationAdministrationSerializer(instance)
+        return Response(output_serializer.data, status=status.HTTP_201_CREATED)
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="medication_administration_create",
+            user=self.request.user,
+            resource_type="MedicationAdministration",
+            resource_id=instance.id,
+            details={
+                "admission_id": instance.admission_id,
+                "prescription_item_id": instance.prescription_item_id,
+                "scheduled_time": str(instance.scheduled_time),
+            },
+            ip_address=get_client_ip(self.request),
+        )
+
+    @action(detail=True, methods=["post"], url_path="record")
+    def record_administration(self, request, pk=None):
+        """Record that a dose was given, skipped, refused, held, or vomited."""
+        mar_entry = self.get_object()
+        serializer = MedicationAdministrationActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        new_status = serializer.validated_data["status"]
+        dose_given = serializer.validated_data.get("dose_given", "")
+        notes = serializer.validated_data.get("notes", "")
+
+        if new_status == "GIVEN":
+            mar_entry.administer(user=request.user, dose_given=dose_given, notes=notes)
+        else:
+            from django.utils import timezone as tz
+
+            mar_entry.status = new_status
+            mar_entry.actual_time = tz.now()
+            mar_entry.administered_by = request.user
+            if notes:
+                mar_entry.notes = notes
+            mar_entry.save(
+                update_fields=["status", "actual_time", "administered_by", "notes", "updated_at"]
+            )
+
+        AuditLog.log(
+            action="medication_administration_record",
+            user=request.user,
+            resource_type="MedicationAdministration",
+            resource_id=mar_entry.id,
+            details={
+                "admission_id": mar_entry.admission_id,
+                "new_status": new_status,
+                "dose_given": dose_given,
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        refreshed = self.get_queryset().get(pk=mar_entry.pk)
+        return Response(MedicationAdministrationSerializer(refreshed).data)

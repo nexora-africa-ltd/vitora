@@ -1,13 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import {
   AppButton,
+  AppPicker,
   AppTextInput,
   DataRow,
   LoadingState,
+  Pill,
   ScreenContainer,
   SectionCard,
 } from '@/components/app-ui';
@@ -15,6 +17,22 @@ import type { AppTheme } from '@/constants/theme';
 import { nursingApi } from '@/lib/api/nursing';
 import { useAppTheme } from '@/lib/theme/theme-context';
 import type { WardRound } from '@/lib/types/inpatient';
+
+type ConditionStatus = 'STABLE' | 'IMPROVING' | 'DETERIORATING' | 'CRITICAL';
+
+const CONDITION_STATUS_ITEMS: { label: string; value: ConditionStatus }[] = [
+  { label: 'Stable', value: 'STABLE' },
+  { label: 'Improving', value: 'IMPROVING' },
+  { label: 'Deteriorating', value: 'DETERIORATING' },
+  { label: 'Critical', value: 'CRITICAL' },
+];
+
+const CONDITION_TONE: Record<string, 'primary' | 'warning' | 'danger' | 'neutral'> = {
+  STABLE: 'neutral',
+  IMPROVING: 'primary',
+  DETERIORATING: 'warning',
+  CRITICAL: 'danger',
+};
 
 export default function WardRoundsScreen() {
   const { admission } = useLocalSearchParams<{ admission: string }>();
@@ -34,6 +52,7 @@ export default function WardRoundsScreen() {
   const [objective, setObjective] = useState('');
   const [assessment, setAssessment] = useState('');
   const [plan, setPlan] = useState('');
+  const [conditionStatus, setConditionStatus] = useState<ConditionStatus>('STABLE');
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -45,6 +64,7 @@ export default function WardRoundsScreen() {
         objective: objective || undefined,
         assessment: assessment || undefined,
         plan: plan || undefined,
+        condition_status: conditionStatus,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inpatient', 'ward-rounds', admission] });
@@ -76,6 +96,12 @@ export default function WardRoundsScreen() {
           <AppTextInput label="Objective" value={objective} onChangeText={setObjective} placeholder="Clinical findings, vitals, exam..." multiline />
           <AppTextInput label="Assessment" value={assessment} onChangeText={setAssessment} placeholder="Clinical assessment..." multiline />
           <AppTextInput label="Plan" value={plan} onChangeText={setPlan} placeholder="Treatment plan, orders, follow-up..." multiline />
+          <AppPicker
+            label="Condition status"
+            selectedValue={conditionStatus}
+            items={CONDITION_STATUS_ITEMS}
+            onValueChange={setConditionStatus}
+          />
           <AppButton
             label={createMutation.isPending ? 'Saving...' : 'Save round'}
             onPress={() => createMutation.mutate()}
@@ -109,7 +135,12 @@ function RoundCard({ round, styles, theme }: { round: WardRound; styles: ReturnT
       {round.objective && <DataRow label="O — Objective" value={round.objective} />}
       {round.assessment && <DataRow label="A — Assessment" value={round.assessment} />}
       {round.plan && <DataRow label="P — Plan" value={round.plan} />}
-      {round.condition_status && <DataRow label="Condition" value={round.condition_status} />}
+      {round.condition_status && (
+        <View style={styles.conditionRow}>
+          <Text style={styles.conditionLabel}>Condition</Text>
+          <Pill label={round.condition_status} tone={CONDITION_TONE[round.condition_status] ?? 'neutral'} />
+        </View>
+      )}
     </SectionCard>
   );
 }
@@ -120,6 +151,17 @@ function createStyles(theme: AppTheme) {
       color: theme.colors.mutedText,
       fontSize: 13,
       fontWeight: '600',
+    },
+    conditionRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 8,
+      paddingTop: 4,
+    },
+    conditionLabel: {
+      color: theme.colors.mutedText,
+      fontSize: 13,
+      fontWeight: '500',
     },
   });
 }

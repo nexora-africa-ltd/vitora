@@ -1,5 +1,6 @@
 import type { County, SubCounty, Ward } from '@/lib/types/location';
 import type { Encounter } from '@/lib/types/encounter';
+import type { Admission, InpatientWard } from '@/lib/types/inpatient';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { Patient, PatientCreateData } from '@/lib/types/patient';
 import type { Prescription } from '@/lib/types/pharmacy';
@@ -11,7 +12,7 @@ export const OFFLINE_DB_STORAGE_KEY = 'vitora.mobile.offline-db.v1';
  * Current schema version. Increment when the OfflineDatabase shape changes.
  * Each bump must have a corresponding entry in SCHEMA_MIGRATIONS.
  */
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 export type LocalSyncState = 'synced' | 'pending_create' | 'sync_error' | 'conflict';
 export type SyncQueueStatus = 'pending' | 'syncing' | 'conflict' | 'failed';
@@ -66,9 +67,11 @@ export type OfflineDatabaseMeta = {
 };
 
 export type OfflineDatabase = {
+  admissions: Admission[];
   counties: County[];
   diagnoses: LocalDiagnosisRecord[];
   encounters: LocalEncounterRecord[];
+  inpatientWards: InpatientWard[];
   labOrders: LocalLabOrderRecord[];
   meta: OfflineDatabaseMeta;
   patients: LocalPatientRecord[];
@@ -80,9 +83,11 @@ export type OfflineDatabase = {
 
 export function createEmptyOfflineDatabase(): OfflineDatabase {
   return {
+    admissions: [],
     counties: [],
     diagnoses: [],
     encounters: [],
+    inpatientWards: [],
     labOrders: [],
     meta: {
       id_remaps: {
@@ -133,6 +138,19 @@ export const SCHEMA_MIGRATIONS: Record<number, (db: Record<string, unknown>) => 
 
     if (!Array.isArray(db.prescriptions)) {
       db.prescriptions = [];
+    }
+  },
+  4: (db) => {
+    // v3 → v4: add inpatient wards and admissions arrays for offline inpatient data
+    const meta = (db.meta ?? {}) as Record<string, unknown>;
+    meta.schema_version = 4;
+
+    if (!Array.isArray(db.inpatientWards)) {
+      db.inpatientWards = [];
+    }
+
+    if (!Array.isArray(db.admissions)) {
+      db.admissions = [];
     }
   },
 };

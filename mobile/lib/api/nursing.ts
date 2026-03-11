@@ -3,9 +3,11 @@ import {
   FluidBalanceEntrySchema,
   FluidBalanceSheetSchema,
   KardexShiftNoteSchema,
+  MedicationAdministrationSchema,
   NursingCarePlanEntrySchema,
   NursingKardexSchema,
   PaginatedFluidBalanceSheetSchema,
+  PaginatedMedicationAdministrationSchema,
   PaginatedTemperatureReadingSchema,
   PaginatedWardRoundSchema,
   TemperatureReadingSchema,
@@ -19,6 +21,10 @@ import type {
   FluidBalanceEntryCreateData,
   FluidBalanceSheet,
   KardexShiftNote,
+  MARActionData,
+  MARListParams,
+  MedicationAdministration,
+  MedicationAdministrationCreateData,
   NursingCarePlanEntry,
   NursingKardex,
   ShiftNoteCreateData,
@@ -95,5 +101,22 @@ export const nursingApi = {
   async createFluidBalanceEntry(data: FluidBalanceEntryCreateData): Promise<FluidBalanceEntry> {
     const response = await apiClient.post('/api/inpatient/fluid-balance-entries/', data);
     return parseResponse(FluidBalanceEntrySchema, response.data, { context: 'nursing.createFluidBalanceEntry' });
+  },
+
+  // ── Medication Administration (MAR) ──
+
+  async listMedicationAdministrations(params: MARListParams = {}): Promise<PaginatedResponse<MedicationAdministration>> {
+    const response = await apiClient.get('/api/inpatient/medication-administrations/', { params });
+    return parseResponse(PaginatedMedicationAdministrationSchema, response.data, { context: 'nursing.listMedicationAdministrations' });
+  },
+
+  async createMedicationAdministration(data: MedicationAdministrationCreateData): Promise<MedicationAdministration> {
+    const response = await apiClient.post('/api/inpatient/medication-administrations/', data);
+    return parseResponse(MedicationAdministrationSchema, response.data, { context: 'nursing.createMedicationAdministration' });
+  },
+
+  async recordAdministration(id: number, data: MARActionData): Promise<MedicationAdministration> {
+    const response = await apiClient.post(`/api/inpatient/medication-administrations/${id}/record/`, data);
+    return parseResponse(MedicationAdministrationSchema, response.data, { context: 'nursing.recordAdministration' });
   },
 };

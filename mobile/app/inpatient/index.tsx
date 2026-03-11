@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { EmptyState, HeroCard, LoadingState, MetricCard, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { EmptyState, AppButton, HeroCard, LoadingState, MetricCard, ScreenContainer, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
 import { inpatientApi } from '@/lib/api/inpatient';
 import { useAppTheme } from '@/lib/theme/theme-context';
@@ -46,6 +46,14 @@ export default function WardListScreen() {
         title="Wards"
         description="View ward occupancy, bed availability, and manage admissions."
       />
+
+      <View style={styles.topActions}>
+        <AppButton
+          label="Admit patient"
+          onPress={() => router.push('/inpatient/admissions/new' as never)}
+          variant="primary"
+        />
+      </View>
 
       <View style={styles.metricsRow}>
         <View style={styles.metricItem}>
@@ -116,6 +124,9 @@ function createStyles(theme: AppTheme) {
     },
     metricItem: {
       flex: 1,
+    },
+    topActions: {
+      gap: theme.spacing.sm,
     },
     wardRow: {
       alignItems: 'center',
