@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { usePermissions } from '@/lib/hooks/use-permissions';
-import { useFacility, type FacilityContextValue } from '@/lib/context/facility-context';
+import { useFacility } from '@/lib/context/facility-context';
 import type { FacilityModules } from '@/lib/auth/context';
 import type { ModuleKey } from '@/lib/permissions/constants';
 import type { ActionKey } from '@/lib/permissions/actions';
