@@ -166,13 +166,13 @@ export function usePermissions(): PermissionsResult {
     if (isSuperuser) return true;
 
     const requiredPerm = MODULE_PERMISSIONS[module];
-    if (!requiredPerm) return true; // null = no permission required (e.g. dashboard)
+    if (requiredPerm === null) return true; // null = no permission required (e.g. dashboard)
 
-    if (Array.isArray(requiredPerm)) {
-      return requiredPerm.some((permission) => hasPermission(permission));
+    if (typeof requiredPerm === 'string') {
+      return hasPermission(requiredPerm);
     }
 
-    return hasPermission(requiredPerm);
+    return requiredPerm.some((permission) => hasPermission(permission));
   }, [isAuthenticated, isSuperuser, hasPermission]);
 
   const canPerformAction = useCallback((action: ActionKey): boolean => {
