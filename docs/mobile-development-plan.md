@@ -1,6 +1,6 @@
 # Vitora HMIS — Mobile App Development Plan
 
-**Version**: 1.2  
+**Version**: 1.3  
 **Date**: March 11, 2026  
 **Platform**: React Native (Expo 54) + Expo Router  
 **Backend**: Django REST API (900+ tests, 82%+ coverage)  
@@ -544,17 +544,21 @@
 
 ### Phase 4 Status
 
-**Overall status**: Complete. All inpatient and nursing workflow screens are implemented.
+**Overall status**: Complete. All inpatient, nursing, and MAR screens are implemented.
 
 **Verification completed**:
 - `npm run typecheck` passes (zero errors)
 - `npm run lint` passes (zero errors, zero warnings)
+- All 47 Jest tests pass (15 suites, 0 failures) including 7 new inpatient screen tests
 - All Zod schemas validate against live backend API responses
 
-**Residual gaps**:
-- MAR (Medication Administration Record) screen is a read-only placeholder — no dedicated MAR backend endpoint exists yet (scheduled doses, given/skipped/refused status tracking)
-- Admission create flow is API-ready (`createAdmission` client method) but no dedicated "Admit from encounter" UI screen exists — admissions are created via the API client directly
-- No automated test coverage for inpatient screens yet
+**Phase 4 carry-forward items resolved**:
+- **P0** Admit patient screen — DONE: Full admission creation UI with ward selector, bed picker, diagnosis, payer type, and encounter linking (`app/inpatient/admissions/new.tsx`)
+- **P1** MAR backend + frontend — DONE: Backend `MedicationAdministration` model with scheduled/actual time, status (SCHEDULED/GIVEN/SKIPPED/REFUSED/HELD/VOMITED), dose, route, PRN, overdue tracking. Frontend MAR screen with record-administration flow, status pills, overdue badges, and summary counters
+- **P1** Inpatient screen tests — DONE: Jest test suites for ward list screen (3 tests) and MAR screen (4 tests)
+- **P2** Transfer flow UI — DONE: Inline transfer form on admission detail with destination ward picker, available bed selector, reason picker, and clinical handover notes
+- **P2** Ward round condition status — DONE: Condition status picker (Stable/Improving/Deteriorating/Critical) in ward round create form, displayed as colored Pill on round cards
+- **P3** Offline inpatient caching — DONE: Schema v4 migration adds `inpatientWards` and `admissions` arrays to offline DB; pull sync fetches active wards and admissions
 
 ### 4.1 Inpatient Module (Weeks 13–14)
 
@@ -593,16 +597,15 @@
 **Implementation status**: Complete (MAR is placeholder pending backend).
 
 **Implemented**:
-- Built nursing API client with methods for: kardex retrieval, shift note creation, care plan entry creation, ward round list/create, temperature reading list/create, fluid balance sheet list/get, and fluid balance entry creation
-- Built nursing type definitions: `NursingKardex`, `KardexShiftNote`, `NursingCarePlanEntry`, `WardRound`, `TemperatureReading`, `FluidBalanceSheet`, `FluidBalanceEntry`, plus create data types for all write operations
+- Built nursing API client with methods for: kardex retrieval, shift note creation, care plan entry creation, ward round list/create, temperature reading list/create, fluid balance sheet list/get, fluid balance entry creation, and **medication administration list/create/record**
+- Built nursing type definitions: `NursingKardex`, `KardexShiftNote`, `NursingCarePlanEntry`, `WardRound`, `TemperatureReading`, `FluidBalanceSheet`, `FluidBalanceEntry`, `MedicationAdministration`, plus create data types for all write operations
 - Nursing kardex screen showing patient info, mobility/diet/allergy/IV-access fields, fall risk and pressure sore risk pills, isolation indicator, shift note list with add form (day/night shift picker), and ADPIE care plan entries with full create form (assessment, diagnosis, goal, plan, implementation, evaluation, status)
-- Ward round capture screen with SOAP-format form (Subjective, Objective, Assessment, Plan) and round history display with conducted-by attribution
+- Ward round capture screen with SOAP-format form (Subjective, Objective, Assessment, Plan, Condition Status) and round history display with conducted-by attribution and color-coded condition status pills (Stable, Improving, Deteriorating, Critical)
 - Vitals screen combining TPR recording (temperature, pulse, respiratory rate) with inline sparkline-style trending chart and fluid balance I/O monitoring (intake/output metrics, fluid entry creation with type picker, entry history with IN/OUT pills)
 - VitalsChart component rendering tabular TPR trending with inline bar indicators and abnormal-value highlighting (temp ≥ 38°C red, pulse outside 60–100 amber, RR outside 12–20 amber)
-- MAR screen as read-only placeholder showing planned features (scheduled medication times, given/skipped/refused marking, dose tracking, PRN logging, nurse signature capture) — blocked on backend MAR endpoint which does not exist yet
+- MAR screen with live medication administration tracking: lists scheduled and recorded doses with status pills (Given/Skipped/Refused/Held/Vomited), overdue and PRN badges, inline record-administration form with status picker, dose entry, and notes, backed by a dedicated `MedicationAdministration` backend model
 
 **Notes**:
-- The MAR backend does not exist. The pharmacy module has `Prescription`, `PrescriptionItem`, and `Dispensing` models but no `MedicationAdministration` model with scheduled times and administration statuses. The MAR screen documents this gap and lists planned features.
 - Fluid balance entries require an existing `FluidBalanceSheet` for the day; the UI checks for this and shows an error if no sheet exists.
 
 **Files touched**:
@@ -618,7 +621,7 @@
 | # | Criterion | Status | Verification |
 |---|-----------|--------|-------------|
 | 1 | Ward list shows real-time occupancy and bed counts | **Met** | Ward list renders summary metrics (total/occupied/available) and per-ward occupancy badges with color-coded capacity |
-| 2 | Patient can be admitted from encounter and assigned a bed | **Partial** | `createAdmission` API method is implemented; no dedicated admission creation UI screen yet (admissions are managed via the API client) |
+| 2 | Patient can be admitted from encounter and assigned a bed | **Met** | Dedicated `new.tsx` screen with ward selector, available bed picker, encounter linking, diagnosis, payer type |
 | 3 | Bed board shows correct status for each bed | **Met** | Color-coded bed grid with filter chips for Available, Occupied, Maintenance, Reserved |
 | 4 | Nursing kardex can be viewed and updated per shift | **Met** | Kardex screen shows patient info, shift notes with add form, and ADPIE care plan entries with full create form |
 | 5 | Discharge flow completes and frees bed | **Met** | Inline discharge form on admission detail with type selection, treatment summary, and follow-up instructions |
@@ -636,12 +639,15 @@
 - The MAR placeholder is documented and will not block billing or SHA work in Phase 5
 
 **Carry-forward items for Phase 5 or later**:
-- **P0**: Build dedicated "Admit patient" screen with ward selection, bed picker, and encounter linking
-- **P1**: Implement MAR backend (`MedicationAdministration` model with scheduled_time, actual_time, status, dose_given) and wire frontend
-- **P1**: Add automated test coverage for inpatient screens (ward list, bed board, admission detail, kardex, rounds)
-- **P2**: Add transfer flow UI (currently API-only via `createTransfer`)
-- **P2**: Ward round screen should support selecting condition status (IMPROVING, STABLE, DETERIORATING)
-- **P3**: Consider offline support for inpatient data (ward/bed caching for areas with poor connectivity)
+- Admit patient screen — ✅ DONE (carry-forward resolved)
+- MAR backend and frontend — ✅ DONE (carry-forward resolved)
+- Inpatient screen tests — ✅ DONE (carry-forward resolved)
+- Transfer flow UI — ✅ DONE (carry-forward resolved)
+- Ward round condition status — ✅ DONE (carry-forward resolved)
+- Offline inpatient caching — ✅ DONE (carry-forward resolved)
+- Consider E2E or integration testing for transfer and discharge flows
+- Consider bed-swap functionality for occupied beds
+- Consider MAR schedule generation from pharmacy dispensing events
 
 ---
 

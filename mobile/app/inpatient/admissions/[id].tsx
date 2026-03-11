@@ -17,7 +17,16 @@ import type { AppTheme } from '@/constants/theme';
 import { inpatientApi } from '@/lib/api/inpatient';
 import { nursingApi } from '@/lib/api/nursing';
 import { useAppTheme } from '@/lib/theme/theme-context';
-import type { AdmissionStatus, DischargeType } from '@/lib/types/inpatient';
+import type { AdmissionStatus, DischargeType, InpatientWard } from '@/lib/types/inpatient';
+
+const TRANSFER_REASONS: { label: string; value: string }[] = [
+  { label: 'Clinical need', value: 'CLINICAL' },
+  { label: 'Bed management', value: 'BED_MANAGEMENT' },
+  { label: 'Patient request', value: 'PATIENT_REQUEST' },
+  { label: 'Step down', value: 'STEP_DOWN' },
+  { label: 'Step up / escalation', value: 'STEP_UP' },
+  { label: 'Other', value: 'OTHER' },
+];
 
 const STATUS_TONE: Record<AdmissionStatus, 'primary' | 'warning' | 'danger' | 'neutral'> = {
   ACTIVE: 'primary',
@@ -59,6 +68,54 @@ export default function AdmissionDetailScreen() {
   const [dischargeType, setDischargeType] = useState<DischargeType>('NORMAL');
   const [treatmentSummary, setTreatmentSummary] = useState('');
   const [followUpInstructions, setFollowUpInstructions] = useState('');
+
+  // ── Transfer form ──
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferWardId, setTransferWardId] = useState<number | null>(null);
+  const [transferBedId, setTransferBedId] = useState<number | null>(null);
+  const [transferReason, setTransferReason] = useState('CLINICAL');
+  const [transferNotes, setTransferNotes] = useState('');
+
+  const wardsQuery = useQuery({
+    queryKey: ['inpatient', 'wards', 'active'],
+    queryFn: () => inpatientApi.listWards({ is_active: true, page_size: 100 }),
+    enabled: showTransfer,
+  });
+
+  const transferBedsQuery = useQuery({
+    queryKey: ['inpatient', 'ward', transferWardId, 'beds'],
+    queryFn: () => inpatientApi.getWardBeds(transferWardId!),
+    enabled: transferWardId != null,
+  });
+
+  const transferableWards = (wardsQuery.data?.results ?? []).filter(
+    (w: InpatientWard) => w.id !== admission?.ward
+  );
+  const transferableBeds = (transferBedsQuery.data?.results ?? []).filter(
+    (b) => b.status === 'AVAILABLE'
+  );
+
+  const transferMutation = useMutation({
+    mutationFn: () =>
+      inpatientApi.createTransfer({
+        admission: Number(id),
+        destination_ward: transferWardId!,
+        destination_bed: transferBedId ?? undefined,
+        reason: transferReason,
+        clinical_handover_notes: transferNotes || undefined,
+      }),
+    onSuccess: () => {
+      Alert.alert('Transferred', 'Patient has been transferred successfully.');
+      queryClient.invalidateQueries({ queryKey: ['inpatient'] });
+      setShowTransfer(false);
+      setTransferWardId(null);
+      setTransferBedId(null);
+      setTransferNotes('');
+    },
+    onError: () => {
+      Alert.alert('Error', 'Failed to transfer patient. Please try again.');
+    },
+  });
 
   const dischargeMutation = useMutation({
     mutationFn: () =>
@@ -148,11 +205,69 @@ export default function AdmissionDetailScreen() {
               variant="secondary"
             />
             <AppButton
+              label={showTransfer ? 'Cancel transfer' : 'Transfer patient'}
+              onPress={() => {
+                setShowTransfer(!showTransfer);
+                if (showDischarge) setShowDischarge(false);
+              }}
+              variant={showTransfer ? 'ghost' : 'secondary'}
+            />
+            <AppButton
               label={showDischarge ? 'Cancel discharge' : 'Discharge patient'}
-              onPress={() => setShowDischarge(!showDischarge)}
+              onPress={() => {
+                setShowDischarge(!showDischarge);
+                if (showTransfer) setShowTransfer(false);
+              }}
               variant={showDischarge ? 'ghost' : 'danger'}
             />
           </View>
+        </SectionCard>
+      )}
+
+      {/* Transfer form */}
+      {showTransfer && (
+        <SectionCard title="Transfer" subtitle="Move patient to another ward.">
+          <AppPicker
+            label="Destination ward"
+            selectedValue={transferWardId}
+            items={transferableWards.map((w: InpatientWard) => ({
+              label: `${w.name} (${w.available_beds} available)`,
+              value: w.id,
+            }))}
+            onValueChange={(v: number) => {
+              setTransferWardId(v);
+              setTransferBedId(null);
+            }}
+          />
+          {transferWardId != null && transferableBeds.length > 0 && (
+            <AppPicker
+              label="Destination bed (optional)"
+              selectedValue={transferBedId}
+              items={transferableBeds.map((b) => ({
+                label: `${b.bed_number}${b.bed_type ? ` — ${b.bed_type}` : ''}`,
+                value: b.id,
+              }))}
+              onValueChange={setTransferBedId}
+            />
+          )}
+          <AppPicker
+            label="Reason"
+            selectedValue={transferReason}
+            items={TRANSFER_REASONS}
+            onValueChange={setTransferReason}
+          />
+          <AppTextInput
+            label="Clinical handover notes"
+            value={transferNotes}
+            onChangeText={setTransferNotes}
+            placeholder="Key clinical information for the receiving ward..."
+            multiline
+          />
+          <AppButton
+            label={transferMutation.isPending ? 'Transferring...' : 'Confirm transfer'}
+            onPress={() => transferMutation.mutate()}
+            disabled={transferMutation.isPending || !transferWardId}
+          />
         </SectionCard>
       )}
 

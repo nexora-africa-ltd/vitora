@@ -23,6 +23,7 @@ from .models import (
     InpatientConsumableUsage,
     KardexHandoverNote,
     KardexShiftNote,
+    MedicationAdministration,
     NursingCarePlanEntry,
     NursingKardex,
     ReviewRequest,
@@ -1478,3 +1479,75 @@ class BPMonitoringReadingCreateSerializer(serializers.ModelSerializer):
             "arm",
             "notes",
         ]
+
+
+class MedicationAdministrationSerializer(serializers.ModelSerializer):
+    """Serializer for Medication Administration Record entries."""
+
+    administered_by_username = serializers.CharField(
+        source="administered_by.username", read_only=True, default=None
+    )
+    status_display = serializers.CharField(
+        source="get_status_display", read_only=True
+    )
+    drug_name = serializers.CharField(read_only=True)
+    is_overdue = serializers.BooleanField(read_only=True)
+    patient_name = serializers.CharField(
+        source="admission.patient.full_name", read_only=True, default=""
+    )
+    admission_number = serializers.CharField(
+        source="admission.admission_number", read_only=True, default=""
+    )
+
+    class Meta:
+        model = MedicationAdministration
+        fields = [
+            "id",
+            "admission",
+            "admission_number",
+            "patient_name",
+            "prescription_item",
+            "drug_name",
+            "scheduled_time",
+            "actual_time",
+            "status",
+            "status_display",
+            "dose_given",
+            "route",
+            "administered_by",
+            "administered_by_username",
+            "notes",
+            "is_prn",
+            "is_overdue",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class MedicationAdministrationCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating MAR entries."""
+
+    class Meta:
+        model = MedicationAdministration
+        fields = [
+            "admission",
+            "prescription_item",
+            "scheduled_time",
+            "actual_time",
+            "status",
+            "dose_given",
+            "route",
+            "notes",
+            "is_prn",
+        ]
+
+
+class MedicationAdministrationActionSerializer(serializers.Serializer):
+    """Serializer for MAR administration actions (give/skip/refuse/hold)."""
+
+    status = serializers.ChoiceField(
+        choices=["GIVEN", "SKIPPED", "REFUSED", "HELD", "VOMITED"]
+    )
+    dose_given = serializers.CharField(required=False, allow_blank=True, default="")
+    notes = serializers.CharField(required=False, allow_blank=True, default="")

@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { queryClient } from '@/lib/query/client';
 import type { EncounterCreateData } from '@/lib/types/encounter';
+import type { Admission, InpatientWard } from '@/lib/types/inpatient';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { County, SubCounty, Ward } from '@/lib/types/location';
 import type { PatientCreateData } from '@/lib/types/patient';
@@ -75,9 +76,11 @@ function normalizeDatabase(payload: string | null): OfflineDatabase {
     return {
       ...next,
       ...typedParsed,
+      admissions: typedParsed.admissions ?? next.admissions,
       counties: typedParsed.counties ?? next.counties,
       diagnoses: typedParsed.diagnoses ?? next.diagnoses,
       encounters: typedParsed.encounters ?? next.encounters,
+      inpatientWards: typedParsed.inpatientWards ?? next.inpatientWards,
       labOrders: typedParsed.labOrders ?? next.labOrders,
       patients: typedParsed.patients ?? next.patients,
       prescriptions: typedParsed.prescriptions ?? next.prescriptions,
@@ -523,4 +526,49 @@ export async function retryQueueEntry(entryId: string): Promise<void> {
       );
     }
   });
+}
+
+// ── Inpatient offline cache ──
+
+export async function upsertInpatientWards(records: InpatientWard[]): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    const wardMap = new Map(database.inpatientWards.map((w) => [w.id, w]));
+    for (const record of records) {
+      wardMap.set(record.id, record);
+    }
+    database.inpatientWards = Array.from(wardMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  });
+}
+
+export async function upsertAdmissions(records: Admission[]): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    const admissionMap = new Map(database.admissions.map((a) => [a.id, a]));
+    for (const record of records) {
+      admissionMap.set(record.id, record);
+    }
+    database.admissions = Array.from(admissionMap.values()).sort(
+      (a, b) => (b.admission_date ?? '').localeCompare(a.admission_date ?? '')
+    );
+  });
+}
+
+export async function listLocalInpatientWards(): Promise<InpatientWard[]> {
+  const database = await getOfflineDatabase();
+  return database.inpatientWards;
+}
+
+export async function listLocalAdmissions(options: { status?: string; limit?: number } = {}): Promise<{ count: number; records: Admission[] }> {
+  const database = await getOfflineDatabase();
+  let records = database.admissions;
+
+  if (options.status) {
+    records = records.filter((a) => a.admission_status === options.status);
+  }
+
+  const count = records.length;
+  if (options.limit) {
+    records = records.slice(0, options.limit);
+  }
+
+  return { count, records };
 }

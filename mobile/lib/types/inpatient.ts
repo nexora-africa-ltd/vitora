@@ -370,3 +370,54 @@ export interface WardRoundListParams {
   page_size?: number;
   admission?: number;
 }
+
+// ── Medication Administration (MAR) ──
+
+export type MARStatus = 'SCHEDULED' | 'GIVEN' | 'SKIPPED' | 'REFUSED' | 'HELD' | 'VOMITED';
+
+export interface MedicationAdministration {
+  id: number;
+  admission: number;
+  admission_number?: string;
+  patient_name?: string;
+  prescription_item: number;
+  drug_name?: string;
+  scheduled_time: string;
+  actual_time?: string | null;
+  status: MARStatus;
+  status_display?: string;
+  dose_given?: string;
+  route?: string;
+  administered_by?: number | null;
+  administered_by_username?: string | null;
+  notes?: string;
+  is_prn: boolean;
+  is_overdue?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MedicationAdministrationCreateData {
+  admission: number;
+  prescription_item: number;
+  scheduled_time: string;
+  actual_time?: string;
+  status?: MARStatus;
+  dose_given?: string;
+  route?: string;
+  notes?: string;
+  is_prn?: boolean;
+}
+
+export interface MARActionData {
+  status: 'GIVEN' | 'SKIPPED' | 'REFUSED' | 'HELD' | 'VOMITED';
+  dose_given?: string;
+  notes?: string;
+}
+
+export interface MARListParams {
+  page?: number;
+  page_size?: number;
+  admission?: number;
+  status?: MARStatus;
+}

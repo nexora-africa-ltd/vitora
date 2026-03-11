@@ -280,3 +280,31 @@ export const PaginatedDischargeSchema = paginated(DischargeSchema);
 export const PaginatedWardRoundSchema = paginated(WardRoundSchema);
 export const PaginatedTemperatureReadingSchema = paginated(TemperatureReadingSchema);
 export const PaginatedFluidBalanceSheetSchema = paginated(FluidBalanceSheetSchema);
+
+// ── Medication Administration (MAR) ──
+
+export const MARStatusSchema = z.enum(['SCHEDULED', 'GIVEN', 'SKIPPED', 'REFUSED', 'HELD', 'VOMITED']);
+
+export const MedicationAdministrationSchema = z.object({
+  id: z.number(),
+  admission: z.number(),
+  admission_number: z.string().optional(),
+  patient_name: z.string().optional(),
+  prescription_item: z.number(),
+  drug_name: z.string().optional(),
+  scheduled_time: z.string(),
+  actual_time: z.string().optional().nullable(),
+  status: MARStatusSchema,
+  status_display: z.string().optional(),
+  dose_given: z.string().optional(),
+  route: z.string().optional(),
+  administered_by: z.number().optional().nullable(),
+  administered_by_username: z.string().optional().nullable(),
+  notes: z.string().optional(),
+  is_prn: z.boolean(),
+  is_overdue: z.boolean().optional(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+});
+
+export const PaginatedMedicationAdministrationSchema = paginated(MedicationAdministrationSchema);

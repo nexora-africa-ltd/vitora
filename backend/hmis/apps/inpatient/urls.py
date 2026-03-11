@@ -14,6 +14,7 @@ from .views import (
     DischargeViewSet,
     FluidBalanceEntryViewSet,
     FluidBalanceSheetViewSet,
+    MedicationAdministrationViewSet,
     NursingKardexViewSet,
     ReviewRequestViewSet,
     ShiftHandoverViewSet,
@@ -47,6 +48,7 @@ router.register(r"fluid-balance-sheets", FluidBalanceSheetViewSet, basename="flu
 router.register(r"fluid-balance-entries", FluidBalanceEntryViewSet, basename="fluid-balance-entry")
 router.register(r"blood-transfusions", BloodTransfusionViewSet, basename="blood-transfusion")
 router.register(r"bp-readings", BPMonitoringViewSet, basename="bp-reading")
+router.register(r"medication-administrations", MedicationAdministrationViewSet, basename="medication-administration")
 
 urlpatterns = [
     path("", include(router.urls)),

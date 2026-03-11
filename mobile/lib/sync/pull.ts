@@ -1,11 +1,13 @@
 import { encountersApi } from '@/lib/api/encounters';
+import { inpatientApi } from '@/lib/api/inpatient';
 import { laboratoryApi } from '@/lib/api/laboratory';
 import { locationsApi } from '@/lib/api/locations';
 import { patientsApi } from '@/lib/api/patients';
 import { pharmacyApi } from '@/lib/api/pharmacy';
-import { getOfflineDatabase, setOfflineSyncMetadata, upsertEncounters, upsertLabOrders, upsertPatients, upsertPrescriptions, upsertReferenceData } from '@/lib/db';
+import { getOfflineDatabase, setOfflineSyncMetadata, upsertAdmissions, upsertEncounters, upsertInpatientWards, upsertLabOrders, upsertPatients, upsertPrescriptions, upsertReferenceData } from '@/lib/db';
 
 type PullSummary = {
+  admissions: number;
   encounters: number;
   labOrders: number;
   patients: number;
@@ -91,7 +93,7 @@ export async function pullOfflineData(): Promise<PullSummary> {
   const lastPullAt = database.meta.last_pull_at;
   const syncedAt = new Date().toISOString();
 
-  const [counties, subCounties, wards, patients, encounters, labOrders, prescriptions] = await Promise.all([
+  const [counties, subCounties, wards, patients, encounters, labOrders, prescriptions, inpatientWards, admissions] = await Promise.all([
     locationsApi.getCounties(),
     locationsApi.getAllSubCounties(),
     locationsApi.getAllWards(),
@@ -99,6 +101,8 @@ export async function pullOfflineData(): Promise<PullSummary> {
     fetchAllEncounters(lastPullAt),
     fetchAllLabOrders(),
     fetchAllPrescriptions(),
+    inpatientApi.listWards({ is_active: true, page_size: 100 }).then((r) => r.results).catch(() => []),
+    inpatientApi.listAdmissions({ admission_status: 'ACTIVE', page_size: 200 }).then((r) => r.results).catch(() => []),
   ]);
 
   await upsertReferenceData({ counties, subCounties, wards });
@@ -106,6 +110,8 @@ export async function pullOfflineData(): Promise<PullSummary> {
   await upsertEncounters(encounters, syncedAt);
   await upsertLabOrders(labOrders, syncedAt);
   await upsertPrescriptions(prescriptions, syncedAt);
+  await upsertInpatientWards(inpatientWards);
+  await upsertAdmissions(admissions);
 
   await setOfflineSyncMetadata({
     last_pull_at: syncedAt,
@@ -113,6 +119,7 @@ export async function pullOfflineData(): Promise<PullSummary> {
   });
 
   return {
+    admissions: admissions.length,
     encounters: encounters.length,
     labOrders: labOrders.length,
     patients: patients.length,

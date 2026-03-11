@@ -2635,6 +2635,121 @@ class BPMonitoringReading(TimeStampedModel):
         return self.systolic < 90 or self.diastolic < 60
 
 
+class MedicationAdministration(TimeStampedModel):
+    """
+    Medication Administration Record (MAR) entry.
+
+    Tracks the actual administration of medication to an inpatient
+    at the bedside. Each record links to a PrescriptionItem (the order)
+    and an Admission (the context).
+    """
+
+    ADMIN_STATUS_CHOICES = [
+        ("SCHEDULED", "Scheduled"),
+        ("GIVEN", "Given"),
+        ("SKIPPED", "Skipped"),
+        ("REFUSED", "Refused"),
+        ("HELD", "Held"),
+        ("VOMITED", "Vomited"),
+    ]
+
+    admission = models.ForeignKey(
+        Admission,
+        on_delete=models.CASCADE,
+        related_name="medication_administrations",
+        help_text="Admission this record belongs to",
+    )
+    prescription_item = models.ForeignKey(
+        "pharmacy.PrescriptionItem",
+        on_delete=models.PROTECT,
+        related_name="administrations",
+        help_text="The prescription item being administered",
+    )
+    scheduled_time = models.DateTimeField(
+        help_text="When this dose is/was scheduled",
+    )
+    actual_time = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the dose was actually administered",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ADMIN_STATUS_CHOICES,
+        default="SCHEDULED",
+        help_text="Administration status",
+    )
+    dose_given = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Actual dose administered (e.g., '500mg')",
+    )
+    route = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Route of administration (e.g., oral, IV, IM)",
+    )
+    administered_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="medication_administrations",
+        help_text="Nurse who administered/recorded",
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Additional notes (reason for skipping, patient response)",
+    )
+    is_prn = models.BooleanField(
+        default=False,
+        help_text="Whether this is a PRN (as-needed) administration",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["-scheduled_time"]
+        verbose_name = "Medication Administration"
+        verbose_name_plural = "Medication Administrations"
+        indexes = [
+            models.Index(fields=["admission", "-scheduled_time"]),
+            models.Index(fields=["prescription_item", "-scheduled_time"]),
+        ]
+
+    def __str__(self):
+        status_display: str = self.get_status_display()  # type: ignore[attr-defined]
+        return (
+            f"{status_display} — {self.dose_given or 'pending'} "
+            f"at {self.scheduled_time:%Y-%m-%d %H:%M} "
+            f"for {self.admission.patient}"
+        )
+
+    @property
+    def is_overdue(self) -> bool:
+        """Scheduled but not yet administered and past scheduled time."""
+        if self.status != "SCHEDULED":
+            return False
+        return timezone.now() > self.scheduled_time
+
+    @property
+    def drug_name(self) -> str:
+        """Convenience access to the drug name from the prescription item."""
+        try:
+            return self.prescription_item.drug.name
+        except Exception:
+            return ""
+
+    def administer(self, user, dose_given: str = "", notes: str = ""):
+        """Record that this dose was given."""
+        self.status = "GIVEN"
+        self.actual_time = timezone.now()
+        self.administered_by = user
+        if dose_given:
+            self.dose_given = dose_given
+        if notes:
+            self.notes = notes
+        self.save(update_fields=["status", "actual_time", "administered_by", "dose_given", "notes", "updated_at"])
+
+
 # ============================================================================
 # Signals
 # ============================================================================
