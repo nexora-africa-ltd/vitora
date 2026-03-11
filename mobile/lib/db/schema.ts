@@ -1,6 +1,8 @@
 import type { County, SubCounty, Ward } from '@/lib/types/location';
 import type { Encounter } from '@/lib/types/encounter';
+import type { LabOrder } from '@/lib/types/laboratory';
 import type { Patient, PatientCreateData } from '@/lib/types/patient';
+import type { Prescription } from '@/lib/types/pharmacy';
 import type { EncounterCreateData } from '@/lib/types/encounter';
 
 export const OFFLINE_DB_STORAGE_KEY = 'vitora.mobile.offline-db.v1';
@@ -9,11 +11,11 @@ export const OFFLINE_DB_STORAGE_KEY = 'vitora.mobile.offline-db.v1';
  * Current schema version. Increment when the OfflineDatabase shape changes.
  * Each bump must have a corresponding entry in SCHEMA_MIGRATIONS.
  */
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export type LocalSyncState = 'synced' | 'pending_create' | 'sync_error' | 'conflict';
 export type SyncQueueStatus = 'pending' | 'syncing' | 'conflict' | 'failed';
-export type SyncQueueEntity = 'patient' | 'encounter';
+export type SyncQueueEntity = 'patient' | 'encounter' | 'lab_order' | 'prescription';
 
 export type LocalRecordMetadata = {
   local_only: boolean;
@@ -25,6 +27,10 @@ export type LocalRecordMetadata = {
 export type LocalPatientRecord = Patient & LocalRecordMetadata;
 
 export type LocalEncounterRecord = Encounter & LocalRecordMetadata;
+
+export type LocalLabOrderRecord = LabOrder & LocalRecordMetadata;
+
+export type LocalPrescriptionRecord = Prescription & LocalRecordMetadata;
 
 export type LocalDiagnosisRecord = {
   id: number;
@@ -63,8 +69,10 @@ export type OfflineDatabase = {
   counties: County[];
   diagnoses: LocalDiagnosisRecord[];
   encounters: LocalEncounterRecord[];
+  labOrders: LocalLabOrderRecord[];
   meta: OfflineDatabaseMeta;
   patients: LocalPatientRecord[];
+  prescriptions: LocalPrescriptionRecord[];
   queue: SyncQueueEntry[];
   subCounties: SubCounty[];
   wards: Ward[];
@@ -75,6 +83,7 @@ export function createEmptyOfflineDatabase(): OfflineDatabase {
     counties: [],
     diagnoses: [],
     encounters: [],
+    labOrders: [],
     meta: {
       id_remaps: {
         encounters: {},
@@ -88,6 +97,7 @@ export function createEmptyOfflineDatabase(): OfflineDatabase {
       schema_version: CURRENT_SCHEMA_VERSION,
     },
     patients: [],
+    prescriptions: [],
     queue: [],
     subCounties: [],
     wards: [],
@@ -110,6 +120,19 @@ export const SCHEMA_MIGRATIONS: Record<number, (db: Record<string, unknown>) => 
       if (typeof entry.attempts === 'number' && entry.attempts >= 5 && entry.status !== 'conflict') {
         entry.status = 'failed';
       }
+    }
+  },
+  3: (db) => {
+    // v2 → v3: add labOrders and prescriptions arrays for offline clinical data
+    const meta = (db.meta ?? {}) as Record<string, unknown>;
+    meta.schema_version = 3;
+
+    if (!Array.isArray(db.labOrders)) {
+      db.labOrders = [];
+    }
+
+    if (!Array.isArray(db.prescriptions)) {
+      db.prescriptions = [];
     }
   },
 };

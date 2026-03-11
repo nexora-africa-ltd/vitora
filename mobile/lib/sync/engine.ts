@@ -8,9 +8,11 @@ export type SyncRunSummary = {
   encounterCount: number;
   error: string | null;
   failedCount: number;
+  labOrderCount: number;
   lastSyncedAt: string | null;
   patientCount: number;
   pendingCount: number;
+  prescriptionCount: number;
   pushedCount: number;
   status: 'conflict' | 'error' | 'synced';
 };
@@ -35,9 +37,11 @@ export async function runOfflineSync(): Promise<SyncRunSummary> {
       encounterCount: pullSummary.encounters,
       error: null,
       failedCount,
+      labOrderCount: pullSummary.labOrders,
       lastSyncedAt,
       patientCount: pullSummary.patients,
       pendingCount,
+      prescriptionCount: pullSummary.prescriptions,
       pushedCount: pushSummary.pushed,
       status: conflictCount > 0 ? 'conflict' : 'synced',
     };
@@ -51,9 +55,11 @@ export async function runOfflineSync(): Promise<SyncRunSummary> {
       encounterCount: database.encounters.length,
       error: message,
       failedCount: database.queue.filter((entry) => entry.status === 'failed').length,
+      labOrderCount: database.labOrders.length,
       lastSyncedAt: database.meta.last_successful_sync_at,
       patientCount: database.patients.length,
       pendingCount: database.queue.filter((entry) => entry.status !== 'conflict' && entry.status !== 'failed').length,
+      prescriptionCount: database.prescriptions.length,
       pushedCount: 0,
       status: 'error',
     };

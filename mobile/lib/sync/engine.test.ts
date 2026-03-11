@@ -3,8 +3,10 @@ import { AxiosError } from 'axios';
 
 import { clearOfflineDatabase, getOfflineDatabase, getPendingSyncQueue, queueOfflineEncounterCreate, queueOfflinePatientCreate, updateQueueEntryState, upsertReferenceData } from '@/lib/db';
 import { encountersApi } from '@/lib/api/encounters';
+import { laboratoryApi } from '@/lib/api/laboratory';
 import { locationsApi } from '@/lib/api/locations';
 import { patientsApi } from '@/lib/api/patients';
+import { pharmacyApi } from '@/lib/api/pharmacy';
 import { runOfflineSync } from '@/lib/sync/engine';
 import { pushPendingSyncQueue } from '@/lib/sync/push';
 
@@ -42,9 +44,23 @@ jest.mock('@/lib/api/locations', () => ({
   },
 }));
 
+jest.mock('@/lib/api/laboratory', () => ({
+  laboratoryApi: {
+    listOrders: jest.fn(),
+  },
+}));
+
+jest.mock('@/lib/api/pharmacy', () => ({
+  pharmacyApi: {
+    listPrescriptions: jest.fn(),
+  },
+}));
+
 const mockedPatientsApi = patientsApi as jest.Mocked<typeof patientsApi>;
 const mockedEncountersApi = encountersApi as jest.Mocked<typeof encountersApi>;
 const mockedLocationsApi = locationsApi as jest.Mocked<typeof locationsApi>;
+const mockedLaboratoryApi = laboratoryApi as jest.Mocked<typeof laboratoryApi>;
+const mockedPharmacyApi = pharmacyApi as jest.Mocked<typeof pharmacyApi>;
 
 function setupPullMocks() {
   mockedLocationsApi.getCounties.mockResolvedValue([{ id: 1, code: 1, name: 'Nairobi' }]);
@@ -54,6 +70,8 @@ function setupPullMocks() {
   (mockedLocationsApi as any).getAllWards.mockResolvedValue([{ id: 100, sub_county: 10, name: 'Kitisuru' }]);
   mockedPatientsApi.list.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
   mockedEncountersApi.list.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
+  mockedLaboratoryApi.listOrders.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
+  mockedPharmacyApi.listPrescriptions.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
 }
 
 describe('runOfflineSync', () => {
@@ -151,6 +169,8 @@ describe('runOfflineSync', () => {
         },
       ],
     });
+    mockedLaboratoryApi.listOrders.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
+    mockedPharmacyApi.listPrescriptions.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
 
     const summary = await runOfflineSync();
     const database = await getOfflineDatabase();
@@ -226,6 +246,10 @@ describe('runOfflineSync', () => {
     (mockedLocationsApi as any).getAllSubCounties.mockRejectedValue(new Error('Network error'));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (mockedLocationsApi as any).getAllWards.mockRejectedValue(new Error('Network error'));
+    mockedPatientsApi.list.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
+    mockedEncountersApi.list.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
+    mockedLaboratoryApi.listOrders.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
+    mockedPharmacyApi.listPrescriptions.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
 
     const summary = await runOfflineSync();
 
@@ -276,5 +300,66 @@ describe('runOfflineSync', () => {
 
     const pending = await getPendingSyncQueue();
     expect(pending).toHaveLength(0);
+  });
+
+  it('pulls lab orders and prescriptions during sync', async () => {
+    setupPullMocks();
+
+    mockedLaboratoryApi.listOrders.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 701,
+          order_number: 'LAB-20260311-0001',
+          patient: 501,
+          patient_name: 'Grace Achieng',
+          patient_mrn: 'MRN-20260311-0501',
+          order_type: 'IN_HOUSE',
+          priority: 'ROUTINE',
+          status: 'ORDERED',
+          specimen_collected: false,
+          total_cost: 500,
+          items: [],
+          ordered_at: '2026-03-11T10:00:00Z',
+          created_at: '2026-03-11T10:00:00Z',
+          updated_at: '2026-03-11T10:00:00Z',
+        },
+      ] as never,
+    });
+
+    mockedPharmacyApi.listPrescriptions.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 801,
+          prescription_number: 'RX-20260311-0001',
+          patient: 501,
+          patient_name: 'Grace Achieng',
+          patient_mrn: 'MRN-20260311-0501',
+          status: 'PENDING',
+          is_valid: true,
+          is_valid_prescription: true,
+          is_fully_dispensed: false,
+          is_fully_dispensed_status: false,
+          items: [],
+          created_at: '2026-03-11T11:00:00Z',
+          updated_at: '2026-03-11T11:00:00Z',
+        },
+      ] as never,
+    });
+
+    const summary = await runOfflineSync();
+    const database = await getOfflineDatabase();
+
+    expect(summary.labOrderCount).toBe(1);
+    expect(summary.prescriptionCount).toBe(1);
+    expect(database.labOrders).toHaveLength(1);
+    expect(database.labOrders[0]?.id).toBe(701);
+    expect(database.prescriptions).toHaveLength(1);
+    expect(database.prescriptions[0]?.id).toBe(801);
   });
 });
