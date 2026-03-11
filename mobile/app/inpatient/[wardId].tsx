@@ -1,27 +1,34 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, EmptyState, LoadingState, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { AppButton, AppTextInput, EmptyState, LoadingState, ScreenContainer, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
 import { inpatientApi } from '@/lib/api/inpatient';
 import { useAppTheme } from '@/lib/theme/theme-context';
 import type { Bed, BedStatus } from '@/lib/types/inpatient';
 
-const STATUS_COLORS: Record<BedStatus, { bg: string; text: string; bgDark: string }> = {
-  AVAILABLE: { bg: '#D1FAE5', text: '#065F46', bgDark: '#064E3B' },
-  OCCUPIED: { bg: '#DBEAFE', text: '#1E40AF', bgDark: '#1E3A5F' },
-  MAINTENANCE: { bg: '#FEF3C7', text: '#92400E', bgDark: '#78350F' },
-  RESERVED: { bg: '#EDE9FE', text: '#5B21B6', bgDark: '#4C1D95' },
+const STATUS_COLORS: Record<BedStatus, { bg: string; text: string; bgDark: string; textDark: string }> = {
+  AVAILABLE: { bg: '#D1FAE5', text: '#065F46', bgDark: '#064E3B', textDark: '#6EE7B7' },
+  OCCUPIED: { bg: '#DBEAFE', text: '#1E40AF', bgDark: '#1E3A5F', textDark: '#93C5FD' },
+  MAINTENANCE: { bg: '#FEF3C7', text: '#92400E', bgDark: '#78350F', textDark: '#FCD34D' },
+  RESERVED: { bg: '#EDE9FE', text: '#5B21B6', bgDark: '#4C1D95', textDark: '#C4B5FD' },
 };
 
 export default function BedBoardScreen() {
   const { wardId } = useLocalSearchParams<{ wardId: string }>();
   const { isDarkMode, theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<BedStatus | 'ALL'>('ALL');
+
+  // ── Bed swap state ──
+  const [swapMode, setSwapMode] = useState(false);
+  const [swapBedA, setSwapBedA] = useState<Bed | null>(null);
+  const [swapBedB, setSwapBedB] = useState<Bed | null>(null);
+  const [swapReason, setSwapReason] = useState('');
 
   const wardQuery = useQuery({
     queryKey: ['inpatient', 'ward', wardId],
@@ -35,13 +42,51 @@ export default function BedBoardScreen() {
     enabled: !!wardId,
   });
 
+  const swapMutation = useMutation({
+    mutationFn: () =>
+      inpatientApi.swapBeds({
+        bed_a: swapBedA!.id,
+        bed_b: swapBedB!.id,
+        reason: swapReason || undefined,
+      }),
+    onSuccess: (result) => {
+      Alert.alert('Beds swapped', result.message);
+      queryClient.invalidateQueries({ queryKey: ['inpatient'] });
+      exitSwapMode();
+    },
+    onError: () => {
+      Alert.alert('Error', 'Failed to swap beds. Please try again.');
+    },
+  });
+
+  function exitSwapMode() {
+    setSwapMode(false);
+    setSwapBedA(null);
+    setSwapBedB(null);
+    setSwapReason('');
+  }
+
+  function handleBedPress(bed: Bed) {
+    if (!swapMode) return;
+    if (bed.status !== 'OCCUPIED') return;
+
+    if (!swapBedA) {
+      setSwapBedA(bed);
+    } else if (bed.id === swapBedA.id) {
+      setSwapBedA(null);
+    } else {
+      setSwapBedB(bed);
+    }
+  }
+
   const allBeds = bedsQuery.data?.results ?? [];
   const beds = filter === 'ALL' ? allBeds : allBeds.filter((b) => b.status === filter);
   const ward = wardQuery.data;
+  const occupiedCount = allBeds.filter((b) => b.status === 'OCCUPIED').length;
 
   const counts: Record<BedStatus, number> = {
     AVAILABLE: allBeds.filter((b) => b.status === 'AVAILABLE').length,
-    OCCUPIED: allBeds.filter((b) => b.status === 'OCCUPIED').length,
+    OCCUPIED: occupiedCount,
     MAINTENANCE: allBeds.filter((b) => b.status === 'MAINTENANCE').length,
     RESERVED: allBeds.filter((b) => b.status === 'RESERVED').length,
   };
@@ -83,9 +128,70 @@ export default function BedBoardScreen() {
         <SectionCard title="Bed board" subtitle={`${beds.length} bed(s)`}>
           <View style={styles.bedGrid}>
             {beds.map((bed) => (
-              <BedCell key={bed.id} bed={bed} isDarkMode={isDarkMode} theme={theme} styles={styles} />
+              <BedCell
+                key={bed.id}
+                bed={bed}
+                isDarkMode={isDarkMode}
+                theme={theme}
+                styles={styles}
+                swapMode={swapMode}
+                isSwapSelected={swapBedA?.id === bed.id || swapBedB?.id === bed.id}
+                onPress={() => handleBedPress(bed)}
+              />
             ))}
           </View>
+        </SectionCard>
+      )}
+
+      {/* Bed swap section */}
+      {occupiedCount >= 2 && !swapMode && (
+        <SectionCard title="Bed management">
+          <AppButton
+            label="Swap beds"
+            onPress={() => setSwapMode(true)}
+            variant="secondary"
+          />
+        </SectionCard>
+      )}
+
+      {swapMode && (
+        <SectionCard title="Swap beds" subtitle="Select two occupied beds to swap their patient assignments.">
+          <Text style={styles.swapInstruction}>
+            {!swapBedA
+              ? 'Tap the first occupied bed.'
+              : !swapBedB
+                ? `Selected: ${swapBedA.bed_number}. Tap the second occupied bed.`
+                : `Swapping ${swapBedA.bed_number} ↔ ${swapBedB.bed_number}`}
+          </Text>
+          {swapBedA && swapBedB && (
+            <>
+              <AppTextInput
+                label="Reason (optional)"
+                value={swapReason}
+                onChangeText={setSwapReason}
+                placeholder="e.g. Patient preference, clinical need..."
+              />
+              <View style={styles.swapActions}>
+                <AppButton
+                  label="Cancel"
+                  onPress={exitSwapMode}
+                  variant="ghost"
+                />
+                <AppButton
+                  label={swapMutation.isPending ? 'Swapping...' : 'Confirm swap'}
+                  onPress={() => swapMutation.mutate()}
+                  disabled={swapMutation.isPending}
+                />
+              </View>
+            </>
+          )}
+          {!(swapBedA && swapBedB) && (
+            <AppButton
+              label="Cancel"
+              onPress={exitSwapMode}
+              variant="ghost"
+            />
+          )}
         </SectionCard>
       )}
 
@@ -118,25 +224,41 @@ function FilterChip({ label, active, onPress, theme, color }: { label: string; a
   );
 }
 
-function BedCell({ bed, isDarkMode, theme, styles }: { bed: Bed; isDarkMode: boolean; theme: AppTheme; styles: ReturnType<typeof createStyles> }) {
+function BedCell({ bed, isDarkMode, theme, styles, swapMode, isSwapSelected, onPress }: { bed: Bed; isDarkMode: boolean; theme: AppTheme; styles: ReturnType<typeof createStyles>; swapMode?: boolean; isSwapSelected?: boolean; onPress?: () => void }) {
   const colors = STATUS_COLORS[bed.status];
   const bgColor = isDarkMode ? colors.bgDark : colors.bg;
+  const textColor = isDarkMode ? colors.textDark : colors.text;
   const iconName: keyof typeof Ionicons.glyphMap =
     bed.status === 'AVAILABLE' ? 'checkmark-circle-outline' :
     bed.status === 'OCCUPIED' ? 'person-outline' :
     bed.status === 'MAINTENANCE' ? 'construct-outline' :
     'time-outline';
 
+  const isSelectable = swapMode && bed.status === 'OCCUPIED';
+
   return (
-    <View style={[styles.bedCell, { backgroundColor: bgColor }]}>
+    <Pressable
+      style={[
+        styles.bedCell,
+        { backgroundColor: bgColor },
+        isSwapSelected && styles.bedCellSelected,
+        swapMode && !isSelectable && styles.bedCellDisabled,
+      ]}
+      onPress={isSelectable ? onPress : undefined}
+      disabled={swapMode && !isSelectable}
+    >
       <View style={styles.bedCellHeader}>
-        <Text style={[styles.bedNumber, { color: colors.text }]}>{bed.bed_number}</Text>
-        <Ionicons name={iconName} size={16} color={colors.text} />
+        <Text style={[styles.bedNumber, { color: textColor }]}>{bed.bed_number}</Text>
+        {isSwapSelected ? (
+          <Ionicons name="swap-horizontal" size={16} color={theme.colors.primary} />
+        ) : (
+          <Ionicons name={iconName} size={16} color={textColor} />
+        )}
       </View>
-      <Text style={[styles.bedStatus, { color: colors.text }]}>
+      <Text style={[styles.bedStatus, { color: textColor }]}>
         {bed.status_display ?? bed.status}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -172,6 +294,24 @@ function createStyles(theme: AppTheme) {
       fontSize: 11,
       fontWeight: '600',
       marginTop: 2,
+    },
+    bedCellSelected: {
+      borderWidth: 2,
+      borderColor: theme.colors.primary,
+    },
+    bedCellDisabled: {
+      opacity: 0.4,
+    },
+    swapInstruction: {
+      color: theme.colors.text,
+      fontSize: 14,
+      marginBottom: theme.spacing.sm,
+    },
+    swapActions: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+      justifyContent: 'flex-end',
+      marginTop: theme.spacing.sm,
     },
   });
 }

@@ -421,3 +421,33 @@ export interface MARListParams {
   admission?: number;
   status?: MARStatus;
 }
+
+// ── Bed Swap ──
+
+export interface BedSwapData {
+  bed_a: number;
+  bed_b: number;
+  reason?: string;
+}
+
+export interface BedSwapResult {
+  bed_a: number;
+  bed_b: number;
+  bed_a_number: string;
+  bed_b_number: string;
+  message: string;
+}
+
+// ── MAR Schedule Generation ──
+
+export interface MARScheduleGenerateData {
+  admission: number;
+  prescription_item: number;
+}
+
+export interface MARScheduleGenerateResult {
+  created: number;
+  admission: number;
+  prescription_item: number;
+  message: string;
+}

@@ -2,8 +2,10 @@ import { apiClient } from './client';
 import {
   AdmissionSchema,
   BedSchema,
+  BedSwapResultSchema,
   DischargeSchema,
   InpatientWardSchema,
+  MARScheduleGenerateResultSchema,
   PaginatedAdmissionSchema,
   PaginatedBedSchema,
   PaginatedWardSchema,
@@ -16,9 +18,13 @@ import type {
   AdmissionCreateData,
   AdmissionListParams,
   Bed,
+  BedSwapData,
+  BedSwapResult,
   Discharge,
   DischargeCreateData,
   InpatientWard,
+  MARScheduleGenerateData,
+  MARScheduleGenerateResult,
   Transfer,
   WardListParams,
 } from '@/lib/types/inpatient';
@@ -77,5 +83,19 @@ export const inpatientApi = {
   async createTransfer(data: { admission: number; destination_ward: number; destination_bed?: number; reason: string; clinical_handover_notes?: string }): Promise<Transfer> {
     const response = await apiClient.post('/api/inpatient/transfers/', data);
     return parseResponse(TransferSchema, response.data, { context: 'inpatient.createTransfer' });
+  },
+
+  // ── Bed Swap ──
+
+  async swapBeds(data: BedSwapData): Promise<BedSwapResult> {
+    const response = await apiClient.post('/api/inpatient/beds/swap/', data);
+    return parseResponse(BedSwapResultSchema, response.data, { context: 'inpatient.swapBeds' });
+  },
+
+  // ── MAR Schedule Generation ──
+
+  async generateMARSchedule(data: MARScheduleGenerateData): Promise<MARScheduleGenerateResult> {
+    const response = await apiClient.post('/api/inpatient/medication-administrations/generate-schedule/', data);
+    return parseResponse(MARScheduleGenerateResultSchema, response.data, { context: 'inpatient.generateMARSchedule' });
   },
 };

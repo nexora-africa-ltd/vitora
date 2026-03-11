@@ -16,8 +16,10 @@ import {
 import type { AppTheme } from '@/constants/theme';
 import { inpatientApi } from '@/lib/api/inpatient';
 import { nursingApi } from '@/lib/api/nursing';
+import { pharmacyApi } from '@/lib/api/pharmacy';
 import { useAppTheme } from '@/lib/theme/theme-context';
 import type { MARStatus, MedicationAdministration } from '@/lib/types/inpatient';
+import { generateMARSchedulesForPrescription } from '@/lib/utils/mar-schedule';
 
 const STATUS_TONE: Record<MARStatus, 'primary' | 'warning' | 'danger' | 'neutral'> = {
   SCHEDULED: 'neutral',
@@ -84,6 +86,46 @@ export default function MARScreen() {
     onError: () => Alert.alert('Error', 'Failed to record administration.'),
   });
 
+  // ── MAR Schedule Generation ──
+  const [generatingSchedule, setGeneratingSchedule] = useState(false);
+
+  const admissionPrescriptionsQuery = useQuery({
+    queryKey: ['pharmacy', 'prescriptions', 'admission', admissionId],
+    queryFn: () => pharmacyApi.listPrescriptions({ page_size: 50 }),
+    enabled: generatingSchedule && !!admissionId,
+  });
+
+  const generateScheduleMutation = useMutation({
+    mutationFn: async () => {
+      const prescriptions = admissionPrescriptionsQuery.data?.results ?? [];
+      // Filter to prescriptions linked to this admission
+      const admissionRx = prescriptions.filter((p) => p.admission === Number(admissionId));
+      if (admissionRx.length === 0) {
+        throw new Error('No prescriptions found for this admission.');
+      }
+
+      let totalCreated = 0;
+      for (const rx of admissionRx) {
+        const schedules = generateMARSchedulesForPrescription(Number(admissionId), rx);
+        for (const { schedule } of schedules) {
+          for (const entry of schedule.entries) {
+            await nursingApi.createMedicationAdministration(entry);
+            totalCreated++;
+          }
+        }
+      }
+      return totalCreated;
+    },
+    onSuccess: (count) => {
+      queryClient.invalidateQueries({ queryKey: ['inpatient', 'mar', admissionId] });
+      setGeneratingSchedule(false);
+      Alert.alert('Schedule generated', `Created ${count} scheduled dose(s) from pharmacy prescriptions.`);
+    },
+    onError: (err: Error) => {
+      Alert.alert('Error', err.message || 'Failed to generate MAR schedule.');
+    },
+  });
+
   if (admissionQuery.isLoading || marQuery.isLoading) {
     return (
       <ScreenContainer>
@@ -144,6 +186,45 @@ export default function MARScreen() {
               label={recordMutation.isPending ? 'Saving...' : 'Confirm'}
               onPress={() => recordMutation.mutate()}
               disabled={recordMutation.isPending}
+            />
+          </View>
+        </SectionCard>
+      )}
+
+      {/* MAR Schedule Generation */}
+      {!generatingSchedule && scheduledEntries.length === 0 && (
+        <SectionCard title="Generate schedule">
+          <Text style={styles.actionSchedule}>
+            Auto-generate medication schedules from pharmacy prescriptions for this admission.
+          </Text>
+          <AppButton
+            label="Generate from prescriptions"
+            onPress={() => setGeneratingSchedule(true)}
+            variant="secondary"
+          />
+        </SectionCard>
+      )}
+
+      {generatingSchedule && (
+        <SectionCard title="Generate MAR schedule" subtitle="Creates scheduled doses from dispensed prescriptions.">
+          {admissionPrescriptionsQuery.isLoading && (
+            <Text style={styles.actionSchedule}>Loading prescriptions...</Text>
+          )}
+          {admissionPrescriptionsQuery.data && (
+            <Text style={styles.actionSchedule}>
+              Found {admissionPrescriptionsQuery.data.results.filter((p) => p.admission === Number(admissionId)).length} prescription(s) for this admission.
+            </Text>
+          )}
+          <View style={styles.actionButtons}>
+            <AppButton
+              label="Cancel"
+              onPress={() => setGeneratingSchedule(false)}
+              variant="ghost"
+            />
+            <AppButton
+              label={generateScheduleMutation.isPending ? 'Generating...' : 'Generate'}
+              onPress={() => generateScheduleMutation.mutate()}
+              disabled={generateScheduleMutation.isPending || admissionPrescriptionsQuery.isLoading}
             />
           </View>
         </SectionCard>
