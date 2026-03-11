@@ -5,7 +5,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, DataRow, EmptyState, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { CDSAlertBanner } from '@/components/cds-alert-banner';
 import { SyncIndicator } from '@/components/sync-indicator';
+import { TibaBotAssist } from '@/components/tibabot-assist';
 import type { AppTheme } from '@/constants/theme';
 import { toApiError } from '@/lib/api/client';
 import { clinicVisitsApi } from '@/lib/api/clinic-visits';
@@ -179,6 +181,25 @@ export default function EncounterDetailScreen() {
     dispositionNotes: encounter.disposition_notes,
   });
 
+  const tibaBotPatientContext = encounter.patient_age != null && encounter.patient_gender
+    ? {
+        patient_age: encounter.patient_age,
+        patient_sex: encounter.patient_gender,
+        allergies: encounter.allergies ? [encounter.allergies] : undefined,
+        current_medications: encounter.current_medications ? [encounter.current_medications] : undefined,
+      }
+    : undefined;
+
+  const tibaBotEncounterContext = {
+    chief_complaint: encounter.chief_complaint || undefined,
+    vitals: {
+      spo2: encounter.spo2 != null ? Number(encounter.spo2) : undefined,
+      pulse: encounter.pulse ?? undefined,
+      temperature: encounter.temperature != null ? Number(encounter.temperature) : undefined,
+      rr: encounter.respiratory_rate ?? undefined,
+    },
+  };
+
   function confirmStartProgress() {
     Alert.alert('Start encounter progress', 'Move this encounter into active consultation?', [
       { text: 'Not now', style: 'cancel' },
@@ -254,6 +275,8 @@ export default function EncounterDetailScreen() {
           <Pill label={getEncounterStatusLabel(encounter.status)} tone={getEncounterPillTone(encounter)} />
         </View>
       </HeroCard>
+
+      {canLoadRemoteDependents ? <CDSAlertBanner encounterId={encounterId} /> : null}
 
       {hasLocalDraft ? (
         <SectionCard title="Unsaved changes" subtitle="This encounter has a locally stored edit draft waiting to be applied or saved.">
@@ -518,6 +541,13 @@ export default function EncounterDetailScreen() {
         <DataRow label="Finalized at" value={formatDateTime(encounter.finalized_at)} />
         <DataRow label="Cancellation reason" value={encounter.cancellation_reason} />
       </SectionCard>
+
+      {canLoadRemoteDependents ? (
+        <TibaBotAssist
+          patientContext={tibaBotPatientContext}
+          encounterContext={tibaBotEncounterContext}
+        />
+      ) : null}
     </ScreenContainer>
   );
 }
