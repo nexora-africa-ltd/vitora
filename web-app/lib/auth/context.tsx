@@ -118,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         is_staff: typeof userInfo.is_staff === 'boolean' ? userInfo.is_staff : fallbackUser.is_staff,
         is_superuser: typeof userInfo.is_superuser === 'boolean' ? userInfo.is_superuser : fallbackUser.is_superuser,
         permissions: Array.isArray(userInfo.permissions)
-          ? userInfo.permissions.filter((permission): permission is string => typeof permission === 'string')
+          ? userInfo.permissions.filter((permission: unknown): permission is string => typeof permission === 'string')
           : fallbackUser.permissions,
         role: typeof userInfo.role === 'string' ? userInfo.role : fallbackUser.role,
         role_category: typeof userInfo.role_category === 'string' ? userInfo.role_category : fallbackUser.role_category,

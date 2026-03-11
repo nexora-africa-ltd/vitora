@@ -399,7 +399,7 @@ class ClinicalChatView(AIFeatureGatedMixin, APIView):
 
         # Enrich with server-side context (overrides any frontend-sent values)
         data["user_context"] = build_user_context(request)
-        data["facility_context"] = build_facility_context()
+        data["facility_context"] = build_facility_context(request)
 
         # Add system instruction based on whether encounter context is present.
         # This prevents TibaBot from hallucinating page content when the user
@@ -584,7 +584,7 @@ class ClinicalAssistView(AIFeatureGatedMixin, APIView):
 
         # Enrich with server-side context
         data["user_context"] = build_user_context(request)
-        data["facility_context"] = build_facility_context()
+        data["facility_context"] = build_facility_context(request)
 
         # Audit log
         AuditLog.log(
@@ -821,7 +821,7 @@ class ConditionPredictView(AIFeatureGatedMixin, APIView):
         payload = {
             "patient_features": patient_features,
             "user_context": build_user_context(request),
-            "facility_context": build_facility_context(),
+            "facility_context": build_facility_context(request),
         }
 
         # Audit log
@@ -1088,7 +1088,7 @@ class ICUPredictView(AIFeatureGatedMixin, APIView):
         payload = {
             "patient_data": patient_data,
             "user_context": build_user_context(request),
-            "facility_context": build_facility_context(),
+            "facility_context": build_facility_context(request),
         }
 
         # Audit log
@@ -1568,7 +1568,7 @@ class CarePlanGenerateView(AIFeatureGatedMixin, APIView):
         payload = {
             **data,
             "user_context": build_user_context(request),
-            "facility_context": build_facility_context(),
+            "facility_context": build_facility_context(request),
         }
 
         AuditLog.log(
@@ -1655,7 +1655,7 @@ class CarePlanGenerateFHIRView(AIFeatureGatedMixin, APIView):
         payload = {
             **data,
             "user_context": build_user_context(request),
-            "facility_context": build_facility_context(),
+            "facility_context": build_facility_context(request),
         }
 
         AuditLog.log(
@@ -1829,7 +1829,7 @@ class CDSEvaluateView(AIFeatureGatedMixin, APIView):
         payload = {
             **data,
             "user_context": build_user_context(request),
-            "facility_context": build_facility_context(),
+            "facility_context": build_facility_context(request),
         }
 
         AuditLog.log(

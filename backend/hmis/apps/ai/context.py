@@ -83,17 +83,35 @@ def build_user_context(request: Request) -> dict[str, Any]:
     }
 
 
-def build_facility_context() -> dict[str, Any]:
+def build_facility_context(request: Request | None = None) -> dict[str, Any]:
     """
-    Build a facility context dict from Django settings.
+    Build a facility context dict from Django settings and the user's facility.
 
-    All values are nullable — absent env vars produce None.
+    If *request* is provided the user's ``StaffProfile.primary_facility`` is
+    consulted for the ``facility_level`` (KEPH level).  This is more accurate
+    than the global ``FACILITY_LEVEL`` setting in multi-site deployments.
+
+    All values are nullable — absent env vars / missing relations produce None.
 
     Returns:
-        dict with keys: keph_level, county, has_icu, has_laboratory,
-        has_imaging, has_pharmacy
+        dict with keys: facility_level, keph_level, county, has_icu,
+        has_laboratory, has_imaging, has_pharmacy
     """
+    facility_level: str | None = None
+    if request is not None:
+        try:
+            staff_profile = getattr(request.user, "staff_profile", None)
+            primary_facility = getattr(staff_profile, "primary_facility", None) if staff_profile else None
+            if primary_facility is not None:
+                facility_level = getattr(primary_facility, "level", None) or None
+        except Exception:
+            logger.debug(
+                "Could not read primary_facility for user %s",
+                getattr(request.user, "pk", "?"),
+            )
+
     return {
+        "facility_level": facility_level or getattr(settings, "FACILITY_LEVEL", None) or None,
         "keph_level": getattr(settings, "FACILITY_LEVEL", None) or None,
         "county": getattr(settings, "FACILITY_COUNTY", None) or None,
         "has_icu": getattr(settings, "FACILITY_HAS_ICU", None),

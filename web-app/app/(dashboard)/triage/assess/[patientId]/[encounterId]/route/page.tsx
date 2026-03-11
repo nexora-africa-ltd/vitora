@@ -211,6 +211,8 @@ export default function TriageRoutePage() {
           diastolic_bp: currentVitals?.diastolic_bp,
           temperature: currentVitals?.temperature,
           respiratory_rate: currentVitals?.respiratory_rate,
+          weight: currentVitals?.weight,
+          height: currentVitals?.height,
           // Routing
           assigned_area: (data.routing_type === 'emergency' ? data.assigned_area : '') as AssignedArea | '',
           assigned_clinic: data.routing_type === 'clinic' ? data.assigned_clinic : null,
