@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, EmptyState, HeroCard, LoadingState, MetricCard, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
 import { laboratoryApi } from '@/lib/api/laboratory';
-import type { LabOrder } from '@/lib/types/laboratory';
+import type { LabOrder, LabResult } from '@/lib/types/laboratory';
 import { useAppTheme } from '@/lib/theme/theme-context';
 import { formatDateTime } from '@/lib/utils/format';
 
@@ -27,16 +27,35 @@ function hasAbnormalResult(order: LabOrder): boolean {
   return order.items.some((item) => Boolean(item.result?.result_flag) || item.result?.is_critical_result);
 }
 
+function getResultTone(result: LabResult): 'primary' | 'warning' | 'danger' | 'neutral' {
+  if (result.is_critical_result || ['CRITICAL', 'HIGH', 'LOW'].includes(result.result_flag || '')) {
+    return 'danger';
+  }
+  if (result.result_flag) {
+    return 'warning';
+  }
+  if ((result.verification_status || '').toUpperCase().includes('VERIF') || (result.verification_status || '').toUpperCase().includes('APPROV')) {
+    return 'primary';
+  }
+  return 'neutral';
+}
+
 export default function LaboratoryScreen() {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const [activeView, setActiveView] = useState<'orders' | 'results'>('orders');
 
   const ordersQuery = useQuery({
     queryKey: ['lab-orders'],
     queryFn: () => laboratoryApi.listOrders({ page: 1, page_size: 20 }),
   });
 
-  if (ordersQuery.isLoading) {
+  const resultsQuery = useQuery({
+    queryKey: ['lab-results'],
+    queryFn: () => laboratoryApi.listResults({ page: 1, page_size: 20 }),
+  });
+
+  if (ordersQuery.isLoading || resultsQuery.isLoading) {
     return (
       <ScreenContainer>
         <LoadingState message="Loading laboratory workload..." />
@@ -45,8 +64,11 @@ export default function LaboratoryScreen() {
   }
 
   const orders = ordersQuery.data?.results ?? [];
+  const results = resultsQuery.data?.results ?? [];
   const completedCount = orders.filter((order) => order.status === 'COMPLETED').length;
   const urgentCount = orders.filter((order) => order.priority === 'URGENT' || order.priority === 'STAT').length;
+  const verifiedCount = results.filter((result) => (result.verification_status || '').toUpperCase().includes('VERIF') || (result.verification_status || '').toUpperCase().includes('APPROV')).length;
+  const abnormalCount = results.filter((result) => Boolean(result.result_flag) || result.is_critical_result).length;
 
   return (
     <ScreenContainer>
@@ -59,36 +81,67 @@ export default function LaboratoryScreen() {
       <View style={styles.metricRow}>
         <MetricCard label="Open orders" value={String(orders.length)} tone="primary" />
         <MetricCard label="Completed" value={String(completedCount)} tone="secondary" />
-        <MetricCard label="Urgent" value={String(urgentCount)} tone="accent" />
+        <MetricCard label={activeView === 'orders' ? 'Urgent' : 'Abnormal'} value={String(activeView === 'orders' ? urgentCount : abnormalCount)} tone="accent" />
       </View>
 
       <SectionCard title="Actions" subtitle="Start new lab work from a patient or encounter, or create a standalone order.">
         <AppButton label="New lab order" onPress={() => router.push('/laboratory/new' as never)} />
       </SectionCard>
 
-      <SectionCard title="Lab queue" subtitle="Orders show specimen state, turnaround progress, and abnormal result cues.">
-        {orders.length === 0 ? (
-          <EmptyState title="No lab orders yet" description="Create the first mobile lab order to start the Phase 2 workflow." />
+      <SectionCard title="Laboratory workspace" subtitle="Switch between distinct order management and result review views.">
+        <View style={styles.segmentedRow}>
+          <AppButton label={`Orders (${orders.length})`} onPress={() => setActiveView('orders')} variant={activeView === 'orders' ? 'primary' : 'ghost'} />
+          <AppButton label={`Results (${results.length})`} onPress={() => setActiveView('results')} variant={activeView === 'results' ? 'primary' : 'ghost'} />
+        </View>
+
+        {activeView === 'orders' ? (
+          orders.length === 0 ? (
+            <EmptyState title="No lab orders yet" description="Create the first mobile lab order to start the Phase 2 workflow." />
+          ) : (
+            orders.map((order) => (
+              <Pressable
+                key={order.order_number}
+                onPress={() => router.push(`/laboratory/${encodeURIComponent(order.order_number)}` as never)}
+                style={({ pressed }) => [styles.orderCard, pressed && styles.cardPressed]}
+              >
+                <View style={styles.rowBetween}>
+                  <View style={styles.flexOne}>
+                    <Text style={styles.cardTitle}>{order.patient_name || order.patient_mrn || order.order_number}</Text>
+                    <Text style={styles.cardMeta}>{order.order_number} · {order.priority.replace('_', ' ')} · {order.items.length} test{order.items.length === 1 ? '' : 's'}</Text>
+                  </View>
+                  <Pill label={order.status.replace(/_/g, ' ')} tone={getLabStatusTone(order.status)} />
+                </View>
+                {order.clinical_notes ? <Text style={styles.bodyText}>{order.clinical_notes}</Text> : null}
+                <View style={styles.metaRow}>
+                  <Text style={styles.cardMeta}>Ordered {formatDateTime(order.ordered_at)}</Text>
+                  {hasAbnormalResult(order) ? <Pill label="Abnormal result" tone="danger" /> : null}
+                </View>
+              </Pressable>
+            ))
+          )
+        ) : results.length === 0 ? (
+          <EmptyState title="No lab results yet" description="Verified or pending laboratory results will appear here for dedicated result review." />
         ) : (
-          orders.map((order) => (
-            <Pressable
-              key={order.order_number}
-              onPress={() => router.push(`/laboratory/${encodeURIComponent(order.order_number)}` as never)}
-              style={({ pressed }) => [styles.orderCard, pressed && styles.cardPressed]}
-            >
+          results.map((result) => (
+            <View key={result.id} style={styles.resultCard}>
               <View style={styles.rowBetween}>
                 <View style={styles.flexOne}>
-                  <Text style={styles.cardTitle}>{order.patient_name || order.patient_mrn || order.order_number}</Text>
-                  <Text style={styles.cardMeta}>{order.order_number} · {order.priority.replace('_', ' ')} · {order.items.length} test{order.items.length === 1 ? '' : 's'}</Text>
+                  <Text style={styles.cardTitle}>{result.test_name || result.test_code || 'Lab result'}</Text>
+                  <Text style={styles.cardMeta}>{result.test_code || 'No code'} · Entered {formatDateTime(result.entered_at || result.created_at)}</Text>
                 </View>
-                <Pill label={order.status.replace(/_/g, ' ')} tone={getLabStatusTone(order.status)} />
+                <Pill label={(result.verification_status || 'Pending').replace(/_/g, ' ')} tone={getResultTone(result)} />
               </View>
-              {order.clinical_notes ? <Text style={styles.bodyText}>{order.clinical_notes}</Text> : null}
+              <Text style={styles.resultValue}>{result.formatted_value || result.text_value || result.option_value || 'Result recorded'}</Text>
+              <Text style={styles.cardMeta}>
+                Range: {result.reference_range_text || [result.reference_low, result.reference_high].filter((value) => value != null).join(' - ') || 'Not provided'}
+              </Text>
               <View style={styles.metaRow}>
-                <Text style={styles.cardMeta}>Ordered {formatDateTime(order.ordered_at)}</Text>
-                {hasAbnormalResult(order) ? <Pill label="Abnormal result" tone="danger" /> : null}
+                {result.result_flag ? <Pill label={result.result_flag.replace(/_/g, ' ')} tone={getResultTone(result)} /> : null}
+                {result.is_critical_result ? <Pill label="Critical" tone="danger" /> : null}
+                {verifiedCount > 0 ? <Text style={styles.cardMeta}>{verifiedCount} verified in this view</Text> : null}
               </View>
-            </Pressable>
+              {result.interpretation ? <Text style={styles.bodyText}>{result.interpretation}</Text> : null}
+            </View>
           ))
         )}
       </SectionCard>
@@ -99,6 +152,10 @@ export default function LaboratoryScreen() {
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
     metricRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    segmentedRow: {
       flexDirection: 'row',
       gap: 12,
     },
@@ -142,6 +199,19 @@ function createStyles(theme: AppTheme) {
       flexWrap: 'wrap',
       gap: 8,
       justifyContent: 'space-between',
+    },
+    resultCard: {
+      backgroundColor: theme.colors.elevated,
+      borderColor: theme.colors.border,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      gap: 8,
+      padding: 14,
+    },
+    resultValue: {
+      color: theme.colors.text,
+      fontSize: 20,
+      fontWeight: '800',
     },
   });
 }

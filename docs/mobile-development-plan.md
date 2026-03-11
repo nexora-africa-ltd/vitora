@@ -234,9 +234,33 @@
 
 > **Goal**: Clinicians can order labs, view results, and prescribe medications during consultations. Pharmacists and lab techs get focused mobile interfaces for their workflows.
 
+### Phase 2 Status
+
+**Overall status**: Core Phase 2 implementation is in place.
+
+**Verification completed**:
+- `npm run typecheck` passes
+- `npm run lint` passes
+- Targeted Jest coverage passes for the new laboratory and pharmacy API clients
+- Screen-level integration tests now cover lab order creation, treatment-plan-driven prescription creation, and dispensing flow execution
+
+**Residual validation gaps before broad rollout**:
+- No automated UI or integration coverage yet for lab result verification or the dedicated results-review tab state
+- The mobile experience does not yet differentiate clinician and pharmacist views by role; both workflows are reachable from the same navigation surface
+
 ### 2.1 Laboratory Orders & Results (Weeks 5–6)
 
 **Scope**: Order-to-result lab workflow accessible from encounter and as standalone module.
+
+**Implementation status**: Complete for the core mobile laboratory workflow.
+
+**Implemented**:
+- Added a dedicated laboratory API client with Zod-validated methods for test catalog lookup, order listing, encounter-linked order retrieval, order creation, order submission, specimen collection, cancellation, result retrieval, and result verification
+- Added mobile laboratory types and schemas matching backend serializers for `LabTest`, `LabOrder`, `LabOrderItem`, and `LabResult`
+- Built a standalone laboratory workspace with distinct `Orders` and `Results` views, metric summary cards, and drill-down navigation into order detail
+- Built a lab order creation screen that supports encounter-linked ordering, patient selection, category filtering, test search, urgency selection, and per-test collection instructions
+- Built a lab order detail screen that surfaces ordered tests, reference ranges, abnormal and critical result flags, verification status, and mobile result verification
+- Added an `Lab orders` section and `Order labs` action to encounter detail so clinicians can launch and review laboratory work in consultation context
 
 **Tasks**:
 - Build lab API client (orders CRUD, results retrieval, result verification)
@@ -260,6 +284,16 @@
 
 **Scope**: Prescribe-to-dispense workflow for clinicians and pharmacists.
 
+**Implementation status**: Complete for the core mobile prescribing and dispensing workflow.
+
+**Implemented**:
+- Added a pharmacy API client with Zod-validated methods for drug search, prescription list/detail/create/cancel, dispensing list, FEFO dispense execution, and stock lookup by drug
+- Added pharmacy types and schemas for `DrugProduct`, `StockBatch`, `StockLevel`, `Prescription`, `PrescriptionItem`, and `Dispensation`
+- Built a standalone pharmacy queue screen showing prescription status, remaining items, and navigation into dispensing detail
+- Built a prescription detail screen that shows prescription summary, item-level remaining quantities, stock availability state, and dispensing actions with stock checks before post
+- Built a prescription creation screen linked to the current encounter and patient, with treatment-plan context, automatic draft population from treatment-plan medications, formulary search, nested medication items, and allergy-warning acknowledgment handling
+- Added a `Prescriptions` section and `Create prescription` action to encounter detail so medication orders can be created and reviewed from the consultation screen
+
 **Tasks**:
 - Build pharmacy API client (prescriptions, dispensing, stock lookup, drug search)
 - Prescription creation from encounter treatment plan
@@ -279,6 +313,14 @@
 
 **Scope**: Accommodate new modules without crowding the bottom tab bar.
 
+**Implementation status**: Complete.
+
+**Implemented**:
+- Reworked the tab layout to keep the main bar at four core tabs plus a dedicated `More` overflow tab
+- Moved `Settings` out of the visible tab bar and into the `More` launcher screen
+- Added a `More` hub that launches Laboratory, Pharmacy, and Settings from a single overflow surface
+- Updated the `More` tab icon to a meatballs menu icon to reinforce the overflow navigation pattern
+
 **Tasks**:
 - Add 5th tab: "More" (overflow hub for Lab, Pharmacy, and Settings)
 - Move Settings from tab to "More" screen
@@ -290,17 +332,32 @@
 
 ### Exit / Acceptance Criteria — Phase 2
 
-| # | Criterion | Verification |
-|---|-----------|-------------|
-| 1 | Lab orders can be created from encounter with test selection | Encounter → Order Lab → select tests → submit → order appears |
-| 2 | Lab results display with reference ranges | View result → values shown with normal/abnormal ranges |
-| 3 | Abnormal results are visually highlighted | Result with out-of-range value → red/warning badge |
-| 4 | Prescriptions can be created from treatment plan | Treatment plan → Add prescription → drug search → save |
-| 5 | Pharmacist can dispense and record quantities | Pharmacy queue → select prescription → record dispensed qty |
-| 6 | Stock availability checked before dispensing | Dispense item with zero stock → warning shown |
-| 7 | Navigation accommodates Lab + Pharmacy without clutter | 5 tabs max, "More" tab opens module grid |
-| 8 | `npm run typecheck` and `npm run lint` pass | CI/local verification |
-| 9 | All new API methods use `parseResponse()` with Zod schemas | Code review |
+| # | Criterion | Status | Verification |
+|---|-----------|--------|-------------|
+| 1 | Lab orders can be created from encounter with test selection | Implemented, manual verification still advised | Encounter detail now exposes `Order labs`, and the lab order screen supports encounter-linked test selection and submission |
+| 2 | Lab results display with reference ranges | Implemented, manual verification still advised | Lab order detail shows result values, reference text, and low/high range values from the backend serializers |
+| 3 | Abnormal results are visually highlighted | Implemented, manual verification still advised | Lab result cards surface abnormal and critical flags with warning and danger pills |
+| 4 | Prescriptions can be created from treatment plan | Implemented | Prescription creation auto-matches treatment-plan medications to formulary drugs and seeds the draft items before save |
+| 5 | Pharmacist can dispense and record quantities | Implemented, manual verification still advised | Pharmacy detail supports item-level dispense quantity entry and posts FEFO dispense requests |
+| 6 | Stock availability checked before dispensing | Implemented | Dispensing blocks quantities above available stock and shows low-stock and out-of-stock warnings from stock lookups |
+| 7 | Navigation accommodates Lab + Pharmacy without clutter | Verified | Bottom navigation now uses Dashboard, Patients, Encounters, and `More`, with Settings moved into the `More` hub |
+| 8 | `npm run typecheck` and `npm run lint` pass | Verified | Local verification completed |
+| 9 | All new API methods use `parseResponse()` with Zod schemas | Verified | Laboratory and pharmacy clients validate all read responses with Zod-backed `parseResponse()` |
+| 10 | Focused API tests cover the new mobile client layer | Verified | Targeted Jest suites pass for `lib/api/laboratory.test.ts` and `lib/api/pharmacy.test.ts` |
+| 11 | Screen integration tests cover core create and dispense workflows | Verified | Jest integration suites pass for lab order creation, prescription draft creation, and dispensing execution |
+
+### Phase 2 Decision
+
+**Recommendation**: Safe to proceed to Phase 3, with carry-forward hardening items.
+
+**Why this is safe**:
+- The planned Phase 2 mobile foundation is present in the app: laboratory ordering, lab result review, prescribing, dispensing, encounter integration, and overflow navigation are all implemented
+- The new code compiles cleanly, lints cleanly, and has focused API-level automated coverage for both new client layers
+- The remaining gaps are workflow-depth and product-hardening issues rather than missing architectural prerequisites for offline-first work
+
+**Carry-forward items for early Phase 3 or Phase 2 hardening**:
+- Add UI or integration coverage for lab result verification and the dedicated result-review view state
+- Add role-aware gating or tailored entry points if pharmacists and clinicians should see different mobile workflows
 
 ---
 

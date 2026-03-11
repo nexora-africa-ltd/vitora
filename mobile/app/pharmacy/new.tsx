@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, AppPicker, AppTextInput, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
@@ -16,6 +16,43 @@ import { buildPatientName, formatDate } from '@/lib/utils/format';
 
 type DraftItem = PrescriptionItemInput & { drugName: string };
 
+function normalizeSearchValue(value?: string | null): string {
+  return (value || '').trim().toLowerCase();
+}
+
+function pickBestDrugMatch(drugs: DrugProduct[], medicationName: string): DrugProduct | null {
+  const normalizedMedicationName = normalizeSearchValue(medicationName);
+  if (!normalizedMedicationName) {
+    return null;
+  }
+
+  const exact = drugs.find((drug) =>
+    [drug.generic_name, drug.display_name, drug.brand_names]
+      .map((value) => normalizeSearchValue(value))
+      .some((value) => value === normalizedMedicationName)
+  );
+  if (exact) {
+    return exact;
+  }
+
+  const contains = drugs.find((drug) =>
+    [drug.generic_name, drug.display_name, drug.brand_names]
+      .map((value) => normalizeSearchValue(value))
+      .some((value) => value.includes(normalizedMedicationName) || normalizedMedicationName.includes(value))
+  );
+
+  return contains || drugs[0] || null;
+}
+
+function toQuantity(value?: string | null): number {
+  if (!value) {
+    return 1;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
 export default function NewPrescriptionScreen() {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -27,6 +64,12 @@ export default function NewPrescriptionScreen() {
   const [clinicalNotes, setClinicalNotes] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItems, setSelectedItems] = useState<DraftItem[]>([]);
+  const [autofillState, setAutofillState] = useState<{ attempted: boolean; isRunning: boolean; matched: number; unmatched: string[] }>({
+    attempted: false,
+    isRunning: false,
+    matched: 0,
+    unmatched: [],
+  });
 
   const encounterQuery = useQuery({
     queryKey: ['pharmacy-encounter', encounterId],
@@ -84,6 +127,77 @@ export default function NewPrescriptionScreen() {
       router.replace(`/pharmacy/${prescription.id}` as never);
     },
   });
+
+  useEffect(() => {
+    let active = true;
+
+    async function hydrateFromTreatmentPlan() {
+      const medications = treatmentPlanQuery.data?.medications ?? [];
+      if (!encounterId || autofillState.attempted || medications.length === 0 || selectedItems.length > 0) {
+        return;
+      }
+
+      setAutofillState((current) => ({ ...current, attempted: true, isRunning: true }));
+
+      if (!clinicalNotes.trim() && treatmentPlanQuery.data?.clinical_notes) {
+        setClinicalNotes(treatmentPlanQuery.data.clinical_notes);
+      }
+
+      const draftItems: DraftItem[] = [];
+      const unmatched: string[] = [];
+
+      for (const medication of medications) {
+        try {
+          const drugs = await pharmacyApi.searchDrugs(medication.name);
+          const match = pickBestDrugMatch(drugs, medication.name);
+
+          if (!match) {
+            unmatched.push(medication.name);
+            continue;
+          }
+
+          if (draftItems.some((item) => item.drug === match.id)) {
+            continue;
+          }
+
+          draftItems.push({
+            drug: match.id,
+            drugName: match.display_name,
+            quantity: toQuantity(medication.quantity),
+            dosage: medication.dosage || match.strength || '',
+            frequency: medication.frequency || '',
+            duration: medication.duration || '',
+            route: medication.route || '',
+            instructions: medication.instructions || '',
+            is_substitutable: true,
+          });
+        } catch {
+          unmatched.push(medication.name);
+        }
+      }
+
+      if (!active) {
+        return;
+      }
+
+      if (draftItems.length > 0) {
+        setSelectedItems(draftItems);
+      }
+
+      setAutofillState({
+        attempted: true,
+        isRunning: false,
+        matched: draftItems.length,
+        unmatched,
+      });
+    }
+
+    void hydrateFromTreatmentPlan();
+
+    return () => {
+      active = false;
+    };
+  }, [autofillState.attempted, clinicalNotes, encounterId, selectedItems.length, treatmentPlanQuery.data]);
 
   function addDrug(drug: DrugProduct) {
     setSelectedItems((current) => {
@@ -197,6 +311,13 @@ export default function NewPrescriptionScreen() {
 
       {treatmentPlanQuery.data ? (
         <SectionCard title="Treatment plan context" subtitle="These medications were documented in the encounter plan and can guide your formulary search.">
+          {autofillState.isRunning ? <Text style={styles.helperText}>Matching treatment-plan medications to stocked drugs...</Text> : null}
+          {!autofillState.isRunning && autofillState.attempted && autofillState.matched > 0 ? (
+            <Text style={styles.helperText}>{autofillState.matched} medication draft{autofillState.matched === 1 ? '' : 's'} auto-populated from the treatment plan.</Text>
+          ) : null}
+          {!autofillState.isRunning && autofillState.unmatched.length > 0 ? (
+            <Text style={styles.helperText}>No formulary match found yet for: {autofillState.unmatched.join(', ')}.</Text>
+          ) : null}
           {(treatmentPlanQuery.data.medications ?? []).length === 0 ? (
             <Text style={styles.helperText}>No medications are recorded on the encounter treatment plan yet.</Text>
           ) : (
