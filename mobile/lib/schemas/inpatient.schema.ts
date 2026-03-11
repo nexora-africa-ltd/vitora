@@ -308,3 +308,22 @@ export const MedicationAdministrationSchema = z.object({
 });
 
 export const PaginatedMedicationAdministrationSchema = paginated(MedicationAdministrationSchema);
+
+// ── Bed Swap ──
+
+export const BedSwapResultSchema = z.object({
+  bed_a: z.number(),
+  bed_b: z.number(),
+  bed_a_number: z.string(),
+  bed_b_number: z.string(),
+  message: z.string(),
+});
+
+// ── MAR Schedule Generation ──
+
+export const MARScheduleGenerateResultSchema = z.object({
+  created: z.number(),
+  admission: z.number(),
+  prescription_item: z.number(),
+  message: z.string(),
+});

@@ -48,7 +48,7 @@ export default function MoreScreen() {
         </View>
       </SectionCard>
 
-      <SectionCard title="Workspace" subtitle="Settings stay available here without consuming a permanent tab slot.">
+      <SectionCard title="Workspace" subtitle="Custom settings for your Vitora app.">
         <AppButton label="Settings" onPress={() => router.push('/(tabs)/settings' as never)} variant="ghost" />
       </SectionCard>
     </ScreenContainer>
