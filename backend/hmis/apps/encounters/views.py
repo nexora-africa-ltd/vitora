@@ -17,6 +17,7 @@ from hmis.apps.core.history_views import ModelHistoryMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
+from .filters import EncounterFilter
 from .models import (
     Diagnosis,
     Encounter,
@@ -273,7 +274,7 @@ class EncounterViewSet(ModelHistoryMixin, viewsets.ModelViewSet):
     serializer_class = EncounterSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["patient", "encounter_type", "encounter_date", "status", "visit_reason"]
+    filterset_class = EncounterFilter
     search_fields = ["chief_complaint", "notes", "patient__first_name", "patient__last_name"]
     ordering_fields = ["encounter_date", "created_at", "encounter_type"]
     ordering = ["-encounter_date", "-created_at"]

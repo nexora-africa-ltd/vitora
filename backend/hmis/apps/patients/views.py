@@ -19,6 +19,7 @@ from hmis.apps.core.models import AuditLog, IdempotencyKey
 from hmis.apps.core.permissions import SensitiveAccessPermission, get_client_ip
 from hmis.apps.encounters.models import Encounter
 
+from .filters import PatientFilter
 from .models import Allergy, EmergencyContact, Patient
 from .serializers import (
     AllergyListSerializer,
@@ -54,7 +55,7 @@ class PatientViewSet(ModelHistoryMixin, IdempotentCreateMixin, viewsets.ModelVie
     serializer_class = PatientSerializer
     permission_classes = [IsAuthenticated, SensitiveAccessPermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["gender", "is_sensitive"]
+    filterset_class = PatientFilter
     search_fields = ["first_name", "last_name", "mrn", "national_id", "phone_number"]
     ordering_fields = ["created_at", "last_name", "first_name"]
     ordering = ["-created_at"]

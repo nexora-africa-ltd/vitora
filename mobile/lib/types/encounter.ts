@@ -238,4 +238,5 @@ export interface EncounterListParams {
   search?: string;
   ordering?: string;
   status?: string;
+  modified_after?: string;
 }

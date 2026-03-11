@@ -7,6 +7,7 @@ export type SyncRunSummary = {
   conflictCount: number;
   encounterCount: number;
   error: string | null;
+  failedCount: number;
   lastSyncedAt: string | null;
   patientCount: number;
   pendingCount: number;
@@ -21,7 +22,8 @@ export async function runOfflineSync(): Promise<SyncRunSummary> {
     const database = await getOfflineDatabase();
     const lastSyncedAt = new Date().toISOString();
     const conflictCount = database.queue.filter((entry) => entry.status === 'conflict').length;
-    const pendingCount = database.queue.filter((entry) => entry.status !== 'conflict').length;
+    const failedCount = database.queue.filter((entry) => entry.status === 'failed').length;
+    const pendingCount = database.queue.filter((entry) => entry.status !== 'conflict' && entry.status !== 'failed').length;
 
     await setOfflineSyncMetadata({
       last_successful_sync_at: lastSyncedAt,
@@ -32,6 +34,7 @@ export async function runOfflineSync(): Promise<SyncRunSummary> {
       conflictCount,
       encounterCount: pullSummary.encounters,
       error: null,
+      failedCount,
       lastSyncedAt,
       patientCount: pullSummary.patients,
       pendingCount,
@@ -47,9 +50,10 @@ export async function runOfflineSync(): Promise<SyncRunSummary> {
       conflictCount: database.queue.filter((entry) => entry.status === 'conflict').length,
       encounterCount: database.encounters.length,
       error: message,
+      failedCount: database.queue.filter((entry) => entry.status === 'failed').length,
       lastSyncedAt: database.meta.last_successful_sync_at,
       patientCount: database.patients.length,
-      pendingCount: database.queue.filter((entry) => entry.status !== 'conflict').length,
+      pendingCount: database.queue.filter((entry) => entry.status !== 'conflict' && entry.status !== 'failed').length,
       pushedCount: 0,
       status: 'error',
     };
@@ -61,8 +65,9 @@ export async function getOfflineSyncSnapshot() {
   return {
     conflictCount: database.queue.filter((entry) => entry.status === 'conflict').length,
     error: database.meta.last_sync_error,
+    failedCount: database.queue.filter((entry) => entry.status === 'failed').length,
     isSeeded: Boolean(database.meta.last_seeded_at),
     lastSyncedAt: database.meta.last_successful_sync_at,
-    pendingCount: database.queue.filter((entry) => entry.status !== 'conflict').length,
+    pendingCount: database.queue.filter((entry) => entry.status !== 'conflict' && entry.status !== 'failed').length,
   };
 }

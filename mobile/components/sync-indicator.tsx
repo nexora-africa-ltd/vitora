@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -23,7 +24,7 @@ function getTone(state: ReturnType<typeof useSyncStatus>['state']) {
   return 'primary' as const;
 }
 
-function getLabel(state: ReturnType<typeof useSyncStatus>['state'], pendingCount: number, conflictCount: number) {
+function getLabel(state: ReturnType<typeof useSyncStatus>['state'], pendingCount: number, conflictCount: number, failedCount: number) {
   if (state === 'hydrating') {
     return 'Preparing offline cache';
   }
@@ -33,7 +34,8 @@ function getLabel(state: ReturnType<typeof useSyncStatus>['state'], pendingCount
   }
 
   if (state === 'conflict') {
-    return conflictCount > 0 ? `${conflictCount} conflict${conflictCount === 1 ? '' : 's'}` : 'Conflict';
+    const total = conflictCount + failedCount;
+    return total > 0 ? `${total} sync issue${total === 1 ? '' : 's'}` : 'Conflict';
   }
 
   if (state === 'offline') {
@@ -41,21 +43,23 @@ function getLabel(state: ReturnType<typeof useSyncStatus>['state'], pendingCount
   }
 
   if (state === 'error') {
-    return 'Sync error';
+    return failedCount > 0 ? `Sync error (${failedCount} failed)` : 'Sync error';
   }
 
-  return pendingCount > 0 ? `${pendingCount} queued` : 'Synced';
+  return pendingCount > 0 ? `${pendingCount} queued` : failedCount > 0 ? `${failedCount} failed` : 'Synced';
 }
 
 export function SyncIndicator() {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { conflictCount, error, isOnline, lastSyncedAt, pendingCount, requestSync, state } = useSyncStatus();
+  const router = useRouter();
+  const { conflictCount, error, failedCount, isOnline, lastSyncedAt, pendingCount, requestSync, state } = useSyncStatus();
+  const hasIssues = conflictCount > 0 || failedCount > 0;
 
   return (
     <View style={styles.container}>
       <View style={styles.copy}>
-        <Pill label={getLabel(state, pendingCount, conflictCount)} tone={getTone(state)} />
+        <Pill label={getLabel(state, pendingCount, conflictCount, failedCount)} tone={getTone(state)} />
         <Text style={styles.caption}>
           {state === 'synced' && lastSyncedAt
             ? `Last sync ${formatDateTime(lastSyncedAt)}`
@@ -67,7 +71,11 @@ export function SyncIndicator() {
         </Text>
       </View>
       <View style={styles.buttonWrap}>
-        <AppButton label={state === 'syncing' ? 'Syncing...' : 'Sync now'} onPress={() => void requestSync('manual')} disabled={!isOnline || state === 'syncing'} variant="ghost" />
+        {hasIssues ? (
+          <AppButton label="View issues" onPress={() => router.push('/sync/conflicts')} variant="danger" />
+        ) : (
+          <AppButton label={state === 'syncing' ? 'Syncing...' : 'Sync now'} onPress={() => void requestSync('manual')} disabled={!isOnline || state === 'syncing'} variant="ghost" />
+        )}
       </View>
     </View>
   );
