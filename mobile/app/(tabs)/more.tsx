@@ -4,26 +4,32 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, HeroCard, ScreenContainer, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
+import { getLaboratoryLauncherConfig, getPharmacyLauncherConfig, getSupportWorkspaceTitle } from '@/lib/auth/role-access';
+import { useAuth } from '@/lib/auth/auth-context';
 import { useAppTheme } from '@/lib/theme/theme-context';
 
 export default function MoreScreen() {
+  const { user } = useAuth();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const laboratoryLauncher = useMemo(() => getLaboratoryLauncherConfig(user), [user]);
+  const pharmacyLauncher = useMemo(() => getPharmacyLauncherConfig(user), [user]);
+  const workspaceTitle = useMemo(() => getSupportWorkspaceTitle(user), [user]);
 
   return (
     <ScreenContainer>
       <HeroCard
         eyebrow="More"
-        title="Support modules"
-        description="Phase 2 adds laboratory and pharmacy workflows while keeping the bottom tab bar usable on small screens."
+        title={workspaceTitle}
+        description="Phase 2 adds laboratory and pharmacy workflows while keeping the bottom tab bar usable on small screens, with entry points tailored to the signed-in user role."
       />
 
-      <SectionCard title="Clinical support" subtitle="Open focused mobile workspaces for laboratory and pharmacy teams.">
+      <SectionCard title="Clinical support" subtitle="Open focused workspaces that adapt to clinicians, laboratory staff, and pharmacy staff.">
         <View style={styles.launcherStack}>
-          <AppButton label="Laboratory" onPress={() => router.push('/laboratory' as never)} />
-          <Text style={styles.helperText}>Order tracking, results review, specimen workflow, and abnormal result highlighting.</Text>
-          <AppButton label="Pharmacy" onPress={() => router.push('/pharmacy' as never)} variant="secondary" />
-          <Text style={styles.helperText}>Prescription queue, stock-aware dispensing, and encounter-linked medication flow.</Text>
+          <AppButton label={laboratoryLauncher.label} onPress={() => router.push('/laboratory' as never)} variant={laboratoryLauncher.variant} />
+          <Text style={styles.helperText}>{laboratoryLauncher.description}</Text>
+          <AppButton label={pharmacyLauncher.label} onPress={() => router.push('/pharmacy' as never)} variant={pharmacyLauncher.variant} />
+          <Text style={styles.helperText}>{pharmacyLauncher.description}</Text>
         </View>
       </SectionCard>
 

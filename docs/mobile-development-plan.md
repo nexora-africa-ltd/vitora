@@ -243,10 +243,12 @@
 - `npm run lint` passes
 - Targeted Jest coverage passes for the new laboratory and pharmacy API clients
 - Screen-level integration tests now cover lab order creation, treatment-plan-driven prescription creation, and dispensing flow execution
+- Screen-level integration tests now cover the laboratory results-review view state and laboratory result verification
+- Role-aware entry points now tailor the `More` hub for clinicians, laboratory users, and pharmacy users
 
 **Residual validation gaps before broad rollout**:
-- No automated UI or integration coverage yet for lab result verification or the dedicated results-review tab state
-- The mobile experience does not yet differentiate clinician and pharmacist views by role; both workflows are reachable from the same navigation surface
+- The mobile experience now tailors entry points by role, but it still does not enforce strict module access boundaries or deep route authorization
+- Dedicated role-specific home screens do not yet exist; tailoring currently happens in the shared `More` launcher hub
 
 ### 2.1 Laboratory Orders & Results (Weeks 5–6)
 
@@ -260,6 +262,7 @@
 - Built a standalone laboratory workspace with distinct `Orders` and `Results` views, metric summary cards, and drill-down navigation into order detail
 - Built a lab order creation screen that supports encounter-linked ordering, patient selection, category filtering, test search, urgency selection, and per-test collection instructions
 - Built a lab order detail screen that surfaces ordered tests, reference ranges, abnormal and critical result flags, verification status, and mobile result verification
+- Added integration coverage for switching into the dedicated result-review view and for verifying pending lab results from the order detail screen
 - Added an `Lab orders` section and `Order labs` action to encounter detail so clinicians can launch and review laboratory work in consultation context
 
 **Tasks**:
@@ -320,6 +323,7 @@
 - Moved `Settings` out of the visible tab bar and into the `More` launcher screen
 - Added a `More` hub that launches Laboratory, Pharmacy, and Settings from a single overflow surface
 - Updated the `More` tab icon to a meatballs menu icon to reinforce the overflow navigation pattern
+- Tailored the `More` launcher labels and descriptions so clinicians, laboratory staff, and pharmacy staff see different entry-point emphasis based on role metadata
 
 **Tasks**:
 - Add 5th tab: "More" (overflow hub for Lab, Pharmacy, and Settings)
@@ -345,6 +349,8 @@
 | 9 | All new API methods use `parseResponse()` with Zod schemas | Verified | Laboratory and pharmacy clients validate all read responses with Zod-backed `parseResponse()` |
 | 10 | Focused API tests cover the new mobile client layer | Verified | Targeted Jest suites pass for `lib/api/laboratory.test.ts` and `lib/api/pharmacy.test.ts` |
 | 11 | Screen integration tests cover core create and dispense workflows | Verified | Jest integration suites pass for lab order creation, prescription draft creation, and dispensing execution |
+| 12 | Screen integration tests cover result review and lab result verification | Verified | Jest integration suites pass for the laboratory result-review tab state and mobile result verification action |
+| 13 | Support-module launchers adapt to role context | Verified | The `More` screen tailors laboratory and pharmacy entry labels and descriptions for pharmacists and laboratory users |
 
 ### Phase 2 Decision
 
@@ -356,8 +362,8 @@
 - The remaining gaps are workflow-depth and product-hardening issues rather than missing architectural prerequisites for offline-first work
 
 **Carry-forward items for early Phase 3 or Phase 2 hardening**:
-- Add UI or integration coverage for lab result verification and the dedicated result-review view state
-- Add role-aware gating or tailored entry points if pharmacists and clinicians should see different mobile workflows
+- Add strict module access control if pharmacists and laboratory users should be prevented from entering non-role workflows
+- Consider dedicated role-specific landing screens if the `More` hub tailoring is not sufficient for production mobile operations
 
 ---
 
