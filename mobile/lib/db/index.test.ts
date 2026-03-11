@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { clearOfflineDatabase, discardQueueEntry, getConflictAndFailedEntries, getLocalEncounter, getLocalPatient, getOfflineDatabase, listLocalEncounters, listLocalPatients, queueOfflineEncounterCreate, queueOfflinePatientCreate, replaceQueuedPatient, retryQueueEntry, updateQueueEntryState, upsertEncounters, upsertPatients, upsertReferenceData } from '@/lib/db';
+import { clearOfflineDatabase, discardQueueEntry, getConflictAndFailedEntries, getLocalEncounter, getLocalPatient, getOfflineDatabase, listLocalEncounters, listLocalLabOrders, listLocalPatients, listLocalPrescriptions, queueOfflineEncounterCreate, queueOfflinePatientCreate, replaceQueuedPatient, retryQueueEntry, updateQueueEntryState, upsertEncounters, upsertLabOrders, upsertPatients, upsertPrescriptions, upsertReferenceData } from '@/lib/db';
 import { CURRENT_SCHEMA_VERSION, OFFLINE_DB_STORAGE_KEY } from '@/lib/db/schema';
 
 describe('offline database', () => {
@@ -262,5 +262,275 @@ describe('offline database', () => {
     expect(entry?.status).toBe('pending');
     expect(entry?.attempts).toBe(0);
     expect(entry?.last_error).toBeNull();
+  });
+
+  it('upserts and lists local lab orders', async () => {
+    await upsertLabOrders([
+      {
+        id: 701,
+        order_number: 'LAB-20260311-0001',
+        patient: 21,
+        patient_name: 'Jane Doe',
+        patient_mrn: 'MRN-20260311-0001',
+        order_type: 'IN_HOUSE',
+        priority: 'ROUTINE',
+        status: 'ORDERED',
+        specimen_collected: false,
+        total_cost: 500,
+        items: [],
+        ordered_at: '2026-03-11T10:00:00Z',
+        created_at: '2026-03-11T10:00:00Z',
+        updated_at: '2026-03-11T10:00:00Z',
+      },
+      {
+        id: 702,
+        order_number: 'LAB-20260311-0002',
+        patient: 22,
+        patient_name: 'John Doe',
+        patient_mrn: 'MRN-20260311-0002',
+        order_type: 'IN_HOUSE',
+        priority: 'URGENT',
+        status: 'COLLECTED',
+        specimen_collected: true,
+        total_cost: 1000,
+        items: [],
+        ordered_at: '2026-03-11T11:00:00Z',
+        created_at: '2026-03-11T11:00:00Z',
+        updated_at: '2026-03-11T11:00:00Z',
+      },
+    ] as never);
+
+    const all = await listLocalLabOrders();
+    expect(all.count).toBe(2);
+
+    const filtered = await listLocalLabOrders({ patientId: 21 });
+    expect(filtered.count).toBe(1);
+    expect(filtered.records[0]?.order_number).toBe('LAB-20260311-0001');
+  });
+
+  it('upserts and lists local prescriptions', async () => {
+    await upsertPrescriptions([
+      {
+        id: 801,
+        prescription_number: 'RX-20260311-0001',
+        patient: 21,
+        patient_name: 'Jane Doe',
+        patient_mrn: 'MRN-20260311-0001',
+        status: 'PENDING',
+        is_valid: true,
+        is_valid_prescription: true,
+        is_fully_dispensed: false,
+        is_fully_dispensed_status: false,
+        items: [],
+        created_at: '2026-03-11T10:00:00Z',
+        updated_at: '2026-03-11T10:00:00Z',
+      },
+    ] as never);
+
+    const all = await listLocalPrescriptions();
+    expect(all.count).toBe(1);
+    expect(all.records[0]?.prescription_number).toBe('RX-20260311-0001');
+  });
+
+  it('filters local prescriptions by patient id', async () => {
+    await upsertPrescriptions([
+      {
+        id: 801,
+        prescription_number: 'RX-20260311-0001',
+        patient: 21,
+        status: 'PENDING',
+        is_valid: true,
+        is_valid_prescription: true,
+        is_fully_dispensed: false,
+        is_fully_dispensed_status: false,
+        items: [],
+        created_at: '2026-03-11T10:00:00Z',
+        updated_at: '2026-03-11T10:00:00Z',
+      },
+      {
+        id: 802,
+        prescription_number: 'RX-20260311-0002',
+        patient: 22,
+        status: 'DISPENSED',
+        is_valid: true,
+        is_valid_prescription: true,
+        is_fully_dispensed: true,
+        is_fully_dispensed_status: true,
+        items: [],
+        created_at: '2026-03-11T11:00:00Z',
+        updated_at: '2026-03-11T11:00:00Z',
+      },
+    ] as never);
+
+    const patient21 = await listLocalPrescriptions({ patientId: 21 });
+    expect(patient21.count).toBe(1);
+    expect(patient21.records[0]?.id).toBe(801);
+
+    const patient22 = await listLocalPrescriptions({ patientId: 22 });
+    expect(patient22.count).toBe(1);
+    expect(patient22.records[0]?.id).toBe(802);
+  });
+
+  it('runs schema v3 migration adding labOrders and prescriptions', async () => {
+    // Simulate a v2 database without labOrders/prescriptions
+    const v2Database = {
+      counties: [{ id: 1, code: 1, name: 'Nairobi' }],
+      diagnoses: [],
+      encounters: [],
+      patients: [],
+      queue: [],
+      subCounties: [],
+      wards: [],
+      meta: {
+        id_remaps: { encounters: {}, patients: {} },
+        last_pull_at: null,
+        last_push_at: null,
+        last_seeded_at: null,
+        last_successful_sync_at: null,
+        last_sync_error: null,
+        schema_version: 2,
+      },
+    };
+
+    await AsyncStorage.setItem(OFFLINE_DB_STORAGE_KEY, JSON.stringify(v2Database));
+    const database = await getOfflineDatabase();
+
+    expect(database.meta.schema_version).toBe(CURRENT_SCHEMA_VERSION);
+    expect(Array.isArray(database.labOrders)).toBe(true);
+    expect(database.labOrders).toHaveLength(0);
+    expect(Array.isArray(database.prescriptions)).toBe(true);
+    expect(database.prescriptions).toHaveLength(0);
+  });
+
+  it('updates existing lab orders on upsert instead of duplicating', async () => {
+    await upsertLabOrders([
+      {
+        id: 701,
+        order_number: 'LAB-20260311-0001',
+        patient: 21,
+        order_type: 'IN_HOUSE',
+        priority: 'ROUTINE',
+        status: 'ORDERED',
+        specimen_collected: false,
+        total_cost: 500,
+        items: [],
+        ordered_at: '2026-03-11T10:00:00Z',
+        created_at: '2026-03-11T10:00:00Z',
+        updated_at: '2026-03-11T10:00:00Z',
+      },
+    ] as never);
+
+    // Upsert same id with updated status
+    await upsertLabOrders([
+      {
+        id: 701,
+        order_number: 'LAB-20260311-0001',
+        patient: 21,
+        order_type: 'IN_HOUSE',
+        priority: 'ROUTINE',
+        status: 'COMPLETED',
+        specimen_collected: true,
+        total_cost: 500,
+        items: [],
+        ordered_at: '2026-03-11T10:00:00Z',
+        created_at: '2026-03-11T10:00:00Z',
+        updated_at: '2026-03-11T12:00:00Z',
+      },
+    ] as never);
+
+    const result = await listLocalLabOrders();
+    expect(result.count).toBe(1);
+    expect(result.records[0]?.status).toBe('COMPLETED');
+  });
+
+  it('limits lab order list results when limit is specified', async () => {
+    await upsertLabOrders([
+      {
+        id: 701,
+        order_number: 'LAB-0001',
+        patient: 21,
+        order_type: 'IN_HOUSE',
+        priority: 'ROUTINE',
+        status: 'ORDERED',
+        specimen_collected: false,
+        total_cost: 100,
+        items: [],
+        ordered_at: '2026-03-11T10:00:00Z',
+        created_at: '2026-03-11T10:00:00Z',
+        updated_at: '2026-03-11T10:00:00Z',
+      },
+      {
+        id: 702,
+        order_number: 'LAB-0002',
+        patient: 21,
+        order_type: 'IN_HOUSE',
+        priority: 'URGENT',
+        status: 'ORDERED',
+        specimen_collected: false,
+        total_cost: 200,
+        items: [],
+        ordered_at: '2026-03-11T11:00:00Z',
+        created_at: '2026-03-11T11:00:00Z',
+        updated_at: '2026-03-11T11:00:00Z',
+      },
+      {
+        id: 703,
+        order_number: 'LAB-0003',
+        patient: 21,
+        order_type: 'IN_HOUSE',
+        priority: 'STAT',
+        status: 'ORDERED',
+        specimen_collected: false,
+        total_cost: 300,
+        items: [],
+        ordered_at: '2026-03-11T12:00:00Z',
+        created_at: '2026-03-11T12:00:00Z',
+        updated_at: '2026-03-11T12:00:00Z',
+      },
+    ] as never);
+
+    const limited = await listLocalLabOrders({ limit: 2 });
+    expect(limited.count).toBe(3);
+    expect(limited.records).toHaveLength(2);
+  });
+
+  it('updates existing prescriptions on upsert instead of duplicating', async () => {
+    await upsertPrescriptions([
+      {
+        id: 801,
+        prescription_number: 'RX-20260311-0001',
+        patient: 21,
+        status: 'PENDING',
+        is_valid: true,
+        is_valid_prescription: true,
+        is_fully_dispensed: false,
+        is_fully_dispensed_status: false,
+        items: [],
+        created_at: '2026-03-11T10:00:00Z',
+        updated_at: '2026-03-11T10:00:00Z',
+      },
+    ] as never);
+
+    // Upsert same id with updated status
+    await upsertPrescriptions([
+      {
+        id: 801,
+        prescription_number: 'RX-20260311-0001',
+        patient: 21,
+        status: 'DISPENSED',
+        is_valid: true,
+        is_valid_prescription: true,
+        is_fully_dispensed: true,
+        is_fully_dispensed_status: true,
+        items: [],
+        created_at: '2026-03-11T10:00:00Z',
+        updated_at: '2026-03-11T12:00:00Z',
+      },
+    ] as never);
+
+    const result = await listLocalPrescriptions();
+    expect(result.count).toBe(1);
+    expect(result.records[0]?.status).toBe('DISPENSED');
+    expect(result.records[0]?.is_fully_dispensed).toBe(true);
   });
 });

@@ -2,12 +2,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { queryClient } from '@/lib/query/client';
 import type { EncounterCreateData } from '@/lib/types/encounter';
+import type { LabOrder } from '@/lib/types/laboratory';
 import type { County, SubCounty, Ward } from '@/lib/types/location';
 import type { PatientCreateData } from '@/lib/types/patient';
+import type { Prescription } from '@/lib/types/pharmacy';
 
 import { buildOfflineEncounterRecord, matchesEncounterSearch, sortEncounters, toLocalEncounterRecord } from './models/encounter';
+import { sortLabOrders, toLocalLabOrderRecord } from './models/lab-order';
 import { buildOfflinePatientRecord, matchesPatientSearch, sortPatients, toLocalPatientRecord } from './models/patient';
-import { createEmptyOfflineDatabase, CURRENT_SCHEMA_VERSION, OFFLINE_DB_STORAGE_KEY, SCHEMA_MIGRATIONS, type LocalEncounterRecord, type LocalPatientRecord, type OfflineDatabase, type SyncQueueEntry } from './schema';
+import { sortPrescriptions, toLocalPrescriptionRecord } from './models/prescription';
+import { createEmptyOfflineDatabase, CURRENT_SCHEMA_VERSION, OFFLINE_DB_STORAGE_KEY, SCHEMA_MIGRATIONS, type LocalEncounterRecord, type LocalLabOrderRecord, type LocalPatientRecord, type LocalPrescriptionRecord, type OfflineDatabase, type SyncQueueEntry } from './schema';
 
 type PatientListOptions = {
   limit?: number;
@@ -22,10 +26,14 @@ type EncounterListOptions = {
 
 const LOCAL_QUERY_KEYS = [
   ['dashboard-summary'],
+  ['local-lab-order'],
+  ['local-lab-orders'],
   ['local-patient'],
   ['local-patients'],
   ['local-encounter'],
   ['local-encounters'],
+  ['local-prescription'],
+  ['local-prescriptions'],
   ['offline-reference-data'],
   ['sync-status'],
 ] as const;
@@ -70,7 +78,9 @@ function normalizeDatabase(payload: string | null): OfflineDatabase {
       counties: typedParsed.counties ?? next.counties,
       diagnoses: typedParsed.diagnoses ?? next.diagnoses,
       encounters: typedParsed.encounters ?? next.encounters,
+      labOrders: typedParsed.labOrders ?? next.labOrders,
       patients: typedParsed.patients ?? next.patients,
+      prescriptions: typedParsed.prescriptions ?? next.prescriptions,
       queue: typedParsed.queue ?? next.queue,
       subCounties: typedParsed.subCounties ?? next.subCounties,
       wards: typedParsed.wards ?? next.wards,
@@ -237,6 +247,64 @@ export async function upsertEncounters(records: LocalEncounterRecord[] | Paramet
 
     database.encounters = sortEncounters(Array.from(encounterMap.values()));
   });
+}
+
+export async function upsertLabOrders(records: LocalLabOrderRecord[] | Parameters<typeof toLocalLabOrderRecord>[0][], syncedAt?: string): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    const orderMap = new Map(database.labOrders.map((order) => [order.id, order]));
+
+    for (const record of records) {
+      const nextRecord = 'sync_state' in record ? record : toLocalLabOrderRecord(record, syncedAt);
+      orderMap.set(nextRecord.id, nextRecord);
+    }
+
+    database.labOrders = sortLabOrders(Array.from(orderMap.values()));
+  });
+}
+
+export async function upsertPrescriptions(records: LocalPrescriptionRecord[] | Parameters<typeof toLocalPrescriptionRecord>[0][], syncedAt?: string): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    const prescriptionMap = new Map(database.prescriptions.map((rx) => [rx.id, rx]));
+
+    for (const record of records) {
+      const nextRecord = 'sync_state' in record ? record : toLocalPrescriptionRecord(record, syncedAt);
+      prescriptionMap.set(nextRecord.id, nextRecord);
+    }
+
+    database.prescriptions = sortPrescriptions(Array.from(prescriptionMap.values()));
+  });
+}
+
+export async function listLocalLabOrders(options: { patientId?: number; limit?: number } = {}): Promise<{ count: number; records: LocalLabOrderRecord[] }> {
+  const database = await getOfflineDatabase();
+  let records = database.labOrders;
+
+  if (options.patientId) {
+    records = records.filter((order) => order.patient === options.patientId);
+  }
+
+  const count = records.length;
+  if (options.limit) {
+    records = records.slice(0, options.limit);
+  }
+
+  return { count, records };
+}
+
+export async function listLocalPrescriptions(options: { patientId?: number; limit?: number } = {}): Promise<{ count: number; records: LocalPrescriptionRecord[] }> {
+  const database = await getOfflineDatabase();
+  let records = database.prescriptions;
+
+  if (options.patientId) {
+    records = records.filter((rx) => rx.patient === options.patientId);
+  }
+
+  const count = records.length;
+  if (options.limit) {
+    records = records.slice(0, options.limit);
+  }
+
+  return { count, records };
 }
 
 export async function queueOfflinePatientCreate(data: PatientCreateData): Promise<LocalPatientRecord> {

@@ -1,11 +1,15 @@
 import { encountersApi } from '@/lib/api/encounters';
+import { laboratoryApi } from '@/lib/api/laboratory';
 import { locationsApi } from '@/lib/api/locations';
 import { patientsApi } from '@/lib/api/patients';
-import { getOfflineDatabase, setOfflineSyncMetadata, upsertEncounters, upsertPatients, upsertReferenceData } from '@/lib/db';
+import { pharmacyApi } from '@/lib/api/pharmacy';
+import { getOfflineDatabase, setOfflineSyncMetadata, upsertEncounters, upsertLabOrders, upsertPatients, upsertPrescriptions, upsertReferenceData } from '@/lib/db';
 
 type PullSummary = {
   encounters: number;
+  labOrders: number;
   patients: number;
+  prescriptions: number;
 };
 
 async function fetchAllPatients(modifiedAfter?: string | null) {
@@ -50,24 +54,58 @@ async function fetchAllEncounters(modifiedAfter?: string | null) {
   }
 }
 
+async function fetchAllLabOrders() {
+  const records = [] as Awaited<ReturnType<typeof laboratoryApi.listOrders>>['results'];
+  let page = 1;
+
+  while (true) {
+    const response = await laboratoryApi.listOrders({ page, page_size: 100 });
+    records.push(...response.results);
+
+    if (!response.next) {
+      return records;
+    }
+
+    page += 1;
+  }
+}
+
+async function fetchAllPrescriptions() {
+  const records = [] as Awaited<ReturnType<typeof pharmacyApi.listPrescriptions>>['results'];
+  let page = 1;
+
+  while (true) {
+    const response = await pharmacyApi.listPrescriptions({ page, page_size: 100 });
+    records.push(...response.results);
+
+    if (!response.next) {
+      return records;
+    }
+
+    page += 1;
+  }
+}
+
 export async function pullOfflineData(): Promise<PullSummary> {
   const database = await getOfflineDatabase();
   const lastPullAt = database.meta.last_pull_at;
   const syncedAt = new Date().toISOString();
 
-  const [counties, subCounties, wards, patients, encounters] = await Promise.all([
+  const [counties, subCounties, wards, patients, encounters, labOrders, prescriptions] = await Promise.all([
     locationsApi.getCounties(),
     locationsApi.getAllSubCounties(),
     locationsApi.getAllWards(),
     fetchAllPatients(lastPullAt),
     fetchAllEncounters(lastPullAt),
+    fetchAllLabOrders(),
+    fetchAllPrescriptions(),
   ]);
 
-  await Promise.all([
-    upsertReferenceData({ counties, subCounties, wards }),
-    upsertPatients(patients, syncedAt),
-    upsertEncounters(encounters, syncedAt),
-  ]);
+  await upsertReferenceData({ counties, subCounties, wards });
+  await upsertPatients(patients, syncedAt);
+  await upsertEncounters(encounters, syncedAt);
+  await upsertLabOrders(labOrders, syncedAt);
+  await upsertPrescriptions(prescriptions, syncedAt);
 
   await setOfflineSyncMetadata({
     last_pull_at: syncedAt,
@@ -76,6 +114,8 @@ export async function pullOfflineData(): Promise<PullSummary> {
 
   return {
     encounters: encounters.length,
+    labOrders: labOrders.length,
     patients: patients.length,
+    prescriptions: prescriptions.length,
   };
 }

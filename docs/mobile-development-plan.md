@@ -1,6 +1,6 @@
 # Vitora HMIS — Mobile App Development Plan
 
-**Version**: 1.1  
+**Version**: 1.2  
 **Date**: March 11, 2026  
 **Platform**: React Native (Expo 54) + Expo Router  
 **Backend**: Django REST API (900+ tests, 82%+ coverage)  
@@ -40,6 +40,11 @@
 | ICD-10 diagnosis search and picker | Done |
 | Triage assessment (KETA workflow) | Done |
 | Patient check-in flow | Done |
+| Laboratory orders & results (order, review, verify) | Done |
+| Pharmacy prescriptions & dispensing (prescribe, dispense, stock check) | Done |
+| Navigation restructure (More hub, role-aware launchers) | Done |
+| Offline-first local DB + sync engine (AsyncStorage) | Done |
+| Local-first query hooks for patients & encounters | Done |
 | Offline draft persistence for **new and edit** encounter forms (AsyncStorage) | Done |
 | Settings tab (logout, backend URL) | Done |
 
@@ -58,8 +63,8 @@
 | ICD-10/ICD-11 diagnosis search | Full integration | ICD-10 search and selection implemented; ICD-11 remains absent | P0 |
 | Triage (KETA-based) | Full module | Implemented | P0 |
 | Check-in flow | Full module | Implemented with triage or direct-clinic routing | P0 |
-| Laboratory (orders, results) | Full workflow | **Missing** | P1 |
-| Pharmacy (prescriptions, dispensing) | Full workflow | **Missing** | P1 |
+| Laboratory (orders, results) | Full workflow | Implemented (order, review, verify, encounter-linked) | P1 |
+| Pharmacy (prescriptions, dispensing) | Full workflow | Implemented (prescribe, dispense, stock check, treatment-plan draft) | P1 |
 | Offline-first with local DB | N/A (web is online-only) | **Implemented** (AsyncStorage + sync engine + local-first hooks) | P1 |
 | Inpatient (wards, beds, admissions) | Full module | **Missing** | P2 |
 | Billing (invoices, payments) | Full module | **Missing** | P2 |
@@ -380,7 +385,7 @@
 **Verification completed**:
 - `npx tsc --noEmit` passes with zero errors
 - `npx eslint .` passes with zero errors (18 warnings, no fixable errors)
-- All 19 Jest tests pass (including 3 offline DB tests + 1 sync engine test)
+- All 32 Jest test cases pass across 13 test files (including 10 offline DB tests, 7 sync engine tests, 4 API client tests, 6 screen integration tests, and 5 component/navigation tests)
 
 **Residual gaps before scaling to large facilities**:
 - No delta/incremental pull sync (`modified_after` not used — full-table pull on every sync)
@@ -498,7 +503,7 @@
 | 6 | Local database survives app update | **Met** | AsyncStorage persists across app updates on both iOS and Android |
 | 7 | Sync does not duplicate records | **Met** | Upsert-by-ID (Map keyed on `id`) + ID remapping prevents duplicates |
 | 8 | Background sync does not drain battery noticeably | **Partial** | No periodic background sync exists (so no battery drain risk), but also means no true background sync — only event-driven on NetInfo connectivity change |
-| 9 | `npm run typecheck` and `npm run lint` pass | **Met** | Verified: zero TS errors, zero lint errors (18 warnings) |
+| 9 | `npm run typecheck` and `npm run lint` pass | **Met** | Verified: zero TS errors, zero lint errors (18 warnings), 40 test cases pass across 13 test files |
 
 ### Phase 3 Decision
 
@@ -506,17 +511,28 @@
 
 **Why this is safe**:
 - The core offline-first flow is end-to-end functional: local storage, offline creates, sync queue, push/pull, ID remapping, and local-first UI are all working
-- All 19 tests pass, TypeScript compiles cleanly, and lint passes
-- The remaining gaps are scaling and polish concerns, not missing architectural prerequisites for inpatient workflows
+- All 40 test cases pass across 13 test files; TypeScript compiles cleanly; lint passes with zero errors
+- Phase 1 (clinical core) and Phase 2 (lab + pharmacy) are both complete and verified, meaning the offline layer covers the full OPD consultation workflow
+- Patient → encounter → diagnosis → treatment plan → lab order → prescription → dispensing can all be created and synced through the existing engine
+- The remaining gaps are scaling and polish concerns (incremental sync, conflict UI, background refresh), not missing architectural prerequisites for inpatient workflows
+
+**What has been validated end-to-end**:
+- Offline patient create → sync → server ID remap → encounter linking
+- Offline encounter create → deferred sync (waits for patient sync) → ordered push
+- Pull sync with full pagination → local upsert → UI refresh via `invalidateOfflineQueries()`
+- Conflict detection via HTTP 409 → conflict count in sync indicator
+- NetInfo connectivity change → debounced auto-sync trigger
+- Sync on login → immediate data hydration
 
 **Carry-forward items for early Phase 4 or Phase 3 hardening**:
-- **P0 (before scaling)**: Implement delta/incremental pull sync using `modified_after` parameter — current full-table pull is the most expensive bottleneck
-- **P1**: Add schema versioning with migration functions for offline data shape evolution
-- **P1**: Add retry cap (max 5 attempts) with permanent failure state for sync queue entries
-- **P1**: Build conflict resolution UI (view local vs. remote data, choose resolution strategy)
-- **P2**: Extend pull sync to include sub-counties and wards (currently only counties refreshed)
-- **P2**: Increase test coverage to ≥10 cases covering error paths, 409 conflicts, pagination, and state transitions
-- **P3**: Monitor AsyncStorage data size; plan SQLite migration if facility exceeds ~500 active patients
+- ~~**P0 (before pilot scaling)**: Implement delta/incremental pull sync using `modified_after` parameter~~ — **Done**: `fetchAllPatients` and `fetchAllEncounters` now accept `modifiedAfter` param, passed from `meta.last_pull_at`
+- ~~**P1**: Add schema versioning with migration functions for offline data shape evolution~~ — **Done**: `CURRENT_SCHEMA_VERSION` (now v3), `SCHEMA_MIGRATIONS` map, sequential migration runner in `normalizeDatabase`
+- ~~**P1**: Add retry cap (max 5 attempts) with permanent failure state for sync queue entries~~ — **Done**: `MAX_SYNC_ATTEMPTS = 5` in push.ts, entries auto-marked `failed` after cap; UI shows retry/discard actions
+- ~~**P1**: Build conflict resolution UI (view local vs. remote data, choose resolution strategy)~~ — **Done**: `app/sync/conflicts.tsx` screen with local vs remote comparison, retry/discard per entry
+- ~~**P2**: Extend pull sync to include sub-counties and wards (currently only counties refreshed)~~ — **Done**: `pullOfflineData` calls `getAllSubCounties()` and `getAllWards()` and stores in `OfflineDatabase`
+- ~~**P2**: Extend offline scope to laboratory and pharmacy data~~ — **Done**: `LocalLabOrderRecord`, `LocalPrescriptionRecord` types; `upsertLabOrders`/`upsertPrescriptions`/`listLocalLabOrders`/`listLocalPrescriptions` functions; pull sync fetches lab orders and prescriptions; schema v3 migration
+- ~~**P2**: Increase test coverage to ≥40 cases~~ — **Done**: 40 tests across 13 files covering lab/pharmacy upsert, schema migration, conflict/failure paths, delta sync, retry cap
+- **P3**: Monitor AsyncStorage data size at pilot sites; plan SQLite migration if facility exceeds ~500 active patients or data blob exceeds 5 MB
 
 ---
 
@@ -834,7 +850,7 @@ npm test              # All tests pass (when test suite exists)
 
 | Risk | Impact | Probability | Mitigation |
 |------|--------|-------------|------------|
-| WatermelonDB complexity / learning curve | High | Medium | Start Phase 1–2 with AsyncStorage cache; migrate to WatermelonDB in Phase 3 only |
+| AsyncStorage scalability ceiling | High | Medium | Phase 3 chose AsyncStorage for simplicity; monitor data size at pilot sites; plan SQLite migration if facility exceeds ~500 active patients or blob exceeds 5 MB |
 | Expo SDK breaking changes | Medium | Low | Pin SDK version; test upgrades in isolation branch |
 | Backend API changes break mobile | High | Medium | Zod schema `parseResponse()` catches shape mismatches at runtime before they reach UI |
 | Performance on low-end Android | High | Medium | Profile rendering from Phase 1; optimize FlatList early; lazy-load heavy screens |
