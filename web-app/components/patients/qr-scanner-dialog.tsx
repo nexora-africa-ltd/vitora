@@ -122,7 +122,7 @@ export function QRScannerDialog({ onScan, label }: QRScannerDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full sm:w-auto">
+        <Button variant="outline" className="h-11 sm:h-12 w-full sm:w-auto">
           <ScanLine className="mr-2 h-4 w-4" />
           {label ?? 'Scan QR'}
         </Button>

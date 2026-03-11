@@ -622,7 +622,7 @@ export default function PatientCheckinPage() {
         {/* Main Column - Search and Patient Card */}
         <div className="lg:col-span-2 space-y-4 sm:space-y-6 order-1">
           {/* Search Input + QR Scanner */}
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
               <Input

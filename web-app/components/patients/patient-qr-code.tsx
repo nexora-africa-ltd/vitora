@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Download, Expand, Printer } from 'lucide-react';
+import { Download, Maximize2, Printer } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -69,56 +69,42 @@ export function PatientQRCode({
   const preview = isLoading ? (
     <Skeleton className={variant === 'inline' ? 'h-14 w-14 rounded-lg' : 'h-[100px] w-[100px] rounded-lg'} />
   ) : data ? (
-    <button
-      type="button"
-      onClick={() => setExpanded(true)}
-      className="cursor-pointer rounded-lg border bg-white p-2 transition-shadow hover:shadow-md"
-      aria-label="Expand QR code"
-    >
-      <Image
-        src={data.qr_data_uri}
-        alt={`QR code for patient ${mrn}`}
-        width={previewSize}
-        height={previewSize}
-        unoptimized
-      />
-    </button>
+    <div className="relative group">
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="cursor-pointer rounded-lg border bg-white p-2 transition-shadow hover:shadow-md"
+        aria-label="Expand QR code"
+      >
+        <Image
+          src={data.qr_data_uri}
+          alt={`QR code for patient ${mrn}`}
+          width={previewSize}
+          height={previewSize}
+          unoptimized
+        />
+      </button>
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        className="absolute top-1 right-1 rounded-md bg-background/80 p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background"
+        aria-label="Expand QR code"
+      >
+        <Maximize2 className="h-3.5 w-3.5 text-[#800020]" />
+      </button>
+    </div>
   ) : null;
 
   return (
     <>
       {variant === 'inline' ? (
-        <div className="flex items-start gap-2 shrink-0">
+        <div className="shrink-0">
           {preview}
-          {data && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setExpanded(true)}
-              aria-label="Expand QR code"
-              className="h-8 w-8"
-            >
-              <Expand className="h-4 w-4" />
-            </Button>
-          )}
         </div>
       ) : (
         <Card>
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">QR Code</CardTitle>
-              {data && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setExpanded(true)}
-                  aria-label="Expand QR code"
-                  className="h-8 w-8"
-                >
-                  <Expand className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
+            <CardTitle className="text-lg">QR Code</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-2">
             {preview}
