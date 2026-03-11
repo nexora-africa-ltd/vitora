@@ -128,6 +128,8 @@ export interface AIUserContext {
  * Fields are nullable to support incremental modelling.
  */
 export interface AIFacilityContext {
+  /** Facility level from user's StaffProfile.primary_facility (KEPH 1–6), falls back to settings */
+  facility_level: string | null;
   /** KEPH level (L1–L6) from settings.FACILITY_LEVEL */
   keph_level: string | null;
   /** County for epidemiological context — null until exposed via API */

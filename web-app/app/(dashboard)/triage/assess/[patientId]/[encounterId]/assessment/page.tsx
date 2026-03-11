@@ -8,7 +8,7 @@
  */
 'use client';
 
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -142,11 +142,34 @@ export default function TriageAssessmentPage() {
   // Triage calculation mutation
   const calculateCategoryMutation = useCalculateTriageCategory();
 
-  // Mark assessment as visited when leaving the tab
+  // Auto-save assessment to store when navigating away (e.g. via tab click)
   const encounterIdNum = parseInt(encounterId, 10);
+  const getValuesRef = useRef<(() => AssessmentFormData) | null>(null);
+
   useEffect(() => {
     return () => {
       markSectionVisited(encounterIdNum, 'assessment');
+      // Save current form values to store on unmount so tab navigation
+      // doesn't lose entered data
+      const currentValues = getValuesRef.current?.();
+      if (currentValues) {
+        setAssessment(encounterIdNum, {
+          arrival_mode: currentValues.arrival_mode,
+          referring_facility_name: currentValues.referring_facility_name,
+          arrival_time: currentValues.arrival_time,
+          chief_complaint_category: currentValues.chief_complaint_category,
+          chief_complaint: currentValues.chief_complaint,
+          pain_score: currentValues.pain_score ?? undefined,
+          mental_status: currentValues.mental_status,
+          gcs_eye: currentValues.gcs_eye,
+          gcs_verbal: currentValues.gcs_verbal,
+          gcs_motor: currentValues.gcs_motor,
+          mobility: currentValues.mobility,
+          triage_category: currentValues.triage_category,
+          auto_calculated_category: currentValues.auto_calculated_category,
+          category_override_reason: currentValues.category_override_reason,
+        });
+      }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [encounterIdNum]);
@@ -181,6 +204,7 @@ export default function TriageAssessmentPage() {
     control,
     watch,
     setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<AssessmentFormData>({
     resolver: zodResolver(assessmentSchema),
@@ -202,6 +226,9 @@ export default function TriageAssessmentPage() {
       category_override_reason: currentAssessment?.category_override_reason || '',
     },
   });
+
+  // Keep getValuesRef in sync so cleanup effect can read current form values
+  getValuesRef.current = getValues;
 
   // Watch for changes that affect category calculation
   const watchedFields = watch([

@@ -9,7 +9,7 @@
  */
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -147,11 +147,28 @@ export default function TriageVitalsPage() {
 
   const [alerts, setAlerts] = useState<TriageAlert[]>([]);
 
-  // Mark vitals as visited when leaving the tab
+  // Auto-save vitals to store when navigating away (e.g. via tab click)
   const encounterIdNum = parseInt(encounterId, 10);
+  const getValuesRef = useRef<(() => VitalsFormData) | null>(null);
+
   useEffect(() => {
     return () => {
       markSectionVisited(encounterIdNum, 'vitals');
+      // Save current form values to store on unmount so tab navigation
+      // doesn't lose entered data
+      const currentValues = getValuesRef.current?.();
+      if (currentValues) {
+        setVitals(encounterIdNum, {
+          temperature: currentValues.temperature ?? undefined,
+          heart_rate: currentValues.heart_rate ?? undefined,
+          systolic_bp: currentValues.systolic_bp ?? undefined,
+          diastolic_bp: currentValues.diastolic_bp ?? undefined,
+          spo2: currentValues.spo2 ?? undefined,
+          respiratory_rate: currentValues.respiratory_rate ?? undefined,
+          weight: currentValues.weight ?? undefined,
+          height: currentValues.height ?? undefined,
+        });
+      }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [encounterIdNum]);
@@ -186,6 +203,7 @@ export default function TriageVitalsPage() {
     register,
     handleSubmit,
     watch,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<VitalsFormData>({
     resolver: zodResolver(vitalsSchema),
@@ -200,6 +218,9 @@ export default function TriageVitalsPage() {
       height: currentVitals?.height ?? encounter?.height ?? null,
     },
   });
+
+  // Keep getValuesRef in sync so cleanup effect can read current form values
+  getValuesRef.current = getValues;
 
   // Watch for vital changes to generate alerts
   const watchedVitals = watch();
