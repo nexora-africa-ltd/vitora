@@ -84,7 +84,7 @@ export interface Admission {
   ipd_encounter?: number | null;
   recommendation?: number | null;
   admission_date: string;
-  admitting_diagnosis?: number | null;
+  admitting_diagnosis?: string | null;
   admitting_diagnosis_text?: string | null;
   admitting_officer?: number | null;
   admitting_officer_username?: string | null;
@@ -98,7 +98,7 @@ export interface Admission {
   admission_status_display?: string;
   payer_type: PayerType;
   payer_type_display?: string;
-  insurance_details?: string | null;
+  insurance_details?: Record<string, unknown> | null;
   constraint_override?: boolean;
   constraint_override_reason?: string | null;
   constraint_violations?: string[];

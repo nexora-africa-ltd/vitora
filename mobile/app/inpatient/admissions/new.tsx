@@ -186,7 +186,7 @@ export default function NewAdmissionScreen() {
               label="Select bed"
               selectedValue={selectedBedId}
               items={bedItems}
-              onValueChange={setSelectedBedId}
+              onValueChange={(v) => setSelectedBedId(v)}
             />
           )}
 

@@ -155,7 +155,7 @@ export default function TransferPage() {
       await createTransfer.mutateAsync({
         admission: admissionId,
         source_ward: admission.ward,
-        source_bed: admission.bed,
+        source_bed: admission.bed ?? 0,
         destination_ward: Number(targetWardId),
         destination_bed: Number(targetBedId),
         reason: transferReason,

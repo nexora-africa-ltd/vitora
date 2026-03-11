@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
@@ -35,7 +36,7 @@ type AppTextInputProps = {
 
 type AppPickerProps<T extends string | number> = {
   label: string;
-  selectedValue: T;
+  selectedValue: T | null;
   items: { label: string; value: T }[];
   onValueChange: (value: T) => void;
   enabled?: boolean;
@@ -62,7 +63,7 @@ export function HeroCard({ eyebrow, title, description, children }: { eyebrow: s
   const styles = useSharedStyles();
 
   return (
-    <LinearGradient colors={isDarkMode ? ['#10253A', '#0A4F4E', '#A7572F'] : ['#17324D', '#0F766E', '#E08A5C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
+    <LinearGradient colors={isDarkMode ? ['#0C2E42', '#152840'] : ['#A8E8F0', '#BDD0F5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
       <Text style={styles.heroEyebrow}>{eyebrow}</Text>
       <Text style={styles.heroTitle}>{title}</Text>
       <Text style={styles.heroDescription}>{description}</Text>
@@ -71,15 +72,17 @@ export function HeroCard({ eyebrow, title, description, children }: { eyebrow: s
   );
 }
 
-export function SectionCard({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+export function SectionCard({ title, subtitle, children }: { title?: string; subtitle?: string; children: React.ReactNode }) {
   const styles = useSharedStyles();
 
   return (
     <View style={styles.sectionCard}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
-      </View>
+      {title ? (
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>{title}</Text>
+          {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
+        </View>
+      ) : null}
       {children}
     </View>
   );
@@ -131,21 +134,29 @@ export function AppTextInput({
 }: AppTextInputProps) {
   const { theme } = useAppTheme();
   const styles = useSharedStyles();
+  const [hidden, setHidden] = useState(true);
 
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
-        autoCapitalize={autoCapitalize}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={theme.colors.mutedText}
-        secureTextEntry={secureTextEntry}
-        style={[styles.input, multiline && styles.inputMultiline]}
-        value={value}
-      />
+      <View style={secureTextEntry ? styles.inputRow : undefined}>
+        <TextInput
+          autoCapitalize={autoCapitalize}
+          keyboardType={keyboardType}
+          multiline={multiline}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={theme.colors.mutedText}
+          secureTextEntry={secureTextEntry && hidden}
+          style={[styles.input, multiline && styles.inputMultiline, secureTextEntry && styles.inputFlex]}
+          value={value}
+        />
+        {secureTextEntry && (
+          <Pressable onPress={() => setHidden((prev) => !prev)} style={styles.eyeButton} hitSlop={8}>
+            <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.colors.mutedText} />
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
@@ -290,23 +301,25 @@ function createStyles(theme: AppTheme, isDarkMode: boolean) {
   },
   heroCard: {
     borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     padding: theme.spacing.xl,
     gap: theme.spacing.xs,
   },
   heroEyebrow: {
-    color: '#E7F6F4',
+    color: theme.colors.mutedText,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   heroTitle: {
-    color: '#FFFFFF',
+    color: theme.colors.text,
     fontSize: 28,
     fontWeight: '800',
   },
   heroDescription: {
-    color: '#F7EFE7',
+    color: theme.colors.mutedText,
     fontSize: 15,
     lineHeight: 22,
   },
@@ -413,6 +426,23 @@ function createStyles(theme: AppTheme, isDarkMode: boolean) {
   inputMultiline: {
     minHeight: 110,
     textAlignVertical: 'top',
+  },
+  inputRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    backgroundColor: theme.colors.elevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+  },
+  inputFlex: {
+    flex: 1,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+  },
+  eyeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
   },
   inputDisabled: {
     opacity: 0.55,

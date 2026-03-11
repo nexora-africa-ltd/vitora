@@ -247,7 +247,7 @@ export default function AdmissionDetailScreen() {
                 label: `${b.bed_number}${b.bed_type ? ` — ${b.bed_type}` : ''}`,
                 value: b.id,
               }))}
-              onValueChange={setTransferBedId}
+              onValueChange={(v: number) => setTransferBedId(v)}
             />
           )}
           <AppPicker

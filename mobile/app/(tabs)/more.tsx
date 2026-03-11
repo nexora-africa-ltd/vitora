@@ -25,6 +25,13 @@ export default function MoreScreen() {
         description="Phase 2 adds laboratory and pharmacy workflows while keeping the bottom tab bar usable on small screens, with entry points tailored to the signed-in user role."
       />
 
+      <SectionCard title="Front desk" subtitle="Patient check-in and registration workflows.">
+        <View style={styles.launcherStack}>
+          <AppButton label="Check-in patient" onPress={() => router.push('/checkin' as never)} />
+          <Text style={styles.helperText}>Look up a patient and start a visit with triage routing.</Text>
+        </View>
+      </SectionCard>
+
       <SectionCard title="Clinical support" subtitle="Open focused workspaces that adapt to clinicians, laboratory staff, and pharmacy staff.">
         <View style={styles.launcherStack}>
           <AppButton label={laboratoryLauncher.label} onPress={() => router.push('/laboratory' as never)} variant={laboratoryLauncher.variant} />

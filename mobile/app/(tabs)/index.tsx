@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppButton, HeroCard, LoadingState, MetricCard, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
 import { SyncIndicator } from '@/components/sync-indicator';
@@ -11,8 +11,19 @@ import { listLocalEncounters, listLocalPatients } from '@/lib/db';
 import { useAppTheme } from '@/lib/theme/theme-context';
 import { formatDateTime } from '@/lib/utils/format';
 
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function getCurrentDateLabel(): string {
+  return new Intl.DateTimeFormat('en-KE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+}
+
 export default function DashboardScreen() {
-  const { apiBaseUrl, user } = useAuth();
+  const { user } = useAuth();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -43,13 +54,19 @@ export default function DashboardScreen() {
   return (
     <ScreenContainer>
       <HeroCard
-        eyebrow="Offline ready"
-        title={`Hello ${user?.first_name || user?.username || 'Clinician'}`}
-        description={user?.facility ? `${user.facility.name} is linked to this device, and Phase 3 now keeps patient and encounter snapshots available locally.` : 'No facility is attached to this account yet.'}
+        eyebrow={getCurrentDateLabel()}
+        title={`${getGreeting()}, ${user?.first_name || user?.username || 'Clinician'} 👋`}
+        description={[user?.role, user?.facility?.name].filter(Boolean).join(' · ') || 'No facility linked'}
       >
         <View style={styles.heroMetaRow}>
-          <Pill label={user?.role || 'Role pending'} tone="neutral" />
-          <Text style={styles.connectionText}>{apiBaseUrl}</Text>
+          <Text style={styles.heroStat}>
+            <Text style={styles.heroStatBold}>{summaryQuery.data?.encounterCount ?? 0}</Text>
+            {' '}{(summaryQuery.data?.encounterCount ?? 0) === 1 ? 'encounter' : 'encounters'} today
+          </Text>
+          <Text style={styles.heroStat}>
+            <Text style={styles.heroStatBold}>{summaryQuery.data?.patientCount ?? 0}</Text>
+            {' '}{(summaryQuery.data?.patientCount ?? 0) === 1 ? 'patient' : 'patients'} registered
+          </Text>
         </View>
       </HeroCard>
 
@@ -74,14 +91,14 @@ export default function DashboardScreen() {
           <Text style={styles.emptyText}>No encounters have been recorded yet.</Text>
         ) : (
           (summaryQuery.data?.recentEncounters ?? []).map((encounter) => (
-            <View key={encounter.id} style={styles.timelineItem}>
+            <Pressable key={encounter.id} onPress={() => router.push(`/encounters/${encounter.id}` as never)} style={({ pressed }) => [styles.timelineItem, pressed && styles.timelineItemPressed]}>
               <View style={styles.timelineTopRow}>
                 <Text style={styles.timelineTitle}>{encounter.patient_name || 'Unknown patient'}</Text>
                 <Pill label={encounter.status.replace(/_/g, ' ')} tone={encounter.has_critical_vitals ? 'danger' : 'primary'} />
               </View>
               <Text style={styles.timelineSubtitle}>{encounter.encounter_type} · {encounter.chief_complaint}</Text>
               <Text style={styles.timelineMeta}>{formatDateTime(encounter.created_at)}</Text>
-            </View>
+            </Pressable>
           ))
         )}
       </SectionCard>
@@ -92,11 +109,15 @@ export default function DashboardScreen() {
 function createStyles(theme: AppTheme) {
   return StyleSheet.create({
   heroMetaRow: {
-    gap: 12,
+    gap: 4,
   },
-  connectionText: {
-    color: '#F8EFE6',
-    fontSize: 12,
+  heroStat: {
+    color: theme.colors.mutedText,
+    fontSize: 13,
+  },
+  heroStatBold: {
+    color: theme.colors.text,
+    fontWeight: '700',
   },
   metricsRow: {
     flexDirection: 'row',
@@ -112,8 +133,15 @@ function createStyles(theme: AppTheme) {
   timelineItem: {
     borderBottomColor: theme.colors.border,
     borderBottomWidth: 1,
+    borderRadius: 8,
     gap: 4,
     paddingBottom: 12,
+    paddingHorizontal: 4,
+    paddingTop: 4,
+  },
+  timelineItemPressed: {
+    backgroundColor: theme.colors.border,
+    opacity: 0.8,
   },
   timelineTopRow: {
     alignItems: 'center',
