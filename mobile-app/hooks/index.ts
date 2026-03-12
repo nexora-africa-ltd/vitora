@@ -17,3 +17,14 @@ export { useOfflineStatus } from './useOfflineStatus';
 export type { OfflineStatus } from './useOfflineStatus';
 export { useSyncStatus } from './useSyncStatus';
 export type { SyncStatus, SyncStatusSummary } from './useSyncStatus';
+
+// Billing hooks
+export { useInvoice, useInvoicePayments, useInvoices } from './useBilling';
+
+// SHA hooks
+export {
+	useCheckSHAEligibility,
+	useDirectSHAEligibility,
+	useSHAEligibility,
+	shaKeys,
+} from './useSHA';

@@ -69,8 +69,8 @@
 | Pharmacy (prescriptions, dispensing) | Full workflow | Implemented (prescribe, dispense, stock check, treatment-plan draft) | P1 |
 | Offline-first with local DB | N/A (web is online-only) | **Implemented** (AsyncStorage + sync engine + local-first hooks) | P1 |
 | Inpatient (wards, beds, admissions) | Full module | **Implemented** (ward list, bed board, admissions, discharge, nursing workflows) | P2 |
-| Billing (invoices, payments) | Full module | **Missing** | P2 |
-| SHA eligibility checks | 15 DHA APIs | **Missing** | P2 |
+| Billing (invoices, payments) | Full module | Read-only invoice and payment visibility implemented | P2 |
+| SHA eligibility checks | 15 DHA APIs | Eligibility check and cached status implemented | P2 |
 | Surveillance (IDSR, IHR) | Advanced | **Missing** | P3 |
 | MCH (ANC, PNC, immunization) | Dedicated module | **Missing** | P3 |
 | Biometric auth (FaceID/TouchID) | N/A | **Missing** | P2 |
@@ -655,9 +655,41 @@
 
 > **Goal**: Mobile supports billing lookups and SHA eligibility checks. Full billing stays web-primary, but clinicians can check insurance status and view invoice summaries. Security is hardened with biometric auth and session timeout.
 
+### Phase 5 Status
+
+**Overall status**: Partially complete. Billing read access and SHA eligibility workflows are implemented in the mobile app. Audit log viewing and security hardening remain open.
+
+**Verification completed**:
+- Changed `/mobile` source files are clean in editor diagnostics
+- Focused Jest coverage was added for billing API, SHA API, persisted SHA eligibility hook flow, billing screens, patient consultation blocking, and offline eligibility persistence
+- Billing routes are registered in the mobile stack and surfaced from the `More` workspace and patient detail flow
+
+**What is now implemented**:
+- Read-only billing client with Zod-validated invoice list, invoice detail, and payment summary responses
+- Billing list and detail screens in mobile for patient-filtered or encounter-filtered invoice review
+- SHA eligibility client with normalized coverage status mapping
+- Patient-level SHA eligibility persistence in the offline AsyncStorage-backed local database so coverage badges survive app restarts
+- Coverage badges on patient cards and patient detail
+- Real consultation action on patient detail backed by the backend `quick_consultation` endpoint
+- Hard-stop consultation blocking when SHA status is `not_covered`, plus mandatory eligibility check before consultation when status is still pending
+
+**Residual gaps before Phase 5 is fully complete**:
+- No audit log viewer yet
+- No biometric unlock, inactivity auto-lock, or lock screen yet
+- No certificate pinning or storage hardening pass documented in the mobile app yet
+
 ### 5.1 Billing Read Access (Week 17)
 
 **Scope**: Read-only invoice and payment viewing from mobile.
+
+**Implementation status**: Complete for read-only mobile billing visibility.
+
+**Implemented**:
+- Built a billing API client for invoice list, invoice detail, and payment list reads using Zod-backed `parseResponse()` validation
+- Added shared billing types and schemas for invoices, line items, payments, and paginated responses
+- Added billing list screen with patient or encounter filtering, invoice status pills, totals, and balance visibility
+- Added billing detail screen with invoice summary, line items, payment summaries, and insurance/SHA claim references
+- Added a Billing launcher in the `More` workspace and patient-detail shortcut into the filtered billing view
 
 **Tasks**:
 - Build billing API client (invoice list, detail, payment summary — read-only)
@@ -675,6 +707,17 @@
 ### 5.2 SHA Eligibility Check (Week 18)
 
 **Scope**: Verify patient's SHA insurance coverage before consultation.
+
+**Implementation status**: Complete for eligibility verification, persisted status, and consultation gating.
+
+**Implemented**:
+- Built a SHA API client for patient eligibility checks and direct eligibility lookup with normalized response typing
+- Added shared SHA types and Zod schemas for eligibility responses and coverage status
+- Added `Check SHA eligibility` action on patient detail
+- Persisted eligibility results into the offline patient cache so coverage status survives app restarts
+- Displayed coverage status badges on patient cards and patient detail (`Covered`, `Not Covered`, `Pending`)
+- Added SHA warning section on patient detail for uncovered patients
+- Replaced the patient-detail consultation shortcut with a real quick-consultation mutation and enforced a hard-stop when the patient is not covered
 
 **Tasks**:
 - Build SHA API client (eligibility verification call)
@@ -719,16 +762,30 @@
 
 ### Exit / Acceptance Criteria — Phase 5
 
-| # | Criterion | Verification |
-|---|-----------|-------------|
-| 1 | Invoice list and detail viewable from mobile | Navigate to Billing → invoices load → tap detail → line items visible |
-| 2 | SHA eligibility can be checked from patient detail | Patient detail → Check Eligibility → coverage status shown |
-| 3 | Alert shown if patient is not SHA-covered | Uncovered patient → consultation attempt → warning banner displayed |
-| 4 | Biometric auth (FaceID/TouchID) works as login option | Enable biometric → lock screen → unlock with fingerprint/face |
-| 5 | Session auto-locks after inactivity | Leave app idle 5min → return → lock screen shown |
-| 6 | Audit log viewer shows current user's actions | Settings → Audit Log → actions listed chronologically |
-| 7 | No sensitive data stored in plain AsyncStorage | Audit `AsyncStorage` keys → tokens/PII only in `SecureStore` |
-| 8 | `npm run typecheck` and `npm run lint` pass | CI/local verification |
+| # | Criterion | Status | Verification |
+|---|-----------|--------|-------------|
+| 1 | Invoice list and detail viewable from mobile | Implemented | Billing routes exist in mobile, invoice list/detail screens render invoice summaries, line items, and payments |
+| 2 | SHA eligibility can be checked from patient detail | Implemented | Patient detail exposes `Check SHA eligibility` and stores coverage status for reuse |
+| 3 | Alert shown if patient is not SHA-covered | Implemented | Uncovered patient blocks quick consultation and shows warning text plus alert dialog |
+| 4 | Biometric auth (FaceID/TouchID) works as login option | Not implemented | No biometric helper, unlock flow, or lock screen is present yet |
+| 5 | Session auto-locks after inactivity | Not implemented | No inactivity timeout wrapper is present yet |
+| 6 | Audit log viewer shows current user's actions | Not implemented | No audit log API client or screen has been added yet |
+| 7 | No sensitive data stored in plain AsyncStorage | Not implemented | A dedicated storage audit and migration pass has not been completed yet |
+| 8 | `npm run typecheck` and `npm run lint` pass | Partially verified | Changed Phase 5 source files are clean in editor diagnostics; focused Jest coverage was added for billing and SHA flows |
+
+### Phase 5 Decision
+
+**Recommendation**: Billing and SHA work is in a good state to continue hardening, but Phase 5 as a whole is not complete until audit and security items are delivered.
+
+**Why this is safe**:
+- The clinician-facing Phase 5 value is already present on mobile: invoice visibility, persisted SHA status, and consultation blocking for uncovered patients
+- The implementation follows the stronger `/mobile` app architecture with Zod-validated clients, React Query, and local-first persistence
+- Focused tests now cover the added billing screens, SHA API flow, persisted eligibility cache, and consultation gating behavior
+
+**Carry-forward items for the remainder of Phase 5**:
+- Build the audit log API client and audit-log screen
+- Add biometric unlock and inactivity timeout flows
+- Complete a storage and transport security hardening pass, including `AsyncStorage` review and any needed `SecureStore` migration
 
 ---
 

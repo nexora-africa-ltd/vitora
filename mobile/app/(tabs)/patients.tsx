@@ -7,6 +7,7 @@ import { SyncIndicator } from '@/components/sync-indicator';
 import type { AppTheme } from '@/constants/theme';
 import { useLocalPatients } from '@/lib/hooks/use-local-patients';
 import { useAppTheme } from '@/lib/theme/theme-context';
+import { getCoverageStatusLabel, getCoverageStatusTone } from '@/lib/types/sha';
 import { buildPatientName, formatDate, formatGender } from '@/lib/utils/format';
 
 export default function PatientsScreen() {
@@ -57,6 +58,7 @@ export default function PatientsScreen() {
                   <Text style={styles.patientMeta}>{patient.mrn}</Text>
                 </View>
                 <View style={styles.pillRow}>
+                  {patient.sha_coverage_status ? <Pill label={getCoverageStatusLabel(patient.sha_coverage_status)} tone={getCoverageStatusTone(patient.sha_coverage_status)} /> : <Pill label="SHA pending" tone="warning" />}
                   {patient.sync_state !== 'synced' ? <Pill label="Queued" tone={patient.sync_state === 'conflict' ? 'danger' : 'warning'} /> : null}
                   {patient.is_sensitive ? <Pill label="Sensitive" tone="danger" /> : null}
                 </View>

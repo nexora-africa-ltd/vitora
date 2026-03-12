@@ -9,6 +9,7 @@
 
 import React from 'react';
 import {
+  Alert,
   View,
   Text,
   ScrollView,
@@ -19,7 +20,9 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors } from '../../../constants/colors';
 import { usePatient } from '../../../hooks/usePatients';
+import { useCheckSHAEligibility, useSHAEligibility } from '../../../hooks/useSHA';
 import { useTheme } from '../../../lib/theme/context';
+import { getCoverageStatusLabel } from '../../../lib/types/sha';
 
 /**
  * Patient detail screen showing full patient information
@@ -34,6 +37,8 @@ export default function PatientDetail(): React.JSX.Element {
 
   // Fetch patient data
   const { data: patient, isLoading, error, refetch } = usePatient(patientId);
+  const { data: eligibility } = useSHAEligibility(patientId);
+  const checkEligibility = useCheckSHAEligibility(patientId);
 
   const InfoRow = ({
     label,
@@ -88,6 +93,26 @@ export default function PatientDetail(): React.JSX.Element {
 
   // Format gender
   const genderDisplay = patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other';
+  const coverageStatus = eligibility?.coverage_status ?? 'pending';
+
+  const coverageBadgeStyle =
+    coverageStatus === 'covered'
+      ? { backgroundColor: colors.success.light, color: colors.white }
+      : coverageStatus === 'not_covered'
+        ? { backgroundColor: colors.error.main, color: colors.white }
+        : { backgroundColor: colors.warning.main, color: colors.white };
+
+  const handleCheckEligibility = async () => {
+    try {
+      await checkEligibility.mutateAsync();
+    } catch (mutationError) {
+      const message =
+        mutationError instanceof Error
+          ? mutationError.message
+          : 'Failed to verify SHA eligibility';
+      Alert.alert('SHA Eligibility Check Failed', message);
+    }
+  };
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: themeColors.background.primary }]}>
@@ -97,16 +122,57 @@ export default function PatientDetail(): React.JSX.Element {
           {patient.first_name} {patient.last_name}
         </Text>
         <Text style={styles.mrn}>{patient.mrn}</Text>
+        <View style={[styles.coverageBadge, { backgroundColor: coverageBadgeStyle.backgroundColor }]}>
+          <Text style={[styles.coverageBadgeText, { color: coverageBadgeStyle.color }]}>
+            {getCoverageStatusLabel(coverageStatus)}
+          </Text>
+        </View>
       </View>
+
+      {coverageStatus === 'not_covered' ? (
+        <View style={styles.warningBanner}>
+          <Text style={styles.warningBannerTitle}>SHA Coverage Warning</Text>
+          <Text style={styles.warningBannerText}>
+            Patient is not covered. Confirm billing or alternate funding before starting a consultation.
+          </Text>
+        </View>
+      ) : null}
 
       {/* Basic Information */}
       <View style={[styles.section, { borderBottomColor: themeColors.border }]}>
         <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>Basic Information</Text>
         <InfoRow label="Date of Birth" value={patient.date_of_birth} />
         <InfoRow label="Gender" value={genderDisplay} />
+        <InfoRow label="SHA Number" value={patient.sha_number} />
+        <InfoRow label="ID Type" value={patient.identification_type} />
+        <InfoRow label="ID Number" value={patient.identification_number} />
         <InfoRow label="Phone Number" value={patient.phone_number} />
         <InfoRow label="National ID" value={patient.national_id} />
         <InfoRow label="Email" value={patient.email} />
+      </View>
+
+      {/* SHA Eligibility */}
+      <View style={[styles.section, { borderBottomColor: themeColors.border }]}> 
+        <Text style={[styles.sectionTitle, { color: themeColors.text.primary }]}>SHA Eligibility</Text>
+        <InfoRow label="Coverage Status" value={getCoverageStatusLabel(coverageStatus)} />
+        <InfoRow label="Check Result" value={eligibility?.result} />
+        <InfoRow label="Eligible Until" value={eligibility?.eligible_until} />
+        <InfoRow
+          label="Benefit Balance"
+          value={eligibility?.benefit_balance != null ? `KES ${eligibility.benefit_balance}` : undefined}
+        />
+        <InfoRow label="Reason" value={eligibility?.ineligibility_reason} />
+
+        <TouchableOpacity
+          style={styles.secondaryActionButton}
+          onPress={handleCheckEligibility}
+          disabled={checkEligibility.isPending}
+          testID="check-sha-eligibility-button"
+        >
+          <Text style={styles.secondaryActionButtonText}>
+            {checkEligibility.isPending ? 'Checking SHA Eligibility...' : 'Check SHA Eligibility'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Location */}
@@ -135,6 +201,19 @@ export default function PatientDetail(): React.JSX.Element {
 
       {/* Actions */}
       <View style={styles.actionsSection}>
+        <TouchableOpacity
+          style={styles.secondaryActionButton}
+          onPress={() =>
+            router.push({
+              pathname: '/(main)/billing/index' as never,
+              params: { patient: patient.id.toString() },
+            })
+          }
+          testID="view-billing-button"
+        >
+          <Text style={styles.secondaryActionButtonText}>View Billing</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.editButton}
           onPress={() => {
@@ -211,6 +290,35 @@ const styles = StyleSheet.create({
   mrn: {
     fontSize: 14,
     color: colors.accent[200],
+    marginBottom: 12,
+  },
+  coverageBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: colors.warning.main,
+  },
+  coverageBadgeText: {
+    color: colors.white,
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  warningBanner: {
+    backgroundColor: colors.warning[100],
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.warning[300],
+    padding: 16,
+  },
+  warningBannerTitle: {
+    color: colors.warning[700],
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  warningBannerText: {
+    color: colors.warning[700],
+    fontSize: 13,
   },
   section: {
     padding: 16,
@@ -250,6 +358,20 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
+  },
+  secondaryActionButton: {
+    backgroundColor: colors.background.secondary,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary[500],
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  secondaryActionButtonText: {
+    color: colors.primary[500],
+    fontSize: 16,
+    fontWeight: '600',
   },
   editButtonText: {
     color: colors.white,

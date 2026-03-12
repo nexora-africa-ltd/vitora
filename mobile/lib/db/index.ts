@@ -7,6 +7,7 @@ import type { LabOrder } from '@/lib/types/laboratory';
 import type { County, SubCounty, Ward } from '@/lib/types/location';
 import type { PatientCreateData } from '@/lib/types/patient';
 import type { Prescription } from '@/lib/types/pharmacy';
+import type { PatientSHAEligibility } from '@/lib/types/sha';
 
 import { buildOfflineEncounterRecord, matchesEncounterSearch, sortEncounters, toLocalEncounterRecord } from './models/encounter';
 import { sortLabOrders, toLocalLabOrderRecord } from './models/lab-order';
@@ -144,6 +145,27 @@ export async function getLocalPatient(id: number): Promise<LocalPatientRecord | 
   }
 
   return null;
+}
+
+export async function storePatientEligibility(patientId: number, eligibility: PatientSHAEligibility): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    database.patients = database.patients.map((patient) => {
+      if (patient.id !== patientId) {
+        return patient;
+      }
+
+      return {
+        ...patient,
+        sha_coverage_status: eligibility.coverage_status,
+        sha_checked_at: eligibility.checked_at,
+        sha_eligible_until: eligibility.eligible_until ?? null,
+        sha_benefit_balance: eligibility.benefit_balance ?? null,
+        sha_ineligibility_reason: eligibility.ineligibility_reason ?? null,
+        sha_result: eligibility.result,
+        sha_number: eligibility.sha_number ?? patient.sha_number ?? null,
+      };
+    });
+  });
 }
 
 export async function listLocalEncounters(options: EncounterListOptions = {}): Promise<{ count: number; records: LocalEncounterRecord[] }> {

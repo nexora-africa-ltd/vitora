@@ -16,6 +16,7 @@ import type {
   DiagnosisInput,
   Encounter,
   EncounterCreateData,
+  EncounterQuickConsultationData,
   EncounterListParams,
   EncounterTransitionInput,
   EncounterTransitionResponse,
@@ -39,6 +40,11 @@ export const encountersApi = {
   async create(data: EncounterCreateData): Promise<Encounter> {
     const response = await apiClient.post('/api/encounters/', data);
     return parseResponse(EncounterSchema, response.data, { context: 'encounters.create' });
+  },
+
+  async quickConsultation(data: EncounterQuickConsultationData): Promise<Encounter> {
+    const response = await apiClient.post('/api/encounters/quick_consultation/', data);
+    return parseResponse(EncounterSchema, response.data, { context: 'encounters.quickConsultation' });
   },
 
   async update(id: number, data: EncounterUpdateData): Promise<Encounter> {

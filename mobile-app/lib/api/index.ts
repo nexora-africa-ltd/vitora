@@ -34,3 +34,21 @@ export {
   SubCounty,
   Ward,
 } from './locations';
+
+// Billing API
+export {
+  billingApi,
+  CreatePaymentData,
+  Invoice,
+  InvoiceLineItem,
+  InvoiceListItem,
+  InvoiceListParams,
+  InvoiceListResponse,
+  InvoiceStatus,
+  Payment,
+  PaymentListParams,
+  PaymentListResponse,
+} from './billing';
+
+// SHA API
+export { shaApi } from './sha';

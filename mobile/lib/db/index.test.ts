@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { clearOfflineDatabase, discardQueueEntry, getConflictAndFailedEntries, getLocalEncounter, getLocalPatient, getOfflineDatabase, listLocalEncounters, listLocalLabOrders, listLocalPatients, listLocalPrescriptions, queueOfflineEncounterCreate, queueOfflinePatientCreate, replaceQueuedPatient, retryQueueEntry, updateQueueEntryState, upsertEncounters, upsertLabOrders, upsertPatients, upsertPrescriptions, upsertReferenceData } from '@/lib/db';
+import { clearOfflineDatabase, discardQueueEntry, getConflictAndFailedEntries, getLocalEncounter, getLocalPatient, getOfflineDatabase, listLocalEncounters, listLocalLabOrders, listLocalPatients, listLocalPrescriptions, queueOfflineEncounterCreate, queueOfflinePatientCreate, replaceQueuedPatient, retryQueueEntry, storePatientEligibility, updateQueueEntryState, upsertEncounters, upsertLabOrders, upsertPatients, upsertPrescriptions, upsertReferenceData } from '@/lib/db';
 import { CURRENT_SCHEMA_VERSION, OFFLINE_DB_STORAGE_KEY } from '@/lib/db/schema';
 
 describe('offline database', () => {
@@ -32,6 +32,45 @@ describe('offline database', () => {
 
     expect(result.count).toBe(1);
     expect(result.records[0]?.id).toBe(21);
+  });
+
+  it('persists SHA eligibility data on local patient records', async () => {
+    await upsertPatients([
+      {
+        id: 21,
+        mrn: 'MRN-20260311-0001',
+        first_name: 'Jane',
+        last_name: 'Doe',
+        date_of_birth: '1990-01-01',
+        gender: 'F',
+        county: 1,
+        sub_county: 2,
+        is_sensitive: false,
+        consent_given: false,
+        referral_source: 'self',
+        created_at: '2026-03-11T09:00:00Z',
+        updated_at: '2026-03-11T09:00:00Z',
+      },
+    ] as never);
+
+    await storePatientEligibility(21, {
+      patient_id: 21,
+      checked_at: '2026-03-13T10:00:00Z',
+      coverage_status: 'covered',
+      is_eligible: true,
+      result: 'ELIGIBLE',
+      eligible_until: '2026-12-31',
+      benefit_balance: 5500,
+      ineligibility_reason: null,
+      sha_number: 'SHA-123',
+    });
+
+    const patient = await getLocalPatient(21);
+    const reloaded = await getOfflineDatabase();
+
+    expect(patient?.sha_coverage_status).toBe('covered');
+    expect(patient?.sha_benefit_balance).toBe(5500);
+    expect(reloaded.patients[0]?.sha_number).toBe('SHA-123');
   });
 
   it('queues offline patient and encounter creates and remaps dependent encounter patient ids after sync', async () => {

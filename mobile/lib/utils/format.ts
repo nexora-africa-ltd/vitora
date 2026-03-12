@@ -32,6 +32,19 @@ export function formatDateTime(value?: string | null): string {
   }).format(date);
 }
 
+export function formatCurrency(value?: number | null): string {
+  if (value == null || Number.isNaN(value)) {
+    return 'KES 0.00';
+  }
+
+  return new Intl.NumberFormat('en-KE', {
+    style: 'currency',
+    currency: 'KES',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
 export function buildPatientName(patient: Pick<Patient, 'first_name' | 'middle_name' | 'last_name' | 'full_name'>): string {
   if (patient.full_name) {
     return patient.full_name;

@@ -65,6 +65,14 @@ export default function Dashboard(): React.JSX.Element {
         </TouchableOpacity>
 
         <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => router.push('/(main)/billing/index' as never)}
+          testID="view-billing-button"
+        >
+          <Text style={styles.actionButtonText}>View Billing</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[styles.actionButton, styles.secondaryButton]}
           onPress={() => router.push('/(main)/settings')}
           testID="settings-button"
