@@ -1,5 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
 import { queryClient } from '@/lib/query/client';
 import type { EncounterCreateData } from '@/lib/types/encounter';
 import type { Admission, InpatientWard } from '@/lib/types/inpatient';
@@ -13,7 +11,8 @@ import { buildOfflineEncounterRecord, matchesEncounterSearch, sortEncounters, to
 import { sortLabOrders, toLocalLabOrderRecord } from './models/lab-order';
 import { buildOfflinePatientRecord, matchesPatientSearch, sortPatients, toLocalPatientRecord } from './models/patient';
 import { sortPrescriptions, toLocalPrescriptionRecord } from './models/prescription';
-import { createEmptyOfflineDatabase, CURRENT_SCHEMA_VERSION, OFFLINE_DB_STORAGE_KEY, SCHEMA_MIGRATIONS, type LocalEncounterRecord, type LocalLabOrderRecord, type LocalPatientRecord, type LocalPrescriptionRecord, type OfflineDatabase, type SyncQueueEntry } from './schema';
+import { createEmptyOfflineDatabase, CURRENT_SCHEMA_VERSION, SCHEMA_MIGRATIONS, type LocalEncounterRecord, type LocalLabOrderRecord, type LocalPatientRecord, type LocalPrescriptionRecord, type OfflineDatabase, type SyncQueueEntry } from './schema';
+import { readOfflineDatabasePayload, removeOfflineDatabasePayload, writeOfflineDatabasePayload } from './storage';
 
 type PatientListOptions = {
   limit?: number;
@@ -104,12 +103,12 @@ function normalizeDatabase(payload: string | null): OfflineDatabase {
 }
 
 export async function getOfflineDatabase(): Promise<OfflineDatabase> {
-  const payload = await AsyncStorage.getItem(OFFLINE_DB_STORAGE_KEY);
+  const payload = await readOfflineDatabasePayload();
   return normalizeDatabase(payload);
 }
 
 async function persistOfflineDatabase(database: OfflineDatabase): Promise<OfflineDatabase> {
-  await AsyncStorage.setItem(OFFLINE_DB_STORAGE_KEY, JSON.stringify(database));
+  await writeOfflineDatabasePayload(JSON.stringify(database));
   await invalidateOfflineQueries();
   return database;
 }
@@ -121,7 +120,7 @@ export async function updateOfflineDatabase(mutator: (database: OfflineDatabase)
 }
 
 export async function clearOfflineDatabase(): Promise<void> {
-  await AsyncStorage.removeItem(OFFLINE_DB_STORAGE_KEY);
+  await removeOfflineDatabasePayload();
   await invalidateOfflineQueries();
 }
 

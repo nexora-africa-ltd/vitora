@@ -492,7 +492,7 @@ class TestAuditLogQueries:
 
 @pytest.mark.django_db
 class TestAuditLogAPI:
-    """Tests for audit log API endpoints (admin only)."""
+    """Tests for audit log API endpoints."""
 
     def test_admin_can_view_audit_logs(self, api_client, db):
         """
@@ -523,20 +523,40 @@ class TestAuditLogAPI:
 
         assert response.status_code == status.HTTP_200_OK
 
-    def test_non_admin_cannot_view_audit_logs(self, api_client, test_user, db):
+    def test_non_admin_can_view_only_their_own_audit_logs(self, api_client, test_user, db):
         """
-        Test that non-admin users cannot view audit logs.
+        Test that non-admin users can only view their own audit logs.
 
         GIVEN a non-admin user
         WHEN accessing audit log endpoint
-        THEN access should be denied
+        THEN only their own logs should be returned
         """
+        from hmis.apps.core.models import AuditLog
+
+        other_user = User.objects.create_user(
+            username="otheraudituser",
+            email="otheraudit@example.com",
+            password="password123",
+        )
+        own_log = AuditLog.objects.create(
+            user=test_user,
+            action="patient_view",
+            resource_type="Patient",
+        )
+        AuditLog.objects.create(
+            user=other_user,
+            action="patient_update",
+            resource_type="Patient",
+        )
+
         api_client.force_authenticate(user=test_user)
         url = reverse("auditlog-list")
 
         response = api_client.get(url)
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["id"] == own_log.id
 
     def test_audit_logs_are_read_only(self, api_client, db):
         """

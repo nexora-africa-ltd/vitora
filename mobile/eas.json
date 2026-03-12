@@ -9,10 +9,26 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://vitora-api.onrender.com",
+        "EXPO_PUBLIC_API_PIN_HOST": "vitora-api.onrender.com",
+        "EXPO_PUBLIC_API_PIN_PRIMARY": "IX2/a47sFHkF9jewioc5OzEDzS0dNQjNMCX8PCQ26Pg=",
+        "EXPO_PUBLIC_API_PIN_BACKUP": "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
+        "EXPO_PUBLIC_API_PIN_TERTIARY": "mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=",
+        "EXPO_PUBLIC_API_PIN_INCLUDE_SUBDOMAINS": "false"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://vitora-prod.onrender.com",
+        "EXPO_PUBLIC_API_PIN_HOST": "vitora-prod.onrender.com",
+        "EXPO_PUBLIC_API_PIN_PRIMARY": "IX2/a47sFHkF9jewioc5OzEDzS0dNQjNMCX8PCQ26Pg=",
+        "EXPO_PUBLIC_API_PIN_BACKUP": "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
+        "EXPO_PUBLIC_API_PIN_TERTIARY": "mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=",
+        "EXPO_PUBLIC_API_PIN_INCLUDE_SUBDOMAINS": "false"
+      }
     }
   },
   "submit": {
