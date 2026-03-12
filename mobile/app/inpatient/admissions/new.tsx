@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import {
   AppButton,
@@ -15,7 +15,7 @@ import {
 import type { AppTheme } from '@/constants/theme';
 import { inpatientApi } from '@/lib/api/inpatient';
 import { useAppTheme } from '@/lib/theme/theme-context';
-import type { Bed, BedStatus, InpatientWard, PayerType } from '@/lib/types/inpatient';
+import type { PayerType } from '@/lib/types/inpatient';
 
 const PAYER_TYPES: { label: string; value: PayerType }[] = [
   { label: 'Cash', value: 'CASH' },
