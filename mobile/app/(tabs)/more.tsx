@@ -22,7 +22,7 @@ export default function MoreScreen() {
       <HeroCard
         eyebrow="More"
         title={workspaceTitle}
-        description="Phase 2 adds laboratory and pharmacy workflows while keeping the bottom tab bar usable on small screens, with entry points tailored to the signed-in user role."
+        description="Laboratory, pharmacy, and inpatient workflows on the go."
       />
 
       <SectionCard title="Front desk" subtitle="Patient check-in and registration workflows.">
@@ -34,6 +34,8 @@ export default function MoreScreen() {
 
       <SectionCard title="Clinical support" subtitle="Open focused workspaces that adapt to clinicians, laboratory staff, and pharmacy staff.">
         <View style={styles.launcherStack}>
+          <AppButton label="Billing summaries" onPress={() => router.push('/billing' as never)} variant="secondary" />
+          <Text style={styles.helperText}>Review invoice balances and payment status without leaving the bedside workflow.</Text>
           <AppButton label={laboratoryLauncher.label} onPress={() => router.push('/laboratory' as never)} variant={laboratoryLauncher.variant} />
           <Text style={styles.helperText}>{laboratoryLauncher.description}</Text>
           <AppButton label={pharmacyLauncher.label} onPress={() => router.push('/pharmacy' as never)} variant={pharmacyLauncher.variant} />

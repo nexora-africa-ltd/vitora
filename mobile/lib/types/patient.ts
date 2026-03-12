@@ -1,4 +1,5 @@
 import type { EncounterStatus, Gender, ReferralSource } from './common';
+import type { CoverageStatus } from './sha';
 
 export interface Patient {
   id: number;
@@ -27,6 +28,12 @@ export interface Patient {
   is_sensitive: boolean;
   consent_given: boolean;
   consent_date?: string | null;
+  sha_coverage_status?: CoverageStatus | null;
+  sha_checked_at?: string | null;
+  sha_eligible_until?: string | null;
+  sha_benefit_balance?: number | null;
+  sha_ineligibility_reason?: string | null;
+  sha_result?: string | null;
   referral_source: ReferralSource;
   emergency_contact_name?: string | null;
   emergency_contact_phone?: string | null;

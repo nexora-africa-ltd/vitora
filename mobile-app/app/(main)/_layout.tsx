@@ -85,6 +85,18 @@ export default function MainLayout(): React.JSX.Element {
           }}
         />
         <Stack.Screen
+          name="billing/index"
+          options={{
+            title: 'Billing',
+          }}
+        />
+        <Stack.Screen
+          name="billing/[id]"
+          options={{
+            title: 'Invoice Detail',
+          }}
+        />
+        <Stack.Screen
           name="settings"
           options={{
             title: 'Settings',

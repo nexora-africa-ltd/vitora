@@ -19,20 +19,25 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { colors } from '../../../constants/colors';
 import { useTheme } from '../../../lib/theme/context';
 import { usePatients } from '../../../hooks/usePatients';
+import { shaKeys } from '../../../hooks/useSHA';
 import { useSyncStatus } from '../../../hooks/useSyncStatus';
 import { useOfflineStatus } from '../../../hooks/useOfflineStatus';
 import { syncProcessor } from '../../../lib/sync/processor';
 import type { Patient } from '../../../lib/api/patients';
+import type { SHAEligibility } from '../../../lib/types/sha';
+import { getCoverageStatusLabel } from '../../../lib/types/sha';
 
 /**
  * Patient list screen with search and pull-to-refresh
  */
 export default function PatientListScreen(): React.JSX.Element {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { themeColors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -85,6 +90,36 @@ export default function PatientListScreen(): React.JSX.Element {
         </Text>
       </View>
     );
+  };
+
+  const getCoverageBadge = (patientId: number) => {
+    const eligibility = queryClient.getQueryData<SHAEligibility>(
+      shaKeys.eligibility(patientId),
+    );
+
+    const status = eligibility?.coverage_status ?? 'pending';
+
+    if (status === 'covered') {
+      return {
+        label: getCoverageStatusLabel(status),
+        backgroundColor: colors.success.light,
+        color: colors.white,
+      };
+    }
+
+    if (status === 'not_covered') {
+      return {
+        label: getCoverageStatusLabel(status),
+        backgroundColor: colors.error.main,
+        color: colors.white,
+      };
+    }
+
+    return {
+      label: getCoverageStatusLabel(status),
+      backgroundColor: colors.warning.main,
+      color: colors.white,
+    };
   };
 
   // Dynamic styles based on theme
@@ -162,23 +197,34 @@ export default function PatientListScreen(): React.JSX.Element {
           data={patients}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }: { item: Patient }) => (
-            <TouchableOpacity
-              style={[styles.patientCard, dynamicStyles.patientCard]}
-              onPress={() => handlePatientPress(item.id.toString())}
-              testID={`patient-item-${item.id}`}
-            >
-              <View style={styles.patientInfo}>
-                <Text style={[styles.patientName, dynamicStyles.patientName]}>
-                  {item.first_name} {item.last_name}
-                </Text>
-                <Text style={[styles.patientMrn, dynamicStyles.patientDetails]}>MRN: {item.mrn}</Text>
-                <Text style={[styles.patientDetails, dynamicStyles.patientDetails]}>
-                  {item.gender === 'M' ? 'Male' : item.gender === 'F' ? 'Female' : 'Other'} • DOB:{' '}
-                  {item.date_of_birth}
-                </Text>
-              </View>
-              <Text style={[styles.chevron, dynamicStyles.patientDetails]}>›</Text>
-            </TouchableOpacity>
+            (() => {
+              const badge = getCoverageBadge(item.id);
+
+              return (
+                <TouchableOpacity
+                  style={[styles.patientCard, dynamicStyles.patientCard]}
+                  onPress={() => handlePatientPress(item.id.toString())}
+                  testID={`patient-item-${item.id}`}
+                >
+                  <View style={styles.patientInfo}>
+                    <View style={styles.patientHeaderRow}>
+                      <Text style={[styles.patientName, dynamicStyles.patientName]}>
+                        {item.first_name} {item.last_name}
+                      </Text>
+                      <View style={[styles.coverageBadge, { backgroundColor: badge.backgroundColor }]}>
+                        <Text style={[styles.coverageBadgeText, { color: badge.color }]}>{badge.label}</Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.patientMrn, dynamicStyles.patientDetails]}>MRN: {item.mrn}</Text>
+                    <Text style={[styles.patientDetails, dynamicStyles.patientDetails]}>
+                      {item.gender === 'M' ? 'Male' : item.gender === 'F' ? 'Female' : 'Other'} • DOB:{' '}
+                      {item.date_of_birth}
+                    </Text>
+                  </View>
+                  <Text style={[styles.chevron, dynamicStyles.patientDetails]}>›</Text>
+                </TouchableOpacity>
+              );
+            })()
           )}
           ListEmptyComponent={
             <View style={styles.emptyState}>
@@ -301,6 +347,12 @@ const styles = StyleSheet.create({
   patientInfo: {
     flex: 1,
   },
+  patientHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
   patientName: {
     fontSize: 16,
     fontWeight: '600',
@@ -315,6 +367,15 @@ const styles = StyleSheet.create({
   patientDetails: {
     fontSize: 12,
     color: colors.text.secondary,
+  },
+  coverageBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  coverageBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   chevron: {
     fontSize: 24,

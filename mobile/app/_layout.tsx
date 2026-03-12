@@ -56,6 +56,8 @@ function RootLayoutContent() {
               <Stack.Screen name="laboratory/new" options={{ presentation: 'modal' }} />
               <Stack.Screen name="patients/[id]" options={{ presentation: 'card' }} />
               <Stack.Screen name="patients/new" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="billing/index" options={{ presentation: 'card' }} />
+              <Stack.Screen name="billing/[id]" options={{ presentation: 'card' }} />
               <Stack.Screen name="pharmacy/index" options={{ presentation: 'card' }} />
               <Stack.Screen name="pharmacy/[id]" options={{ presentation: 'card' }} />
               <Stack.Screen name="pharmacy/new" options={{ presentation: 'modal' }} />

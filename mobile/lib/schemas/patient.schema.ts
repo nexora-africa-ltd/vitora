@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const GenderSchema = z.enum(['M', 'F', 'O']);
 export const ReferralSourceSchema = z.enum(['self', 'clinic', 'other_facility']);
+export const CoverageStatusSchema = z.enum(['covered', 'not_covered', 'pending']);
 export const EncounterStatusSchema = z.enum([
   'CREATED',
   'CHECKED_IN',
@@ -43,6 +44,12 @@ export const PatientSchema = z.object({
   is_sensitive: z.boolean(),
   consent_given: z.boolean(),
   consent_date: z.string().optional().nullable(),
+  sha_coverage_status: CoverageStatusSchema.optional().nullable(),
+  sha_checked_at: z.string().optional().nullable(),
+  sha_eligible_until: z.string().optional().nullable(),
+  sha_benefit_balance: z.number().optional().nullable(),
+  sha_ineligibility_reason: z.string().optional().nullable(),
+  sha_result: z.string().optional().nullable(),
   referral_source: ReferralSourceSchema,
   emergency_contact_name: z.string().optional().nullable(),
   emergency_contact_phone: z.string().optional().nullable(),

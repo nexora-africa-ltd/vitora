@@ -114,6 +114,12 @@ export interface EncounterCreateData {
   disposition_notes?: string;
 }
 
+export interface EncounterQuickConsultationData {
+  patient: number;
+  chief_complaint?: string;
+  encounter_type?: EncounterType;
+}
+
 export interface EncounterUpdateData extends Partial<EncounterCreateData> {}
 
 export interface EncounterTransitionResponse {
