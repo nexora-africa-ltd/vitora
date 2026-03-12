@@ -142,7 +142,8 @@ class AuditLogPermission(permissions.BasePermission):
     """
     Permission class for audit log access.
 
-    Staff admins and superusers can view audit logs.
+    Authenticated users can view their own audit logs.
+    Staff admins and superusers can review all audit logs.
     Audit logs cannot be modified or deleted via API.
     """
 
@@ -151,9 +152,8 @@ class AuditLogPermission(permissions.BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
 
-        # Only allow GET (list/retrieve) for admin users
         if request.method in permissions.SAFE_METHODS:
-            return request.user.is_staff or request.user.is_superuser
+            return True
 
         # No modifications allowed
         return False
@@ -162,7 +162,11 @@ class AuditLogPermission(permissions.BasePermission):
         """Check if user can access specific audit log."""
         return (
             request.method in permissions.SAFE_METHODS
-            and (request.user.is_staff or request.user.is_superuser)
+            and (
+                request.user.is_staff
+                or request.user.is_superuser
+                or obj.user_id == request.user.id
+            )
         )
 
 

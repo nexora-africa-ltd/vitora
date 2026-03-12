@@ -47,6 +47,12 @@ npm run lint
 npm run typecheck
 ```
 
+## Offline storage hardening
+
+- The offline clinical cache now persists in encrypted MMKV storage instead of plain AsyncStorage.
+- The encryption key is generated per install and stored in SecureStore.
+- Existing offline cache data migrates automatically from the legacy AsyncStorage key on first access.
+
 ## EAS
 
 `eas build:configure` is already in place.
@@ -55,6 +61,44 @@ npm run typecheck
 
 ```bash
 eas build --platform all
+```
+
+### Preview and production API pinning
+
+`eas.json` now carries concrete `EXPO_PUBLIC_API_URL` and `EXPO_PUBLIC_API_PIN_*` values for the `preview` and `production` profiles.
+
+- `preview` targets `https://vitora-api.onrender.com`
+- `production` targets `https://vitora-prod.onrender.com`
+
+Certificate pinning is only active in native builds. Expo Go and local web/dev sessions intentionally skip it.
+The pin set currently matches the live Render certificate chain served by both `vitora-api.onrender.com` and `vitora-prod.onrender.com`.
+
+To validate a native build profile locally or in CI:
+
+```bash
+cd /home/thande/dev/vitora/mobile
+npx expo prebuild --platform android --no-install
+eas build --platform android --profile preview
+eas build --platform android --profile production
+```
+
+Local Android EAS builds require Java 17. In this workspace the preview and production builds both resolved the configured `EXPO_PUBLIC_API_PIN_*` values successfully, then stopped at Gradle because `JAVA_HOME` still points to Java 11.
+
+If the production API host changes, regenerate the pin values before shipping:
+
+```bash
+echo | openssl s_client -showcerts -servername vitora-prod.onrender.com -connect vitora-prod.onrender.com:443 2>/dev/null \
+	| awk 'BEGIN{c=0} /BEGIN CERTIFICATE/{c++} {print > ("/tmp/vitora-pin-" c ".pem")}'
+
+for f in /tmp/vitora-pin-*.pem; do
+	if grep -q 'BEGIN CERTIFICATE' "$f"; then
+		printf '%s ' "$f"
+		openssl x509 -in "$f" -pubkey -noout \
+			| openssl pkey -pubin -outform DER \
+			| openssl dgst -sha256 -binary \
+			| openssl enc -base64
+	fi
+done
 ```
 
 ### Important config link

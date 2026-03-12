@@ -2,9 +2,11 @@ import { Redirect } from 'expo-router';
 
 import { LoadingState, ScreenContainer } from '@/components/app-ui';
 import { useAuth } from '@/lib/auth/auth-context';
+import { useSessionTimeout } from '@/lib/auth/session-timeout';
 
 export default function IndexScreen() {
   const { isHydrating, isAuthenticated } = useAuth();
+  const { isLocked } = useSessionTimeout();
 
   if (isHydrating) {
     return (
@@ -14,7 +16,7 @@ export default function IndexScreen() {
     );
   }
 
-  if (isAuthenticated) {
+  if (isAuthenticated && !isLocked) {
     return <Redirect href={'/(tabs)' as never} />;
   }
 

@@ -141,7 +141,8 @@ class AuditLogViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSe
     """
     ViewSet for viewing audit logs (read-only).
 
-    Only accessible by superusers.
+    Staff can review all audit logs.
+    Other authenticated users can only see their own audit logs.
     """
 
     queryset = AuditLog.objects.all()
@@ -155,6 +156,9 @@ class AuditLogViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSe
     def get_queryset(self):
         """Apply optional date range filters for admin audit review."""
         queryset = super().get_queryset()
+        if not (self.request.user.is_staff or self.request.user.is_superuser):
+            queryset = queryset.filter(user=self.request.user)
+
         start_date = self.request.query_params.get("start_date")
         end_date = self.request.query_params.get("end_date")
 

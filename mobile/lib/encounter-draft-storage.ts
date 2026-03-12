@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { deleteSensitiveValue, getSensitiveJsonValue, getSensitiveValue, setSensitiveJsonValue } from '@/lib/storage/secure-storage';
 
 const NEW_ENCOUNTER_DRAFT_KEY = 'vitora.mobile.new-encounter-draft';
 const EDIT_ENCOUNTER_DRAFT_KEY_PREFIX = 'vitora.mobile.edit-encounter-draft';
@@ -24,20 +24,15 @@ export async function saveNewEncounterDraft<TForm>(form: TForm): Promise<void> {
     form,
   };
 
-  await AsyncStorage.setItem(NEW_ENCOUNTER_DRAFT_KEY, JSON.stringify(draft));
+  await setSensitiveJsonValue(NEW_ENCOUNTER_DRAFT_KEY, draft);
 }
 
 export async function getNewEncounterDraft<TForm>(): Promise<NewEncounterDraft<TForm> | null> {
-  const raw = await AsyncStorage.getItem(NEW_ENCOUNTER_DRAFT_KEY);
-  if (!raw) {
-    return null;
-  }
-
-  return JSON.parse(raw) as NewEncounterDraft<TForm>;
+  return getSensitiveJsonValue<NewEncounterDraft<TForm>>(NEW_ENCOUNTER_DRAFT_KEY);
 }
 
 export async function clearNewEncounterDraft(): Promise<void> {
-  await AsyncStorage.removeItem(NEW_ENCOUNTER_DRAFT_KEY);
+  await deleteSensitiveValue(NEW_ENCOUNTER_DRAFT_KEY);
 }
 
 export async function saveEditDraft<TForm>(encounterId: number, form: TForm): Promise<void> {
@@ -47,23 +42,18 @@ export async function saveEditDraft<TForm>(encounterId: number, form: TForm): Pr
     form,
   };
 
-  await AsyncStorage.setItem(getEditEncounterDraftKey(encounterId), JSON.stringify(draft));
+  await setSensitiveJsonValue(getEditEncounterDraftKey(encounterId), draft);
 }
 
 export async function getEditDraft<TForm>(encounterId: number): Promise<EditEncounterDraft<TForm> | null> {
-  const raw = await AsyncStorage.getItem(getEditEncounterDraftKey(encounterId));
-  if (!raw) {
-    return null;
-  }
-
-  return JSON.parse(raw) as EditEncounterDraft<TForm>;
+  return getSensitiveJsonValue<EditEncounterDraft<TForm>>(getEditEncounterDraftKey(encounterId));
 }
 
 export async function clearEditDraft(encounterId: number): Promise<void> {
-  await AsyncStorage.removeItem(getEditEncounterDraftKey(encounterId));
+  await deleteSensitiveValue(getEditEncounterDraftKey(encounterId));
 }
 
 export async function hasEditDraft(encounterId: number): Promise<boolean> {
-  const raw = await AsyncStorage.getItem(getEditEncounterDraftKey(encounterId));
+  const raw = await getSensitiveValue(getEditEncounterDraftKey(encounterId));
   return Boolean(raw);
 }

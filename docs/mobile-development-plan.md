@@ -1,7 +1,7 @@
 # Vitora HMIS — Mobile App Development Plan
 
-**Version**: 1.3  
-**Date**: March 11, 2026  
+**Version**: 1.4  
+**Date**: March 13, 2026  
 **Platform**: React Native (Expo 54) + Expo Router  
 **Backend**: Django REST API (900+ tests, 82%+ coverage)  
 **Primary User**: Clinicians, nurses, CHWs at bedside and in the field  
@@ -43,16 +43,16 @@
 | Laboratory orders & results (order, review, verify) | Done |
 | Pharmacy prescriptions & dispensing (prescribe, dispense, stock check) | Done |
 | Navigation restructure (More hub, role-aware launchers) | Done |
-| Offline-first local DB + sync engine (AsyncStorage) | Done |
+| Offline-first local DB + sync engine (encrypted MMKV) | Done |
 | Local-first query hooks for patients & encounters | Done |
-| Offline draft persistence for **new and edit** encounter forms (AsyncStorage) | Done |
+| Offline draft persistence for **new and edit** encounter forms | Done |
 | Inpatient wards, bed board, admissions, discharge | Done |
 | Nursing workflows (kardex, ward rounds, TPR, fluid balance) | Done |
-| Settings tab (logout, backend URL) | Done |
+| Settings workspace (logout, backend URL, audit log, security controls) | Done |
 
 ### Architecture
 
-- **Navigation**: 4-tab layout — Dashboard, Patients, Encounters, Settings, with stack routes for check-in, encounter triage/edit, laboratory, pharmacy, and inpatient workflows
+- **Navigation**: 4 primary tabs — Dashboard, Patients, Encounters, and More, with Settings, Billing, Laboratory, Pharmacy, audit log, and inpatient routes mounted in the stack/navigation workspace
 - **Data fetching**: Zod-validated API client with `parseResponse()` + `@tanstack/react-query`
 - **Design system**: `app-ui.tsx` (HeroCard, SectionCard, MetricCard, Pill, AppButton, AppTextInput, AppPicker, etc.)
 - **Theme**: "Vitora Sand" background (`#F4EFE5`), teal primary (`#0F766E`), orange accent (`#E08A5C`)
@@ -67,13 +67,15 @@
 | Check-in flow | Full module | Implemented with triage or direct-clinic routing | P0 |
 | Laboratory (orders, results) | Full workflow | Implemented (order, review, verify, encounter-linked) | P1 |
 | Pharmacy (prescriptions, dispensing) | Full workflow | Implemented (prescribe, dispense, stock check, treatment-plan draft) | P1 |
-| Offline-first with local DB | N/A (web is online-only) | **Implemented** (AsyncStorage + sync engine + local-first hooks) | P1 |
+| Offline-first with local DB | N/A (web is online-only) | **Implemented** (encrypted MMKV + sync engine + local-first hooks) | P1 |
 | Inpatient (wards, beds, admissions) | Full module | **Implemented** (ward list, bed board, admissions, discharge, nursing workflows) | P2 |
 | Billing (invoices, payments) | Full module | Read-only invoice and payment visibility implemented | P2 |
 | SHA eligibility checks | 15 DHA APIs | Eligibility check and cached status implemented | P2 |
 | Surveillance (IDSR, IHR) | Advanced | **Missing** | P3 |
 | MCH (ANC, PNC, immunization) | Dedicated module | **Missing** | P3 |
-| Biometric auth (FaceID/TouchID) | N/A | **Missing** | P2 |
+| Biometric auth (FaceID/TouchID) | N/A | **Implemented** | P2 |
+| Session auto-lock + re-auth | N/A | **Implemented** | P2 |
+| Certificate pinning | N/A | **Implemented for native preview/production config** | P2 |
 | Camera (wound photos, documents) | N/A | **Missing** | P3 |
 | Push notifications | N/A | **Missing** | P3 |
 | RBAC / staff management | Full admin | **Missing** | P4 (web-only) |
@@ -382,7 +384,7 @@
 
 **Overall status**: Substantially implemented. Core offline flow works end-to-end: local storage → offline creates → queue → sync → ID remapping → UI updates. Safe for pilot use at small-to-medium facilities (< 500 patients).
 
-**Design trade-off**: AsyncStorage (single JSON blob under key `vitora.mobile.offline-db.v1`) was chosen over WatermelonDB/Expo SQLite for pragmatic simplicity at current data volumes.
+**Design trade-off**: Encrypted MMKV (single JSON payload under key `vitora.mobile.offline-db.v1`) is now used instead of plain AsyncStorage, preserving the lightweight single-blob model while closing the local storage hardening gap. SQLite/WatermelonDB remains a future scaling option if pilot data volumes outgrow the current approach.
 
 **Verification completed**:
 - `npx tsc --noEmit` passes with zero errors
@@ -497,12 +499,12 @@
 
 | # | Criterion | Status | Verification |
 |---|-----------|--------|-------------|
-| 1 | App launches and shows patient/encounter data with no internet | **Met** | All list/detail screens use `useLocalPatients`/`useLocalEncounters` reading from AsyncStorage |
+| 1 | App launches and shows patient/encounter data with no internet | **Met** | All list/detail screens use `useLocalPatients`/`useLocalEncounters` reading from the encrypted local MMKV cache |
 | 2 | New patient created offline syncs when connectivity returns | **Met** | `queueOfflinePatientCreate` → queue → `pushPendingSyncQueue` → `patientsApi.create` → ID remap |
 | 3 | New encounter created offline syncs when connectivity returns | **Met** | Same pattern with patient dependency ordering (encounters with unsynced patients are deferred) |
 | 4 | Sync conflicts are detected and queued for resolution | **Partial** | Conflicts detected (HTTP 409) and counted in indicator, but **no resolution UI** exists |
 | 5 | Sync status indicator reflects current state | **Met** | `SyncIndicator` on dashboard/patients/encounters shows: Synced / Offline / Syncing / Error / Conflict with counts and manual sync button |
-| 6 | Local database survives app update | **Met** | AsyncStorage persists across app updates on both iOS and Android |
+| 6 | Local database survives app update | **Met** | The encrypted MMKV payload persists across app updates on both iOS and Android |
 | 7 | Sync does not duplicate records | **Met** | Upsert-by-ID (Map keyed on `id`) + ID remapping prevents duplicates |
 | 8 | Background sync does not drain battery noticeably | **Partial** | No periodic background sync exists (so no battery drain risk), but also means no true background sync — only event-driven on NetInfo connectivity change |
 | 9 | `npm run typecheck` and `npm run lint` pass | **Met** | Verified: zero TS errors, zero lint errors (18 warnings), 40 test cases pass across 13 test files |
@@ -534,7 +536,7 @@
 - ~~**P2**: Extend pull sync to include sub-counties and wards (currently only counties refreshed)~~ — **Done**: `pullOfflineData` calls `getAllSubCounties()` and `getAllWards()` and stores in `OfflineDatabase`
 - ~~**P2**: Extend offline scope to laboratory and pharmacy data~~ — **Done**: `LocalLabOrderRecord`, `LocalPrescriptionRecord` types; `upsertLabOrders`/`upsertPrescriptions`/`listLocalLabOrders`/`listLocalPrescriptions` functions; pull sync fetches lab orders and prescriptions; schema v3 migration
 - ~~**P2**: Increase test coverage to ≥40 cases~~ — **Done**: 40 tests across 13 files covering lab/pharmacy upsert, schema migration, conflict/failure paths, delta sync, retry cap
-- **P3**: Monitor AsyncStorage data size at pilot sites; plan SQLite migration if facility exceeds ~500 active patients or data blob exceeds 5 MB
+- **P3**: Monitor encrypted MMKV cache size at pilot sites; plan SQLite migration if facility exceeds ~500 active patients or the serialized payload exceeds about 5 MB
 
 ---
 
@@ -657,26 +659,36 @@
 
 ### Phase 5 Status
 
-**Overall status**: Partially complete. Billing read access and SHA eligibility workflows are implemented in the mobile app. Audit log viewing and security hardening remain open.
+**Overall status**: Complete for the scoped feature work. Billing, SHA eligibility, audit log viewing, session security, encrypted offline storage, and certificate-pinning configuration are implemented in the mobile app.
 
 **Verification completed**:
 - Changed `/mobile` source files are clean in editor diagnostics
 - Focused Jest coverage was added for billing API, SHA API, persisted SHA eligibility hook flow, billing screens, patient consultation blocking, and offline eligibility persistence
 - Billing routes are registered in the mobile stack and surfaced from the `More` workspace and patient detail flow
+- Focused Jest coverage now also covers audit API parsing, audit-log screen rendering, biometric helper behavior, and the locked-session sign-in path
+- `npm run typecheck` passes
+- Focused offline storage tests pass after migrating the local database from `AsyncStorage` to encrypted MMKV
+- `npx expo prebuild --platform android --no-install` succeeds with the native MMKV and SSL-pinning dependencies present
+- Local `eas build` profile resolution for both `preview` and `production` confirms the configured `EXPO_PUBLIC_API_PIN_*` values are injected correctly
 
 **What is now implemented**:
 - Read-only billing client with Zod-validated invoice list, invoice detail, and payment summary responses
 - Billing list and detail screens in mobile for patient-filtered or encounter-filtered invoice review
 - SHA eligibility client with normalized coverage status mapping
-- Patient-level SHA eligibility persistence in the offline AsyncStorage-backed local database so coverage badges survive app restarts
+- Patient-level SHA eligibility persistence in the encrypted offline local database so coverage badges survive app restarts
 - Coverage badges on patient cards and patient detail
 - Real consultation action on patient detail backed by the backend `quick_consultation` endpoint
 - Hard-stop consultation blocking when SHA status is `not_covered`, plus mandatory eligibility check before consultation when status is still pending
+- Read-only audit log API client and Settings audit-log screen showing the current user's activity in reverse chronological order
+- Self-only audit log backend access for authenticated non-staff users, while staff and superusers retain full audit review access
+- Biometric unlock helper using `expo-local-authentication`, plus a sign-in unlock path for timed-out sessions
+- Configurable inactivity auto-lock (default 5 minutes) with app-state aware session timeout handling and manual lock from Settings
+- Production-only certificate pinning bootstrap for native builds using `react-native-ssl-public-key-pinning` and `EXPO_PUBLIC_API_PIN_*` environment variables
+- Sensitive auth-session and encounter-draft storage moved to `SecureStore` where available
+- Offline local database migrated to encrypted MMKV storage, with the encryption key held in `SecureStore` and one-time import from the legacy `AsyncStorage` payload
 
-**Residual gaps before Phase 5 is fully complete**:
-- No audit log viewer yet
-- No biometric unlock, inactivity auto-lock, or lock screen yet
-- No certificate pinning or storage hardening pass documented in the mobile app yet
+**Validation caveat**:
+- Native Android `eas build --local` validation is currently blocked by the local machine using Java 11; Android Gradle now requires Java 17. The app configuration itself resolved correctly before Gradle failed.
 
 ### 5.1 Billing Read Access (Week 17)
 
@@ -734,6 +746,14 @@
 
 **Scope**: Read-only audit trail for the current user's own activity.
 
+**Implementation status**: Complete.
+
+**Implemented**:
+- Built a read-only audit log API client with paginated list support and Zod response validation
+- Added a dedicated audit-log screen reachable from Settings
+- Added user-facing action filtering and chronological audit entry cards with action, resource, and timestamp details
+- Updated backend audit permissions so authenticated non-staff users can only see their own logs while staff keep full visibility
+
 **Tasks**:
 - Build audit log API client (list with user filter, action type filter)
 - Create audit log screen in Settings showing current user's actions
@@ -747,12 +767,24 @@
 
 **Scope**: Biometric auth, session timeout, and secure storage audit.
 
+**Implementation status**: Complete.
+
+**Implemented**:
+- Added biometric authentication via `expo-local-authentication` with sign-in unlock support for locked sessions
+- Added inactivity-based auto-lock with configurable timeout values and a manual `Lock now` action in Settings
+- Added a locked-session re-auth flow that can resume with biometrics or password re-entry
+- Added production-only certificate pinning bootstrap using `react-native-ssl-public-key-pinning`
+- Audited local storage usage and migrated auth-session metadata plus encounter drafts to `SecureStore` where available
+- Migrated the offline local database from `AsyncStorage` to encrypted MMKV storage, with a SecureStore-managed encryption key and legacy payload migration path
+- Added concrete preview and production `EXPO_PUBLIC_API_PIN_*` hashes sourced from the live Render certificate chain
+- Verified native dependency integration with `expo prebuild`, and verified EAS profile env injection before the local build host failed on Java 11
+
 **Tasks**:
 - Biometric authentication (FaceID/TouchID) via `expo-local-authentication`
 - Auto-lock after configurable inactivity timeout (default: 5 min)
 - Lock screen with biometric or PIN re-authentication
 - Certificate pinning for API calls (production builds only)
-- Audit all `AsyncStorage` usage — migrate any sensitive data to `SecureStore`
+- Audit all remaining local storage usage and migrate sensitive values to `SecureStore`
 
 **Files to touch**:
 - `lib/auth/biometric.ts` — biometric auth helper
@@ -767,25 +799,25 @@
 | 1 | Invoice list and detail viewable from mobile | Implemented | Billing routes exist in mobile, invoice list/detail screens render invoice summaries, line items, and payments |
 | 2 | SHA eligibility can be checked from patient detail | Implemented | Patient detail exposes `Check SHA eligibility` and stores coverage status for reuse |
 | 3 | Alert shown if patient is not SHA-covered | Implemented | Uncovered patient blocks quick consultation and shows warning text plus alert dialog |
-| 4 | Biometric auth (FaceID/TouchID) works as login option | Not implemented | No biometric helper, unlock flow, or lock screen is present yet |
-| 5 | Session auto-locks after inactivity | Not implemented | No inactivity timeout wrapper is present yet |
-| 6 | Audit log viewer shows current user's actions | Not implemented | No audit log API client or screen has been added yet |
-| 7 | No sensitive data stored in plain AsyncStorage | Not implemented | A dedicated storage audit and migration pass has not been completed yet |
-| 8 | `npm run typecheck` and `npm run lint` pass | Partially verified | Changed Phase 5 source files are clean in editor diagnostics; focused Jest coverage was added for billing and SHA flows |
+| 4 | Biometric auth (FaceID/TouchID) works as login option | Implemented | Locked sessions can be resumed from the sign-in screen using the biometric unlock path when enabled |
+| 5 | Session auto-locks after inactivity | Implemented | Session timeout provider wraps the app, defaults to 5 minutes, and is configurable from Settings |
+| 6 | Audit log viewer shows current user's actions | Implemented | Settings now links to a read-only audit-log screen backed by `/api/auditlogs/` |
+| 7 | No sensitive data stored in plain AsyncStorage | Implemented | Auth-session metadata, encounter drafts, and the offline local database now use encrypted local storage paths |
+| 8 | `npm run typecheck` and `npm run lint` pass | Partially verified | `npm run typecheck` passes; `npm run lint` reports 4 pre-existing warnings in `app/inpatient/admissions/new.tsx` unrelated to Phase 5 |
 
 ### Phase 5 Decision
 
-**Recommendation**: Billing and SHA work is in a good state to continue hardening, but Phase 5 as a whole is not complete until audit and security items are delivered.
+**Recommendation**: Phase 5 security hardening is complete at the code/config layer. Before relying on local Android builds for release validation, upgrade the build host to Java 17.
 
 **Why this is safe**:
 - The clinician-facing Phase 5 value is already present on mobile: invoice visibility, persisted SHA status, and consultation blocking for uncovered patients
 - The implementation follows the stronger `/mobile` app architecture with Zod-validated clients, React Query, and local-first persistence
-- Focused tests now cover the added billing screens, SHA API flow, persisted eligibility cache, and consultation gating behavior
+- Focused tests now cover the added billing screens, SHA API flow, persisted eligibility cache, consultation gating behavior, audit log rendering, biometric helper logic, and locked-session unlock path
+- The offline local database is no longer persisted in plain `AsyncStorage`, and preview/production EAS profiles now carry concrete certificate pin hashes
 
-**Carry-forward items for the remainder of Phase 5**:
-- Build the audit log API client and audit-log screen
-- Add biometric unlock and inactivity timeout flows
-- Complete a storage and transport security hardening pass, including `AsyncStorage` review and any needed `SecureStore` migration
+**Carry-forward items**:
+- Upgrade local Android build environments to Java 17 so `eas build --local` can complete end-to-end
+- Consider suppressing or fixing the unrelated existing lint warnings in `app/inpatient/admissions/new.tsx`
 
 ---
 
@@ -967,7 +999,7 @@ npm test              # All tests pass (when test suite exists)
 
 | Risk | Impact | Probability | Mitigation |
 |------|--------|-------------|------------|
-| AsyncStorage scalability ceiling | High | Medium | Phase 3 chose AsyncStorage for simplicity; monitor data size at pilot sites; plan SQLite migration if facility exceeds ~500 active patients or blob exceeds 5 MB |
+| Encrypted MMKV cache scalability ceiling | High | Medium | Phase 3 kept the lightweight single-blob local store for simplicity and encryption; monitor payload size at pilot sites and plan SQLite migration if facility exceeds ~500 active patients or blob exceeds about 5 MB |
 | Expo SDK breaking changes | Medium | Low | Pin SDK version; test upgrades in isolation branch |
 | Backend API changes break mobile | High | Medium | Zod schema `parseResponse()` catches shape mismatches at runtime before they reach UI |
 | Performance on low-end Android | High | Medium | Profile rendering from Phase 1; optimize FlatList early; lazy-load heavy screens |
