@@ -118,6 +118,8 @@ export default function PatientDetailScreen() {
         <AppButton label={quickConsultationMutation.isPending ? 'Starting consultation...' : 'Start consultation'} onPress={() => void handleStartConsultation()} disabled={quickConsultationMutation.isPending} />
         <AppButton label={checkEligibilityMutation.isPending ? 'Checking SHA eligibility...' : 'Check SHA eligibility'} onPress={() => void handleCheckEligibility()} variant="secondary" disabled={checkEligibilityMutation.isPending} />
         <AppButton label="View billing summary" onPress={() => router.push(`/billing?patientId=${patient.id}` as never)} variant="secondary" />
+        <AppButton label="Open MCH workspace" onPress={() => router.push(`/mch/immunization?patientId=${patient.id}` as never)} variant="secondary" />
+        <AppButton label="New community screening" onPress={() => router.push(`/screening/new?patientId=${patient.id}` as never)} variant="secondary" />
         <AppButton label="Check-in workflow" onPress={() => router.push(`/checkin?patientId=${patient.id}` as never)} variant="ghost" />
         <AppButton label="New encounter for this patient" onPress={() => router.push(`/encounters/new?patientId=${patient.id}` as never)} />
       </SectionCard>

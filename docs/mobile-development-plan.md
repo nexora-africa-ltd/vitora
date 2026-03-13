@@ -825,6 +825,31 @@
 
 > **Goal**: Community Health Workers (CHWs) can use mobile for field visits — immunization tracking, antenatal care, and community screening. This is the **primary mobile-specific use case** that web doesn't serve well.
 
+### Phase 6 Status
+
+**Overall status**: Implemented for mobile-first ANC and community screening. MCH uses the existing backend `/api/mch/` module and is cached into the encrypted offline database. Community screening now has a backend `/api/mch/community-screenings/` endpoint, supports GPS and photo capture, and syncs queued field records through the mobile offline engine when connectivity returns.
+
+**Verification completed**:
+- `npm run typecheck` passes
+- `npm run lint` passes
+- Focused Jest suites pass for the new MCH API client, MCH list screen, screening form, and updated More workspace launcher
+
+**What is now implemented**:
+- Mobile MCH type definitions, Zod schemas, and API client aligned to the existing backend ANC and immunization endpoints
+- Offline database extensions for MCH registrations, ANC visits, immunization records, and community screenings
+- Pull sync now hydrates MCH registrations, ANC visits, and immunization records into the encrypted offline cache
+- Push sync now uploads queued offline ANC visits through the same sync engine used for patients and encounters
+- Pull sync now hydrates backend community screening records into the encrypted offline cache with delta-sync support
+- Push sync now uploads queued community screening records, including optional GPS metadata and photo attachments, to `/api/mch/community-screenings/`
+- New MCH workspace with pregnancy registry, ANC visit timeline/capture screen, derived high-risk flagging, and immunization schedule/dose administration flow
+- New community screening workspace with malnutrition, TB contact tracing, and malaria RDT forms
+- GPS coordinate capture via `expo-location`
+- Photo capture and preview via `expo-camera`
+- Launchers from the More tab and quick links from patient detail into MCH and screening workflows
+
+**Residual gap before Phase 6 is fully end-to-end complete**:
+- No additional community-screening sync gap remains in this phase; further work is limited to broader end-to-end coverage and production hardening
+
 ### 6.1 MCH — Antenatal Care (Weeks 21–22)
 
 **Scope**: ANC visit recording, risk assessment, and immunization tracking.
@@ -864,16 +889,16 @@
 
 ### Exit / Acceptance Criteria — Phase 6
 
-| # | Criterion | Verification |
-|---|-----------|-------------|
-| 1 | ANC visits can be recorded with gestational vitals | ANC form → enter fundal height, FHR, gestational age → save → visit recorded |
-| 2 | High-risk pregnancies are flagged automatically | Patient age 16 → ANC visit → "High Risk" flag appears |
-| 3 | Immunization schedule displays with dose tracking | MCH → Immunization → TT1 given, TT2 due on [date] |
-| 4 | GPS coordinates captured and attached to field visits | Screening → GPS icon → coordinates recorded in submission |
-| 5 | Photos can be captured and attached to encounters | Screening → Camera → take photo → attached to record |
-| 6 | Screening forms work fully offline | Airplane mode → complete screening → save locally → sync when online |
-| 7 | CHW can complete a full field visit without internet | End-to-end: patient lookup → screening → ANC → immunization → all offline |
-| 8 | `npm run typecheck` and `npm run lint` pass | CI/local verification |
+| # | Criterion | Status | Verification |
+|---|-----------|--------|-------------|
+| 1 | ANC visits can be recorded with gestational vitals | Implemented | Mobile ANC capture stores fundal height, FHR, BP, urine results, TT dose, and mobile gestational-age notes; online saves go to `/api/mch/anc-visits/`, offline saves queue in the sync engine |
+| 2 | High-risk pregnancies are flagged automatically | Implemented | MCH ANC screen derives risk flags from maternal age, multiple pregnancy, clinician high-risk flag, and prior C-section text |
+| 3 | Immunization schedule displays with dose tracking | Implemented | MCH immunization screen generates schedules from `/api/mch/immunizations/generate-schedule/`, shows due/administered state, and can mark doses administered |
+| 4 | GPS coordinates captured and attached to field visits | Implemented | Screening form captures coordinates through `expo-location` and stores them with the local screening record |
+| 5 | Photos can be captured and attached to encounters | Implemented | Screening form includes `CameraCapture` based on `expo-camera` with preview, retake, and removal support |
+| 6 | Screening forms work fully offline | Implemented | Malnutrition, TB contact, and malaria RDT screening forms persist locally in the encrypted offline DB without network access |
+| 7 | CHW can complete a full field visit without internet | Implemented | Patient lookup, ANC capture, and screening work offline from the local cache, and queued community screenings upload through `/api/mch/community-screenings/` once connectivity returns |
+| 8 | `npm run typecheck` and `npm run lint` pass | Implemented | Verified locally after the Phase 6 changes |
 
 ---
 

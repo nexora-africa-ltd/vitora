@@ -1493,6 +1493,195 @@ class PNCVisit(HistoryMixin, TimeStampedModel):
 
 
 # =============================================================================
+# Community Screening Model
+# =============================================================================
+
+
+class CommunityScreening(HistoryMixin, TimeStampedModel):
+    """Community outreach screening record captured by CHWs in the field."""
+
+    SCREENING_TYPE_CHOICES = [
+        ("MALNUTRITION", "Malnutrition Screening"),
+        ("TB_CONTACT", "TB Contact Tracing"),
+        ("MALARIA_RDT", "Malaria RDT"),
+    ]
+
+    MALARIA_RDT_RESULT_CHOICES = [
+        ("positive", "Positive"),
+        ("negative", "Negative"),
+        ("invalid", "Invalid"),
+        ("not_done", "Not Done"),
+    ]
+
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="community_screenings",
+        help_text="Linked patient record if the client already exists in HMIS.",
+    )
+    patient_name_snapshot = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Name captured during the outreach visit when no patient record is linked.",
+    )
+    patient_mrn_snapshot = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="MRN snapshot captured at time of screening.",
+    )
+    screening_type = models.CharField(
+        max_length=20,
+        choices=SCREENING_TYPE_CHOICES,
+        help_text="Type of community screening performed.",
+    )
+    screening_date = models.DateField(
+        default=date.today,
+        help_text="Date the field screening was conducted.",
+    )
+    chu_name = models.CharField(
+        max_length=150,
+        blank=True,
+        default="",
+        help_text="Community Health Unit (CHU) name.",
+    )
+    territory = models.CharField(
+        max_length=150,
+        blank=True,
+        default="",
+        help_text="Village, cluster, or territory covered during the visit.",
+    )
+    result_summary = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Compact summary derived from the screening findings.",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Free-text outreach notes or referral details.",
+    )
+    muac_mm = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(50), MaxValueValidator(400)],
+        help_text="MUAC in millimetres for malnutrition screening.",
+    )
+    edema_present = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Whether bilateral oedema was present.",
+    )
+    fever_present = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Whether the client had fever during malaria screening.",
+    )
+    cough_duration_days = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        validators=[MaxValueValidator(365)],
+        help_text="Number of days of cough during TB contact tracing.",
+    )
+    household_contact_name = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Household or index contact associated with TB tracing.",
+    )
+    malaria_rdt_result = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        choices=MALARIA_RDT_RESULT_CHOICES,
+        help_text="Malaria rapid diagnostic test result.",
+    )
+    malaria_treatment_referred = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Whether treatment or referral was made after malaria screening.",
+    )
+    tb_referral_made = models.BooleanField(
+        null=True,
+        blank=True,
+        help_text="Whether TB referral was made.",
+    )
+    location = models.JSONField(
+        null=True,
+        blank=True,
+        help_text="Captured GPS coordinates and accuracy metadata.",
+    )
+    photo = models.FileField(
+        upload_to="community_screenings/%Y/%m/",
+        null=True,
+        blank=True,
+        help_text="Optional field photo attached to the screening record.",
+    )
+    captured_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="community_screenings_captured",
+    )
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["-screening_date", "-created_at"]
+        verbose_name = "Community Screening"
+        verbose_name_plural = "Community Screenings"
+        indexes = [
+            models.Index(fields=["screening_type", "screening_date"]),
+            models.Index(fields=["patient", "updated_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.get_screening_type_display()} - {self.patient_name or 'Unlinked client'} ({self.screening_date})"
+
+    @property
+    def patient_name(self) -> str | None:
+        if self.patient:
+            return f"{self.patient.first_name} {self.patient.last_name}".strip()
+        return self.patient_name_snapshot or None
+
+    @property
+    def patient_mrn(self) -> str | None:
+        if self.patient:
+            return self.patient.mrn
+        return self.patient_mrn_snapshot or None
+
+    def build_result_summary(self) -> str:
+        if self.screening_type == "MALNUTRITION":
+            parts = [f"MUAC {self.muac_mm if self.muac_mm is not None else 'n/a'} mm"]
+            if self.edema_present:
+                parts.append("edema present")
+            return " · ".join(parts)
+
+        if self.screening_type == "TB_CONTACT":
+            parts = []
+            if self.cough_duration_days is not None:
+                parts.append(f"{self.cough_duration_days} day cough")
+            if self.household_contact_name:
+                parts.append(f"contact {self.household_contact_name}")
+            return " · ".join(parts) or "TB contact screening recorded"
+
+        result = self.malaria_rdt_result or "not_done"
+        return f"RDT {result.replace('_', ' ')}"
+
+    def save(self, *args, **kwargs):
+        if self.patient:
+            self.patient_name_snapshot = self.patient_name_snapshot or self.patient_name or ""
+            self.patient_mrn_snapshot = self.patient_mrn_snapshot or self.patient_mrn or ""
+        self.result_summary = self.build_result_summary()
+        super().save(*args, **kwargs)
+
+
+# =============================================================================
 # Growth Measurement Model
 # =============================================================================
 

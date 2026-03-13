@@ -1,9 +1,13 @@
 import { toApiError } from '@/lib/api/client';
+import { ancVisitsApi } from '@/lib/api/mch';
 import { encountersApi } from '@/lib/api/encounters';
 import { patientsApi } from '@/lib/api/patients';
-import { getPendingSyncQueue, replaceQueuedEncounter, replaceQueuedPatient, setOfflineSyncMetadata, updateLocalEncounterSyncState, updateLocalPatientSyncState, updateQueueEntryState } from '@/lib/db';
+import { screeningApi } from '@/lib/api/screening';
+import { getPendingSyncQueue, replaceQueuedANCVisit, replaceQueuedEncounter, replaceQueuedPatient, replaceQueuedScreening, setOfflineSyncMetadata, updateLocalANCVisitSyncState, updateLocalEncounterSyncState, updateLocalPatientSyncState, updateLocalScreeningSyncState, updateQueueEntryState } from '@/lib/db';
 import type { EncounterCreateData } from '@/lib/types/encounter';
+import type { ANCVisitCreateData } from '@/lib/types/mch';
 import type { PatientCreateData } from '@/lib/types/patient';
+import type { CommunityScreeningCreateData } from '@/lib/types/screening';
 
 import { getSyncFailureMessage, isConflictError, isOfflineSyncError } from './conflicts';
 
@@ -45,10 +49,21 @@ export async function pushPendingSyncQueue(): Promise<PushSummary> {
           sync_error: `Permanently failed after ${MAX_SYNC_ATTEMPTS} attempts.`,
           sync_state: 'sync_error',
         });
-      } else {
+      } else if (latestEntry.entity === 'encounter') {
         await updateLocalEncounterSyncState(latestEntry.local_id, {
           sync_error: `Permanently failed after ${MAX_SYNC_ATTEMPTS} attempts.`,
           sync_state: 'sync_error',
+        });
+      } else if (latestEntry.entity === 'anc_visit') {
+        await updateLocalANCVisitSyncState(latestEntry.local_id, {
+          sync_error: `Permanently failed after ${MAX_SYNC_ATTEMPTS} attempts.`,
+          sync_state: 'sync_error',
+        });
+      } else {
+        await updateLocalScreeningSyncState(latestEntry.local_id, {
+          local_only: true,
+          sync_error: `Permanently failed after ${MAX_SYNC_ATTEMPTS} attempts.`,
+          sync_status: 'upload_failed',
         });
       }
 
@@ -66,7 +81,7 @@ export async function pushPendingSyncQueue(): Promise<PushSummary> {
       if (latestEntry.entity === 'patient') {
         const patient = await patientsApi.create(latestEntry.payload as PatientCreateData);
         await replaceQueuedPatient(latestEntry.local_id, patient, pushedAt);
-      } else {
+      } else if (latestEntry.entity === 'encounter') {
         const payload = latestEntry.payload as EncounterCreateData;
         if (payload.patient < 0) {
           await updateQueueEntryState(latestEntry.id, {
@@ -78,6 +93,21 @@ export async function pushPendingSyncQueue(): Promise<PushSummary> {
 
         const encounter = await encountersApi.create(payload);
         await replaceQueuedEncounter(latestEntry.local_id, encounter, pushedAt);
+      } else if (latestEntry.entity === 'anc_visit') {
+        const ancVisit = await ancVisitsApi.create(latestEntry.payload as ANCVisitCreateData);
+        await replaceQueuedANCVisit(latestEntry.local_id, ancVisit, pushedAt);
+      } else {
+        const payload = latestEntry.payload as CommunityScreeningCreateData;
+        if (typeof payload.patient === 'number' && payload.patient < 0) {
+          await updateQueueEntryState(latestEntry.id, {
+            last_error: 'Waiting for the linked offline patient to sync first.',
+            status: 'pending',
+          });
+          continue;
+        }
+
+        const screening = await screeningApi.uploadScreening(payload);
+        await replaceQueuedScreening(latestEntry.local_id, screening);
       }
 
       pushed += 1;
@@ -90,10 +120,21 @@ export async function pushPendingSyncQueue(): Promise<PushSummary> {
           sync_error: message,
           sync_state: isConflictError(apiError) ? 'conflict' : 'sync_error',
         });
-      } else {
+      } else if (latestEntry.entity === 'encounter') {
         await updateLocalEncounterSyncState(latestEntry.local_id, {
           sync_error: message,
           sync_state: isConflictError(apiError) ? 'conflict' : 'sync_error',
+        });
+      } else if (latestEntry.entity === 'anc_visit') {
+        await updateLocalANCVisitSyncState(latestEntry.local_id, {
+          sync_error: message,
+          sync_state: isConflictError(apiError) ? 'conflict' : 'sync_error',
+        });
+      } else {
+        await updateLocalScreeningSyncState(latestEntry.local_id, {
+          local_only: true,
+          sync_error: message,
+          sync_status: 'upload_failed',
         });
       }
 

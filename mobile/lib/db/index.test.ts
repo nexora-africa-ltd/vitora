@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { clearOfflineDatabase, discardQueueEntry, getConflictAndFailedEntries, getLocalEncounter, getLocalPatient, getOfflineDatabase, listLocalEncounters, listLocalLabOrders, listLocalPatients, listLocalPrescriptions, queueOfflineEncounterCreate, queueOfflinePatientCreate, replaceQueuedPatient, retryQueueEntry, storePatientEligibility, updateQueueEntryState, upsertEncounters, upsertLabOrders, upsertPatients, upsertPrescriptions, upsertReferenceData } from '@/lib/db';
+import { clearOfflineDatabase, discardQueueEntry, getConflictAndFailedEntries, getLocalEncounter, getLocalPatient, getOfflineDatabase, listLocalEncounters, listLocalLabOrders, listLocalPatients, listLocalPrescriptions, listLocalScreenings, queueOfflineEncounterCreate, queueOfflinePatientCreate, queueOfflineScreeningCreate, replaceQueuedPatient, retryQueueEntry, storePatientEligibility, updateQueueEntryState, upsertEncounters, upsertLabOrders, upsertPatients, upsertPrescriptions, upsertReferenceData } from '@/lib/db';
 import { CURRENT_SCHEMA_VERSION, OFFLINE_DB_STORAGE_KEY } from '@/lib/db/schema';
 
 describe('offline database', () => {
@@ -345,6 +345,47 @@ describe('offline database', () => {
     const filtered = await listLocalLabOrders({ patientId: 21 });
     expect(filtered.count).toBe(1);
     expect(filtered.records[0]?.order_number).toBe('LAB-20260311-0001');
+  });
+
+  it('queues screenings for later upload and remaps linked patient ids after patient sync', async () => {
+    await upsertReferenceData({
+      counties: [{ id: 1, code: 1, name: 'Nairobi' }],
+      subCounties: [{ id: 10, county: 1, name: 'Westlands' }],
+    });
+
+    const queuedPatient = await queueOfflinePatientCreate({
+      first_name: 'Screened',
+      last_name: 'Patient',
+      date_of_birth: '1990-01-01',
+      gender: 'F',
+      county: 1,
+      sub_county: 10,
+      referral_source: 'self',
+    });
+
+    await queueOfflineScreeningCreate({
+      patient: queuedPatient.id,
+      patient_name: 'Screened Patient',
+      patient_mrn: null,
+      screening_type: 'MALNUTRITION',
+      chu_name: 'Kayole CHU 4',
+      territory: 'Village A',
+      muac_mm: 110,
+      edema_present: true,
+    });
+
+    await replaceQueuedPatient(queuedPatient.id, {
+      ...queuedPatient,
+      id: 44,
+      mrn: 'MRN-20260311-0044',
+    }, '2026-03-11T10:00:00Z');
+
+    const screenings = await listLocalScreenings();
+    const database = await getOfflineDatabase();
+
+    expect(screenings.records[0]?.patient).toBe(44);
+    expect(database.queue[0]?.entity).toBe('screening');
+    expect((database.queue[0]?.payload as { patient: number }).patient).toBe(44);
   });
 
   it('upserts and lists local prescriptions', async () => {

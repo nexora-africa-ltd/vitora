@@ -36,10 +36,19 @@ export default function MoreScreen() {
         <View style={styles.launcherStack}>
           <AppButton label="Billing summaries" onPress={() => router.push('/billing' as never)} variant="secondary" />
           <Text style={styles.helperText}>Review invoice balances and payment status without leaving the bedside workflow.</Text>
+          <AppButton label="MCH outreach" onPress={() => router.push('/mch' as never)} variant="primary" />
+          <Text style={styles.helperText}>Follow antenatal visits, high-risk pregnancies, and maternal immunization schedules from mobile.</Text>
           <AppButton label={laboratoryLauncher.label} onPress={() => router.push('/laboratory' as never)} variant={laboratoryLauncher.variant} />
           <Text style={styles.helperText}>{laboratoryLauncher.description}</Text>
           <AppButton label={pharmacyLauncher.label} onPress={() => router.push('/pharmacy' as never)} variant={pharmacyLauncher.variant} />
           <Text style={styles.helperText}>{pharmacyLauncher.description}</Text>
+        </View>
+      </SectionCard>
+
+      <SectionCard title="Field outreach" subtitle="Community health worker workflows for visits outside the facility.">
+        <View style={styles.launcherStack}>
+          <AppButton label="Community screening" onPress={() => router.push('/screening' as never)} variant="secondary" />
+          <Text style={styles.helperText}>Capture malnutrition, TB contact tracing, and malaria RDT visits with GPS and photo attachments.</Text>
         </View>
       </SectionCard>
 

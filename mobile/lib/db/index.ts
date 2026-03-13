@@ -3,15 +3,19 @@ import type { EncounterCreateData } from '@/lib/types/encounter';
 import type { Admission, InpatientWard } from '@/lib/types/inpatient';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { County, SubCounty, Ward } from '@/lib/types/location';
+import type { ANCVisitCreateData, MCHRegistrationListItem } from '@/lib/types/mch';
 import type { PatientCreateData } from '@/lib/types/patient';
 import type { Prescription } from '@/lib/types/pharmacy';
+import type { CommunityScreening, CommunityScreeningCreateData } from '@/lib/types/screening';
 import type { PatientSHAEligibility } from '@/lib/types/sha';
 
 import { buildOfflineEncounterRecord, matchesEncounterSearch, sortEncounters, toLocalEncounterRecord } from './models/encounter';
 import { sortLabOrders, toLocalLabOrderRecord } from './models/lab-order';
+import { buildOfflineANCVisitRecord, sortANCVisits, sortImmunizationRecords, sortMCHRegistrations, toLocalANCVisitRecord, toLocalImmunizationRecord, toLocalMCHRegistrationRecord } from './models/mch';
 import { buildOfflinePatientRecord, matchesPatientSearch, sortPatients, toLocalPatientRecord } from './models/patient';
 import { sortPrescriptions, toLocalPrescriptionRecord } from './models/prescription';
-import { createEmptyOfflineDatabase, CURRENT_SCHEMA_VERSION, SCHEMA_MIGRATIONS, type LocalEncounterRecord, type LocalLabOrderRecord, type LocalPatientRecord, type LocalPrescriptionRecord, type OfflineDatabase, type SyncQueueEntry } from './schema';
+import { buildOfflineScreeningRecord, sortScreenings, toLocalScreeningRecord } from './models/screening';
+import { createEmptyOfflineDatabase, CURRENT_SCHEMA_VERSION, SCHEMA_MIGRATIONS, type LocalANCVisitRecord, type LocalEncounterRecord, type LocalImmunizationRecord, type LocalLabOrderRecord, type LocalMCHRegistrationRecord, type LocalPatientRecord, type LocalPrescriptionRecord, type OfflineDatabase, type SyncQueueEntry } from './schema';
 import { readOfflineDatabasePayload, removeOfflineDatabasePayload, writeOfflineDatabasePayload } from './storage';
 
 type PatientListOptions = {
@@ -27,14 +31,19 @@ type EncounterListOptions = {
 
 const LOCAL_QUERY_KEYS = [
   ['dashboard-summary'],
+  ['local-anc-visits'],
+  ['local-immunizations'],
   ['local-lab-order'],
   ['local-lab-orders'],
+  ['local-mch-registration'],
+  ['local-mch-registrations'],
   ['local-patient'],
   ['local-patients'],
   ['local-encounter'],
   ['local-encounters'],
   ['local-prescription'],
   ['local-prescriptions'],
+  ['local-screenings'],
   ['offline-reference-data'],
   ['sync-status'],
 ] as const;
@@ -77,14 +86,18 @@ function normalizeDatabase(payload: string | null): OfflineDatabase {
       ...next,
       ...typedParsed,
       admissions: typedParsed.admissions ?? next.admissions,
+      ancVisits: typedParsed.ancVisits ?? next.ancVisits,
       counties: typedParsed.counties ?? next.counties,
       diagnoses: typedParsed.diagnoses ?? next.diagnoses,
       encounters: typedParsed.encounters ?? next.encounters,
+      immunizationRecords: typedParsed.immunizationRecords ?? next.immunizationRecords,
       inpatientWards: typedParsed.inpatientWards ?? next.inpatientWards,
       labOrders: typedParsed.labOrders ?? next.labOrders,
+      mchRegistrations: typedParsed.mchRegistrations ?? next.mchRegistrations,
       patients: typedParsed.patients ?? next.patients,
       prescriptions: typedParsed.prescriptions ?? next.prescriptions,
       queue: typedParsed.queue ?? next.queue,
+      screenings: typedParsed.screenings ?? next.screenings,
       subCounties: typedParsed.subCounties ?? next.subCounties,
       wards: typedParsed.wards ?? next.wards,
       meta: {
@@ -273,6 +286,45 @@ export async function upsertEncounters(records: LocalEncounterRecord[] | Paramet
   });
 }
 
+export async function upsertMCHRegistrations(records: LocalMCHRegistrationRecord[] | MCHRegistrationListItem[]): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    const registrationMap = new Map(database.mchRegistrations.map((registration) => [registration.id, registration]));
+
+    for (const record of records) {
+      const nextRecord = 'mother_name' in record ? toLocalMCHRegistrationRecord(record) : record;
+      registrationMap.set(nextRecord.id, nextRecord);
+    }
+
+    database.mchRegistrations = sortMCHRegistrations(Array.from(registrationMap.values()));
+  });
+}
+
+export async function upsertANCVisits(records: LocalANCVisitRecord[] | Array<Parameters<typeof toLocalANCVisitRecord>[0]>, syncedAt?: string): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    const visitMap = new Map(database.ancVisits.map((visit) => [visit.id, visit]));
+
+    for (const record of records) {
+      const nextRecord = 'sync_state' in record ? record : toLocalANCVisitRecord(record, syncedAt);
+      visitMap.set(nextRecord.id, nextRecord);
+    }
+
+    database.ancVisits = sortANCVisits(Array.from(visitMap.values()));
+  });
+}
+
+export async function upsertImmunizationRecords(records: LocalImmunizationRecord[] | Array<Parameters<typeof toLocalImmunizationRecord>[0]>, syncedAt?: string): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    const recordMap = new Map(database.immunizationRecords.map((record) => [record.id, record]));
+
+    for (const record of records) {
+      const nextRecord = 'sync_state' in record ? record : toLocalImmunizationRecord(record, syncedAt);
+      recordMap.set(nextRecord.id, nextRecord);
+    }
+
+    database.immunizationRecords = sortImmunizationRecords(Array.from(recordMap.values()));
+  });
+}
+
 export async function upsertLabOrders(records: LocalLabOrderRecord[] | Parameters<typeof toLocalLabOrderRecord>[0][], syncedAt?: string): Promise<void> {
   await updateOfflineDatabase((database) => {
     const orderMap = new Map(database.labOrders.map((order) => [order.id, order]));
@@ -331,6 +383,73 @@ export async function listLocalPrescriptions(options: { patientId?: number; limi
   return { count, records };
 }
 
+export async function listLocalMCHRegistrations(options: { search?: string; highRiskOnly?: boolean } = {}): Promise<{ count: number; records: LocalMCHRegistrationRecord[] }> {
+  const database = await getOfflineDatabase();
+  const normalizedSearch = options.search?.trim().toLowerCase() ?? '';
+  let records = database.mchRegistrations.filter((registration) => {
+    if (options.highRiskOnly && !registration.is_high_risk) {
+      return false;
+    }
+
+    if (!normalizedSearch) {
+      return true;
+    }
+
+    return [registration.mch_number, registration.mother_name, registration.mother_mrn]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(normalizedSearch);
+  });
+
+  return { count: records.length, records };
+}
+
+export async function getLocalMCHRegistration(id: number): Promise<LocalMCHRegistrationRecord | null> {
+  const database = await getOfflineDatabase();
+  return database.mchRegistrations.find((registration) => registration.id === id) ?? null;
+}
+
+export async function listLocalANCVisits(options: { registrationId?: number } = {}): Promise<{ count: number; records: LocalANCVisitRecord[] }> {
+  const database = await getOfflineDatabase();
+  let records = database.ancVisits;
+  if (options.registrationId) {
+    records = records.filter((visit) => visit.registration === options.registrationId);
+  }
+
+  return { count: records.length, records };
+}
+
+export async function listLocalImmunizations(options: { patientId?: number } = {}): Promise<{ count: number; records: LocalImmunizationRecord[] }> {
+  const database = await getOfflineDatabase();
+  let records = database.immunizationRecords;
+  if (options.patientId) {
+    records = records.filter((record) => record.patient === options.patientId);
+  }
+
+  return { count: records.length, records };
+}
+
+export async function listLocalScreenings(options: { patient?: number } = {}): Promise<{ count: number; records: CommunityScreening[] }> {
+  const database = await getOfflineDatabase();
+  let records = database.screenings;
+  if (typeof options.patient === 'number') {
+    records = records.filter((record) => record.patient === options.patient);
+  }
+
+  return { count: records.length, records };
+}
+
+export async function upsertScreenings(records: CommunityScreening[]): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    const screeningMap = new Map(database.screenings.map((record) => [record.id, record]));
+    for (const record of records) {
+      screeningMap.set(record.id, toLocalScreeningRecord(record));
+    }
+    database.screenings = sortScreenings(Array.from(screeningMap.values()));
+  });
+}
+
 export async function queueOfflinePatientCreate(data: PatientCreateData): Promise<LocalPatientRecord> {
   const database = await getOfflineDatabase();
   const localId = createLocalId();
@@ -380,6 +499,55 @@ export async function queueOfflineEncounterCreate(data: EncounterCreateData): Pr
   return queuedEncounter;
 }
 
+export async function queueOfflineANCVisitCreate(data: ANCVisitCreateData): Promise<LocalANCVisitRecord> {
+  const database = await getOfflineDatabase();
+  const localId = createLocalId();
+  const registration = database.mchRegistrations.find((record) => record.id === data.registration) ?? null;
+  const queuedVisit = buildOfflineANCVisitRecord(localId, data, registration);
+
+  database.ancVisits = sortANCVisits([queuedVisit, ...database.ancVisits]);
+  database.queue.push({
+    id: createQueueEntryId(),
+    attempts: 0,
+    created_at: queuedVisit.created_at,
+    entity: 'anc_visit',
+    last_error: null,
+    local_id: localId,
+    operation: 'create',
+    payload: data,
+    status: 'pending',
+  });
+
+  await persistOfflineDatabase(database);
+  return queuedVisit;
+}
+
+export async function queueOfflineScreeningCreate(data: CommunityScreeningCreateData): Promise<CommunityScreening> {
+  const database = await getOfflineDatabase();
+  const localId = createLocalId();
+  const screening = buildOfflineScreeningRecord(localId, data);
+
+  database.screenings = sortScreenings([screening, ...database.screenings]);
+  database.queue.push({
+    id: createQueueEntryId(),
+    attempts: 0,
+    created_at: screening.created_at,
+    entity: 'screening',
+    last_error: null,
+    local_id: localId,
+    operation: 'create',
+    payload: data,
+    status: 'pending',
+  });
+
+  await persistOfflineDatabase(database);
+  return screening;
+}
+
+export async function createLocalScreening(data: CommunityScreeningCreateData): Promise<CommunityScreening> {
+  return queueOfflineScreeningCreate(data);
+}
+
 export async function getPendingSyncQueue(): Promise<SyncQueueEntry[]> {
   const database = await getOfflineDatabase();
   return [...database.queue]
@@ -414,14 +582,44 @@ export async function replaceQueuedPatient(localId: number, nextPatient: Paramet
         };
       })
     );
+    database.screenings = sortScreenings(
+      database.screenings.map((screening) => {
+        if (screening.patient !== localId) {
+          return screening;
+        }
+
+        return {
+          ...screening,
+          patient: resolvedPatient.id,
+          patient_name: resolvedPatient.full_name ?? screening.patient_name,
+          patient_mrn: resolvedPatient.mrn,
+          updated_at: syncedAt,
+        };
+      })
+    );
     database.queue = database.queue
       .filter((entry) => !(entry.entity === 'patient' && entry.local_id === localId))
       .map((entry) => {
-        if (entry.entity !== 'encounter') {
+        if (entry.entity !== 'encounter' && entry.entity !== 'screening') {
           return entry;
         }
 
-        const payload = entry.payload as EncounterCreateData;
+        if (entry.entity === 'encounter') {
+          const payload = entry.payload as EncounterCreateData;
+          if (payload.patient !== localId) {
+            return entry;
+          }
+
+          return {
+            ...entry,
+            payload: {
+              ...payload,
+              patient: resolvedPatient.id,
+            },
+          };
+        }
+
+        const payload = entry.payload as CommunityScreeningCreateData;
         if (payload.patient !== localId) {
           return entry;
         }
@@ -431,6 +629,8 @@ export async function replaceQueuedPatient(localId: number, nextPatient: Paramet
           payload: {
             ...payload,
             patient: resolvedPatient.id,
+            patient_mrn: resolvedPatient.mrn,
+            patient_name: resolvedPatient.full_name ?? payload.patient_name ?? null,
           },
         };
       });
@@ -446,6 +646,28 @@ export async function replaceQueuedEncounter(localId: number, nextEncounter: Par
       ...database.encounters.filter((encounter) => encounter.id !== localId && encounter.id !== resolvedEncounter.id),
     ]);
     database.queue = database.queue.filter((entry) => !(entry.entity === 'encounter' && entry.local_id === localId));
+  });
+}
+
+export async function replaceQueuedANCVisit(localId: number, nextVisit: Parameters<typeof toLocalANCVisitRecord>[0], syncedAt: string): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    const resolvedVisit = toLocalANCVisitRecord(nextVisit, syncedAt);
+    database.ancVisits = sortANCVisits([
+      resolvedVisit,
+      ...database.ancVisits.filter((visit) => visit.id !== localId && visit.id !== resolvedVisit.id),
+    ]);
+    database.queue = database.queue.filter((entry) => !(entry.entity === 'anc_visit' && entry.local_id === localId));
+  });
+}
+
+export async function replaceQueuedScreening(localId: number, nextScreening: CommunityScreening): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    const resolvedScreening = toLocalScreeningRecord(nextScreening);
+    database.screenings = sortScreenings([
+      resolvedScreening,
+      ...database.screenings.filter((screening) => screening.id !== localId && screening.id !== resolvedScreening.id),
+    ]);
+    database.queue = database.queue.filter((entry) => !(entry.entity === 'screening' && entry.local_id === localId));
   });
 }
 
@@ -494,6 +716,39 @@ export async function updateLocalEncounterSyncState(localId: number, input: Part
   });
 }
 
+export async function updateLocalANCVisitSyncState(localId: number, input: Partial<Pick<LocalANCVisitRecord, 'sync_error' | 'sync_state'>>): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    database.ancVisits = database.ancVisits.map((visit) => {
+      if (visit.id !== localId) {
+        return visit;
+      }
+
+      return {
+        ...visit,
+        ...input,
+      };
+    });
+  });
+}
+
+export async function updateLocalScreeningSyncState(
+  localId: number,
+  input: Partial<Pick<CommunityScreening, 'local_only' | 'sync_error' | 'sync_status'>>
+): Promise<void> {
+  await updateOfflineDatabase((database) => {
+    database.screenings = database.screenings.map((screening) => {
+      if (screening.id !== localId) {
+        return screening;
+      }
+
+      return {
+        ...screening,
+        ...input,
+      };
+    });
+  });
+}
+
 export async function setOfflineSyncMetadata(input: Partial<OfflineDatabase['meta']>): Promise<void> {
   await updateOfflineDatabase((database) => {
     database.meta = {
@@ -520,8 +775,12 @@ export async function discardQueueEntry(entryId: string): Promise<void> {
     // Remove the local record that was never synced
     if (entry.entity === 'patient') {
       database.patients = database.patients.filter((p) => p.id !== entry.local_id);
-    } else {
+    } else if (entry.entity === 'encounter') {
       database.encounters = database.encounters.filter((e) => e.id !== entry.local_id);
+    } else if (entry.entity === 'anc_visit') {
+      database.ancVisits = database.ancVisits.filter((visit) => visit.id !== entry.local_id);
+    } else if (entry.entity === 'screening') {
+      database.screenings = database.screenings.filter((screening) => screening.id !== entry.local_id);
     }
 
     database.queue = database.queue.filter((e) => e.id !== entryId);
@@ -544,6 +803,14 @@ export async function retryQueueEntry(entryId: string): Promise<void> {
     } else if (entry?.entity === 'encounter') {
       database.encounters = database.encounters.map((e) =>
         e.id === entry.local_id ? { ...e, sync_error: null, sync_state: 'pending_create' as const } : e
+      );
+    } else if (entry?.entity === 'anc_visit') {
+      database.ancVisits = database.ancVisits.map((visit) =>
+        visit.id === entry.local_id ? { ...visit, sync_error: null, sync_state: 'pending_create' as const } : visit
+      );
+    } else if (entry?.entity === 'screening') {
+      database.screenings = database.screenings.map((screening) =>
+        screening.id === entry.local_id ? { ...screening, local_only: true, sync_error: null, sync_status: 'pending_upload' as const } : screening
       );
     }
   });
