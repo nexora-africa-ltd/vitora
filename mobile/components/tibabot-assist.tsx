@@ -18,17 +18,13 @@ import {
 
 import type { AppTheme } from '@/constants/theme';
 import { aiApi } from '@/lib/api/ai';
+import type { TibaBotQuickAction } from '@/lib/ai/tibabot-navigation';
 import { useAppTheme } from '@/lib/theme/theme-context';
 import type { AIClinicalAssistRequest, AIPatientContext, AIEncounterContext } from '@/lib/types/ai';
 
 // ──────────────────── Quick Actions ────────────────────
 
-interface QuickAction {
-  id: string;
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  query: string;
-}
+type QuickAction = TibaBotQuickAction;
 
 const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
   { id: 'differentials', label: 'Suggest differentials', icon: 'medkit-outline', query: 'Based on the clinical findings, suggest the top differential diagnoses with reasoning.' },
@@ -42,11 +38,20 @@ const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
 interface TibaBotAssistProps {
   patientContext?: AIPatientContext;
   encounterContext?: AIEncounterContext;
+  inputPlaceholder?: string;
+  quickActions?: TibaBotQuickAction[];
+  sheetTitle?: string;
 }
 
 // ──────────────────── Component ────────────────────
 
-export function TibaBotAssist({ patientContext, encounterContext }: TibaBotAssistProps) {
+export function TibaBotAssist({
+  patientContext,
+  encounterContext,
+  inputPlaceholder = 'Ask a clinical question...',
+  quickActions = DEFAULT_QUICK_ACTIONS,
+  sheetTitle = 'TibaBot Clinical Assist',
+}: TibaBotAssistProps) {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [visible, setVisible] = useState(false);
@@ -176,7 +181,7 @@ export function TibaBotAssist({ patientContext, encounterContext }: TibaBotAssis
             {/* Header */}
             <View style={styles.sheetHeader}>
               <Ionicons name="sparkles" size={20} color={theme.colors.primary} />
-              <Text style={[styles.sheetTitle, { color: theme.colors.text }]}>TibaBot Clinical Assist</Text>
+              <Text style={[styles.sheetTitle, { color: theme.colors.text }]}>{sheetTitle}</Text>
               <Pressable onPress={handleClose} hitSlop={12}>
                 <Ionicons name="close" size={22} color={theme.colors.mutedText} />
               </Pressable>
@@ -200,7 +205,7 @@ export function TibaBotAssist({ patientContext, encounterContext }: TibaBotAssis
               {/* Quick actions */}
               {!response && !assistMutation.isPending ? (
                 <View style={styles.quickActionsGrid}>
-                  {DEFAULT_QUICK_ACTIONS.map((action) => (
+                  {quickActions.map((action) => (
                     <Pressable
                       key={action.id}
                       style={[styles.quickAction, { backgroundColor: theme.colors.elevated, borderColor: theme.colors.border }]}
@@ -283,7 +288,7 @@ export function TibaBotAssist({ patientContext, encounterContext }: TibaBotAssis
             <View style={[styles.inputBar, { borderTopColor: theme.colors.border }]}>
               <TextInput
                 style={[styles.textInput, { color: theme.colors.text, backgroundColor: theme.colors.elevated, borderColor: theme.colors.border }]}
-                placeholder="Ask a clinical question..."
+                placeholder={inputPlaceholder}
                 placeholderTextColor={theme.colors.mutedText}
                 value={query}
                 onChangeText={setQuery}
