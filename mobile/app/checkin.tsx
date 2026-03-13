@@ -3,7 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, AppPicker, AppTextInput, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { AppButton, AppPicker, AppSearchablePicker, AppTextInput, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
 import { QRScannerDialog } from '@/components/qr-scanner-dialog';
 import type { AppTheme } from '@/constants/theme';
 import { checkinApi } from '@/lib/api/checkin';
@@ -20,6 +20,7 @@ type CheckInFormState = {
   visitReason: CheckInVisitReason;
   identityMethod: CheckInIdentityMethod;
   chiefComplaint: string;
+  chiefComplaintCategory: string;
   notes: string;
   openTriageAfterCheckin: boolean;
 };
@@ -51,6 +52,21 @@ const identityMethodItems: { label: string; value: CheckInIdentityMethod }[] = [
   { label: 'Manual verification', value: 'MANUAL' },
 ];
 
+const complaintCategoryItems = [
+  { label: 'Chest pain', value: 'CHEST_PAIN' },
+  { label: 'Difficulty breathing', value: 'DIFFICULTY_BREATHING' },
+  { label: 'Trauma/injury', value: 'TRAUMA' },
+  { label: 'Fever', value: 'FEVER' },
+  { label: 'Abdominal pain', value: 'ABDOMINAL_PAIN' },
+  { label: 'Headache', value: 'HEADACHE' },
+  { label: 'Altered consciousness', value: 'ALTERED_CONSCIOUSNESS' },
+  { label: 'Bleeding', value: 'BLEEDING' },
+  { label: 'Poisoning/overdose', value: 'POISONING' },
+  { label: 'Obstetric emergency', value: 'OBSTETRIC' },
+  { label: 'Pediatric emergency', value: 'PEDIATRIC' },
+  { label: 'Other', value: 'OTHER' },
+] as const;
+
 const routingModeItems: { label: string; value: CheckInRoutingMode }[] = [
   { label: 'Send to triage', value: 'TRIAGE' },
   { label: 'Route directly to clinic', value: 'CLINIC' },
@@ -77,6 +93,7 @@ export default function CheckInScreen() {
     visitReason: 'NEW_COMPLAINT',
     identityMethod: 'MRN',
     chiefComplaint: '',
+    chiefComplaintCategory: 'OTHER',
     notes: '',
     openTriageAfterCheckin: true,
   });
@@ -270,7 +287,7 @@ export default function CheckInScreen() {
         <AppPicker label="Routing destination" selectedValue={form.routingMode} onValueChange={(value) => setForm((current) => ({ ...current, routingMode: value as CheckInRoutingMode }))} items={routingModeItems} />
         {form.routingMode === 'CLINIC' ? (
           <>
-            <AppPicker label="Clinic" selectedValue={form.clinicId} onValueChange={(value) => setForm((current) => ({ ...current, clinicId: value }))} items={clinicItems} />
+            <AppSearchablePicker label="Clinic" selectedValue={form.clinicId} onValueChange={(value) => setForm((current) => ({ ...current, clinicId: value }))} items={clinicItems} placeholder="Search clinics…" />
             <Text style={styles.helperText}>Direct clinic routing skips triage and creates a clinic queue visit using the selected clinic ID.</Text>
           </>
         ) : null}
@@ -278,6 +295,7 @@ export default function CheckInScreen() {
         <AppPicker label="Visit reason" selectedValue={form.visitReason} onValueChange={(value) => setForm((current) => ({ ...current, visitReason: value }))} items={visitReasonItems} />
         <AppPicker label="Identity verification" selectedValue={form.identityMethod} onValueChange={(value) => setForm((current) => ({ ...current, identityMethod: value }))} items={identityMethodItems} />
         <AppTextInput label="Chief complaint" value={form.chiefComplaint} onChangeText={(value) => setForm((current) => ({ ...current, chiefComplaint: value }))} multiline />
+        <AppPicker label="Complaint category" selectedValue={form.chiefComplaintCategory} onValueChange={(value) => setForm((current) => ({ ...current, chiefComplaintCategory: value }))} items={complaintCategoryItems as unknown as { label: string; value: string }[]} />
         <AppTextInput label="Check-in notes" value={form.notes} onChangeText={(value) => setForm((current) => ({ ...current, notes: value }))} multiline />
         {form.routingMode === 'TRIAGE' ? <AppPicker label="Open triage immediately after check-in" selectedValue={form.openTriageAfterCheckin ? 'true' : 'false'} onValueChange={(value) => setForm((current) => ({ ...current, openTriageAfterCheckin: value === 'true' }))} items={booleanItems as unknown as { label: string; value: string }[]} /> : null}
         <AppButton label={createCheckInMutation.isPending ? 'Checking in patient...' : 'Check in patient'} onPress={handleCheckIn} disabled={createCheckInMutation.isPending} />

@@ -7,6 +7,7 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -21,6 +22,7 @@ import { aiApi } from '@/lib/api/ai';
 import type { TibaBotQuickAction } from '@/lib/ai/tibabot-navigation';
 import { useAppTheme } from '@/lib/theme/theme-context';
 import type { AIClinicalAssistRequest, AIPatientContext, AIEncounterContext } from '@/lib/types/ai';
+import { SimpleMarkdown } from './simple-markdown';
 
 // ──────────────────── Quick Actions ────────────────────
 
@@ -204,18 +206,76 @@ export function TibaBotAssist({
     setSubmittedQuery('');
   }, []);
 
+  // Draggable FAB
+  const fabPan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const dragStarted = useRef(false);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          const moved = Math.abs(gestureState.dx) > 8 || Math.abs(gestureState.dy) > 8;
+          if (moved) dragStarted.current = true;
+          return moved;
+        },
+        onPanResponderGrant: () => {
+          fabPan.setOffset({
+            x: (fabPan.x as unknown as { _value: number })._value,
+            y: (fabPan.y as unknown as { _value: number })._value,
+          });
+          fabPan.setValue({ x: 0, y: 0 });
+        },
+        onPanResponderMove: Animated.event(
+          [null, { dx: fabPan.x, dy: fabPan.y }],
+          { useNativeDriver: false },
+        ),
+        onPanResponderRelease: () => {
+          fabPan.flattenOffset();
+          // Snap to nearest horizontal edge
+          const screenWidth = Dimensions.get('window').width;
+          const currentX = (fabPan.x as unknown as { _value: number })._value;
+          const fabRight = 20; // default right offset
+          const currentAbsX = screenWidth - 56 - fabRight + currentX;
+          const snapToLeft = currentAbsX < screenWidth / 2;
+          const targetX = snapToLeft ? -(screenWidth - 56 - fabRight * 2) : 0;
+
+          Animated.spring(fabPan.x, {
+            toValue: targetX,
+            useNativeDriver: false,
+            friction: 7,
+          }).start();
+
+          // Reset drag flag after a brief delay so tap handler can check
+          setTimeout(() => {
+            dragStarted.current = false;
+          }, 100);
+        },
+      }),
+    [fabPan],
+  );
+
+  const handleFabPress = useCallback(() => {
+    if (!dragStarted.current) {
+      handleOpen();
+    }
+  }, [handleOpen]);
+
   // ── Render ──
 
   return (
     <>
-      {/* FAB */}
-      <Animated.View style={[styles.fabContainer, { transform: [{ scale: pulseAnim }] }]}>
+      {/* Draggable FAB */}
+      <Animated.View
+        style={[styles.fabContainer, { transform: [{ scale: pulseAnim }, ...fabPan.getTranslateTransform()] }]}
+        {...panResponder.panHandlers}
+      >
         <Pressable
           style={[
             styles.fab,
             { backgroundColor: isAvailable ? theme.colors.primary : theme.colors.mutedText },
           ]}
-          onPress={handleOpen}
+          onPress={handleFabPress}
           accessibilityLabel="Ask TibaBot"
           accessibilityRole="button"
         >
@@ -310,7 +370,7 @@ export function TibaBotAssist({
                       <Ionicons name="sparkles" size={14} color={theme.colors.primary} />
                       <Text style={[styles.responseLabel, { color: theme.colors.primary }]}>TibaBot</Text>
                     </View>
-                    <Text style={[styles.responseText, { color: theme.colors.text }]}>{response}</Text>
+                    <SimpleMarkdown>{response}</SimpleMarkdown>
                   </View>
 
                   <View style={styles.followUpSection}>

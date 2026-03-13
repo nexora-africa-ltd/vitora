@@ -130,11 +130,17 @@ export default function SettingsScreen() {
           onValueChange={(value) => void setTimeoutMs(Number(value))}
           items={SESSION_TIMEOUT_OPTIONS.map((item) => ({ label: item.label, value: item.value }))}
         />
-        <AppButton
-          label={biometric?.enabled ? `Disable ${biometric.label}` : `Enable ${biometric?.label ?? 'biometric'} unlock`}
-          onPress={handleBiometricToggle}
-          variant="secondary"
-        />
+        {biometric && !biometric.available ? (
+          <View style={styles.biometricUnavailable}>
+            <Text style={styles.metaText}>Biometrics not available — enroll a fingerprint or face in your device settings to enable this feature.</Text>
+          </View>
+        ) : (
+          <AppButton
+            label={biometric?.enabled ? `Disable ${biometric.label}` : `Enable ${biometric?.label ?? 'biometric'} unlock`}
+            onPress={handleBiometricToggle}
+            variant="secondary"
+          />
+        )}
         <AppButton label="Lock now" onPress={handleLockNow} variant="ghost" />
       </SectionCard>
 
@@ -177,6 +183,13 @@ function createStyles(theme: ReturnType<typeof useAppTheme>['theme']) {
     color: theme.colors.mutedText,
     fontSize: 13,
     lineHeight: 18,
+  },
+  biometricUnavailable: {
+    backgroundColor: theme.colors.elevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    padding: 12,
   },
   });
 }

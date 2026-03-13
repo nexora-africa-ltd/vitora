@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, FlatList, Platform, Pressable, RefreshControl, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle, type FlatListProps, type ImageStyle, type ListRenderItemInfo, type StyleProp as RNStyleProp } from 'react-native';
+import { ActivityIndicator, Animated, FlatList, Modal, Platform, Pressable, RefreshControl, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle, type FlatListProps, type ImageStyle, type ListRenderItemInfo, type StyleProp as RNStyleProp } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 
@@ -41,6 +41,15 @@ type AppPickerProps<T extends string | number> = {
   items: { label: string; value: T }[];
   onValueChange: (value: T) => void;
   enabled?: boolean;
+};
+
+type AppSearchablePickerProps<T extends string | number> = {
+  label: string;
+  selectedValue: T | null;
+  items: { label: string; value: T }[];
+  onValueChange: (value: T) => void;
+  enabled?: boolean;
+  placeholder?: string;
 };
 
 type ScreenListProps<ItemT> = {
@@ -382,6 +391,124 @@ export function AppPicker<T extends string | number>({ label, selectedValue, ite
           ))}
         </Picker>
       </View>
+    </View>
+  );
+}
+
+export function AppSearchablePicker<T extends string | number>({
+  label,
+  selectedValue,
+  items,
+  onValueChange,
+  enabled = true,
+  placeholder = 'Search…',
+}: AppSearchablePickerProps<T>) {
+  const { theme } = useAppTheme();
+  const styles = useSharedStyles();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const selectedLabel = items.find((item) => item.value === selectedValue)?.label ?? 'Select…';
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return items;
+    return items.filter((item) => item.label.toLowerCase().includes(query));
+  }, [items, search]);
+
+  return (
+    <View style={styles.fieldGroup}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <Pressable
+        style={[styles.pickerShell, { justifyContent: 'center', minHeight: 48, paddingHorizontal: 14 }, !enabled && styles.inputDisabled]}
+        onPress={() => enabled && setModalVisible(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${selectedLabel}`}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={{ color: selectedValue != null ? theme.colors.text : theme.colors.mutedText, fontSize: 15, flex: 1 }} numberOfLines={1}>
+            {selectedLabel}
+          </Text>
+          <Ionicons name="chevron-down" size={18} color={theme.colors.mutedText} />
+        </View>
+      </Pressable>
+
+      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: theme.colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%', paddingBottom: Platform.OS === 'ios' ? 34 : 16 }}>
+            {/* Handle */}
+            <View style={{ alignItems: 'center', paddingVertical: 10 }}>
+              <View style={{ width: 36, height: 4, borderRadius: 3, backgroundColor: theme.colors.border }} />
+            </View>
+
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
+              <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: theme.colors.text }}>{label}</Text>
+              <Pressable onPress={() => setModalVisible(false)} hitSlop={12}>
+                <Ionicons name="close" size={22} color={theme.colors.mutedText} />
+              </Pressable>
+            </View>
+
+            {/* Search */}
+            <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.elevated, borderColor: theme.colors.border, borderRadius: theme.radius.sm, borderWidth: 1, paddingHorizontal: 12 }}>
+                <Ionicons name="search" size={18} color={theme.colors.mutedText} />
+                <TextInput
+                  style={{ flex: 1, fontSize: 15, color: theme.colors.text, minHeight: 44, paddingHorizontal: 8 }}
+                  placeholder={placeholder}
+                  placeholderTextColor={theme.colors.mutedText}
+                  value={search}
+                  onChangeText={setSearch}
+                  autoFocus
+                />
+                {search.length > 0 ? (
+                  <Pressable onPress={() => setSearch('')} hitSlop={8}>
+                    <Ionicons name="close-circle" size={18} color={theme.colors.mutedText} />
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+
+            {/* Items */}
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) => `${label}-${String(item.value)}`}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => {
+                const isSelected = item.value === selectedValue;
+                return (
+                  <Pressable
+                    onPress={() => {
+                      onValueChange(item.value);
+                      setSearch('');
+                      setModalVisible(false);
+                    }}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 14,
+                      paddingHorizontal: 16,
+                      backgroundColor: pressed ? `${theme.colors.primary}10` : 'transparent',
+                      gap: 10,
+                    })}
+                  >
+                    <Text style={{ flex: 1, fontSize: 15, color: theme.colors.text, fontWeight: isSelected ? '700' : '400' }}>
+                      {item.label}
+                    </Text>
+                    {isSelected ? <Ionicons name="checkmark" size={20} color={theme.colors.primary} /> : null}
+                  </Pressable>
+                );
+              }}
+              ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: theme.colors.border, marginHorizontal: 16 }} />}
+              ListEmptyComponent={
+                <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                  <Text style={{ color: theme.colors.mutedText, fontSize: 14 }}>No matching options</Text>
+                </View>
+              }
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

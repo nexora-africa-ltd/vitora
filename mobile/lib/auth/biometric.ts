@@ -62,9 +62,14 @@ export async function getBiometricStatus(): Promise<BiometricStatus> {
     .map(mapAuthenticationType)
     .filter((type): type is BiometricType => type != null);
 
+  // Some Android OEMs return an empty array from supportedAuthenticationTypesAsync
+  // even when biometrics are enrolled and functional. If the device reports hardware
+  // and enrollment, trust that authenticateAsync will work regardless.
+  const available = hasHardware && enrolled;
+
   return {
-    available: hasHardware && enrolled && supportedTypes.length > 0,
-    enabled,
+    available,
+    enabled: enabled && available,
     label: getBiometricLabel(supportedTypes),
     supportedTypes,
   };
@@ -103,6 +108,18 @@ function getBiometricErrorMessage(error?: LocalAuthentication.LocalAuthenticatio
 
   if (error === 'lockout' || error === 'timeout') {
     return 'Too many attempts. Use your device passcode or try again later.';
+  }
+
+  if (error === 'passcode_not_set') {
+    return 'Set up a device passcode before using biometric authentication.';
+  }
+
+  if (error === 'authentication_failed') {
+    return 'Biometric not recognized. Try again or use your device passcode.';
+  }
+
+  if (error === 'user_fallback') {
+    return 'Switching to device passcode.';
   }
 
   return 'Biometric authentication failed.';
