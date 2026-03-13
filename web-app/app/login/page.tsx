@@ -12,6 +12,7 @@ import { MFAVerification } from '@/components/auth/mfa-verification';
 import { APP_NAME } from '@/lib/utils/constants';
 import { KenyaCoatOfArms } from '@/components/ui/kenya-coat-of-arms';
 import { SHALogo } from '@/components/ui/sha-logo';
+import { VitoraLogo } from '@/components/ui/vitora-logo';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -133,12 +134,11 @@ export default function LoginPage() {
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-burgundy-900 via-brand-burgundy-900 to-brand-teal-600 p-12 flex-col justify-between">
         <div className="w-64">
-          {/* Logo - using full width with object-cover to fill space */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/burgundy-teal.png"
+          <VitoraLogo
+            tone="burgundy-teal"
             alt={APP_NAME}
-            className="w-full object-cover"
+            className="w-full"
+            priority
           />
         </div>
 
@@ -185,22 +185,22 @@ export default function LoginPage() {
         <Card className="relative z-10 w-full max-w-md border-brand-burgundy-200 dark:border-muted/30 shadow-none lg:shadow-lg lg:border-2 transition-shadow duration-300 hover:shadow-2xl overflow-hidden">
           {/* Background logo watermark - centered in card */}
           {mounted && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={isDark ? '/white.png' : '/teal.png'}
+            <VitoraLogo
+              variant="icon"
+              tone={isDark ? 'white' : 'teal'}
               alt=""
-              aria-hidden="true"
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-auto object-contain opacity-[0.05] pointer-events-none select-none"
+              className="absolute top-1/2 left-1/2 w-[52%] -translate-x-1/2 -translate-y-1/2 opacity-[0.05] pointer-events-none select-none"
+              imageClassName="pointer-events-none select-none"
             />
           )}
           <CardHeader className="relative z-10 text-center space-y-4">
             {/* Mobile logo */}
             <div className="lg:hidden mx-auto">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={isDark ? '/light-theme-logo.png' : '/dark-theme-logo.png'}
+              <VitoraLogo
+                tone={isDark ? 'light' : 'dark'}
                 alt={APP_NAME}
-                className="h-14 w-auto object-contain mx-auto"
+                className="w-36"
+                priority
               />
             </div>
             <div>
