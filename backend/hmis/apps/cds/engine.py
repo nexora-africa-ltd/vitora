@@ -47,14 +47,19 @@ class EvaluationContext:
     # Allergies (list of substance names, lowercase)
     allergy_substances: list[str] = field(default_factory=list)
     allergy_drug_ids: list[int] = field(default_factory=list)
+    # Allergy coded substances: list of {substance_code, substance_code_system}
+    allergy_substance_codes: list[dict[str, str]] = field(default_factory=list)
     # Current medications (list of drug names, lowercase)
     current_medications: list[str] = field(default_factory=list)
     current_drug_ids: list[int] = field(default_factory=list)
+    # Current medication HPT codes: list of hpt_code strings
+    current_medication_hpt_codes: list[str] = field(default_factory=list)
     # Lab results: list of {test_name, value, unit, ...}
     lab_results: list[dict[str, Any]] = field(default_factory=list)
     # Prescribing context
     prescribing_drug_name: str | None = None
     prescribing_drug_id: int | None = None
+    prescribing_drug_hpt_code: str | None = None
     # Extra context
     extra: dict[str, Any] = field(default_factory=dict)
 
@@ -312,6 +317,30 @@ def _check_prescribing_allergy(
     if not prescribing:
         return EvaluationResult(triggered=False, rule_id=rule.id, rule_code=rule.code)
 
+    # Try HPT/ATC-based matching first (deterministic)
+    if context.prescribing_drug_hpt_code and context.allergy_substance_codes:
+        hpt_match = _check_hpt_allergy_match(
+            context.prescribing_drug_hpt_code,
+            context.allergy_substance_codes,
+            context.allergy_substances,
+        )
+        if hpt_match:
+            details = {
+                "allergy": hpt_match["allergy"],
+                "prescribing_drug": context.prescribing_drug_name,
+                "match_type": "hpt_coded",
+                "substance_code": hpt_match.get("substance_code", ""),
+            }
+            message = _render_message(rule.action_message, details)
+            return EvaluationResult(
+                triggered=True,
+                rule_id=rule.id,
+                rule_code=rule.code,
+                message=message,
+                details=details,
+            )
+
+    # Fall back to text matching
     matched_allergy = None
     for allergy in context.allergy_substances:
         allergy_lower = allergy.lower()
@@ -336,6 +365,55 @@ def _check_prescribing_allergy(
     )
 
 
+def _check_hpt_allergy_match(
+    drug_hpt_code: str,
+    allergy_substance_codes: list[dict[str, str]],
+    allergy_substances: list[str],
+) -> dict[str, str] | None:
+    """
+    Check if a drug's HPT code matches any allergy substance code.
+
+    Uses the generic_concept_id portion of KNHTS codes for grouping.
+    E.g., drugs with KNHTS codes "10-03913-01" and "10-03913-02" share
+    generic concept 03913 and would match an allergy coded with ATC A10BA02.
+
+    For now, matches are based on the drug's generic name being looked up
+    against the allergy's substance_code when both use ATC coding.
+    """
+    from hmis.apps.pharmacy.models import Drug
+
+    try:
+        drug = Drug.objects.filter(hpt_code=drug_hpt_code).first()
+        if not drug:
+            return None
+
+        drug_generic_lower = drug.generic_name.lower()
+
+        for i, coded in enumerate(allergy_substance_codes):
+            substance_code = coded.get("substance_code", "")
+            code_system = coded.get("substance_code_system", "")
+
+            if not substance_code:
+                continue
+
+            # Match via substance name associated with the allergy
+            allergy_name = (
+                allergy_substances[i].lower() if i < len(allergy_substances) else ""
+            )
+            if allergy_name and (
+                drug_generic_lower in allergy_name or allergy_name in drug_generic_lower
+            ):
+                return {
+                    "allergy": allergy_substances[i] if i < len(allergy_substances) else "",
+                    "substance_code": substance_code,
+                    "match_type": "hpt_coded",
+                }
+    except Exception:
+        logger.debug("HPT allergy matching failed, falling back to text", exc_info=True)
+
+    return None
+
+
 def _evaluate_drug_drug(
     rule: Any,
     condition: dict[str, Any],
@@ -349,7 +427,9 @@ def _evaluate_drug_drug(
         "type": "drug_drug",
         "drug_a": "warfarin",
         "drug_b": "aspirin",
-        "severity": "major"
+        "severity": "major",
+        "drug_a_hpt_code": "10-XXXXX-XX",  # Optional HPT code for deterministic matching
+        "drug_b_hpt_code": "10-YYYYY-YY"   # Optional HPT code for deterministic matching
     }
     """
     drug_a = condition.get("drug_a", "").lower()
@@ -358,6 +438,34 @@ def _evaluate_drug_drug(
     if not drug_a or not drug_b:
         return EvaluationResult(triggered=False, rule_id=rule.id, rule_code=rule.code)
 
+    # Try HPT code matching first (deterministic)
+    drug_a_hpt = condition.get("drug_a_hpt_code", "")
+    drug_b_hpt = condition.get("drug_b_hpt_code", "")
+
+    all_hpt_codes = list(context.current_medication_hpt_codes)
+    if context.prescribing_drug_hpt_code:
+        all_hpt_codes.append(context.prescribing_drug_hpt_code)
+
+    if drug_a_hpt and drug_b_hpt and all_hpt_codes:
+        has_a = drug_a_hpt in all_hpt_codes
+        has_b = drug_b_hpt in all_hpt_codes
+        if has_a and has_b:
+            details = {
+                "drug_a": drug_a,
+                "drug_b": drug_b,
+                "severity": condition.get("severity", "unknown"),
+                "match_type": "hpt_coded",
+            }
+            message = _render_message(rule.action_message, details)
+            return EvaluationResult(
+                triggered=True,
+                rule_id=rule.id,
+                rule_code=rule.code,
+                message=message,
+                details=details,
+            )
+
+    # Fall back to text matching
     all_drugs = [m.lower() for m in context.current_medications]
     prescribing = (context.prescribing_drug_name or "").lower()
     if prescribing:

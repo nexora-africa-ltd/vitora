@@ -2,25 +2,25 @@
 
 > **Strategic plan to achieve full DHA compliance for Vitora HMIS.**
 >
-> Version: 2.1
+> Version: 2.2
 > Created: February 22, 2026
-> Updated: March 2, 2026
+> Updated: March 13, 2026
 > Target: Q4 2027
 
 ---
 
 ## Executive Summary
 
-Vitora HMIS currently achieves **66% full DHA compliance** (61/93 items) with **86% at least partially addressed** (80/93). This roadmap outlines a phased approach to close the 13 remaining gaps over 18 months, prioritized by regulatory criticality and implementation complexity.
+Vitora HMIS currently achieves **67% full DHA compliance** (62/93 items) with **87% at least partially addressed** (81/93). This roadmap outlines a phased approach to close the 12 remaining gaps over 18 months, prioritized by regulatory criticality and implementation complexity.
 
-> **Progress since inception**: 20 of 33 identified gaps have been closed (1 partially), completing all of Phase 1 (except ODPC registration) and all of Phase 2A-2B ahead of schedule. The backend now has **5,359+ tests** across 239 test files.
+> **Progress since inception**: 21 of 33 identified gaps have been closed (1 partially), completing all of Phase 1 (except ODPC registration), all of Phase 2A-2B, and gap #26 (HPT Registry) from Phase 3 ahead of schedule. The backend now has **5,398+ tests** across 240 test files.
 
 ### Compliance Trajectory
 
 | Milestone | Target Date | Compliance | Items Closed |
 |-----------|-------------|:----------:|:------------:|
 | **Baseline** | Feb 2026 | 45% | — |
-| **Current State** | Mar 2026 | 66% | +20 |
+| **Current State** | Mar 2026 | 67% | +21 |
 | **Phase 1 Complete** | Jun 2026 | 68% | +1 (ODPC) |
 | **Phase 2 Complete** | Dec 2026 | 78% | +5 |
 | **Phase 3 Complete** | Jun 2027 | 95% | +9 |
@@ -510,17 +510,28 @@ Gaps are categorized into four tiers:
   - Sidebar navigation under "CDS" section
   - Zod-validated API client with 17 methods
 
-#### 26. HPT Registry Integration `P3`
-- **Gap**: No HPT registry integration
+#### 26. HPT Registry Integration `P3` ✅ COMPLETE
+- **Gap**: ~~No HPT registry integration~~ **RESOLVED**
 - **Action**:
-  - [ ] Integrate DHA HPT API (medication products, devices)
-  - [ ] Map local drug catalog to HPT codes
-  - [ ] HPT-based allergy substance lookup
-  - [ ] HPT-based drug interaction checking
-  - [ ] Tests: 20+ unit tests
-- **Owner**: Backend Team
-- **Effort**: 2 sprints (4 weeks)
-- **Deliverables**: HPT service integration
+  - [x] Integrate DHA HPT API (medication products, active components)
+  - [x] Fix `DrugProduct` and `ActiveComponent` dataclasses to match real DHA API responses
+  - [x] Fix DHA response unwrapping (`IsSuccess`/`Data` envelope)
+  - [x] Add `hpt_code`, `hpt_product_id`, `hpt_last_synced`, `ppb_code` fields to `Drug` model
+  - [x] Map local drug catalog to HPT codes (`map_drugs_to_hpt` management command)
+  - [x] HPT-based allergy substance lookup via active-component ATC codes
+  - [x] HPT-based drug interaction checking in CDS engine (ATC/HPT deterministic matching)
+  - [x] Frontend types/schemas updated (web-app + mobile)
+  - [x] Tests: 39 unit tests (exceeded 20+ requirement)
+- **Owner**: Backend Team + Frontend Team
+- **Completed**: March 13, 2026
+- **Deliverables**:
+  - Updated `TerminologyService` with real DHA response parsing
+  - `Drug` model HPT fields + migration
+  - `DrugViewSet` actions: `hpt_search`, `map_hpt`
+  - `AllergyViewSet` action: `hpt_substance_search`
+  - Enhanced CDS engine with ATC/HPT code matching
+  - Management command: `map_drugs_to_hpt`
+  - `docs/hpt-registry-integration.md`
 
 ### Sprint 3.B — Advanced Interoperability (Weeks 9-16)
 

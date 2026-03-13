@@ -1066,6 +1066,54 @@ class AllergyViewSet(viewsets.ModelViewSet):
 
         return Response(results)
 
+    @action(detail=False, methods=["get"], url_path="hpt-substance-search")
+    def hpt_substance_search(self, request):
+        """
+        Search DHA HPT active components for allergy substance recording.
+
+        Returns active pharmaceutical ingredients with ATC codes from the
+        DHA Terminology API, enabling coded allergy substance entry.
+
+        GET /api/allergies/hpt-substance-search/?q=Metformin
+        """
+        from hmis.apps.billing.services.terminology import TerminologyError, TerminologyService
+
+        query = request.query_params.get("q", "").strip()
+        if len(query) < 2:
+            return Response(
+                {"error": "Query must be at least 2 characters"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        exact_match = request.query_params.get("exact_match", "").lower() == "true"
+
+        try:
+            service = TerminologyService()
+            results = service.search_active_components(
+                query, exact_match=exact_match
+            )
+            return Response({
+                "count": len(results),
+                "results": [
+                    {
+                        "component_id": r.component_id,
+                        "name": r.name,
+                        "atc_code": r.atc_code,
+                        "atc_codes": r.atc_codes,
+                        "substance_code": r.atc_code or "",
+                        "substance_code_system": (
+                            "http://www.whocc.no/atc" if r.atc_code else ""
+                        ),
+                    }
+                    for r in results
+                ],
+            })
+        except TerminologyError as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
     @action(detail=False, methods=["post"], url_path="check-interactions")
     def check_drug_interactions(self, request):
         """

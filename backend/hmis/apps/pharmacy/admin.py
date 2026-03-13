@@ -32,6 +32,9 @@ class DrugAdmin(admin.ModelAdmin):
         "keml_code",
         "is_essential",
         "nhif_code",
+        "hpt_code",
+        "hpt_product_id",
+        "ppb_code",
         "default_reorder_level",
         "default_reorder_quantity",
         "shelf_life_months",
@@ -55,6 +58,8 @@ class DrugAdmin(admin.ModelAdmin):
         "generic_name",
         "keml_code",
         "nhif_code",
+        "hpt_code",
+        "ppb_code",
     )
     date_hierarchy = "created_at"
 

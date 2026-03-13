@@ -65,14 +65,22 @@ class InterventionCode:
 
     @classmethod
     def from_api_response(cls, data: dict) -> "InterventionCode":
-        """Create from API response."""
+        """Create from DHA API response."""
         # Parse price
         price = data.get("price") or data.get("sha_price")
         if price is not None:
             price = Decimal(str(price))
 
-        # Parse facility level
+        # Parse facility level from levels list or direct field
         level = data.get("facility_level") or data.get("min_facility_level")
+        levels = data.get("levels", [])
+        if not level and levels:
+            # Extract minimum level from levels array: [{"2": "..."}, {"3": "..."}]
+            level_nums = []
+            for lvl in levels:
+                if isinstance(lvl, dict):
+                    level_nums.extend(int(k) for k in lvl if k.isdigit())
+            level = min(level_nums) if level_nums else None
         if isinstance(level, str):
             level = int(level.replace("LEVEL ", "").strip())
 
@@ -82,8 +90,8 @@ class InterventionCode:
             eff_date = datetime.strptime(eff_date, "%Y-%m-%d").date()
 
         return cls(
-            code=data.get("code", ""),
-            name=data.get("name", ""),
+            code=data.get("intervention_code", "") or data.get("code", ""),
+            name=data.get("intervention_name", "") or data.get("name", ""),
             description=data.get("description"),
             category=data.get("category"),
             price=price,
@@ -122,10 +130,10 @@ class ICD11Code:
 
     @classmethod
     def from_api_response(cls, data: dict) -> "ICD11Code":
-        """Create from API response."""
+        """Create from DHA API response."""
         return cls(
-            code=data.get("code", ""),
-            title=data.get("title", "") or data.get("name", ""),
+            code=data.get("icd_11_code", "") or data.get("code", ""),
+            title=data.get("description", "") or data.get("title", "") or data.get("name", ""),
             description=data.get("description"),
             parent_code=data.get("parent_code"),
             chapter=data.get("chapter"),
@@ -137,85 +145,153 @@ class ICD11Code:
 @dataclass
 class DrugProduct:
     """
-    Drug product from NMRA catalog.
+    Drug product from DHA HPT Registry.
 
-    Represents a registered pharmaceutical product.
+    Maps to the DHA Terminology API response from
+    GET /terminology/v1/product.
 
     Attributes:
-        product_id: Unique product identifier
+        product_id: DHA unique product identifier (integer)
         brand_name: Commercial brand name
         generic_name: Generic/INN name
-        manufacturer: Manufacturer name
-        dosage_form: Form (tablet, syrup, etc.)
-        strength: Strength specification
-        registration_number: NMRA registration number
-        active_components: List of active ingredients
-        is_active: Registration status
+        brand_display_name: Full brand display (e.g., 'Glucodeal 500 mg Oral Tablet')
+        generic_display_name: Full generic display (e.g., 'Metformin 500 mg Oral Tablet')
+        generic_concept_id: DHA generic concept grouping ID
+        strength_amount: Numeric strength (e.g., '500')
+        strength_unit: Strength unit (e.g., 'mg')
+        route_description: Administration route (e.g., 'Oral')
+        form_description: Dosage form (e.g., 'Tablet')
+        ppb_registration_code: Kenya PPB registration code
+        etcd: ETCD identifier
+        knhts_concept_id: KNHTS concept ID — primary HPT code (e.g., '10-03913-01')
+        updation_date: Last update timestamp from DHA
         raw_data: Original API response
     """
 
-    product_id: str
+    product_id: int
     brand_name: str
-    generic_name: str | None = None
-    manufacturer: str | None = None
-    dosage_form: str | None = None
-    strength: str | None = None
-    registration_number: str | None = None
-    active_components: list[str] = field(default_factory=list)
-    is_active: bool = True
+    generic_name: str = ""
+    brand_display_name: str = ""
+    generic_display_name: str = ""
+    generic_concept_id: int | None = None
+    strength_amount: str = ""
+    strength_unit: str = ""
+    route_description: str = ""
+    form_description: str = ""
+    ppb_registration_code: str = ""
+    etcd: str = ""
+    knhts_concept_id: str = ""
+    updation_date: str = ""
     raw_data: dict = field(default_factory=dict)
 
     @classmethod
     def from_api_response(cls, data: dict) -> "DrugProduct":
-        """Create from API response."""
-        # Parse active components
-        components = data.get("active_components", [])
-        if isinstance(components, str):
-            components = [c.strip() for c in components.split(",")]
+        """Create from DHA API response."""
+        product_id = data.get("product_id", 0)
+        if isinstance(product_id, str):
+            product_id = int(product_id) if product_id.isdigit() else 0
+
+        generic_concept_id = data.get("generic_concept_id")
+        if isinstance(generic_concept_id, str):
+            generic_concept_id = (
+                int(generic_concept_id) if generic_concept_id.isdigit() else None
+            )
 
         return cls(
-            product_id=data.get("product_id", "") or data.get("id", ""),
+            product_id=product_id,
             brand_name=data.get("brand_name", "") or data.get("name", ""),
-            generic_name=data.get("generic_name"),
-            manufacturer=data.get("manufacturer"),
-            dosage_form=data.get("dosage_form"),
-            strength=data.get("strength"),
-            registration_number=data.get("registration_number"),
-            active_components=components,
-            is_active=data.get("is_active", True),
+            generic_name=data.get("generic_name", ""),
+            brand_display_name=data.get("brand_display_name", ""),
+            generic_display_name=data.get("generic_display_name", ""),
+            generic_concept_id=generic_concept_id,
+            strength_amount=data.get("strength_amount", ""),
+            strength_unit=data.get("strength_unit", ""),
+            route_description=data.get("route_description", ""),
+            form_description=data.get("form_description", ""),
+            ppb_registration_code=data.get("ppb_registration_code", ""),
+            etcd=data.get("etcd", ""),
+            knhts_concept_id=data.get("knhts_concept_id", ""),
+            updation_date=data.get("updation_date", ""),
             raw_data=data,
+        )
+
+
+@dataclass
+class ComponentLink:
+    """
+    Link between an active component and its ATC classification.
+
+    From the DHA API nested 'component_links' array.
+    """
+
+    active_component_link_id: int
+    active_component_line: int
+    active_component_id: int
+    component_name: str
+    component_atc_code: str
+
+    @classmethod
+    def from_api_response(cls, data: dict) -> "ComponentLink":
+        """Create from API response."""
+        return cls(
+            active_component_link_id=data.get("active_component_link_id", 0),
+            active_component_line=data.get("active_component_line", 0),
+            active_component_id=data.get("active_component_id", 0),
+            component_name=data.get("component_name", ""),
+            component_atc_code=data.get("component_atc_code", ""),
         )
 
 
 @dataclass
 class ActiveComponent:
     """
-    Active pharmaceutical ingredient (API).
+    Active pharmaceutical ingredient from DHA HPT Registry.
 
-    Represents a drug's active ingredient.
+    Maps to the DHA Terminology API response from
+    GET /terminology/v1/active-component.
 
     Attributes:
-        component_id: Unique component identifier
-        name: Component name (INN)
-        atc_code: ATC classification code
-        description: Description
+        component_id: DHA unique component identifier
+        name: Component description / INN name (e.g., 'Metformin')
+        component_links: List of ATC classification links
         raw_data: Original API response
     """
 
-    component_id: str
+    component_id: int
     name: str
-    atc_code: str | None = None
-    description: str | None = None
+    component_links: list[ComponentLink] = field(default_factory=list)
     raw_data: dict = field(default_factory=dict)
+
+    @property
+    def atc_codes(self) -> list[str]:
+        """Extract all ATC codes from component links."""
+        return [
+            link.component_atc_code
+            for link in self.component_links
+            if link.component_atc_code
+        ]
+
+    @property
+    def atc_code(self) -> str | None:
+        """Primary ATC code (first link), for backward compatibility."""
+        codes = self.atc_codes
+        return codes[0] if codes else None
 
     @classmethod
     def from_api_response(cls, data: dict) -> "ActiveComponent":
-        """Create from API response."""
+        """Create from DHA API response."""
+        component_id = data.get("active_component_id", 0) or data.get("component_id", 0)
+        if isinstance(component_id, str):
+            component_id = int(component_id) if component_id.isdigit() else 0
+
+        # Parse nested component_links
+        links_data = data.get("component_links", [])
+        links = [ComponentLink.from_api_response(link) for link in links_data]
+
         return cls(
-            component_id=data.get("component_id", "") or data.get("id", ""),
-            name=data.get("name", ""),
-            atc_code=data.get("atc_code"),
-            description=data.get("description"),
+            component_id=component_id,
+            name=data.get("component_description", "") or data.get("name", ""),
+            component_links=links,
             raw_data=data,
         )
 
@@ -258,7 +334,7 @@ class RemoteLOINCCode:
 
     @classmethod
     def from_api_response(cls, data: dict) -> "RemoteLOINCCode":
-        """Create from API response."""
+        """Create from DHA API response."""
         return cls(
             loinc_num=data.get("loinc_num", "") or data.get("code", ""),
             component=data.get("component", "") or data.get("name", ""),
@@ -267,7 +343,7 @@ class RemoteLOINCCode:
             system=data.get("system"),
             scale_type=data.get("scale_type"),
             method_type=data.get("method_type"),
-            long_common_name=data.get("long_common_name"),
+            long_common_name=data.get("display_name") or data.get("long_common_name"),
             short_name=data.get("short_name"),
             status=data.get("status", "ACTIVE"),
             raw_data=data,
@@ -302,14 +378,14 @@ class ICHICode:
 
     @classmethod
     def from_api_response(cls, data: dict) -> "ICHICode":
-        """Create from API response."""
+        """Create from DHA API response."""
         return cls(
-            code=data.get("code", ""),
-            title=data.get("title", "") or data.get("name", ""),
+            code=data.get("code", "") or data.get("id_code", ""),
+            title=data.get("clean_title", "") or data.get("title", "") or data.get("name", ""),
             definition=data.get("definition"),
             target=data.get("target"),
             action=data.get("action"),
-            means=data.get("means"),
+            means=data.get("mean") or data.get("means"),
             raw_data=data,
         )
 
@@ -435,6 +511,45 @@ class TerminologyService:
         self.auth_service = SHAAuthService()
 
     # =========================================================================
+    # Response Helpers
+    # =========================================================================
+
+    @staticmethod
+    def _unwrap_dha_response(response_json: dict, data_key: str) -> list[dict]:
+        """
+        Unwrap the standard DHA API response envelope.
+
+        DHA APIs wrap responses in: { IsSuccess, Message, Errors, Data: { <key>: [...], count } }
+        This helper extracts the list from Data[key], with fallback for
+        alternate response formats.
+        """
+        # Check for DHA envelope format
+        if "IsSuccess" in response_json:
+            if not response_json.get("IsSuccess"):
+                errors = response_json.get("Errors", [])
+                message = response_json.get("Message", "Unknown error")
+                logger.warning("DHA API returned IsSuccess=false: %s, errors=%s", message, errors)
+                return []
+            data = response_json.get("Data", {})
+            if isinstance(data, dict):
+                results = data.get(data_key, [])
+                if isinstance(results, list):
+                    return results
+                return [results] if results else []
+            return []
+
+        # Fallback: try direct key access (older format or mocked responses)
+        results = (
+            response_json.get(data_key)
+            or response_json.get("results")
+            or response_json.get("data")
+            or []
+        )
+        if isinstance(results, dict):
+            return [results]
+        return results if isinstance(results, list) else []
+
+    # =========================================================================
     # SHA Interventions
     # =========================================================================
 
@@ -497,12 +612,7 @@ class TerminologyService:
             response.raise_for_status()
 
             data = response.json()
-
-            # Handle response format
-            results = data.get("interventions") or data.get("results") or data.get("data") or []
-            if isinstance(results, dict):
-                results = [results]
-
+            results = self._unwrap_dha_response(data, "shaInterventions")
             return [InterventionCode.from_api_response(r) for r in results]
 
         except SHAAuthError as e:
@@ -635,8 +745,7 @@ class TerminologyService:
             response.raise_for_status()
 
             data = response.json()
-            results = data.get("codes") or data.get("results") or data.get("data") or []
-
+            results = self._unwrap_dha_response(data, "icd11")
             return [ICD11Code.from_api_response(r) for r in results]
 
         except SHAAuthError as e:
@@ -697,14 +806,23 @@ class TerminologyService:
 
     def search_drug_products(
         self,
-        query: str,
+        query: str = "",
+        *,
+        product_id: int | None = None,
+        generic_concept_id: int | None = None,
+        form_id: int | None = None,
+        route_id: int | None = None,
         limit: int = 50,
     ) -> list[DrugProduct]:
         """
-        Search drug products catalog.
+        Search drug products catalog via DHA HPT Registry.
 
         Args:
-            query: Search term (brand name or generic name)
+            query: Search term (brand name, generic name, PPB code, KNHTS concept ID)
+            product_id: Search by specific DHA product ID
+            generic_concept_id: Search by generic concept grouping
+            form_id: Filter by dosage form ID
+            route_id: Filter by administration route ID
             limit: Maximum results
 
         Returns:
@@ -712,10 +830,17 @@ class TerminologyService:
         """
         logger.info(f"Searching drug products: query='{query}'")
 
-        params = {
-            "search": query,
-            "limit": limit,
-        }
+        params: dict[str, str | int] = {}
+        if query:
+            params["search"] = query
+        if product_id is not None:
+            params["product_id"] = product_id
+        if generic_concept_id is not None:
+            params["generic_concept_id"] = generic_concept_id
+        if form_id is not None:
+            params["form_id"] = form_id
+        if route_id is not None:
+            params["route_id"] = route_id
 
         try:
             headers = self.auth_service.get_terminology_headers()
@@ -730,8 +855,7 @@ class TerminologyService:
             response.raise_for_status()
 
             data = response.json()
-            results = data.get("products") or data.get("results") or data.get("data") or []
-
+            results = self._unwrap_dha_response(data, "products")
             return [DrugProduct.from_api_response(r) for r in results]
 
         except (SHAAuthError, requests.RequestException) as e:
@@ -740,12 +864,12 @@ class TerminologyService:
                 terminology_type="DRUG_PRODUCTS",
             )
 
-    def get_drug_product(self, product_id: str) -> DrugProduct:
+    def get_drug_product(self, product_id: int) -> DrugProduct:
         """
-        Get a specific drug product by ID.
+        Get a specific drug product by DHA product ID.
 
         Args:
-            product_id: Product identifier
+            product_id: DHA product identifier (integer)
 
         Returns:
             DrugProduct for the specified ID
@@ -756,24 +880,13 @@ class TerminologyService:
         logger.info(f"Fetching drug product: {product_id}")
 
         try:
-            headers = self.auth_service.get_terminology_headers()
+            results = self.search_drug_products(product_id=product_id)
+            if not results:
+                raise CodeNotFoundError(str(product_id), "DRUG_PRODUCTS")
+            return results[0]
 
-            response = requests.get(
-                f"{self.api_base_url}{self.products_endpoint}/{product_id}",
-                headers=headers,
-                timeout=self.timeout,
-            )
-
-            if response.status_code == 404:
-                raise CodeNotFoundError(product_id, "DRUG_PRODUCTS")
-
-            response.raise_for_status()
-
-            data = response.json()
-            product_data = data.get("product") or data
-
-            return DrugProduct.from_api_response(product_data)
-
+        except TerminologyError:
+            raise
         except (SHAAuthError, requests.RequestException) as e:
             raise TerminologyError(
                 f"Failed to fetch drug product: {str(e)}",
@@ -786,14 +899,19 @@ class TerminologyService:
 
     def search_active_components(
         self,
-        query: str,
+        query: str = "",
+        *,
+        exact_match: bool = False,
+        active_component_id: int | None = None,
         limit: int = 50,
     ) -> list[ActiveComponent]:
         """
-        Search active pharmaceutical components.
+        Search active pharmaceutical components via DHA HPT Registry.
 
         Args:
-            query: Search term (component name or ATC code)
+            query: Search term (component description)
+            exact_match: If True, only exact matches are returned
+            active_component_id: Search by specific component ID
             limit: Maximum results
 
         Returns:
@@ -801,10 +919,13 @@ class TerminologyService:
         """
         logger.info(f"Searching active components: query='{query}'")
 
-        params = {
-            "search": query,
-            "limit": limit,
-        }
+        params: dict[str, str | int | bool] = {}
+        if query:
+            params["search"] = query
+        if exact_match:
+            params["exact_match"] = "true"
+        if active_component_id is not None:
+            params["active_component_id"] = active_component_id
 
         try:
             headers = self.auth_service.get_terminology_headers()
@@ -819,8 +940,7 @@ class TerminologyService:
             response.raise_for_status()
 
             data = response.json()
-            results = data.get("components") or data.get("results") or data.get("data") or []
-
+            results = self._unwrap_dha_response(data, "ac")
             return [ActiveComponent.from_api_response(r) for r in results]
 
         except (SHAAuthError, requests.RequestException) as e:
@@ -908,8 +1028,7 @@ class TerminologyService:
         response.raise_for_status()
 
         data = response.json()
-        results = data.get("codes") or data.get("results") or data.get("data") or []
-
+        results = self._unwrap_dha_response(data, "loinc")
         return [RemoteLOINCCode.from_api_response(r) for r in results]
 
     def _search_loinc_fhir(
@@ -1205,8 +1324,7 @@ class TerminologyService:
             response.raise_for_status()
 
             data = response.json()
-            results = data.get("codes") or data.get("results") or data.get("data") or []
-
+            results = self._unwrap_dha_response(data, "ichi")
             return [ICHICode.from_api_response(r) for r in results]
 
         except (SHAAuthError, requests.RequestException) as e:

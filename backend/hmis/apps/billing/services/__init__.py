@@ -25,6 +25,7 @@ from .sha_eligibility import SHAEligibilityService
 from .terminology import (
     ActiveComponent,
     CodeNotFoundError,
+    ComponentLink,
     DrugProduct,
     ICD11Code,
     ICHICode,
@@ -59,6 +60,7 @@ __all__ = [
     "ICD11Code",
     "DrugProduct",
     "ActiveComponent",
+    "ComponentLink",
     "RemoteLOINCCode",
     "ICHICode",
     # Search

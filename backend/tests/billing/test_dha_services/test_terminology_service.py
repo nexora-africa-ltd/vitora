@@ -48,14 +48,17 @@ class TestSHAInterventions:
         mock_requests_get.return_value = Mock(
             status_code=200,
             json=lambda: {
-                "interventions": [
-                    {
-                        "code": "SHA-INT-001",
-                        "name": "General Consultation",
-                        "price": 500.00,
-                        "facility_level": 3,
-                    }
-                ]
+                "IsSuccess": True,
+                "Data": {
+                    "shaInterventions": [
+                        {
+                            "intervention_code": "SHA-INT-001",
+                            "intervention_name": "General Consultation",
+                            "price": 500.00,
+                            "levels": [{"3": "Health centers"}],
+                        }
+                    ]
+                },
             },
         )
 
@@ -93,7 +96,10 @@ class TestSHAInterventions:
 
     def test_search_by_facility_level(self, service, mock_requests_get):
         """Should filter by facility level."""
-        mock_requests_get.return_value = Mock(status_code=200, json=lambda: {"interventions": []})
+        mock_requests_get.return_value = Mock(
+            status_code=200,
+            json=lambda: {"IsSuccess": True, "Data": {"shaInterventions": []}},
+        )
 
         service.search_interventions(query="surgery", facility_level=4)
 
@@ -140,13 +146,16 @@ class TestICD11Codes:
         mock_requests_get.return_value = Mock(
             status_code=200,
             json=lambda: {
-                "codes": [
-                    {
-                        "code": "1A00",
-                        "title": "Cholera",
-                        "chapter": "01",
-                    }
-                ]
+                "IsSuccess": True,
+                "Data": {
+                    "icd11": [
+                        {
+                            "icd_11_code": "1A00",
+                            "description": "Cholera",
+                            "chapter": "01",
+                        }
+                    ]
+                },
             },
         )
 
@@ -197,13 +206,16 @@ class TestDrugProducts:
         mock_requests_get.return_value = Mock(
             status_code=200,
             json=lambda: {
-                "products": [
-                    {
-                        "product_id": "PRD-001",
-                        "brand_name": "Panadol",
-                        "generic_name": "Paracetamol",
-                    }
-                ]
+                "IsSuccess": True,
+                "Data": {
+                    "products": [
+                        {
+                            "product_id": 4855,
+                            "brand_name": "Panadol",
+                            "generic_name": "Paracetamol",
+                        }
+                    ]
+                },
             },
         )
 
@@ -217,16 +229,22 @@ class TestDrugProducts:
         mock_requests_get.return_value = Mock(
             status_code=200,
             json=lambda: {
-                "product": {
-                    "product_id": "PRD-001",
-                    "brand_name": "Panadol",
-                }
+                "IsSuccess": True,
+                "Data": {
+                    "products": [
+                        {
+                            "product_id": 4855,
+                            "brand_name": "Panadol",
+                            "generic_name": "Paracetamol",
+                        }
+                    ]
+                },
             },
         )
 
-        result = service.get_drug_product("PRD-001")
+        result = service.get_drug_product(4855)
 
-        assert result.product_id == "PRD-001"
+        assert result.product_id == 4855
 
 
 # =============================================================================
@@ -247,13 +265,24 @@ class TestActiveComponents:
         mock_requests_get.return_value = Mock(
             status_code=200,
             json=lambda: {
-                "components": [
-                    {
-                        "component_id": "COMP-001",
-                        "name": "Paracetamol",
-                        "atc_code": "N02BE01",
-                    }
-                ]
+                "IsSuccess": True,
+                "Data": {
+                    "ac": [
+                        {
+                            "active_component_id": 1,
+                            "component_description": "Paracetamol",
+                            "component_links": [
+                                {
+                                    "active_component_link_id": 1,
+                                    "active_component_line": 1,
+                                    "active_component_id": 1,
+                                    "component_name": "Paracetamol",
+                                    "component_atc_code": "N02BE01",
+                                }
+                            ],
+                        }
+                    ]
+                },
             },
         )
 
@@ -281,13 +310,16 @@ class TestLOINCCodes:
         mock_requests_get.return_value = Mock(
             status_code=200,
             json=lambda: {
-                "codes": [
-                    {
-                        "loinc_num": "2345-7",
-                        "component": "Glucose",
-                        "long_common_name": "Glucose [Mass/volume] in Serum or Plasma",
-                    }
-                ]
+                "IsSuccess": True,
+                "Data": {
+                    "loinc": [
+                        {
+                            "loinc_num": "2345-7",
+                            "component": "Glucose",
+                            "display_name": "Glucose [Mass/volume] in Serum or Plasma",
+                        }
+                    ]
+                },
             },
         )
 
@@ -336,12 +368,15 @@ class TestICHICodes:
         mock_requests_get.return_value = Mock(
             status_code=200,
             json=lambda: {
-                "codes": [
-                    {
-                        "code": "PZX.DB.AC",
-                        "title": "Appendectomy",
-                    }
-                ]
+                "IsSuccess": True,
+                "Data": {
+                    "ichi": [
+                        {
+                            "code": "PZX.DB.AC",
+                            "clean_title": "Appendectomy",
+                        }
+                    ]
+                },
             },
         )
 
@@ -441,14 +476,14 @@ class TestDrugProduct:
     def test_from_api_response(self):
         """Should create from API response."""
         data = {
-            "product_id": "PRD-001",
+            "product_id": 4855,
             "brand_name": "Panadol",
             "generic_name": "Paracetamol",
         }
 
         product = DrugProduct.from_api_response(data)
 
-        assert product.product_id == "PRD-001"
+        assert product.product_id == 4855
         assert product.brand_name == "Panadol"
 
 
