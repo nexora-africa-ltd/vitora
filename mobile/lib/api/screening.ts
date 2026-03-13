@@ -1,7 +1,6 @@
 import { listLocalScreenings, queueOfflineScreeningCreate, upsertScreenings } from '@/lib/db';
 import { PaginatedCommunityScreeningSchema, CommunityScreeningSchema } from '@/lib/schemas/screening.schema';
 import { parseResponse } from '@/lib/schemas/validation';
-import { runOfflineSync } from '@/lib/sync/engine';
 import { apiClient, toApiError } from '@/lib/api/client';
 import type { CommunityScreening, CommunityScreeningCreateData, CommunityScreeningListParams } from '@/lib/types/screening';
 
@@ -106,6 +105,8 @@ export const screeningApi = {
   async syncPendingScreenings(): Promise<{ attempted: number; uploaded: number; pending: number; message: string }> {
     const before = await listLocalScreenings();
     const attempted = before.records.filter((record) => record.sync_status === 'pending_upload').length;
+    // Dynamic import to break require cycle: engine -> pull -> screening -> engine
+    const { runOfflineSync } = await import('@/lib/sync/engine');
     const syncSummary = await runOfflineSync();
     const after = await listLocalScreenings();
     const pending = after.records.filter((record) => record.sync_status === 'pending_upload').length;
