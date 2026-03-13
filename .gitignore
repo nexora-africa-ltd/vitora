@@ -198,3 +198,4 @@ dist-electron/
 poetry.lock
 backend/hmis/apps/core/fixtures/sha-decrypt.py
 backend/sha.pem
+mobile/build-1773421892340.apk

@@ -22,7 +22,7 @@ export default function MoreScreen() {
       <HeroCard
         eyebrow="More"
         title={workspaceTitle}
-        description="Laboratory, pharmacy, and inpatient workflows on the go."
+        description="Laboratory, pharmacy, billing and inpatient workflows on the go."
       />
 
       <SectionCard title="Front desk" subtitle="Patient check-in and registration workflows.">
