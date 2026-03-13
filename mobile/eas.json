@@ -6,12 +6,18 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "development",
+        "EXPO_PUBLIC_APPROVED_API_ENVIRONMENTS": "[{\"id\":\"local\",\"label\":\"Localhost\",\"url\":\"http://127.0.0.1:9088\"},{\"id\":\"android-emulator\",\"label\":\"Android Emulator\",\"url\":\"http://10.0.2.2:9088\"},{\"id\":\"preview\",\"label\":\"Preview API\",\"url\":\"https://vitora-api.onrender.com\"}]"
+      }
     },
     "preview": {
       "distribution": "internal",
       "env": {
+        "EXPO_PUBLIC_APP_ENV": "preview",
         "EXPO_PUBLIC_API_URL": "https://vitora-api.onrender.com",
+        "EXPO_PUBLIC_APPROVED_API_ENVIRONMENTS": "[{\"id\":\"preview\",\"label\":\"Preview API\",\"url\":\"https://vitora-api.onrender.com\"},{\"id\":\"production\",\"label\":\"Production API\",\"url\":\"https://vitora-prod.onrender.com\"}]",
         "EXPO_PUBLIC_API_PIN_HOST": "vitora-api.onrender.com",
         "EXPO_PUBLIC_API_PIN_PRIMARY": "IX2/a47sFHkF9jewioc5OzEDzS0dNQjNMCX8PCQ26Pg=",
         "EXPO_PUBLIC_API_PIN_BACKUP": "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
@@ -22,7 +28,9 @@
     "production": {
       "autoIncrement": true,
       "env": {
+        "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://vitora-prod.onrender.com",
+        "EXPO_PUBLIC_APPROVED_API_ENVIRONMENTS": "[{\"id\":\"production\",\"label\":\"Production API\",\"url\":\"https://vitora-prod.onrender.com\"},{\"id\":\"preview\",\"label\":\"Preview API\",\"url\":\"https://vitora-api.onrender.com\"}]",
         "EXPO_PUBLIC_API_PIN_HOST": "vitora-prod.onrender.com",
         "EXPO_PUBLIC_API_PIN_PRIMARY": "IX2/a47sFHkF9jewioc5OzEDzS0dNQjNMCX8PCQ26Pg=",
         "EXPO_PUBLIC_API_PIN_BACKUP": "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",

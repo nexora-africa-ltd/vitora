@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import { addSslPinningErrorListener, initializeSslPinning, isSslPinningAvailable } from 'react-native-ssl-public-key-pinning';
 
+import { getApprovedApiEnvironments } from '@/lib/config/api-config';
+
 type CertificatePinningStatus = {
   available: boolean;
   configured: boolean;
@@ -10,9 +12,23 @@ type CertificatePinningStatus = {
 
 let initialized = false;
 
-function getConfiguredHost(): string | null {
+function getConfiguredHosts(): string[] {
+  const approvedHosts = getApprovedApiEnvironments()
+    .map((environment) => {
+      try {
+        return new URL(environment.url).host;
+      } catch {
+        return null;
+      }
+    })
+    .filter((value): value is string => Boolean(value && value.length > 0));
+
+  if (approvedHosts.length > 0) {
+    return Array.from(new Set(approvedHosts));
+  }
+
   const host = process.env.EXPO_PUBLIC_API_PIN_HOST?.trim();
-  return host && host.length > 0 ? host : null;
+  return host && host.length > 0 ? [host] : [];
 }
 
 function getConfiguredPins(): string[] {
@@ -26,8 +42,8 @@ function getConfiguredPins(): string[] {
 }
 
 export function getCertificatePinningStatus(): CertificatePinningStatus {
-  const host = getConfiguredHost();
-  const configured = Boolean(host && getConfiguredPins().length >= 2);
+  const hosts = getConfiguredHosts();
+  const configured = Boolean(hosts.length > 0 && getConfiguredPins().length >= 2);
   const available = Platform.OS !== 'web' && isSslPinningAvailable();
   const enabled = configured && available && !__DEV__;
 
@@ -35,7 +51,7 @@ export function getCertificatePinningStatus(): CertificatePinningStatus {
     available,
     configured,
     enabled,
-    host,
+    host: hosts[0] ?? null,
   };
 }
 
@@ -44,12 +60,12 @@ export async function initializeCertificatePinning(): Promise<void> {
     return;
   }
 
-  const host = getConfiguredHost();
+  const hosts = getConfiguredHosts();
   const publicKeyHashes = getConfiguredPins();
   const includeSubdomains = process.env.EXPO_PUBLIC_API_PIN_INCLUDE_SUBDOMAINS === 'true';
   const expirationDate = process.env.EXPO_PUBLIC_API_PIN_EXPIRATION_DATE?.trim();
 
-  if (__DEV__ || Platform.OS === 'web' || !host || publicKeyHashes.length < 2) {
+  if (__DEV__ || Platform.OS === 'web' || hosts.length === 0 || publicKeyHashes.length < 2) {
     initialized = true;
     return;
   }
@@ -62,13 +78,18 @@ export async function initializeCertificatePinning(): Promise<void> {
     console.warn('SSL pinning error for host', error.serverHostname);
   });
 
-  await initializeSslPinning({
-    [host]: {
-      includeSubdomains,
-      publicKeyHashes,
-      expirationDate: expirationDate || undefined,
-    },
-  });
+  await initializeSslPinning(
+    Object.fromEntries(
+      hosts.map((host) => [
+        host,
+        {
+          includeSubdomains,
+          publicKeyHashes,
+          expirationDate: expirationDate || undefined,
+        },
+      ])
+    )
+  );
 
   initialized = true;
 }
