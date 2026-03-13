@@ -52,7 +52,7 @@ export default function BillingDetailScreen() {
   if (!invoiceQuery.data) {
     return (
       <ScreenContainer>
-        <EmptyState title="Invoice not found" description="This billing record is not available on mobile yet." />
+        <EmptyState title="Invoice not found" description="This invoice could not be loaded into the mobile billing viewer." />
       </ScreenContainer>
     );
   }
@@ -65,7 +65,7 @@ export default function BillingDetailScreen() {
       <HeroCard
         eyebrow="Invoice"
         title={invoice.invoice_number}
-        description={`${invoice.patient_name} · ${invoice.patient_mrn} · ${formatDate(invoice.invoice_date)}`}
+        description={`${invoice.patient_name} · ${invoice.patient_mrn} · ${formatDate(invoice.invoice_date)} · Viewer mode`}
       >
         <Pill label={invoice.status.replace(/_/g, ' ')} tone={getInvoiceTone(invoice.status)} />
       </HeroCard>
@@ -96,9 +96,9 @@ export default function BillingDetailScreen() {
         )}
       </SectionCard>
 
-      <SectionCard title="Payments" subtitle="Payments posted against this invoice.">
+      <SectionCard title="Payments" subtitle="Synced payments posted against this invoice.">
         {payments.length === 0 ? (
-          <EmptyState title="No payments recorded" description="Payments posted on web or desktop will appear here." />
+          <EmptyState title="No payments recorded" description="Payments recorded in the shared billing workspace will appear here after sync." />
         ) : (
           payments.map((payment) => (
             <View key={payment.id} style={styles.itemCard}>

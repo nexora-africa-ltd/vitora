@@ -86,7 +86,7 @@ export default function SignInScreen() {
       ) : null}
 
       <SectionCard title={isLocked ? 'Re-authenticate' : 'Sign in'} subtitle="JWT authentication uses the existing /api/token/ flow from the web app.">
-        <AppTextInput label="Username" value={username} onChangeText={setUsername} autoCapitalize="none" placeholder="testuser" />
+        <AppTextInput label="Username" value={username} onChangeText={setUsername} autoCapitalize="none" placeholder="Username" />
         <AppTextInput label="Password" value={password} onChangeText={setPassword} secureTextEntry placeholder="Your password" autoCapitalize="none" />
         <AppButton
           label={isSubmitting ? (isLocked ? 'Unlocking...' : 'Signing in...') : isLocked ? 'Unlock with password' : 'Sign in'}

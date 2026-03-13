@@ -49,15 +49,15 @@ export default function BillingScreen() {
     <ScreenContainer>
       <HeroCard
         eyebrow="Billing"
-        title="Invoice summaries"
-        description={patientId ? 'Read-only billing for this patient.' : encounterId ? 'Read-only billing for this encounter.' : 'Review invoice totals and payment status from mobile.'}
+        title="Billing viewer"
+        description={patientId ? 'Viewer scope for this patient\'s invoices and payments.' : encounterId ? 'Viewer scope for invoices linked to this encounter.' : 'Review invoice totals and synced payment status from the mobile billing viewer.'}
       />
 
-      <SectionCard title="Billing workspace" subtitle={`${invoices.length} invoice${invoices.length === 1 ? '' : 's'} available.`}>
+      <SectionCard title="Viewer scope" subtitle={`${invoices.length} invoice${invoices.length === 1 ? '' : 's'} available in the mobile viewer.`}>
         <AppButton label="Back to patient list" variant="ghost" onPress={() => router.back()} />
       </SectionCard>
 
-      <SectionCard title="Invoices" subtitle="Read-only invoice and payment visibility for clinical staff.">
+      <SectionCard title="Invoices" subtitle="Billing visibility only. Creation, edits, and payment posting stay in the shared billing workspace.">
         {invoices.length === 0 ? (
           <EmptyState title="No invoices found" description="There are no billing records for this filter yet." />
         ) : (
