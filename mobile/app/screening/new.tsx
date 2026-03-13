@@ -107,8 +107,8 @@ export default function NewScreeningScreen() {
 
   if (patientsQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Preparing screening form..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Preparing screening form..." fullScreen />
       </ScreenContainer>
     );
   }

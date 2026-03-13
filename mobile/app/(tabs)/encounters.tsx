@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, ListSkeleton, Pill, ScreenList, SectionCard } from '@/components/app-ui';
+import { AppButton, LoadingState, Pill, ScreenContainer, ScreenList, SectionCard } from '@/components/app-ui';
 import { SyncIndicator } from '@/components/sync-indicator';
 import type { AppTheme } from '@/constants/theme';
 import { getEncounterPillTone, getEncounterStatusLabel } from '@/lib/encounters';
@@ -19,7 +19,11 @@ export default function EncountersScreen() {
   const { isRefreshing, refresh } = useRefreshQueries(refreshKeys);
 
   if (encountersQuery.isLoading) {
-    return <ListSkeleton itemCount={5} />;
+    return (
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading encounter list..." fullScreen />
+      </ScreenContainer>
+    );
   }
 
   const encounters = encountersQuery.encounters;

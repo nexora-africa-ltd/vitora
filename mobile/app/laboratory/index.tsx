@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, HeroCard, ListSkeleton, MetricCard, Pill, ScreenList, SectionCard } from '@/components/app-ui';
+import { AppButton, HeroCard, LoadingState, MetricCard, Pill, ScreenContainer, ScreenList, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
 import { laboratoryApi } from '@/lib/api/laboratory';
 import { useRefreshQueries } from '@/lib/hooks/use-refresh-queries';
@@ -59,7 +59,11 @@ export default function LaboratoryScreen() {
   });
 
   if (ordersQuery.isLoading || resultsQuery.isLoading) {
-    return <ListSkeleton itemCount={4} showHero />;
+    return (
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading laboratory workspace..." fullScreen />
+      </ScreenContainer>
+    );
   }
 
   const orders = ordersQuery.data?.results ?? [];

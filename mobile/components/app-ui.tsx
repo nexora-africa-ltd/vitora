@@ -121,16 +121,106 @@ export function ScreenList<ItemT>({
   );
 }
 
-export function HeroCard({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children?: React.ReactNode }) {
+export function HeroCard({ eyebrow, title, titleAccessory, description, children }: { eyebrow: string; title: string; titleAccessory?: React.ReactNode; description: string; children?: React.ReactNode }) {
   const { isDarkMode } = useAppTheme();
   const styles = useSharedStyles();
+  const motion = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(motion, {
+          toValue: 1,
+          duration: 5200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(motion, {
+          toValue: 0,
+          duration: 5200,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    animation.start();
+
+    return () => {
+      animation.stop();
+    };
+  }, [motion]);
+
+  const orbOneTransform = {
+    transform: [
+      {
+        translateX: motion.interpolate({
+          inputRange: [0, 1],
+          outputRange: [-18, 24],
+        }),
+      },
+      {
+        translateY: motion.interpolate({
+          inputRange: [0, 1],
+          outputRange: [-8, 18],
+        }),
+      },
+      {
+        scale: motion.interpolate({
+          inputRange: [0, 1],
+          outputRange: [1, 1.12],
+        }),
+      },
+    ],
+    opacity: motion.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.34, 0.5],
+    }),
+  };
+
+  const orbTwoTransform = {
+    transform: [
+      {
+        translateX: motion.interpolate({
+          inputRange: [0, 1],
+          outputRange: [22, -14],
+        }),
+      },
+      {
+        translateY: motion.interpolate({
+          inputRange: [0, 1],
+          outputRange: [12, -16],
+        }),
+      },
+      {
+        scale: motion.interpolate({
+          inputRange: [0, 1],
+          outputRange: [1.08, 0.96],
+        }),
+      },
+    ],
+    opacity: motion.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.2, 0.34],
+    }),
+  };
+
+  const gradientColors: readonly [string, string, string] = isDarkMode
+    ? ['#05131D', '#10384B', '#5C1E34']
+    : ['#4E0B18', '#156073', '#7B2937'];
 
   return (
-    <LinearGradient colors={isDarkMode ? ['#0C2E42', '#152840'] : ['#A8E8F0', '#BDD0F5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
-      <Text style={styles.heroEyebrow}>{eyebrow}</Text>
-      <Text style={styles.heroTitle}>{title}</Text>
-      <Text style={styles.heroDescription}>{description}</Text>
-      {children ? <View style={styles.heroChildren}>{children}</View> : null}
+    <LinearGradient colors={gradientColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
+      <Animated.View pointerEvents="none" style={[styles.heroOrbPrimary, orbOneTransform]} />
+      <Animated.View pointerEvents="none" style={[styles.heroOrbSecondary, orbTwoTransform]} />
+      <View style={styles.heroNoise} pointerEvents="none" />
+      <View style={styles.heroContent}>
+        <Text style={styles.heroEyebrow}>{eyebrow}</Text>
+        <View style={styles.heroTitleRow}>
+          <Text style={styles.heroTitle}>{title}</Text>
+          {titleAccessory ? <View style={styles.heroTitleAccessory}>{titleAccessory}</View> : null}
+        </View>
+        <Text style={styles.heroDescription}>{description}</Text>
+        {children ? <View style={styles.heroChildren}>{children}</View> : null}
+      </View>
     </LinearGradient>
   );
 }
@@ -323,12 +413,12 @@ export function Pill({ label, tone = 'primary' }: { label: string; tone?: 'prima
   );
 }
 
-export function LoadingState({ message }: { message: string }) {
+export function LoadingState({ message, fullScreen = false }: { message: string; fullScreen?: boolean }) {
   const { theme } = useAppTheme();
   const styles = useSharedStyles();
 
   return (
-    <View style={styles.feedbackState}>
+    <View style={[styles.feedbackState, fullScreen && styles.feedbackStateFull]}>
       <ActivityIndicator color={theme.colors.primary} size="large" />
       <Text style={styles.feedbackTitle}>{message}</Text>
     </View>
@@ -436,35 +526,76 @@ function createStyles(theme: AppTheme, isDarkMode: boolean) {
     backgroundColor: theme.colors.background,
   },
   screenContent: {
+    flexGrow: 1,
     padding: theme.spacing.lg,
     gap: theme.spacing.lg,
   },
   heroCard: {
     borderRadius: theme.radius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.18)',
+    overflow: 'hidden',
     padding: theme.spacing.xl,
+  },
+  heroContent: {
     gap: theme.spacing.xs,
+    zIndex: 2,
   },
   heroEyebrow: {
-    color: theme.colors.mutedText,
+    color: isDarkMode ? '#DAB38F' : '#F3D6BE',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   heroTitle: {
-    color: theme.colors.text,
+    color: '#F8FAFC',
+    flexShrink: 1,
     fontSize: 28,
     fontWeight: '800',
   },
+  heroTitleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  heroTitleAccessory: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   heroDescription: {
-    color: theme.colors.mutedText,
+    color: 'rgba(248, 250, 252, 0.8)',
     fontSize: 15,
     lineHeight: 22,
   },
   heroChildren: {
     marginTop: theme.spacing.sm,
+  },
+  heroOrbPrimary: {
+    position: 'absolute',
+    top: -58,
+    right: -32,
+    width: 196,
+    height: 196,
+    borderRadius: 999,
+    backgroundColor: isDarkMode ? 'rgba(212, 165, 116, 0.24)' : 'rgba(255, 241, 220, 0.24)',
+    zIndex: 0,
+  },
+  heroOrbSecondary: {
+    position: 'absolute',
+    bottom: -78,
+    left: -40,
+    width: 184,
+    height: 184,
+    borderRadius: 999,
+    backgroundColor: isDarkMode ? 'rgba(77, 160, 184, 0.24)' : 'rgba(110, 221, 236, 0.18)',
+    zIndex: 0,
+  },
+  heroNoise: {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.035)',
+    zIndex: 1,
   },
   sectionCard: {
     backgroundColor: theme.colors.surface,
@@ -641,8 +772,13 @@ function createStyles(theme: AppTheme, isDarkMode: boolean) {
   feedbackState: {
     alignItems: 'center',
     gap: 10,
+    justifyContent: 'center',
     paddingHorizontal: 18,
     paddingVertical: 28,
+  },
+  feedbackStateFull: {
+    flex: 1,
+    minHeight: 320,
   },
   feedbackTitle: {
     color: theme.colors.text,

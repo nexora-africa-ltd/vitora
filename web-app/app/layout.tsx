@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
+import { PWARegister } from '@/components/pwa/pwa-register';
 import { APP_NAME } from '@/lib/utils/constants';
 
 const inter = Inter({
@@ -16,6 +17,17 @@ export const metadata: Metadata = {
   },
   description: 'Offline-first Hospital Management Information System for Kenya',
   applicationName: APP_NAME,
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: APP_NAME,
+  },
+  formatDetection: {
+    telephone: false,
+    address: false,
+    email: false,
+  },
   icons: {
     icon: '/favicon.png',
     shortcut: '/favicon.png',
@@ -40,6 +52,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
+        <PWARegister />
         <Providers>{children}</Providers>
       </body>
     </html>

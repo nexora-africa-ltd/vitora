@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, HeroCard, ListSkeleton, Pill, ScreenList, SectionCard } from '@/components/app-ui';
+import { AppButton, HeroCard, LoadingState, Pill, ScreenContainer, ScreenList, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
 import { billingApi } from '@/lib/api/billing';
 import { useRefreshQueries } from '@/lib/hooks/use-refresh-queries';
@@ -39,7 +39,11 @@ export default function BillingScreen() {
   });
 
   if (invoicesQuery.isLoading) {
-    return <ListSkeleton itemCount={4} showHero />;
+    return (
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading billing viewer..." fullScreen />
+      </ScreenContainer>
+    );
   }
 
   const invoices = invoicesQuery.data?.results ?? [];

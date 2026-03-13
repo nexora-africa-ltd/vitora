@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, AppTextInput, ListSkeleton, Pill, ScreenList, SectionCard } from '@/components/app-ui';
+import { AppButton, AppTextInput, LoadingState, Pill, ScreenContainer, ScreenList, SectionCard } from '@/components/app-ui';
 import { SyncIndicator } from '@/components/sync-indicator';
 import type { AppTheme } from '@/constants/theme';
 import { useLocalPatients } from '@/lib/hooks/use-local-patients';
@@ -27,7 +27,11 @@ export default function PatientsScreen() {
   const { isRefreshing, refresh } = useRefreshQueries(refreshKeys);
 
   if (patientQuery.isLoading) {
-    return <ListSkeleton itemCount={5} />;
+    return (
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading patient registry..." fullScreen />
+      </ScreenContainer>
+    );
   }
 
   const patients = patientQuery.patients;

@@ -141,7 +141,7 @@ export default function SignInScreen() {
         </View>
         <Text style={styles.helperText}>
           {supportsCustomApiUrl
-            ? 'Android emulator usually needs http://10.0.2.2:9088. Physical devices need your machine\'s LAN IP.'
+            ? 'Only allowlisted backend hosts are available in production so SSL pinning and transport trust stay intact.'
             : 'Only allowlisted backend hosts are available in production so SSL pinning and transport trust stay intact.'}
         </Text>
       </SectionCard>

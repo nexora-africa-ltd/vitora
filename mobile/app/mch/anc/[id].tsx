@@ -116,8 +116,8 @@ export default function ANCRegistrationScreen() {
 
   if (registrationQuery.isLoading || visitsQuery.isLoading || patientQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Loading ANC workflow..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading ANC workflow..." fullScreen />
       </ScreenContainer>
     );
   }

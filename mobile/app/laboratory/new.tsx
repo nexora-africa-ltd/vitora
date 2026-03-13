@@ -161,8 +161,8 @@ export default function NewLaboratoryOrderScreen() {
 
   if (patientsQuery.isLoading || encounterQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Preparing laboratory order form..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Preparing laboratory order form..." fullScreen />
       </ScreenContainer>
     );
   }

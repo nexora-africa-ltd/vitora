@@ -105,8 +105,8 @@ export default function PharmacyDetailScreen() {
 
   if (prescriptionQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Loading prescription..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading prescription..." fullScreen />
       </ScreenContainer>
     );
   }

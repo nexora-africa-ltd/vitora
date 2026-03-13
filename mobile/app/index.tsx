@@ -10,8 +10,8 @@ export default function IndexScreen() {
 
   if (isHydrating) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Restoring your Vitora session..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Restoring your Vitora session..." fullScreen />
       </ScreenContainer>
     );
   }

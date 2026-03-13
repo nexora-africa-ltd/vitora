@@ -23,7 +23,9 @@ const SKIP_PATTERNS = [
   '/_next',
   '/api',
   '/favicon.ico',
-  '/manifest.json',
+  '/manifest.webmanifest',
+  '/sw.js',
+  '/offline.html',
   '/icons',
   '/images',
 ];

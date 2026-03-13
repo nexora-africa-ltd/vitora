@@ -20,9 +20,9 @@ describe('api-config', () => {
 
   it('rejects non-approved custom URLs in production builds', async () => {
     process.env.EXPO_PUBLIC_APP_ENV = 'production';
-    process.env.EXPO_PUBLIC_API_URL = 'https://vitora-prod.onrender.com';
+    process.env.EXPO_PUBLIC_API_URL = 'https://api.vitora.nexora.africa';
     process.env.EXPO_PUBLIC_APPROVED_API_ENVIRONMENTS = JSON.stringify([
-      { id: 'production', label: 'Production API', url: 'https://vitora-prod.onrender.com' },
+      { id: 'production', label: 'Production API', url: 'https://api.vitora.nexora.africa' },
       { id: 'preview', label: 'Preview API', url: 'https://vitora-api.onrender.com' },
     ]);
 
@@ -35,9 +35,9 @@ describe('api-config', () => {
 
   it('switches to an approved environment in production builds', async () => {
     process.env.EXPO_PUBLIC_APP_ENV = 'production';
-    process.env.EXPO_PUBLIC_API_URL = 'https://vitora-prod.onrender.com';
+    process.env.EXPO_PUBLIC_API_URL = 'https://api.vitora.nexora.africa';
     process.env.EXPO_PUBLIC_APPROVED_API_ENVIRONMENTS = JSON.stringify([
-      { id: 'production', label: 'Production API', url: 'https://vitora-prod.onrender.com' },
+      { id: 'production', label: 'Production API', url: 'https://api.vitora.nexora.africa' },
       { id: 'preview', label: 'Preview API', url: 'https://vitora-api.onrender.com' },
     ]);
 
@@ -54,7 +54,7 @@ describe('api-config', () => {
     process.env.EXPO_PUBLIC_API_URL = 'https://vitora-api.onrender.com';
     process.env.EXPO_PUBLIC_APPROVED_API_ENVIRONMENTS = JSON.stringify([
       { id: 'preview', label: 'Preview API', url: 'https://vitora-api.onrender.com' },
-      { id: 'production', label: 'Production API', url: 'https://vitora-prod.onrender.com' },
+      { id: 'production', label: 'Production API', url: 'https://api.vitora.nexora.africa' },
     ]);
 
     const apiConfig = await loadApiConfigModule();

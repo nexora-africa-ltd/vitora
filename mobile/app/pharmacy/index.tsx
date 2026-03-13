@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, HeroCard, ListSkeleton, MetricCard, Pill, ScreenList, SectionCard } from '@/components/app-ui';
+import { AppButton, HeroCard, LoadingState, MetricCard, Pill, ScreenContainer, ScreenList, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 import { useRefreshQueries } from '@/lib/hooks/use-refresh-queries';
@@ -40,7 +40,11 @@ export default function PharmacyScreen() {
   });
 
   if (prescriptionsQuery.isLoading) {
-    return <ListSkeleton itemCount={4} showHero />;
+    return (
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading prescription queue..." fullScreen />
+      </ScreenContainer>
+    );
   }
 
   const prescriptions = prescriptionsQuery.data?.results ?? [];

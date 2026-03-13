@@ -128,8 +128,8 @@ export default function MARScreen() {
 
   if (admissionQuery.isLoading || marQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Loading medications..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading medications..." fullScreen />
       </ScreenContainer>
     );
   }

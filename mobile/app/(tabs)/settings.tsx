@@ -102,8 +102,6 @@ export default function SettingsScreen() {
         <Text style={styles.helperText}>
           {supportsCustomApiUrl
             ? Platform.OS === 'android'
-            ? 'Android emulator usually needs http://10.0.2.2:9088.'
-            : 'Simulator and web default to http://127.0.0.1:9088.'
             : 'Only approved backend hosts can be selected in production builds.'}
         </Text>
       </SectionCard>

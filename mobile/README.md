@@ -68,10 +68,10 @@ eas build --platform all
 `eas.json` now carries concrete `EXPO_PUBLIC_API_URL` and `EXPO_PUBLIC_API_PIN_*` values for the `preview` and `production` profiles.
 
 - `preview` targets `https://vitora-api.onrender.com`
-- `production` targets `https://vitora-prod.onrender.com`
+- `production` targets `https://api.vitora.nexora.africa`
 
 Certificate pinning is only active in native builds. Expo Go and local web/dev sessions intentionally skip it.
-The pin set currently matches the live Render certificate chain served by both `vitora-api.onrender.com` and `vitora-prod.onrender.com`.
+The pin set currently matches the live Render certificate chain served by both `vitora-api.onrender.com` and `api.vitora.nexora.africa`.
 
 To validate a native build profile locally or in CI:
 
@@ -87,7 +87,7 @@ Local Android EAS builds require Java 17. In this workspace the preview and prod
 If the production API host changes, regenerate the pin values before shipping:
 
 ```bash
-echo | openssl s_client -showcerts -servername vitora-prod.onrender.com -connect vitora-prod.onrender.com:443 2>/dev/null \
+echo | openssl s_client -showcerts -servername api.vitora.nexora.africa -connect api.vitora.nexora.africa:443 2>/dev/null \
 	| awk 'BEGIN{c=0} /BEGIN CERTIFICATE/{c++} {print > ("/tmp/vitora-pin-" c ".pem")}'
 
 for f in /tmp/vitora-pin-*.pem; do
