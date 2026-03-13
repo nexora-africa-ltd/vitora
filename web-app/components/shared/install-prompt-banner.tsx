@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { APP_NAME } from '@/lib/utils/constants';
@@ -44,32 +44,56 @@ function getFallbackInstallHint() {
   return 'Use your browser menu to install this app or add it to your home screen.';
 }
 
+function getStoredInstallPromptState(): InstallPromptState | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  return window.localStorage.getItem(INSTALL_PROMPT_STORAGE_KEY) as InstallPromptState | null;
+}
+
+function shouldShowFallbackInstallHint() {
+  if (typeof navigator === 'undefined') {
+    return false;
+  }
+
+  const userAgent = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
+  const isSafari = /Safari/i.test(userAgent) && !/Chrome|CriOS|EdgiOS|FxiOS|OPiOS/i.test(userAgent);
+
+  if (isIOS && isSafari) {
+    return true;
+  }
+
+  return !/Chrome|Chromium|Edg|OPR|SamsungBrowser/i.test(userAgent);
+}
+
 export function InstallPromptBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [bannerMode, setBannerMode] = useState<BannerMode>('prompt');
   const [fallbackHint, setFallbackHint] = useState('');
+  const hintTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined' || isStandaloneMode()) {
       return;
     }
 
-    const storedState = window.localStorage.getItem(INSTALL_PROMPT_STORAGE_KEY) as InstallPromptState | null;
-    let hintTimer: number | null = null;
-
     const handleBeforeInstallPrompt = (event: Event) => {
       const promptEvent = event as BeforeInstallPromptEvent;
       promptEvent.preventDefault();
-      if (hintTimer) {
-        window.clearTimeout(hintTimer);
+      if (hintTimerRef.current) {
+        window.clearTimeout(hintTimerRef.current);
+        hintTimerRef.current = null;
       }
 
       setBannerMode('prompt');
       setDeferredPrompt(promptEvent);
+      setFallbackHint('');
 
-      if (!storedState) {
+      if (!getStoredInstallPromptState()) {
         window.localStorage.setItem(INSTALL_PROMPT_STORAGE_KEY, 'seen');
         setIsVisible(true);
       }
@@ -81,8 +105,12 @@ export function InstallPromptBanner() {
       setIsVisible(false);
     };
 
-    if (!storedState) {
-      hintTimer = window.setTimeout(() => {
+    if (!getStoredInstallPromptState() && shouldShowFallbackInstallHint()) {
+      hintTimerRef.current = window.setTimeout(() => {
+        if (getStoredInstallPromptState()) {
+          return;
+        }
+
         setBannerMode('hint');
         setFallbackHint(getFallbackInstallHint());
         window.localStorage.setItem(INSTALL_PROMPT_STORAGE_KEY, 'seen');
@@ -94,8 +122,9 @@ export function InstallPromptBanner() {
     window.addEventListener('appinstalled', handleInstalled);
 
     return () => {
-      if (hintTimer) {
-        window.clearTimeout(hintTimer);
+      if (hintTimerRef.current) {
+        window.clearTimeout(hintTimerRef.current);
+        hintTimerRef.current = null;
       }
 
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
