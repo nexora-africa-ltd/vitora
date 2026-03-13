@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'vitora-static-v1';
-const RUNTIME_CACHE = 'vitora-runtime-v1';
+const STATIC_CACHE = 'vitora-static-v3';
+const RUNTIME_CACHE = 'vitora-runtime-v3';
 const OFFLINE_URL = '/offline.html';
 const STATIC_ASSETS = [
   OFFLINE_URL,
