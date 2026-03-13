@@ -127,6 +127,21 @@ class QuarterlyReportViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(reports, many=True)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
+    @extend_schema(summary="Export quarterly report as SDMX-ML")
+    @action(detail=True, methods=["get"], url_path="export-sdmx")
+    def export_sdmx(self, request: Request, pk=None) -> HttpResponse:
+        """Export a quarterly report in SDMX-ML format."""
+        from hmis.apps.quality.services.sdmx_service import SDMXExportService
+
+        report = self.get_object()
+        service = SDMXExportService()
+        xml_content = service.export_quarterly_to_sdmx(report)
+        response = HttpResponse(xml_content, content_type="application/xml")
+        response["Content-Disposition"] = (
+            f'attachment; filename="quarterly_report_{report.year}_Q{report.quarter}.sdmx.xml"'
+        )
+        return response
+
 
 # =============================================================================
 # AnnualReport ViewSet
@@ -182,6 +197,21 @@ class AnnualReportViewSet(viewsets.ModelViewSet):
         report = generate_annual_report(clinic, int(year), user=request.user)
         serializer = self.get_serializer(report)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(summary="Export annual report as SDMX-ML")
+    @action(detail=True, methods=["get"], url_path="export-sdmx")
+    def export_sdmx(self, request: Request, pk=None) -> HttpResponse:
+        """Export an annual report in SDMX-ML format."""
+        from hmis.apps.quality.services.sdmx_service import SDMXExportService
+
+        report = self.get_object()
+        service = SDMXExportService()
+        xml_content = service.export_annual_to_sdmx(report)
+        response = HttpResponse(xml_content, content_type="application/xml")
+        response["Content-Disposition"] = (
+            f'attachment; filename="annual_report_{report.year}.sdmx.xml"'
+        )
+        return response
 
 
 # =============================================================================

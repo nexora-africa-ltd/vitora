@@ -777,6 +777,46 @@ class IDSRWeeklyReportViewSet(viewsets.ModelViewSet):
             "dhis2_response": result,
         })
 
+    @action(detail=True, methods=["get"], url_path="export-sdmx")
+    def export_sdmx(self, request, pk=None):
+        """
+        Export IDSR weekly report as SDMX-ML.
+
+        GET /api/surveillance/idsr/{id}/export-sdmx/
+        """
+        from django.http import HttpResponse as DjangoHttpResponse
+
+        from hmis.apps.quality.services.sdmx_service import SDMXExportService
+
+        report = self.get_object()
+        service = SDMXExportService()
+        xml_content = service.export_idsr_to_sdmx(report)
+        response = DjangoHttpResponse(xml_content, content_type="application/xml")
+        response["Content-Disposition"] = (
+            f'attachment; filename="idsr_{report.epi_year}_W{report.epi_week:02d}.sdmx.xml"'
+        )
+        return response
+
+    @action(detail=True, methods=["get"], url_path="export-adx")
+    def export_adx(self, request, pk=None):
+        """
+        Export IDSR weekly report as ADX XML for DHIS2.
+
+        GET /api/surveillance/idsr/{id}/export-adx/
+        """
+        from django.http import HttpResponse as DjangoHttpResponse
+
+        from hmis.apps.surveillance.adx_service import ADXExportService
+
+        report = self.get_object()
+        service = ADXExportService()
+        xml_content = service.export_idsr_to_adx(report)
+        response = DjangoHttpResponse(xml_content, content_type="application/xml")
+        response["Content-Disposition"] = (
+            f'attachment; filename="idsr_{report.epi_year}_W{report.epi_week:02d}.adx.xml"'
+        )
+        return response
+
     @action(detail=False, methods=["get"])
     def dashboard(self, request):
         """

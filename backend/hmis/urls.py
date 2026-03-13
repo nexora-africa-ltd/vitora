@@ -35,6 +35,7 @@ from hmis.apps.encounters.views import (
     EncounterViewSet,
     ICD10CodeViewSet,
     MedicationViewSet,
+    SNOMEDSearchView,
     TreatmentPlanTemplateViewSet,
     TreatmentPlanView,
 )
@@ -155,6 +156,12 @@ urlpatterns = [
             {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}
         ),
         name="encounter-diagnoses-detail",
+    ),
+    # SNOMED CT search endpoint
+    path(
+        "api/encounters/snomed/search/",
+        SNOMEDSearchView.as_view(),
+        name="snomed-search",
     ),
     # Treatment plan route (single per encounter)
     path(

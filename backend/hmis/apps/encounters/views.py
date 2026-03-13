@@ -1867,3 +1867,77 @@ class MedicationViewSet(viewsets.ModelViewSet):
 
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+class SNOMEDSearchView(APIView):
+    """
+    Search SNOMED CT concepts.
+
+    Uses SNOMED International Snowstorm API with local cache fallback.
+
+    Query Parameters:
+        q: Search term (required, min 2 chars)
+        semantic_tag: Filter by semantic tag (e.g., 'disorder', 'finding', 'procedure')
+        limit: Max results (default 20, max 50)
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        parameters=[
+            inline_serializer(
+                "SNOMEDSearchParams",
+                fields={
+                    "q": serializers.CharField(help_text="Search term"),
+                    "semantic_tag": serializers.CharField(
+                        required=False, help_text="Filter by semantic tag"
+                    ),
+                    "limit": serializers.IntegerField(
+                        required=False, help_text="Max results (default 20)"
+                    ),
+                },
+            )
+        ],
+        responses={
+            200: inline_serializer(
+                "SNOMEDSearchResponse",
+                fields={
+                    "results": serializers.ListField(),
+                    "count": serializers.IntegerField(),
+                },
+            )
+        },
+    )
+    def get(self, request):
+        """Search SNOMED CT concepts by term."""
+        from hmis.apps.core.services.snomed_service import SNOMEDService
+
+        query = request.query_params.get("q", "").strip()
+        if len(query) < 2:
+            return Response(
+                {"detail": "Search term must be at least 2 characters."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        semantic_tag = request.query_params.get("semantic_tag", "")
+        try:
+            limit = min(int(request.query_params.get("limit", 20)), 50)
+        except (ValueError, TypeError):
+            limit = 20
+
+        service = SNOMEDService()
+        results = service.search(query=query, semantic_tag=semantic_tag, limit=limit)
+
+        return Response(
+            {
+                "results": [
+                    {
+                        "concept_id": r.concept_id,
+                        "display": r.display,
+                        "semantic_tag": r.semantic_tag,
+                    }
+                    for r in results
+                ],
+                "count": len(results),
+            }
+        )

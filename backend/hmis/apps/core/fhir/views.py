@@ -669,26 +669,64 @@ class FHIRConditionView(APIView):
                     ]
                 }
             ],
-            "code": {
-                "coding": [
-                    {
-                        "system": "http://hl7.org/fhir/sid/icd-10",
-                        "code": diagnosis.icd10_code.code if diagnosis.icd10_code else "unknown",
-                        "display": diagnosis.icd10_code.description
-                        if diagnosis.icd10_code
-                        else (diagnosis.notes or "Unknown"),
-                    }
-                ],
-                "text": diagnosis.icd10_code.description
-                if diagnosis.icd10_code
-                else (diagnosis.notes or "Unknown"),
-            },
+            "code": self._build_condition_code(diagnosis),
             "subject": {"reference": f"Patient/{diagnosis.encounter.patient.id}"},
             "encounter": {"reference": f"Encounter/{diagnosis.encounter.id}"},
             "recordedDate": format_date(diagnosis.encounter.encounter_date),
         }
 
         return fhir_resource
+
+    def _build_condition_code(self, diagnosis) -> dict:
+        """Build FHIR CodeableConcept with ICD-10, ICD-11, and SNOMED CT coding."""
+        codings = []
+
+        # ICD-10 coding
+        if diagnosis.icd10_code:
+            codings.append({
+                "system": "http://hl7.org/fhir/sid/icd-10",
+                "code": diagnosis.icd10_code.code,
+                "display": diagnosis.icd10_code.description,
+            })
+
+        # ICD-11 coding
+        if getattr(diagnosis, "icd11_code", ""):
+            codings.append({
+                "system": "http://id.who.int/icd/release/11/mms",
+                "code": diagnosis.icd11_code,
+                "display": diagnosis.icd11_display or diagnosis.icd11_code,
+            })
+
+        # SNOMED CT coding
+        if getattr(diagnosis, "snomed_code", ""):
+            codings.append({
+                "system": "http://snomed.info/sct",
+                "code": diagnosis.snomed_code,
+                "display": diagnosis.snomed_display or diagnosis.snomed_code,
+            })
+
+        # Fallback if no coded diagnosis
+        if not codings:
+            codings.append({
+                "system": "http://hl7.org/fhir/sid/icd-10",
+                "code": "unknown",
+                "display": diagnosis.free_text_diagnosis or diagnosis.notes or "Unknown",
+            })
+
+        # Determine display text
+        text = (
+            diagnosis.icd10_code.description
+            if diagnosis.icd10_code
+            else (
+                diagnosis.icd11_display
+                or diagnosis.snomed_display
+                or diagnosis.free_text_diagnosis
+                or diagnosis.notes
+                or "Unknown"
+            )
+        )
+
+        return {"coding": codings, "text": text}
 
 
 class FHIRCompositionView(APIView):

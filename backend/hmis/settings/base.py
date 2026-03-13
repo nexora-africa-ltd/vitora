@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     "hmis.apps.quality.apps.QualityConfig",
     "hmis.apps.cds.apps.CDSConfig",
     "hmis.apps.ai.apps.AIConfig",
+    "hmis.apps.hl7.apps.HL7Config",
 ]
 
 MIDDLEWARE = [
@@ -543,7 +544,7 @@ LAB_AUTO_FLAG_RESULTS = True  # Automatically flag abnormal results
 # ============================================================================
 # Feature flag to enable/disable HL7 LIS integration
 # When disabled, all HL7/MLLP functions are no-ops
-HL7_INTEGRATION_ENABLED = os.getenv("HL7_INTEGRATION_ENABLED", "false").lower() == "true"
+HL7_INTEGRATION_ENABLED = os.getenv("HL7_INTEGRATION_ENABLED", "true").lower() == "true"
 
 # HL7 Message Configuration
 HL7_SENDING_APPLICATION = os.getenv("HL7_SENDING_APPLICATION", "VITORA_HMIS")
@@ -567,6 +568,18 @@ MLLP_SSL_CA_FILE = os.getenv("MLLP_SSL_CA_FILE", "")
 # Used for ExternalCodeMapping lookups when resolving external test codes
 # Example: "LIS_ACME" for ACME LIS vendor
 HL7_LIS_CODE_SYSTEM = os.getenv("HL7_LIS_CODE_SYSTEM", "LIS_DEFAULT")
+
+# HL7 Message Queue (hl7 app) — destination for ADT/ORM outbound messages
+HL7_MLLP_HOST = os.getenv("HL7_MLLP_HOST", "")
+HL7_MLLP_PORT = int(os.getenv("HL7_MLLP_PORT", "0") or "0") or None
+
+# ============================================================================
+# HIE (Health Information Exchange) Configuration (Sprint 3.B, Gap #27)
+# ============================================================================
+HIE_AUTO_CR_LOOKUP = os.getenv("HIE_AUTO_CR_LOOKUP", "true").lower() == "true"
+HIE_AUTO_CR_REGISTER = os.getenv("HIE_AUTO_CR_REGISTER", "true").lower() == "true"
+HIE_AUTO_SHR_PUSH = os.getenv("HIE_AUTO_SHR_PUSH", "false").lower() == "true"
+HIE_ADX_ENABLED = os.getenv("HIE_ADX_ENABLED", "false").lower() == "true"
 
 # External Lab Partners
 # These are common external lab partners in Kenya

@@ -29,6 +29,21 @@ from .serializers import (
 )
 
 
+def _fire_cr_sync(patient_id: int) -> None:
+    """Fire async CR sync task if HIE is configured."""
+    try:
+        from hmis.apps.patients.tasks import lookup_and_register_patient_in_cr
+
+        lookup_and_register_patient_in_cr.delay(patient_id)
+    except Exception:
+        # Don't break patient creation if Celery/Redis unavailable
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "Failed to queue CR sync for patient %s", patient_id
+        )
+
+
 class PatientViewSet(ModelHistoryMixin, IdempotentCreateMixin, viewsets.ModelViewSet):
     """
     ViewSet for Patient model.
@@ -146,6 +161,14 @@ class PatientViewSet(ModelHistoryMixin, IdempotentCreateMixin, viewsets.ModelVie
                     "registered_by": request.user.username,
                 },
             )
+
+            # Async CR lookup/register (fires after transaction commits)
+            if not patient.cr_number:
+                from django.db import transaction as txn
+
+                txn.on_commit(
+                    lambda pid=patient.id: _fire_cr_sync(pid)
+                )
 
             # Re-serialize to include the newly created emergency contact
             response_serializer = self.get_serializer(patient)

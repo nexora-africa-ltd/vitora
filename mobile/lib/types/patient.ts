@@ -5,6 +5,7 @@ export interface Patient {
   id: number;
   mrn: string;
   cr_number?: string | null;
+  cr_synced_at?: string | null;
   sha_number?: string | null;
   first_name: string;
   middle_name?: string | null;
