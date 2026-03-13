@@ -25,6 +25,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Search, FileText, Clock, ArrowRightCircle } from 'lucide-react';
+import { EmptyState } from '@/components/shared/empty-state';
 import type { Invoice, InvoiceStatus } from '@/lib/types/billing';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
 
@@ -115,26 +116,6 @@ function InvoiceListSkeleton() {
 }
 
 // ============================================================================
-// Empty State
-// ============================================================================
-
-function EmptyState({ onCreateNew }: { onCreateNew: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-      <h3 className="text-lg font-medium mb-2">No invoices found</h3>
-      <p className="text-muted-foreground mb-4">
-        Get started by creating a new invoice
-      </p>
-      <Button onClick={onCreateNew}>
-        <Plus className="h-4 w-4 mr-2" />
-        Create Invoice
-      </Button>
-    </div>
-  );
-}
-
-// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -216,7 +197,12 @@ export function InvoiceList({
 
       {/* Empty state or table */}
       {invoices.length === 0 ? (
-        <EmptyState onCreateNew={onCreateNew} />
+        <EmptyState
+          icon={FileText}
+          title="No invoices found"
+          description="Get started by creating a new invoice"
+          action={{ label: 'Create Invoice', onClick: onCreateNew }}
+        />
       ) : (
         <div className="rounded-md border">
           <Table>

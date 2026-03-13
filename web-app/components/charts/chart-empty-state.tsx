@@ -16,6 +16,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { VitoraLogo } from '@/components/ui/vitora-logo';
 import { cn } from "@/lib/utils";
 
 export type ChartType = "bar" | "pie" | "donut" | "line" | "area" | "generic";
@@ -109,6 +110,15 @@ export function ChartEmptyState({
       style={{ minHeight }}
     >
       <EmptyHeader>
+        <div className="mb-2 rounded-xl border border-border/60 bg-background/80 px-3 py-2 shadow-sm">
+          <VitoraLogo
+            variant="icon"
+            tone="teal"
+            alt=""
+            className="w-8 opacity-75"
+            imageClassName="pointer-events-none select-none"
+          />
+        </div>
         <EmptyMedia>
           <Icon className="h-12 w-12 text-muted-foreground/60" />
         </EmptyMedia>

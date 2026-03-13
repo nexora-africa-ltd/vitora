@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageHeader } from '@/components/shared/page-header';
+import { EmptyState } from '@/components/shared/empty-state';
 import { useToast } from '@/lib/hooks/use-toast';
 import {
   Plus,
@@ -152,28 +153,6 @@ function ProformasPageSkeleton() {
         ))}
       </div>
     </div>
-  );
-}
-
-// ============================================================================
-// Empty State
-// ============================================================================
-
-function EmptyState({ onCreateNew }: { onCreateNew: () => void }) {
-  return (
-    <Card variant="dashed" className="p-0">
-      <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-        <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-medium mb-2">No proforma invoices found</h3>
-        <p className="text-muted-foreground mb-4">
-          Create a proforma invoice to provide a quotation to your patients
-        </p>
-        <Button onClick={onCreateNew}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Proforma
-        </Button>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -401,7 +380,16 @@ export default function ProformasPage() {
 
       {/* Proformas Table */}
       {filteredProformas.length === 0 ? (
-        <EmptyState onCreateNew={handleCreateNew} />
+        <Card variant="dashed" className="p-0">
+          <CardContent className="py-2">
+            <EmptyState
+              icon={FileText}
+              title="No proforma invoices found"
+              description="Create a proforma invoice to provide a quotation to your patients"
+              action={{ label: 'Create Proforma', onClick: handleCreateNew }}
+            />
+          </CardContent>
+        </Card>
       ) : (
         <Card>
           <CardContent className="p-0 sm:p-6">

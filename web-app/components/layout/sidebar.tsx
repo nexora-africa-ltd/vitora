@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
+import { VitoraLogo } from '@/components/ui/vitora-logo';
 import {
   Tooltip,
   TooltipContent,
@@ -113,27 +114,23 @@ function SidebarLogo({ collapsed }: { collapsed: boolean }) {
   }
 
   if (collapsed) {
-    // Collapsed: show icon only
-    // Light mode = dark icon, Dark mode = light icon
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={isDark ? '/light-icon.png' : '/dark-icon.png'}
+      <VitoraLogo
+        variant="icon"
+        tone={isDark ? 'light' : 'dark'}
         alt="Vitora"
-        className="w-full object-cover py-1"
+        className="mx-auto w-full max-w-[2.75rem]"
+        priority
       />
     );
   }
 
-  // Expanded: show full logo - fill sidebar width
-  // Light mode = dark logo, Dark mode = light logo
-  // Using native img for better control over square images with internal padding
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={isDark ? '/light-theme-logo.png' : '/dark-theme-logo.png'}
+    <VitoraLogo
+      tone={isDark ? 'light' : 'dark'}
       alt="Vitora HMIS"
-      className="w-full object-cover py-1"
+      className="w-full max-w-[11.5rem]"
+      priority
     />
   );
 }
