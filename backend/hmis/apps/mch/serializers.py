@@ -437,7 +437,10 @@ class CommunityScreeningSerializer(CommunityScreeningListSerializer):
         if value in (None, ""):
             return None
         if isinstance(value, str):
-            return json.loads(value)
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError as exc:
+                raise serializers.ValidationError("Location must be valid JSON.") from exc
         return value
 
     def create(self, validated_data):
