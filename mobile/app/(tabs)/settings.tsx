@@ -71,6 +71,11 @@ export default function SettingsScreen() {
     }
   }
 
+  function handleLockNow() {
+    lockSession();
+    router.replace('/sign-in' as never);
+  }
+
   return (
     <ScreenContainer>
       <SectionCard title="Account" subtitle="The app stores tokens securely and reuses the backend user object returned by JWT login.">
@@ -130,7 +135,7 @@ export default function SettingsScreen() {
           onPress={handleBiometricToggle}
           variant="secondary"
         />
-        <AppButton label="Lock now" onPress={lockSession} variant="ghost" />
+        <AppButton label="Lock now" onPress={handleLockNow} variant="ghost" />
       </SectionCard>
 
       <SectionCard title="Audit log" subtitle="Review your own recent actions from the backend audit trail.">
