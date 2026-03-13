@@ -43,4 +43,56 @@ describe('shouldShowGlobalTibaBotFab', () => {
       'Next billing step',
     ]);
   });
+
+  it('returns pharmacy-focused starter prompts on pharmacy routes', () => {
+    const config = getGlobalTibaBotConfig('/pharmacy/new');
+
+    expect(config?.sheetTitle).toBe('TibaBot Pharmacy Assist');
+    expect(config?.inputPlaceholder).toMatch(/prescriptions, stock, substitutions, or dispensing/i);
+    expect(config?.quickActions.map((action) => action.label)).toEqual([
+      'Dispense safely',
+      'Stock alternative',
+      'Patient counselling',
+      'Partial dispense next steps',
+    ]);
+  });
+
+  it('returns laboratory-focused starter prompts on laboratory routes', () => {
+    const config = getGlobalTibaBotConfig('/laboratory/ABC-123');
+
+    expect(config?.sheetTitle).toBe('TibaBot Laboratory Assist');
+    expect(config?.inputPlaceholder).toMatch(/orders, specimens, critical values, or result review/i);
+    expect(config?.quickActions.map((action) => action.label)).toEqual([
+      'Specimen checklist',
+      'Critical result action',
+      'Review abnormal result',
+      'Verify result safely',
+    ]);
+  });
+
+  it('returns inpatient-focused starter prompts on inpatient routes', () => {
+    const config = getGlobalTibaBotConfig('/inpatient/admissions/new');
+
+    expect(config?.sheetTitle).toBe('TibaBot Inpatient Assist');
+    expect(config?.inputPlaceholder).toMatch(/admissions, bed flow, ward care, or nursing tasks/i);
+    expect(config?.quickActions.map((action) => action.label)).toEqual([
+      'Admission checklist',
+      'Spot deterioration',
+      'Ward handover',
+      'Medication round checks',
+    ]);
+  });
+
+  it('returns mch-focused starter prompts on mch routes', () => {
+    const config = getGlobalTibaBotConfig('/mch/immunization');
+
+    expect(config?.sheetTitle).toBe('TibaBot MCH Assist');
+    expect(config?.inputPlaceholder).toMatch(/anc follow-up, maternal risk, immunization, or outreach/i);
+    expect(config?.quickActions.map((action) => action.label)).toEqual([
+      'ANC risk review',
+      'Next ANC visit plan',
+      'Immunization catch-up',
+      'Mother counselling',
+    ]);
+  });
 });

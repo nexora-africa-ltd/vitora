@@ -106,6 +106,134 @@ const BILLING_GLOBAL_TIBABOT_CONFIG: GlobalTibaBotConfig = {
   sheetTitle: 'TibaBot Billing Assist',
 };
 
+const PHARMACY_GLOBAL_TIBABOT_CONFIG: GlobalTibaBotConfig = {
+  inputPlaceholder: 'Ask about prescriptions, stock, substitutions, or dispensing...',
+  quickActions: [
+    {
+      id: 'dispense-check',
+      label: 'Dispense safely',
+      icon: 'medkit-outline',
+      query: 'Give me a quick dispensing safety checklist for a prescription, including dose verification, route, frequency, allergies, interactions, and patient counselling points.',
+    },
+    {
+      id: 'stock-alt',
+      label: 'Stock alternative',
+      icon: 'swap-horizontal-outline',
+      query: 'If a prescribed medicine is out of stock, what checks should pharmacy staff complete before suggesting a therapeutic or formulary alternative?',
+    },
+    {
+      id: 'counselling',
+      label: 'Patient counselling',
+      icon: 'chatbubble-ellipses-outline',
+      query: 'Draft short patient counselling guidance for a newly dispensed medicine, covering use, adherence, common side effects, and warning signs.',
+    },
+    {
+      id: 'partial-dispense',
+      label: 'Partial dispense next steps',
+      icon: 'list-outline',
+      query: 'What should I document and communicate when only part of a prescription can be dispensed today?',
+    },
+  ],
+  sheetTitle: 'TibaBot Pharmacy Assist',
+};
+
+const LABORATORY_GLOBAL_TIBABOT_CONFIG: GlobalTibaBotConfig = {
+  inputPlaceholder: 'Ask about orders, specimens, critical values, or result review...',
+  quickActions: [
+    {
+      id: 'specimen-check',
+      label: 'Specimen checklist',
+      icon: 'flask-outline',
+      query: 'Give me a specimen collection and handoff checklist for a lab order, including labeling, timing, transport, and rejection risks.',
+    },
+    {
+      id: 'critical-result',
+      label: 'Critical result action',
+      icon: 'alert-circle-outline',
+      query: 'What immediate steps should laboratory staff follow when a result is critical or dangerously abnormal before verification is completed?',
+    },
+    {
+      id: 'result-review',
+      label: 'Review abnormal result',
+      icon: 'analytics-outline',
+      query: 'Help me review an abnormal lab result by outlining common causes, specimen issues to exclude, and what the clinician may need next.',
+    },
+    {
+      id: 'verification-check',
+      label: 'Verify result safely',
+      icon: 'shield-checkmark-outline',
+      query: 'List the final checks to complete before verifying and releasing a laboratory result to the clinical team.',
+    },
+  ],
+  sheetTitle: 'TibaBot Laboratory Assist',
+};
+
+const INPATIENT_GLOBAL_TIBABOT_CONFIG: GlobalTibaBotConfig = {
+  inputPlaceholder: 'Ask about admissions, bed flow, ward care, or nursing tasks...',
+  quickActions: [
+    {
+      id: 'admission-check',
+      label: 'Admission checklist',
+      icon: 'bed-outline',
+      query: 'Give me an inpatient admission checklist covering bed assignment, handover, initial assessment, active orders, and immediate risk checks.',
+    },
+    {
+      id: 'deterioration',
+      label: 'Spot deterioration',
+      icon: 'pulse-outline',
+      query: 'What red flags should ward staff watch for when an inpatient appears to be deteriorating, and what should happen first?',
+    },
+    {
+      id: 'handover',
+      label: 'Ward handover',
+      icon: 'repeat-outline',
+      query: 'Create a concise inpatient handover structure for shift change, including diagnosis, current status, pending tasks, and escalation items.',
+    },
+    {
+      id: 'mar-kardex',
+      label: 'Medication round checks',
+      icon: 'clipboard-outline',
+      query: 'List the essential checks for a safe medication administration round using the MAR or kardex in an inpatient ward.',
+    },
+  ],
+  sheetTitle: 'TibaBot Inpatient Assist',
+};
+
+const MCH_GLOBAL_TIBABOT_CONFIG: GlobalTibaBotConfig = {
+  inputPlaceholder: 'Ask about ANC follow-up, maternal risk, immunization, or outreach...',
+  quickActions: [
+    {
+      id: 'anc-risk',
+      label: 'ANC risk review',
+      icon: 'heart-outline',
+      query: 'Give me a structured antenatal risk review checklist covering danger signs, blood pressure concerns, bleeding, infection, fetal movement, and referral triggers.',
+    },
+    {
+      id: 'visit-plan',
+      label: 'Next ANC visit plan',
+      icon: 'calendar-outline',
+      query: 'What should be reviewed, documented, and scheduled at the next ANC visit for an active pregnancy in routine follow-up?',
+    },
+    {
+      id: 'immunization-catchup',
+      label: 'Immunization catch-up',
+      icon: 'bandage-outline',
+      query: 'Help me reason through a missed maternal or child immunization schedule and the safest catch-up approach to confirm locally.',
+    },
+    {
+      id: 'community-counselling',
+      label: 'Mother counselling',
+      icon: 'people-outline',
+      query: 'Draft short counselling points for a pregnant mother on nutrition, warning signs, birth preparedness, and when to seek urgent care.',
+    },
+  ],
+  sheetTitle: 'TibaBot MCH Assist',
+};
+
+function matchesRoutePrefix(pathname: string, prefixes: string[]) {
+  return prefixes.some((prefix) => new RegExp(`^${prefix}(?:/|$)`).test(pathname));
+}
+
 function isEncounterDetailRoute(pathname: string) {
   return /^\/encounters\/(?!new\/?$)[^/]+\/?$/.test(pathname);
 }
@@ -115,12 +243,28 @@ export function getGlobalTibaBotConfig(pathname: string | null | undefined): Glo
     return null;
   }
 
-  if (/^\/patients(?:\/|$)/.test(pathname)) {
+  if (matchesRoutePrefix(pathname, ['/patients'])) {
     return PATIENT_GLOBAL_TIBABOT_CONFIG;
   }
 
-  if (/^\/billing(?:\/|$)/.test(pathname)) {
+  if (matchesRoutePrefix(pathname, ['/billing'])) {
     return BILLING_GLOBAL_TIBABOT_CONFIG;
+  }
+
+  if (matchesRoutePrefix(pathname, ['/pharmacy'])) {
+    return PHARMACY_GLOBAL_TIBABOT_CONFIG;
+  }
+
+  if (matchesRoutePrefix(pathname, ['/laboratory'])) {
+    return LABORATORY_GLOBAL_TIBABOT_CONFIG;
+  }
+
+  if (matchesRoutePrefix(pathname, ['/inpatient'])) {
+    return INPATIENT_GLOBAL_TIBABOT_CONFIG;
+  }
+
+  if (matchesRoutePrefix(pathname, ['/mch'])) {
+    return MCH_GLOBAL_TIBABOT_CONFIG;
   }
 
   return DEFAULT_GLOBAL_TIBABOT_CONFIG;

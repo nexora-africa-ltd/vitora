@@ -188,6 +188,61 @@ describe('TibaBotAssist', () => {
     queryClient.clear();
   });
 
+  it('shows guided follow-up chips after a response', async () => {
+    mockedAiApi.assist.mockResolvedValue({
+      response: 'Check CBC as initial workup.',
+    });
+
+    const { queryClient } = renderAssist();
+    fireEvent.press(screen.getByLabelText('Ask TibaBot'));
+    expect(await screen.findByText('Suggest differentials')).toBeTruthy();
+    fireEvent.press(screen.getByText('Suggest differentials'));
+
+    expect(await screen.findByText('Suggested follow-up')).toBeTruthy();
+    expect(screen.getByText('Clarify')).toBeTruthy();
+    expect(screen.getByText('Next steps')).toBeTruthy();
+    expect(screen.getByText('Red flags')).toBeTruthy();
+    expect(screen.getByText('Patient summary')).toBeTruthy();
+
+    queryClient.clear();
+  });
+
+  it('sends a guided follow-up as a second single-turn request', async () => {
+    mockedAiApi.assist
+      .mockResolvedValueOnce({
+        response: 'Consider malaria and pneumonia as the leading causes.',
+      })
+      .mockResolvedValueOnce({
+        response: 'Immediate next steps are to assess severity, stabilize oxygenation, and order targeted malaria and pneumonia workup.',
+      });
+
+    const { queryClient } = renderAssist();
+    fireEvent.press(screen.getByLabelText('Ask TibaBot'));
+    expect(await screen.findByText('Suggest differentials')).toBeTruthy();
+    fireEvent.press(screen.getByText('Suggest differentials'));
+    expect(await screen.findByText(/malaria and pneumonia/i)).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Follow up with Next steps'));
+
+    expect(await screen.findByText(/Immediate next steps are to assess severity/i)).toBeTruthy();
+
+    await waitFor(() => {
+      expect(mockedAiApi.assist).toHaveBeenCalledTimes(2);
+      expect(mockedAiApi.assist.mock.calls[1][0]).toEqual(
+        expect.objectContaining({
+          query: expect.stringContaining('Previous question: Suggest differentials'),
+          patient_context: { patient_age: 34, patient_sex: 'F' },
+          encounter_context: { chief_complaint: 'Fever and cough' },
+          verbosity: 'concise',
+        })
+      );
+      expect(mockedAiApi.assist.mock.calls[1][0].query).toContain('Previous answer: Consider malaria and pneumonia as the leading causes.');
+      expect(mockedAiApi.assist.mock.calls[1][0].query).toContain('Follow-up request: Convert the answer into immediate next steps');
+    });
+
+    queryClient.clear();
+  });
+
   it('closes the sheet when close button is pressed', async () => {
     const { queryClient, queryByText } = renderAssist();
     fireEvent.press(screen.getByLabelText('Ask TibaBot'));
