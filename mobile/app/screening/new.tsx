@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, AppPicker, AppTextInput, HeroCard, LoadingState, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { AppButton, AppPicker, AppSearchablePicker, AppTextInput, HeroCard, LoadingState, ScreenContainer, SectionCard } from '@/components/app-ui';
 import { CameraCapture } from '@/components/camera-capture';
 import type { AppTheme } from '@/constants/theme';
 import { screeningApi } from '@/lib/api/screening';
@@ -122,7 +122,7 @@ export default function NewScreeningScreen() {
       />
 
       <SectionCard title="Visit context">
-        <AppPicker label="Patient" selectedValue={patientId} onValueChange={setPatientId} items={patientItems} />
+        <AppSearchablePicker label="Patient" selectedValue={patientId} onValueChange={setPatientId} items={patientItems} placeholder="Search by name or MRN…" />
         <AppPicker label="Screening type" selectedValue={screeningType} onValueChange={(value) => setScreeningType(value)} items={[
           { label: 'Malnutrition screening', value: 'MALNUTRITION' },
           { label: 'TB contact tracing', value: 'TB_CONTACT' },
