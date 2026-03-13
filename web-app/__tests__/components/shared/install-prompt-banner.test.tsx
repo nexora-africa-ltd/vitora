@@ -102,6 +102,40 @@ describe('InstallPromptBanner', () => {
     expect(setItemSpy).toHaveBeenCalledWith(INSTALL_PROMPT_STORAGE_KEY, 'seen');
   });
 
+  it('does not show the fallback hint on Chrome while waiting for beforeinstallprompt', async () => {
+    Object.defineProperty(window.navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+    });
+
+    render(<InstallPromptBanner />);
+
+    await act(async () => {
+      jest.advanceTimersByTime(FALLBACK_HINT_DELAY_MS + 10);
+    });
+
+    expect(screen.queryByText(/browser menu to install/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /got it/i })).not.toBeInTheDocument();
+  });
+
+  it('shows the install prompt on Chrome without first rendering the fallback hint', async () => {
+    Object.defineProperty(window.navigator, 'userAgent', {
+      configurable: true,
+      value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+    });
+
+    render(<InstallPromptBanner />);
+
+    await act(async () => {
+      jest.advanceTimersByTime(FALLBACK_HINT_DELAY_MS + 10);
+    });
+
+    await dispatchInstallPrompt();
+
+    expect(await screen.findByRole('button', { name: /install vitora/i })).toBeInTheDocument();
+    expect(screen.queryByText(/browser menu to install/i)).not.toBeInTheDocument();
+  });
+
   it('persists dismissal of the fallback hint', async () => {
     render(<InstallPromptBanner />);
 
