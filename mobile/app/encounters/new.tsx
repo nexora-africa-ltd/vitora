@@ -260,7 +260,7 @@ export default function NewEncounterScreen() {
       <HeroCard
         eyebrow="New encounter"
         title="Capture bedside consultation"
-        description={`This now creates encounters locally first when needed, then syncs them to /api/encounters/. Date: ${formatDate(form.encounterDate)}`}
+        description={`This creates encounters locally first when needed, then syncs them to the database. Date: ${formatDate(form.encounterDate)}`}
       />
 
       {draftRestoredAt ? (
