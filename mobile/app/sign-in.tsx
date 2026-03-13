@@ -1,22 +1,31 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Redirect, router } from 'expo-router';
 
-import { AppButton, AppTextInput, HeroCard, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { AppButton, AppPicker, AppTextInput, HeroCard, ScreenContainer, SectionCard } from '@/components/app-ui';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useSessionTimeout } from '@/lib/auth/session-timeout';
 import type { AppTheme } from '@/constants/theme';
 import { useAppTheme } from '@/lib/theme/theme-context';
 
 export default function SignInScreen() {
-  const { apiBaseUrl, isAuthenticated, isHydrating, login, updateApiBaseUrl, user } = useAuth();
+  const { apiBaseUrl, apiEnvironmentOptions, isAuthenticated, isHydrating, login, selectedApiEnvironmentId, supportsCustomApiUrl, updateApiBaseUrl, updateApiEnvironment, user } = useAuth();
   const { biometric, clearLock, isLocked, isUnlocking, refreshSecurityState, unlockWithBiometrics } = useSessionTimeout();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [username, setUsername] = useState(user?.username ?? '');
   const [password, setPassword] = useState('');
   const [backendUrl, setBackendUrl] = useState(apiBaseUrl);
+  const [backendEnvironmentId, setBackendEnvironmentId] = useState(selectedApiEnvironmentId ?? apiEnvironmentOptions[0]?.id ?? '');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    setBackendUrl(apiBaseUrl);
+  }, [apiBaseUrl]);
+
+  useEffect(() => {
+    setBackendEnvironmentId(selectedApiEnvironmentId ?? apiEnvironmentOptions[0]?.id ?? '');
+  }, [apiEnvironmentOptions, selectedApiEnvironmentId]);
 
   if (!isHydrating && isAuthenticated && !isLocked) {
     return <Redirect href="/(tabs)" />;
@@ -58,10 +67,26 @@ export default function SignInScreen() {
 
   async function handleSaveConnection() {
     try {
-      await updateApiBaseUrl(backendUrl);
-      Alert.alert('Connection updated', 'The mobile app will use this backend URL for the next request.');
+      const selectedEnvironment = apiEnvironmentOptions.find((item) => item.id === backendEnvironmentId) ?? null;
+      if (!supportsCustomApiUrl && selectedEnvironment) {
+        await updateApiEnvironment(selectedEnvironment.id);
+      } else if (selectedEnvironment && backendUrl === selectedEnvironment.url) {
+        await updateApiEnvironment(selectedEnvironment.id);
+      } else {
+        await updateApiBaseUrl(backendUrl);
+      }
+
+      Alert.alert('Connection updated', supportsCustomApiUrl ? 'The mobile app will use this backend URL for the next request.' : 'The mobile app will use the selected approved backend environment.');
     } catch (error) {
       Alert.alert('Invalid URL', error instanceof Error ? error.message : 'Enter a valid backend URL.');
+    }
+  }
+
+  function handleEnvironmentChange(nextEnvironmentId: string) {
+    setBackendEnvironmentId(nextEnvironmentId);
+    const selectedEnvironment = apiEnvironmentOptions.find((item) => item.id === nextEnvironmentId);
+    if (selectedEnvironment) {
+      setBackendUrl(selectedEnvironment.url);
     }
   }
 
@@ -95,12 +120,30 @@ export default function SignInScreen() {
         />
       </SectionCard>
 
-      <SectionCard title="Backend connection" subtitle="Override the API URL for emulators, simulators, or a physical phone on your LAN.">
-        <AppTextInput label="API base URL" value={backendUrl} onChangeText={setBackendUrl} autoCapitalize="none" keyboardType="url" placeholder="http://127.0.0.1:9088" />
+      <SectionCard title="Backend connection" subtitle={supportsCustomApiUrl ? 'Override the API URL for emulators, simulators, or a physical phone on your LAN.' : 'Production builds only allow approved backend environments.'}>
+        {apiEnvironmentOptions.length > 0 ? (
+          <AppPicker
+            label="Backend environment"
+            selectedValue={backendEnvironmentId}
+            onValueChange={(value) => handleEnvironmentChange(String(value))}
+            items={apiEnvironmentOptions.map((item) => ({ label: item.label, value: item.id }))}
+          />
+        ) : null}
+        {supportsCustomApiUrl ? (
+          <AppTextInput label="API base URL" value={backendUrl} onChangeText={setBackendUrl} autoCapitalize="none" keyboardType="url" placeholder="http://127.0.0.1:9088" />
+        ) : (
+          <View style={styles.productionShell}>
+            <Text style={styles.helperText}>{backendUrl}</Text>
+          </View>
+        )}
         <View style={styles.buttonRow}>
-          <AppButton label="Save connection" onPress={handleSaveConnection} variant="secondary" />
+          <AppButton label={supportsCustomApiUrl ? 'Save connection' : 'Save environment'} onPress={handleSaveConnection} variant="secondary" />
         </View>
-        <Text style={styles.helperText}>Android emulator usually needs http://10.0.2.2:9088. Physical devices need your machine&apos;s LAN IP.</Text>
+        <Text style={styles.helperText}>
+          {supportsCustomApiUrl
+            ? 'Android emulator usually needs http://10.0.2.2:9088. Physical devices need your machine\'s LAN IP.'
+            : 'Only allowlisted backend hosts are available in production so SSL pinning and transport trust stay intact.'}
+        </Text>
       </SectionCard>
     </ScreenContainer>
   );
@@ -118,6 +161,14 @@ function createStyles(theme: AppTheme) {
   },
   buttonRow: {
     flexDirection: 'row',
+  },
+  productionShell: {
+    backgroundColor: theme.colors.elevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   helperText: {
     color: theme.colors.mutedText,

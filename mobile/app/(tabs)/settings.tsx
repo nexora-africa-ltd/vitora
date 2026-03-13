@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -9,10 +9,11 @@ import { getCertificatePinningStatus } from '@/lib/security/certificate-pinning'
 import { useAppTheme } from '@/lib/theme/theme-context';
 
 export default function SettingsScreen() {
-  const { apiBaseUrl, logout, updateApiBaseUrl, user } = useAuth();
+  const { apiBaseUrl, apiEnvironmentOptions, logout, selectedApiEnvironmentId, supportsCustomApiUrl, updateApiBaseUrl, updateApiEnvironment, user } = useAuth();
   const { biometric, lockSession, setBiometricEnabled, setTimeoutMs, timeoutMs } = useSessionTimeout();
   const { isDarkMode, mode, resolvedMode, setMode, theme } = useAppTheme();
   const [backendUrl, setBackendUrl] = useState(apiBaseUrl);
+  const [backendEnvironmentId, setBackendEnvironmentId] = useState(selectedApiEnvironmentId ?? apiEnvironmentOptions[0]?.id ?? '');
   const styles = useMemo(() => createStyles(theme), [theme]);
   const pinningStatus = useMemo(() => getCertificatePinningStatus(), []);
   const appearanceItems = useMemo(
@@ -24,9 +25,33 @@ export default function SettingsScreen() {
     []
   );
 
+  useEffect(() => {
+    setBackendUrl(apiBaseUrl);
+  }, [apiBaseUrl]);
+
+  useEffect(() => {
+    setBackendEnvironmentId(selectedApiEnvironmentId ?? apiEnvironmentOptions[0]?.id ?? '');
+  }, [apiEnvironmentOptions, selectedApiEnvironmentId]);
+
   async function handleSave() {
-    await updateApiBaseUrl(backendUrl);
-    Alert.alert('Saved', 'Future requests will use the updated backend URL.');
+    const selectedEnvironment = apiEnvironmentOptions.find((item) => item.id === backendEnvironmentId) ?? null;
+    if (!supportsCustomApiUrl && selectedEnvironment) {
+      await updateApiEnvironment(selectedEnvironment.id);
+    } else if (selectedEnvironment && backendUrl === selectedEnvironment.url) {
+      await updateApiEnvironment(selectedEnvironment.id);
+    } else {
+      await updateApiBaseUrl(backendUrl);
+    }
+
+    Alert.alert('Saved', supportsCustomApiUrl ? 'Future requests will use the updated backend URL.' : 'Future requests will use the selected approved backend environment.');
+  }
+
+  function handleEnvironmentChange(nextEnvironmentId: string) {
+    setBackendEnvironmentId(nextEnvironmentId);
+    const selectedEnvironment = apiEnvironmentOptions.find((item) => item.id === nextEnvironmentId);
+    if (selectedEnvironment) {
+      setBackendUrl(selectedEnvironment.url);
+    }
   }
 
   async function handleLogout() {
@@ -57,13 +82,29 @@ export default function SettingsScreen() {
         </View>
       </SectionCard>
 
-      <SectionCard title="Backend" subtitle="Use a local URL for emulators or your LAN IP when testing on a physical phone.">
-        <AppTextInput label="API base URL" value={backendUrl} onChangeText={setBackendUrl} autoCapitalize="none" keyboardType="url" />
-        <AppButton label="Save backend URL" onPress={handleSave} />
+      <SectionCard title="Backend" subtitle={supportsCustomApiUrl ? 'Use a local URL for emulators or your LAN IP when testing on a physical phone.' : 'Production builds are restricted to approved backend environments with certificate pinning.'}>
+        {apiEnvironmentOptions.length > 0 ? (
+          <AppPicker
+            label="Backend environment"
+            selectedValue={backendEnvironmentId}
+            onValueChange={(value) => handleEnvironmentChange(String(value))}
+            items={apiEnvironmentOptions.map((item) => ({ label: item.label, value: item.id }))}
+          />
+        ) : null}
+        {supportsCustomApiUrl ? (
+          <AppTextInput label="API base URL" value={backendUrl} onChangeText={setBackendUrl} autoCapitalize="none" keyboardType="url" />
+        ) : (
+          <View style={styles.backendReadOnlyShell}>
+            <Text style={styles.helperText}>{backendUrl}</Text>
+          </View>
+        )}
+        <AppButton label={supportsCustomApiUrl ? 'Save backend URL' : 'Save backend environment'} onPress={handleSave} />
         <Text style={styles.helperText}>
-          {Platform.OS === 'android'
+          {supportsCustomApiUrl
+            ? Platform.OS === 'android'
             ? 'Android emulator usually needs http://10.0.2.2:9088.'
-            : 'Simulator and web default to http://127.0.0.1:9088.'}
+            : 'Simulator and web default to http://127.0.0.1:9088.'
+            : 'Only approved backend hosts can be selected in production builds.'}
         </Text>
       </SectionCard>
 
@@ -120,6 +161,14 @@ function createStyles(theme: ReturnType<typeof useAppTheme>['theme']) {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  backendReadOnlyShell: {
+    backgroundColor: theme.colors.elevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   helperText: {
     color: theme.colors.mutedText,

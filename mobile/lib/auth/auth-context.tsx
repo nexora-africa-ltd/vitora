@@ -3,17 +3,21 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { loginWithPassword } from '@/lib/api/auth';
 import { subscribeToAuthInvalidation } from '@/lib/auth/session-events';
 import { clearStoredAuthSession, getStoredTokens, getStoredUser, persistAuthSession } from '@/lib/auth/token-storage';
-import { getApiBaseUrl, initializeApiBaseUrl, setApiBaseUrl } from '@/lib/config/api-config';
+import { getApiBaseUrl, getApprovedApiEnvironments, getSelectedApiEnvironmentIdSync, initializeApiBaseUrl, setApiBaseUrl, setApiEnvironment, supportsCustomApiUrl, type ApiEnvironmentOption } from '@/lib/config/api-config';
 import { clearOfflineDatabase } from '@/lib/db';
 import { queryClient } from '@/lib/query/client';
 import type { AuthTokens, AuthUser } from '@/lib/types/auth';
 
 type AuthContextValue = {
   apiBaseUrl: string;
+  apiEnvironmentOptions: ApiEnvironmentOption[];
   isAuthenticated: boolean;
   isHydrating: boolean;
+  selectedApiEnvironmentId: string | null;
+  supportsCustomApiUrl: boolean;
   tokens: AuthTokens | null;
   user: AuthUser | null;
+  updateApiEnvironment: (environmentId: string) => Promise<void>;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string; mfaRequired?: boolean }>;
   logout: () => Promise<void>;
   updateApiBaseUrl: (value: string) => Promise<void>;
@@ -25,7 +29,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [tokens, setTokens] = useState<AuthTokens | null>(null);
   const [apiBaseUrl, setApiBaseUrlState] = useState('');
+  const [selectedApiEnvironmentId, setSelectedApiEnvironmentId] = useState<string | null>(null);
   const [isHydrating, setIsHydrating] = useState(true);
+  const apiEnvironmentOptions = useMemo(() => getApprovedApiEnvironments(), []);
+  const allowsCustomApiUrl = useMemo(() => supportsCustomApiUrl(), []);
 
   useEffect(() => {
     let active = true;
@@ -42,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       setApiBaseUrlState(baseUrl);
+      setSelectedApiEnvironmentId(getSelectedApiEnvironmentIdSync());
       setTokens(storedTokens);
       setUser(storedTokens && storedUser ? storedUser : null);
       setIsHydrating(false);
@@ -92,6 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setTokens(nextTokens);
       setUser(response.user);
       setApiBaseUrlState(await getApiBaseUrl());
+      setSelectedApiEnvironmentId(getSelectedApiEnvironmentIdSync());
       return { success: true };
     } catch (error) {
       return {
@@ -108,21 +117,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function updateApiBaseUrl(value: string) {
     const nextUrl = await setApiBaseUrl(value);
     setApiBaseUrlState(nextUrl);
+    setSelectedApiEnvironmentId(getSelectedApiEnvironmentIdSync());
+    queryClient.clear();
+  }
+
+  async function updateApiEnvironment(environmentId: string) {
+    const nextUrl = await setApiEnvironment(environmentId);
+    setApiBaseUrlState(nextUrl);
+    setSelectedApiEnvironmentId(getSelectedApiEnvironmentIdSync());
     queryClient.clear();
   }
 
   const contextValue = useMemo<AuthContextValue>(
     () => ({
       apiBaseUrl,
+      apiEnvironmentOptions,
       isAuthenticated: Boolean(tokens && user),
       isHydrating,
+      selectedApiEnvironmentId,
+      supportsCustomApiUrl: allowsCustomApiUrl,
       tokens,
       user,
+      updateApiEnvironment,
       login,
       logout,
       updateApiBaseUrl,
     }),
-    [apiBaseUrl, isHydrating, tokens, user]
+    [allowsCustomApiUrl, apiBaseUrl, apiEnvironmentOptions, isHydrating, selectedApiEnvironmentId, tokens, user]
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
