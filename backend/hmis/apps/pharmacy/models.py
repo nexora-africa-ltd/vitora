@@ -132,6 +132,30 @@ class Drug(models.Model):
     is_essential = models.BooleanField(default=False)
     nhif_code = models.CharField(max_length=20, blank=True)
 
+    # DHA HPT Registry
+    hpt_code = models.CharField(
+        max_length=50,
+        blank=True,
+        db_index=True,
+        help_text="KNHTS concept ID from DHA HPT Registry (e.g., 10-03913-01)",
+    )
+    hpt_product_id = models.IntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="DHA HPT product ID for API lookups",
+    )
+    hpt_last_synced = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When HPT data was last fetched from DHA",
+    )
+    ppb_code = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Kenya Pharmacy and Poisons Board registration code",
+    )
+
     # Inventory hints
     default_reorder_level = models.PositiveIntegerField(default=50)
     default_reorder_quantity = models.PositiveIntegerField(default=100)
@@ -151,6 +175,7 @@ class Drug(models.Model):
         indexes = [
             models.Index(fields=["generic_name"]),
             models.Index(fields=["keml_code"]),
+            models.Index(fields=["hpt_code"]),
         ]
 
     def __str__(self):

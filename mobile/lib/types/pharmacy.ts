@@ -16,6 +16,14 @@ export interface DrugProduct {
   is_essential: boolean;
   keml_code?: string | null;
   nhif_code?: string | null;
+  /** KNHTS concept ID from DHA HPT Registry, e.g. "10-03913-01" */
+  hpt_code?: string | null;
+  /** DHA HPT product ID for API lookups */
+  hpt_product_id?: number | null;
+  /** When HPT data was last synced from DHA */
+  hpt_last_synced?: string | null;
+  /** Kenya Pharmacy and Poisons Board registration code */
+  ppb_code?: string | null;
   requires_prescription: boolean;
   is_controlled: boolean;
   is_narcotic: boolean;

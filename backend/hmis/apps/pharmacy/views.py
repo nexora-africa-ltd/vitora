@@ -85,6 +85,91 @@ class DrugViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(Q(categories__icontains=f'"{category}"'))
         return queryset
 
+    @action(detail=False, methods=["get"], url_path="hpt-search")
+    def hpt_search(self, request):
+        """
+        Search DHA HPT Registry for drug products.
+
+        Delegates to TerminologyService.search_drug_products().
+        GET /api/pharmacy/drugs/hpt-search/?q=Metformin
+        """
+        from hmis.apps.billing.services.terminology import TerminologyError, TerminologyService
+
+        query = request.query_params.get("q", "").strip()
+        if not query:
+            return Response(
+                {"error": "q parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        product_id = request.query_params.get("product_id")
+        generic_concept_id = request.query_params.get("generic_concept_id")
+
+        try:
+            service = TerminologyService()
+            results = service.search_drug_products(
+                query,
+                product_id=int(product_id) if product_id else None,
+                generic_concept_id=int(generic_concept_id) if generic_concept_id else None,
+            )
+            return Response({
+                "count": len(results),
+                "results": [
+                    {
+                        "product_id": r.product_id,
+                        "brand_name": r.brand_name,
+                        "generic_name": r.generic_name,
+                        "brand_display_name": r.brand_display_name,
+                        "generic_display_name": r.generic_display_name,
+                        "generic_concept_id": r.generic_concept_id,
+                        "strength_amount": r.strength_amount,
+                        "strength_unit": r.strength_unit,
+                        "route_description": r.route_description,
+                        "form_description": r.form_description,
+                        "ppb_registration_code": r.ppb_registration_code,
+                        "knhts_concept_id": r.knhts_concept_id,
+                    }
+                    for r in results
+                ],
+            })
+        except TerminologyError as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+    @action(detail=True, methods=["post"], url_path="map-hpt")
+    def map_hpt(self, request, pk=None):
+        """
+        Map a specific drug to an HPT code.
+
+        POST /api/pharmacy/drugs/{id}/map-hpt/
+        Body: { "hpt_code": "10-03913-01", "hpt_product_id": 4855, "ppb_code": "77" }
+        """
+        from django.utils import timezone
+
+        drug = self.get_object()
+        hpt_code = request.data.get("hpt_code", "").strip()
+        hpt_product_id = request.data.get("hpt_product_id")
+        ppb_code = request.data.get("ppb_code", "").strip()
+
+        if not hpt_code:
+            return Response(
+                {"error": "hpt_code is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        drug.hpt_code = hpt_code
+        if hpt_product_id is not None:
+            drug.hpt_product_id = int(hpt_product_id)
+        if ppb_code:
+            drug.ppb_code = ppb_code
+        drug.hpt_last_synced = timezone.now()
+        drug.save(update_fields=["hpt_code", "hpt_product_id", "ppb_code", "hpt_last_synced"])
+
+        serializer = self.get_serializer(drug)
+        return Response(serializer.data)
+
 
 class StockBatchViewSet(viewsets.ModelViewSet):
     """

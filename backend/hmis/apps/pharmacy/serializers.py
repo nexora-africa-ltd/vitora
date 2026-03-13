@@ -87,6 +87,10 @@ class DrugSerializer(serializers.ModelSerializer):
             "is_essential",
             "keml_code",
             "nhif_code",
+            "hpt_code",
+            "hpt_product_id",
+            "hpt_last_synced",
+            "ppb_code",
             "requires_prescription",
             "is_controlled",
             "is_narcotic",
@@ -505,6 +509,18 @@ class PrescriptionCreateSerializer(serializers.ModelSerializer):
             # Also check by drug name in case allergy was recorded by name only
             if not matching_allergies:
                 matching_allergies = Allergy.check_drug_name_allergy(patient.id, drug.generic_name)
+
+            # HPT-enhanced check: if drug has an hpt_code, check against
+            # allergies with ATC-coded substances for deterministic matching
+            if not matching_allergies and getattr(drug, "hpt_code", ""):
+                matching_allergies = list(
+                    Allergy.objects.filter(
+                        patient_id=patient.id,
+                        status="active",
+                        substance__icontains=drug.generic_name,
+                        substance_code__isnull=False,
+                    ).exclude(substance_code="")
+                )
 
             for allergy in matching_allergies:
                 warning = {
