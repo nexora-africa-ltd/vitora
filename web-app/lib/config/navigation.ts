@@ -60,6 +60,7 @@ import {
   ListOrdered,
   ArrowLeftRight,
   TestTubes,
+  Network,
 } from 'lucide-react';
 
 import {
@@ -328,6 +329,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Roles', href: '/admin/roles', icon: ShieldUser, actionKey: 'admin.manage_roles' },
       { label: 'Staff', href: '/admin/staff', icon: UserCog, actionKey: 'admin.manage_staff' },
       { label: 'Audit Logs', href: '/admin/audit-logs', icon: ScrollText, actionKey: 'admin.view_audit_logs' },
+      { label: 'HL7 Messages', href: '/admin/hl7-messages', icon: Network, actionKey: 'admin.view_hl7_messages' },
       { label: 'Reports', href: '/reports', icon: FileText, actionKey: 'admin.view_reports' },
     ],
   },

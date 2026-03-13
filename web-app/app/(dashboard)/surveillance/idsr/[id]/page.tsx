@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Download } from 'lucide-react';
 import { surveillanceApi } from '@/lib/api/surveillance';
 import { formatDate } from '@/lib/utils/format';
 import { IDSRStatusBadge } from '@/components/surveillance/idsr-status-badge';
@@ -20,6 +21,8 @@ export default function IDSRReportDetailPage() {
   const reportId = Number(params?.id);
   const queryClient = useQueryClient();
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [exportingAdx, setExportingAdx] = useState(false);
+  const [exportingSdmx, setExportingSdmx] = useState(false);
 
   const { data: report, isLoading, error } = useQuery({
     queryKey: ['idsr-report', reportId],
@@ -62,6 +65,29 @@ export default function IDSRReportDetailPage() {
       });
     },
   });
+
+  const handleExport = async (format: 'adx' | 'sdmx') => {
+    const setLoading = format === 'adx' ? setExportingAdx : setExportingSdmx;
+    setLoading(true);
+    try {
+      const blob = format === 'adx'
+        ? await surveillanceApi.exportAdx(reportId)
+        : await surveillanceApi.exportSdmx(reportId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `idsr-report-${reportId}.${format}.xml`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: `${format.toUpperCase()} export downloaded` });
+    } catch {
+      toast({ title: `${format.toUpperCase()} export failed`, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const summaryStats = useMemo(() => {
     if (!report) return [];
@@ -186,6 +212,14 @@ export default function IDSRReportDetailPage() {
       </Card>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+        <Button variant="outline" size="sm" onClick={() => handleExport('adx')} disabled={exportingAdx}>
+          <Download className="h-4 w-4 mr-2" />
+          {exportingAdx ? 'Exporting...' : 'Export ADX'}
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => handleExport('sdmx')} disabled={exportingSdmx}>
+          <Download className="h-4 w-4 mr-2" />
+          {exportingSdmx ? 'Exporting...' : 'Export SDMX'}
+        </Button>
         <Button variant="outline" onClick={() => setPreviewOpen(true)}>
           Preview DHIS2 Payload
         </Button>

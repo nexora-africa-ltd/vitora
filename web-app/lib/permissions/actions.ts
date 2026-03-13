@@ -162,6 +162,7 @@ export const ACTION_PERMISSIONS = {
   'admin.manage_staff': ['ADMIN', 'HR_OFFICER'],
   'admin.manage_roles': ['ADMIN'],
   'admin.view_audit_logs': ['ADMIN', 'COMPLIANCE_OFFICER'],
+  'admin.view_hl7_messages': ['ADMIN'],
   'admin.manage_facilities': ['ADMIN'],
   'admin.view_reports': ['ADMIN', 'HR_OFFICER', 'COMPLIANCE_OFFICER'],
 } as const;

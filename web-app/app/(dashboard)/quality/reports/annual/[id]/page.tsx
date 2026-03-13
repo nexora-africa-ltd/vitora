@@ -1,19 +1,23 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { qualityApi } from '@/lib/api/quality';
 import { formatDateTime } from '@/lib/utils/format';
+import { toast } from '@/lib/hooks/use-toast';
 import {
   Users,
   TrendingUp,
   Baby,
   Heart,
   DollarSign,
+  Download,
 } from 'lucide-react';
 
 function StatBlock({ label, value }: { label: string; value: string | number }) {
@@ -28,12 +32,33 @@ function StatBlock({ label, value }: { label: string; value: string | number }) 
 export default function AnnualReportDetailPage() {
   const params = useParams();
   const reportId = Number(params?.id);
+  const [exportingSdmx, setExportingSdmx] = useState(false);
 
   const { data: report, isLoading, error } = useQuery({
     queryKey: ['annual-report', reportId],
     queryFn: () => qualityApi.getAnnualReport(reportId),
     enabled: Number.isFinite(reportId),
   });
+
+  const handleExportSdmx = async () => {
+    setExportingSdmx(true);
+    try {
+      const blob = await qualityApi.exportAnnualReportSdmx(reportId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `annual-report-${reportId}.sdmx.xml`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: 'SDMX export downloaded' });
+    } catch {
+      toast({ title: 'SDMX export failed', variant: 'destructive' });
+    } finally {
+      setExportingSdmx(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -223,6 +248,14 @@ export default function AnnualReportDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Actions */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+        <Button variant="outline" size="sm" onClick={handleExportSdmx} disabled={exportingSdmx}>
+          <Download className="h-4 w-4 mr-2" />
+          {exportingSdmx ? 'Exporting...' : 'Export SDMX'}
+        </Button>
+      </div>
     </div>
   );
 }

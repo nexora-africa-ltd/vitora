@@ -531,6 +531,8 @@ Gaps are categorized into four tiers:
   - `AllergyViewSet` action: `hpt_substance_search`
   - Enhanced CDS engine with ATC/HPT code matching
   - Management command: `map_drugs_to_hpt`
+  - Frontend: HPT Registry card on drug detail page with search/map dialog
+  - Frontend: HPT substance search API client for allergy recording
   - `docs/hpt-registry-integration.md`
 
 ### Sprint 3.B — Advanced Interoperability (Weeks 9-16)
@@ -552,6 +554,7 @@ Gaps are categorized into four tiers:
   - Patient model `cr_synced_at` field + migration
   - HIE configuration settings (`HIE_AUTO_CR_LOOKUP`, `HIE_AUTO_CR_REGISTER`, `HIE_AUTO_SHR_PUSH`, `HIE_ADX_ENABLED`)
   - ADX export endpoint: `POST /api/surveillance/idsr-reports/{id}/export_adx/`
+  - Frontend: ADX/SDMX export buttons on IDSR report detail page
   - Frontend types/schemas updated (web-app + mobile)
   - `docs/active-hie-integration.md`
 
@@ -572,6 +575,9 @@ Gaps are categorized into four tiers:
   - `HL7QueueService` — automatic retry with exponential backoff via MLLP
   - Celery task: `process_hl7_outbound_queue` (30s beat schedule)
   - Admin interface with message log, filters, retry action
+  - Frontend: HL7 message log page (`/admin/hl7-messages`) with stats, filters, detail dialog, retry
+  - Frontend: HL7 API client with Zod-validated schemas
+  - Sidebar navigation entry under Admin section
   - `docs/hl7v2-full-implementation.md`
 
 #### 29. SDMX Implementation `P3` ✅ COMPLETE
@@ -586,6 +592,7 @@ Gaps are categorized into four tiers:
   - `hmis/apps/quality/services/sdmx_service.py` — SDMX-ML XML export service
   - Export endpoints: `POST .../export_sdmx/` on QuarterlyReport, AnnualReport, IDSRWeeklyReport
   - SDMX 2.1 Generic Data format with proper namespaces and DSD references
+  - Frontend: SDMX export buttons on quarterly and annual report detail pages
   - `docs/sdmx-implementation.md`
 
 #### 30. SNOMED CT Active Usage `P3` ✅ COMPLETE
@@ -604,6 +611,8 @@ Gaps are categorized into four tiers:
   - SNOMED search endpoint: `GET /api/encounters/snomed/search/`
   - Updated FHIR `_to_fhir_condition()` with SNOMED CT + ICD-11 coding
   - Management command: `seed_snomed_common`
+  - Frontend: SNOMED CT search tab in `DiagnosisCodeInput` component
+  - Frontend: SNOMED API client method with Zod-validated schema
   - Frontend types/schemas updated (web-app + mobile)
   - `docs/snomed-ct-integration.md`
 

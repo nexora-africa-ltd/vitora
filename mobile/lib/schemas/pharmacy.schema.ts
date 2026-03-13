@@ -146,6 +146,26 @@ export const DispensationSchema = z.object({
   created_at: z.string(),
 });
 
+export const HptSearchResultSchema = z.object({
+  product_id: z.number(),
+  brand_name: z.string(),
+  generic_name: z.string(),
+  brand_display_name: z.string(),
+  generic_display_name: z.string(),
+  generic_concept_id: z.number(),
+  strength_amount: z.string(),
+  strength_unit: z.string(),
+  route_description: z.string(),
+  form_description: z.string(),
+  ppb_registration_code: z.string(),
+  knhts_concept_id: z.string(),
+});
+
+export const HptSearchResponseSchema = z.object({
+  count: z.number(),
+  results: z.array(HptSearchResultSchema),
+});
+
 export const StockBatchArraySchema = z.array(StockBatchSchema);
 export const DispensationArraySchema = z.array(DispensationSchema);
 export const PaginatedDrugProductSchema = paginated(DrugProductSchema);

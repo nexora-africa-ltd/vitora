@@ -151,6 +151,24 @@ export const DrugInteractionCheckSchema = z.object({
 });
 
 // =============================================================================
+// HPT SUBSTANCE SEARCH SCHEMA
+// =============================================================================
+
+export const HptSubstanceResultSchema = z.object({
+  component_id: z.number(),
+  name: z.string(),
+  atc_code: z.string(),
+  atc_codes: z.array(z.string()),
+  substance_code: z.string(),
+  substance_code_system: z.string(),
+});
+
+export const HptSubstanceSearchResponseSchema = z.object({
+  count: z.number(),
+  results: z.array(HptSubstanceResultSchema),
+});
+
+// =============================================================================
 // TYPE EXPORTS
 // =============================================================================
 

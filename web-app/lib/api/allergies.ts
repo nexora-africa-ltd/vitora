@@ -13,6 +13,7 @@ import {
   AllergyListSchema,
   AllergyLookupResultSchema,
   DrugInteractionCheckSchema,
+  HptSubstanceSearchResponseSchema,
 } from '@/lib/schemas/allergy.schema';
 import type {
   Allergy,
@@ -22,6 +23,7 @@ import type {
   AllergyUpdatePayload,
   DrugInteractionCheck,
   SubstanceType,
+  HptSubstanceResult,
 } from '@/lib/types/allergy';
 
 export const allergiesApi = {
@@ -141,6 +143,23 @@ export const allergiesApi = {
     });
     return parseResponse(DrugInteractionCheckSchema, response.data, {
       context: 'allergiesApi.checkInteractions',
+    });
+  },
+
+  // ============ HPT Substance Search ============
+
+  /**
+   * Search HPT active components for allergy substance recording.
+   * Uses DHA HPT Registry to find active pharmaceutical ingredients by ATC code.
+   *
+   * @param query - Search query (minimum 2 characters)
+   */
+  async hptSubstanceSearch(query: string): Promise<{ count: number; results: HptSubstanceResult[] }> {
+    const response = await apiClient.get('/api/patients/allergies/hpt-substance-search/', {
+      params: { q: query },
+    });
+    return parseResponse(HptSubstanceSearchResponseSchema, response.data, {
+      context: 'allergiesApi.hptSubstanceSearch',
     });
   },
 };

@@ -1,6 +1,8 @@
 import { apiClient } from './client';
 import {
   DispensationArraySchema,
+  DrugProductSchema,
+  HptSearchResponseSchema,
   PaginatedDrugProductSchema,
   PaginatedDispensationSchema,
   PaginatedPrescriptionSchema,
@@ -8,7 +10,7 @@ import {
   StockBatchArraySchema,
 } from '@/lib/schemas/pharmacy.schema';
 import { parseResponse } from '@/lib/schemas/validation';
-import type { Dispensation, DispensePayload, DrugProduct, PaginatedDispensationResponse, PaginatedPrescriptionResponse, Prescription, PrescriptionCreateData, PrescriptionListParams, StockBatch, StockLevel } from '@/lib/types/pharmacy';
+import type { Dispensation, DispensePayload, DrugProduct, HptMapData, HptSearchResult, PaginatedDispensationResponse, PaginatedPrescriptionResponse, Prescription, PrescriptionCreateData, PrescriptionListParams, StockBatch, StockLevel } from '@/lib/types/pharmacy';
 
 function toStockLevel(drugId: number, batches: StockBatch[]): StockLevel {
   const availableQuantity = batches.reduce((total, batch) => total + batch.quantity_available, 0);
@@ -100,5 +102,21 @@ export const pharmacyApi = {
   async getStockLevel(drugId: number): Promise<StockLevel> {
     const batches = await this.getStockBatchesByDrug(drugId);
     return toStockLevel(drugId, batches);
+  },
+
+  async hptSearch(query: string): Promise<{ count: number; results: HptSearchResult[] }> {
+    const response = await apiClient.get('/api/pharmacy/drugs/hpt-search/', {
+      params: { q: query },
+    });
+    return parseResponse(HptSearchResponseSchema, response.data, {
+      context: 'pharmacy.hptSearch',
+    });
+  },
+
+  async mapHpt(drugId: number, data: HptMapData): Promise<DrugProduct> {
+    const response = await apiClient.post(`/api/pharmacy/drugs/${drugId}/map-hpt/`, data);
+    return parseResponse(DrugProductSchema, response.data, {
+      context: 'pharmacy.mapHpt',
+    });
   },
 };

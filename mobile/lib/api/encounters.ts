@@ -7,6 +7,7 @@ import {
   PaginatedDiagnosisSchema,
   PaginatedEncounterSchema,
   PaginatedICD10CodeSchema,
+  SNOMEDSearchResponseSchema,
   TreatmentPlanSchema,
 } from '@/lib/schemas/encounter.schema';
 import { parseResponse } from '@/lib/schemas/validation';
@@ -22,6 +23,7 @@ import type {
   EncounterTransitionResponse,
   EncounterUpdateData,
   ICD10Code,
+  SNOMEDSearchResult,
   TreatmentPlan,
   TreatmentPlanInput,
 } from '@/lib/types/encounter';
@@ -126,5 +128,16 @@ export const encountersApi = {
   async updateTreatmentPlan(encounterId: number, data: TreatmentPlanInput): Promise<TreatmentPlan> {
     const response = await apiClient.patch(`/api/encounters/${encounterId}/treatment-plan/`, data);
     return parseResponse(TreatmentPlanSchema, response.data, { context: 'encounters.updateTreatmentPlan' });
+  },
+
+  async searchSNOMED(query: string): Promise<{ count: number; results: SNOMEDSearchResult[] }> {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return { count: 0, results: [] };
+    }
+    const response = await apiClient.get('/api/encounters/snomed/search/', {
+      params: { q: trimmed },
+    });
+    return parseResponse(SNOMEDSearchResponseSchema, response.data, { context: 'encounters.searchSNOMED' });
   },
 };

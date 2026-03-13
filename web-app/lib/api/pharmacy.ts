@@ -24,6 +24,8 @@ import {
   StockSummaryItem,
   ExpiryReportItem,
   DispensingReportSummary,
+  HptSearchResult,
+  HptMapData,
 } from '@/lib/types/pharmacy';
 import { PaginatedResponse } from '@/lib/types';
 import { parseResponse } from '@/lib/schemas/validation';
@@ -41,6 +43,7 @@ import {
   DispensingReportSummarySchema,
   StockMovementReportSchema,
   AlertSettingsSchema,
+  HptSearchResponseSchema,
   PaginatedDrugSchema,
   PaginatedDrugCategorySchema,
   PaginatedStockBatchSchema,
@@ -469,5 +472,25 @@ export const pharmacyApi = {
   }): Promise<any> {
     const response = await apiClient.patch('/api/pharmacy/alert-settings/', data);
     return parseResponse(AlertSettingsSchema, response.data, { context: 'pharmacyApi.updateAlertSettings' });
+  },
+
+  // ============ HPT Registry ============
+
+  /**
+   * Search the DHA HPT Registry for drug products.
+   */
+  async hptSearch(query: string): Promise<{ count: number; results: HptSearchResult[] }> {
+    const response = await apiClient.get('/api/pharmacy/drugs/hpt-search/', {
+      params: { q: query },
+    });
+    return parseResponse(HptSearchResponseSchema, response.data, { context: 'pharmacyApi.hptSearch' });
+  },
+
+  /**
+   * Map a local drug to an HPT registry entry.
+   */
+  async mapHpt(drugId: number, data: HptMapData): Promise<Drug> {
+    const response = await apiClient.post(`/api/pharmacy/drugs/${drugId}/map-hpt/`, data);
+    return parseResponse(DrugSchema, response.data, { context: 'pharmacyApi.mapHpt' });
   },
 };

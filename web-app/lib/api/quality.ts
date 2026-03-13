@@ -311,6 +311,36 @@ export const qualityApi = {
       context: 'qualityApi.getDashboard',
     });
   },
+
+  // -------------------------------------------------------------------------
+  // SDMX Export
+  // -------------------------------------------------------------------------
+
+  /**
+   * Export a quarterly report in SDMX-ML 2.1 XML format.
+   * Triggers a file download.
+   */
+  exportQuarterlyReportSdmx: async (reportId: number): Promise<Blob> => {
+    const response = await apiClient.post(
+      `${BASE}/quarterly-reports/${reportId}/export-sdmx/`,
+      {},
+      { responseType: 'blob' }
+    );
+    return response.data as Blob;
+  },
+
+  /**
+   * Export an annual report in SDMX-ML 2.1 XML format.
+   * Triggers a file download.
+   */
+  exportAnnualReportSdmx: async (reportId: number): Promise<Blob> => {
+    const response = await apiClient.post(
+      `${BASE}/annual-reports/${reportId}/export-sdmx/`,
+      {},
+      { responseType: 'blob' }
+    );
+    return response.data as Blob;
+  },
 };
 
 export default qualityApi;
