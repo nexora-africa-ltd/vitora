@@ -106,10 +106,19 @@ export const screeningApi = {
   async syncPendingScreenings(): Promise<{ attempted: number; uploaded: number; pending: number; message: string }> {
     const before = await listLocalScreenings();
     const attempted = before.records.filter((record) => record.sync_status === 'pending_upload').length;
-    await runOfflineSync();
+    const syncSummary = await runOfflineSync();
     const after = await listLocalScreenings();
     const pending = after.records.filter((record) => record.sync_status === 'pending_upload').length;
     const uploaded = Math.max(attempted - pending, 0);
+
+    if (syncSummary.status === 'error' && syncSummary.error) {
+      return {
+        attempted,
+        uploaded,
+        pending,
+        message: syncSummary.error,
+      };
+    }
 
     return {
       attempted,
