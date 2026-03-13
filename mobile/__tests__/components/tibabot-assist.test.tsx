@@ -75,6 +75,27 @@ describe('TibaBotAssist', () => {
     queryClient.clear();
   });
 
+  it('renders custom route-aware starter prompts when provided', async () => {
+    const { queryClient } = renderAssist({
+      inputPlaceholder: 'Ask about claims, invoices, balances, or payments...',
+      quickActions: [
+        {
+          id: 'sha-precheck',
+          label: 'SHA claim pre-check',
+          icon: 'shield-outline',
+          query: 'Give me a short checklist for validating an SHA claim before submission.',
+        },
+      ],
+      sheetTitle: 'TibaBot Billing Assist',
+    });
+
+    fireEvent.press(screen.getByLabelText('Ask TibaBot'));
+    expect(await screen.findByText('TibaBot Billing Assist')).toBeTruthy();
+    expect(screen.getByText('SHA claim pre-check')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Ask about claims, invoices, balances, or payments...')).toBeTruthy();
+    queryClient.clear();
+  });
+
   it('sends a quick action query and displays the response', async () => {
     mockedAiApi.assist.mockResolvedValue({
       response: 'Consider malaria, pneumonia, and typhoid fever as top differentials.',

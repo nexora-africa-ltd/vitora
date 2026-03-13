@@ -11,7 +11,7 @@ import 'react-native-reanimated';
 import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { ScreenContainer, SectionCard } from '@/components/app-ui';
 import { TibaBotAssist } from '@/components/tibabot-assist';
-import { shouldShowGlobalTibaBotFab } from '@/lib/ai/tibabot-navigation';
+import { getGlobalTibaBotConfig } from '@/lib/ai/tibabot-navigation';
 import { AuthProvider, useAuth } from '@/lib/auth/auth-context';
 import { SessionTimeoutProvider, useSessionTimeout } from '@/lib/auth/session-timeout';
 import { initializeSentry } from '@/lib/monitoring/sentry';
@@ -83,6 +83,7 @@ function NavigationStack() {
   const { isAuthenticated, isHydrating } = useAuth();
   const { isLocked, recordActivity } = useSessionTimeout();
   const pathname = usePathname();
+  const globalTibaBotConfig = useMemo(() => getGlobalTibaBotConfig(pathname), [pathname]);
   const [securityError, setSecurityError] = useState<string | null>(null);
   const [isSplashHidden, setIsSplashHidden] = useState(false);
 
@@ -168,8 +169,12 @@ function NavigationStack() {
         <Stack.Screen name="settings/audit-log" options={{ presentation: 'card' }} />
         <Stack.Screen name="sync/conflicts" options={{ presentation: 'card' }} />
       </Stack>
-      {isAuthenticated && !isHydrating && !isLocked && shouldShowGlobalTibaBotFab(pathname) ? (
-        <TibaBotAssist />
+      {isAuthenticated && !isHydrating && !isLocked && globalTibaBotConfig ? (
+        <TibaBotAssist
+          inputPlaceholder={globalTibaBotConfig.inputPlaceholder}
+          quickActions={globalTibaBotConfig.quickActions}
+          sheetTitle={globalTibaBotConfig.sheetTitle}
+        />
       ) : null}
     </View>
   );
