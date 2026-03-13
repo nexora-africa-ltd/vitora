@@ -21,6 +21,45 @@ jest.mock('expo-local-authentication', () => ({
   supportedAuthenticationTypesAsync: jest.fn(async () => []),
 }));
 
+jest.mock('expo-location', () => ({
+  Accuracy: {
+    Balanced: 3,
+  },
+  PermissionStatus: {
+    GRANTED: 'granted',
+  },
+  getCurrentPositionAsync: jest.fn(async () => ({
+    coords: {
+      latitude: -1.2921,
+      longitude: 36.8219,
+      accuracy: 8,
+    },
+  })),
+  requestForegroundPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+}));
+
+jest.mock('expo-camera', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+
+  const CameraView = React.forwardRef((_: unknown, ref: React.Ref<{ takePictureAsync: () => Promise<{ uri: string; width: number; height: number }> }>) => {
+    React.useImperativeHandle(ref, () => ({
+      takePictureAsync: jest.fn(async () => ({
+        uri: 'file:///mock-photo.jpg',
+        width: 800,
+        height: 600,
+      })),
+    }));
+
+    return React.createElement(View, { testID: 'camera-view' });
+  });
+
+  return {
+    CameraView,
+    useCameraPermissions: jest.fn(() => [{ granted: true }, jest.fn(async () => ({ granted: true }))]),
+  };
+});
+
 jest.mock('react-native-ssl-public-key-pinning', () => ({
   addSslPinningErrorListener: jest.fn(() => ({ remove: jest.fn() })),
   initializeSslPinning: jest.fn(async () => undefined),

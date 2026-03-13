@@ -5,6 +5,7 @@ from django.contrib import admin
 from hmis.apps.mch.models import (
     AEFI,
     ANCVisit,
+    CommunityScreening,
     Delivery,
     GrowthMeasurement,
     LabourPartograph,
@@ -31,6 +32,21 @@ class ANCVisitAdmin(admin.ModelAdmin):
     list_display = ("registration", "visit_number", "visit_date", "gestation_weeks")
     list_filter = ("visit_number",)
     search_fields = ("registration__mch_number",)
+
+
+@admin.register(CommunityScreening)
+class CommunityScreeningAdmin(admin.ModelAdmin):
+    list_display = ("screening_type", "patient", "screening_date", "chu_name", "territory", "captured_by")
+    list_filter = ("screening_type", "screening_date")
+    search_fields = (
+        "patient__first_name",
+        "patient__last_name",
+        "patient__mrn",
+        "patient_name_snapshot",
+        "patient_mrn_snapshot",
+        "chu_name",
+        "territory",
+    )
 
 
 @admin.register(Delivery)

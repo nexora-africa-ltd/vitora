@@ -4,6 +4,7 @@ from django.db import models
 from django_filters import rest_framework as django_filters
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -13,6 +14,7 @@ from hmis.apps.core.permissions import get_client_ip
 from hmis.apps.mch.models import (
     AEFI,
     ANCVisit,
+    CommunityScreening,
     Delivery,
     GrowthMeasurement,
     LabourPartograph,
@@ -31,6 +33,8 @@ from hmis.apps.mch.serializers import (
     AEFISerializer,
     ANCVisitListSerializer,
     ANCVisitSerializer,
+    CommunityScreeningListSerializer,
+    CommunityScreeningSerializer,
     DeliveryListSerializer,
     DeliverySerializer,
     GrowthChartDataSerializer,
@@ -93,6 +97,22 @@ class ANCVisitFilter(django_filters.FilterSet):
     class Meta:
         model = ANCVisit
         fields = ["registration", "visit_number"]
+
+
+class CommunityScreeningFilter(django_filters.FilterSet):
+    """Filter for community screening records with delta sync support."""
+
+    patient = django_filters.NumberFilter()
+    screening_type = django_filters.CharFilter(lookup_expr="iexact")
+    modified_after = django_filters.IsoDateTimeFilter(
+        field_name="updated_at",
+        lookup_expr="gte",
+        help_text="Return screenings modified at or after this ISO 8601 timestamp.",
+    )
+
+    class Meta:
+        model = CommunityScreening
+        fields = ["patient", "screening_type", "modified_after"]
 
 
 class DeliveryFilter(django_filters.FilterSet):
@@ -601,6 +621,64 @@ class ANCVisitViewSet(viewsets.ModelViewSet):
             resource_type="ANCVisit",
             resource_id=instance.id,
             details={"registration_id": instance.registration_id, "visit_number": instance.visit_number},
+            ip_address=get_client_ip(self.request),
+        )
+
+
+class CommunityScreeningViewSet(viewsets.ModelViewSet):
+    """ViewSet for CHW community screening records."""
+
+    queryset = CommunityScreening.objects.select_related("patient", "captured_by")
+    permission_classes = [IsAuthenticated]
+    filter_backends = [
+        django_filters.DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter,
+    ]
+    filterset_class = CommunityScreeningFilter
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    search_fields = [
+        "patient__first_name",
+        "patient__last_name",
+        "patient__mrn",
+        "patient_name_snapshot",
+        "patient_mrn_snapshot",
+        "chu_name",
+        "territory",
+    ]
+    ordering_fields = ["screening_date", "created_at", "updated_at"]
+    ordering = ["-screening_date", "-created_at"]
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return CommunityScreeningListSerializer
+        return CommunityScreeningSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save(captured_by=self.request.user)
+        AuditLog.log(
+            action="community_screening_create",
+            user=self.request.user,
+            resource_type="CommunityScreening",
+            resource_id=instance.id,
+            patient_id=instance.patient_id,
+            details={
+                "screening_type": instance.screening_type,
+                "chu_name": instance.chu_name,
+                "territory": instance.territory,
+            },
+            ip_address=get_client_ip(self.request),
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        AuditLog.log(
+            action="community_screening_update",
+            user=self.request.user,
+            resource_type="CommunityScreening",
+            resource_id=instance.id,
+            patient_id=instance.patient_id,
+            details={"screening_type": instance.screening_type},
             ip_address=get_client_ip(self.request),
         )
 

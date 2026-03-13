@@ -1,7 +1,6 @@
-"""
-Serializers for the MCH (Maternal & Child Health) module.
-"""
+"""Serializers for the MCH (Maternal & Child Health) module."""
 
+import json
 from datetime import date as date_module
 
 from rest_framework import serializers
@@ -11,6 +10,7 @@ from hmis.apps.inpatient.models import Admission, Discharge
 from hmis.apps.mch.models import (
     AEFI,
     ANCVisit,
+    CommunityScreening,
     Delivery,
     GrowthMeasurement,
     LabourPartograph,
@@ -342,6 +342,115 @@ class ANCVisitSerializer(serializers.ModelSerializer):
 
     def get_alerts(self, obj):
         return obj.get_alerts()
+
+
+class CommunityScreeningPhotoSerializer(serializers.Serializer):
+    uri = serializers.CharField()
+    width = serializers.IntegerField(allow_null=True)
+    height = serializers.IntegerField(allow_null=True)
+    captured_at = serializers.DateTimeField()
+
+
+class CommunityScreeningListSerializer(serializers.ModelSerializer):
+    patient_name = serializers.SerializerMethodField()
+    patient_mrn = serializers.SerializerMethodField()
+    photo = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CommunityScreening
+        fields = [
+            "id",
+            "patient",
+            "patient_name",
+            "patient_mrn",
+            "screening_type",
+            "screening_date",
+            "chu_name",
+            "territory",
+            "result_summary",
+            "notes",
+            "muac_mm",
+            "edema_present",
+            "fever_present",
+            "cough_duration_days",
+            "household_contact_name",
+            "malaria_rdt_result",
+            "malaria_treatment_referred",
+            "tb_referral_made",
+            "location",
+            "photo",
+            "captured_by",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_patient_name(self, obj):
+        return obj.patient_name
+
+    def get_patient_mrn(self, obj):
+        return obj.patient_mrn
+
+    def get_photo(self, obj):
+        if not obj.photo:
+            return None
+
+        request = self.context.get("request")
+        uri = obj.photo.url
+        if request is not None:
+            uri = request.build_absolute_uri(uri)
+
+        return {
+            "uri": uri,
+            "width": None,
+            "height": None,
+            "captured_at": obj.updated_at,
+        }
+
+
+class CommunityScreeningSerializer(CommunityScreeningListSerializer):
+    photo_upload = serializers.FileField(required=False, allow_null=True, write_only=True)
+    location = serializers.JSONField(required=False, allow_null=True)
+
+    class Meta(CommunityScreeningListSerializer.Meta):
+        fields = CommunityScreeningListSerializer.Meta.fields + ["photo_upload"]
+        read_only_fields = [
+            "result_summary",
+            "captured_by",
+            "created_at",
+            "updated_at",
+        ]
+
+    def to_internal_value(self, data):
+        if hasattr(data, "copy"):
+            mutable = data.copy()
+        else:
+            mutable = dict(data)
+
+        if "patient_name" in mutable and "patient_name_snapshot" not in mutable:
+            mutable["patient_name_snapshot"] = mutable.get("patient_name")
+        if "patient_mrn" in mutable and "patient_mrn_snapshot" not in mutable:
+            mutable["patient_mrn_snapshot"] = mutable.get("patient_mrn")
+
+        return super().to_internal_value(mutable)
+
+    def validate_location(self, value):
+        if value in (None, ""):
+            return None
+        if isinstance(value, str):
+            return json.loads(value)
+        return value
+
+    def create(self, validated_data):
+        photo_upload = validated_data.pop("photo_upload", None)
+        if photo_upload is not None:
+            validated_data["photo"] = photo_upload
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        photo_upload = validated_data.pop("photo_upload", None)
+        if photo_upload is not None:
+            validated_data["photo"] = photo_upload
+        return super().update(instance, validated_data)
 
 
 class ANCVisitListSerializer(serializers.ModelSerializer):

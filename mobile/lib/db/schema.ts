@@ -1,10 +1,12 @@
 import type { County, SubCounty, Ward } from '@/lib/types/location';
-import type { Encounter } from '@/lib/types/encounter';
+import type { Encounter, EncounterCreateData } from '@/lib/types/encounter';
 import type { Admission, InpatientWard } from '@/lib/types/inpatient';
 import type { LabOrder } from '@/lib/types/laboratory';
+import type { ANCVisit, ANCVisitCreateData, ImmunizationRecord, MCHRegistration } from '@/lib/types/mch';
 import type { Patient, PatientCreateData } from '@/lib/types/patient';
 import type { Prescription } from '@/lib/types/pharmacy';
-import type { EncounterCreateData } from '@/lib/types/encounter';
+import type { CommunityScreening } from '@/lib/types/screening';
+import type { CommunityScreeningCreateData } from '@/lib/types/screening';
 
 export const OFFLINE_DB_STORAGE_KEY = 'vitora.mobile.offline-db.v1';
 
@@ -12,11 +14,11 @@ export const OFFLINE_DB_STORAGE_KEY = 'vitora.mobile.offline-db.v1';
  * Current schema version. Increment when the OfflineDatabase shape changes.
  * Each bump must have a corresponding entry in SCHEMA_MIGRATIONS.
  */
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 export type LocalSyncState = 'synced' | 'pending_create' | 'sync_error' | 'conflict';
 export type SyncQueueStatus = 'pending' | 'syncing' | 'conflict' | 'failed';
-export type SyncQueueEntity = 'patient' | 'encounter' | 'lab_order' | 'prescription';
+export type SyncQueueEntity = 'patient' | 'encounter' | 'lab_order' | 'prescription' | 'anc_visit' | 'screening';
 
 export type LocalRecordMetadata = {
   local_only: boolean;
@@ -32,6 +34,12 @@ export type LocalEncounterRecord = Encounter & LocalRecordMetadata;
 export type LocalLabOrderRecord = LabOrder & LocalRecordMetadata;
 
 export type LocalPrescriptionRecord = Prescription & LocalRecordMetadata;
+
+export type LocalMCHRegistrationRecord = MCHRegistration;
+
+export type LocalANCVisitRecord = ANCVisit & LocalRecordMetadata;
+
+export type LocalImmunizationRecord = ImmunizationRecord & LocalRecordMetadata;
 
 export type LocalDiagnosisRecord = {
   id: number;
@@ -49,7 +57,7 @@ export type SyncQueueEntry = {
   last_error: string | null;
   local_id: number;
   operation: 'create';
-  payload: PatientCreateData | EncounterCreateData;
+  payload: PatientCreateData | EncounterCreateData | ANCVisitCreateData | CommunityScreeningCreateData;
   status: SyncQueueStatus;
 };
 
@@ -71,12 +79,16 @@ export type OfflineDatabase = {
   counties: County[];
   diagnoses: LocalDiagnosisRecord[];
   encounters: LocalEncounterRecord[];
+  ancVisits: LocalANCVisitRecord[];
   inpatientWards: InpatientWard[];
+  immunizationRecords: LocalImmunizationRecord[];
   labOrders: LocalLabOrderRecord[];
+  mchRegistrations: LocalMCHRegistrationRecord[];
   meta: OfflineDatabaseMeta;
   patients: LocalPatientRecord[];
   prescriptions: LocalPrescriptionRecord[];
   queue: SyncQueueEntry[];
+  screenings: CommunityScreening[];
   subCounties: SubCounty[];
   wards: Ward[];
 };
@@ -84,11 +96,14 @@ export type OfflineDatabase = {
 export function createEmptyOfflineDatabase(): OfflineDatabase {
   return {
     admissions: [],
+    ancVisits: [],
     counties: [],
     diagnoses: [],
     encounters: [],
+    immunizationRecords: [],
     inpatientWards: [],
     labOrders: [],
+    mchRegistrations: [],
     meta: {
       id_remaps: {
         encounters: {},
@@ -104,6 +119,7 @@ export function createEmptyOfflineDatabase(): OfflineDatabase {
     patients: [],
     prescriptions: [],
     queue: [],
+    screenings: [],
     subCounties: [],
     wards: [],
   };
@@ -151,6 +167,26 @@ export const SCHEMA_MIGRATIONS: Record<number, (db: Record<string, unknown>) => 
 
     if (!Array.isArray(db.admissions)) {
       db.admissions = [];
+    }
+  },
+  5: (db) => {
+    const meta = (db.meta ?? {}) as Record<string, unknown>;
+    meta.schema_version = 5;
+
+    if (!Array.isArray(db.mchRegistrations)) {
+      db.mchRegistrations = [];
+    }
+
+    if (!Array.isArray(db.ancVisits)) {
+      db.ancVisits = [];
+    }
+
+    if (!Array.isArray(db.immunizationRecords)) {
+      db.immunizationRecords = [];
+    }
+
+    if (!Array.isArray(db.screenings)) {
+      db.screenings = [];
     }
   },
 };
