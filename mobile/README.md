@@ -129,7 +129,7 @@ That command updates `expo.extra.eas.projectId` to match the current slug and ac
 For this repo, the intended mobile identity is:
 
 - `expo.name`: `Vitora Mobile`
-- `expo.slug`: `vitora-mobile`
+- `expo.slug`: `mobile`
 
 If `eas build` ever complains about `hmis-android` or another old slug, relink with:
 

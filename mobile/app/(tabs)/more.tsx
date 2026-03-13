@@ -34,8 +34,8 @@ export default function MoreScreen() {
 
       <SectionCard title="Clinical support" subtitle="Open focused workspaces that adapt to clinicians, laboratory staff, and pharmacy staff.">
         <View style={styles.launcherStack}>
-          <AppButton label="Billing summaries" onPress={() => router.push('/billing' as never)} variant="secondary" />
-          <Text style={styles.helperText}>Review invoice balances and payment status without leaving the bedside workflow.</Text>
+          <AppButton label="Billing viewer" onPress={() => router.push('/billing' as never)} variant="secondary" />
+          <Text style={styles.helperText}>Open the mobile billing viewer to review invoice balances, line items, and synced payment status.</Text>
           <AppButton label="MCH outreach" onPress={() => router.push('/mch' as never)} variant="primary" />
           <Text style={styles.helperText}>Follow antenatal visits, high-risk pregnancies, and maternal immunization schedules from mobile.</Text>
           <AppButton label={laboratoryLauncher.label} onPress={() => router.push('/laboratory' as never)} variant={laboratoryLauncher.variant} />

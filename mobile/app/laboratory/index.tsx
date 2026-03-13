@@ -96,7 +96,7 @@ export default function LaboratoryScreen() {
 
         {activeView === 'orders' ? (
           orders.length === 0 ? (
-            <EmptyState title="No lab orders yet" description="Create the first mobile lab order to start the Phase 2 workflow." />
+            <EmptyState title="No lab orders yet" description="Create the first mobile lab order to start tracking specimen and result work from this device." />
           ) : (
             orders.map((order) => (
               <Pressable
