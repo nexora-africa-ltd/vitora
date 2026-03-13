@@ -126,6 +126,8 @@ export const DiagnosisSchema = z.object({
   icd10_description: z.string().optional().nullable(),
   icd11_code: z.string().optional().nullable(),
   icd11_display: z.string().optional().nullable(),
+  snomed_code: z.string().optional().nullable(),
+  snomed_display: z.string().optional().nullable(),
   diagnosis_type: z.enum(['PRIMARY', 'SECONDARY', 'DIFFERENTIAL', 'WORKING']),
   free_text_diagnosis: z.string().optional().nullable(),
   notes: z.string(),
@@ -187,6 +189,17 @@ export const TreatmentPlanSchema = z.object({
   approved_by_name: z.string().optional().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
+});
+
+export const SNOMEDSearchResultSchema = z.object({
+  concept_id: z.string(),
+  display: z.string(),
+  semantic_tag: z.string(),
+});
+
+export const SNOMEDSearchResponseSchema = z.object({
+  count: z.number(),
+  results: z.array(SNOMEDSearchResultSchema),
 });
 
 export const PaginatedEncounterSchema = z.object({

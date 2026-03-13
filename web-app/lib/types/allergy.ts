@@ -221,3 +221,20 @@ export const VERIFICATION_STATUS_OPTIONS: Array<{ value: VerificationStatus; lab
   { value: 'refuted', label: 'Refuted' },
   { value: 'entered_in_error', label: 'Entered in Error' },
 ];
+
+// =============================================================================
+// HPT SUBSTANCE SEARCH RESULT
+// =============================================================================
+
+/**
+ * HPT active component result from DHA Health Products and Technologies Registry.
+ * Returned by GET /api/patients/allergies/hpt-substance-search/?q={query}
+ */
+export interface HptSubstanceResult {
+  component_id: number;
+  name: string;
+  atc_code: string;
+  atc_codes: string[];
+  substance_code: string;
+  substance_code_system: string;
+}

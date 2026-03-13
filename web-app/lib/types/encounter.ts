@@ -533,3 +533,17 @@ export interface AllClaimedEncountersParams {
 }
 
 export type AllClaimedEncountersResponse = MyClaimedEncountersResponse;
+
+// =============================================================================
+// SNOMED CT Search Result
+// =============================================================================
+
+/**
+ * SNOMED CT concept result from Snowstorm API or local cache.
+ * Returned by GET /api/encounters/snomed/search/?q={query}
+ */
+export interface SNOMEDSearchResult {
+  concept_id: string;
+  display: string;
+  semantic_tag: string;
+}

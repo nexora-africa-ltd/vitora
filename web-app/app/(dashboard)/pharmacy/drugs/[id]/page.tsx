@@ -7,8 +7,8 @@
 
 import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Edit, Package, Loader2, AlertTriangle, XCircle, Shield, Star } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Edit, Package, Loader2, AlertTriangle, XCircle, Shield, Star, Search, Link2, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,8 +25,16 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { pharmacyApi } from '@/lib/api/pharmacy';
-import { DrugCategory, DrugForm, DrugSchedule } from '@/lib/types/pharmacy';
+import { useToast } from '@/lib/hooks/use-toast';
+import { DrugCategory, DrugForm, DrugSchedule, HptSearchResult } from '@/lib/types/pharmacy';
 
 const CATEGORY_LABELS: Record<DrugCategory, string> = {
   ANALGESIC: 'Analgesic',
@@ -75,6 +83,13 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
   const drugId = parseInt(resolvedParams.id);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [hptDialogOpen, setHptDialogOpen] = useState(false);
+  const [hptQuery, setHptQuery] = useState('');
+  const [hptResults, setHptResults] = useState<HptSearchResult[]>([]);
+  const [hptSearching, setHptSearching] = useState(false);
+  const [hptMapping, setHptMapping] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: drug, isLoading, error } = useQuery({
     queryKey: ['drug', drugId],
@@ -103,6 +118,44 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
         'Failed to delete drug. This drug may have existing stock.'
       );
       setIsDeleting(false);
+    }
+  };
+
+  const handleHptSearch = async (query: string) => {
+    setHptQuery(query);
+    if (query.length < 2) {
+      setHptResults([]);
+      return;
+    }
+    setHptSearching(true);
+    try {
+      const data = await pharmacyApi.hptSearch(query);
+      setHptResults(data.results);
+    } catch {
+      toast({ title: 'HPT search failed', variant: 'destructive' });
+    } finally {
+      setHptSearching(false);
+    }
+  };
+
+  const handleHptMap = async (result: HptSearchResult) => {
+    if (!drug) return;
+    setHptMapping(true);
+    try {
+      await pharmacyApi.mapHpt(drug.id, {
+        hpt_code: result.knhts_concept_id,
+        hpt_product_id: result.product_id,
+        ppb_code: result.ppb_registration_code || undefined,
+      });
+      toast({ title: 'Drug linked to HPT Registry' });
+      await queryClient.invalidateQueries({ queryKey: ['drug', drugId] });
+      setHptDialogOpen(false);
+      setHptQuery('');
+      setHptResults([]);
+    } catch {
+      toast({ title: 'Failed to map drug to HPT', variant: 'destructive' });
+    } finally {
+      setHptMapping(false);
     }
   };
 
@@ -384,7 +437,113 @@ export default function DrugDetailPage({ params }: { params: Promise<{ id: strin
             )}
           </CardContent>
         </Card>
+
+        {/* HPT Registry */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ExternalLink className="h-5 w-5" />
+              HPT Registry
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {drug.hpt_code ? (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">KNHTS Code</p>
+                    <p className="font-mono font-medium">{drug.hpt_code}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">HPT Product ID</p>
+                    <p className="font-medium">{drug.hpt_product_id}</p>
+                  </div>
+                  {drug.ppb_code && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">PPB Code</p>
+                      <p className="font-medium">{drug.ppb_code}</p>
+                    </div>
+                  )}
+                  {drug.hpt_last_synced && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Last Synced</p>
+                      <p className="text-sm">
+                        {new Date(drug.hpt_last_synced).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setHptDialogOpen(true)}>
+                  <Link2 className="h-4 w-4 mr-2" />
+                  Re-link HPT
+                </Button>
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-sm text-muted-foreground mb-3">
+                  This drug is not linked to the DHA HPT Registry.
+                </p>
+                <Button variant="outline" onClick={() => setHptDialogOpen(true)}>
+                  <Link2 className="h-4 w-4 mr-2" />
+                  Link to HPT Registry
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* HPT Search Dialog */}
+      <Dialog open={hptDialogOpen} onOpenChange={setHptDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Link to HPT Registry</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                autoComplete="off"
+                className="pl-9"
+                placeholder="Search HPT products…"
+                value={hptQuery}
+                onChange={(e) => handleHptSearch(e.target.value)}
+              />
+            </div>
+            {hptSearching && (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+            {hptResults.length > 0 && (
+              <div className="space-y-2 max-h-60 overflow-auto">
+                {hptResults.map((result) => (
+                  <button
+                    key={result.product_id}
+                    className="w-full text-left p-3 rounded-md border hover:bg-accent transition-colors"
+                    disabled={hptMapping}
+                    onClick={() => handleHptMap(result)}
+                  >
+                    <p className="font-medium text-sm">{result.generic_display_name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {result.form_description} • {result.route_description} • {result.strength_amount}{result.strength_unit}
+                    </p>
+                    <p className="text-xs font-mono text-muted-foreground mt-1">
+                      KNHTS: {result.knhts_concept_id}
+                      {result.ppb_registration_code && ` • PPB: ${result.ppb_registration_code}`}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+            {!hptSearching && hptQuery.length >= 2 && hptResults.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No HPT products found for &quot;{hptQuery}&quot;
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

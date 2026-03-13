@@ -242,6 +242,13 @@ export interface TreatmentPlanInput {
   status?: TreatmentPlan['status'];
 }
 
+/** SNOMED CT search result from Snowstorm API */
+export interface SNOMEDSearchResult {
+  concept_id: string;
+  display: string;
+  semantic_tag: string;
+}
+
 export interface EncounterListParams {
   page?: number;
   page_size?: number;

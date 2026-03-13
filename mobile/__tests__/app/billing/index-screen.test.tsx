@@ -82,7 +82,7 @@ describe('BillingScreen', () => {
   it('renders invoice summaries and opens invoice detail', async () => {
     renderScreen();
 
-    expect(await screen.findByText('Invoice summaries')).toBeTruthy();
+    expect(await screen.findByText('Invoices')).toBeTruthy();
     expect(screen.getByText('INV-20260313-0008')).toBeTruthy();
     expect(screen.getByText(/Jane Doe/)).toBeTruthy();
 

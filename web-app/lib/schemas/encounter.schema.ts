@@ -522,3 +522,18 @@ export const TemplateSnapshotArraySchema = z.array(TemplateSnapshotSchema);
 export const DiagnosisArrayResponseSchema = z.object({
   results: z.array(DiagnosisSchema),
 });
+
+// =============================================================================
+// SNOMED CT SEARCH SCHEMA
+// =============================================================================
+
+export const SNOMEDSearchResultSchema = z.object({
+  concept_id: z.string(),
+  display: z.string(),
+  semantic_tag: z.string(),
+});
+
+export const SNOMEDSearchResponseSchema = z.object({
+  count: z.number(),
+  results: z.array(SNOMEDSearchResultSchema),
+});

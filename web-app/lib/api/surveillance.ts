@@ -427,4 +427,32 @@ export const surveillanceApi = {
       context: 'surveillanceApi.getIHRDashboard',
     });
   },
+
+  // ============ Interoperability Exports ============
+
+  /**
+   * Export an IDSR weekly report in ADX (Aggregate Data Exchange) XML format.
+   * Triggers a file download.
+   */
+  async exportAdx(reportId: number): Promise<Blob> {
+    const response = await apiClient.post(
+      `/api/surveillance/idsr-reports/${reportId}/export_adx/`,
+      {},
+      { responseType: 'blob' }
+    );
+    return response.data as Blob;
+  },
+
+  /**
+   * Export an IDSR weekly report in SDMX-ML 2.1 XML format.
+   * Triggers a file download.
+   */
+  async exportSdmx(reportId: number): Promise<Blob> {
+    const response = await apiClient.post(
+      `/api/surveillance/idsr-reports/${reportId}/export_sdmx/`,
+      {},
+      { responseType: 'blob' }
+    );
+    return response.data as Blob;
+  },
 };

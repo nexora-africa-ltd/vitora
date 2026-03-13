@@ -574,3 +574,34 @@ export interface DispensingReportRecord {
 export interface DispensingReportSummary {
   results: DispensingReportRecord[];
 }
+
+// ============ HPT Registry Types ============
+
+/**
+ * HPT search result from DHA Health Products and Technologies Registry.
+ * Returned by GET /api/pharmacy/drugs/hpt-search/?q={query}
+ */
+export interface HptSearchResult {
+  product_id: number;
+  brand_name: string;
+  generic_name: string;
+  brand_display_name: string;
+  generic_display_name: string;
+  generic_concept_id: number;
+  strength_amount: string;
+  strength_unit: string;
+  route_description: string;
+  form_description: string;
+  ppb_registration_code: string;
+  knhts_concept_id: string;
+}
+
+/**
+ * Data to map a local drug to an HPT registry entry.
+ * Sent to POST /api/pharmacy/drugs/{id}/map-hpt/
+ */
+export interface HptMapData {
+  hpt_code: string;
+  hpt_product_id: number;
+  ppb_code?: string;
+}

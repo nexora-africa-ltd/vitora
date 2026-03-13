@@ -187,6 +187,32 @@ export interface PrescriptionListParams {
   ordering?: string;
 }
 
+/** HPT Registry search result from DHA API */
+export interface HptSearchResult {
+  product_id: number;
+  brand_name: string;
+  generic_name: string;
+  brand_display_name: string;
+  generic_display_name: string;
+  generic_concept_id: number;
+  strength_amount: string;
+  strength_unit: string;
+  route_description: string;
+  form_description: string;
+  ppb_registration_code: string;
+  knhts_concept_id: string;
+}
+
+/**
+ * Data to map a local drug to an HPT registry entry.
+ * Sent to POST /api/pharmacy/drugs/{id}/map-hpt/
+ */
+export interface HptMapData {
+  hpt_code: string;
+  hpt_product_id: number;
+  ppb_code?: string;
+}
+
 export type PaginatedDrugResponse = PaginatedResponse<DrugProduct>;
 export type PaginatedPrescriptionResponse = PaginatedResponse<Prescription>;
 export type PaginatedDispensationResponse = PaginatedResponse<Dispensation>;

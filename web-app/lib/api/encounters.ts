@@ -19,6 +19,7 @@ import {
   TemplateSyncResponseSchema,
   TemplateSnapshotSchema,
   TemplateSnapshotArraySchema,
+  SNOMEDSearchResponseSchema,
 } from '@/lib/schemas/encounter.schema';
 import { ClinicalSnapshotSchema } from '@/lib/schemas/checkin.schema';
 import {
@@ -35,6 +36,7 @@ import {
   EncounterTransitionRequest,
   EncounterTransitionResponse,
   RelatedEncounter,
+  SNOMEDSearchResult,
 } from '@/lib/types/encounter';
 import type { ClinicalSnapshot } from '@/lib/types/checkin';
 import { PaginatedResponse } from '@/lib/types';
@@ -413,6 +415,20 @@ export const encountersApi = {
       }
     );
     return parseResponse(TemplateSnapshotSchema, response.data, { context: 'encountersApi.createTemplateSnapshot' });
+  },
+
+  // ============ SNOMED CT Search ============
+
+  /**
+   * Search SNOMED CT concepts via Snowstorm API or local cache.
+   *
+   * @param query - Search query (minimum 2 characters)
+   */
+  async searchSNOMED(query: string): Promise<{ count: number; results: SNOMEDSearchResult[] }> {
+    const response = await apiClient.get('/api/encounters/snomed/search/', {
+      params: { q: query },
+    });
+    return parseResponse(SNOMEDSearchResponseSchema, response.data, { context: 'encountersApi.searchSNOMED' });
   },
 };
 
