@@ -119,7 +119,7 @@ export default function SignInScreen() {
         description={
           isLocked
             ? 'Unlock your existing session with biometrics or re-enter your credentials.'
-            : 'Use the same Django backend as the web app, but tuned for bedside registration, search, and encounter review.'
+            : 'Use the same database and backend as the Vitora Web, but tuned for bedside registration, search, and encounter review.'
         }
       >
         <Text style={styles.heroCaption}>Backend: {apiBaseUrl || 'Not configured'}</Text>

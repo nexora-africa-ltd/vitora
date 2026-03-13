@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
@@ -26,12 +26,56 @@ import type { AIClinicalAssistRequest, AIPatientContext, AIEncounterContext } fr
 
 type QuickAction = TibaBotQuickAction;
 
+interface FollowUpAction {
+  id: string;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  instruction: string;
+}
+
 const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
   { id: 'differentials', label: 'Suggest differentials', icon: 'medkit-outline', query: 'Based on the clinical findings, suggest the top differential diagnoses with reasoning.' },
   { id: 'workup', label: 'Recommend workup', icon: 'flask-outline', query: 'Recommend the appropriate diagnostic workup and investigations for this presentation.' },
   { id: 'management', label: 'Management plan', icon: 'clipboard-outline', query: 'Suggest an evidence-based management plan for this patient presentation.' },
   { id: 'red-flags', label: 'Check red flags', icon: 'alert-circle-outline', query: 'Identify any red flags or warning signs that require immediate attention in this case.' },
 ];
+
+const FOLLOW_UP_ACTIONS: FollowUpAction[] = [
+  {
+    id: 'clarify',
+    label: 'Clarify',
+    icon: 'help-circle-outline',
+    instruction: 'Clarify the answer in simpler clinical terms and explain the main reasoning step by step.',
+  },
+  {
+    id: 'next-steps',
+    label: 'Next steps',
+    icon: 'list-outline',
+    instruction: 'Convert the answer into immediate next steps, including what should be done first and what can wait.',
+  },
+  {
+    id: 'red-flags',
+    label: 'Red flags',
+    icon: 'alert-circle-outline',
+    instruction: 'Focus on warning signs, escalation triggers, and when urgent review or referral is needed.',
+  },
+  {
+    id: 'patient-summary',
+    label: 'Patient summary',
+    icon: 'chatbubble-ellipses-outline',
+    instruction: 'Rewrite the answer as a short explanation a clinician can use with a patient or caregiver in plain language.',
+  },
+];
+
+function buildFollowUpQuery(previousQuery: string, previousResponse: string, instruction: string) {
+  return [
+    'Use the previous mobile TibaBot exchange as context for a single follow-up answer.',
+    `Previous question: ${previousQuery}`,
+    `Previous answer: ${previousResponse}`,
+    `Follow-up request: ${instruction}`,
+    'Respond concisely and do not ask a new question back unless absolutely necessary.',
+  ].join('\n');
+}
 
 // ──────────────────── Props ────────────────────
 
@@ -55,7 +99,8 @@ export function TibaBotAssist({
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [visible, setVisible] = useState(false);
-  const [query, setQuery] = useState('');
+  const [inputValue, setInputValue] = useState('');
+  const [submittedQuery, setSubmittedQuery] = useState('');
   const [response, setResponse] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
@@ -94,20 +139,21 @@ export function TibaBotAssist({
       aiApi.sendFeedback({
         message_id: `mobile-assist-${Date.now()}`,
         feedback: direction,
-        user_query: query,
+        user_query: submittedQuery,
         bot_response: response ?? undefined,
         service_type: 'clinical_assist',
       }),
   });
 
   const handleSubmit = useCallback(
-    (queryText: string) => {
-      if (!queryText.trim()) return;
+    ({ displayText, requestText }: { displayText?: string; requestText: string }) => {
+      if (!requestText.trim()) return;
       setResponse(null);
       setError(null);
-      setQuery(queryText);
+      setSubmittedQuery((displayText || requestText).trim());
+      setInputValue('');
       assistMutation.mutate({
-        query: queryText.trim(),
+        query: requestText.trim(),
         patient_context: patientContext,
         encounter_context: encounterContext,
         verbosity: 'concise',
@@ -118,9 +164,23 @@ export function TibaBotAssist({
 
   const handleQuickAction = useCallback(
     (action: QuickAction) => {
-      handleSubmit(action.query);
+      handleSubmit({ displayText: action.label, requestText: action.query });
     },
     [handleSubmit],
+  );
+
+  const handleFollowUp = useCallback(
+    (action: FollowUpAction) => {
+      if (!submittedQuery || !response) {
+        return;
+      }
+
+      handleSubmit({
+        displayText: `Follow-up: ${action.label}`,
+        requestText: buildFollowUpQuery(submittedQuery, response, action.instruction),
+      });
+    },
+    [handleSubmit, response, submittedQuery],
   );
 
   // Pulse animation for FAB
@@ -140,7 +200,8 @@ export function TibaBotAssist({
     setVisible(false);
     setResponse(null);
     setError(null);
-    setQuery('');
+    setInputValue('');
+    setSubmittedQuery('');
   }, []);
 
   // ── Render ──
@@ -158,7 +219,7 @@ export function TibaBotAssist({
           accessibilityLabel="Ask TibaBot"
           accessibilityRole="button"
         >
-          <Ionicons name="sparkles" size={24} color="#FFFFFF" />
+          <MaterialCommunityIcons name="robot-outline" size={24} color="#FFFFFF" />
         </Pressable>
         {!isAvailable && statusQuery.isFetched ? (
           <View style={[styles.statusDot, { backgroundColor: theme.colors.danger }]} />
@@ -240,7 +301,7 @@ export function TibaBotAssist({
                   <View style={[styles.queryEcho, { backgroundColor: `${theme.colors.primary}12` }]}>
                     <Text style={[styles.queryLabel, { color: theme.colors.primary }]}>You asked:</Text>
                     <Text style={[styles.queryText, { color: theme.colors.text }]} numberOfLines={3}>
-                      {query}
+                      {submittedQuery}
                     </Text>
                   </View>
 
@@ -250,6 +311,24 @@ export function TibaBotAssist({
                       <Text style={[styles.responseLabel, { color: theme.colors.primary }]}>TibaBot</Text>
                     </View>
                     <Text style={[styles.responseText, { color: theme.colors.text }]}>{response}</Text>
+                  </View>
+
+                  <View style={styles.followUpSection}>
+                    <Text style={[styles.followUpTitle, { color: theme.colors.mutedText }]}>Suggested follow-up</Text>
+                    <View style={styles.followUpGrid}>
+                      {FOLLOW_UP_ACTIONS.map((action) => (
+                        <Pressable
+                          key={action.id}
+                          style={[styles.followUpChip, { backgroundColor: theme.colors.elevated, borderColor: theme.colors.border }]}
+                          onPress={() => handleFollowUp(action)}
+                          accessibilityLabel={`Follow up with ${action.label}`}
+                          disabled={assistMutation.isPending}
+                        >
+                          <Ionicons name={action.icon} size={16} color={theme.colors.primary} />
+                          <Text style={[styles.followUpChipLabel, { color: theme.colors.text }]}>{action.label}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
                   </View>
 
                   {/* Feedback */}
@@ -290,16 +369,16 @@ export function TibaBotAssist({
                 style={[styles.textInput, { color: theme.colors.text, backgroundColor: theme.colors.elevated, borderColor: theme.colors.border }]}
                 placeholder={inputPlaceholder}
                 placeholderTextColor={theme.colors.mutedText}
-                value={query}
-                onChangeText={setQuery}
-                onSubmitEditing={() => handleSubmit(query)}
+                value={inputValue}
+                onChangeText={setInputValue}
+                onSubmitEditing={() => handleSubmit({ requestText: inputValue })}
                 returnKeyType="send"
                 editable={!assistMutation.isPending}
               />
               <Pressable
-                style={[styles.sendBtn, { backgroundColor: query.trim() ? theme.colors.primary : theme.colors.border }]}
-                onPress={() => handleSubmit(query)}
-                disabled={!query.trim() || assistMutation.isPending}
+                style={[styles.sendBtn, { backgroundColor: inputValue.trim() ? theme.colors.primary : theme.colors.border }]}
+                onPress={() => handleSubmit({ requestText: inputValue })}
+                disabled={!inputValue.trim() || assistMutation.isPending}
               >
                 <Ionicons name="send" size={18} color="#FFFFFF" />
               </Pressable>
@@ -498,6 +577,34 @@ function createStyles(theme: AppTheme) {
     responseText: {
       fontSize: 14,
       lineHeight: 21,
+    },
+
+    followUpSection: {
+      gap: 8,
+    },
+    followUpTitle: {
+      fontSize: 12,
+      fontWeight: '700',
+      paddingHorizontal: 4,
+      textTransform: 'uppercase',
+    },
+    followUpGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    followUpChip: {
+      alignItems: 'center',
+      borderRadius: theme.radius.pill,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    followUpChipLabel: {
+      fontSize: 12,
+      fontWeight: '600',
     },
 
     // Feedback
