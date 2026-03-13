@@ -1,23 +1,21 @@
 import { pharmacyApi } from './pharmacy';
-import { apiClient } from './client';
+import { http, HttpResponse } from 'msw';
 
-jest.mock('./client', () => ({
-  apiClient: {
-    get: jest.fn(),
-    post: jest.fn(),
-  },
-}));
+import { server } from '@/__tests__/msw/server';
 
-const mockedApiClient = apiClient as jest.Mocked<typeof apiClient>;
+const API_BASE_URL = 'http://127.0.0.1:9088';
 
 describe('pharmacyApi', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    server.resetHandlers();
   });
 
   it('returns matching drugs from the paginated search payload', async () => {
-    mockedApiClient.get.mockResolvedValueOnce({
-      data: {
+    let capturedSearch = '';
+    server.use(
+      http.get(`${API_BASE_URL}/api/pharmacy/drugs/`, ({ request }) => {
+        capturedSearch = new URL(request.url).searchParams.get('search') ?? '';
+        return HttpResponse.json({
         count: 1,
         next: null,
         previous: null,
@@ -51,48 +49,51 @@ describe('pharmacyApi', () => {
             updated_at: '2026-03-11T09:00:00Z',
           },
         ],
-      },
-    });
+      });
+      })
+    );
 
     const drugs = await pharmacyApi.searchDrugs('para');
 
-    expect(mockedApiClient.get).toHaveBeenCalledWith('/api/pharmacy/drugs/', {
-      params: { search: 'para', page_size: 25 },
-    });
+    expect(capturedSearch).toBe('para');
     expect(drugs[0]?.display_name).toContain('Paracetamol');
     expect(drugs[0]?.reference_price).toBe(5);
   });
 
   it('posts dispense payloads and validates array responses', async () => {
-    mockedApiClient.post.mockResolvedValueOnce({
-      data: [
-        {
-          id: 19,
-          prescription_item: 88,
-          patient: 14,
-          patient_name: 'Jane Doe',
-          drug: 3,
-          drug_name: 'Paracetamol',
-          batch: 7,
-          batch_number: 'B-001',
-          quantity_dispensed: 20,
-          quantity_returned: 0,
-          unit_price: 5,
-          total_price: 100,
-          discount: 0,
-          instructions_given: 'Take after meals',
-          patient_counseled: true,
-          dispensed_by: 5,
-          dispensed_by_name: 'Pharmacist One',
-          dispensed_at: '2026-03-11T11:00:00Z',
-          verified_by: null,
-          verified_by_name: null,
-          verified_at: null,
-          notes: '',
-          created_at: '2026-03-11T11:00:00Z',
-        },
-      ],
-    });
+    let requestBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post(`${API_BASE_URL}/api/pharmacy/dispensings/dispense/`, async ({ request }) => {
+        requestBody = await request.json() as Record<string, unknown>;
+        return HttpResponse.json([
+          {
+            id: 19,
+            prescription_item: 88,
+            patient: 14,
+            patient_name: 'Jane Doe',
+            drug: 3,
+            drug_name: 'Paracetamol',
+            batch: 7,
+            batch_number: 'B-001',
+            quantity_dispensed: 20,
+            quantity_returned: 0,
+            unit_price: 5,
+            total_price: 100,
+            discount: 0,
+            instructions_given: 'Take after meals',
+            patient_counseled: true,
+            dispensed_by: 5,
+            dispensed_by_name: 'Pharmacist One',
+            dispensed_at: '2026-03-11T11:00:00Z',
+            verified_by: null,
+            verified_by_name: null,
+            verified_at: null,
+            notes: '',
+            created_at: '2026-03-11T11:00:00Z',
+          },
+        ]);
+      })
+    );
 
     const payload = {
       drug_id: 3,
@@ -103,7 +104,7 @@ describe('pharmacyApi', () => {
 
     const dispensings = await pharmacyApi.dispense(payload);
 
-    expect(mockedApiClient.post).toHaveBeenCalledWith('/api/pharmacy/dispensings/dispense/', payload);
+    expect(requestBody).toEqual(payload);
     expect(dispensings[0]?.quantity_dispensed).toBe(20);
     expect(dispensings[0]?.batch_number).toBe('B-001');
   });

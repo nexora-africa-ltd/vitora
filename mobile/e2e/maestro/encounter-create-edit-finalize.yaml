@@ -1,0 +1,12 @@
+appId: com.nexora.vitora
+---
+- launchApp
+- tapOn: "Start encounter"
+- tapOn: "Chief complaint"
+- inputText: "Chest pain"
+- tapOn: "Create encounter"
+- assertVisible: "Encounter summary"
+- tapOn: "Edit encounter"
+- tapOn: "Assessment"
+- inputText: "Needs ECG"
+- tapOn: "Save changes"

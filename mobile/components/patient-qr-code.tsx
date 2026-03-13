@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { CachedImage } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
 import { patientsApi } from '@/lib/api/patients';
 import { useAppTheme } from '@/lib/theme/theme-context';
@@ -41,7 +41,7 @@ export function PatientQRCode({ patientId, mrn, patientName, variant = 'card' }:
     <>
       <Pressable onPress={() => setExpanded(true)} style={styles.previewContainer}>
         <View style={styles.qrBackground}>
-          <Image source={{ uri: data.qr_data_uri }} style={{ width: previewSize, height: previewSize }} />
+          <CachedImage source={{ uri: data.qr_data_uri }} style={{ width: previewSize, height: previewSize }} contentFit="contain" placeholderLabel="QR code unavailable" />
         </View>
         {variant === 'card' && (
           <Text style={styles.tapHint}>Tap to enlarge</Text>
@@ -59,7 +59,7 @@ export function PatientQRCode({ patientId, mrn, patientName, variant = 'card' }:
             </View>
 
             <View style={styles.qrLargeContainer}>
-              <Image source={{ uri: data.qr_data_uri }} style={{ width: 220, height: 220 }} />
+              <CachedImage source={{ uri: data.qr_data_uri }} style={{ width: 220, height: 220 }} contentFit="contain" placeholderLabel="QR code unavailable" />
             </View>
 
             <Text style={styles.patientName}>{patientName}</Text>

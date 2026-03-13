@@ -1,9 +1,8 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { Image } from 'expo-image';
 import { useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, SectionCard } from '@/components/app-ui';
+import { AppButton, CachedImage, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
 import type { ScreeningPhotoAttachment } from '@/lib/types/screening';
 import { useAppTheme } from '@/lib/theme/theme-context';
@@ -51,7 +50,7 @@ export function CameraCapture({ value, onChange }: { value: ScreeningPhotoAttach
     <SectionCard title="Photo capture" subtitle="Attach a wound, rash, or field-visit photo to this screening record.">
       {value ? (
         <View style={styles.previewBlock}>
-          <Image source={{ uri: value.uri }} style={styles.previewImage} contentFit="cover" />
+          <CachedImage source={{ uri: value.uri }} style={styles.previewImage} contentFit="cover" placeholderLabel="Photo preview unavailable" />
           <Text style={styles.helperText}>Captured {new Date(value.captured_at).toLocaleString()}</Text>
           <View style={styles.actionRow}>
             <AppButton label="Retake photo" onPress={() => void handleOpenCamera()} variant="secondary" />

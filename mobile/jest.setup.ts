@@ -1,3 +1,7 @@
+import '@testing-library/jest-native/extend-expect';
+
+import { server } from '@/__tests__/msw/server';
+
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
 
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'));
@@ -38,6 +42,16 @@ jest.mock('expo-location', () => ({
   requestForegroundPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
 }));
 
+jest.mock('expo-haptics', () => ({
+  notificationAsync: jest.fn(async () => undefined),
+  selectionAsync: jest.fn(async () => undefined),
+  NotificationFeedbackType: {
+    Success: 'success',
+    Warning: 'warning',
+    Error: 'error',
+  },
+}));
+
 jest.mock('expo-camera', () => {
   const React = require('react');
   const { View } = require('react-native');
@@ -66,6 +80,15 @@ jest.mock('react-native-ssl-public-key-pinning', () => ({
   isSslPinningAvailable: jest.fn(() => false),
 }));
 
+jest.mock('@sentry/react-native', () => ({
+  captureException: jest.fn(),
+  init: jest.fn(),
+}));
+
 jest.mock('@/lib/config/api-config', () => ({
   getApiBaseUrl: jest.fn(async () => 'http://127.0.0.1:9088'),
 }));
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());

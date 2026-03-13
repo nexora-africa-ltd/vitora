@@ -1,23 +1,21 @@
 import { triageApi } from './triage';
-import { apiClient } from './client';
+import { http, HttpResponse } from 'msw';
 
-jest.mock('./client', () => ({
-  apiClient: {
-    get: jest.fn(),
-    post: jest.fn(),
-  },
-}));
+import { server } from '@/__tests__/msw/server';
 
-const mockedApiClient = apiClient as jest.Mocked<typeof apiClient>;
+const API_BASE_URL = 'http://127.0.0.1:9088';
 
 describe('triageApi', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    server.resetHandlers();
   });
 
   it('creates a triage assessment with KETA payload fields', async () => {
-    mockedApiClient.post.mockResolvedValueOnce({
-      data: {
+    let requestBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post(`${API_BASE_URL}/api/triage/assessments/`, async ({ request }) => {
+        requestBody = await request.json() as Record<string, unknown>;
+        return HttpResponse.json({
         id: 7,
         encounter: 55,
         chief_complaint: 'Shortness of breath',
@@ -77,8 +75,9 @@ describe('triageApi', () => {
         triaged_by_name: 'Nurse One',
         created_at: '2026-03-11T09:02:00Z',
         updated_at: '2026-03-11T09:02:00Z',
-      },
-    });
+      });
+      })
+    );
 
     const payload = {
       encounter: 55,
@@ -104,7 +103,7 @@ describe('triageApi', () => {
 
     const result = await triageApi.create(payload);
 
-    expect(mockedApiClient.post).toHaveBeenCalledWith('/api/triage/assessments/', payload);
+    expect(requestBody).toMatchObject(payload);
     expect(result.triage_category).toBe('ORANGE');
     expect(result.alerts[0]?.message).toBe('SpO2 below threshold');
   });

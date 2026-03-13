@@ -1,0 +1,13 @@
+appId: com.nexora.vitora
+---
+- launchApp
+- tapOn: "Register patient"
+- inputText: "Offline"
+- tapOn: "Last name"
+- inputText: "Client"
+- tapOn: "Date of birth"
+- inputText: "1988-06-15"
+- tapOn: "Create patient"
+- assertVisible: "Saved offline"
+- tapOn: "Patients"
+- assertVisible: "Offline Client"

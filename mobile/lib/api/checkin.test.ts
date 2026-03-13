@@ -1,23 +1,22 @@
 import { checkinApi } from './checkin';
-import { apiClient } from './client';
+import { http, HttpResponse } from 'msw';
 
-jest.mock('./client', () => ({
-  apiClient: {
-    get: jest.fn(),
-    post: jest.fn(),
-  },
-}));
+import { server } from '@/__tests__/msw/server';
 
-const mockedApiClient = apiClient as jest.Mocked<typeof apiClient>;
+const API_BASE_URL = 'http://127.0.0.1:9088';
 
 describe('checkinApi', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    server.resetHandlers();
   });
 
   it('unwraps patient search results from the backend payload', async () => {
-    mockedApiClient.get.mockResolvedValueOnce({
-      data: {
+    let searchQuery = '';
+    server.use(
+      http.get(`${API_BASE_URL}/api/checkin/search/`, ({ request }) => {
+        const url = new URL(request.url);
+        searchQuery = url.searchParams.get('q') ?? '';
+        return HttpResponse.json({
         count: 1,
         results: [
           {
@@ -38,21 +37,23 @@ describe('checkinApi', () => {
             last_visit_date: '2026-03-01',
           },
         ],
-      },
-    });
+      });
+      })
+    );
 
     const results = await checkinApi.searchPatients('Jane Doe');
 
-    expect(mockedApiClient.get).toHaveBeenCalledWith('/api/checkin/search/', {
-      params: { q: 'Jane Doe', limit: 10 },
-    });
+    expect(searchQuery).toBe('Jane Doe');
     expect(results).toHaveLength(1);
     expect(results[0]?.full_name).toBe('Jane Doe');
   });
 
   it('posts direct clinic routing payloads for check-in', async () => {
-    mockedApiClient.post.mockResolvedValueOnce({
-      data: {
+    let postedBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post(`${API_BASE_URL}/api/checkin/patients/14/checkin/`, async ({ request }) => {
+        postedBody = await request.json() as Record<string, unknown>;
+        return HttpResponse.json({
         checkin_id: 21,
         patient_name: 'Jane Doe',
         patient_mrn: 'MRN-20260311-0001',
@@ -70,8 +71,9 @@ describe('checkinApi', () => {
         linked_encounter_id: 12,
         clinic_visit_id: 99,
         warning: null,
-      },
-    });
+      });
+      })
+    );
 
     const response = await checkinApi.create(14, {
       destination: '4',
@@ -84,7 +86,7 @@ describe('checkinApi', () => {
       identity_method: 'MRN',
     });
 
-    expect(mockedApiClient.post).toHaveBeenCalledWith('/api/checkin/patients/14/checkin/', {
+    expect(postedBody).toMatchObject({
       destination: '4',
       visit_type: 'RETURN',
       visit_reason: 'CHRONIC_CARE',

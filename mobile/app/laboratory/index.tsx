@@ -3,9 +3,10 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, EmptyState, HeroCard, LoadingState, MetricCard, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { AppButton, HeroCard, ListSkeleton, MetricCard, Pill, ScreenList, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
 import { laboratoryApi } from '@/lib/api/laboratory';
+import { useRefreshQueries } from '@/lib/hooks/use-refresh-queries';
 import type { LabOrder, LabResult } from '@/lib/types/laboratory';
 import { useAppTheme } from '@/lib/theme/theme-context';
 import { formatDateTime } from '@/lib/utils/format';
@@ -44,6 +45,8 @@ export default function LaboratoryScreen() {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [activeView, setActiveView] = useState<'orders' | 'results'>('orders');
+  const refreshKeys = useMemo(() => [['lab-orders'], ['lab-results']] as const, []);
+  const { isRefreshing, refresh } = useRefreshQueries(refreshKeys);
 
   const ordersQuery = useQuery({
     queryKey: ['lab-orders'],
@@ -56,11 +59,7 @@ export default function LaboratoryScreen() {
   });
 
   if (ordersQuery.isLoading || resultsQuery.isLoading) {
-    return (
-      <ScreenContainer>
-        <LoadingState message="Loading laboratory workload..." />
-      </ScreenContainer>
-    );
+    return <ListSkeleton itemCount={4} showHero />;
   }
 
   const orders = ordersQuery.data?.results ?? [];
@@ -69,9 +68,8 @@ export default function LaboratoryScreen() {
   const urgentCount = orders.filter((order) => order.priority === 'URGENT' || order.priority === 'STAT').length;
   const verifiedCount = results.filter((result) => (result.verification_status || '').toUpperCase().includes('VERIF') || (result.verification_status || '').toUpperCase().includes('APPROV')).length;
   const abnormalCount = results.filter((result) => Boolean(result.result_flag) || result.is_critical_result).length;
-
-  return (
-    <ScreenContainer>
+  const header = (
+    <>
       <HeroCard
         eyebrow="Laboratory"
         title="Orders and results"
@@ -93,59 +91,81 @@ export default function LaboratoryScreen() {
           <AppButton label={`Orders (${orders.length})`} onPress={() => setActiveView('orders')} variant={activeView === 'orders' ? 'primary' : 'ghost'} />
           <AppButton label={`Results (${results.length})`} onPress={() => setActiveView('results')} variant={activeView === 'results' ? 'primary' : 'ghost'} />
         </View>
-
-        {activeView === 'orders' ? (
-          orders.length === 0 ? (
-            <EmptyState title="No lab orders yet" description="Create the first mobile lab order to start tracking specimen and result work from this device." />
-          ) : (
-            orders.map((order) => (
-              <Pressable
-                key={order.order_number}
-                onPress={() => router.push(`/laboratory/${encodeURIComponent(order.order_number)}` as never)}
-                style={({ pressed }) => [styles.orderCard, pressed && styles.cardPressed]}
-              >
-                <View style={styles.rowBetween}>
-                  <View style={styles.flexOne}>
-                    <Text style={styles.cardTitle}>{order.patient_name || order.patient_mrn || order.order_number}</Text>
-                    <Text style={styles.cardMeta}>{order.order_number} · {order.priority.replace('_', ' ')} · {order.items.length} test{order.items.length === 1 ? '' : 's'}</Text>
-                  </View>
-                  <Pill label={order.status.replace(/_/g, ' ')} tone={getLabStatusTone(order.status)} />
-                </View>
-                {order.clinical_notes ? <Text style={styles.bodyText}>{order.clinical_notes}</Text> : null}
-                <View style={styles.metaRow}>
-                  <Text style={styles.cardMeta}>Ordered {formatDateTime(order.ordered_at)}</Text>
-                  {hasAbnormalResult(order) ? <Pill label="Abnormal result" tone="danger" /> : null}
-                </View>
-              </Pressable>
-            ))
-          )
-        ) : results.length === 0 ? (
-          <EmptyState title="No lab results yet" description="Verified or pending laboratory results will appear here for dedicated result review." />
-        ) : (
-          results.map((result) => (
-            <View key={result.id} style={styles.resultCard}>
-              <View style={styles.rowBetween}>
-                <View style={styles.flexOne}>
-                  <Text style={styles.cardTitle}>{result.test_name || result.test_code || 'Lab result'}</Text>
-                  <Text style={styles.cardMeta}>{result.test_code || 'No code'} · Entered {formatDateTime(result.entered_at || result.created_at)}</Text>
-                </View>
-                <Pill label={(result.verification_status || 'Pending').replace(/_/g, ' ')} tone={getResultTone(result)} />
-              </View>
-              <Text style={styles.resultValue}>{result.formatted_value || result.text_value || result.option_value || 'Result recorded'}</Text>
-              <Text style={styles.cardMeta}>
-                Range: {result.reference_range_text || [result.reference_low, result.reference_high].filter((value) => value != null).join(' - ') || 'Not provided'}
-              </Text>
-              <View style={styles.metaRow}>
-                {result.result_flag ? <Pill label={result.result_flag.replace(/_/g, ' ')} tone={getResultTone(result)} /> : null}
-                {result.is_critical_result ? <Pill label="Critical" tone="danger" /> : null}
-                {verifiedCount > 0 ? <Text style={styles.cardMeta}>{verifiedCount} verified in this view</Text> : null}
-              </View>
-              {result.interpretation ? <Text style={styles.bodyText}>{result.interpretation}</Text> : null}
-            </View>
-          ))
-        )}
+        <Text style={styles.helperText}>Pull down to refresh specimen and verification state.</Text>
       </SectionCard>
-    </ScreenContainer>
+    </>
+  );
+
+  if (activeView === 'orders') {
+    return (
+      <ScreenList
+        contentContainerStyle={styles.listContent}
+        data={orders}
+        emptyDescription="Create the first mobile lab order to start tracking specimen and result work from this device."
+        emptyTitle="No lab orders yet"
+        estimatedItemHeight={118}
+        header={header}
+        keyExtractor={(order) => order.order_number}
+        onRefresh={() => void refresh()}
+        refreshing={isRefreshing || ordersQuery.isRefetching || resultsQuery.isRefetching}
+        renderItem={({ item: order }) => (
+          <Pressable
+            onPress={() => router.push(`/laboratory/${encodeURIComponent(order.order_number)}` as never)}
+            style={({ pressed }) => [styles.orderCard, pressed && styles.cardPressed]}
+          >
+            <View style={styles.rowBetween}>
+              <View style={styles.flexOne}>
+                <Text style={styles.cardTitle}>{order.patient_name || order.patient_mrn || order.order_number}</Text>
+                <Text style={styles.cardMeta}>{order.order_number} · {order.priority.replace('_', ' ')} · {order.items.length} test{order.items.length === 1 ? '' : 's'}</Text>
+              </View>
+              <Pill label={order.status.replace(/_/g, ' ')} tone={getLabStatusTone(order.status)} />
+            </View>
+            {order.clinical_notes ? <Text style={styles.bodyText}>{order.clinical_notes}</Text> : null}
+            <View style={styles.metaRow}>
+              <Text style={styles.cardMeta}>Ordered {formatDateTime(order.ordered_at)}</Text>
+              {hasAbnormalResult(order) ? <Pill label="Abnormal result" tone="danger" /> : null}
+            </View>
+          </Pressable>
+        )}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+      />
+    );
+  }
+
+  return (
+    <ScreenList
+      contentContainerStyle={styles.listContent}
+      data={results}
+      emptyDescription="Verified or pending laboratory results will appear here for dedicated result review."
+      emptyTitle="No lab results yet"
+      estimatedItemHeight={144}
+      header={header}
+      keyExtractor={(result) => String(result.id)}
+      onRefresh={() => void refresh()}
+      refreshing={isRefreshing || ordersQuery.isRefetching || resultsQuery.isRefetching}
+      renderItem={({ item: result }) => (
+        <View style={styles.resultCard}>
+          <View style={styles.rowBetween}>
+            <View style={styles.flexOne}>
+              <Text style={styles.cardTitle}>{result.test_name || result.test_code || 'Lab result'}</Text>
+              <Text style={styles.cardMeta}>{result.test_code || 'No code'} · Entered {formatDateTime(result.entered_at || result.created_at)}</Text>
+            </View>
+            <Pill label={(result.verification_status || 'Pending').replace(/_/g, ' ')} tone={getResultTone(result)} />
+          </View>
+          <Text style={styles.resultValue}>{result.formatted_value || result.text_value || result.option_value || 'Result recorded'}</Text>
+          <Text style={styles.cardMeta}>
+            Range: {result.reference_range_text || [result.reference_low, result.reference_high].filter((value) => value != null).join(' - ') || 'Not provided'}
+          </Text>
+          <View style={styles.metaRow}>
+            {result.result_flag ? <Pill label={result.result_flag.replace(/_/g, ' ')} tone={getResultTone(result)} /> : null}
+            {result.is_critical_result ? <Pill label="Critical" tone="danger" /> : null}
+            {verifiedCount > 0 ? <Text style={styles.cardMeta}>{verifiedCount} verified in this view</Text> : null}
+          </View>
+          {result.interpretation ? <Text style={styles.bodyText}>{result.interpretation}</Text> : null}
+        </View>
+      )}
+      ItemSeparatorComponent={() => <View style={styles.separator} />}
+    />
   );
 }
 
@@ -212,6 +232,16 @@ function createStyles(theme: AppTheme) {
       color: theme.colors.text,
       fontSize: 20,
       fontWeight: '800',
+    },
+    helperText: {
+      color: theme.colors.mutedText,
+      fontSize: 13,
+    },
+    listContent: {
+      paddingBottom: 28,
+    },
+    separator: {
+      height: 12,
     },
   });
 }
