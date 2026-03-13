@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Redirect, router } from 'expo-router';
 
@@ -18,6 +18,7 @@ export default function SignInScreen() {
   const [backendUrl, setBackendUrl] = useState(apiBaseUrl);
   const [backendEnvironmentId, setBackendEnvironmentId] = useState(selectedApiEnvironmentId ?? apiEnvironmentOptions[0]?.id ?? '');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasAttemptedAutoUnlockRef = useRef(false);
 
   useEffect(() => {
     setBackendUrl(apiBaseUrl);
@@ -26,6 +27,26 @@ export default function SignInScreen() {
   useEffect(() => {
     setBackendEnvironmentId(selectedApiEnvironmentId ?? apiEnvironmentOptions[0]?.id ?? '');
   }, [apiEnvironmentOptions, selectedApiEnvironmentId]);
+
+  useEffect(() => {
+    if (!isLocked) {
+      hasAttemptedAutoUnlockRef.current = false;
+      return;
+    }
+
+    if (!biometric?.enabled || !biometric.available || isUnlocking || hasAttemptedAutoUnlockRef.current) {
+      return;
+    }
+
+    hasAttemptedAutoUnlockRef.current = true;
+
+    void (async () => {
+      const result = await unlockWithBiometrics();
+      if (result.success) {
+        router.replace('/(tabs)');
+      }
+    })();
+  }, [biometric, isLocked, isUnlocking, unlockWithBiometrics]);
 
   if (!isHydrating && isAuthenticated && !isLocked) {
     return <Redirect href="/(tabs)" />;

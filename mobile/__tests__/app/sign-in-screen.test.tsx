@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { waitFor } from '@testing-library/react-native';
 
 import SignInScreen from '@/app/sign-in';
 import { lightTheme as mockLightTheme } from '@/constants/theme';
@@ -23,10 +24,14 @@ jest.mock('@/lib/theme/theme-context', () => ({
 jest.mock('@/lib/auth/auth-context', () => ({
   useAuth: () => ({
     apiBaseUrl: 'http://127.0.0.1:9088',
+    apiEnvironmentOptions: [],
     isAuthenticated: true,
     isHydrating: false,
     login: jest.fn(async () => ({ success: true })),
+    selectedApiEnvironmentId: null,
+    supportsCustomApiUrl: true,
     updateApiBaseUrl: jest.fn(async () => undefined),
+    updateApiEnvironment: jest.fn(async () => undefined),
     user: { username: 'jdoe' },
   }),
 }));
@@ -57,8 +62,12 @@ describe('SignInScreen', () => {
 
     expect(screen.getByText('Session locked')).toBeTruthy();
 
+    await waitFor(() => {
+      expect(mockUnlockWithBiometrics).toHaveBeenCalledTimes(1);
+    });
+
     fireEvent.press(screen.getByText('Unlock with Fingerprint'));
 
-    expect(mockUnlockWithBiometrics).toHaveBeenCalled();
+    expect(mockUnlockWithBiometrics).toHaveBeenCalledTimes(2);
   });
 });
