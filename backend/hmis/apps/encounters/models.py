@@ -2195,6 +2195,19 @@ class Diagnosis(HistoryMixin, models.Model):
         default="",
         help_text="ICD-11 display text/title from WHO ICD-11 API",
     )
+    # SNOMED CT support (supplementary coding for FHIR interoperability)
+    snomed_code = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="SNOMED CT concept ID (e.g., 38341003) for FHIR interoperability",
+    )
+    snomed_display = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="SNOMED CT concept display text (e.g., 'Hypertensive disorder')",
+    )
     diagnosis_type = models.CharField(
         max_length=20,
         choices=DIAGNOSIS_TYPE_CHOICES,
@@ -2281,6 +2294,8 @@ class Diagnosis(HistoryMixin, models.Model):
             code_str = self.icd10_code.code
         elif self.icd11_code:
             code_str = self.icd11_code
+        elif self.snomed_code:
+            code_str = f"SNOMED:{self.snomed_code}"
         else:
             code_str = self.free_text_diagnosis[:30]
         return f"{code_str} ({self.diagnosis_type})"
@@ -2289,10 +2304,16 @@ class Diagnosis(HistoryMixin, models.Model):
         """Validate diagnosis constraints."""
         super().clean()
 
-        # Either ICD-10 code, ICD-11 code, or free text must be provided
-        if not self.icd10_code and not self.icd11_code and not self.free_text_diagnosis:
+        # Either ICD-10 code, ICD-11 code, SNOMED CT code, or free text must be provided
+        if (
+            not self.icd10_code
+            and not self.icd11_code
+            and not self.snomed_code
+            and not self.free_text_diagnosis
+        ):
             raise ValidationError(
-                "Either ICD-10 code, ICD-11 code, or free-text diagnosis must be provided."
+                "Either ICD-10 code, ICD-11 code, SNOMED CT code, "
+                "or free-text diagnosis must be provided."
             )
 
         # Check for existing primary diagnosis

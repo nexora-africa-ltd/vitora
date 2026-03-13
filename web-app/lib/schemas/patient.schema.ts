@@ -72,6 +72,7 @@ export const PatientSchema = z.object({
 
   // Client Registry
   cr_number: z.string().optional().nullable(),
+  cr_synced_at: z.string().optional().nullable(),
 
   // SHA Integration
   sha_number: z.string().optional().nullable(),
@@ -138,6 +139,7 @@ export const PatientListItemSchema = z.object({
   id: z.number(),
   mrn: z.string(),
   cr_number: z.string().optional().nullable(),
+  cr_synced_at: z.string().optional().nullable(),
   sha_number: z.string().optional().nullable(),
   title: PatientTitleSchema.nullable(),
   first_name: z.string(),

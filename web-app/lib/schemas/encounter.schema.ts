@@ -109,6 +109,9 @@ export const DiagnosisSchema = z.object({
   icd10_description: z.string().optional().nullable(),
   icd11_code: z.string().optional().nullable(),
   icd11_display: z.string().optional().nullable(),
+  // SNOMED CT (supplementary coding for FHIR interoperability)
+  snomed_code: z.string().optional().nullable(),
+  snomed_display: z.string().optional().nullable(),
   diagnosis_type: DiagnosisTypeSchema,
   free_text_diagnosis: z.string().optional().nullable(),
   notes: z.string(),

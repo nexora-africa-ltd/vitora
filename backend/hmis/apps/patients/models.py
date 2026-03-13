@@ -118,6 +118,11 @@ class Patient(HistoryMixin, models.Model):
         unique=True,
         help_text="Client Registry number from Kenya HIE (CR-XXXXXXXXXX-X format)",
     )
+    cr_synced_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When patient was last synced with the Client Registry",
+    )
 
     # SHA Integration
     sha_number = models.CharField(
