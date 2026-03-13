@@ -910,6 +910,16 @@
 
 **Scope**: Achieve release-quality test coverage across all layers.
 
+**Implementation status**: Implemented for HTTP-layer API tests, shared component coverage, offline sync flow coverage, and critical-path Maestro scaffolding.
+
+**Implemented**:
+- Migrated mobile API unit tests from mocked `apiClient` calls to MSW-backed HTTP interception so request params, payloads, and response parsing are validated at the transport boundary
+- Added shared Jest coverage thresholds plus dedicated `test:api`, `test:components`, `test:flows`, and `test:coverage` scripts in the mobile package
+- Added component tests for the new app error boundary and shared virtualized list shell
+- Added an integration-style offline patient create → push sync → local remap flow test against the mobile sync engine
+- Added Maestro E2E specs for the 5 release-critical flows in `mobile/e2e/maestro/`
+- Updated Jest transforms so Expo and MSW dependencies run together under `jest-expo`
+
 **Tasks**:
 - Unit tests for all API clients with MSW (Mock Service Worker) for HTTP mocking
 - Component tests for shared components using React Native Testing Library
@@ -933,6 +943,21 @@
 ### 7.2 Performance & UX Polish (Week 27)
 
 **Scope**: Optimize for mid-range Android devices common in Kenyan healthcare facilities.
+
+**Implementation status**: Implemented for shared list virtualization, pull-to-refresh, skeleton loading, haptics, cached images, crash handling, and splash optimization. Bundle-size auditing remains a follow-up measurement task.
+
+**Implemented**:
+- Added a shared virtualized `ScreenList` wrapper with tuned `FlatList` settings (`windowSize`, `maxToRenderPerBatch`, `updateCellsBatchingPeriod`, optional `getItemLayout`) for list-heavy mobile routes
+- Replaced spinner-only loading states on key list screens with reusable skeleton cards
+- Added pull-to-refresh wiring for major list-heavy workflows including patients, encounters, billing, pharmacy, laboratory, MCH, screening, and audit log
+- Added cached image fallback wrappers for camera-capture previews and patient QR imagery using `expo-image`
+- Added haptic feedback helpers and wired them into key save flows plus screening sync actions
+- Added a top-level app error boundary with Sentry capture hooks and environment-driven SDK initialization via `EXPO_PUBLIC_SENTRY_DSN`
+- Added splash-screen coordination and background-color bootstrapping to reduce startup white flash during auth hydration
+
+**Carry-forward items**:
+- Measure APK/IPA size after the next production build and remove any newly identified dead dependencies if bundle targets are missed
+- Validate scroll performance and startup timing on a real mid-range Android device such as Samsung A14 before closing the phase as release-ready
 
 **Tasks**:
 - Profile and optimize FlatList rendering (windowSize, maxToRenderPerBatch, getItemLayout)

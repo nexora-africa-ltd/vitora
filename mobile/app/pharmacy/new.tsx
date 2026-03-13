@@ -7,6 +7,7 @@ import { AppButton, AppPicker, AppTextInput, HeroCard, LoadingState, Pill, Scree
 import type { AppTheme } from '@/constants/theme';
 import { toApiError } from '@/lib/api/client';
 import { encountersApi } from '@/lib/api/encounters';
+import { notifyErrorHaptic, notifySuccessHaptic, notifyWarningHaptic } from '@/lib/haptics';
 import { patientsApi } from '@/lib/api/patients';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 import { queryClient } from '@/lib/query/client';
@@ -231,11 +232,13 @@ export default function NewPrescriptionScreen() {
     const resolvedPatientId = encounterQuery.data?.patient || patientId;
 
     if (!resolvedPatientId) {
+      await notifyWarningHaptic();
       Alert.alert('Patient required', 'Select the patient for this prescription.');
       return;
     }
 
     if (selectedItems.length === 0) {
+      await notifyWarningHaptic();
       Alert.alert('Medication required', 'Add at least one drug to the prescription.');
       return;
     }
@@ -244,6 +247,7 @@ export default function NewPrescriptionScreen() {
       (item) => !item.quantity || !item.frequency.trim() || !item.duration.trim()
     );
     if (invalidItem) {
+      await notifyWarningHaptic();
       Alert.alert('Incomplete medication item', 'Each medication needs quantity, frequency, and duration before saving.');
       return;
     }
@@ -257,10 +261,12 @@ export default function NewPrescriptionScreen() {
         acknowledge_allergy_warnings: acknowledgeWarnings,
         items: selectedItems.map(({ drugName: _drugName, ...item }) => item),
       });
+      await notifySuccessHaptic();
     } catch (error) {
       const apiError = toApiError(error);
       const details = apiError.details as { allergy_warnings?: unknown[]; message?: string } | undefined;
       if (apiError.status === 400 && details?.allergy_warnings?.length) {
+        await notifyWarningHaptic();
         Alert.alert(
           'Allergy warning',
           details.message || 'A recorded patient allergy may conflict with this prescription. Proceed only if clinically appropriate.',
@@ -277,6 +283,7 @@ export default function NewPrescriptionScreen() {
         return;
       }
 
+      await notifyErrorHaptic();
       Alert.alert('Unable to create prescription', apiError.message);
     }
   }

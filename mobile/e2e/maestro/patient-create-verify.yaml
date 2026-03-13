@@ -1,0 +1,11 @@
+appId: com.nexora.vitora
+---
+- launchApp
+- tapOn: "Register patient"
+- inputText: "Jane"
+- tapOn: "Last name"
+- inputText: "Mwangi"
+- tapOn: "Date of birth"
+- inputText: "1990-01-01"
+- tapOn: "Create patient"
+- assertVisible: "Patient details"

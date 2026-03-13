@@ -7,6 +7,7 @@ import { AppButton, AppPicker, AppTextInput, HeroCard, LoadingState, Pill, Scree
 import type { AppTheme } from '@/constants/theme';
 import { toApiError } from '@/lib/api/client';
 import { encountersApi } from '@/lib/api/encounters';
+import { notifyErrorHaptic, notifySuccessHaptic, notifyWarningHaptic } from '@/lib/haptics';
 import { laboratoryApi } from '@/lib/api/laboratory';
 import { patientsApi } from '@/lib/api/patients';
 import { queryClient } from '@/lib/query/client';
@@ -127,11 +128,13 @@ export default function NewLaboratoryOrderScreen() {
     const resolvedPatientId = encounterQuery.data?.patient || patientId;
 
     if (!resolvedPatientId) {
+      await notifyWarningHaptic();
       Alert.alert('Patient required', 'Select the patient linked to this laboratory order.');
       return;
     }
 
     if (selectedTests.length === 0) {
+      await notifyWarningHaptic();
       Alert.alert('Tests required', 'Select at least one test from the laboratory catalog.');
       return;
     }
@@ -149,7 +152,9 @@ export default function NewLaboratoryOrderScreen() {
           special_instructions: test.special_instructions.trim() || undefined,
         })),
       });
+      await notifySuccessHaptic();
     } catch (error) {
+      await notifyErrorHaptic();
       Alert.alert('Unable to create lab order', toApiError(error).message);
     }
   }

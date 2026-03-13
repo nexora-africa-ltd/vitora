@@ -7,6 +7,7 @@ import { CameraCapture } from '@/components/camera-capture';
 import type { AppTheme } from '@/constants/theme';
 import { screeningApi } from '@/lib/api/screening';
 import { useLocalPatient, useLocalPatients } from '@/lib/hooks/use-local-patients';
+import { notifyErrorHaptic, notifySuccessHaptic } from '@/lib/haptics';
 import { captureCurrentLocation } from '@/lib/location';
 import type { CommunityScreeningType, MalariaRdtResult, ScreeningPhotoAttachment } from '@/lib/types/screening';
 import { useAppTheme } from '@/lib/theme/theme-context';
@@ -89,6 +90,7 @@ export default function NewScreeningScreen() {
         malaria_treatment_referred: screeningType === 'MALARIA_RDT' ? malariaTreatmentReferred === 'yes' : null,
       });
 
+      await notifySuccessHaptic();
       Alert.alert(
         record.sync_status === 'uploaded' ? 'Screening uploaded' : 'Screening saved offline',
         record.sync_status === 'uploaded'
@@ -98,6 +100,7 @@ export default function NewScreeningScreen() {
       router.replace('/screening' as never);
       return record;
     } catch (error) {
+      await notifyErrorHaptic();
       Alert.alert('Unable to save screening', error instanceof Error ? error.message : 'Screening save failed.');
     }
   }

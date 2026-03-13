@@ -3,10 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, AppPicker, EmptyState, HeroCard, LoadingState, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
+import { AppButton, AppPicker, HeroCard, ListSkeleton, Pill, ScreenList, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
 import { auditApi } from '@/lib/api/audit';
 import { useAuth } from '@/lib/auth/auth-context';
+import { useRefreshQueries } from '@/lib/hooks/use-refresh-queries';
 import { useAppTheme } from '@/lib/theme/theme-context';
 import type { AuditLogEntry } from '@/lib/types/audit';
 import { formatDateTime } from '@/lib/utils/format';
@@ -40,6 +41,8 @@ export default function AuditLogScreen() {
   const { user } = useAuth();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [actionFilter, setActionFilter] = useState('');
+  const refreshKeys = useMemo(() => [['audit-logs']] as const, []);
+  const { isRefreshing, refresh } = useRefreshQueries(refreshKeys);
 
   const auditQuery = useQuery({
     queryKey: ['audit-logs', user?.id ?? null, actionFilter],
@@ -54,36 +57,42 @@ export default function AuditLogScreen() {
   });
 
   if (auditQuery.isLoading) {
-    return (
-      <ScreenContainer>
-        <LoadingState message="Loading your audit activity..." />
-      </ScreenContainer>
-    );
+    return <ListSkeleton itemCount={4} showHero />;
   }
 
   const entries = auditQuery.data?.results ?? [];
 
   return (
-    <ScreenContainer>
-      <HeroCard
-        eyebrow="Audit trail"
-        title="Your activity"
-        description="Read-only security trail for your own mobile and backend actions."
-      />
+    <ScreenList
+      contentContainerStyle={styles.listContent}
+      data={entries}
+      emptyDescription="Your matching actions will appear here once they are recorded by the backend."
+      emptyTitle="No audit entries"
+      estimatedItemHeight={104}
+      header={
+        <>
+          <HeroCard
+            eyebrow="Audit trail"
+            title="Your activity"
+            description="Read-only security trail for your own mobile and backend actions."
+          />
 
-      <SectionCard title="Filters" subtitle="Narrow the audit stream by action type.">
-        <AppPicker label="Action type" selectedValue={actionFilter} onValueChange={setActionFilter} items={ACTION_FILTERS.map((item) => ({ ...item }))} />
-        <AppButton label="Back to settings" variant="ghost" onPress={() => router.back()} />
-      </SectionCard>
+          <SectionCard title="Filters" subtitle="Narrow the audit stream by action type.">
+            <AppPicker label="Action type" selectedValue={actionFilter} onValueChange={setActionFilter} items={ACTION_FILTERS.map((item) => ({ ...item }))} />
+            <AppButton label="Back to settings" variant="ghost" onPress={() => router.back()} />
+          </SectionCard>
 
-      <SectionCard title="Entries" subtitle={`${entries.length} audit event${entries.length === 1 ? '' : 's'} loaded.`}>
-        {entries.length === 0 ? (
-          <EmptyState title="No audit entries" description="Your matching actions will appear here once they are recorded by the backend." />
-        ) : (
-          entries.map((entry) => <AuditLogCard key={entry.id} entry={entry} styles={styles} />)
-        )}
-      </SectionCard>
-    </ScreenContainer>
+          <SectionCard title="Entries" subtitle={`${entries.length} audit event${entries.length === 1 ? '' : 's'} loaded.`}>
+            <Text style={styles.helperText}>Pull down to refresh after recent actions like login or patient view.</Text>
+          </SectionCard>
+        </>
+      }
+      keyExtractor={(entry) => String(entry.id)}
+      onRefresh={() => void refresh()}
+      refreshing={isRefreshing || auditQuery.isRefetching}
+      renderItem={({ item: entry }) => <AuditLogCard entry={entry} styles={styles} />}
+      ItemSeparatorComponent={() => <View style={styles.separator} />}
+    />
   );
 }
 
@@ -140,6 +149,16 @@ function createStyles(theme: AppTheme) {
     cardTitleBlock: {
       flex: 1,
       gap: 2,
+    },
+    helperText: {
+      color: theme.colors.mutedText,
+      fontSize: 13,
+    },
+    listContent: {
+      paddingBottom: 28,
+    },
+    separator: {
+      height: 12,
     },
   });
 }

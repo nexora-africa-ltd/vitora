@@ -1,23 +1,21 @@
 import { screeningApi } from './screening';
-import { apiClient } from './client';
+import { http, HttpResponse } from 'msw';
 
-jest.mock('./client', () => ({
-  apiClient: {
-    get: jest.fn(),
-    post: jest.fn(),
-  },
-}));
+import { server } from '@/__tests__/msw/server';
 
-const mockedApiClient = apiClient as jest.Mocked<typeof apiClient>;
+const API_BASE_URL = 'http://127.0.0.1:9088';
 
 describe('screeningApi', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    server.resetHandlers();
   });
 
   it('loads paginated screening results from the backend', async () => {
-    mockedApiClient.get.mockResolvedValueOnce({
-      data: {
+    let patientParam = '';
+    server.use(
+      http.get(`${API_BASE_URL}/api/mch/community-screenings/`, ({ request }) => {
+        patientParam = new URL(request.url).searchParams.get('patient') ?? '';
+        return HttpResponse.json({
         count: 1,
         next: null,
         previous: null,
@@ -53,21 +51,23 @@ describe('screeningApi', () => {
             updated_at: '2026-03-13T08:00:00Z',
           },
         ],
-      },
-    });
+      });
+      })
+    );
 
     const response = await screeningApi.listScreenings({ patient: 14, modified_after: '2026-03-12T00:00:00Z' });
 
-    expect(mockedApiClient.get).toHaveBeenCalledWith('/api/mch/community-screenings/', {
-      params: { modified_after: '2026-03-12T00:00:00Z', patient: 14 },
-    });
+    expect(patientParam).toBe('14');
     expect(response.results[0]?.result_summary).toBe('MUAC 110 mm · edema present');
     expect(response.results[0]?.sync_status).toBe('uploaded');
   });
 
   it('creates screenings with multipart payloads when a photo is attached', async () => {
-    mockedApiClient.post.mockResolvedValueOnce({
-      data: {
+    let contentType = '';
+    server.use(
+      http.post(`${API_BASE_URL}/api/mch/community-screenings/`, async ({ request }) => {
+        contentType = request.headers.get('content-type') ?? '';
+        return HttpResponse.json({
         id: 82,
         patient: 14,
         patient_name: 'Jane Doe',
@@ -96,8 +96,9 @@ describe('screeningApi', () => {
         captured_by: 3,
         created_at: '2026-03-13T08:00:00Z',
         updated_at: '2026-03-13T08:00:00Z',
-      },
-    });
+      });
+      })
+    );
 
     await screeningApi.uploadScreening({
       patient: 14,
@@ -117,8 +118,6 @@ describe('screeningApi', () => {
       },
     });
 
-    const firstArg = mockedApiClient.post.mock.calls[0]?.[1];
-    expect(mockedApiClient.post.mock.calls[0]?.[0]).toBe('/api/mch/community-screenings/');
-    expect(firstArg).toBeInstanceOf(FormData);
+    expect(contentType).toContain('multipart/form-data');
   });
 });

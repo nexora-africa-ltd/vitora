@@ -1,23 +1,21 @@
 import { laboratoryApi } from './laboratory';
-import { apiClient } from './client';
+import { http, HttpResponse } from 'msw';
 
-jest.mock('./client', () => ({
-  apiClient: {
-    get: jest.fn(),
-    post: jest.fn(),
-  },
-}));
+import { server } from '@/__tests__/msw/server';
 
-const mockedApiClient = apiClient as jest.Mocked<typeof apiClient>;
+const API_BASE_URL = 'http://127.0.0.1:9088';
 
 describe('laboratoryApi', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    server.resetHandlers();
   });
 
   it('unwraps laboratory tests from paginated backend payloads', async () => {
-    mockedApiClient.get.mockResolvedValueOnce({
-      data: {
+    let capturedSearch = '';
+    server.use(
+      http.get(`${API_BASE_URL}/api/lab/tests/`, ({ request }) => {
+        capturedSearch = new URL(request.url).searchParams.get('search') ?? '';
+        return HttpResponse.json({
         count: 1,
         next: null,
         previous: null,
@@ -35,21 +33,23 @@ describe('laboratoryApi', () => {
             is_active: true,
           },
         ],
-      },
-    });
+      });
+      })
+    );
 
     const results = await laboratoryApi.listTests({ search: 'blood' });
 
-    expect(mockedApiClient.get).toHaveBeenCalledWith('/api/lab/tests/', {
-      params: { page_size: 100, search: 'blood' },
-    });
+    expect(capturedSearch).toBe('blood');
     expect(results[0]?.code).toBe('FBC');
     expect(results[0]?.cost).toBe(450);
   });
 
   it('posts lab orders with selected tests and returns the full order payload', async () => {
-    mockedApiClient.post.mockResolvedValueOnce({
-      data: {
+    let requestBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post(`${API_BASE_URL}/api/lab/orders/`, async ({ request }) => {
+        requestBody = await request.json() as Record<string, unknown>;
+        return HttpResponse.json({
         id: 9,
         order_number: 'LAB-20260311-0009',
         patient: 14,
@@ -90,8 +90,9 @@ describe('laboratoryApi', () => {
         cancelled_at: null,
         created_at: '2026-03-11T10:00:00Z',
         updated_at: '2026-03-11T10:00:00Z',
-      },
-    });
+      });
+      })
+    );
 
     const payload = {
       patient: 14,
@@ -104,7 +105,7 @@ describe('laboratoryApi', () => {
 
     const order = await laboratoryApi.createOrder(payload);
 
-    expect(mockedApiClient.post).toHaveBeenCalledWith('/api/lab/orders/', payload);
+    expect(requestBody).toMatchObject(payload);
     expect(order.order_number).toBe('LAB-20260311-0009');
     expect(order.items[0]?.test_code).toBe('FBC');
   });

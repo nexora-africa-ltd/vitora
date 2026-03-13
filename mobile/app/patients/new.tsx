@@ -8,6 +8,7 @@ import { toApiError } from '@/lib/api/client';
 import { locationsApi } from '@/lib/api/locations';
 import { patientsApi } from '@/lib/api/patients';
 import { getOfflineCounties, getOfflineSubCounties, getOfflineWards, queueOfflinePatientCreate, upsertPatients, upsertReferenceData } from '@/lib/db';
+import { notifyErrorHaptic, notifySuccessHaptic, notifyWarningHaptic } from '@/lib/haptics';
 import { queryClient } from '@/lib/query/client';
 import { isOfflineSyncError } from '@/lib/sync/conflicts';
 
@@ -152,17 +153,20 @@ export default function NewPatientScreen() {
 
   async function handleCreatePatient() {
     if (!form.firstName.trim() || !form.lastName.trim() || !form.dateOfBirth.trim() || !form.county || !form.subCounty) {
+      await notifyWarningHaptic();
       Alert.alert('Missing required fields', 'First name, last name, date of birth, county, and sub-county are required.');
       return;
     }
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(form.dateOfBirth.trim())) {
+      await notifyWarningHaptic();
       Alert.alert('Invalid date', 'Use YYYY-MM-DD for date of birth.');
       return;
     }
 
     try {
       await createPatientMutation.mutateAsync();
+      await notifySuccessHaptic();
     } catch (error) {
       const apiError = toApiError(error);
       if (isOfflineSyncError(apiError)) {
@@ -184,11 +188,13 @@ export default function NewPatientScreen() {
           emergency_contact_phone: form.emergencyContactPhone.trim() || undefined,
           emergency_contact_relationship: form.emergencyContactRelationship.trim() || undefined,
         });
+        await notifySuccessHaptic();
         Alert.alert('Saved offline', 'The patient was stored on this device and will sync automatically when connectivity returns.');
         router.replace(`/patients/${queuedPatient.id}` as never);
         return;
       }
 
+      await notifyErrorHaptic();
       Alert.alert('Unable to create patient', apiError.message || 'The backend rejected the registration payload.');
     }
   }

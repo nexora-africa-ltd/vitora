@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, FlatList, Platform, Pressable, RefreshControl, ScrollView, StyleProp, StyleSheet, Text, TextInput, View, ViewStyle, type FlatListProps, type ImageStyle, type ListRenderItemInfo, type StyleProp as RNStyleProp } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 
@@ -42,6 +43,28 @@ type AppPickerProps<T extends string | number> = {
   enabled?: boolean;
 };
 
+type ScreenListProps<ItemT> = {
+  data: ItemT[];
+  renderItem: (info: ListRenderItemInfo<ItemT>) => React.ReactElement | null;
+  keyExtractor: (item: ItemT, index: number) => string;
+  header?: React.ReactElement | null;
+  footer?: React.ReactElement | null;
+  emptyTitle: string;
+  emptyDescription: string;
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  estimatedItemHeight?: number;
+  contentContainerStyle?: RNStyleProp<ViewStyle>;
+} & Pick<FlatListProps<ItemT>, 'ItemSeparatorComponent'>;
+
+type CachedImageProps = {
+  accessibilityLabel?: string;
+  contentFit?: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
+  placeholderLabel?: string;
+  source: { uri: string } | number;
+  style: RNStyleProp<ImageStyle>;
+};
+
 export function ScreenContainer({ children, contentContainerStyle, scroll = true }: ScreenContainerProps) {
   const styles = useSharedStyles();
 
@@ -54,6 +77,46 @@ export function ScreenContainer({ children, contentContainerStyle, scroll = true
       <ScrollView contentContainerStyle={[styles.screenContent, contentContainerStyle]} showsVerticalScrollIndicator={false}>
         {children}
       </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+export function ScreenList<ItemT>({
+  contentContainerStyle,
+  data,
+  emptyDescription,
+  emptyTitle,
+  estimatedItemHeight,
+  footer,
+  header,
+  ItemSeparatorComponent,
+  keyExtractor,
+  onRefresh,
+  refreshing = false,
+  renderItem,
+}: ScreenListProps<ItemT>) {
+  const styles = useSharedStyles();
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <FlatList
+        contentContainerStyle={[styles.screenContent, styles.screenListContent, contentContainerStyle]}
+        data={data}
+        initialNumToRender={8}
+        ItemSeparatorComponent={ItemSeparatorComponent}
+        keyExtractor={keyExtractor}
+        ListEmptyComponent={<EmptyState title={emptyTitle} description={emptyDescription} />}
+        ListFooterComponent={footer}
+        ListHeaderComponent={header}
+        maxToRenderPerBatch={8}
+        removeClippedSubviews
+        renderItem={renderItem}
+        showsVerticalScrollIndicator={false}
+        updateCellsBatchingPeriod={50}
+        windowSize={10}
+        refreshControl={onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined}
+        getItemLayout={estimatedItemHeight ? (_data, index) => ({ index, length: estimatedItemHeight, offset: estimatedItemHeight * index }) : undefined}
+      />
     </SafeAreaView>
   );
 }
@@ -269,6 +332,83 @@ export function LoadingState({ message }: { message: string }) {
       <ActivityIndicator color={theme.colors.primary} size="large" />
       <Text style={styles.feedbackTitle}>{message}</Text>
     </View>
+  );
+}
+
+export function ListSkeleton({ itemCount = 4, showHero = false }: { itemCount?: number; showHero?: boolean }) {
+  const styles = useSharedStyles();
+
+  return (
+    <ScreenContainer>
+      {showHero ? <SkeletonCard height={132} /> : null}
+      <SkeletonCard height={110} />
+      <View style={styles.skeletonList}>
+        {Array.from({ length: itemCount }).map((_, index) => (
+          <SkeletonCard key={`skeleton-${index}`} height={110} />
+        ))}
+      </View>
+    </ScreenContainer>
+  );
+}
+
+export function SkeletonCard({ height = 96 }: { height?: number }) {
+  const styles = useSharedStyles();
+
+  return (
+    <View style={styles.skeletonCard}>
+      <SkeletonBlock height={12} width="36%" />
+      <SkeletonBlock height={22} width="58%" />
+      <SkeletonBlock height={14} width="82%" />
+      <SkeletonBlock height={height > 100 ? 14 : 12} width="68%" />
+    </View>
+  );
+}
+
+export function SkeletonBlock({ height, width }: { height: number; width: number | `${number}%` }) {
+  const styles = useSharedStyles();
+  const opacity = useRef(new Animated.Value(0.55)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 650, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.55, duration: 650, useNativeDriver: true }),
+      ])
+    );
+    animation.start();
+
+    return () => {
+      animation.stop();
+    };
+  }, [opacity]);
+
+  return <Animated.View style={[styles.skeletonBlock, { height, opacity, width }]} />;
+}
+
+export function CachedImage({ accessibilityLabel, contentFit = 'cover', placeholderLabel = 'Image unavailable', source, style }: CachedImageProps) {
+  const styles = useSharedStyles();
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <View style={[styles.imageFallback, style]} accessibilityLabel={placeholderLabel}>
+        <Ionicons name="image-outline" size={24} color={styles.imageFallbackIcon.color} />
+        <Text style={styles.imageFallbackLabel}>{placeholderLabel}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      accessibilityLabel={accessibilityLabel}
+      cachePolicy="memory-disk"
+      contentFit={contentFit}
+      onError={() => setHasError(true)}
+      placeholder={{ blurhash: 'LGFFaXYk^6#M@-5c,1J5@[or[Q6.' }}
+      source={source}
+      style={style}
+      transition={120}
+    />
   );
 }
 
@@ -514,6 +654,43 @@ function createStyles(theme: AppTheme, isDarkMode: boolean) {
     color: theme.colors.mutedText,
     fontSize: 14,
     lineHeight: 20,
+    textAlign: 'center',
+  },
+  screenListContent: {
+    flexGrow: 1,
+  },
+  skeletonList: {
+    gap: theme.spacing.md,
+  },
+  skeletonCard: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    gap: theme.spacing.sm,
+    padding: theme.spacing.lg,
+  },
+  skeletonBlock: {
+    backgroundColor: isDarkMode ? '#243746' : '#D9D2C7',
+    borderRadius: theme.radius.pill,
+  },
+  imageFallback: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.elevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    gap: 8,
+    justifyContent: 'center',
+    minHeight: 80,
+    padding: theme.spacing.md,
+  },
+  imageFallbackIcon: {
+    color: theme.colors.mutedText,
+  },
+  imageFallbackLabel: {
+    color: theme.colors.mutedText,
+    fontSize: 12,
     textAlign: 'center',
   },
   });

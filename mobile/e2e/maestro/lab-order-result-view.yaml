@@ -1,0 +1,10 @@
+appId: com.nexora.vitora
+---
+- launchApp
+- tapOn: "More"
+- tapOn: "Laboratory"
+- tapOn: "New lab order"
+- tapOn: "Clinical notes"
+- inputText: "Fever and cough"
+- tapOn: "Create lab order"
+- assertVisible: "Orders and results"

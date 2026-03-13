@@ -1,23 +1,21 @@
 import { ancVisitsApi, immunizationsApi, mchRegistrationsApi } from './mch';
-import { apiClient } from './client';
+import { http, HttpResponse } from 'msw';
 
-jest.mock('./client', () => ({
-  apiClient: {
-    get: jest.fn(),
-    post: jest.fn(),
-  },
-}));
+import { server } from '@/__tests__/msw/server';
 
-const mockedApiClient = apiClient as jest.Mocked<typeof apiClient>;
+const API_BASE_URL = 'http://127.0.0.1:9088';
 
 describe('mchApi', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    server.resetHandlers();
   });
 
   it('loads paginated MCH registrations', async () => {
-    mockedApiClient.get.mockResolvedValueOnce({
-      data: {
+    let capturedMother = '';
+    server.use(
+      http.get(`${API_BASE_URL}/api/mch/registrations/`, ({ request }) => {
+        capturedMother = new URL(request.url).searchParams.get('mother') ?? '';
+        return HttpResponse.json({
         count: 1,
         next: null,
         previous: null,
@@ -42,20 +40,20 @@ describe('mchApi', () => {
             created_at: '2026-03-13T08:00:00Z',
           },
         ],
-      },
-    });
+      });
+      })
+    );
 
     const response = await mchRegistrationsApi.list({ mother: 14 });
 
-    expect(mockedApiClient.get).toHaveBeenCalledWith('/api/mch/registrations/', {
-      params: { mother: 14 },
-    });
+    expect(capturedMother).toBe('14');
     expect(response.results[0]?.mch_number).toBe('MCH-20260313-0009');
   });
 
   it('creates an ANC visit and coerces numeric fields', async () => {
-    mockedApiClient.post.mockResolvedValueOnce({
-      data: {
+    server.use(
+      http.post(`${API_BASE_URL}/api/mch/anc-visits/`, () =>
+        HttpResponse.json({
         id: 12,
         registration: 9,
         registration_mch_number: 'MCH-20260313-0009',
@@ -89,8 +87,9 @@ describe('mchApi', () => {
         is_fetal_heart_rate_normal: true,
         created_at: '2026-03-13T08:00:00Z',
         updated_at: '2026-03-13T08:00:00Z',
-      },
-    });
+      })
+      )
+    );
 
     const response = await ancVisitsApi.create({
       registration: 9,
@@ -104,27 +103,31 @@ describe('mchApi', () => {
   });
 
   it('generates immunization schedule arrays', async () => {
-    mockedApiClient.post.mockResolvedValueOnce({
-      data: [
-        {
-          id: 30,
-          patient: 14,
-          vaccine: 6,
-          vaccine_code: 'TT1',
-          vaccine_name: 'Tetanus Toxoid Dose 1',
-          scheduled_date: '2026-03-20',
-          administered_date: null,
-          status: 'SCHEDULED',
-          dose_number: 1,
-          is_overdue: false,
-          created_at: '2026-03-13T08:00:00Z',
-        },
-      ],
-    });
+    let requestBody: Record<string, unknown> | null = null;
+    server.use(
+      http.post(`${API_BASE_URL}/api/mch/immunizations/generate-schedule/`, async ({ request }) => {
+        requestBody = await request.json() as Record<string, unknown>;
+        return HttpResponse.json([
+          {
+            id: 30,
+            patient: 14,
+            vaccine: 6,
+            vaccine_code: 'TT1',
+            vaccine_name: 'Tetanus Toxoid Dose 1',
+            scheduled_date: '2026-03-20',
+            administered_date: null,
+            status: 'SCHEDULED',
+            dose_number: 1,
+            is_overdue: false,
+            created_at: '2026-03-13T08:00:00Z',
+          },
+        ]);
+      })
+    );
 
     const response = await immunizationsApi.generateSchedule(14);
 
-    expect(mockedApiClient.post).toHaveBeenCalledWith('/api/mch/immunizations/generate-schedule/', { patient: 14 });
+    expect(requestBody).toEqual({ patient: 14 });
     expect(response[0]?.vaccine_code).toBe('TT1');
   });
 });

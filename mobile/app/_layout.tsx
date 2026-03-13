@@ -1,18 +1,24 @@
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
+import * as SplashScreen from 'expo-splash-screen';
 import { Redirect, Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import 'react-native-reanimated';
 
+import { AppErrorBoundary } from '@/components/app-error-boundary';
 import { ScreenContainer, SectionCard } from '@/components/app-ui';
 import { AuthProvider, useAuth } from '@/lib/auth/auth-context';
 import { SessionTimeoutProvider, useSessionTimeout } from '@/lib/auth/session-timeout';
+import { initializeSentry } from '@/lib/monitoring/sentry';
 import { queryClient } from '@/lib/query/client';
 import { initializeCertificatePinning } from '@/lib/security/certificate-pinning';
 import { SyncStatusProvider } from '@/lib/sync/status';
 import { AppThemeProvider, useAppTheme } from '@/lib/theme/theme-context';
+
+void SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -28,6 +34,15 @@ export default function RootLayout() {
 
 function RootLayoutContent() {
   const { isDarkMode, theme } = useAppTheme();
+
+  useEffect(() => {
+    initializeSentry();
+  }, []);
+
+  useEffect(() => {
+    void SystemUI.setBackgroundColorAsync(theme.colors.background);
+  }, [theme.colors.background]);
+
   const navigationTheme = useMemo(
     () => ({
       ...DefaultTheme,
@@ -49,10 +64,12 @@ function RootLayoutContent() {
       <AuthProvider>
         <SessionTimeoutProvider>
           <SyncStatusProvider>
-            <ThemeProvider value={navigationTheme}>
-              <NavigationStack />
-              <StatusBar style={isDarkMode ? 'light' : 'dark'} />
-            </ThemeProvider>
+            <AppErrorBoundary>
+              <ThemeProvider value={navigationTheme}>
+                <NavigationStack />
+                <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+              </ThemeProvider>
+            </AppErrorBoundary>
           </SyncStatusProvider>
         </SessionTimeoutProvider>
       </AuthProvider>
@@ -65,6 +82,7 @@ function NavigationStack() {
   const { isLocked, recordActivity } = useSessionTimeout();
   const pathname = usePathname();
   const [securityError, setSecurityError] = useState<string | null>(null);
+  const [isSplashHidden, setIsSplashHidden] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -79,6 +97,16 @@ function NavigationStack() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (isHydrating || isSplashHidden) {
+      return;
+    }
+
+    SplashScreen.hideAsync()
+      .then(() => setIsSplashHidden(true))
+      .catch(() => setIsSplashHidden(true));
+  }, [isHydrating, isSplashHidden]);
 
   if (!isHydrating && isAuthenticated && isLocked && pathname !== '/sign-in') {
     return <Redirect href={'/sign-in' as never} />;

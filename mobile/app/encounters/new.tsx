@@ -9,6 +9,7 @@ import { encountersApi } from '@/lib/api/encounters';
 import { queueOfflineEncounterCreate, upsertEncounters } from '@/lib/db';
 import { clearNewEncounterDraft, getNewEncounterDraft, saveNewEncounterDraft } from '@/lib/encounter-draft-storage';
 import { useLocalPatient, useLocalPatients } from '@/lib/hooks/use-local-patients';
+import { notifyErrorHaptic, notifySuccessHaptic, notifyWarningHaptic } from '@/lib/haptics';
 import { buildBloodPressure, ENCOUNTER_TYPE_OPTIONS } from '@/lib/encounters';
 import { queryClient } from '@/lib/query/client';
 import { isOfflineSyncError } from '@/lib/sync/conflicts';
@@ -188,22 +189,26 @@ export default function NewEncounterScreen() {
 
   async function handleCreateEncounter() {
     if (!form.patient) {
+      await notifyWarningHaptic();
       Alert.alert('Patient required', 'Select the patient for this encounter.');
       return;
     }
 
     if (!form.chiefComplaint.trim()) {
+      await notifyWarningHaptic();
       Alert.alert('Chief complaint required', 'Enter the primary complaint for the encounter.');
       return;
     }
 
     if ((form.bloodPressureSystolic.trim() && !form.bloodPressureDiastolic.trim()) || (!form.bloodPressureSystolic.trim() && form.bloodPressureDiastolic.trim())) {
+      await notifyWarningHaptic();
       Alert.alert('Incomplete blood pressure', 'Enter both systolic and diastolic values, or leave both blank.');
       return;
     }
 
     try {
       await createEncounterMutation.mutateAsync();
+      await notifySuccessHaptic();
     } catch (error) {
       const apiError = toApiError(error);
       if (isOfflineSyncError(apiError)) {
@@ -231,11 +236,13 @@ export default function NewEncounterScreen() {
           notes: form.notes.trim() || undefined,
         });
         await clearNewEncounterDraft();
+        await notifySuccessHaptic();
         Alert.alert('Saved offline', 'The encounter was queued on this device and will sync automatically when connectivity returns.');
         router.replace(`/encounters/${queuedEncounter.id}` as never);
         return;
       }
 
+      await notifyErrorHaptic();
       Alert.alert('Unable to create encounter', apiError.message || 'The backend rejected the encounter payload.');
     }
   }

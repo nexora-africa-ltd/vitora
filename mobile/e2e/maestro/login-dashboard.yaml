@@ -1,0 +1,10 @@
+appId: com.nexora.vitora
+---
+- launchApp
+- assertVisible: "Clinical mobile access"
+- tapOn: "Username"
+- inputText: "testuser"
+- tapOn: "Password"
+- inputText: "password123"
+- tapOn: "Sign in"
+- assertVisible: "Quick actions"
