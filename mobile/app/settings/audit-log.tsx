@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, AppPicker, HeroCard, ListSkeleton, Pill, ScreenList, SectionCard } from '@/components/app-ui';
+import { AppButton, AppPicker, HeroCard, LoadingState, Pill, ScreenContainer, ScreenList, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
 import { auditApi } from '@/lib/api/audit';
 import { useAuth } from '@/lib/auth/auth-context';
@@ -57,7 +57,11 @@ export default function AuditLogScreen() {
   });
 
   if (auditQuery.isLoading) {
-    return <ListSkeleton itemCount={4} showHero />;
+    return (
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading audit trail..." fullScreen />
+      </ScreenContainer>
+    );
   }
 
   const entries = auditQuery.data?.results ?? [];

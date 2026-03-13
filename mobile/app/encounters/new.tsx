@@ -249,8 +249,8 @@ export default function NewEncounterScreen() {
 
   if (patientsQuery.isLoading || preselectedPatientQuery.isLoading || !isDraftHydrated) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Preparing encounter form..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Preparing encounter form..." fullScreen />
       </ScreenContainer>
     );
   }

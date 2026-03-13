@@ -17,7 +17,7 @@
       "env": {
         "EXPO_PUBLIC_APP_ENV": "preview",
         "EXPO_PUBLIC_API_URL": "https://vitora-api.onrender.com",
-        "EXPO_PUBLIC_APPROVED_API_ENVIRONMENTS": "[{\"id\":\"preview\",\"label\":\"Preview API\",\"url\":\"https://vitora-api.onrender.com\"},{\"id\":\"production\",\"label\":\"Production API\",\"url\":\"https://vitora-prod.onrender.com\"}]",
+        "EXPO_PUBLIC_APPROVED_API_ENVIRONMENTS": "[{\"id\":\"preview\",\"label\":\"Preview API\",\"url\":\"https://vitora-api.onrender.com\"},{\"id\":\"production\",\"label\":\"Production API\",\"url\":\"https://api.vitora.nexora.africa\"}]",
         "EXPO_PUBLIC_API_PIN_HOST": "vitora-api.onrender.com",
         "EXPO_PUBLIC_API_PIN_PRIMARY": "IX2/a47sFHkF9jewioc5OzEDzS0dNQjNMCX8PCQ26Pg=",
         "EXPO_PUBLIC_API_PIN_BACKUP": "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
@@ -29,9 +29,9 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
-        "EXPO_PUBLIC_API_URL": "https://vitora-prod.onrender.com",
-        "EXPO_PUBLIC_APPROVED_API_ENVIRONMENTS": "[{\"id\":\"production\",\"label\":\"Production API\",\"url\":\"https://vitora-prod.onrender.com\"},{\"id\":\"preview\",\"label\":\"Preview API\",\"url\":\"https://vitora-api.onrender.com\"}]",
-        "EXPO_PUBLIC_API_PIN_HOST": "vitora-prod.onrender.com",
+        "EXPO_PUBLIC_API_URL": "https://api.vitora.nexora.africa",
+        "EXPO_PUBLIC_APPROVED_API_ENVIRONMENTS": "[{\"id\":\"production\",\"label\":\"Production API\",\"url\":\"https://api.vitora.nexora.africa\"},{\"id\":\"preview\",\"label\":\"Preview API\",\"url\":\"https://vitora-api.onrender.com\"}]",
+        "EXPO_PUBLIC_API_PIN_HOST": "api.vitora.nexora.africa",
         "EXPO_PUBLIC_API_PIN_PRIMARY": "IX2/a47sFHkF9jewioc5OzEDzS0dNQjNMCX8PCQ26Pg=",
         "EXPO_PUBLIC_API_PIN_BACKUP": "kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
         "EXPO_PUBLIC_API_PIN_TERTIARY": "mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=",

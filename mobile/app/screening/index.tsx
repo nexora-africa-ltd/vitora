@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, HeroCard, ListSkeleton, Pill, ScreenList, SectionCard } from '@/components/app-ui';
+import { AppButton, HeroCard, LoadingState, Pill, ScreenContainer, ScreenList, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
 import { screeningApi } from '@/lib/api/screening';
 import { useLocalScreenings } from '@/lib/hooks/use-local-mch';
@@ -25,7 +25,11 @@ export default function ScreeningListScreen() {
   const { isRefreshing, refresh } = useRefreshQueries(refreshKeys);
 
   if (screeningsQuery.isLoading) {
-    return <ListSkeleton itemCount={4} showHero />;
+    return (
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading field screenings..." fullScreen />
+      </ScreenContainer>
+    );
   }
 
   const records = screeningsQuery.screenings;

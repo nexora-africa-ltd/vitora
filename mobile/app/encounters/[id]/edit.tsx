@@ -443,8 +443,8 @@ export default function EditEncounterScreen() {
 
   if (encounterQuery.isLoading || !isDraftHydrated || !encounterForm) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Loading encounter editor..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading encounter editor..." fullScreen />
       </ScreenContainer>
     );
   }

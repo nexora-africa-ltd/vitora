@@ -144,8 +144,8 @@ export default function AdmissionDetailScreen() {
 
   if (admissionQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Loading admission..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading admission..." fullScreen />
       </ScreenContainer>
     );
   }

@@ -159,8 +159,8 @@ export default function EncounterDetailScreen() {
 
   if (encounterQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Loading encounter details..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading encounter details..." fullScreen />
       </ScreenContainer>
     );
   }

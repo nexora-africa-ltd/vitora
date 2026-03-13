@@ -11,8 +11,8 @@ export default function TabLayout() {
 
   if (isHydrating) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Preparing the mobile workspace..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Preparing the mobile workspace..." fullScreen />
       </ScreenContainer>
     );
   }

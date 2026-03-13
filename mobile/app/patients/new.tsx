@@ -201,8 +201,8 @@ export default function NewPatientScreen() {
 
   if (countiesQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Loading Kenya location data..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading Kenya location data..." fullScreen />
       </ScreenContainer>
     );
   }

@@ -219,8 +219,8 @@ export default function CheckInScreen() {
 
   if (preselectedPatientQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Loading patient for check-in..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading patient for check-in..." fullScreen />
       </ScreenContainer>
     );
   }

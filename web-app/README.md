@@ -54,6 +54,7 @@ Next.js web frontend for Vitora Hospital Management Information System.
 - **API Validation**: Zod schemas for all responses
 - **Charts**: Recharts 2.15
 - **Dark Mode**: System preference + manual toggle
+- **PWA Support**: Installable app shell with a manifest, service worker, and offline fallback page
 
 ---
 
@@ -169,6 +170,9 @@ make api   # ASGI server with WebSocket support (recommended)
 npm run build
 npm start
 \`\`\`
+
+### PWA Behavior
+The web app can be installed as a Progressive Web App in supported browsers. The service worker intentionally caches only static assets and the offline fallback page. Authenticated routes and API responses are not cached for offline replay, which avoids persisting clinical data in the browser cache beyond the app shell.
 
 ---
 

@@ -290,8 +290,8 @@ export default function NewPrescriptionScreen() {
 
   if (patientsQuery.isLoading || encounterQuery.isLoading || treatmentPlanQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Preparing prescription form..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Preparing prescription form..." fullScreen />
       </ScreenContainer>
     );
   }

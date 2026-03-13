@@ -270,8 +270,8 @@ export default function TriageAssessmentScreen() {
 
   if (encounterQuery.isLoading || triageQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Loading triage workflow..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading triage workflow..." fullScreen />
       </ScreenContainer>
     );
   }

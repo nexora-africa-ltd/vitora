@@ -60,8 +60,8 @@ export default function ImmunizationScreen() {
 
   if (patientQuery.isLoading || immunizationQuery.isLoading || registrationQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Loading immunization schedule..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading immunization schedule..." fullScreen />
       </ScreenContainer>
     );
   }

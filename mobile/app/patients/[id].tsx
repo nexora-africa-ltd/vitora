@@ -47,8 +47,8 @@ export default function PatientDetailScreen() {
 
   if (patientQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Loading patient record..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading patient record..." fullScreen />
       </ScreenContainer>
     );
   }

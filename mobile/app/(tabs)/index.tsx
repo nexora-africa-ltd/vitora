@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { AppButton, HeroCard, LoadingState, MetricCard, Pill, ScreenContainer, SectionCard } from '@/components/app-ui';
 import { SyncIndicator } from '@/components/sync-indicator';
@@ -24,7 +25,7 @@ function getCurrentDateLabel(): string {
 
 export default function DashboardScreen() {
   const { user } = useAuth();
-  const { theme } = useAppTheme();
+  const { isDarkMode, theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const summaryQuery = useQuery({
@@ -45,8 +46,8 @@ export default function DashboardScreen() {
 
   if (summaryQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Loading the mobile clinical dashboard..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading the mobile clinical dashboard..." fullScreen />
       </ScreenContainer>
     );
   }
@@ -55,7 +56,14 @@ export default function DashboardScreen() {
     <ScreenContainer>
       <HeroCard
         eyebrow={getCurrentDateLabel()}
-        title={`${getGreeting()}, ${user?.first_name || user?.username || 'Clinician'} 👋`}
+        title={`${getGreeting()}, ${user?.first_name || user?.username || 'Clinician'}`}
+        titleAccessory={
+          <MaterialCommunityIcons
+            color={isDarkMode ? '#F8FAFC' : '#7A4A2A'}
+            name="hand-wave"
+            size={28}
+          />
+        }
         description={[user?.role, user?.facility?.name].filter(Boolean).join(' · ') || 'No facility linked'}
       >
         <View style={styles.heroMetaRow}>
@@ -112,11 +120,11 @@ function createStyles(theme: AppTheme) {
     gap: 4,
   },
   heroStat: {
-    color: theme.colors.mutedText,
+    color: 'rgba(248, 250, 252, 0.78)',
     fontSize: 13,
   },
   heroStatBold: {
-    color: theme.colors.text,
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   metricsRow: {

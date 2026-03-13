@@ -95,8 +95,8 @@ export default function LaboratoryDetailScreen() {
 
   if (orderQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Loading lab order..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading lab order..." fullScreen />
       </ScreenContainer>
     );
   }

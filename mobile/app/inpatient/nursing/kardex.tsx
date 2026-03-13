@@ -91,8 +91,8 @@ export default function KardexScreen() {
 
   if (kardexQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Loading kardex..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading kardex..." fullScreen />
       </ScreenContainer>
     );
   }

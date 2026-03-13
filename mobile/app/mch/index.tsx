@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppButton, AppTextInput, HeroCard, ListSkeleton, MetricCard, Pill, ScreenList, SectionCard } from '@/components/app-ui';
+import { AppButton, AppTextInput, HeroCard, LoadingState, MetricCard, Pill, ScreenContainer, ScreenList, SectionCard } from '@/components/app-ui';
 import type { AppTheme } from '@/constants/theme';
 import { useLocalMCHRegistrations } from '@/lib/hooks/use-local-mch';
 import { useRefreshQueries } from '@/lib/hooks/use-refresh-queries';
@@ -19,7 +19,11 @@ export default function MCHScreen() {
   const { isRefreshing, refresh } = useRefreshQueries(refreshKeys);
 
   if (registrationsQuery.isLoading) {
-    return <ListSkeleton itemCount={4} showHero />;
+    return (
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading MCH registry..." fullScreen />
+      </ScreenContainer>
+    );
   }
 
   const registrations = registrationsQuery.registrations;

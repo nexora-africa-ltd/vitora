@@ -43,8 +43,8 @@ export default function BillingDetailScreen() {
 
   if (invoiceQuery.isLoading) {
     return (
-      <ScreenContainer>
-        <LoadingState message="Loading invoice details..." />
+      <ScreenContainer scroll={false}>
+        <LoadingState message="Loading invoice details..." fullScreen />
       </ScreenContainer>
     );
   }

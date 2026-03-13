@@ -8,6 +8,7 @@ import { AuthProvider } from '@/lib/auth/context';
 import { Toaster } from '@/components/ui/sonner';
 import { NavigationProgress } from '@/components/layout/navigation-progress';
 import { DemoBanner, DemoWatermark } from '@/components/shared/demo-banner';
+import { InstallPromptBanner } from '@/components/shared/install-prompt-banner';
 import { NewVersionToast } from '@/components/shared/new-version-toast';
 import { PageRefreshProvider } from '@/lib/context/page-refresh-context';
 import { FacilityProvider } from '@/lib/context/facility-context';
@@ -61,6 +62,7 @@ export function Providers({ children }: ProvidersProps) {
               <NavigationModeProvider>
                 {/* Demo mode banner - shows in staging environment */}
                 <DemoBanner />
+                <InstallPromptBanner />
                 <Suspense fallback={null}>
                   <NavigationProgress />
                 </Suspense>
