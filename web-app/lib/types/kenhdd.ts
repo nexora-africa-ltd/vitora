@@ -88,3 +88,28 @@ export interface KENHDDComplianceSummaryEntry {
   run_at: string | null;
   run_by: string | null;
 }
+
+export interface KENHDDFailedRecord {
+  id: number;
+  record_id: string;
+  is_compliant: boolean;
+  pass_count: number;
+  fail_count: number;
+  warning_count: number;
+  violation_details: KENHDDViolationDetail[];
+}
+
+export interface KENHDDViolationDetail {
+  element_id: string;
+  element_name: string;
+  field_name: string;
+  status: KENHDDValidationStatus;
+  message: string;
+  requirement_level: KENHDDRequirementLevel;
+  value: string;
+}
+
+export interface KENHDDValidationRunDetail extends KENHDDValidationRun {
+  total_failed: number;
+  failed_records: KENHDDFailedRecord[];
+}

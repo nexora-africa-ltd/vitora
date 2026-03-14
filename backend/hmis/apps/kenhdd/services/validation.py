@@ -402,7 +402,7 @@ class KENHDDValidationService:
             scores.append(score)
 
             # Persist the run
-            KENHDDValidationRun.objects.create(
+            run_obj = KENHDDValidationRun.objects.create(
                 resource_type=rt,
                 records_checked=total,
                 records_compliant=compliant_count,
@@ -411,6 +411,41 @@ class KENHDDValidationService:
                 violations=violations,
                 run_by=user,
             )
+
+            # Persist per-record failure details for drill-down
+            from hmis.apps.kenhdd.models import KENHDDFailedRecord
+
+            failed_objects = []
+            for record in records:
+                record_result = self.validate_record(rt, record)
+                if not record_result.is_compliant or record_result.fail_count > 0 or record_result.warning_count > 0:
+                    violation_details = [
+                        {
+                            "element_id": e.element_id,
+                            "element_name": e.element_name,
+                            "field_name": e.field_name,
+                            "status": e.status,
+                            "message": e.message,
+                            "requirement_level": e.requirement_level,
+                            "value": e.value,
+                        }
+                        for e in record_result.elements
+                        if e.status in ("FAIL", "WARNING")
+                    ]
+                    if violation_details:
+                        failed_objects.append(
+                            KENHDDFailedRecord(
+                                run=run_obj,
+                                record_id=str(record_result.record_id),
+                                is_compliant=record_result.is_compliant,
+                                pass_count=record_result.pass_count,
+                                fail_count=record_result.fail_count,
+                                warning_count=record_result.warning_count,
+                                violation_details=violation_details,
+                            )
+                        )
+            if failed_objects:
+                KENHDDFailedRecord.objects.bulk_create(failed_objects)
 
         return scores
 

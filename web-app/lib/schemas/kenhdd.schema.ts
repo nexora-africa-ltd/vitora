@@ -81,6 +81,31 @@ export const KENHDDComplianceSummaryEntrySchema = z.object({
   run_by: z.string().nullable(),
 });
 
+export const KENHDDViolationDetailSchema = z.object({
+  element_id: z.string(),
+  element_name: z.string(),
+  field_name: z.string(),
+  status: z.string(),
+  message: z.string(),
+  requirement_level: z.string(),
+  value: z.string(),
+});
+
+export const KENHDDFailedRecordSchema = z.object({
+  id: z.number(),
+  record_id: z.union([z.string(), z.number()]).transform(String),
+  is_compliant: z.boolean(),
+  pass_count: z.number(),
+  fail_count: z.number(),
+  warning_count: z.number(),
+  violation_details: z.array(KENHDDViolationDetailSchema),
+});
+
+export const KENHDDValidationRunDetailSchema = KENHDDValidationRunSchema.extend({
+  total_failed: z.number(),
+  failed_records: z.array(KENHDDFailedRecordSchema),
+});
+
 // Paginated list response
 export const KENHDDDataElementListSchema = z.object({
   count: z.number(),

@@ -215,3 +215,59 @@ class KENHDDValidationRun(models.Model):
             f"KENHDD Run [{self.resource_type}] "
             f"{self.compliance_score}% — {self.run_at:%Y-%m-%d %H:%M}"
         )
+
+
+class KENHDDFailedRecord(models.Model):
+    """
+    A record that failed validation during a KENHDD compliance run.
+
+    Stores the record PK, whether it was compliant, and the per-element
+    violation details so administrators can drill down into a run and see
+    exactly which records need remediation.
+    """
+
+    run = models.ForeignKey(
+        KENHDDValidationRun,
+        on_delete=models.CASCADE,
+        related_name="failed_records",
+        help_text="The validation run this failure belongs to",
+    )
+    record_id = models.CharField(
+        max_length=50,
+        help_text="Primary key of the failing record",
+    )
+    is_compliant = models.BooleanField(
+        default=False,
+        help_text="Whether the record passed all mandatory checks",
+    )
+    pass_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of elements that passed",
+    )
+    fail_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of elements that failed",
+    )
+    warning_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of elements with warnings",
+    )
+    violation_details = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="List of failed/warning element results with messages",
+    )
+
+    class Meta:
+        ordering = ["-fail_count"]
+        verbose_name = "KENHDD Failed Record"
+        verbose_name_plural = "KENHDD Failed Records"
+        indexes = [
+            models.Index(fields=["run", "-fail_count"]),
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"Record {self.record_id} — "
+            f"{self.fail_count} fail(s), {self.warning_count} warning(s)"
+        )

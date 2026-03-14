@@ -10,6 +10,7 @@ from rest_framework import serializers
 
 from .models import (
     KENHDDDataElement,
+    KENHDDFailedRecord,
     KENHDDValidationRun,
 )
 
@@ -152,4 +153,61 @@ class KENHDDComplianceReportInputSerializer(serializers.Serializer):
     )
     sample_size = serializers.IntegerField(
         default=100, min_value=1, max_value=1000
+    )
+
+
+class KENHDDFailedRecordSerializer(serializers.ModelSerializer):
+    """Serializer for a single failed record within a validation run."""
+
+    class Meta:
+        model = KENHDDFailedRecord
+        fields = [
+            "id",
+            "record_id",
+            "is_compliant",
+            "pass_count",
+            "fail_count",
+            "warning_count",
+            "violation_details",
+        ]
+
+
+class KENHDDValidationRunDetailSerializer(serializers.ModelSerializer):
+    """Serializer for validation run detail including failed records."""
+
+    run_by_name = serializers.SerializerMethodField()
+    failed_records = KENHDDFailedRecordSerializer(many=True, read_only=True)
+    total_failed = serializers.SerializerMethodField()
+
+    class Meta:
+        model = KENHDDValidationRun
+        fields = [
+            "id",
+            "resource_type",
+            "records_checked",
+            "records_compliant",
+            "compliance_score",
+            "mandatory_pass_rate",
+            "violations",
+            "run_by",
+            "run_by_name",
+            "run_at",
+            "total_failed",
+            "failed_records",
+        ]
+
+    def get_run_by_name(self, obj: KENHDDValidationRun) -> str | None:
+        if obj.run_by:
+            return obj.run_by.get_full_name() or obj.run_by.username
+        return None
+
+    def get_total_failed(self, obj: KENHDDValidationRun) -> int:
+        return obj.failed_records.count()
+
+
+class KENHDDRevalidateInputSerializer(serializers.Serializer):
+    """Input serializer for revalidating failed records from a run."""
+
+    sample_size = serializers.IntegerField(
+        default=100, min_value=1, max_value=1000, required=False
     )

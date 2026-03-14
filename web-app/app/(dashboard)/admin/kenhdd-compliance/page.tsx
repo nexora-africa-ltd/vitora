@@ -22,6 +22,9 @@ import {
   Target,
   ArrowUpRight,
   ArrowDownRight,
+  ArrowUp,
+  ArrowDown,
+  ChevronsUpDown,
   Minus,
   Clock,
   User,
@@ -50,6 +53,7 @@ import {
 } from '@/components/ui/select';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { kenhddApi } from '@/lib/api/kenhdd';
+import { KENHDDRunDetailDialog } from '@/components/admin/kenhdd-run-detail-dialog';
 import { toast } from 'sonner';
 import type {
   KENHDDResourceType,
@@ -166,6 +170,10 @@ export default function KENHDDCompliancePage() {
   const queryClient = useQueryClient();
   const [reportScores, setReportScores] = useState<ComplianceScore[] | null>(null);
   const [historyFilter, setHistoryFilter] = useState<string>('all');
+  const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
+  const [runDetailOpen, setRunDetailOpen] = useState(false);
+  const [sortColumn, setSortColumn] = useState<string>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // --- Data fetching ---
   const {
@@ -337,12 +345,53 @@ export default function KENHDDCompliancePage() {
     return rows;
   }, [reportScores, checkedEntries, elementMap]);
 
-  // Filtered run history
+  // Filtered + sorted run history
   const filteredRuns = useMemo(() => {
     if (!runs) return [];
-    if (historyFilter === 'all') return runs.slice(0, 30);
-    return runs.filter((r) => r.resource_type === historyFilter).slice(0, 30);
-  }, [runs, historyFilter]);
+    let filtered = historyFilter === 'all' ? [...runs] : runs.filter((r) => r.resource_type === historyFilter);
+    const dir = sortDirection === 'asc' ? 1 : -1;
+    filtered.sort((a, b) => {
+      switch (sortColumn) {
+        case 'resource': {
+          const aL = RESOURCE_TYPE_CONFIG[a.resource_type as KENHDDResourceType]?.label ?? a.resource_type;
+          const bL = RESOURCE_TYPE_CONFIG[b.resource_type as KENHDDResourceType]?.label ?? b.resource_type;
+          return aL.localeCompare(bL) * dir;
+        }
+        case 'score':
+          return (parseFloat(a.compliance_score) - parseFloat(b.compliance_score)) * dir;
+        case 'mandatory':
+          return (parseFloat(a.mandatory_pass_rate) - parseFloat(b.mandatory_pass_rate)) * dir;
+        case 'records':
+          return (a.records_compliant - b.records_compliant) * dir;
+        case 'run_by': {
+          const aName = a.run_by_name ?? '';
+          const bName = b.run_by_name ?? '';
+          return aName.localeCompare(bName) * dir;
+        }
+        case 'date':
+        default:
+          return (new Date(a.run_at).getTime() - new Date(b.run_at).getTime()) * dir;
+      }
+    });
+    return filtered.slice(0, 30);
+  }, [runs, historyFilter, sortColumn, sortDirection]);
+
+  const toggleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColumn(column);
+      setSortDirection(column === 'date' ? 'desc' : 'asc');
+    }
+  };
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortColumn !== column)
+      return <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />;
+    return sortDirection === 'asc'
+      ? <ArrowUp className="h-3 w-3" />
+      : <ArrowDown className="h-3 w-3" />;
+  };
 
   // Most recent run timestamp
   const latestRunAt = useMemo(() => {
@@ -796,12 +845,36 @@ export default function KENHDDCompliancePage() {
                 <table className="min-w-[600px] w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
-                      <th className="pb-2 font-medium">Resource</th>
-                      <th className="pb-2 font-medium text-right">Score</th>
-                      <th className="pb-2 font-medium text-right">Mandatory</th>
-                      <th className="pb-2 font-medium text-right">Records</th>
-                      <th className="pb-2 font-medium">Run By</th>
-                      <th className="pb-2 font-medium">Date</th>
+                      <th className="pb-2 font-medium">
+                        <button type="button" className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => toggleSort('resource')}>
+                          Resource <SortIcon column="resource" />
+                        </button>
+                      </th>
+                      <th className="pb-2 font-medium text-right">
+                        <button type="button" className="inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto" onClick={() => toggleSort('score')}>
+                          Score <SortIcon column="score" />
+                        </button>
+                      </th>
+                      <th className="pb-2 font-medium text-right">
+                        <button type="button" className="inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto" onClick={() => toggleSort('mandatory')}>
+                          Mandatory <SortIcon column="mandatory" />
+                        </button>
+                      </th>
+                      <th className="pb-2 font-medium text-right">
+                        <button type="button" className="inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto" onClick={() => toggleSort('records')}>
+                          Records <SortIcon column="records" />
+                        </button>
+                      </th>
+                      <th className="pb-2 font-medium">
+                        <button type="button" className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => toggleSort('run_by')}>
+                          Run By <SortIcon column="run_by" />
+                        </button>
+                      </th>
+                      <th className="pb-2 font-medium">
+                        <button type="button" className="inline-flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => toggleSort('date')}>
+                          Date <SortIcon column="date" />
+                        </button>
+                      </th>
                       <th className="pb-2 font-medium text-right">Export</th>
                     </tr>
                   </thead>
@@ -809,7 +882,14 @@ export default function KENHDDCompliancePage() {
                     {filteredRuns.map((run) => {
                       const score = parseFloat(run.compliance_score);
                       return (
-                        <tr key={run.id} className="border-b last:border-0">
+                        <tr
+                          key={run.id}
+                          className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => {
+                            setSelectedRunId(run.id);
+                            setRunDetailOpen(true);
+                          }}
+                        >
                           <td className="py-2">
                             <div className="flex items-center gap-1.5">
                               {score >= 90 ? (
@@ -844,7 +924,10 @@ export default function KENHDDCompliancePage() {
                               size="icon"
                               className="h-7 w-7"
                               title="Export CSV"
-                              onClick={() => handleExport(run.resource_type as KENHDDResourceType, 'csv')}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleExport(run.resource_type as KENHDDResourceType, 'csv');
+                              }}
                             >
                               <Download className="h-3.5 w-3.5" />
                             </Button>
@@ -868,6 +951,12 @@ export default function KENHDDCompliancePage() {
             )}
           </CardContent>
         </Card>
+        {/* Run Detail Dialog */}
+        <KENHDDRunDetailDialog
+          runId={selectedRunId}
+          open={runDetailOpen}
+          onOpenChange={setRunDetailOpen}
+        />
       </div>
     </PullToRefresh>
   );

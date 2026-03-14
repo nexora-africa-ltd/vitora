@@ -11,6 +11,7 @@ from django.utils.html import format_html
 
 from .models import (
     KENHDDDataElement,
+    KENHDDFailedRecord,
     KENHDDRequirementLevel,
     KENHDDResourceType,
     KENHDDValidationRun,
@@ -91,6 +92,22 @@ class KENHDDDataElementAdmin(admin.ModelAdmin):
     requirement_badge.short_description = "Requirement"  # type: ignore[attr-defined]
 
 
+class KENHDDFailedRecordInline(admin.TabularInline):
+    """Inline admin for failed records within a validation run."""
+
+    model = KENHDDFailedRecord
+    extra = 0
+    readonly_fields = [
+        "record_id",
+        "is_compliant",
+        "pass_count",
+        "fail_count",
+        "warning_count",
+        "violation_details",
+    ]
+    can_delete = False
+
+
 @admin.register(KENHDDValidationRun)
 class KENHDDValidationRunAdmin(admin.ModelAdmin):
     list_display = [
@@ -114,3 +131,4 @@ class KENHDDValidationRunAdmin(admin.ModelAdmin):
         "run_by",
         "run_at",
     ]
+    inlines = [KENHDDFailedRecordInline]
