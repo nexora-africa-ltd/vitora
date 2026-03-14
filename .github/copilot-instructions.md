@@ -1234,6 +1234,68 @@ Prevent badges from stretching full-width on mobile:
 </Badge>
 ```
 
+### Sortable Table Column Headers
+
+**All data tables with historical or list data MUST have sortable column headers.** Each data column header should be a clickable button that toggles ascending/descending sort. Action columns (e.g., Export, Delete) are not sortable.
+
+**Pattern:**
+
+```tsx
+// State
+const [sortColumn, setSortColumn] = useState<string>('date');
+const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+// Toggle handler
+const toggleSort = (column: string) => {
+  if (sortColumn === column) {
+    setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+  } else {
+    setSortColumn(column);
+    // Default direction: 'desc' for date/time columns, 'asc' for text/number
+    setSortDirection(column === 'date' ? 'desc' : 'asc');
+  }
+};
+
+// Sort icon component
+const SortIcon = ({ column }: { column: string }) => {
+  if (sortColumn !== column)
+    return <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />;
+  return sortDirection === 'asc'
+    ? <ArrowUp className="h-3 w-3" />
+    : <ArrowDown className="h-3 w-3" />;
+};
+
+// Header cell
+<th className="pb-2 font-medium">
+  <button
+    type="button"
+    className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+    onClick={() => toggleSort('name')}
+  >
+    Name <SortIcon column="name" />
+  </button>
+</th>
+
+// For right-aligned columns, add `ml-auto` to the button:
+<th className="pb-2 font-medium text-right">
+  <button
+    type="button"
+    className="inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto"
+    onClick={() => toggleSort('score')}
+  >
+    Score <SortIcon column="score" />
+  </button>
+</th>
+```
+
+**Guidelines:**
+- Import `ArrowUp`, `ArrowDown`, `ChevronsUpDown` from `lucide-react`
+- Active sort column shows `ArrowUp`/`ArrowDown`; inactive columns show a subtle `ChevronsUpDown`
+- Date/time columns default to descending (newest first); text/number columns default to ascending
+- Action columns (Export, Delete, etc.) are NOT sortable
+- Apply sorting in `useMemo` that depends on `[data, sortColumn, sortDirection]`
+- Use `localeCompare` for string columns, numeric subtraction for numbers
+
 ### Table Responsiveness
 
 **For list pages with clickable rows, use `ResponsiveTable`** which provides automatic mobile card layouts:
