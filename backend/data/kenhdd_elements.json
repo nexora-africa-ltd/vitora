@@ -1,0 +1,550 @@
+[
+  {
+    "element_id": "KENHDD-PAT-001",
+    "name": "Patient Given Name",
+    "description": "Patient's first/given name as recorded on identification documents",
+    "resource_type": "PATIENT",
+    "model_field": "first_name",
+    "requirement_level": "MANDATORY",
+    "data_type": "STRING",
+    "max_length": 100
+  },
+  {
+    "element_id": "KENHDD-PAT-002",
+    "name": "Patient Family Name",
+    "description": "Patient's last/family/surname",
+    "resource_type": "PATIENT",
+    "model_field": "last_name",
+    "requirement_level": "MANDATORY",
+    "data_type": "STRING",
+    "max_length": 100
+  },
+  {
+    "element_id": "KENHDD-PAT-003",
+    "name": "Patient Middle Name",
+    "description": "Patient's middle name(s)",
+    "resource_type": "PATIENT",
+    "model_field": "middle_name",
+    "requirement_level": "OPTIONAL",
+    "data_type": "STRING",
+    "max_length": 100
+  },
+  {
+    "element_id": "KENHDD-PAT-004",
+    "name": "Date of Birth",
+    "description": "Patient's date of birth in ISO 8601 format",
+    "resource_type": "PATIENT",
+    "model_field": "date_of_birth",
+    "requirement_level": "MANDATORY",
+    "data_type": "DATE"
+  },
+  {
+    "element_id": "KENHDD-PAT-005",
+    "name": "Sex",
+    "description": "Patient's biological sex (M=Male, F=Female, O=Other)",
+    "resource_type": "PATIENT",
+    "model_field": "gender",
+    "requirement_level": "MANDATORY",
+    "data_type": "CODED",
+    "coding_system": "LOCAL"
+  },
+  {
+    "element_id": "KENHDD-PAT-006",
+    "name": "Identification Type",
+    "description": "Type of identification document (national_id, passport, birth_certificate, etc.)",
+    "resource_type": "PATIENT",
+    "model_field": "identification_type",
+    "requirement_level": "CONDITIONAL",
+    "data_type": "CODED",
+    "coding_system": "LOCAL",
+    "condition_expression": "Required when identification_number is provided"
+  },
+  {
+    "element_id": "KENHDD-PAT-007",
+    "name": "Identification Number",
+    "description": "National ID, passport, or birth certificate number",
+    "resource_type": "PATIENT",
+    "model_field": "identification_number",
+    "requirement_level": "CONDITIONAL",
+    "data_type": "IDENTIFIER",
+    "max_length": 50,
+    "condition_expression": "Required when identification_type is provided"
+  },
+  {
+    "element_id": "KENHDD-PAT-008",
+    "name": "Phone Number",
+    "description": "Patient's contact phone number",
+    "resource_type": "PATIENT",
+    "model_field": "phone_number",
+    "requirement_level": "OPTIONAL",
+    "data_type": "STRING",
+    "max_length": 20
+  },
+  {
+    "element_id": "KENHDD-PAT-009",
+    "name": "County of Residence",
+    "description": "Kenya county of residence (1 of 47 counties)",
+    "resource_type": "PATIENT",
+    "model_field": "county.name",
+    "requirement_level": "MANDATORY",
+    "data_type": "CODED",
+    "coding_system": "LOCAL"
+  },
+  {
+    "element_id": "KENHDD-PAT-010",
+    "name": "Sub-County of Residence",
+    "description": "Sub-county within the county of residence",
+    "resource_type": "PATIENT",
+    "model_field": "sub_county.name",
+    "requirement_level": "MANDATORY",
+    "data_type": "CODED",
+    "coding_system": "LOCAL"
+  },
+  {
+    "element_id": "KENHDD-PAT-011",
+    "name": "Ward of Residence",
+    "description": "Ward within the sub-county of residence",
+    "resource_type": "PATIENT",
+    "model_field": "ward.name",
+    "requirement_level": "OPTIONAL",
+    "data_type": "CODED",
+    "coding_system": "LOCAL"
+  },
+  {
+    "element_id": "KENHDD-PAT-012",
+    "name": "Medical Record Number",
+    "description": "Facility-assigned unique patient identifier (MRN-YYYYMMDD-XXXX)",
+    "resource_type": "PATIENT",
+    "model_field": "mrn",
+    "requirement_level": "MANDATORY",
+    "data_type": "IDENTIFIER",
+    "format_pattern": "^MRN-\\d{8}-\\d{4}$"
+  },
+  {
+    "element_id": "KENHDD-PAT-013",
+    "name": "SHA Number",
+    "description": "Social Health Authority member number",
+    "resource_type": "PATIENT",
+    "model_field": "sha_number",
+    "requirement_level": "OPTIONAL",
+    "data_type": "IDENTIFIER",
+    "max_length": 50
+  },
+  {
+    "element_id": "KENHDD-PAT-014",
+    "name": "Client Registry Number",
+    "description": "National Client Registry (CR) unique identifier",
+    "resource_type": "PATIENT",
+    "model_field": "cr_number",
+    "requirement_level": "OPTIONAL",
+    "data_type": "IDENTIFIER",
+    "max_length": 50
+  },
+  {
+    "element_id": "KENHDD-PAT-015",
+    "name": "Data Subject Consent",
+    "description": "Whether patient has given consent per Kenya Data Protection Act 2019",
+    "resource_type": "PATIENT",
+    "model_field": "consent_given",
+    "requirement_level": "MANDATORY",
+    "data_type": "BOOLEAN"
+  },
+  {
+    "element_id": "KENHDD-ENC-001",
+    "name": "Encounter Type",
+    "description": "Type of clinical encounter (OPD, IPD, EMERGENCY, ANC, etc.)",
+    "resource_type": "ENCOUNTER",
+    "model_field": "encounter_type",
+    "requirement_level": "MANDATORY",
+    "data_type": "CODED",
+    "coding_system": "LOCAL"
+  },
+  {
+    "element_id": "KENHDD-ENC-002",
+    "name": "Encounter Date",
+    "description": "Date of the clinical encounter",
+    "resource_type": "ENCOUNTER",
+    "model_field": "encounter_date",
+    "requirement_level": "MANDATORY",
+    "data_type": "DATE"
+  },
+  {
+    "element_id": "KENHDD-ENC-003",
+    "name": "Encounter Status",
+    "description": "Lifecycle status of the encounter",
+    "resource_type": "ENCOUNTER",
+    "model_field": "status",
+    "requirement_level": "MANDATORY",
+    "data_type": "CODED",
+    "coding_system": "LOCAL"
+  },
+  {
+    "element_id": "KENHDD-ENC-004",
+    "name": "Chief Complaint",
+    "description": "Patient's primary presenting complaint",
+    "resource_type": "ENCOUNTER",
+    "model_field": "chief_complaint",
+    "requirement_level": "MANDATORY",
+    "data_type": "STRING"
+  },
+  {
+    "element_id": "KENHDD-ENC-005",
+    "name": "Temperature",
+    "description": "Body temperature in degrees Celsius",
+    "resource_type": "ENCOUNTER",
+    "model_field": "temperature",
+    "requirement_level": "OPTIONAL",
+    "data_type": "DECIMAL"
+  },
+  {
+    "element_id": "KENHDD-ENC-006",
+    "name": "Pulse Rate",
+    "description": "Heart rate in beats per minute",
+    "resource_type": "ENCOUNTER",
+    "model_field": "pulse",
+    "requirement_level": "OPTIONAL",
+    "data_type": "INTEGER"
+  },
+  {
+    "element_id": "KENHDD-ENC-007",
+    "name": "Blood Pressure",
+    "description": "Systolic/diastolic blood pressure (e.g. 120/80)",
+    "resource_type": "ENCOUNTER",
+    "model_field": "blood_pressure",
+    "requirement_level": "OPTIONAL",
+    "data_type": "STRING",
+    "format_pattern": "^\\d{2,3}/\\d{2,3}$"
+  },
+  {
+    "element_id": "KENHDD-ENC-008",
+    "name": "Respiratory Rate",
+    "description": "Breaths per minute",
+    "resource_type": "ENCOUNTER",
+    "model_field": "respiratory_rate",
+    "requirement_level": "OPTIONAL",
+    "data_type": "INTEGER"
+  },
+  {
+    "element_id": "KENHDD-ENC-009",
+    "name": "Oxygen Saturation (SpO2)",
+    "description": "Peripheral oxygen saturation percentage",
+    "resource_type": "ENCOUNTER",
+    "model_field": "spo2",
+    "requirement_level": "OPTIONAL",
+    "data_type": "DECIMAL"
+  },
+  {
+    "element_id": "KENHDD-ENC-010",
+    "name": "Weight",
+    "description": "Body weight in kilograms",
+    "resource_type": "ENCOUNTER",
+    "model_field": "weight",
+    "requirement_level": "OPTIONAL",
+    "data_type": "DECIMAL"
+  },
+  {
+    "element_id": "KENHDD-ENC-011",
+    "name": "Height",
+    "description": "Body height in centimetres",
+    "resource_type": "ENCOUNTER",
+    "model_field": "height",
+    "requirement_level": "OPTIONAL",
+    "data_type": "DECIMAL"
+  },
+  {
+    "element_id": "KENHDD-ENC-012",
+    "name": "Disposition",
+    "description": "Encounter outcome/disposition (discharged, admitted, referred, etc.)",
+    "resource_type": "ENCOUNTER",
+    "model_field": "disposition",
+    "requirement_level": "CONDITIONAL",
+    "data_type": "CODED",
+    "coding_system": "LOCAL",
+    "condition_expression": "Required when encounter status is COMPLETED"
+  },
+  {
+    "element_id": "KENHDD-DX-001",
+    "name": "ICD-10 Diagnosis Code",
+    "description": "ICD-10 code for the diagnosis",
+    "resource_type": "DIAGNOSIS",
+    "model_field": "icd10_code",
+    "requirement_level": "CONDITIONAL",
+    "data_type": "CODED",
+    "coding_system": "ICD10",
+    "condition_expression": "At least one coding (ICD-10, ICD-11, or SNOMED CT) is required"
+  },
+  {
+    "element_id": "KENHDD-DX-002",
+    "name": "ICD-11 Diagnosis Code",
+    "description": "WHO ICD-11 code for the diagnosis",
+    "resource_type": "DIAGNOSIS",
+    "model_field": "icd11_code",
+    "requirement_level": "CONDITIONAL",
+    "data_type": "CODED",
+    "coding_system": "ICD11",
+    "condition_expression": "At least one coding (ICD-10, ICD-11, or SNOMED CT) is required"
+  },
+  {
+    "element_id": "KENHDD-DX-003",
+    "name": "ICD-11 Display Name",
+    "description": "Human-readable display for the ICD-11 code",
+    "resource_type": "DIAGNOSIS",
+    "model_field": "icd11_display",
+    "requirement_level": "CONDITIONAL",
+    "data_type": "STRING",
+    "condition_expression": "Required when icd11_code is provided"
+  },
+  {
+    "element_id": "KENHDD-DX-004",
+    "name": "SNOMED CT Code",
+    "description": "SNOMED CT concept ID for the diagnosis",
+    "resource_type": "DIAGNOSIS",
+    "model_field": "snomed_code",
+    "requirement_level": "OPTIONAL",
+    "data_type": "CODED",
+    "coding_system": "SNOMED_CT"
+  },
+  {
+    "element_id": "KENHDD-DX-005",
+    "name": "SNOMED CT Display",
+    "description": "SNOMED CT concept display text",
+    "resource_type": "DIAGNOSIS",
+    "model_field": "snomed_display",
+    "requirement_level": "CONDITIONAL",
+    "data_type": "STRING",
+    "condition_expression": "Required when snomed_code is provided"
+  },
+  {
+    "element_id": "KENHDD-DX-006",
+    "name": "Diagnosis Type",
+    "description": "Classification of the diagnosis (PRIMARY, SECONDARY, DIFFERENTIAL, WORKING)",
+    "resource_type": "DIAGNOSIS",
+    "model_field": "diagnosis_type",
+    "requirement_level": "MANDATORY",
+    "data_type": "CODED",
+    "coding_system": "LOCAL"
+  },
+  {
+    "element_id": "KENHDD-DX-007",
+    "name": "Diagnosis Certainty",
+    "description": "Certainty of the diagnosis (confirmed, provisional, suspected, ruled_out)",
+    "resource_type": "DIAGNOSIS",
+    "model_field": "certainty",
+    "requirement_level": "MANDATORY",
+    "data_type": "CODED",
+    "coding_system": "LOCAL"
+  },
+  {
+    "element_id": "KENHDD-DX-008",
+    "name": "Free-Text Diagnosis",
+    "description": "Free-text diagnosis when no standard code is available",
+    "resource_type": "DIAGNOSIS",
+    "model_field": "free_text_diagnosis",
+    "requirement_level": "CONDITIONAL",
+    "data_type": "STRING",
+    "max_length": 500,
+    "condition_expression": "Required when no ICD-10, ICD-11, or SNOMED code is provided"
+  },
+  {
+    "element_id": "KENHDD-FAC-001",
+    "name": "MFL Code",
+    "description": "Kenya Master Facility List code (unique 5-digit facility identifier)",
+    "resource_type": "FACILITY",
+    "model_field": "mfl_code",
+    "requirement_level": "MANDATORY",
+    "data_type": "IDENTIFIER",
+    "coding_system": "MFL",
+    "max_length": 11
+  },
+  {
+    "element_id": "KENHDD-FAC-002",
+    "name": "Facility Name",
+    "description": "Official name of the health facility",
+    "resource_type": "FACILITY",
+    "model_field": "name",
+    "requirement_level": "MANDATORY",
+    "data_type": "STRING",
+    "max_length": 255
+  },
+  {
+    "element_id": "KENHDD-FAC-003",
+    "name": "KEPH Level",
+    "description": "Kenya Essential Package for Health level (1-6)",
+    "resource_type": "FACILITY",
+    "model_field": "level",
+    "requirement_level": "MANDATORY",
+    "data_type": "CODED",
+    "coding_system": "LOCAL"
+  },
+  {
+    "element_id": "KENHDD-FAC-004",
+    "name": "Ownership Type",
+    "description": "Facility ownership (GOK, FBO, NGO, PRIVATE)",
+    "resource_type": "FACILITY",
+    "model_field": "ownership_type",
+    "requirement_level": "MANDATORY",
+    "data_type": "CODED",
+    "coding_system": "LOCAL"
+  },
+  {
+    "element_id": "KENHDD-FAC-005",
+    "name": "Facility County",
+    "description": "County where the facility is located",
+    "resource_type": "FACILITY",
+    "model_field": "county.name",
+    "requirement_level": "MANDATORY",
+    "data_type": "CODED",
+    "coding_system": "LOCAL"
+  },
+  {
+    "element_id": "KENHDD-LAB-001",
+    "name": "LOINC Code",
+    "description": "LOINC code identifying the laboratory test",
+    "resource_type": "LAB_RESULT",
+    "model_field": "test.loinc_code",
+    "requirement_level": "CONDITIONAL",
+    "data_type": "CODED",
+    "coding_system": "LOINC",
+    "condition_expression": "Required when available in the LOINC catalog"
+  },
+  {
+    "element_id": "KENHDD-LAB-002",
+    "name": "Test Name",
+    "description": "Name of the laboratory test performed",
+    "resource_type": "LAB_RESULT",
+    "model_field": "test.name",
+    "requirement_level": "MANDATORY",
+    "data_type": "STRING"
+  },
+  {
+    "element_id": "KENHDD-LAB-003",
+    "name": "Result Value",
+    "description": "Numeric or textual result of the lab test",
+    "resource_type": "LAB_RESULT",
+    "model_field": "result_value",
+    "requirement_level": "CONDITIONAL",
+    "data_type": "STRING",
+    "condition_expression": "Required when status is VERIFIED or COMPLETED"
+  },
+  {
+    "element_id": "KENHDD-LAB-004",
+    "name": "Result Unit",
+    "description": "Unit of measurement for the result value",
+    "resource_type": "LAB_RESULT",
+    "model_field": "unit",
+    "requirement_level": "CONDITIONAL",
+    "data_type": "STRING",
+    "condition_expression": "Required when result_value is numeric"
+  },
+  {
+    "element_id": "KENHDD-LAB-005",
+    "name": "Reference Range",
+    "description": "Normal reference range for the test",
+    "resource_type": "LAB_RESULT",
+    "model_field": "reference_range",
+    "requirement_level": "OPTIONAL",
+    "data_type": "STRING"
+  },
+  {
+    "element_id": "KENHDD-LAB-006",
+    "name": "Result Status",
+    "description": "Status of the lab result (PENDING, VERIFIED, etc.)",
+    "resource_type": "LAB_RESULT",
+    "model_field": "status",
+    "requirement_level": "MANDATORY",
+    "data_type": "CODED",
+    "coding_system": "LOCAL"
+  },
+  {
+    "element_id": "KENHDD-RX-001",
+    "name": "Drug Name",
+    "description": "Name of the prescribed medication",
+    "resource_type": "PRESCRIPTION",
+    "model_field": "drug.name",
+    "requirement_level": "MANDATORY",
+    "data_type": "STRING"
+  },
+  {
+    "element_id": "KENHDD-RX-002",
+    "name": "Dosage",
+    "description": "Prescribed dosage amount and unit",
+    "resource_type": "PRESCRIPTION",
+    "model_field": "dosage",
+    "requirement_level": "MANDATORY",
+    "data_type": "STRING"
+  },
+  {
+    "element_id": "KENHDD-RX-003",
+    "name": "Frequency",
+    "description": "Dosing frequency (e.g. BD, TDS, QID)",
+    "resource_type": "PRESCRIPTION",
+    "model_field": "frequency",
+    "requirement_level": "MANDATORY",
+    "data_type": "CODED",
+    "coding_system": "LOCAL"
+  },
+  {
+    "element_id": "KENHDD-RX-004",
+    "name": "Duration",
+    "description": "Duration of the prescription in days",
+    "resource_type": "PRESCRIPTION",
+    "model_field": "duration_days",
+    "requirement_level": "MANDATORY",
+    "data_type": "INTEGER"
+  },
+  {
+    "element_id": "KENHDD-RX-005",
+    "name": "Prescriber",
+    "description": "Name or ID of the prescribing clinician",
+    "resource_type": "PRESCRIPTION",
+    "model_field": "prescribed_by",
+    "requirement_level": "MANDATORY",
+    "data_type": "STRING"
+  },
+  {
+    "element_id": "KENHDD-MCH-001",
+    "name": "Gravida",
+    "description": "Total number of pregnancies including current",
+    "resource_type": "MCH_VISIT",
+    "model_field": "enrollment.gravida",
+    "requirement_level": "MANDATORY",
+    "data_type": "INTEGER"
+  },
+  {
+    "element_id": "KENHDD-MCH-002",
+    "name": "Parity",
+    "description": "Number of previous deliveries",
+    "resource_type": "MCH_VISIT",
+    "model_field": "enrollment.parity",
+    "requirement_level": "MANDATORY",
+    "data_type": "INTEGER"
+  },
+  {
+    "element_id": "KENHDD-MCH-003",
+    "name": "Last Menstrual Period",
+    "description": "Date of last menstrual period (LMP)",
+    "resource_type": "MCH_VISIT",
+    "model_field": "enrollment.lmp",
+    "requirement_level": "MANDATORY",
+    "data_type": "DATE"
+  },
+  {
+    "element_id": "KENHDD-MCH-004",
+    "name": "Expected Date of Delivery",
+    "description": "Calculated expected date of delivery (EDD)",
+    "resource_type": "MCH_VISIT",
+    "model_field": "enrollment.edd",
+    "requirement_level": "MANDATORY",
+    "data_type": "DATE"
+  },
+  {
+    "element_id": "KENHDD-MCH-005",
+    "name": "Visit Type",
+    "description": "Type of MCH visit (ANC, PNC, etc.)",
+    "resource_type": "MCH_VISIT",
+    "model_field": "visit_type",
+    "requirement_level": "MANDATORY",
+    "data_type": "CODED",
+    "coding_system": "LOCAL"
+  }
+]

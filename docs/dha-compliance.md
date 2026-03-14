@@ -20,7 +20,7 @@
 | Captures National ID | ✅ | `identification_type = national_id` + Fernet-encrypted `identification_number` |
 | Captures Passport Number | ✅ | `identification_type = passport` + `identification_number` |
 | Captures Birth Certificate | ✅ | `identification_type = birth_certificate` + `identification_number` |
-| KENHDD Compliant | ⚠️ | Partial — uses Kenya location hierarchy, SHA/CR integration, ICD-10/11; no explicit KENHDD schema validation |
+| KENHDD Compliant | ✅ | Full — 56 KENHDD data elements validated across 7 resource types (Patient, Encounter, Diagnosis, Facility, Lab, Prescription, MCH). Schema validation service, compliance dashboard, soft warnings on save. See `hmis/apps/kenhdd/` |
 
 ---
 
@@ -49,7 +49,7 @@
 
 | Component | Implemented | Notes |
 |-----------|:-----------:|-------|
-| KENHDD Compliant | ⚠️ | Partial — ICD-10 + ICD-11 coding (DHA APIs); no explicit KENHDD problem list schema |
+| KENHDD Compliant | ✅ | Full — ICD-10 + ICD-11 + SNOMED CT coding, KENHDD schema validation for diagnosis type & certainty. See `hmis/apps/kenhdd/` |
 | Can Record Problems | ✅ | `Diagnosis` model — ICD-10/11 codes, free text, PRIMARY/SECONDARY/DIFFERENTIAL/WORKING types |
 | Can Update Problems | ✅ | `certainty` field (confirmed/provisional/ruled_out/suspected), `is_confirmed`, `updated_at` |
 | Can Access Problem History | ✅ | Diagnoses linked to encounters via FK; accessible through patient encounter history; FHIR IPS Problem List section |
@@ -300,7 +300,7 @@
 - **Clinical decision support engine** (evidence-based rules)
 - **IPS Bundle** dynamic population (medications, allergies from live data)
 - **Standard quality measure** definitions & export (CQM / QRDA)
-- **KENHDD** explicit compliance mapping / validation
+- ~~**KENHDD** explicit compliance mapping / validation~~ ✅ (Gap #33)
 - **Disease surveillance** — IDSR, IHR, immediate reportable diseases
 - **Quarterly & annual** routine reporting
 - **MFA / two-factor authentication**

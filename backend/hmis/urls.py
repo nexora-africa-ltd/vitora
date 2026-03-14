@@ -251,6 +251,8 @@ urlpatterns = [
     path("api/cds/", include("hmis.apps.cds.urls", namespace="cds")),
     # HL7 v2 Messaging API
     path("api/hl7/", include("hmis.apps.hl7.urls", namespace="hl7")),
+    # KENHDD Schema Validation API
+    path("api/kenhdd/", include("hmis.apps.kenhdd.urls", namespace="kenhdd")),
     # AI / TibaBot proxy API
     path("api/ai/", include("hmis.apps.ai.urls", namespace="ai")),
     # Core utilities API (PRC number generation, etc.)

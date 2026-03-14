@@ -662,16 +662,18 @@ Gaps are categorized into four tiers:
 
 ### Sprint 3.D — KENHDD Compliance & Polish (Weeks 21-24)
 
-#### 33. KENHDD Schema Validation `P3`
+#### 33. KENHDD Schema Validation `P3` ✅ COMPLETE
 - **Gap**: No explicit KENHDD validation
 - **Action**:
-  - [ ] Document KENHDD field mappings for Patient, Encounter, Diagnosis
-  - [ ] Implement KENHDD validation layer
-  - [ ] KENHDD compliance report endpoint
-  - [ ] Tests: 15+ unit tests
+  - [x] Document KENHDD field mappings for Patient, Encounter, Diagnosis, Facility, Lab Result, Prescription, MCH Visit (56 elements in `data/kenhdd_elements.json`)
+  - [x] Implement KENHDD validation layer (`hmis/apps/kenhdd/services/validation.py`)
+  - [x] KENHDD compliance report endpoint (`/api/kenhdd/compliance/`)
+  - [x] Validation mixin for serializers (soft warnings on create/update)
+  - [x] Frontend dashboard (Admin → KENHDD Compliance)
+  - [x] Tests: 25 unit tests
 - **Owner**: Backend Team
 - **Effort**: 1 sprint (2 weeks)
-- **Deliverables**: KENHDD validation, compliance report
+- **Deliverables**: KENHDD validation, compliance report, frontend dashboard
 
 ---
 
@@ -801,7 +803,7 @@ Gaps are categorized into four tiers:
 | SNOMED CT Active Usage | P3 | 3.B | ✅ |
 | Tamper-Resistant Audit Log | P3 | 3.C | ✅ |
 | Digital Signatures | P3 | 3.C | ✅ |
-| KENHDD Schema Validation | P3 | 3.D | ⬜ |
+| KENHDD Schema Validation | P3 | 3.D | ✅ |
 
 ---
 
