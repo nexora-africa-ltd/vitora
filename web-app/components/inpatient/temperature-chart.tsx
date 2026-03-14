@@ -299,6 +299,8 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
                   {
                     key: 'recorded_at',
                     header: 'Date/Time',
+                    sortable: true,
+                    sortType: 'date' as const,
                     cell: (item: TemperatureReading) => (
                       <span className="whitespace-nowrap">{formatDateTime(item.recorded_at)}</span>
                     ),
@@ -306,6 +308,8 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
                   {
                     key: 'temperature',
                     header: 'Temp (°C)',
+                    sortable: true,
+                    sortType: 'number' as const,
                     cell: (item: TemperatureReading) => (
                       <div>
                         <span className={item.is_febrile ? 'text-destructive font-semibold' : item.is_hypothermic ? 'text-blue-600 font-semibold' : ''}>
@@ -318,11 +322,15 @@ export function TemperatureChart({ admissionId, isActive }: TemperatureChartProp
                   {
                     key: 'pulse',
                     header: 'Pulse',
+                    sortable: true,
+                    sortType: 'number' as const,
                     cell: (item: TemperatureReading) => item.pulse ?? '—',
                   },
                   {
                     key: 'respiratory_rate',
                     header: 'RR',
+                    sortable: true,
+                    sortType: 'number' as const,
                     cell: (item: TemperatureReading) => item.respiratory_rate ?? '—',
                   },
                   {

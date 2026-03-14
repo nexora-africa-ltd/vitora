@@ -204,6 +204,7 @@ function SearchStep({ onSelectInvoice, onCreateInvoice }: SearchStepProps) {
               {
                 key: 'invoice_number',
                 header: 'Invoice',
+                sortable: true,
                 cell: (invoice) => (
                   <span className="font-mono text-sm">{invoice.invoice_number}</span>
                 ),
@@ -211,6 +212,8 @@ function SearchStep({ onSelectInvoice, onCreateInvoice }: SearchStepProps) {
               {
                 key: 'patient',
                 header: 'Patient',
+                sortable: true,
+                sortFn: (a, b) => (a.patient_name || '').localeCompare(b.patient_name || ''),
                 cell: (invoice) => (
                   <div className="min-w-0">
                     <p className="font-medium truncate">{invoice.patient_name}</p>
@@ -221,12 +224,16 @@ function SearchStep({ onSelectInvoice, onCreateInvoice }: SearchStepProps) {
               {
                 key: 'status',
                 header: 'Status',
+                sortable: true,
                 cell: (invoice) => <InvoiceStatusBadge status={invoice.status} />,
                 hideOnMobile: true,
               },
               {
                 key: 'balance_due',
                 header: 'Balance',
+                sortable: true,
+                sortType: 'number',
+                sortFn: (a, b) => parseFloat(a.balance_due) - parseFloat(b.balance_due),
                 cell: (invoice) => (
                   <span className="font-medium text-red-600">
                     {formatCurrency(parseFloat(invoice.balance_due))}

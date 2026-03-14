@@ -137,6 +137,8 @@ export default function KardexListPage() {
               {
                 key: 'patient',
                 header: 'Patient',
+                sortable: true,
+                sortFn: (a, b) => (a.patient_name || '').localeCompare(b.patient_name || ''),
                 cell: (kardex) => (
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
@@ -150,6 +152,8 @@ export default function KardexListPage() {
               {
                 key: 'location',
                 header: 'Location',
+                sortable: true,
+                sortFn: (a, b) => (a.ward_name || '').localeCompare(b.ward_name || ''),
                 cell: (kardex) => (
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -161,6 +165,7 @@ export default function KardexListPage() {
               {
                 key: 'fall_risk',
                 header: 'Fall Risk',
+                sortable: true,
                 cell: (kardex) => (
                   <Badge className={riskColors[kardex.fall_risk]}>
                     {kardex.fall_risk_display || kardex.fall_risk}
@@ -170,6 +175,7 @@ export default function KardexListPage() {
               {
                 key: 'pressure_risk',
                 header: 'Pressure Risk',
+                sortable: true,
                 cell: (kardex) => (
                   <Badge className={riskColors[kardex.pressure_sore_risk]}>
                     {kardex.pressure_sore_risk_display || kardex.pressure_sore_risk}

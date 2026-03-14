@@ -124,6 +124,7 @@ export function PaymentList({
           {
             key: 'payment_reference',
             header: 'Receipt #',
+            sortable: true,
             cell: (payment) => (
               <span className="font-medium font-mono text-sm">{payment.payment_reference}</span>
             ),
@@ -131,18 +132,22 @@ export function PaymentList({
           {
             key: 'created_at',
             header: 'Date',
+            sortable: true,
+            sortType: 'date',
             cell: (payment) => formatDateTime(payment.created_at),
             hideOnMobile: true,
           },
           {
             key: 'invoice_number',
             header: 'Invoice',
+            sortable: true,
             cell: (payment) => payment.invoice_number || '—',
             hideOnMobile: true,
           },
           {
             key: 'method',
             header: 'Method',
+            sortable: true,
             cell: (payment) => (
               <div className="flex items-center gap-2">
                 {methodIcons[payment.method]}
@@ -155,6 +160,9 @@ export function PaymentList({
           {
             key: 'amount',
             header: 'Amount',
+            sortable: true,
+            sortType: 'number',
+            sortFn: (a, b) => parseFloat(a.amount) - parseFloat(b.amount),
             cell: (payment) => (
               <span className="font-medium">{formatCurrency(parseFloat(payment.amount))}</span>
             ),
@@ -162,6 +170,7 @@ export function PaymentList({
           {
             key: 'status',
             header: 'Status',
+            sortable: true,
             cell: (payment) => (
               <Badge className={`${statusColors[payment.status]} shrink-0 w-fit text-xs`}>
                 {payment.status}

@@ -158,6 +158,7 @@ export default function OutbreakThresholdsPage() {
     {
       key: 'disease_name',
       header: 'Disease',
+      sortable: true,
       cell: (item: OutbreakThreshold) => (
         <span className="font-medium">{item.disease_name}</span>
       ),
@@ -166,6 +167,7 @@ export default function OutbreakThresholdsPage() {
       key: 'county_name',
       header: 'County',
       hideOnMobile: true,
+      sortable: true,
       cell: (item: OutbreakThreshold) => (
         <span className="text-muted-foreground">
           {item.county_name || 'National'}
@@ -175,6 +177,9 @@ export default function OutbreakThresholdsPage() {
     {
       key: 'threshold',
       header: 'Threshold',
+      sortable: true,
+      sortType: 'number' as const,
+      sortFn: (a: OutbreakThreshold, b: OutbreakThreshold) => a.case_threshold - b.case_threshold,
       cell: (item: OutbreakThreshold) => (
         <span>
           {item.case_threshold} cases / {item.period_days} days
@@ -194,12 +199,15 @@ export default function OutbreakThresholdsPage() {
     {
       key: 'status',
       header: 'Status',
+      sortable: true,
       cell: (item: OutbreakThreshold) => <ThresholdStatusBadge threshold={item} />,
     },
     {
       key: 'is_active',
       header: 'Active',
       hideOnMobile: true,
+      sortable: true,
+      sortFn: (a: OutbreakThreshold, b: OutbreakThreshold) => Number(a.is_active) - Number(b.is_active),
       cell: (item: OutbreakThreshold) =>
         item.is_active ? (
           <Badge variant="outline">Active</Badge>

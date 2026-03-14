@@ -86,6 +86,8 @@ export default function StockAdjustmentsPage() {
             {
               key: 'drug',
               header: 'Drug / Batch',
+              sortable: true,
+              sortFn: (a: StockAdjustment, b: StockAdjustment) => (a.drug_name || '').localeCompare(b.drug_name || ''),
               cell: (item: StockAdjustment) => (
                 <div>
                   <p className="font-medium truncate">{item.drug_name || '—'}</p>
@@ -96,6 +98,7 @@ export default function StockAdjustmentsPage() {
             {
               key: 'type',
               header: 'Type',
+              sortable: true,
               cell: (item: StockAdjustment) => (
                 <Badge className={ADJUSTMENT_TYPE_COLORS[item.adjustment_type] || 'bg-muted text-muted-foreground'}>
                   {ADJUSTMENT_TYPE_LABELS[item.adjustment_type] || item.adjustment_type}
@@ -105,6 +108,9 @@ export default function StockAdjustmentsPage() {
             {
               key: 'quantity',
               header: 'Qty',
+              sortable: true,
+              sortType: 'number',
+              sortFn: (a: StockAdjustment, b: StockAdjustment) => a.quantity - b.quantity,
               cell: (item: StockAdjustment) => (
                 <span className={item.quantity < 0 ? 'text-destructive font-medium' : 'text-green-600 dark:text-green-400 font-medium'}>
                   {item.quantity > 0 ? '+' : ''}{item.quantity}
@@ -114,6 +120,7 @@ export default function StockAdjustmentsPage() {
             {
               key: 'reason',
               header: 'Reason',
+              sortable: true,
               cell: (item: StockAdjustment) => (
                 <p className="text-sm text-muted-foreground truncate max-w-[200px]">{item.reason}</p>
               ),
@@ -121,11 +128,16 @@ export default function StockAdjustmentsPage() {
             {
               key: 'adjusted_by',
               header: 'Adjusted By',
+              sortable: true,
+              sortFn: (a: StockAdjustment, b: StockAdjustment) => (a.adjusted_by_name || '').localeCompare(b.adjusted_by_name || ''),
               cell: (item: StockAdjustment) => item.adjusted_by_name || '—',
             },
             {
               key: 'date',
               header: 'Date',
+              sortable: true,
+              sortType: 'date',
+              sortFn: (a: StockAdjustment, b: StockAdjustment) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
               cell: (item: StockAdjustment) => format(new Date(item.created_at), 'dd MMM yyyy'),
             },
           ]}

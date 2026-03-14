@@ -352,6 +352,7 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
         {
           key: 'mrn',
           header: 'MRN',
+          sortable: true,
           cell: (patient) => (
             <span className="font-mono text-sm">{patient.mrn}</span>
           ),
@@ -359,6 +360,8 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
         {
           key: 'name',
           header: 'Name',
+          sortable: true,
+          sortFn: (a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`),
           cell: (patient) => (
             <div className="flex items-center gap-2">
               <span className="font-medium">
@@ -376,6 +379,8 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
           key: 'age_gender',
           header: 'Age/Gender',
           hideOnMobile: true,
+          sortable: true,
+          sortFn: (a, b) => new Date(b.date_of_birth).getTime() - new Date(a.date_of_birth).getTime(),
           cell: (patient) => (
             <div className="flex items-center gap-2">
               <span>{calculateAge(patient.date_of_birth)} yrs</span>
@@ -389,18 +394,22 @@ function PatientListView({ patients, selectMode, onRowClick, router }: PatientLi
           key: 'phone_number',
           header: 'Phone',
           hideOnMobile: true,
+          sortable: true,
           cell: (patient) => patient.phone_number || '—',
         },
         {
           key: 'county_name',
           header: 'County',
           hideOnMobile: true,
+          sortable: true,
           cell: (patient) => patient.county_name || '—',
         },
         {
           key: 'created_at',
           header: 'Registered',
           hideOnMobile: true,
+          sortable: true,
+          sortType: 'date',
           cell: (patient) => formatDate(patient.created_at),
         },
         {

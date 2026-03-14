@@ -213,6 +213,7 @@ export default function IHRNotificationsPage() {
             {
               key: 'reference',
               header: 'Reference',
+              sortable: true,
               cell: (item) => (
                 <span className="font-mono text-sm">{item.notification_reference}</span>
               ),
@@ -220,11 +221,14 @@ export default function IHRNotificationsPage() {
             {
               key: 'disease',
               header: 'Disease',
+              sortable: true,
+              sortFn: (a, b) => (a.disease_name || '').localeCompare(b.disease_name || ''),
               cell: (item) => item.disease_name,
             },
             {
               key: 'urgency',
               header: 'Urgency',
+              sortable: true,
               cell: (item) => (
                 <Badge variant={URGENCY_BADGE_VARIANTS[item.urgency] ?? 'secondary'}>
                   {item.urgency}
@@ -234,6 +238,7 @@ export default function IHRNotificationsPage() {
             {
               key: 'status',
               header: 'Status',
+              sortable: true,
               cell: (item) => (
                 <Badge variant={STATUS_BADGE_VARIANTS[item.status] ?? 'secondary'}>
                   {STATUS_LABELS[item.status] ?? item.status}
@@ -243,6 +248,9 @@ export default function IHRNotificationsPage() {
             {
               key: 'cases',
               header: 'Cases/Deaths',
+              sortable: true,
+              sortType: 'number',
+              sortFn: (a, b) => a.cases_count - b.cases_count,
               cell: (item) => (
                 <span>
                   {item.cases_count} / {item.deaths_count}
@@ -253,6 +261,7 @@ export default function IHRNotificationsPage() {
             {
               key: 'county',
               header: 'County',
+              sortable: true,
               cell: (item) => item.county_name ?? '-',
               hideOnMobile: true,
             },

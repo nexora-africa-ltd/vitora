@@ -197,6 +197,8 @@ export default function AuditLogsPage() {
                   {
                     key: 'timestamp',
                     header: 'Timestamp',
+                    sortable: true,
+                    sortType: 'date',
                     cell: (log) => (
                       <div className="space-y-1">
                         <p className="text-sm font-medium">
@@ -209,6 +211,8 @@ export default function AuditLogsPage() {
                   {
                     key: 'user',
                     header: 'User',
+                    sortable: true,
+                    sortFn: (a, b) => (a.user_name || a.username || '').localeCompare(b.user_name || b.username || ''),
                     cell: (log) => (
                       <div className="flex items-center gap-2 min-w-0">
                         <User className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -219,6 +223,7 @@ export default function AuditLogsPage() {
                   {
                     key: 'action',
                     header: 'Action',
+                    sortable: true,
                     cell: (log) => (
                       <Badge variant={getActionBadgeVariant(log.action)}>
                         {formatActionLabel(log.action)}
@@ -229,6 +234,8 @@ export default function AuditLogsPage() {
                     key: 'resource',
                     header: 'Resource',
                     hideOnMobile: true,
+                    sortable: true,
+                    sortFn: (a, b) => (a.resource_type || '').localeCompare(b.resource_type || ''),
                     cell: (log) => (
                       <div className="min-w-0">
                         <p>{log.resource_name || log.resource_type}</p>

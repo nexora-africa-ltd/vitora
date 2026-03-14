@@ -168,6 +168,7 @@ export default function QualityMeasuresListPage() {
             {
               key: 'code',
               header: 'Code',
+              sortable: true,
               cell: (item) => (
                 <span className="font-mono text-sm">{item.code}</span>
               ),
@@ -175,6 +176,7 @@ export default function QualityMeasuresListPage() {
             {
               key: 'name',
               header: 'Name',
+              sortable: true,
               cell: (item) => (
                 <span className="font-medium">{item.name}</span>
               ),
@@ -182,6 +184,7 @@ export default function QualityMeasuresListPage() {
             {
               key: 'domain',
               header: 'Domain',
+              sortable: true,
               cell: (item) => (
                 <Badge
                   className={`${DOMAIN_COLORS[item.domain]} shrink-0 w-fit`}

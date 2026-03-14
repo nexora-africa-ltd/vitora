@@ -405,6 +405,8 @@ function EnrollmentsTable({
         {
           key: 'patient',
           header: 'Patient',
+          sortable: true,
+          sortFn: (a, b) => (a.patient_name || '').localeCompare(b.patient_name || ''),
           cell: (enrollment) => (
             <div className="flex items-center gap-3">
               <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
@@ -427,6 +429,7 @@ function EnrollmentsTable({
         {
           key: 'enrollment_number',
           header: 'Enroll #',
+          sortable: true,
           cell: (enrollment) => (
             <span className="font-mono text-xs">{enrollment.enrollment_number || '—'}</span>
           ),
@@ -435,6 +438,7 @@ function EnrollmentsTable({
         {
           key: 'status',
           header: 'Status',
+          sortable: true,
           cell: (enrollment) => (
             <Badge className={cn('font-normal shrink-0 w-fit text-xs', STATUS_COLORS[enrollment.status])}>
               {enrollment.status_display || enrollment.status}
@@ -444,18 +448,24 @@ function EnrollmentsTable({
         {
           key: 'enrollment_date',
           header: 'Enrolled',
+          sortable: true,
+          sortType: 'date',
           cell: (enrollment) => formatDate(enrollment.enrollment_date),
           hideOnMobile: true,
         },
         {
           key: 'last_visit_date',
           header: 'Last Visit',
+          sortable: true,
+          sortType: 'date',
           cell: (enrollment) => formatDate(enrollment.last_visit_date),
           hideOnMobile: true,
         },
         {
           key: 'next_appointment_date',
           header: 'Next Appt',
+          sortable: true,
+          sortType: 'date',
           cell: (enrollment) => (
             <div className="flex items-center gap-1">
               <span className={cn(
@@ -473,6 +483,9 @@ function EnrollmentsTable({
         {
           key: 'visit_count',
           header: 'Visits',
+          sortable: true,
+          sortType: 'number',
+          sortFn: (a, b) => (a.visit_count ?? a.total_visits ?? 0) - (b.visit_count ?? b.total_visits ?? 0),
           cell: (enrollment) => enrollment.visit_count ?? enrollment.total_visits ?? 0,
           className: 'text-right',
           hideOnMobile: true,
