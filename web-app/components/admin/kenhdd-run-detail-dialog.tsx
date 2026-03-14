@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   AlertTriangle,
   CheckCircle,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
   Loader2,
   RefreshCw,
   ShieldAlert,
@@ -33,10 +35,64 @@ import type {
 type FailedRecord = z.infer<typeof KENHDDFailedRecordSchema>;
 type ViolationDetail = z.infer<typeof KENHDDViolationDetailSchema>;
 
+type ViewMode = 'by-record' | 'by-element';
+
 interface KENHDDRunDetailDialogProps {
   runId: number | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+/** Maps KENHDD resource types to their frontend detail page paths. */
+function getRecordHref(resourceType: string, recordId: string): string | null {
+  switch (resourceType) {
+    case 'PATIENT':
+      return `/patients/${recordId}`;
+    case 'ENCOUNTER':
+      return `/encounters/${recordId}`;
+    case 'LAB_RESULT':
+      return `/laboratory/results/${recordId}`;
+    case 'PRESCRIPTION':
+      return `/pharmacy/prescriptions/${recordId}`;
+    case 'MCH_VISIT':
+      return `/mch/${recordId}`;
+    case 'FACILITY':
+      return `/clinics/${recordId}`;
+    default:
+      return null;
+  }
+}
+
+function getResourceLabel(resourceType: string): string {
+  switch (resourceType) {
+    case 'PATIENT':
+      return 'Patient';
+    case 'ENCOUNTER':
+      return 'Encounter';
+    case 'LAB_RESULT':
+      return 'Lab Result';
+    case 'PRESCRIPTION':
+      return 'Prescription';
+    case 'MCH_VISIT':
+      return 'MCH Visit';
+    case 'FACILITY':
+      return 'Facility';
+    case 'DIAGNOSIS':
+      return 'Diagnosis';
+    default:
+      return 'Record';
+  }
+}
+
+interface ElementAggregate {
+  element_id: string;
+  element_name: string;
+  field_name: string;
+  requirement_level: string;
+  fail_count: number;
+  warning_count: number;
+  total: number;
+  sample_messages: string[];
 }
 
 function getStatusIcon(status: string) {
@@ -72,8 +128,15 @@ function getLevelBadge(level: string) {
   );
 }
 
-function FailedRecordRow({ record }: { record: FailedRecord }) {
+function FailedRecordRow({
+  record,
+  resourceType,
+}: {
+  record: FailedRecord;
+  resourceType: string;
+}) {
   const [expanded, setExpanded] = useState(false);
+  const href = getRecordHref(resourceType, record.record_id);
 
   return (
     <div className="border rounded-lg">
@@ -99,6 +162,16 @@ function FailedRecordRow({ record }: { record: FailedRecord }) {
             <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
               Non-Compliant
             </Badge>
+          )}
+          {href && (
+            <Link
+              href={href}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline shrink-0"
+            >
+              View {getResourceLabel(resourceType)}
+              <ExternalLink className="h-3 w-3" />
+            </Link>
           )}
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
@@ -171,6 +244,7 @@ export function KENHDDRunDetailDialog({
   onOpenChange,
 }: KENHDDRunDetailDialogProps) {
   const queryClient = useQueryClient();
+  const [viewMode, setViewMode] = useState<ViewMode>('by-record');
 
   const {
     data: runDetail,
@@ -195,6 +269,37 @@ export function KENHDDRunDetailDialog({
       toast.error('Revalidation failed.');
     },
   });
+
+  // Aggregate violations by element, sorted by frequency
+  const elementAggregates = useMemo<ElementAggregate[]>(() => {
+    if (!runDetail) return [];
+    const map = new Map<string, ElementAggregate>();
+    for (const record of runDetail.failed_records) {
+      for (const v of record.violation_details) {
+        const existing = map.get(v.element_id);
+        if (existing) {
+          if (v.status === 'FAIL') existing.fail_count++;
+          if (v.status === 'WARNING') existing.warning_count++;
+          existing.total++;
+          if (existing.sample_messages.length < 3 && !existing.sample_messages.includes(v.message)) {
+            existing.sample_messages.push(v.message);
+          }
+        } else {
+          map.set(v.element_id, {
+            element_id: v.element_id,
+            element_name: v.element_name,
+            field_name: v.field_name,
+            requirement_level: v.requirement_level,
+            fail_count: v.status === 'FAIL' ? 1 : 0,
+            warning_count: v.status === 'WARNING' ? 1 : 0,
+            total: 1,
+            sample_messages: [v.message],
+          });
+        }
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [runDetail]);
 
   const score = runDetail
     ? parseFloat(runDetail.compliance_score)
@@ -295,20 +400,105 @@ export function KENHDDRunDetailDialog({
               )}
             </div>
 
-            {/* Failed records list */}
+            {/* View mode toggle + content */}
             {runDetail.failed_records.length > 0 ? (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium">
-                    Failed Records
-                    <span className="text-muted-foreground font-normal ml-1.5">
-                      ({runDetail.total_failed})
-                    </span>
-                  </h4>
+                  <div className="flex items-center rounded-lg border p-0.5 bg-muted/30">
+                    <button
+                      type="button"
+                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                        viewMode === 'by-record'
+                          ? 'bg-background shadow-sm text-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                      onClick={() => setViewMode('by-record')}
+                    >
+                      By Record
+                      <span className="ml-1 text-[10px] text-muted-foreground">
+                        ({runDetail.total_failed})
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+                        viewMode === 'by-element'
+                          ? 'bg-background shadow-sm text-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                      onClick={() => setViewMode('by-element')}
+                    >
+                      By Element
+                      <span className="ml-1 text-[10px] text-muted-foreground">
+                        ({elementAggregates.length})
+                      </span>
+                    </button>
+                  </div>
                 </div>
-                {runDetail.failed_records.map((record) => (
-                  <FailedRecordRow key={record.id} record={record} />
-                ))}
+
+                {viewMode === 'by-record' ? (
+                  <div className="space-y-2">
+                    {runDetail.failed_records.map((record) => (
+                      <FailedRecordRow
+                        key={record.id}
+                        record={record}
+                        resourceType={runDetail.resource_type}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {elementAggregates.map((el) => (
+                      <div
+                        key={el.element_id}
+                        className="border rounded-lg p-3 space-y-1.5"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                            <span className="text-sm font-medium">
+                              {el.element_name}
+                            </span>
+                            {getLevelBadge(el.requirement_level)}
+                          </div>
+                          <div className="flex items-center gap-2 text-xs shrink-0">
+                            {el.fail_count > 0 && (
+                              <span className="flex items-center gap-1 text-red-600 font-medium">
+                                <XCircle className="h-3 w-3" />
+                                {el.fail_count}
+                              </span>
+                            )}
+                            {el.warning_count > 0 && (
+                              <span className="flex items-center gap-1 text-amber-600 font-medium">
+                                <AlertTriangle className="h-3 w-3" />
+                                {el.warning_count}
+                              </span>
+                            )}
+                            <span className="text-muted-foreground">
+                              {el.total} total
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                          <span className="font-mono">{el.element_id}</span>
+                          <span>·</span>
+                          <span className="font-mono">{el.field_name}</span>
+                        </div>
+                        {el.sample_messages.length > 0 && (
+                          <div className="text-xs text-muted-foreground space-y-0.5 pt-0.5 border-t">
+                            {el.sample_messages.map((msg, i) => (
+                              <div key={i} className="flex items-start gap-1.5">
+                                <span className="text-muted-foreground/60 shrink-0">
+                                  ·
+                                </span>
+                                <span>{msg}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="py-8 text-center text-sm text-muted-foreground">
