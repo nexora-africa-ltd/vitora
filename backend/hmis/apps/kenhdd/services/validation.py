@@ -366,9 +366,12 @@ class KENHDDValidationService:
             mandatory_total = 0
             mandatory_pass = 0
             violations: dict[str, int] = {}
+            # Cache results for both aggregation and persistence
+            record_results: list[tuple[Any, KENHDDRecordResult]] = []
 
             for record in records:
                 record_result = self.validate_record(rt, record)
+                record_results.append((record, record_result))
                 if record_result.is_compliant:
                     compliant_count += 1
 
@@ -416,8 +419,7 @@ class KENHDDValidationService:
             from hmis.apps.kenhdd.models import KENHDDFailedRecord
 
             failed_objects = []
-            for record in records:
-                record_result = self.validate_record(rt, record)
+            for _record, record_result in record_results:
                 if not record_result.is_compliant or record_result.fail_count > 0 or record_result.warning_count > 0:
                     violation_details = [
                         {
