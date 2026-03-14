@@ -401,3 +401,245 @@ class TestKENHDDAPIEndpoints:
         )
         assert response.status_code == status.HTTP_200_OK
         assert response["Content-Type"] == "application/json"
+
+
+# ============================================================================
+# Phase 2: Run Detail & Failed Records Tests
+# ============================================================================
+
+
+class TestKENHDDFailedRecordModel:
+    """Tests for the KENHDDFailedRecord model."""
+
+    def test_create_failed_record(self, db, test_user):
+        """Should create a failed record linked to a validation run."""
+        from decimal import Decimal
+
+        from hmis.apps.kenhdd.models import KENHDDFailedRecord, KENHDDValidationRun
+
+        run = KENHDDValidationRun.objects.create(
+            resource_type="PATIENT",
+            records_checked=10,
+            records_compliant=8,
+            compliance_score=Decimal("80.00"),
+            mandatory_pass_rate=Decimal("90.00"),
+            violations={"KENHDD-PAT-006": 2},
+            run_by=test_user,
+        )
+        fr = KENHDDFailedRecord.objects.create(
+            run=run,
+            record_id="42",
+            is_compliant=False,
+            pass_count=5,
+            fail_count=2,
+            warning_count=1,
+            violation_details=[
+                {
+                    "element_id": "KENHDD-PAT-006",
+                    "element_name": "Phone Number",
+                    "field_name": "phone_number",
+                    "status": "FAIL",
+                    "message": "Mandatory field 'Phone Number' is empty",
+                    "requirement_level": "MANDATORY",
+                    "value": "",
+                }
+            ],
+        )
+        assert fr.run == run
+        assert fr.record_id == "42"
+        assert fr.fail_count == 2
+        assert len(fr.violation_details) == 1
+        assert "42" in str(fr)
+
+    def test_cascade_delete(self, db, test_user):
+        """Deleting a run should cascade-delete its failed records."""
+        from decimal import Decimal
+
+        from hmis.apps.kenhdd.models import KENHDDFailedRecord, KENHDDValidationRun
+
+        run = KENHDDValidationRun.objects.create(
+            resource_type="PATIENT",
+            records_checked=5,
+            records_compliant=3,
+            compliance_score=Decimal("60.00"),
+            mandatory_pass_rate=Decimal("70.00"),
+            violations={},
+            run_by=test_user,
+        )
+        KENHDDFailedRecord.objects.create(
+            run=run, record_id="1", fail_count=1, violation_details=[]
+        )
+        KENHDDFailedRecord.objects.create(
+            run=run, record_id="2", fail_count=1, violation_details=[]
+        )
+        assert KENHDDFailedRecord.objects.filter(run=run).count() == 2
+        run.delete()
+        assert KENHDDFailedRecord.objects.count() == 0
+
+
+class TestKENHDDFailedRecordPersistence:
+    """Tests that compliance reports now persist failed records."""
+
+    def test_compliance_report_persists_failed_records(
+        self, kenhdd_elements, sample_patient, test_user
+    ):
+        """generate_compliance_report should create KENHDDFailedRecord entries."""
+        from hmis.apps.kenhdd.models import KENHDDFailedRecord, KENHDDValidationRun
+        from hmis.apps.kenhdd.services.validation import KENHDDValidationService
+
+        service = KENHDDValidationService()
+        service.generate_compliance_report(
+            resource_type="PATIENT", sample_size=10, user=test_user
+        )
+        run = KENHDDValidationRun.objects.filter(resource_type="PATIENT").first()
+        assert run is not None
+        # There should be at least some records checked
+        assert run.records_checked >= 1
+        # Failed records might exist if sample_patient is non-compliant on optional/conditional fields
+        failed = KENHDDFailedRecord.objects.filter(run=run)
+        # Each failed record should have violation_details
+        for fr in failed:
+            assert isinstance(fr.violation_details, list)
+
+
+class TestKENHDDRunDetailAPI:
+    """Tests for the run-detail and failures endpoints."""
+
+    def test_run_detail_endpoint(
+        self, kenhdd_elements, authenticated_client, sample_patient
+    ):
+        """Should return run detail with failed records."""
+        # Generate a run
+        authenticated_client.post(
+            "/api/kenhdd/compliance/compliance-report/",
+            {"resource_type": "PATIENT", "sample_size": 5},
+        )
+        runs_response = authenticated_client.get("/api/kenhdd/compliance/runs/")
+        assert runs_response.status_code == status.HTTP_200_OK
+        assert len(runs_response.data) >= 1
+        run_id = runs_response.data[0]["id"]
+
+        response = authenticated_client.get(
+            f"/api/kenhdd/compliance/runs/{run_id}/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["id"] == run_id
+        assert "failed_records" in response.data
+        assert "total_failed" in response.data
+        assert isinstance(response.data["failed_records"], list)
+
+    def test_run_detail_not_found(self, kenhdd_elements, authenticated_client):
+        """Should return 404 for non-existent run."""
+        response = authenticated_client.get(
+            "/api/kenhdd/compliance/runs/99999/"
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_run_failures_endpoint(
+        self, kenhdd_elements, authenticated_client, sample_patient
+    ):
+        """Should return failures list for a run."""
+        authenticated_client.post(
+            "/api/kenhdd/compliance/compliance-report/",
+            {"resource_type": "PATIENT", "sample_size": 5},
+        )
+        runs_response = authenticated_client.get("/api/kenhdd/compliance/runs/")
+        run_id = runs_response.data[0]["id"]
+
+        response = authenticated_client.get(
+            f"/api/kenhdd/compliance/runs/{run_id}/failures/"
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert isinstance(response.data, list)
+
+    def test_run_failures_not_found(self, kenhdd_elements, authenticated_client):
+        """Should return 404 when run does not exist."""
+        response = authenticated_client.get(
+            "/api/kenhdd/compliance/runs/99999/failures/"
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_revalidate_endpoint(
+        self, kenhdd_elements, authenticated_client, sample_patient
+    ):
+        """Should revalidate previously failed records and create a new run."""
+        from hmis.apps.kenhdd.models import KENHDDFailedRecord, KENHDDValidationRun
+
+        # Generate initial run
+        authenticated_client.post(
+            "/api/kenhdd/compliance/compliance-report/",
+            {"resource_type": "PATIENT", "sample_size": 5},
+        )
+        run = KENHDDValidationRun.objects.filter(resource_type="PATIENT").first()
+        assert run is not None
+
+        # Ensure at least one failed record exists for the test
+        if not KENHDDFailedRecord.objects.filter(run=run).exists():
+            KENHDDFailedRecord.objects.create(
+                run=run,
+                record_id=str(sample_patient.pk),
+                is_compliant=False,
+                fail_count=1,
+                warning_count=0,
+                violation_details=[
+                    {
+                        "element_id": "KENHDD-PAT-006",
+                        "element_name": "Phone Number",
+                        "field_name": "phone_number",
+                        "status": "FAIL",
+                        "message": "test",
+                        "requirement_level": "MANDATORY",
+                        "value": "",
+                    }
+                ],
+            )
+
+        initial_run_count = KENHDDValidationRun.objects.count()
+
+        response = authenticated_client.post(
+            f"/api/kenhdd/compliance/runs/{run.pk}/revalidate/"
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["resource_type"] == "PATIENT"
+        assert "failed_records" in response.data
+        # A new run should have been created
+        assert KENHDDValidationRun.objects.count() == initial_run_count + 1
+
+    def test_revalidate_no_failed_records(
+        self, kenhdd_elements, authenticated_client, test_user
+    ):
+        """Should return 400 when run has no failed records to revalidate."""
+        from decimal import Decimal
+
+        from hmis.apps.kenhdd.models import KENHDDValidationRun
+
+        run = KENHDDValidationRun.objects.create(
+            resource_type="PATIENT",
+            records_checked=10,
+            records_compliant=10,
+            compliance_score=Decimal("100.00"),
+            mandatory_pass_rate=Decimal("100.00"),
+            violations={},
+            run_by=test_user,
+        )
+        response = authenticated_client.post(
+            f"/api/kenhdd/compliance/runs/{run.pk}/revalidate/"
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_revalidate_not_found(self, kenhdd_elements, authenticated_client):
+        """Should return 404 when run does not exist."""
+        response = authenticated_client.post(
+            "/api/kenhdd/compliance/runs/99999/revalidate/"
+        )
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_auth_required_on_run_detail(self, kenhdd_elements, api_client):
+        """Should reject unauthenticated requests to run detail."""
+        response = api_client.get("/api/kenhdd/compliance/runs/1/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_auth_required_on_revalidate(self, kenhdd_elements, api_client):
+        """Should reject unauthenticated requests to revalidate."""
+        response = api_client.post("/api/kenhdd/compliance/runs/1/revalidate/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

@@ -10,7 +10,9 @@ import {
   KENHDDComplianceScoreSchema,
   KENHDDComplianceSummaryEntrySchema,
   KENHDDDataElementListSchema,
+  KENHDDFailedRecordSchema,
   KENHDDRecordResultSchema,
+  KENHDDValidationRunDetailSchema,
   KENHDDValidationRunSchema,
 } from '@/lib/schemas/kenhdd.schema';
 import type {
@@ -83,5 +85,29 @@ export const kenhddApi = {
       { responseType: 'blob' }
     );
     return response.data as Blob;
+  },
+
+  /** Get detailed info for a specific validation run including failed records. */
+  getRunDetail: async (runId: number) => {
+    const response = await apiClient.get(`/api/kenhdd/compliance/runs/${runId}/`);
+    return parseResponse(KENHDDValidationRunDetailSchema, response.data, {
+      context: 'kenhddApi.getRunDetail',
+    });
+  },
+
+  /** List failed records for a specific validation run. */
+  getRunFailures: async (runId: number) => {
+    const response = await apiClient.get(`/api/kenhdd/compliance/runs/${runId}/failures/`);
+    return parseResponse(z.array(KENHDDFailedRecordSchema), response.data, {
+      context: 'kenhddApi.getRunFailures',
+    });
+  },
+
+  /** Revalidate failed records from a previous run. */
+  revalidateFailures: async (runId: number) => {
+    const response = await apiClient.post(`/api/kenhdd/compliance/runs/${runId}/revalidate/`);
+    return parseResponse(KENHDDValidationRunDetailSchema, response.data, {
+      context: 'kenhddApi.revalidateFailures',
+    });
   },
 };
