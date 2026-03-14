@@ -1236,69 +1236,59 @@ Prevent badges from stretching full-width on mobile:
 
 ### Sortable Table Column Headers
 
-**All data tables with historical or list data MUST have sortable column headers.** Each data column header should be a clickable button that toggles ascending/descending sort. Action columns (e.g., Export, Delete) are not sortable.
+**Sorting is built into `ResponsiveTable`.** Add `sortable: true` to any data column to make it sortable. Action columns (e.g., Export, Delete) should NOT have `sortable`.
 
-**Pattern:**
+**Column sort props:**
 
 ```tsx
-// State
-const [sortColumn, setSortColumn] = useState<string>('date');
-const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+{
+  key: 'name',
+  header: 'Name',
+  sortable: true,               // Enables the sort toggle button
+  sortType: 'string',           // 'string' (default) | 'number' | 'date'
+  sortFn: (a, b) => ...,        // Optional custom comparator (overrides sortType)
+  cell: (item) => item.name,
+}
+```
 
-// Toggle handler
-const toggleSort = (column: string) => {
-  if (sortColumn === column) {
-    setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
-  } else {
-    setSortColumn(column);
-    // Default direction: 'desc' for date/time columns, 'asc' for text/number
-    setSortDirection(column === 'date' ? 'desc' : 'asc');
-  }
-};
+**`sortType` behavior:**
+- `'string'` — `localeCompare` (default). First click sorts ascending.
+- `'number'` — numeric subtraction. First click sorts ascending.
+- `'date'` — `Date.getTime()` comparison. **First click sorts descending** (newest first).
 
-// Sort icon component
-const SortIcon = ({ column }: { column: string }) => {
-  if (sortColumn !== column)
-    return <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />;
-  return sortDirection === 'asc'
-    ? <ArrowUp className="h-3 w-3" />
-    : <ArrowDown className="h-3 w-3" />;
-};
+**Custom comparator (`sortFn`)** — Use when the column `key` doesn't point to a sortable primitive (e.g., composed names, nested fields):
 
-// Header cell
-<th className="pb-2 font-medium">
-  <button
-    type="button"
-    className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-    onClick={() => toggleSort('name')}
-  >
-    Name <SortIcon column="name" />
-  </button>
-</th>
+```tsx
+{
+  key: 'name',
+  header: 'Name',
+  sortable: true,
+  sortFn: (a, b) => `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`),
+  cell: (item) => <>{item.first_name} {item.last_name}</>,
+}
+```
 
-// For right-aligned columns, add `ml-auto` to the button:
-<th className="pb-2 font-medium text-right">
-  <button
-    type="button"
-    className="inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto"
-    onClick={() => toggleSort('score')}
-  >
-    Score <SortIcon column="score" />
-  </button>
-</th>
+**Default sort on mount:**
+
+```tsx
+<ResponsiveTable
+  data={items}
+  defaultSortColumn="created_at"
+  defaultSortDirection="desc"
+  columns={[...]}
+/>
 ```
 
 **Guidelines:**
-- Import `ArrowUp`, `ArrowDown`, `ChevronsUpDown` from `lucide-react`
-- Active sort column shows `ArrowUp`/`ArrowDown`; inactive columns show a subtle `ChevronsUpDown`
+- Sorting is client-side and renders `ArrowUp`/`ArrowDown`/`ChevronsUpDown` icons automatically
 - Date/time columns default to descending (newest first); text/number columns default to ascending
-- Action columns (Export, Delete, etc.) are NOT sortable
-- Apply sorting in `useMemo` that depends on `[data, sortColumn, sortDirection]`
-- Use `localeCompare` for string columns, numeric subtraction for numbers
+- Action columns (buttons, dropdowns, links) are NOT sortable — omit `sortable`
+- Boolean columns: use `sortFn: (a, b) => Number(a.flag) - Number(b.flag)`
+- For raw `<table>` elements (not using `ResponsiveTable`), use the manual pattern with `useState` + `useMemo`
 
 ### Table Responsiveness
 
-**For list pages with clickable rows, use `ResponsiveTable`** which provides automatic mobile card layouts:
+**For list pages with clickable rows, use `ResponsiveTable`** which provides automatic mobile card layouts and built-in column sorting:
 
 ```tsx
 import { ResponsiveTable } from '@/components/ui/responsive-table';
@@ -1308,9 +1298,10 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
   keyExtractor={(item) => item.id}
   onRowClick={handleRowClick}
   columns={[
-    { key: 'name', header: 'Name', cell: (item) => item.name },
-    { key: 'date', header: 'Date', cell: (item) => formatDate(item.date), hideOnMobile: true },
-    { key: 'status', header: 'Status', cell: (item) => <StatusBadge status={item.status} /> },
+    { key: 'name', header: 'Name', sortable: true, cell: (item) => item.name },
+    { key: 'date', header: 'Date', sortable: true, sortType: 'date', cell: (item) => formatDate(item.date), hideOnMobile: true },
+    { key: 'status', header: 'Status', sortable: true, cell: (item) => <StatusBadge status={item.status} /> },
+    { key: 'actions', header: '', cell: (item) => <ActionMenu item={item} /> },
   ]}
   mobileCard={(item) => (
     <Card className="p-3">
@@ -1325,6 +1316,7 @@ import { ResponsiveTable } from '@/components/ui/responsive-table';
 ```
 
 **Benefits of `ResponsiveTable`:**
+- **Built-in column sorting** with `sortable: true` (no manual state management)
 - Auto card layout on mobile (< md breakpoint)
 - `hideOnMobile: true` to hide columns on mobile cards
 - Custom `mobileCard` prop for optimized mobile layouts

@@ -102,6 +102,7 @@ export function DiagnosticReportList({
           {
             key: 'report_number',
             header: 'Report #',
+            sortable: true,
             cell: (r) => (
               <span className="font-medium text-primary">{r.report_number}</span>
             ),
@@ -109,6 +110,7 @@ export function DiagnosticReportList({
           {
             key: 'lab_order_number',
             header: 'Lab Order',
+            sortable: true,
             cell: (r) => (
               <Badge variant="outline" className="text-xs">
                 {r.lab_order_number}
@@ -118,27 +120,34 @@ export function DiagnosticReportList({
           {
             key: 'patient_name',
             header: 'Patient',
+            sortable: true,
           },
           {
             key: 'status',
             header: 'Status',
+            sortable: true,
             cell: (r) => <ReportStatusBadge status={r.status} />,
           },
           {
             key: 'issued_by_name',
             header: 'Issued By',
+            sortable: true,
             hideOnMobile: true,
           },
           {
             key: 'issued_at',
             header: 'Issued',
             hideOnMobile: true,
+            sortable: true,
+            sortType: 'date',
             cell: (r) => (r.issued_at ? formatDate(r.issued_at) : '—'),
           },
           {
             key: 'created_at',
             header: 'Created',
             hideOnMobile: true,
+            sortable: true,
+            sortType: 'date',
             cell: (r) => formatDate(r.created_at),
           },
         ]}

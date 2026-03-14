@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface Column<T> {
@@ -9,6 +10,17 @@ interface Column<T> {
   cell?: (item: T) => React.ReactNode;
   className?: string;
   hideOnMobile?: boolean;
+  /** Enable sorting on this column. Defaults to false. */
+  sortable?: boolean;
+  /**
+   * Hint for the default sort comparator.
+   * - `'string'` — `localeCompare` (default)
+   * - `'number'` — numeric subtraction
+   * - `'date'`   — `Date.getTime()` comparison, defaults descending on first click
+   */
+  sortType?: 'string' | 'number' | 'date';
+  /** Custom comparator. Receives two items and should return <0, 0, or >0. */
+  sortFn?: (a: T, b: T) => number;
 }
 
 interface ResponsiveTableProps<T> {
@@ -20,6 +32,17 @@ interface ResponsiveTableProps<T> {
   isLoading?: boolean;
   emptyMessage?: string;
   rowClassName?: (item: T) => string;
+  /** Column key to sort by initially. */
+  defaultSortColumn?: string;
+  /** Initial sort direction. Defaults to `'asc'`. */
+  defaultSortDirection?: 'asc' | 'desc';
+}
+
+function SortIcon({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) {
+  if (!active) return <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />;
+  return direction === 'asc'
+    ? <ArrowUp className="h-3 w-3" />
+    : <ArrowDown className="h-3 w-3" />;
 }
 
 export function ResponsiveTable<T>({
@@ -31,8 +54,13 @@ export function ResponsiveTable<T>({
   isLoading = false,
   emptyMessage = 'No data available',
   rowClassName,
+  defaultSortColumn,
+  defaultSortDirection = 'asc',
 }: ResponsiveTableProps<T>) {
-  const getValue = (item: T, key: string) => {
+  const [sortColumn, setSortColumn] = React.useState<string | null>(defaultSortColumn ?? null);
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>(defaultSortDirection);
+
+  const getValue = (item: T, key: string): unknown => {
     const keys = key.split('.');
     let value: unknown = item;
     for (const k of keys) {
@@ -40,6 +68,45 @@ export function ResponsiveTable<T>({
     }
     return value;
   };
+
+  const toggleSort = (column: Column<T>) => {
+    const key = String(column.key);
+    if (sortColumn === key) {
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColumn(key);
+      setSortDirection(column.sortType === 'date' ? 'desc' : 'asc');
+    }
+  };
+
+  const sortedData = React.useMemo(() => {
+    if (!sortColumn) return data;
+    const col = columns.find((c) => String(c.key) === sortColumn);
+    if (!col || !col.sortable) return data;
+
+    const dir = sortDirection === 'asc' ? 1 : -1;
+    const sorted = [...data].sort((a, b) => {
+      // Custom comparator takes priority
+      if (col.sortFn) return col.sortFn(a, b) * dir;
+
+      const aVal = getValue(a, String(col.key));
+      const bVal = getValue(b, String(col.key));
+
+      const type = col.sortType ?? 'string';
+
+      if (type === 'number') {
+        return (Number(aVal ?? 0) - Number(bVal ?? 0)) * dir;
+      }
+      if (type === 'date') {
+        const aTime = aVal ? new Date(String(aVal)).getTime() : 0;
+        const bTime = bVal ? new Date(String(bVal)).getTime() : 0;
+        return (aTime - bTime) * dir;
+      }
+      // Default: string
+      return String(aVal ?? '').localeCompare(String(bVal ?? '')) * dir;
+    });
+    return sorted;
+  }, [data, sortColumn, sortDirection, columns]);
 
   if (isLoading) {
     return (
@@ -68,21 +135,39 @@ export function ResponsiveTable<T>({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b">
-              {columns.map((column) => (
-                <th
-                  key={String(column.key)}
-                  className={cn(
-                    'h-12 px-4 text-left font-medium text-muted-foreground',
-                    column.className
-                  )}
-                >
-                  {column.header}
-                </th>
-              ))}
+              {columns.map((column) => {
+                const key = String(column.key);
+                const isActive = sortColumn === key;
+                return (
+                  <th
+                    key={key}
+                    className={cn(
+                      'h-12 px-4 text-left font-medium text-muted-foreground',
+                      column.className
+                    )}
+                  >
+                    {column.sortable ? (
+                      <button
+                        type="button"
+                        className={cn(
+                          'inline-flex items-center gap-1 hover:text-foreground transition-colors',
+                          column.className?.includes('text-right') && 'ml-auto'
+                        )}
+                        onClick={() => toggleSort(column)}
+                      >
+                        {column.header}
+                        <SortIcon active={isActive} direction={sortDirection} />
+                      </button>
+                    ) : (
+                      column.header
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {data.map((item) => (
+            {sortedData.map((item) => (
               <tr
                 key={keyExtractor(item)}
                 className={cn(
@@ -110,7 +195,7 @@ export function ResponsiveTable<T>({
 
       {/* Mobile Cards */}
       <div className="md:hidden space-y-3">
-        {data.map((item, index) => {
+        {sortedData.map((item, index) => {
           if (mobileCard) {
             return (
               <div

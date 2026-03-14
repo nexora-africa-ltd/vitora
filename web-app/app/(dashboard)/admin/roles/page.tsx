@@ -207,6 +207,8 @@ export default function RolesListPage() {
                   {
                     key: 'name',
                     header: 'Role',
+                    sortable: true,
+                    sortFn: (a, b) => a.name.localeCompare(b.name),
                     cell: (role) => (
                       <div className="min-w-0">
                         <p className="font-medium truncate">{role.name}</p>
@@ -217,6 +219,7 @@ export default function RolesListPage() {
                   {
                     key: 'category',
                     header: 'Category',
+                    sortable: true,
                     cell: (role) => (
                       <Badge variant={getCategoryBadgeVariant(role.category)}>
                         {role.category_display || role.category}
@@ -227,6 +230,7 @@ export default function RolesListPage() {
                     key: 'license',
                     header: 'License',
                     hideOnMobile: true,
+                    sortable: true,
                     cell: (role) =>
                       role.requires_license ? role.license_body || 'Required' : 'Not required',
                   },
@@ -234,11 +238,15 @@ export default function RolesListPage() {
                     key: 'hierarchy',
                     header: 'Hierarchy',
                     hideOnMobile: true,
+                    sortable: true,
+                    sortType: 'number',
+                    sortFn: (a, b) => a.hierarchy_level - b.hierarchy_level,
                     cell: (role) => <span className="text-muted-foreground">Level {role.hierarchy_level}</span>,
                   },
                   {
                     key: 'status',
                     header: 'Status',
+                    sortable: true,
                     cell: (role) => (
                       <Badge variant={role.is_active ? 'default' : 'secondary'}>
                         {role.is_active ? 'Active' : 'Inactive'}

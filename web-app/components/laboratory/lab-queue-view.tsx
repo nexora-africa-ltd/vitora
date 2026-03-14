@@ -512,11 +512,15 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                   {
                     key: 'queue_number',
                     header: 'Queue #',
+                    sortable: true,
+                    sortType: 'number',
                     cell: (item) => <span className="font-mono text-sm">{item.queue_number}</span>,
                   },
                   {
                     key: 'patient',
                     header: 'Patient',
+                    sortable: true,
+                    sortFn: (a, b) => (a.patient_name || '').localeCompare(b.patient_name || ''),
                     cell: (item) => (
                       <div>
                         <p className="font-medium">{item.patient_name}</p>
@@ -568,6 +572,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                   {
                     key: 'priority',
                     header: 'Priority',
+                    sortable: true,
                     cell: (item) => {
                       const priority = PRIORITY_CONFIG[item.priority];
                       return <span className={priority.className}>{priority.label}</span>;
@@ -576,6 +581,7 @@ export function LabQueueView({ defaultStatus = '' }: LabQueueViewProps) {
                   {
                     key: 'status',
                     header: 'Status',
+                    sortable: true,
                     cell: (item) => {
                       const status = STATUS_CONFIG[item.queue_status] || STATUS_CONFIG.PENDING;
                       const StatusIcon = status.icon;

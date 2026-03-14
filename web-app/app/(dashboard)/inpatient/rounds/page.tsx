@@ -167,6 +167,8 @@ export default function WardRoundsPage() {
               {
                 key: 'patient',
                 header: 'Patient',
+                sortable: true,
+                sortFn: (a, b) => (a.patient_name || '').localeCompare(b.patient_name || ''),
                 cell: (round) => (
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
@@ -180,6 +182,9 @@ export default function WardRoundsPage() {
               {
                 key: 'datetime',
                 header: 'Date/Time',
+                sortable: true,
+                sortType: 'date',
+                sortFn: (a, b) => new Date(a.round_date).getTime() - new Date(b.round_date).getTime(),
                 cell: (round) => (
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-muted-foreground" />
@@ -192,6 +197,7 @@ export default function WardRoundsPage() {
               {
                 key: 'type',
                 header: 'Type',
+                sortable: true,
                 cell: (round) => (
                   <span className="text-sm">
                     {round.review_type_display || reviewTypeLabels[round.review_type] || round.review_type}
@@ -202,6 +208,7 @@ export default function WardRoundsPage() {
               {
                 key: 'condition',
                 header: 'Condition',
+                sortable: true,
                 cell: (round) => (
                   <Badge className={conditionColors[round.condition_status]}>
                     {round.condition_status_display || round.condition_status}

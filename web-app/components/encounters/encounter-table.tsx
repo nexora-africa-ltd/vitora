@@ -123,6 +123,8 @@ export function EncounterTable({
     {
       key: 'patient',
       header: 'Patient',
+      sortable: true,
+      sortFn: (a: Encounter, b: Encounter) => (a.patient_name || '').localeCompare(b.patient_name || ''),
       cell: (encounter: Encounter) => (
         <div>
           <p className="font-medium">{encounter.patient_name}</p>
@@ -135,6 +137,8 @@ export function EncounterTable({
     {
       key: 'type',
       header: 'Type',
+      sortable: true,
+      sortFn: (a: Encounter, b: Encounter) => (a.encounter_type || '').localeCompare(b.encounter_type || ''),
       cell: (encounter: Encounter) => {
         const type = ENCOUNTER_TYPES.find((t) => t.value === encounter.encounter_type);
         return <Badge variant="outline">{type?.label}</Badge>;
@@ -144,6 +148,7 @@ export function EncounterTable({
     {
       key: 'chief_complaint',
       header: 'Chief Complaint',
+      sortable: true,
       cell: (encounter: Encounter) => (
         <span className="block max-w-[200px] truncate">{encounter.chief_complaint}</span>
       ),
@@ -152,6 +157,8 @@ export function EncounterTable({
     {
       key: 'status',
       header: 'Status',
+      sortable: true,
+      sortFn: (a: Encounter, b: Encounter) => (a.status || '').localeCompare(b.status || ''),
       cell: (encounter: Encounter) => {
         const status = ENCOUNTER_STATUS.find((s) => s.value === encounter.status);
         return <Badge className={status?.color}>{status?.label}</Badge>;
@@ -160,6 +167,8 @@ export function EncounterTable({
     {
       key: 'encounter_date',
       header: 'Date',
+      sortable: true,
+      sortType: 'date' as const,
       cell: (encounter: Encounter) => (
         <span className="text-muted-foreground">{formatDate(encounter.encounter_date)}</span>
       ),

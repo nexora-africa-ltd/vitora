@@ -109,6 +109,7 @@ export default function NotifiableCasesPage() {
     {
       key: 'disease_name',
       header: 'Disease',
+      sortable: true,
       cell: (item: NotifiableCaseListItem) => (
         <div>
           <p className="font-medium">{item.disease_name}</p>
@@ -121,6 +122,7 @@ export default function NotifiableCasesPage() {
     {
       key: 'patient_name',
       header: 'Patient',
+      sortable: true,
       cell: (item: NotifiableCaseListItem) => (
         <div>
           <p className="font-medium">{item.patient_name}</p>
@@ -132,12 +134,15 @@ export default function NotifiableCasesPage() {
       key: 'severity',
       header: 'Severity',
       hideOnMobile: true,
+      sortable: true,
       cell: (item: NotifiableCaseListItem) => item.severity,
     },
     {
       key: 'detected_at',
       header: 'Detected',
       hideOnMobile: true,
+      sortable: true,
+      sortType: 'date' as const,
       cell: (item: NotifiableCaseListItem) => (
         <span className="text-sm text-muted-foreground">
           {formatDateTime(item.detected_at)}
@@ -147,6 +152,7 @@ export default function NotifiableCasesPage() {
     {
       key: 'notification_status',
       header: 'Status',
+      sortable: true,
       cell: (item: NotifiableCaseListItem) => (
         <Badge variant={STATUS_BADGE_VARIANTS[item.notification_status] || 'secondary'}>
           {item.notification_status}
@@ -156,6 +162,8 @@ export default function NotifiableCasesPage() {
     {
       key: 'is_overdue',
       header: 'Overdue',
+      sortable: true,
+      sortFn: (a: NotifiableCaseListItem, b: NotifiableCaseListItem) => Number(a.is_overdue) - Number(b.is_overdue),
       cell: (item: NotifiableCaseListItem) =>
         item.is_overdue ? (
           <Badge variant="destructive" className="w-fit">Yes</Badge>

@@ -97,6 +97,7 @@ export default function IDSRReportsPage() {
     {
       key: 'week_label',
       header: 'Week',
+      sortable: true,
       cell: (item: IDSRWeeklyReportListItem) => (
         <span className="font-medium">{item.week_label}</span>
       ),
@@ -105,6 +106,9 @@ export default function IDSRReportsPage() {
       key: 'date_range',
       header: 'Date Range',
       hideOnMobile: true,
+      sortable: true,
+      sortType: 'date' as const,
+      sortFn: (a: IDSRWeeklyReportListItem, b: IDSRWeeklyReportListItem) => new Date(a.week_start_date).getTime() - new Date(b.week_start_date).getTime(),
       cell: (item: IDSRWeeklyReportListItem) => (
         <span className="text-sm text-muted-foreground">
           {formatDate(item.week_start_date)} - {formatDate(item.week_end_date)}
@@ -114,17 +118,23 @@ export default function IDSRReportsPage() {
     {
       key: 'total_cases',
       header: 'Cases',
+      sortable: true,
+      sortType: 'number' as const,
       cell: (item: IDSRWeeklyReportListItem) => item.total_cases,
     },
     {
       key: 'total_deaths',
       header: 'Deaths',
       hideOnMobile: true,
+      sortable: true,
+      sortType: 'number' as const,
       cell: (item: IDSRWeeklyReportListItem) => item.total_deaths,
     },
     {
       key: 'outbreak_declared',
       header: 'Outbreak',
+      sortable: true,
+      sortFn: (a: IDSRWeeklyReportListItem, b: IDSRWeeklyReportListItem) => Number(a.outbreak_declared) - Number(b.outbreak_declared),
       cell: (item: IDSRWeeklyReportListItem) =>
         item.outbreak_declared ? (
           <Badge variant="destructive" className="w-fit">
@@ -137,6 +147,7 @@ export default function IDSRReportsPage() {
     {
       key: 'status',
       header: 'Status',
+      sortable: true,
       cell: (item: IDSRWeeklyReportListItem) => <IDSRStatusBadge status={item.status} />,
     },
   ];

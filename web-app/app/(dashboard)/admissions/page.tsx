@@ -294,17 +294,21 @@ function AdmissionsTableView({
         {
           key: 'admission_number',
           header: 'Admission #',
+          sortable: true,
           cell: (adm) => <code className="text-sm">{adm.admission_number}</code>,
         },
         {
           key: 'patient_name',
           header: 'Patient',
+          sortable: true,
           cell: (adm) => <span className="font-medium">{adm.patient_name}</span>,
         },
         {
           key: 'ward_bed',
           header: 'Ward / Bed',
           hideOnMobile: true,
+          sortable: true,
+          sortFn: (a, b) => (a.ward_name || '').localeCompare(b.ward_name || ''),
           cell: (adm) => (
             <div className="flex items-center gap-1">
               <Building2 className="h-3 w-3 text-muted-foreground" />
@@ -319,11 +323,15 @@ function AdmissionsTableView({
           key: 'admission_date',
           header: 'Admitted',
           hideOnMobile: true,
+          sortable: true,
+          sortType: 'date' as const,
           cell: (adm) => formatDate(adm.admission_date),
         },
         {
           key: 'status',
           header: 'Status',
+          sortable: true,
+          sortFn: (a, b) => (a.admission_status || '').localeCompare(b.admission_status || ''),
           cell: (adm) => (
             <Badge
               variant={getStatusVariant(adm.admission_status)}
@@ -501,6 +509,8 @@ function RecommendationsTableView({
         {
           key: 'patient',
           header: 'Patient',
+          sortable: true,
+          sortFn: (a, b) => (a.patient_name || '').localeCompare(b.patient_name || ''),
           cell: (rec) => (
             <div className="min-w-0">
               <p className="font-medium truncate">{rec.patient_name || 'Unknown'}</p>
@@ -512,12 +522,15 @@ function RecommendationsTableView({
           key: 'reason',
           header: 'Reason',
           hideOnMobile: true,
+          sortable: true,
           cell: (rec) => <span className="text-sm truncate max-w-[200px]">{rec.reason}</span>,
         },
         {
           key: 'diagnosis',
           header: 'Diagnosis',
           hideOnMobile: true,
+          sortable: true,
+          sortFn: (a, b) => (a.provisional_diagnosis_text || '').localeCompare(b.provisional_diagnosis_text || ''),
           cell: (rec) => (
             <span className="text-sm text-muted-foreground truncate max-w-[200px]">
               {rec.provisional_diagnosis_text}
@@ -527,6 +540,7 @@ function RecommendationsTableView({
         {
           key: 'urgency',
           header: 'Urgency',
+          sortable: true,
           cell: (rec) => (
             <Badge
               variant={getUrgencyVariant(rec.urgency)}
@@ -541,6 +555,8 @@ function RecommendationsTableView({
           key: 'ward_type',
           header: 'Ward Type',
           hideOnMobile: true,
+          sortable: true,
+          sortFn: (a, b) => (a.preferred_ward_type || '').localeCompare(b.preferred_ward_type || ''),
           cell: (rec) => (
             <div className="flex items-center gap-1">
               <Building2 className="h-3 w-3 text-muted-foreground" />

@@ -211,6 +211,8 @@ export default function DepartmentsPage() {
                   {
                     key: 'name',
                     header: 'Department',
+                    sortable: true,
+                    sortFn: (a, b) => a.name.localeCompare(b.name),
                     cell: (dept) => (
                       <div className="min-w-0">
                         <p className="font-medium truncate">{dept.name}</p>
@@ -221,6 +223,8 @@ export default function DepartmentsPage() {
                   {
                     key: 'type',
                     header: 'Type',
+                    sortable: true,
+                    sortFn: (a, b) => (a.department_type_display || '').localeCompare(b.department_type_display || ''),
                     cell: (dept) => (
                       <Badge variant={getDepartmentTypeBadgeVariant(dept.department_type)}>
                         {dept.department_type_display}
@@ -231,17 +235,23 @@ export default function DepartmentsPage() {
                     key: 'head',
                     header: 'Head',
                     hideOnMobile: true,
+                    sortable: true,
+                    sortFn: (a, b) => (a.head_name || '').localeCompare(b.head_name || ''),
                     cell: (dept) => dept.head_name || 'Not assigned',
                   },
                   {
                     key: 'staff',
                     header: 'Staff',
                     hideOnMobile: true,
+                    sortable: true,
+                    sortType: 'number',
+                    sortFn: (a, b) => (a.staff_count ?? 0) - (b.staff_count ?? 0),
                     cell: (dept) => `${dept.staff_count} assigned`,
                   },
                   {
                     key: 'status',
                     header: 'Status',
+                    sortable: true,
                     cell: (dept) => (
                       <Badge variant={dept.is_active ? 'default' : 'secondary'}>
                         {dept.is_active ? 'Active' : 'Inactive'}

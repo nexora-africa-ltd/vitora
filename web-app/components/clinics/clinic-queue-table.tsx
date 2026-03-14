@@ -289,6 +289,9 @@ export function ClinicQueueTable({
         key: 'queue_number',
         header: '#',
         className: 'w-[60px]',
+        sortable: true,
+        sortType: 'number' as const,
+        sortFn: (a: ClinicVisit, b: ClinicVisit) => a.queue_number - b.queue_number,
         cell: (visit: ClinicVisit) => (
           <span className="font-medium">{visit.queue_number}</span>
         ),
@@ -296,6 +299,8 @@ export function ClinicQueueTable({
       {
         key: 'patient',
         header: 'Patient',
+        sortable: true,
+        sortFn: (a: ClinicVisit, b: ClinicVisit) => a.patient.full_name.localeCompare(b.patient.full_name),
         cell: (visit: ClinicVisit) => (
           <div className="flex flex-col">
             <span className="font-medium">{visit.patient.full_name}</span>
@@ -310,12 +315,16 @@ export function ClinicQueueTable({
         key: 'priority',
         header: 'Priority',
         hideOnMobile: true,
+        sortable: true,
         cell: (visit: ClinicVisit) => <ClinicPriorityBadge priority={visit.priority} />,
       },
       {
         key: 'wait_time',
         header: 'Wait Time',
         hideOnMobile: true,
+        sortable: true,
+        sortType: 'number' as const,
+        sortFn: (a: ClinicVisit, b: ClinicVisit) => (a.wait_time_minutes ?? 0) - (b.wait_time_minutes ?? 0),
         cell: (visit: ClinicVisit) => (
           <div className="flex items-center gap-1 text-muted-foreground">
             <Clock className="h-3 w-3" />
@@ -337,6 +346,7 @@ export function ClinicQueueTable({
         key: 'status',
         header: 'Status',
         hideOnMobile: true,
+        sortable: true,
         cell: (visit: ClinicVisit) => (
           <ClinicVisitStatusBadge status={visit.status} statusDisplay={visit.status_display} />
         ),

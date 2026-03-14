@@ -173,6 +173,7 @@ export function LabOrderTable({
           {
             key: 'order_number',
             header: 'Order #',
+            sortable: true,
             cell: (order) => (
               <span className="font-mono text-sm">{order.order_number}</span>
             ),
@@ -180,6 +181,8 @@ export function LabOrderTable({
           {
             key: 'patient',
             header: 'Patient',
+            sortable: true,
+            sortFn: (a, b) => (a.patient_name || '').localeCompare(b.patient_name || ''),
             cell: (order) => (
               <div>
                 <div className="font-medium">{order.patient_name}</div>
@@ -203,6 +206,7 @@ export function LabOrderTable({
           {
             key: 'priority',
             header: 'Priority',
+            sortable: true,
             cell: (order) => {
               const priority = PRIORITY_CONFIG[order.priority];
               return <span className={priority.className}>{priority.label}</span>;
@@ -211,6 +215,7 @@ export function LabOrderTable({
           {
             key: 'status',
             header: 'Status',
+            sortable: true,
             cell: (order) => {
               const status = STATUS_CONFIG[order.status];
               const isCritical = hasCriticalResults(order);
@@ -227,6 +232,8 @@ export function LabOrderTable({
           {
             key: 'created_at',
             header: 'Date',
+            sortable: true,
+            sortType: 'date',
             cell: (order) => (
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Clock className="h-3 w-3" />

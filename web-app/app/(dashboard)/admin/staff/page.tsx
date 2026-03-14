@@ -312,6 +312,8 @@ function StaffTableView({
         {
           key: 'employee',
           header: 'Employee',
+          sortable: true,
+          sortFn: (a, b) => a.full_name.localeCompare(b.full_name),
           cell: (member) => (
             <div className="min-w-0">
               <p className="font-medium truncate">{member.full_name}</p>
@@ -322,18 +324,23 @@ function StaffTableView({
         {
           key: 'employee_id',
           header: 'Employee ID',
+          sortable: true,
           cell: (member) => <span className="font-mono text-sm">{member.employee_id}</span>,
         },
         {
           key: 'department',
           header: 'Department',
           hideOnMobile: true,
+          sortable: true,
+          sortFn: (a, b) => (a.primary_department_name || '').localeCompare(b.primary_department_name || ''),
           cell: (member) => member.primary_department_name || 'Unassigned',
         },
         {
           key: 'role',
           header: 'Role',
           hideOnMobile: true,
+          sortable: true,
+          sortFn: (a, b) => (a.primary_role_name || '').localeCompare(b.primary_role_name || ''),
           cell: (member) => member.primary_role_name || 'Unassigned',
         },
         {
@@ -350,6 +357,8 @@ function StaffTableView({
         {
           key: 'status',
           header: 'Status',
+          sortable: true,
+          sortFn: (a, b) => (a.employment_status || '').localeCompare(b.employment_status || ''),
           cell: (member) => (
             <Badge variant={member.employment_status === 'ACTIVE' ? 'default' : 'secondary'}>
               {formatEmploymentStatus(member.employment_status)}

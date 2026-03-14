@@ -194,6 +194,8 @@ export default function ReviewRequestsPage() {
               {
                 key: 'patient',
                 header: 'Patient',
+                sortable: true,
+                sortFn: (a, b) => (a.patient_name || '').localeCompare(b.patient_name || ''),
                 cell: (review) => (
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
@@ -207,6 +209,7 @@ export default function ReviewRequestsPage() {
               {
                 key: 'type',
                 header: 'Type',
+                sortable: true,
                 cell: (review) => (
                   <span className="text-sm">
                     {review.review_type_display || reviewTypeLabels[review.review_type] || review.review_type}
@@ -216,6 +219,7 @@ export default function ReviewRequestsPage() {
               {
                 key: 'urgency',
                 header: 'Urgency',
+                sortable: true,
                 cell: (review) => (
                   <Badge className={urgencyColors[review.urgency]}>
                     {review.urgency_display || review.urgency}
@@ -225,6 +229,7 @@ export default function ReviewRequestsPage() {
               {
                 key: 'status',
                 header: 'Status',
+                sortable: true,
                 cell: (review) => (
                   <div className="flex items-center gap-2">
                     <Badge className={statusColors[review.status]}>
@@ -239,6 +244,9 @@ export default function ReviewRequestsPage() {
               {
                 key: 'requested',
                 header: 'Requested',
+                sortable: true,
+                sortType: 'date',
+                sortFn: (a, b) => new Date(a.requested_at).getTime() - new Date(b.requested_at).getTime(),
                 cell: (review) => (
                   <span className="text-sm text-muted-foreground">
                     {formatDateTime(review.requested_at)}

@@ -121,28 +121,41 @@ export default function AnnualReportsPage() {
             {
               key: 'clinic',
               header: 'Clinic',
+              sortable: true,
+              sortFn: (a, b) => (a.clinic_name || '').localeCompare(b.clinic_name || ''),
               cell: (item) => <span className="font-medium">{item.clinic_name}</span>,
             },
             {
               key: 'year',
               header: 'Year',
+              sortable: true,
+              sortType: 'number',
+              sortFn: (a, b) => a.year - b.year,
               cell: (item) => String(item.year),
             },
             {
               key: 'visits',
               header: 'Total Visits',
+              sortable: true,
+              sortType: 'number',
+              sortFn: (a, b) => a.total_visits - b.total_visits,
               cell: (item) => item.total_visits.toLocaleString(),
               hideOnMobile: true,
             },
             {
               key: 'revenue',
               header: 'Revenue',
+              sortable: true,
+              sortType: 'number',
+              sortFn: (a, b) => Number(a.total_revenue) - Number(b.total_revenue),
               cell: (item) => `KES ${Number(item.total_revenue).toLocaleString()}`,
               hideOnMobile: true,
             },
             {
               key: 'dhis2',
               header: 'DHIS2',
+              sortable: true,
+              sortFn: (a, b) => Number(a.dhis2_submitted) - Number(b.dhis2_submitted),
               cell: (item) => (
                 <Badge
                   variant={item.dhis2_submitted ? 'default' : 'secondary'}

@@ -312,6 +312,7 @@ export function PrescriptionsTable({
     {
       key: 'prescription_number',
       header: 'Rx #',
+      sortable: true,
       cell: (rx: Prescription) => (
         <span className="font-mono text-sm">{rx.prescription_number}</span>
       ),
@@ -319,6 +320,7 @@ export function PrescriptionsTable({
     {
       key: 'patient_name',
       header: 'Patient',
+      sortable: true,
       cell: (rx: Prescription) => (
         <div>
           <p className="font-medium">{rx.patient_name}</p>
@@ -334,6 +336,8 @@ export function PrescriptionsTable({
     {
       key: 'prescribed_date',
       header: 'Date',
+      sortable: true,
+      sortType: 'date' as const,
       cell: (rx: Prescription) => format(new Date(rx.prescribed_date), 'MMM d, yyyy'),
       hideOnMobile: true,
     },
@@ -350,6 +354,7 @@ export function PrescriptionsTable({
     {
       key: 'status',
       header: 'Status',
+      sortable: true,
       cell: (rx: Prescription) => {
         const StatusIcon = STATUS_ICONS[rx.status];
         return (

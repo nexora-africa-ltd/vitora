@@ -288,27 +288,35 @@ export default function HL7MessagesPage() {
                   {
                     key: 'direction',
                     header: '',
+                    sortable: true,
                     cell: (msg) => <DirectionIcon direction={msg.direction} />,
                   },
                   {
                     key: 'type',
                     header: 'Type',
+                    sortable: true,
+                    sortFn: (a, b) => (a.message_type || '').localeCompare(b.message_type || ''),
                     cell: (msg) => <span className="font-mono text-sm">{msg.message_type}</span>,
                   },
                   {
                     key: 'control_id',
                     header: 'Control ID',
+                    sortable: true,
+                    sortFn: (a, b) => (a.message_control_id || '').localeCompare(b.message_control_id || ''),
                     cell: (msg) => <span className="font-mono text-sm">{msg.message_control_id}</span>,
                   },
                   {
                     key: 'status',
                     header: 'Status',
+                    sortable: true,
                     cell: (msg) => getStatusBadge(msg.status),
                   },
                   {
                     key: 'resource',
                     header: 'Resource',
                     hideOnMobile: true,
+                    sortable: true,
+                    sortFn: (a, b) => (a.resource_type || '').localeCompare(b.resource_type || ''),
                     cell: (msg) => (
                       <span className="text-sm text-muted-foreground">
                         {msg.resource_type ? `${msg.resource_type} #${msg.resource_id}` : '—'}
@@ -319,6 +327,9 @@ export default function HL7MessagesPage() {
                     key: 'retries',
                     header: 'Retries',
                     hideOnMobile: true,
+                    sortable: true,
+                    sortType: 'number',
+                    sortFn: (a, b) => a.retry_count - b.retry_count,
                     cell: (msg) => (
                       <span className={`text-sm ${msg.retry_count > 0 ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>
                         {msg.retry_count}
@@ -329,6 +340,9 @@ export default function HL7MessagesPage() {
                     key: 'created',
                     header: 'Created',
                     hideOnMobile: true,
+                    sortable: true,
+                    sortType: 'date',
+                    sortFn: (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
                     cell: (msg) => (
                       <span className="text-sm text-muted-foreground">
                         {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}

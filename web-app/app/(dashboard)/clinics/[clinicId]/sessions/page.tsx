@@ -333,6 +333,8 @@ export default function ClinicSessionsPage() {
               {
                 key: 'session_date',
                 header: 'Date',
+                sortable: true,
+                sortType: 'date',
                 cell: (session) => (
                   <span className="font-medium">{formatDate(session.session_date)}</span>
                 ),
@@ -340,6 +342,7 @@ export default function ClinicSessionsPage() {
               {
                 key: 'status',
                 header: 'Status',
+                sortable: true,
                 cell: (session) => (
                   <Badge className={cn('font-normal shrink-0 w-fit text-xs', STATUS_COLORS[session.status])}>
                     {session.status_display}
@@ -349,18 +352,23 @@ export default function ClinicSessionsPage() {
               {
                 key: 'opened_by_name',
                 header: 'Opened By',
+                sortable: true,
                 cell: (session) => session.opened_by_name || '--',
                 hideOnMobile: true,
               },
               {
                 key: 'opened_at',
                 header: 'Opened',
+                sortable: true,
+                sortType: 'date',
                 cell: (session) => formatTime(session.opened_at),
                 hideOnMobile: true,
               },
               {
                 key: 'closed_at',
                 header: 'Closed',
+                sortable: true,
+                sortType: 'date',
                 cell: (session) => formatTime(session.closed_at),
                 hideOnMobile: true,
               },
@@ -373,12 +381,16 @@ export default function ClinicSessionsPage() {
               {
                 key: 'patients_registered',
                 header: 'Reg',
+                sortable: true,
+                sortType: 'number',
                 cell: (session) => <span className="font-medium">{session.patients_registered}</span>,
                 className: 'text-right',
               },
               {
                 key: 'patients_seen',
                 header: 'Seen',
+                sortable: true,
+                sortType: 'number',
                 cell: (session) => (
                   <span className="font-medium text-green-600">{session.patients_seen}</span>
                 ),
@@ -387,6 +399,8 @@ export default function ClinicSessionsPage() {
               {
                 key: 'patients_waiting',
                 header: 'Wait',
+                sortable: true,
+                sortType: 'number',
                 cell: (session) => (
                   session.patients_waiting > 0 ? (
                     <span className="text-orange-600 font-medium">{session.patients_waiting}</span>
