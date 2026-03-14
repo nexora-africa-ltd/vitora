@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   CheckCircle,
-  XCircle,
   AlertTriangle,
   Loader2,
   RefreshCw,
@@ -14,10 +13,25 @@ import {
   Pill,
   Baby,
   FileText,
+  Download,
+  TrendingUp,
+  TrendingDown,
+  ShieldCheck,
+  ShieldAlert,
+  Activity,
+  Target,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+  Clock,
+  User,
+  BarChart3,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { EmptyState } from '@/components/shared/empty-state';
+import { AdminStatCard } from '@/components/admin/admin-stat-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,6 +41,13 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { kenhddApi } from '@/lib/api/kenhdd';
 import { toast } from 'sonner';
@@ -37,12 +58,14 @@ import type { z } from 'zod';
 import type {
   KENHDDComplianceScoreSchema,
   KENHDDComplianceSummaryEntrySchema,
+  KENHDDDataElementSchema,
   KENHDDValidationRunSchema,
 } from '@/lib/schemas/kenhdd.schema';
 
 type ComplianceSummaryEntry = z.infer<typeof KENHDDComplianceSummaryEntrySchema>;
 type ComplianceScore = z.infer<typeof KENHDDComplianceScoreSchema>;
 type ValidationRun = z.infer<typeof KENHDDValidationRunSchema>;
+type DataElement = z.infer<typeof KENHDDDataElementSchema>;
 
 const RESOURCE_TYPE_CONFIG: Record<
   KENHDDResourceType,
@@ -56,6 +79,8 @@ const RESOURCE_TYPE_CONFIG: Record<
   PRESCRIPTION: { label: 'Prescription', icon: Pill },
   MCH_VISIT: { label: 'MCH Visit', icon: Baby },
 };
+
+const ALL_RESOURCE_TYPES = Object.keys(RESOURCE_TYPE_CONFIG) as KENHDDResourceType[];
 
 function getScoreColor(score: number | null): string {
   if (score === null) return 'text-muted-foreground';
@@ -86,11 +111,63 @@ function getScoreBadge(score: number | null) {
   );
 }
 
+function getScoreTone(score: number | null): 'default' | 'success' | 'warning' | 'critical' {
+  if (score === null) return 'default';
+  if (score >= 90) return 'success';
+  if (score >= 70) return 'warning';
+  return 'critical';
+}
+
+function formatTimeAgo(dateStr: string | null): string {
+  if (!dateStr) return 'Never';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+/** Build a lookup from element_id to element metadata. */
+function buildElementMap(elements: DataElement[]): Map<string, DataElement> {
+  const map = new Map<string, DataElement>();
+  for (const el of elements) {
+    map.set(el.element_id, el);
+  }
+  return map;
+}
+
+/** Compute score delta between the two most recent runs for each resource type. */
+function computeDeltas(
+  runs: ValidationRun[]
+): Record<string, { delta: number; prev: number; curr: number }> {
+  const byResource: Record<string, ValidationRun[]> = {};
+  for (const run of runs) {
+    (byResource[run.resource_type] ??= []).push(run);
+  }
+  const deltas: Record<string, { delta: number; prev: number; curr: number }> = {};
+  for (const [rt, rtRuns] of Object.entries(byResource)) {
+    // Runs are already ordered by -run_at from the API
+    const latest = rtRuns[0];
+    const previous = rtRuns[1];
+    if (latest && previous) {
+      const curr = parseFloat(latest.compliance_score);
+      const prev = parseFloat(previous.compliance_score);
+      deltas[rt] = { delta: Math.round(curr - prev), prev: Math.round(prev), curr: Math.round(curr) };
+    }
+  }
+  return deltas;
+}
+
 export default function KENHDDCompliancePage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const queryClient = useQueryClient();
   const [reportScores, setReportScores] = useState<ComplianceScore[] | null>(null);
+  const [historyFilter, setHistoryFilter] = useState<string>('all');
 
+  // --- Data fetching ---
   const {
     data: summary,
     isLoading: summaryLoading,
@@ -106,6 +183,13 @@ export default function KENHDDCompliancePage() {
   } = useQuery({
     queryKey: ['kenhdd-runs'],
     queryFn: () => kenhddApi.listRuns(),
+  });
+
+  const {
+    data: elementsResponse,
+  } = useQuery({
+    queryKey: ['kenhdd-elements'],
+    queryFn: () => kenhddApi.listElements(),
   });
 
   const reportMutation = useMutation({
@@ -125,16 +209,205 @@ export default function KENHDDCompliancePage() {
     },
   });
 
-  // Compute overall stats from summary
-  const overallScore =
-    summary && summary.filter((s) => s.compliance_score !== null).length > 0
-      ? Math.round(
-          summary
-            .filter((s) => s.compliance_score !== null)
-            .reduce((sum, s) => sum + (s.compliance_score ?? 0), 0) /
-            summary.filter((s) => s.compliance_score !== null).length
-        )
-      : null;
+  const resourceRerunMutation = useMutation({
+    mutationFn: (resourceType: KENHDDResourceType) =>
+      kenhddApi.generateReport(resourceType, 100),
+    onSuccess: (_scores, resourceType) => {
+      queryClient.invalidateQueries({ queryKey: ['kenhdd-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['kenhdd-runs'] });
+      const label = RESOURCE_TYPE_CONFIG[resourceType]?.label ?? resourceType;
+      toast.success(`${label} re-checked successfully.`);
+    },
+    onError: () => {
+      toast.error('Failed to re-run resource check.');
+    },
+  });
+
+  // --- Derived computations ---
+  const elementMap = useMemo(
+    () => buildElementMap(elementsResponse?.results ?? []),
+    [elementsResponse]
+  );
+
+  const deltas = useMemo(() => computeDeltas(runs ?? []), [runs]);
+
+  const checkedEntries = useMemo(
+    () => (summary ?? []).filter((s) => s.compliance_score !== null),
+    [summary]
+  );
+
+  const overallScore = useMemo(() => {
+    if (checkedEntries.length === 0) return null;
+    return Math.round(
+      checkedEntries.reduce((sum, s) => sum + (s.compliance_score ?? 0), 0) /
+        checkedEntries.length
+    );
+  }, [checkedEntries]);
+
+  const overallMandatoryRate = useMemo(() => {
+    if (checkedEntries.length === 0) return null;
+    return Math.round(
+      checkedEntries.reduce((sum, s) => sum + (s.mandatory_pass_rate ?? 0), 0) /
+        checkedEntries.length
+    );
+  }, [checkedEntries]);
+
+  const totalMandatoryBlockers = useMemo(() => {
+    const violations = reportScores ?? checkedEntries;
+    let count = 0;
+    for (const entry of violations) {
+      const viols = 'violations_by_element' in entry ? entry.violations_by_element : entry.violations;
+      for (const [elId, c] of Object.entries(viols)) {
+        const el = elementMap.get(elId);
+        if (el?.requirement_level === 'MANDATORY') count += c;
+      }
+    }
+    return count;
+  }, [reportScores, checkedEntries, elementMap]);
+
+  const worstResource = useMemo(() => {
+    if (checkedEntries.length === 0) return null;
+    return checkedEntries.reduce((worst, entry) =>
+      (entry.compliance_score ?? 100) < (worst.compliance_score ?? 100) ? entry : worst
+    );
+  }, [checkedEntries]);
+
+  const bestResource = useMemo(() => {
+    if (checkedEntries.length === 0) return null;
+    return checkedEntries.reduce((best, entry) =>
+      (entry.compliance_score ?? 0) > (best.compliance_score ?? 0) ? entry : best
+    );
+  }, [checkedEntries]);
+
+  // "What changed" entries: regressions (delta < 0) and improvements (delta > 0)
+  const changes = useMemo(() => {
+    const items: { resource: string; label: string; delta: number; curr: number }[] = [];
+    for (const [rt, d] of Object.entries(deltas)) {
+      if (d.delta !== 0) {
+        items.push({
+          resource: rt,
+          label: RESOURCE_TYPE_CONFIG[rt as KENHDDResourceType]?.label ?? rt,
+          delta: d.delta,
+          curr: d.curr,
+        });
+      }
+    }
+    // Regressions first (most negative), then improvements
+    items.sort((a, b) => a.delta - b.delta);
+    return items;
+  }, [deltas]);
+
+  // Enriched violations for the blockers panel
+  const enrichedViolations = useMemo(() => {
+    const source = reportScores ?? checkedEntries;
+    const rows: {
+      resourceType: string;
+      resourceLabel: string;
+      elementId: string;
+      elementName: string;
+      fieldName: string;
+      requirementLevel: string;
+      dataType: string;
+      count: number;
+    }[] = [];
+    for (const entry of source) {
+      const viols = 'violations_by_element' in entry ? entry.violations_by_element : entry.violations;
+      for (const [elId, count] of Object.entries(viols)) {
+        const el = elementMap.get(elId);
+        rows.push({
+          resourceType: entry.resource_type,
+          resourceLabel:
+            RESOURCE_TYPE_CONFIG[entry.resource_type as KENHDDResourceType]?.label ?? entry.resource_type,
+          elementId: elId,
+          elementName: el?.name ?? elId,
+          fieldName: el?.model_field ?? '—',
+          requirementLevel: el?.requirement_level ?? 'UNKNOWN',
+          dataType: el?.data_type ?? '—',
+          count,
+        });
+      }
+    }
+    // Sort: MANDATORY first, then by count descending
+    rows.sort((a, b) => {
+      const aM = a.requirementLevel === 'MANDATORY' ? 0 : 1;
+      const bM = b.requirementLevel === 'MANDATORY' ? 0 : 1;
+      if (aM !== bM) return aM - bM;
+      return b.count - a.count;
+    });
+    return rows;
+  }, [reportScores, checkedEntries, elementMap]);
+
+  // Filtered run history
+  const filteredRuns = useMemo(() => {
+    if (!runs) return [];
+    if (historyFilter === 'all') return runs.slice(0, 30);
+    return runs.filter((r) => r.resource_type === historyFilter).slice(0, 30);
+  }, [runs, historyFilter]);
+
+  // Most recent run timestamp
+  const latestRunAt = useMemo(() => {
+    const dates = (summary ?? []).map((s) => s.run_at).filter(Boolean) as string[];
+    if (dates.length === 0) return null;
+    return dates.sort().reverse()[0];
+  }, [summary]);
+
+  const latestRunBy = useMemo(() => {
+    if (!latestRunAt) return null;
+    const entry = (summary ?? []).find((s) => s.run_at === latestRunAt);
+    return entry?.run_by ?? null;
+  }, [summary, latestRunAt]);
+
+  const hasNeverRun = checkedEntries.length === 0 && !summaryLoading;
+
+  const handleExport = async (resourceType: KENHDDResourceType, format: 'csv' | 'json') => {
+    try {
+      const blob = await kenhddApi.exportReport(resourceType, format);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `kenhdd_${resourceType.toLowerCase()}_report.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Report downloaded.');
+    } catch {
+      toast.error('Export failed.');
+    }
+  };
+
+  // --- Render ---
+
+  if (hasNeverRun && !reportMutation.isPending) {
+    return (
+      <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
+        <div className="space-y-4 sm:space-y-6">
+          <PageHeader
+            title="KENHDD Compliance"
+            helpContent="Validates data against Kenya National Health Data Dictionary (KENHDD) standards. Checks that Patient, Encounter, Diagnosis, Facility, Lab, Prescription, and MCH records conform to the national schema. DHA Compliance: Gap #33."
+            actions={
+              <Button
+                onClick={() => reportMutation.mutate()}
+                disabled={reportMutation.isPending}
+                size="sm"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Run Compliance Check</span>
+                <span className="sm:hidden">Run Check</span>
+              </Button>
+            }
+          />
+          <EmptyState
+            icon={ShieldCheck}
+            title="No compliance data yet"
+            description="Run a KENHDD compliance check to validate your data against the Kenya National Health Data Dictionary. Results will show which resource types are compliant, which need attention, and what to fix first."
+            action={{
+              label: 'Run Compliance Check',
+              onClick: () => reportMutation.mutate(),
+            }}
+          />
+        </div>
+      </PullToRefresh>
+    );
+  }
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
@@ -153,80 +426,163 @@ export default function KENHDDCompliancePage() {
               ) : (
                 <RefreshCw className="h-4 w-4 mr-2" />
               )}
-              Run Compliance Check
+              <span className="hidden sm:inline">Run Compliance Check</span>
+              <span className="sm:hidden">Run Check</span>
             </Button>
           }
         />
 
-        {/* Overall Score + Element Count */}
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-3">
-          {summaryLoading ? (
-            Array.from({ length: 3 }).map((_, i) => (
+        {/* Loading overlay while check is running */}
+        {reportMutation.isPending && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="flex items-center gap-3 p-4">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <div>
+                <div className="text-sm font-medium">Running compliance check…</div>
+                <div className="text-xs text-muted-foreground">
+                  Validating records across all 7 resource types. This may take a moment.
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Latest Run Summary Band */}
+        {!summaryLoading && latestRunAt && (
+          <div className="relative overflow-hidden rounded-xl border border-primary/20 bg-card">
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.18),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.14),transparent_34%)]"
+              aria-hidden="true"
+            />
+            <div className="relative flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+              <div className="flex flex-col gap-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className={`text-2xl sm:text-3xl font-bold ${getScoreColor(overallScore)}`}>
+                    {overallScore !== null ? `${overallScore}%` : '—'}
+                  </span>
+                  {getScoreBadge(overallScore)}
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Overall compliance across {checkedEntries.length} resource type{checkedEntries.length !== 1 ? 's' : ''}
+                  {overallMandatoryRate !== null && (
+                    <> · Mandatory pass rate: <span className="font-medium">{overallMandatoryRate}%</span></>
+                  )}
+                </p>
+              </div>
+              <div className="flex items-center gap-4 text-xs text-muted-foreground shrink-0">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" />
+                  {formatTimeAgo(latestRunAt)}
+                </div>
+                {latestRunBy && (
+                  <div className="flex items-center gap-1">
+                    <User className="h-3.5 w-3.5" />
+                    {latestRunBy}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Remediation KPI Cards */}
+        {summaryLoading ? (
+          <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
               <Card key={i} className="relative overflow-hidden">
                 <CardContent className="p-4">
                   <Skeleton className="h-4 w-24 mb-2" />
                   <Skeleton className="h-8 w-16" />
                 </CardContent>
               </Card>
-            ))
-          ) : summaryError ? (
-            <Card className="col-span-full">
-              <CardContent className="p-6 text-center text-destructive">
-                Failed to load compliance summary.
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              <Card className="relative overflow-hidden">
-                <div
-                  className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
-                  aria-hidden="true"
-                />
-                <CardContent className="relative p-4">
-                  <div className="text-xs text-muted-foreground mb-1">
-                    Overall Compliance
-                  </div>
-                  <div className={`text-2xl font-bold ${getScoreColor(overallScore)}`}>
-                    {overallScore !== null ? `${overallScore}%` : '—'}
-                  </div>
-                </CardContent>
-              </Card>
+            ))}
+          </div>
+        ) : summaryError ? (
+          <Card className="col-span-full">
+            <CardContent className="p-6 text-center text-destructive">
+              Failed to load compliance summary.
+            </CardContent>
+          </Card>
+        ) : checkedEntries.length > 0 ? (
+          <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+            <AdminStatCard
+              title="Mandatory Blockers"
+              value={totalMandatoryBlockers}
+              description="Failing mandatory field checks"
+              icon={<ShieldAlert className="h-4 w-4" />}
+              tone={totalMandatoryBlockers > 0 ? 'critical' : 'success'}
+              valueClassName={totalMandatoryBlockers > 0 ? 'text-destructive' : 'text-emerald-600'}
+            />
+            <AdminStatCard
+              title="Below Threshold"
+              value={checkedEntries.filter((s) => (s.compliance_score ?? 0) < 90).length}
+              description={`of ${checkedEntries.length} types below 90%`}
+              icon={<Target className="h-4 w-4" />}
+              tone={checkedEntries.some((s) => (s.compliance_score ?? 0) < 70) ? 'warning' : 'default'}
+            />
+            <AdminStatCard
+              title="Best Resource"
+              value={bestResource
+                ? `${Math.round(bestResource.compliance_score ?? 0)}%`
+                : '—'}
+              description={bestResource
+                ? RESOURCE_TYPE_CONFIG[bestResource.resource_type as KENHDDResourceType]?.label
+                : undefined}
+              icon={<TrendingUp className="h-4 w-4" />}
+              tone="success"
+            />
+            <AdminStatCard
+              title="Needs Most Work"
+              value={worstResource
+                ? `${Math.round(worstResource.compliance_score ?? 0)}%`
+                : '—'}
+              description={worstResource
+                ? RESOURCE_TYPE_CONFIG[worstResource.resource_type as KENHDDResourceType]?.label
+                : undefined}
+              icon={<TrendingDown className="h-4 w-4" />}
+              tone={getScoreTone(worstResource?.compliance_score ?? null)}
+            />
+          </div>
+        ) : null}
 
-              <Card className="relative overflow-hidden">
-                <div
-                  className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
-                  aria-hidden="true"
-                />
-                <CardContent className="relative p-4">
-                  <div className="text-xs text-muted-foreground mb-1">
-                    Resource Types Checked
+        {/* What Changed Since Last Run */}
+        {changes.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                What Changed
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {changes.map((change) => (
+                  <div
+                    key={change.resource}
+                    className="flex items-center gap-3 text-sm p-2 rounded-md bg-muted/30"
+                  >
+                    {change.delta < 0 ? (
+                      <ArrowDownRight className="h-4 w-4 text-red-500 shrink-0" />
+                    ) : (
+                      <ArrowUpRight className="h-4 w-4 text-green-500 shrink-0" />
+                    )}
+                    <span className="font-medium">{change.label}</span>
+                    <span className="text-muted-foreground">
+                      {change.delta < 0 ? 'dropped' : 'improved'}{' '}
+                      <span className={change.delta < 0 ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}>
+                        {Math.abs(change.delta)} point{Math.abs(change.delta) !== 1 ? 's' : ''}
+                      </span>
+                      {' '}to {change.curr}%
+                    </span>
+                    {getScoreBadge(change.curr)}
                   </div>
-                  <div className="text-2xl font-bold">
-                    {summary?.filter((s) => s.compliance_score !== null).length ?? 0}
-                    <span className="text-sm font-normal text-muted-foreground"> / 7</span>
-                  </div>
-                </CardContent>
-              </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-              <Card className="relative overflow-hidden">
-                <div
-                  className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
-                  aria-hidden="true"
-                />
-                <CardContent className="relative p-4">
-                  <div className="text-xs text-muted-foreground mb-1">
-                    Total Runs
-                  </div>
-                  <div className="text-2xl font-bold">
-                    {runs?.length ?? 0}
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
-        </div>
-
-        {/* Per-Resource Type Scores */}
+        {/* Compliance by Resource Type — Actionable Cards */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base sm:text-lg">
@@ -237,7 +593,7 @@ export default function KENHDDCompliancePage() {
             {summaryLoading ? (
               <div className="space-y-3">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
+                  <Skeleton key={i} className="h-16 w-full" />
                 ))}
               </div>
             ) : summary ? (
@@ -247,36 +603,93 @@ export default function KENHDDCompliancePage() {
                   if (!config) return null;
                   const Icon = config.icon;
                   const score = entry.compliance_score;
-                  const violationCount = Object.keys(entry.violations).length;
+                  const mandRate = entry.mandatory_pass_rate;
+                  const violationCount = Object.values(entry.violations).reduce((a, b) => a + b, 0);
+                  const violationTypeCount = Object.keys(entry.violations).length;
+                  const delta = deltas[entry.resource_type];
 
                   return (
                     <div
                       key={entry.resource_type}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                      className="flex flex-col gap-2 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors sm:flex-row sm:items-center sm:justify-between"
                     >
+                      {/* Left: icon + label + meta */}
                       <div className="flex items-center gap-3 min-w-0">
                         <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
                         <div className="min-w-0">
-                          <div className="font-medium text-sm">{config.label}</div>
+                          <div className="font-medium text-sm flex items-center gap-2">
+                            {config.label}
+                            {delta && delta.delta !== 0 && (
+                              <span
+                                className={`inline-flex items-center gap-0.5 text-xs font-medium ${
+                                  delta.delta > 0 ? 'text-green-600' : 'text-red-600'
+                                }`}
+                              >
+                                {delta.delta > 0 ? (
+                                  <ArrowUpRight className="h-3 w-3" />
+                                ) : (
+                                  <ArrowDownRight className="h-3 w-3" />
+                                )}
+                                {Math.abs(delta.delta)}pt
+                              </span>
+                            )}
+                            {delta && delta.delta === 0 && (
+                              <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+                                <Minus className="h-3 w-3" />
+                                unchanged
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-muted-foreground">
                             {entry.records_checked > 0
-                              ? `${entry.records_compliant}/${entry.records_checked} records compliant`
+                              ? `${entry.records_compliant}/${entry.records_checked} records · Mandatory: ${mandRate !== null ? `${Math.round(mandRate)}%` : '—'}`
                               : 'No data yet'}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 shrink-0">
+                      {/* Right: violations + score + badge + actions */}
+                      <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
                         {violationCount > 0 && score !== null && (
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                            {violationCount} issue{violationCount !== 1 ? 's' : ''}
+                            {violationCount} violation{violationCount !== 1 ? 's' : ''} ({violationTypeCount} field{violationTypeCount !== 1 ? 's' : ''})
                           </div>
                         )}
                         <div className={`text-sm font-semibold w-12 text-right ${getScoreColor(score)}`}>
                           {score !== null ? `${Math.round(score)}%` : '—'}
                         </div>
                         {getScoreBadge(score)}
+                        {/* Per-resource actions */}
+                        {score !== null && (
+                          <div className="flex items-center gap-1 ml-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title={`Re-run ${config.label}`}
+                              disabled={resourceRerunMutation.isPending}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                resourceRerunMutation.mutate(entry.resource_type as KENHDDResourceType);
+                              }}
+                            >
+                              <RefreshCw className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title={`Export ${config.label} report`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleExport(entry.resource_type as KENHDDResourceType, 'csv');
+                              }}
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -286,46 +699,63 @@ export default function KENHDDCompliancePage() {
           </CardContent>
         </Card>
 
-        {/* Latest Report Violations */}
-        {reportScores && reportScores.some((s) => Object.keys(s.violations_by_element).length > 0) && (
+        {/* Prioritized Blockers Panel */}
+        {enrichedViolations.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base sm:text-lg">
-                Violations from Latest Check
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4 text-destructive" />
+                {reportScores ? 'Violations from Latest Check' : 'Outstanding Violations'}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <table className="min-w-[400px] w-full text-sm">
+                <table className="min-w-[550px] w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
                       <th className="pb-2 font-medium">Resource</th>
                       <th className="pb-2 font-medium">Element</th>
+                      <th className="pb-2 font-medium hidden sm:table-cell">Field</th>
+                      <th className="pb-2 font-medium">Level</th>
                       <th className="pb-2 font-medium text-right">Count</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {reportScores.map((score) =>
-                      Object.entries(score.violations_by_element).map(
-                        ([elementId, count]) => (
-                          <tr
-                            key={`${score.resource_type}-${elementId}`}
-                            className="border-b last:border-0"
-                          >
-                            <td className="py-2">
-                              {RESOURCE_TYPE_CONFIG[score.resource_type as KENHDDResourceType]?.label ??
-                                score.resource_type}
-                            </td>
-                            <td className="py-2 font-mono text-xs">{elementId}</td>
-                            <td className="py-2 text-right">
-                              <Badge variant="destructive" className="text-xs">
-                                {count}
-                              </Badge>
-                            </td>
-                          </tr>
-                        )
-                      )
-                    )}
+                    {enrichedViolations.map((v) => (
+                      <tr
+                        key={`${v.resourceType}-${v.elementId}`}
+                        className="border-b last:border-0"
+                      >
+                        <td className="py-2">{v.resourceLabel}</td>
+                        <td className="py-2">
+                          <div className="font-medium text-xs">{v.elementName}</div>
+                          <div className="font-mono text-[10px] text-muted-foreground">{v.elementId}</div>
+                        </td>
+                        <td className="py-2 hidden sm:table-cell text-xs text-muted-foreground font-mono">
+                          {v.fieldName}
+                        </td>
+                        <td className="py-2">
+                          {v.requirementLevel === 'MANDATORY' ? (
+                            <Badge variant="destructive" className="text-xs">
+                              Mandatory
+                            </Badge>
+                          ) : v.requirementLevel === 'CONDITIONAL' ? (
+                            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-xs">
+                              Conditional
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">
+                              Optional
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="py-2 text-right">
+                          <Badge variant="destructive" className="text-xs">
+                            {v.count}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -333,12 +763,26 @@ export default function KENHDDCompliancePage() {
           </Card>
         )}
 
-        {/* Validation Run History */}
+        {/* Run History */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base sm:text-lg">
+          <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
               Run History
             </CardTitle>
+            <Select value={historyFilter} onValueChange={setHistoryFilter}>
+              <SelectTrigger className="w-full sm:w-40">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Resources</SelectItem>
+                {ALL_RESOURCE_TYPES.map((rt) => (
+                  <SelectItem key={rt} value={rt}>
+                    {RESOURCE_TYPE_CONFIG[rt].label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </CardHeader>
           <CardContent>
             {runsLoading ? (
@@ -347,50 +791,79 @@ export default function KENHDDCompliancePage() {
                   <Skeleton key={i} className="h-10 w-full" />
                 ))}
               </div>
-            ) : runs && runs.length > 0 ? (
+            ) : filteredRuns.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="min-w-[500px] w-full text-sm">
+                <table className="min-w-[600px] w-full text-sm">
                   <thead>
                     <tr className="border-b text-left text-muted-foreground">
                       <th className="pb-2 font-medium">Resource</th>
                       <th className="pb-2 font-medium text-right">Score</th>
-                      <th className="pb-2 font-medium text-right">Mandatory Rate</th>
+                      <th className="pb-2 font-medium text-right">Mandatory</th>
                       <th className="pb-2 font-medium text-right">Records</th>
                       <th className="pb-2 font-medium">Run By</th>
                       <th className="pb-2 font-medium">Date</th>
+                      <th className="pb-2 font-medium text-right">Export</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {runs.slice(0, 20).map((run) => (
-                      <tr key={run.id} className="border-b last:border-0">
-                        <td className="py-2">
-                          {RESOURCE_TYPE_CONFIG[run.resource_type as KENHDDResourceType]?.label ??
-                            run.resource_type}
-                        </td>
-                        <td className={`py-2 text-right font-semibold ${getScoreColor(parseFloat(run.compliance_score))}`}>
-                          {parseFloat(run.compliance_score).toFixed(0)}%
-                        </td>
-                        <td className="py-2 text-right">
-                          {parseFloat(run.mandatory_pass_rate).toFixed(0)}%
-                        </td>
-                        <td className="py-2 text-right">
-                          {run.records_compliant}/{run.records_checked}
-                        </td>
-                        <td className="py-2 text-muted-foreground">
-                          {run.run_by_name ?? '—'}
-                        </td>
-                        <td className="py-2 text-muted-foreground">
-                          {new Date(run.run_at).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredRuns.map((run) => {
+                      const score = parseFloat(run.compliance_score);
+                      return (
+                        <tr key={run.id} className="border-b last:border-0">
+                          <td className="py-2">
+                            <div className="flex items-center gap-1.5">
+                              {score >= 90 ? (
+                                <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                              ) : score >= 70 ? (
+                                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                              ) : (
+                                <ShieldAlert className="h-3.5 w-3.5 text-red-500" />
+                              )}
+                              {RESOURCE_TYPE_CONFIG[run.resource_type as KENHDDResourceType]?.label ??
+                                run.resource_type}
+                            </div>
+                          </td>
+                          <td className={`py-2 text-right font-semibold ${getScoreColor(score)}`}>
+                            {score.toFixed(0)}%
+                          </td>
+                          <td className="py-2 text-right">
+                            {parseFloat(run.mandatory_pass_rate).toFixed(0)}%
+                          </td>
+                          <td className="py-2 text-right">
+                            {run.records_compliant}/{run.records_checked}
+                          </td>
+                          <td className="py-2 text-muted-foreground">
+                            {run.run_by_name ?? '—'}
+                          </td>
+                          <td className="py-2 text-muted-foreground">
+                            {new Date(run.run_at).toLocaleDateString()}
+                          </td>
+                          <td className="py-2 text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="Export CSV"
+                              onClick={() => handleExport(run.resource_type as KENHDDResourceType, 'csv')}
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No validation runs yet. Click &quot;Run Compliance Check&quot; to begin.</p>
+                <p>
+                  {historyFilter === 'all'
+                    ? 'No validation runs yet. Click "Run Compliance Check" to begin.'
+                    : `No runs for ${RESOURCE_TYPE_CONFIG[historyFilter as KENHDDResourceType]?.label ?? historyFilter}.`
+                  }
+                </p>
               </div>
             )}
           </CardContent>
