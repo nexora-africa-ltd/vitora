@@ -7,9 +7,12 @@ from django.contrib import admin
 from .emergency_access.admin import EmergencyAccessAdmin  # noqa: F401
 from .models import (
     AuditLog,
+    CertificateAuthority,
+    CertificateRevocation,
     CodeSystem,
     County,
     Department,
+    DocumentSignature,
     ExternalCodeMapping,
     Facility,
     FeatureFlag,
@@ -20,6 +23,7 @@ from .models import (
     SyncConflict,
     SyncMetrics,
     SyncQueue,
+    UserCertificate,
     Ward,
 )
 
@@ -48,6 +52,9 @@ class AuditLogAdmin(admin.ModelAdmin):
         "user_agent",
         "details",
         "patient_id",
+        "sequence_number",
+        "entry_hash",
+        "previous_hash",
     ]
     date_hierarchy = "timestamp"
     ordering = ["-timestamp"]
@@ -855,3 +862,82 @@ class FacilityAdmin(admin.ModelAdmin):
             colour,
             label,
         )
+
+
+# =============================================================================
+# PKI & Digital Signature Admin (DHA Gap #32 — Sprint 3.C)
+# =============================================================================
+
+
+@admin.register(CertificateAuthority)
+class CertificateAuthorityAdmin(admin.ModelAdmin):
+    """Admin for Certificate Authority."""
+
+    list_display = ["name", "serial_number", "is_active", "is_root", "valid_from", "valid_to", "key_size"]
+    list_filter = ["is_active", "is_root"]
+    readonly_fields = [
+        "serial_number", "subject_dn", "public_key_pem", "certificate_pem",
+        "valid_from", "valid_to", "is_root", "key_size", "created_at", "updated_at",
+    ]
+    search_fields = ["name", "serial_number"]
+
+
+@admin.register(UserCertificate)
+class UserCertificateAdmin(admin.ModelAdmin):
+    """Admin for User Certificates."""
+
+    list_display = ["serial_number", "user", "is_revoked", "valid_from", "valid_to", "created_at"]
+    list_filter = ["is_revoked"]
+    readonly_fields = [
+        "serial_number", "subject_dn", "public_key_pem", "certificate_pem",
+        "valid_from", "valid_to", "created_at", "updated_at",
+    ]
+    search_fields = ["serial_number", "user__username", "subject_dn"]
+    raw_id_fields = ["user", "certificate_authority"]
+    actions = ["revoke_certificates"]
+
+    @admin.action(description="Revoke selected certificates")
+    def revoke_certificates(self, request, queryset):
+        from .services.pki_service import PKIService
+        service = PKIService()
+        count = 0
+        for cert in queryset.filter(is_revoked=False):
+            service.revoke_certificate(cert, reason="PRIVILEGE_WITHDRAWN", user=request.user)
+            count += 1
+        self.message_user(request, f"{count} certificate(s) revoked.")
+
+
+@admin.register(CertificateRevocation)
+class CertificateRevocationAdmin(admin.ModelAdmin):
+    """Admin for Certificate Revocation entries (read-only log)."""
+
+    list_display = ["certificate", "reason", "revoked_at", "revoked_by"]
+    list_filter = ["reason"]
+    readonly_fields = ["certificate", "revoked_at", "reason", "revoked_by", "created_at"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(DocumentSignature)
+class DocumentSignatureAdmin(admin.ModelAdmin):
+    """Admin for Document Signatures (read-only log)."""
+
+    list_display = ["document_type", "document_id", "signer", "signed_at", "is_valid"]
+    list_filter = ["document_type", "is_valid"]
+    readonly_fields = [
+        "document_type", "document_id", "signer", "certificate",
+        "content_hash", "signature", "hash_algorithm", "signed_at",
+        "is_valid", "verification_note", "created_at",
+    ]
+    search_fields = ["document_type", "signer__username"]
+    raw_id_fields = ["signer", "certificate"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False

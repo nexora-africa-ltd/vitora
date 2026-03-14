@@ -6,10 +6,13 @@ including the AuditLog model for Kenya Data Protection Act compliance,
 and sync-related models for offline-first functionality.
 """
 
+import hashlib
+import json
+
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 
@@ -115,6 +118,30 @@ class AuditLog(models.Model):
         help_text="Patient ID for sensitive access tracking (denormalized for query performance)",
     )
 
+    # Hash chaining fields for tamper-resistant audit log (DHA Sprint 3.C)
+    sequence_number = models.BigIntegerField(
+        unique=True,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Monotonic sequence number for hash chain ordering",
+    )
+    entry_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="SHA-256 hex digest of this audit entry",
+    )
+    previous_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="SHA-256 hash of the previous entry in the chain",
+    )
+
+    GENESIS_HASH = "0" * 64
+
     class Meta:
         """Meta options for AuditLog model."""
 
@@ -124,6 +151,7 @@ class AuditLog(models.Model):
             models.Index(fields=["action", "timestamp"]),
             models.Index(fields=["resource_type", "resource_id"]),
             models.Index(fields=["patient_id", "timestamp"]),
+            models.Index(fields=["sequence_number"]),
         ]
         verbose_name = "Audit Log"
         verbose_name_plural = "Audit Logs"
@@ -161,16 +189,75 @@ class AuditLog(models.Model):
         Returns:
             AuditLog: The created audit log entry
         """
-        return cls.objects.create(
-            user=user,
-            action=action,
-            resource_type=resource_type,
-            resource_id=resource_id,
-            ip_address=ip_address,
-            user_agent=user_agent,
-            details=details or {},
-            patient_id=patient_id,
+        resolved_details = details or {}
+        with transaction.atomic():
+            # Get the last entry's hash and sequence for chaining.
+            # Use select_for_update on databases that support it (PostgreSQL).
+            # SQLite uses serialized transactions inherently.
+            from django.db import connection
+
+            qs = cls.objects.filter(sequence_number__isnull=False).order_by(
+                "-sequence_number"
+            )
+            if connection.vendor != "sqlite":
+                qs = qs.select_for_update()
+            last_entry = qs.values("sequence_number", "entry_hash").first()
+
+            if last_entry:
+                next_seq = last_entry["sequence_number"] + 1
+                prev_hash = last_entry["entry_hash"]
+            else:
+                next_seq = 1
+                prev_hash = cls.GENESIS_HASH
+
+            ts = timezone.now()
+            user_id = user.pk if user else 0
+
+            entry_hash = cls.compute_hash(
+                sequence_number=next_seq,
+                previous_hash=prev_hash,
+                action=action,
+                user_id=user_id,
+                timestamp=ts,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                details=resolved_details,
+            )
+
+            return cls.objects.create(
+                user=user,
+                action=action,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                timestamp=ts,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                details=resolved_details,
+                patient_id=patient_id,
+                sequence_number=next_seq,
+                previous_hash=prev_hash,
+                entry_hash=entry_hash,
+            )
+
+    @staticmethod
+    def compute_hash(
+        *,
+        sequence_number: int,
+        previous_hash: str,
+        action: str,
+        user_id: int,
+        timestamp,
+        resource_type: str,
+        resource_id: int | None,
+        details: dict,
+    ) -> str:
+        """Compute SHA-256 hash for an audit log entry."""
+        payload = (
+            f"{sequence_number}|{previous_hash}|{action}|{user_id}"
+            f"|{timestamp.isoformat()}|{resource_type}|{resource_id}"
+            f"|{json.dumps(details, sort_keys=True, default=str)}"
         )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 class FrontendEvent(models.Model):
@@ -2420,3 +2507,270 @@ class SNOMEDConcept(models.Model):
 
     def __str__(self) -> str:
         return f"{self.concept_id} | {self.display}"
+
+
+# =============================================================================
+# PKI & Digital Signature Models (DHA Gap #32 — Sprint 3.C)
+# =============================================================================
+
+
+class CertificateAuthority(models.Model):
+    """
+    X.509 Certificate Authority for document signing.
+
+    Supports a root CA with optional intermediate CAs. Private keys
+    are encrypted at rest using the KMS provider.
+    """
+
+    name = models.CharField(
+        max_length=200,
+        help_text="CA display name (e.g., 'Vitora HMIS Root CA')",
+    )
+    serial_number = models.CharField(
+        max_length=64,
+        unique=True,
+        help_text="Certificate serial number (hex)",
+    )
+    subject_dn = models.CharField(
+        max_length=500,
+        help_text="Distinguished Name (e.g., 'CN=Vitora HMIS Root CA, O=Nexora Africa Ltd, C=KE')",
+    )
+    public_key_pem = models.TextField(
+        help_text="PEM-encoded public key",
+    )
+    private_key_pem_encrypted = models.TextField(
+        help_text="PEM private key encrypted with KMS",
+    )
+    certificate_pem = models.TextField(
+        help_text="X.509 certificate in PEM format",
+    )
+    valid_from = models.DateTimeField(help_text="Certificate validity start")
+    valid_to = models.DateTimeField(help_text="Certificate validity end")
+    is_root = models.BooleanField(
+        default=True,
+        help_text="Whether this is a root CA (self-signed)",
+    )
+    parent_ca = models.ForeignKey(
+        "self",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="subordinate_cas",
+        help_text="Parent CA for intermediate CAs",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Whether this CA is currently active for issuing certificates",
+    )
+    key_size = models.IntegerField(
+        default=2048,
+        help_text="RSA key size in bits",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Certificate Authority"
+        verbose_name_plural = "Certificate Authorities"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        status = "Active" if self.is_active else "Inactive"
+        return f"{self.name} ({status})"
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() > self.valid_to
+
+
+class UserCertificate(models.Model):
+    """
+    X.509 user certificate for document signing.
+
+    Issued by a CertificateAuthority. Private key encrypted at rest via KMS.
+    """
+
+    class RevocationReason(models.TextChoices):
+        KEY_COMPROMISE = "KEY_COMPROMISE", "Key Compromise"
+        AFFILIATION_CHANGED = "AFFILIATION_CHANGED", "Affiliation Changed"
+        SUPERSEDED = "SUPERSEDED", "Superseded"
+        CESSATION = "CESSATION", "Cessation of Operation"
+        PRIVILEGE_WITHDRAWN = "PRIVILEGE_WITHDRAWN", "Privilege Withdrawn"
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="certificates",
+        help_text="User who owns this certificate",
+    )
+    certificate_authority = models.ForeignKey(
+        CertificateAuthority,
+        on_delete=models.PROTECT,
+        related_name="issued_certificates",
+        help_text="CA that issued this certificate",
+    )
+    serial_number = models.CharField(
+        max_length=64,
+        unique=True,
+        help_text="Certificate serial number (hex)",
+    )
+    subject_dn = models.CharField(
+        max_length=500,
+        help_text="Certificate subject DN",
+    )
+    public_key_pem = models.TextField(
+        help_text="PEM-encoded public key",
+    )
+    private_key_pem_encrypted = models.TextField(
+        help_text="PEM private key encrypted with KMS",
+    )
+    certificate_pem = models.TextField(
+        help_text="X.509 certificate in PEM format",
+    )
+    valid_from = models.DateTimeField(help_text="Certificate validity start")
+    valid_to = models.DateTimeField(help_text="Certificate validity end")
+    is_revoked = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Whether this certificate has been revoked",
+    )
+    revoked_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the certificate was revoked",
+    )
+    revocation_reason = models.CharField(
+        max_length=30,
+        choices=RevocationReason.choices,
+        blank=True,
+        default="",
+        help_text="Reason for revocation",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "User Certificate"
+        verbose_name_plural = "User Certificates"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "is_revoked"]),
+        ]
+
+    def __str__(self) -> str:
+        status = "Revoked" if self.is_revoked else ("Expired" if self.is_expired else "Valid")
+        return f"Cert {self.serial_number[:8]}... ({self.user.username}, {status})"
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() > self.valid_to
+
+    @property
+    def is_valid(self) -> bool:
+        return not self.is_revoked and not self.is_expired and self.certificate_authority.is_active
+
+
+class CertificateRevocation(models.Model):
+    """CRL entry for a revoked certificate."""
+
+    certificate = models.ForeignKey(
+        UserCertificate,
+        on_delete=models.CASCADE,
+        related_name="revocations",
+        help_text="The revoked certificate",
+    )
+    revoked_at = models.DateTimeField(
+        default=timezone.now,
+        help_text="When the certificate was revoked",
+    )
+    reason = models.CharField(
+        max_length=30,
+        choices=UserCertificate.RevocationReason.choices,
+        help_text="Reason for revocation",
+    )
+    revoked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="certificate_revocations",
+        help_text="User who revoked the certificate",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Certificate Revocation"
+        verbose_name_plural = "Certificate Revocations"
+        ordering = ["-revoked_at"]
+
+    def __str__(self) -> str:
+        return f"Revocation of {self.certificate.serial_number[:8]}... ({self.reason})"
+
+
+class DocumentSignature(models.Model):
+    """
+    Cryptographic signature for a clinical document.
+
+    Stores an RSA-2048 signature over the SHA-256 hash of the
+    document's canonical content at signing time.
+    """
+
+    document_type = models.CharField(
+        max_length=50,
+        db_index=True,
+        help_text="Model name of the signed document (e.g., 'LabResult', 'Prescription')",
+    )
+    document_id = models.BigIntegerField(
+        db_index=True,
+        help_text="Primary key of the signed document",
+    )
+    signer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="document_signatures",
+        help_text="User who signed the document",
+    )
+    certificate = models.ForeignKey(
+        UserCertificate,
+        on_delete=models.PROTECT,
+        related_name="signatures",
+        help_text="Certificate used to create the signature",
+    )
+    content_hash = models.CharField(
+        max_length=64,
+        help_text="SHA-256 hex digest of the document content at signing time",
+    )
+    signature = models.TextField(
+        help_text="Base64-encoded RSA signature",
+    )
+    hash_algorithm = models.CharField(
+        max_length=20,
+        default="SHA-256",
+        help_text="Hash algorithm used",
+    )
+    signed_at = models.DateTimeField(
+        default=timezone.now,
+        help_text="When the document was signed",
+    )
+    is_valid = models.BooleanField(
+        default=True,
+        help_text="Cached validity (updated on verification)",
+    )
+    verification_note = models.TextField(
+        blank=True,
+        default="",
+        help_text="Notes from the last verification",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Document Signature"
+        verbose_name_plural = "Document Signatures"
+        ordering = ["-signed_at"]
+        indexes = [
+            models.Index(fields=["document_type", "document_id"]),
+            models.Index(fields=["signer", "signed_at"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Sig on {self.document_type}#{self.document_id} by {self.signer.username}"
