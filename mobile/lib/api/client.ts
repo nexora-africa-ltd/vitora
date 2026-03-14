@@ -38,6 +38,10 @@ apiClient.interceptors.request.use(async (config) => {
   const nextConfig = config;
   nextConfig.baseURL = await getApiBaseUrl();
 
+  if (__DEV__) {
+    console.log(`[API] ${config.method?.toUpperCase()} ${nextConfig.baseURL}${config.url}`);
+  }
+
   const tokens = await getStoredTokens();
   if (tokens?.access) {
     nextConfig.headers.Authorization = `Bearer ${tokens.access}`;
