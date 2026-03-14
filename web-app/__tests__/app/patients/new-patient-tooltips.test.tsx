@@ -40,6 +40,25 @@ jest.mock('@/lib/hooks/use-triage', () => ({
   useCheckInPatient: () => ({
     mutateAsync: mockCheckInMutateAsync,
   }),
+  useRouteToClinic: () => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  }),
+}));
+
+// Mock clinics hooks (used by RouteToClinicDialog)
+jest.mock('@/lib/hooks/use-clinics', () => ({
+  useInfiniteClinics: () => ({
+    data: { pages: [] },
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    isLoading: false,
+  }),
+  useAddToQueue: () => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  }),
 }));
 
 // Mock SHA API hooks

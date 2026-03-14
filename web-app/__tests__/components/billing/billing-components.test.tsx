@@ -29,6 +29,22 @@ import { BillingDashboard } from '@/components/billing/BillingDashboard';
 jest.mock('@/lib/hooks/billing');
 jest.mock('@/lib/api/billing');
 
+// Mock auth context (used by PermissionGate via usePermissions)
+jest.mock('@/lib/auth/context', () => ({
+  useAuth: () => ({
+    user: { id: 1, username: 'testuser', email: 'test@example.com', first_name: 'Test', last_name: 'User', is_staff: true, is_superuser: true, permissions: [] },
+    isAuthenticated: true,
+    isLoading: false,
+    tokens: null,
+    login: jest.fn(),
+    logout: jest.fn(),
+    refreshToken: jest.fn(),
+    verifyMFA: jest.fn(),
+    updateUserFacility: jest.fn(),
+  }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 // Mock DatePicker used by BillingDashboard to keep date selection deterministic in tests.
 jest.mock('@/components/ui/date-picker', () => ({
   DatePicker: ({ onChange }: { onChange?: (d: Date | null) => void }) => (
@@ -1262,7 +1278,9 @@ describe('PaymentList', () => {
       { wrapper: createWrapper() }
     );
 
-    expect(screen.getByRole('button', { name: /receipt/i })).toBeInTheDocument();
+    // Multiple buttons match /receipt/i (column header "Receipt #" + action button)
+    const receiptButtons = screen.getAllByRole('button', { name: /receipt/i });
+    expect(receiptButtons.length).toBeGreaterThanOrEqual(1);
   });
 
   it('should call onViewReceipt when receipt button clicked', async () => {
@@ -1275,7 +1293,9 @@ describe('PaymentList', () => {
       { wrapper: createWrapper() }
     );
 
-    await userEvent.click(screen.getByRole('button', { name: /receipt/i }));
+    // Click the action receipt button (last match, not the column header)
+    const receiptButtons = screen.getAllByRole('button', { name: /receipt/i });
+    await userEvent.click(receiptButtons[receiptButtons.length - 1]);
 
     expect(mockOnViewReceipt).toHaveBeenCalledWith(mockPayment);
   });

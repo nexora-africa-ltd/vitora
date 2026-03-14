@@ -28,6 +28,8 @@ jest.mock('@/lib/hooks/use-triage', () => ({
   useCancelWaitingEntry: jest.fn(),
   useTriageWaitTimeStats: jest.fn(),
   useTriageHistory: jest.fn(),
+  useTriageVolumeReport: jest.fn(),
+  useBreachSummary: jest.fn(),
   // These should no longer be used after removal
   useTriageQueue: jest.fn(),
   useTriageQueueActions: jest.fn(),
@@ -43,6 +45,8 @@ import {
   useCancelWaitingEntry,
   useTriageWaitTimeStats,
   useTriageHistory,
+  useTriageVolumeReport,
+  useBreachSummary,
   useTriageQueue,
   useTriageQueueActions,
 } from '@/lib/hooks/use-triage';
@@ -52,6 +56,8 @@ const mockedUseStartTriage = useStartTriage as jest.Mock;
 const mockedUseCancelWaitingEntry = useCancelWaitingEntry as jest.Mock;
 const mockedUseTriageWaitTimeStats = useTriageWaitTimeStats as jest.Mock;
 const mockedUseTriageHistory = useTriageHistory as jest.Mock;
+const mockedUseTriageVolumeReport = useTriageVolumeReport as jest.Mock;
+const mockedUseBreachSummary = useBreachSummary as jest.Mock;
 const mockedUseTriageQueue = useTriageQueue as jest.Mock;
 const mockedUseTriageQueueActions = useTriageQueueActions as jest.Mock;
 
@@ -123,6 +129,14 @@ describe('Triage Page - Phase 4.1 Updates', () => {
       data: { results: [], count: 0 },
       isLoading: false,
       refetch: jest.fn(),
+    });
+    mockedUseTriageVolumeReport.mockReturnValue({
+      data: null,
+      isLoading: false,
+    });
+    mockedUseBreachSummary.mockReturnValue({
+      data: null,
+      isLoading: false,
     });
     mockedUseTriageQueue.mockReturnValue({
       data: { results: [], count: 0 },
