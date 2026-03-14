@@ -273,17 +273,72 @@ describe('MFAVerification', () => {
       // Verify tab was clicked (aria-selected should change in mock)
       expect(backupTab).toBeInTheDocument();
     });
-
-    // Skip detailed backup code tests as they require actual tab switching
-    // which is mocked and may not fully replicate Radix behavior
   });
 
   describe('Backup Code Verification Flow', () => {
-    // These tests are skipped because they depend on actual tab switching
-    // which requires unmocked Radix UI Tab components
-    it.skip('should call verifyMFA with backup code on submit', () => {});
-    it.skip('should redirect to home on successful backup code verification', () => {});
-    it.skip('should show error on backup code verification failure', () => {});
+    it('should call verifyMFA with backup code on submit', async () => {
+      render(<MFAVerification mfaToken={mockMfaToken} onCancel={mockOnCancel} />);
+
+      // Switch to backup code tab
+      const backupTab = screen.getByRole('tab', { name: /backup/i });
+      fireEvent.click(backupTab);
+
+      // Enter backup code
+      const backupInput = screen.getByPlaceholderText('XXXX-XXXX');
+      fireEvent.change(backupInput, { target: { value: 'ABCD-1234' } });
+
+      // Submit
+      const verifyButton = screen.getByRole('button', { name: /verify/i });
+      fireEvent.click(verifyButton);
+
+      await waitFor(() => {
+        expect(mockVerifyMFA).toHaveBeenCalledWith(
+          mockMfaToken,
+          { backupCode: 'ABCD-1234' }
+        );
+      });
+    });
+
+    it('should redirect to home on successful backup code verification', async () => {
+      mockVerifyMFA.mockResolvedValueOnce(undefined);
+      render(<MFAVerification mfaToken={mockMfaToken} onCancel={mockOnCancel} />);
+
+      // Switch to backup tab and enter code
+      fireEvent.click(screen.getByRole('tab', { name: /backup/i }));
+      const backupInput = screen.getByPlaceholderText('XXXX-XXXX');
+      fireEvent.change(backupInput, { target: { value: 'ABCD-1234' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /verify/i }));
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/');
+      });
+    });
+
+    it('should show error on backup code verification failure', async () => {
+      // Wait for any pending async effects (100ms setTimeout) from prior tests to settle
+      await new Promise(resolve => setTimeout(resolve, 150));
+      mockReplace.mockClear();
+
+      mockVerifyMFA.mockRejectedValueOnce(new Error('Invalid backup code'));
+      render(<MFAVerification mfaToken={mockMfaToken} onCancel={mockOnCancel} />);
+
+      // Switch to backup tab and enter code
+      fireEvent.click(screen.getByRole('tab', { name: /backup/i }));
+      const backupInput = screen.getByPlaceholderText('XXXX-XXXX');
+      fireEvent.change(backupInput, { target: { value: 'WRONG-CODE' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /verify/i }));
+
+      // Wait for the async error handling to complete (loading state clears)
+      await waitFor(() => {
+        expect(mockVerifyMFA).toHaveBeenCalled();
+        const verifyButton = screen.getByRole('button', { name: /verify/i });
+        expect(verifyButton).not.toBeDisabled();
+      });
+      // Should not redirect on failure
+      expect(mockReplace).not.toHaveBeenCalled();
+    });
   });
 
   describe('Cancel Flow', () => {

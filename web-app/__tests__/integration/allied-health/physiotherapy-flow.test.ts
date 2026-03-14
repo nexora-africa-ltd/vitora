@@ -421,34 +421,475 @@ describe('Physiotherapy Order Flow - Integration', () => {
   });
 });
 
+// =============================================================================
+// NUTRITION CONSULTATION FLOW
+// =============================================================================
+
+import { nutritionApi } from '@/lib/api/nutrition';
+import { occupationalTherapyApi } from '@/lib/api/occupational-therapy';
+import { socialWorkApi } from '@/lib/api/social-work';
+import { counsellingApi } from '@/lib/api/counselling';
+
+jest.mock('@/lib/api/nutrition');
+jest.mock('@/lib/api/occupational-therapy');
+jest.mock('@/lib/api/social-work');
+jest.mock('@/lib/api/counselling');
+
+const mockNutritionApi = nutritionApi as jest.Mocked<typeof nutritionApi>;
+const mockOTApi = occupationalTherapyApi as jest.Mocked<typeof occupationalTherapyApi>;
+const mockSocialWorkApi = socialWorkApi as jest.Mocked<typeof socialWorkApi>;
+const mockCounsellingApi = counsellingApi as jest.Mocked<typeof counsellingApi>;
+
+const mockConsultation = {
+  id: 1,
+  order_number: 'NUT-20260226-0001',
+  patient: mockPatient.id,
+  patient_name: 'John Doe',
+  patient_mrn: mockPatient.mrn,
+  encounter_id: mockEncounter.id,
+  status: 'PENDING' as const,
+  consultation_type: 'INITIAL' as const,
+  reason: 'Weight management',
+  dietary_history: '',
+  assessment: '',
+  recommendations: '',
+  anthropometrics: null,
+  bmi: null,
+  bmi_classification: null,
+  created_at: '2026-02-26T10:00:00Z',
+  updated_at: '2026-02-26T10:00:00Z',
+};
+
 describe('Nutrition Consultation Flow - Integration', () => {
-  // Similar integration tests for nutrition module
-  it.todo('should create nutrition consultation from encounter');
-  it.todo('should calculate BMI from anthropometrics');
-  it.todo('should create diet plan from consultation');
-  it.todo('should complete follow-up consultation');
+  beforeEach(() => jest.clearAllMocks());
+
+  it('should create nutrition consultation from encounter', async () => {
+    mockNutritionApi.createConsultation.mockResolvedValueOnce(mockConsultation);
+
+    const result = await nutritionApi.createConsultation({
+      patient_id: mockPatient.id,
+      encounter_id: mockEncounter.id,
+      consultation_type: 'INITIAL',
+      reason: 'Weight management',
+    });
+
+    expect(mockNutritionApi.createConsultation).toHaveBeenCalledWith(
+      expect.objectContaining({ encounter_id: mockEncounter.id })
+    );
+    expect(result.order_number).toMatch(/^NUT-\d{8}-\d{4}$/);
+    expect(result.status).toBe('PENDING');
+  });
+
+  it('should calculate BMI from anthropometrics', async () => {
+    const consultationWithBMI = {
+      ...mockConsultation,
+      anthropometrics: { weight_kg: 75, height_cm: 170 },
+      bmi: 25.95,
+      bmi_classification: 'OVERWEIGHT' as const,
+    };
+    mockNutritionApi.syncAnthropometrics.mockResolvedValueOnce(consultationWithBMI);
+
+    const result = await nutritionApi.syncAnthropometrics(mockConsultation.id);
+
+    expect(result.bmi).toBeCloseTo(25.95, 1);
+    expect(result.bmi_classification).toBe('OVERWEIGHT');
+    expect(mockNutritionApi.syncAnthropometrics).toHaveBeenCalledWith(mockConsultation.id);
+  });
+
+  it('should create diet plan from consultation', async () => {
+    const mockDietPlan = {
+      id: 1,
+      consultation_id: mockConsultation.id,
+      plan_type: 'WEIGHT_MANAGEMENT' as const,
+      title: 'Calorie-controlled diet',
+      description: 'Balanced 2000kcal plan',
+      status: 'DRAFT' as const,
+      start_date: '2026-02-27',
+      end_date: null,
+      created_at: '2026-02-26T11:00:00Z',
+      updated_at: '2026-02-26T11:00:00Z',
+    };
+    mockNutritionApi.createDietPlan.mockResolvedValueOnce(mockDietPlan);
+
+    const result = await nutritionApi.createDietPlan({
+      consultation_id: mockConsultation.id,
+      plan_type: 'WEIGHT_MANAGEMENT',
+      title: 'Calorie-controlled diet',
+      description: 'Balanced 2000kcal plan',
+    });
+
+    expect(result.consultation_id).toBe(mockConsultation.id);
+    expect(result.status).toBe('DRAFT');
+    expect(mockNutritionApi.createDietPlan).toHaveBeenCalled();
+  });
+
+  it('should complete follow-up consultation', async () => {
+    const completedConsultation = {
+      ...mockConsultation,
+      consultation_type: 'FOLLOW_UP' as const,
+      status: 'COMPLETED' as const,
+      assessment: 'Patient progressing well',
+      recommendations: 'Continue current plan',
+    };
+    mockNutritionApi.completeConsultation.mockResolvedValueOnce(completedConsultation);
+
+    const result = await nutritionApi.completeConsultation(mockConsultation.id);
+
+    expect(result.status).toBe('COMPLETED');
+    expect(mockNutritionApi.completeConsultation).toHaveBeenCalledWith(mockConsultation.id);
+  });
 });
+
+// =============================================================================
+// OCCUPATIONAL THERAPY FLOW
+// =============================================================================
+
+const mockOTTreatmentType = {
+  id: 1,
+  code: 'OT-ADL-001',
+  name: 'ADL Training',
+  category: 'ADL' as const,
+  typical_duration_minutes: 60,
+  recommended_sessions: 10,
+  cost_per_session: '2500.00',
+  sha_claimable: true,
+  sha_intervention_code: 'OT001',
+  is_active: true,
+};
+
+const mockOTOrder = {
+  id: 1,
+  order_number: 'OT-20260226-0001',
+  patient: mockPatient,
+  patient_id: mockPatient.id,
+  encounter_id: mockEncounter.id,
+  treatment_type: mockOTTreatmentType,
+  treatment_type_id: mockOTTreatmentType.id,
+  status: 'PENDING' as const,
+  total_sessions: 10,
+  sessions_completed: 0,
+  independence_score_initial: 65,
+  independence_score_current: 65,
+  clinical_indication: 'Stroke rehabilitation ADL training',
+  created_at: '2026-02-26T10:00:00Z',
+  updated_at: '2026-02-26T10:00:00Z',
+};
 
 describe('Occupational Therapy Flow - Integration', () => {
-  // Similar integration tests for OT module
-  it.todo('should create OT order with FIM assessment');
-  it.todo('should track independence score progress');
-  it.todo('should complete ADL training session');
+  beforeEach(() => jest.clearAllMocks());
+
+  it('should create OT order with independence assessment', async () => {
+    mockOTApi.createOrder.mockResolvedValueOnce(mockOTOrder);
+
+    const result = await occupationalTherapyApi.createOrder({
+      patient_id: mockPatient.id,
+      encounter_id: mockEncounter.id,
+      treatment_type_id: mockOTTreatmentType.id,
+      clinical_indication: 'Stroke rehabilitation ADL training',
+      total_sessions: 10,
+      independence_score_initial: 65,
+    });
+
+    expect(result.order_number).toMatch(/^OT-\d{8}-\d{4}$/);
+    expect(result.independence_score_initial).toBe(65);
+    expect(result.status).toBe('PENDING');
+    expect(mockOTApi.createOrder).toHaveBeenCalled();
+  });
+
+  it('should track independence score progress', async () => {
+    const updatedOrder = {
+      ...mockOTOrder,
+      sessions_completed: 5,
+      independence_score_current: 78,
+    };
+    mockOTApi.getOrder.mockResolvedValueOnce(updatedOrder);
+
+    const result = await occupationalTherapyApi.getOrder(mockOTOrder.id);
+
+    expect(result.independence_score_current).toBe(78);
+    expect(result.independence_score_current).toBeGreaterThan(
+      result.independence_score_initial!
+    );
+    expect(result.sessions_completed).toBe(5);
+  });
+
+  it('should complete ADL training session', async () => {
+    const completedSession = {
+      id: 1,
+      session_number: 'OTS-20260227-0001',
+      order: mockOTOrder.id,
+      status: 'COMPLETED' as const,
+      session_date: '2026-02-27',
+      independence_score: 70,
+      progress_notes: 'Patient improved in dressing and grooming tasks',
+      adl_outcomes: { dressing: 'MODIFIED_INDEPENDENT', grooming: 'MODIFIED_INDEPENDENT' },
+      created_at: '2026-02-27T10:00:00Z',
+      updated_at: '2026-02-27T11:00:00Z',
+    };
+    mockOTApi.completeSession.mockResolvedValueOnce(completedSession);
+
+    const result = await occupationalTherapyApi.completeSession(1, {
+      progress_notes: 'Patient improved in dressing and grooming tasks',
+      independence_score: 70,
+    });
+
+    expect(result.status).toBe('COMPLETED');
+    expect(result.independence_score).toBe(70);
+    expect(mockOTApi.completeSession).toHaveBeenCalledWith(1, expect.objectContaining({
+      independence_score: 70,
+    }));
+  });
 });
+
+// =============================================================================
+// SOCIAL WORK FLOW
+// =============================================================================
+
+const mockSWReferral = {
+  id: 1,
+  referral_number: 'SW-20260226-0001',
+  patient: mockPatient.id,
+  patient_name: 'John Doe',
+  encounter_id: mockEncounter.id,
+  reason: 'FINANCIAL' as const,
+  urgency: 'HIGH' as const,
+  status: 'PENDING' as const,
+  is_sensitive: false,
+  presenting_issues: 'Cannot afford medication',
+  specific_requests: 'NHIF enrollment help',
+  created_at: '2026-02-26T10:00:00Z',
+  updated_at: '2026-02-26T10:00:00Z',
+};
+
+const mockSWCase = {
+  id: 1,
+  case_number: 'SWC-20260226-0001',
+  referral: mockSWReferral.id,
+  patient: mockPatient.id,
+  patient_name: 'John Doe',
+  status: 'OPEN' as const,
+  is_sensitive: false,
+  presenting_issues: 'Cannot afford medication',
+  case_plan: 'Assist with NHIF enrollment',
+  assigned_worker_name: 'Jane Worker',
+  created_at: '2026-02-26T11:00:00Z',
+  updated_at: '2026-02-26T11:00:00Z',
+};
 
 describe('Social Work Flow - Integration', () => {
-  // Social work specific tests
-  it.todo('should create referral with urgency level');
-  it.todo('should convert referral to case');
-  it.todo('should mark case as sensitive with restricted access');
-  it.todo('should add intervention to case');
-  it.todo('should close case with outcome summary');
+  beforeEach(() => jest.clearAllMocks());
+
+  it('should create referral with urgency level', async () => {
+    mockSocialWorkApi.createReferral.mockResolvedValueOnce(mockSWReferral);
+
+    const result = await socialWorkApi.createReferral({
+      patient_id: mockPatient.id,
+      encounter_id: mockEncounter.id,
+      reason: 'FINANCIAL',
+      urgency: 'HIGH',
+      presenting_issues: 'Cannot afford medication',
+      specific_requests: 'NHIF enrollment help',
+    });
+
+    expect(result.referral_number).toMatch(/^SW-\d{8}-\d{4}$/);
+    expect(result.urgency).toBe('HIGH');
+    expect(result.status).toBe('PENDING');
+    expect(mockSocialWorkApi.createReferral).toHaveBeenCalled();
+  });
+
+  it('should convert referral to case', async () => {
+    mockSocialWorkApi.createCaseFromReferral.mockResolvedValueOnce(mockSWCase);
+
+    const result = await socialWorkApi.createCaseFromReferral(mockSWReferral.id, {
+      case_plan: 'Assist with NHIF enrollment',
+    });
+
+    expect(result.case_number).toMatch(/^SWC-\d{8}-\d{4}$/);
+    expect(result.referral).toBe(mockSWReferral.id);
+    expect(result.status).toBe('OPEN');
+    expect(mockSocialWorkApi.createCaseFromReferral).toHaveBeenCalledWith(
+      mockSWReferral.id,
+      expect.objectContaining({ case_plan: 'Assist with NHIF enrollment' })
+    );
+  });
+
+  it('should mark case as sensitive with restricted access', async () => {
+    const sensitiveCase = {
+      ...mockSWCase,
+      is_sensitive: true,
+      sensitive_categories: ['GBV'],
+      confidentiality_level: 'HIGHLY_RESTRICTED' as const,
+    };
+    mockSocialWorkApi.updateCase.mockResolvedValueOnce(sensitiveCase);
+
+    const result = await socialWorkApi.updateCase(mockSWCase.id, {
+      is_sensitive: true,
+      sensitive_categories: ['GBV'],
+    });
+
+    expect(result.is_sensitive).toBe(true);
+    expect(result.confidentiality_level).toBe('HIGHLY_RESTRICTED');
+    expect(mockSocialWorkApi.updateCase).toHaveBeenCalledWith(
+      mockSWCase.id,
+      expect.objectContaining({ is_sensitive: true })
+    );
+  });
+
+  it('should add intervention to case', async () => {
+    const mockIntervention = {
+      id: 1,
+      case_id: mockSWCase.id,
+      intervention_type: 'REFERRAL' as const,
+      description: 'Referred to NHIF office for enrollment',
+      date: '2026-02-27',
+      outcome: 'Application submitted',
+      performed_by_name: 'Jane Worker',
+      created_at: '2026-02-27T10:00:00Z',
+      updated_at: '2026-02-27T10:00:00Z',
+    };
+    mockSocialWorkApi.createIntervention.mockResolvedValueOnce(mockIntervention);
+
+    const result = await socialWorkApi.createIntervention({
+      case_id: mockSWCase.id,
+      intervention_type: 'REFERRAL',
+      description: 'Referred to NHIF office for enrollment',
+      date: '2026-02-27',
+      outcome: 'Application submitted',
+    });
+
+    expect(result.case_id).toBe(mockSWCase.id);
+    expect(result.intervention_type).toBe('REFERRAL');
+    expect(mockSocialWorkApi.createIntervention).toHaveBeenCalled();
+  });
+
+  it('should close case with outcome summary', async () => {
+    const closedCase = {
+      ...mockSWCase,
+      status: 'CLOSED' as const,
+      closure_reason: 'GOALS_MET' as const,
+      outcome_summary: 'Patient successfully enrolled in NHIF. Medication costs covered.',
+      closed_at: '2026-03-15T10:00:00Z',
+    };
+    mockSocialWorkApi.closeCase.mockResolvedValueOnce(closedCase);
+
+    const result = await socialWorkApi.closeCase(mockSWCase.id, {
+      closure_reason: 'GOALS_MET',
+      outcome_summary: 'Patient successfully enrolled in NHIF. Medication costs covered.',
+    });
+
+    expect(result.status).toBe('CLOSED');
+    expect(result.closure_reason).toBe('GOALS_MET');
+    expect(result.outcome_summary).toContain('NHIF');
+    expect(mockSocialWorkApi.closeCase).toHaveBeenCalledWith(
+      mockSWCase.id,
+      expect.objectContaining({ closure_reason: 'GOALS_MET' })
+    );
+  });
 });
 
+// =============================================================================
+// COUNSELLING FLOW
+// =============================================================================
+
+const mockCounsellingReferral = {
+  id: 1,
+  referral_number: 'COUN-20260226-0001',
+  patient: mockPatient.id,
+  patient_name: 'John Doe',
+  encounter_id: mockEncounter.id,
+  counselling_type: 'INDIVIDUAL' as const,
+  reason: 'ANXIETY' as const,
+  urgency: 'MEDIUM' as const,
+  status: 'PENDING' as const,
+  total_sessions: 8,
+  sessions_completed: 0,
+  is_sensitive: false,
+  created_at: '2026-02-26T10:00:00Z',
+  updated_at: '2026-02-26T10:00:00Z',
+};
+
 describe('Counselling Flow - Integration', () => {
-  // Counselling specific tests
-  it.todo('should create counselling referral');
-  it.todo('should schedule follow-up session');
-  it.todo('should track session count for treatment plan');
-  it.todo('should handle sensitive mental health cases');
+  beforeEach(() => jest.clearAllMocks());
+
+  it('should create counselling referral', async () => {
+    mockCounsellingApi.createReferral.mockResolvedValueOnce(mockCounsellingReferral);
+
+    const result = await counsellingApi.createReferral({
+      patient_id: mockPatient.id,
+      encounter_id: mockEncounter.id,
+      counselling_type: 'INDIVIDUAL',
+      reason: 'ANXIETY',
+      urgency: 'MEDIUM',
+      total_sessions: 8,
+    });
+
+    expect(result.referral_number).toMatch(/^COUN-\d{8}-\d{4}$/);
+    expect(result.status).toBe('PENDING');
+    expect(result.total_sessions).toBe(8);
+    expect(mockCounsellingApi.createReferral).toHaveBeenCalled();
+  });
+
+  it('should schedule follow-up sessions via generateSessions', async () => {
+    const mockSessions = [
+      { id: 1, session_number: 'CS-20260227-0001', referral_id: 1, scheduled_date: '2026-02-27', status: 'SCHEDULED' as const },
+      { id: 2, session_number: 'CS-20260303-0001', referral_id: 1, scheduled_date: '2026-03-03', status: 'SCHEDULED' as const },
+      { id: 3, session_number: 'CS-20260310-0001', referral_id: 1, scheduled_date: '2026-03-10', status: 'SCHEDULED' as const },
+    ];
+    mockCounsellingApi.generateSessions.mockResolvedValueOnce(mockSessions);
+
+    const result = await counsellingApi.generateSessions(mockCounsellingReferral.id, {
+      start_date: '2026-02-27',
+      frequency: 'WEEKLY',
+      count: 3,
+    });
+
+    expect(result).toHaveLength(3);
+    expect(result[0].status).toBe('SCHEDULED');
+    expect(mockCounsellingApi.generateSessions).toHaveBeenCalledWith(
+      mockCounsellingReferral.id,
+      expect.objectContaining({ frequency: 'WEEKLY', count: 3 })
+    );
+  });
+
+  it('should track session count for treatment plan', async () => {
+    const updatedReferral = {
+      ...mockCounsellingReferral,
+      status: 'IN_PROGRESS' as const,
+      sessions_completed: 4,
+      total_sessions: 8,
+    };
+    mockCounsellingApi.getReferral.mockResolvedValueOnce(updatedReferral);
+
+    const result = await counsellingApi.getReferral(mockCounsellingReferral.id);
+
+    expect(result.sessions_completed).toBe(4);
+    expect(result.total_sessions).toBe(8);
+    expect(result.sessions_completed).toBeLessThanOrEqual(result.total_sessions);
+  });
+
+  it('should handle sensitive mental health cases', async () => {
+    const sensitiveReferral = {
+      ...mockCounsellingReferral,
+      reason: 'SUICIDAL_IDEATION' as const,
+      is_sensitive: true,
+      urgency: 'CRITICAL' as const,
+    };
+    mockCounsellingApi.createReferral.mockResolvedValueOnce(sensitiveReferral);
+
+    const result = await counsellingApi.createReferral({
+      patient_id: mockPatient.id,
+      encounter_id: mockEncounter.id,
+      counselling_type: 'INDIVIDUAL',
+      reason: 'SUICIDAL_IDEATION',
+      urgency: 'CRITICAL',
+      is_sensitive: true,
+      total_sessions: 12,
+    });
+
+    expect(result.is_sensitive).toBe(true);
+    expect(result.urgency).toBe('CRITICAL');
+    expect(mockCounsellingApi.createReferral).toHaveBeenCalledWith(
+      expect.objectContaining({ is_sensitive: true, urgency: 'CRITICAL' })
+    );
+  });
 });

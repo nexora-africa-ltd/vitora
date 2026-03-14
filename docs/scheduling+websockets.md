@@ -404,10 +404,10 @@ broadcast_queue_stats(clinic_id, stats)
 ```
 
 #### Deliverables
-- [ ] `inpatient/services/bed_assignment.py` — core service
-- [ ] `auto_assign_bed()` function with atomic locking
-- [ ] `get_available_beds()` query helper
-- [ ] API flag: `auto_assign_bed: bool` on admission create
+- [x] `inpatient/services/bed_assignment.py` — core service
+- [x] `auto_assign_bed()` function with atomic locking
+- [x] `get_available_beds()` query helper
+- [x] API flag: `auto_assign_bed: bool` on admission create
 - [ ] Tests: unit + concurrent access (race conditions)
 - [ ] Audit logging for auto-assignments
 

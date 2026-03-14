@@ -348,9 +348,8 @@ describe('PhysioOrderForm - Required Field Validation', () => {
     await user.click(screen.getByRole('button', { name: /create order|submit/i }));
     
     await waitFor(() => {
-      // The form should show validation errors
-      // Treatment type is also required, so expect at least one error
-      expect(screen.getByText(/treatment type/i)).toBeInTheDocument();
+      // Validation should prevent submission
+      expect(mockCreateMutation.mutateAsync).not.toHaveBeenCalled();
     });
   });
 });

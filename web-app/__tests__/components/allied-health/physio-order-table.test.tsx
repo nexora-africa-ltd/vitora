@@ -52,9 +52,10 @@ const mockOrders = {
       category: 'POST_SURGICAL',
       assigned_therapist_name: 'Jane Therapist',
       total_sessions: 12,
-      completed_sessions: 3,
+      sessions_completed: 3,
       priority: 'ROUTINE' as const,
       status: 'IN_PROGRESS' as const,
+      ordered_at: '2026-02-26T10:00:00Z',
       created_at: '2026-02-26T10:00:00Z',
     },
     {
@@ -66,9 +67,10 @@ const mockOrders = {
       category: 'SPORTS',
       assigned_therapist_name: null,
       total_sessions: 8,
-      completed_sessions: 0,
+      sessions_completed: 0,
       priority: 'URGENT' as const,
       status: 'PENDING' as const,
+      ordered_at: '2026-02-26T09:00:00Z',
       created_at: '2026-02-26T09:00:00Z',
     },
     {
@@ -80,9 +82,10 @@ const mockOrders = {
       category: 'NEUROLOGICAL',
       assigned_therapist_name: 'Bob Therapist',
       total_sessions: 20,
-      completed_sessions: 20,
+      sessions_completed: 20,
       priority: 'ROUTINE' as const,
       status: 'COMPLETED' as const,
+      ordered_at: '2026-02-25T08:00:00Z',
       created_at: '2026-02-25T08:00:00Z',
     },
   ],
@@ -265,22 +268,25 @@ describe('PhysioOrderTable - Session Count', () => {
   it('should show session progress for in-progress order', () => {
     renderWithWrapper(<PhysioOrderTable />);
     
-    // Order 1: 3/12 sessions
-    expect(screen.getByText(/3\s*\/\s*12/i)).toBeInTheDocument();
+    // Order 1: 3/12 sessions - text is split across spans, may appear in desktop + mobile views
+    const matches = screen.getAllByText((_, element) => element?.textContent === '3 / 12sessions');
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
   it('should show zero progress for pending order', () => {
     renderWithWrapper(<PhysioOrderTable />);
     
     // Order 2: 0/8 sessions
-    expect(screen.getByText(/0\s*\/\s*8/i)).toBeInTheDocument();
+    const matches = screen.getAllByText((_, element) => element?.textContent === '0 / 8sessions');
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
   it('should show completed sessions for completed order', () => {
     renderWithWrapper(<PhysioOrderTable />);
     
     // Order 3: 20/20 sessions
-    expect(screen.getByText(/20\s*\/\s*20/i)).toBeInTheDocument();
+    const matches = screen.getAllByText((_, element) => element?.textContent === '20 / 20sessions');
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 });
 

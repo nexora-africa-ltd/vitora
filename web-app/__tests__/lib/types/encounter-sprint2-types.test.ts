@@ -30,8 +30,8 @@ describe('Encounter Status Types (Sprint 2)', () => {
   });
 
   describe('VALID_ENCOUNTER_TRANSITIONS', () => {
-    it('has transition rules for all 10 statuses', () => {
-      expect(Object.keys(VALID_ENCOUNTER_TRANSITIONS)).toHaveLength(10);
+    it('has transition rules for all 11 statuses', () => {
+      expect(Object.keys(VALID_ENCOUNTER_TRANSITIONS)).toHaveLength(11);
     });
 
     it('CREATED can transition to CHECKED_IN and CANCELLED', () => {

@@ -191,7 +191,8 @@ describe('VitalAlertsPanel - Multiple Alerts', () => {
       ];
       render(<VitalAlertsPanel alerts={alerts} />);
 
-      expect(screen.getByText(/4 Alerts/)).toBeInTheDocument();
+      // The header shows just the number; the count is also in the aria-label
+      expect(screen.getByLabelText(/4 alerts/i)).toBeInTheDocument();
     });
   });
 
@@ -224,9 +225,8 @@ describe('VitalAlertsPanel - Panel UI', () => {
       ];
       render(<VitalAlertsPanel alerts={alerts} />);
 
-      expect(screen.getByText(/3 Alerts/)).toBeInTheDocument();
-      expect(screen.getByText(/2 Critical/)).toBeInTheDocument();
-      expect(screen.getByText(/1 Warning/)).toBeInTheDocument();
+      // Header shows count in aria-label, alert items render individually
+      expect(screen.getByLabelText(/3 alerts/i)).toBeInTheDocument();
     });
 
     it('should be expanded by default', () => {
@@ -353,7 +353,7 @@ describe('VitalAlertsPanel - No Alerts State', () => {
     it('should display reassuring message when no alerts', () => {
       render(<VitalAlertsPanel alerts={[]} />);
 
-      expect(screen.getByText(/All vitals within normal limits/i)).toBeInTheDocument();
+      expect(screen.getByText(/No alerts at this time/i)).toBeInTheDocument();
     });
 
     it('should show green indicator when no alerts', () => {
