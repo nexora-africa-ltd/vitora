@@ -23,9 +23,11 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import (
     AuditLog,
+    CertificateAuthority,
     CodeSystem,
     County,
     Department,
+    DocumentSignature,
     Facility,
     FeatureFlag,
     FrontendEvent,
@@ -33,14 +35,18 @@ from .models import (
     Role,
     StaffProfile,
     SubCounty,
+    UserCertificate,
     Ward,
 )
 from .permissions import AuditLogPermission
 from .serializers import (
     AuditLogSerializer,
+    CertificateAuthoritySerializer,
+    CertificateRevocationSerializer,
     CodeSystemSerializer,
     CountySerializer,
     DepartmentSerializer,
+    DocumentSignatureSerializer,
     FacilityCreateSerializer,
     FacilityDetailSerializer,
     FacilityListSerializer,
@@ -50,14 +56,18 @@ from .serializers import (
     NotificationSerializer,
     OrgChartPayloadSerializer,
     PermissionSerializer,
+    RevokeCertificateRequestSerializer,
     RoleSerializer,
+    SignDocumentRequestSerializer,
     StaffProfileSerializer,
     StaffProfileUpdateSerializer,
     SubCountySerializer,
+    UserCertificateSerializer,
     UsernameCheckResponseSerializer,
     UsernameSuggestionRequestSerializer,
     UsernameSuggestionResponseSerializer,
     UserPermissionsSerializer,
+    VerifySignatureRequestSerializer,
     WardSerializer,
 )
 
@@ -181,6 +191,47 @@ class AuditLogViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSe
                     queryset = queryset.filter(timestamp__date__lte=end_day)
 
         return queryset
+
+    @action(detail=False, methods=["get"], permission_classes=[IsAdminUser])
+    def chain_status(self, request):
+        """Get audit hash chain health summary."""
+        from .services.audit_integrity import AuditIntegrityService
+
+        service = AuditIntegrityService()
+        status_data = service.get_chain_status()
+        return Response(status_data)
+
+    @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
+    def verify_integrity(self, request):
+        """Trigger on-demand audit chain integrity verification."""
+        from .services.audit_integrity import AuditIntegrityService
+
+        count = request.data.get("count", 1000)
+        service = AuditIntegrityService()
+        result = service.verify_latest(count=int(count))
+
+        AuditLog.log(
+            action="audit_integrity_check",
+            user=request.user,
+            resource_type="AuditLog",
+            ip_address=_get_client_ip(request),
+            details={
+                "valid": result.valid,
+                "entries_checked": result.entries_checked,
+                "first_mismatch_seq": result.first_mismatch_seq,
+                "errors": result.errors,
+                "triggered_by": "manual",
+            },
+        )
+
+        return Response({
+            "valid": result.valid,
+            "entries_checked": result.entries_checked,
+            "first_mismatch_seq": result.first_mismatch_seq,
+            "first_mismatch_detail": result.first_mismatch_detail,
+            "errors": result.errors,
+            "checked_at": result.checked_at.isoformat() if result.checked_at else None,
+        })
 
 
 class FrontendEventViewSet(viewsets.GenericViewSet):
@@ -1610,3 +1661,214 @@ class FacilityViewSet(viewsets.ModelViewSet):
         level = request.query_params.get("level", "1")
         modules = Facility.default_modules_for_level(level)
         return Response({"level": level, "modules": modules})
+
+
+# =============================================================================
+# PKI & Digital Signature ViewSets (DHA Gap #32 — Sprint 3.C)
+# =============================================================================
+
+
+class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelMixin):
+    """
+    ViewSet for certificate management.
+
+    List and verify user certificates. Issue and revoke certificates (admin only).
+    """
+
+    queryset = UserCertificate.objects.select_related("user", "certificate_authority").all()
+    serializer_class = UserCertificateSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ["user", "is_revoked"]
+    ordering = ["-created_at"]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if not (self.request.user.is_staff or self.request.user.is_superuser):
+            qs = qs.filter(user=self.request.user)
+        return qs
+
+    @action(detail=False, methods=["get"])
+    def ca(self, request):
+        """List active Certificate Authorities (public info only)."""
+        cas = CertificateAuthority.objects.filter(is_active=True)
+        serializer = CertificateAuthoritySerializer(cas, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
+    def issue(self, request):
+        """Issue a new certificate for a user (admin only)."""
+        from .services.pki_service import PKIService
+
+        user_id = request.data.get("user_id")
+        if not user_id:
+            return Response(
+                {"error": "user_id is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        try:
+            target_user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        service = PKIService()
+        try:
+            cert = service.issue_user_certificate(
+                user=target_user,
+                validity_years=int(request.data.get("validity_years", 2)),
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            UserCertificateSerializer(cert).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    def revoke(self, request, pk=None):
+        """Revoke a user certificate (admin only)."""
+        from .services.pki_service import PKIService
+
+        cert = self.get_object()
+        serializer = RevokeCertificateRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        if cert.is_revoked:
+            return Response(
+                {"error": "Certificate is already revoked"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service = PKIService()
+        service.revoke_certificate(
+            cert=cert,
+            reason=serializer.validated_data["reason"],
+            user=request.user,
+        )
+        return Response(UserCertificateSerializer(cert).data)
+
+    @action(detail=True, methods=["get"])
+    def verify(self, request, pk=None):
+        """Verify a certificate's validity."""
+        from .services.pki_service import PKIService
+
+        cert = self.get_object()
+        service = PKIService()
+        result = service.verify_certificate(cert)
+        return Response({
+            "valid": result.valid,
+            "subject": result.subject,
+            "issuer": result.issuer,
+            "serial_number": result.serial_number,
+            "valid_from": result.valid_from.isoformat() if result.valid_from else None,
+            "valid_to": result.valid_to.isoformat() if result.valid_to else None,
+            "is_expired": result.is_expired,
+            "is_revoked": result.is_revoked,
+            "ca_active": result.ca_active,
+            "errors": result.errors,
+        })
+
+
+class DocumentSignatureViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelMixin):
+    """
+    ViewSet for document signatures.
+
+    Sign and verify clinical documents.
+    """
+
+    queryset = DocumentSignature.objects.select_related("signer", "certificate").all()
+    serializer_class = DocumentSignatureSerializer
+    permission_classes = [IsAuthenticated]
+    filterset_fields = ["document_type", "signer"]
+    ordering = ["-signed_at"]
+
+    @action(detail=False, methods=["post"])
+    def sign(self, request):
+        """Sign a clinical document."""
+        from .services.signing_service import DocumentSigningService
+
+        serializer = SignDocumentRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        service = DocumentSigningService()
+        try:
+            sig = service.sign_document(
+                document_type=serializer.validated_data["document_type"],
+                document_id=serializer.validated_data["document_id"],
+                user=request.user,
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            DocumentSignatureSerializer(sig).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=False, methods=["post"])
+    def verify(self, request):
+        """Verify a document signature."""
+        from .services.signing_service import DocumentSigningService
+
+        serializer = VerifySignatureRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+        if data.get("signature_id"):
+            try:
+                sig = DocumentSignature.objects.get(pk=data["signature_id"])
+            except DocumentSignature.DoesNotExist:
+                return Response(
+                    {"error": "Signature not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        else:
+            sig = (
+                DocumentSignature.objects.filter(
+                    document_type=data["document_type"],
+                    document_id=data["document_id"],
+                )
+                .order_by("-signed_at")
+                .first()
+            )
+            if sig is None:
+                return Response(
+                    {"error": "No signature found for this document"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        service = DocumentSigningService()
+        result = service.verify_signature(sig)
+        return Response({
+            "valid": result.valid,
+            "document_type": result.document_type,
+            "document_id": result.document_id,
+            "signer_username": result.signer_username,
+            "signer_name": result.signer_name,
+            "signed_at": result.signed_at,
+            "certificate_serial": result.certificate_serial,
+            "certificate_valid": result.certificate_valid,
+            "content_matches": result.content_matches,
+            "signature_valid": result.signature_valid,
+            "errors": result.errors,
+        })
+
+    @action(detail=False, methods=["get"])
+    def for_document(self, request):
+        """Get all signatures for a specific document."""
+        doc_type = request.query_params.get("type")
+        doc_id = request.query_params.get("id")
+        if not doc_type or not doc_id:
+            return Response(
+                {"error": "Both 'type' and 'id' query parameters are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        sigs = DocumentSignature.objects.filter(
+            document_type=doc_type, document_id=doc_id
+        ).order_by("-signed_at")
+        return Response(DocumentSignatureSerializer(sigs, many=True).data)

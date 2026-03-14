@@ -618,27 +618,47 @@ Gaps are categorized into four tiers:
 
 ### Sprint 3.C — Security Hardening (Weeks 17-20)
 
-#### 31. Tamper-Resistant Audit Log `P3`
-- **Gap**: No cryptographic chaining
+#### 31. Tamper-Resistant Audit Log `P3` ✅ COMPLETE
+- **Gap**: ~~No cryptographic chaining~~ **RESOLVED**
 - **Action**:
-  - [ ] Implement hash chaining (each log entry includes hash of previous)
-  - [ ] Periodic hash tree verification
-  - [ ] Tamper detection alerts
-  - [ ] Tests: 15+ unit tests
-- **Owner**: Backend Team
-- **Effort**: 1 sprint (2 weeks)
-- **Deliverables**: Cryptographic audit integrity
+  - [x] Implement hash chaining (each log entry includes SHA-256 hash of previous)
+  - [x] Periodic hash tree verification (Celery task `verify_audit_chain_integrity`, hourly)
+  - [x] Tamper detection alerts (CRITICAL `Notification` to superusers on mismatch)
+  - [x] On-demand verification API (`POST /api/core/auditlogs/verify_integrity/`)
+  - [x] Chain status API (`GET /api/core/auditlogs/chain_status/`)
+  - [x] Backfill management command (`backfill_audit_hashes` — idempotent, supports `--dry-run`)
+  - [x] Tests: 23 unit tests (exceeded 15+ requirement)
+- **Owner**: Backend Team + Frontend Team
+- **Completed**: March 14, 2026
+- **Deliverables**:
+  - `AuditLog` model: `entry_hash`, `previous_hash`, `sequence_number` fields
+  - `AuditIntegrityService` in `hmis/apps/core/services/audit_integrity.py`
+  - Celery task: `verify_audit_chain_integrity` (hourly, last 1000 entries)
+  - Migration: `0026_add_audit_hash_chaining.py`
+  - Frontend: Audit Integrity dashboard (`/admin/audit-integrity`) with chain status, verify button
+  - Zod-validated API client with 2 methods
 
-#### 32. Digital Signatures for Clinical Documents `P3`
-- **Gap**: No cryptographic signing
+#### 32. Digital Signatures for Clinical Documents `P3` ✅ COMPLETE
+- **Gap**: ~~No cryptographic signing~~ **RESOLVED**
 - **Action**:
-  - [ ] Integrate PKI infrastructure (certificate management)
-  - [ ] Implement document signing for lab reports, prescriptions, discharge summaries
-  - [ ] Signature verification API
-  - [ ] Tests: 20+ unit tests
-- **Owner**: Backend Team
-- **Effort**: 2 sprints (4 weeks)
-- **Deliverables**: Document signing service
+  - [x] Full X.509 PKI infrastructure (Root CA, user certificates, CRL-based revocation)
+  - [x] RSA-2048 document signing for lab results, prescriptions, radiology reports, discharges
+  - [x] Signature verification API with certificate chain validation
+  - [x] PKI management commands (`init_pki_ca`, `issue_user_cert`)
+  - [x] Tests: 33 unit tests (exceeded 20+ requirement)
+- **Owner**: Backend Team + Frontend Team
+- **Completed**: March 14, 2026
+- **Deliverables**:
+  - `CertificateAuthority`, `UserCertificate`, `CertificateRevocation`, `DocumentSignature` models
+  - `PKIService` in `hmis/apps/core/services/pki_service.py` (CA init, cert issuance, revocation, CRL)
+  - `DocumentSigningService` in `hmis/apps/core/services/signing_service.py` (sign, verify, content serialization)
+  - `CertificateViewSet`: list, issue, revoke, verify, CA list, CRL endpoints
+  - `DocumentSignatureViewSet`: sign, verify, list, for_document endpoints
+  - Migration: `0027_add_pki_and_document_signatures.py`
+  - Frontend: Certificate management page (`/admin/certificates`) with issue/revoke dialogs
+  - Frontend: `SignatureBadge` reusable component for document detail pages
+  - Sidebar navigation: Audit Integrity + Certificates under Admin section
+  - Zod-validated API clients with 11 methods
 
 ### Sprint 3.D — KENHDD Compliance & Polish (Weeks 21-24)
 
@@ -740,7 +760,7 @@ Gaps are categorized into four tiers:
 | Critical Gaps Closed | 8/8 | 8/8 | 8/8 | 7/8 |
 | Required Gaps Closed | 15/15 | 15/15 | 15/15 | 12/12 |
 | Important Gaps Closed | 0/18 | 18/18 | 18/18 | 12/12 |
-| Enhancement Gaps Closed | 0/12 | 0/12 | 12/12 | 6/9 |
+| Enhancement Gaps Closed | 0/12 | 0/12 | 12/12 | 8/9 |
 
 ---
 
@@ -779,8 +799,8 @@ Gaps are categorized into four tiers:
 | HL7v2 Full Implementation | P3 | 3.B | ✅ |
 | SDMX Implementation | P3 | 3.B | ✅ |
 | SNOMED CT Active Usage | P3 | 3.B | ✅ |
-| Tamper-Resistant Audit Log | P3 | 3.C | ⬜ |
-| Digital Signatures | P3 | 3.C | ⬜ |
+| Tamper-Resistant Audit Log | P3 | 3.C | ✅ |
+| Digital Signatures | P3 | 3.C | ✅ |
 | KENHDD Schema Validation | P3 | 3.D | ⬜ |
 
 ---

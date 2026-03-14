@@ -61,6 +61,8 @@ import {
   ArrowLeftRight,
   TestTubes,
   Network,
+  Fingerprint,
+  Lock,
 } from 'lucide-react';
 
 import {
@@ -329,6 +331,8 @@ const _allNavItems: NavItemType[] = [
       { label: 'Roles', href: '/admin/roles', icon: ShieldUser, actionKey: 'admin.manage_roles' },
       { label: 'Staff', href: '/admin/staff', icon: UserCog, actionKey: 'admin.manage_staff' },
       { label: 'Audit Logs', href: '/admin/audit-logs', icon: ScrollText, actionKey: 'admin.view_audit_logs' },
+      { label: 'Audit Integrity', href: '/admin/audit-integrity', icon: Fingerprint, actionKey: 'admin.view_audit_logs' },
+      { label: 'Certificates', href: '/admin/certificates', icon: Lock, actionKey: 'admin.view_audit_logs' },
       { label: 'HL7 Messages', href: '/admin/hl7-messages', icon: Network, actionKey: 'admin.view_hl7_messages' },
       { label: 'Reports', href: '/reports', icon: FileText, actionKey: 'admin.view_reports' },
     ],

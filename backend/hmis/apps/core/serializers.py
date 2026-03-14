@@ -10,9 +10,12 @@ from rest_framework import serializers
 
 from .models import (
     AuditLog,
+    CertificateAuthority,
+    CertificateRevocation,
     CodeSystem,
     County,
     Department,
+    DocumentSignature,
     Facility,
     FeatureFlag,
     FrontendEvent,
@@ -20,6 +23,7 @@ from .models import (
     Role,
     StaffProfile,
     SubCounty,
+    UserCertificate,
     Ward,
 )
 
@@ -61,6 +65,9 @@ class AuditLogSerializer(serializers.ModelSerializer):
             "user_agent",
             "details",
             "patient_id",
+            "sequence_number",
+            "entry_hash",
+            "previous_hash",
         ]
         read_only_fields = fields  # All fields are read-only
 
@@ -838,3 +845,162 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
                 validated_data[f"has_{module_name}"] = enabled
 
         return super().create(validated_data)
+
+
+# =============================================================================
+# PKI & Digital Signature Serializers (DHA Gap #32 — Sprint 3.C)
+# =============================================================================
+
+
+class CertificateAuthoritySerializer(serializers.ModelSerializer):
+    """Serializer for CertificateAuthority (public info only)."""
+
+    is_expired = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = CertificateAuthority
+        fields = [
+            "id",
+            "name",
+            "serial_number",
+            "subject_dn",
+            "valid_from",
+            "valid_to",
+            "is_root",
+            "is_active",
+            "is_expired",
+            "key_size",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class UserCertificateSerializer(serializers.ModelSerializer):
+    """Serializer for UserCertificate."""
+
+    username = serializers.CharField(source="user.username", read_only=True)
+    user_name = serializers.SerializerMethodField()
+    is_expired = serializers.BooleanField(read_only=True)
+    is_valid = serializers.BooleanField(read_only=True)
+    ca_name = serializers.CharField(source="certificate_authority.name", read_only=True)
+
+    class Meta:
+        model = UserCertificate
+        fields = [
+            "id",
+            "user",
+            "username",
+            "user_name",
+            "certificate_authority",
+            "ca_name",
+            "serial_number",
+            "subject_dn",
+            "valid_from",
+            "valid_to",
+            "is_revoked",
+            "revoked_at",
+            "revocation_reason",
+            "is_expired",
+            "is_valid",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_user_name(self, obj) -> str:
+        if not obj.user:
+            return ""
+        return obj.user.get_full_name().strip() or obj.user.username
+
+
+class CertificateRevocationSerializer(serializers.ModelSerializer):
+    """Serializer for CertificateRevocation."""
+
+    certificate_serial = serializers.CharField(
+        source="certificate.serial_number", read_only=True
+    )
+    revoked_by_username = serializers.CharField(
+        source="revoked_by.username", read_only=True, default=""
+    )
+
+    class Meta:
+        model = CertificateRevocation
+        fields = [
+            "id",
+            "certificate",
+            "certificate_serial",
+            "revoked_at",
+            "reason",
+            "revoked_by",
+            "revoked_by_username",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class DocumentSignatureSerializer(serializers.ModelSerializer):
+    """Serializer for DocumentSignature."""
+
+    signer_username = serializers.CharField(source="signer.username", read_only=True)
+    signer_name = serializers.SerializerMethodField()
+    certificate_serial = serializers.CharField(
+        source="certificate.serial_number", read_only=True
+    )
+
+    class Meta:
+        model = DocumentSignature
+        fields = [
+            "id",
+            "document_type",
+            "document_id",
+            "signer",
+            "signer_username",
+            "signer_name",
+            "certificate",
+            "certificate_serial",
+            "content_hash",
+            "hash_algorithm",
+            "signed_at",
+            "is_valid",
+            "verification_note",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_signer_name(self, obj) -> str:
+        if not obj.signer:
+            return ""
+        return obj.signer.get_full_name().strip() or obj.signer.username
+
+
+class SignDocumentRequestSerializer(serializers.Serializer):
+    """Request serializer for signing a document."""
+
+    document_type = serializers.ChoiceField(
+        choices=["LabResult", "Prescription", "Discharge", "RadiologyReport"],
+    )
+    document_id = serializers.IntegerField(min_value=1)
+
+
+class VerifySignatureRequestSerializer(serializers.Serializer):
+    """Request serializer for verifying a signature."""
+
+    signature_id = serializers.IntegerField(required=False)
+    document_type = serializers.CharField(required=False)
+    document_id = serializers.IntegerField(required=False)
+
+    def validate(self, data):
+        if not data.get("signature_id") and not (
+            data.get("document_type") and data.get("document_id")
+        ):
+            raise serializers.ValidationError(
+                "Provide either 'signature_id' or both 'document_type' and 'document_id'."
+            )
+        return data
+
+
+class RevokeCertificateRequestSerializer(serializers.Serializer):
+    """Request serializer for revoking a certificate."""
+
+    reason = serializers.ChoiceField(
+        choices=UserCertificate.RevocationReason.choices,
+    )

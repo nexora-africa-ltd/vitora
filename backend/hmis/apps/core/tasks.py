@@ -598,3 +598,81 @@ def generate_defaulter_list(clinic_id: int | None = None):
         "total_defaulters": len(defaulters),
         "defaulters": defaulters,
     }
+
+
+# =============================================================================
+# Audit Integrity Verification Tasks (DHA Gap #31)
+# =============================================================================
+
+
+@shared_task(name="core.verify_audit_chain_integrity")
+def verify_audit_chain_integrity(count: int = 1000):
+    """
+    Periodic task to verify audit log hash chain integrity.
+
+    Runs hourly via Celery Beat. Verifies the latest N entries
+    and creates CRITICAL notifications for superusers on tamper detection.
+
+    Args:
+        count: Number of recent entries to verify (default 1000).
+
+    Returns:
+        dict: Verification result summary.
+    """
+    from hmis.apps.core.models import AuditLog, Notification
+    from hmis.apps.core.services.audit_integrity import AuditIntegrityService
+
+    logger.info(f"Starting audit chain integrity verification (last {count} entries)")
+
+    service = AuditIntegrityService()
+    result = service.verify_latest(count=count)
+
+    # Log the verification result to the audit log itself
+    AuditLog.log(
+        action="audit_integrity_check",
+        resource_type="AuditLog",
+        details={
+            "valid": result.valid,
+            "entries_checked": result.entries_checked,
+            "first_mismatch_seq": result.first_mismatch_seq,
+            "errors": result.errors,
+        },
+    )
+
+    if not result.valid:
+        logger.critical(
+            f"AUDIT CHAIN TAMPER DETECTED at seq {result.first_mismatch_seq}: "
+            f"{result.first_mismatch_detail}"
+        )
+
+        # Notify all superusers
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        superusers = User.objects.filter(is_superuser=True, is_active=True)
+
+        for user in superusers:
+            Notification.objects.create(
+                user=user,
+                notification_type="audit_tamper_detected",
+                priority=Notification.Priority.CRITICAL,
+                title="Audit Log Tampering Detected",
+                message=(
+                    f"Hash chain integrity violation detected at sequence "
+                    f"#{result.first_mismatch_seq}. {result.first_mismatch_detail}. "
+                    f"Immediate investigation required."
+                ),
+                related_model="AuditLog",
+                action_url="/admin/audit-integrity",
+            )
+    else:
+        logger.info(
+            f"Audit chain integrity verified: {result.entries_checked} entries OK"
+        )
+
+    return {
+        "valid": result.valid,
+        "entries_checked": result.entries_checked,
+        "first_mismatch_seq": result.first_mismatch_seq,
+        "errors": result.errors,
+    }
