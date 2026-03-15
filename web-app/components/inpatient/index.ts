@@ -1,5 +1,6 @@
 export { AdmissionSuccessModal, fromAdmissionRecommendation } from './admission-success-modal';
 export type { AdmissionSuccessData } from './admission-success-modal';
+export { BedRecommendationCard } from './bed-recommendation-card';
 export { CompatibilityOverrideDialog } from './compatibility-override-dialog';
 export { BedSelectionGrid } from './bed-selection-grid';
 export type { BedWithCompatibility, BedCompatibilityStatus } from './bed-selection-grid';

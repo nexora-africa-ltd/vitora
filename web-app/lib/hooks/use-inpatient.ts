@@ -42,12 +42,15 @@ import type {
   ShiftHandover,
   ShiftHandoverCreateData,
   ShiftHandoverListParams,
+  SmartRecommendBedRequest,
   TemperatureReading,
   TemperatureReadingCreateData,
   Transfer,
   TransferCreateData,
   TransferListParams,
   TransfusionObservationEntryCreateData,
+  SetExpectedDischargeRequest,
+  BedOverrideRequest,
   WardRound,
   WardRoundCreateData,
   WardRoundListParams,
@@ -63,6 +66,10 @@ export const inpatientQueryKeys = {
   ward: (id: number) => [...inpatientQueryKeys.wards(), id] as const,
   wardBeds: (wardId: number, params?: Record<string, unknown>) =>
     [...inpatientQueryKeys.ward(wardId), 'beds', params] as const,
+  wardBedUtilization: (wardId: number) =>
+    [...inpatientQueryKeys.ward(wardId), 'bed-utilization'] as const,
+  wardPredictedDischarges: (wardId: number, hoursAhead?: number) =>
+    [...inpatientQueryKeys.ward(wardId), 'predicted-discharges', hoursAhead ?? 24] as const,
   beds: (params?: BedListParams) => [...inpatientQueryKeys.all, 'beds', params] as const,
   recommendations: (params?: AdmissionRecommendationListParams) =>
     [...inpatientQueryKeys.all, 'admission-recommendations', params] as const,
@@ -189,6 +196,46 @@ export function useUpdateBed() {
   });
 }
 
+export function useBedUtilization(wardId: number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.wardBedUtilization(wardId!),
+    queryFn: () => inpatientApi.getBedUtilization(wardId!),
+    enabled: typeof wardId === 'number',
+  });
+}
+
+export function usePredictedDischarges(wardId: number | undefined, hoursAhead = 24) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.wardPredictedDischarges(wardId!, hoursAhead),
+    queryFn: () => inpatientApi.getPredictedDischarges(wardId!, hoursAhead),
+    enabled: typeof wardId === 'number',
+  });
+}
+
+export function useRecommendBed() {
+  return useMutation({
+    mutationFn: ({
+      wardId,
+      data,
+    }: {
+      wardId: number;
+      data: {
+        patient_id: number;
+        requires_isolation?: boolean;
+        requires_oxygen?: boolean;
+        requires_ventilator?: boolean;
+      };
+    }) => inpatientApi.recommendBed(wardId, data),
+  });
+}
+
+export function useSmartRecommendBed() {
+  return useMutation({
+    mutationFn: ({ wardId, data }: { wardId: number; data: SmartRecommendBedRequest }) =>
+      inpatientApi.smartRecommendBed(wardId, data),
+  });
+}
+
 /**
  * Check if a patient is compatible with a specific ward.
  * Returns a mutation that can be called imperatively.
@@ -310,6 +357,47 @@ export function useUpdateAdmission() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admission(variables.id) });
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admissions() });
+    },
+  });
+}
+
+export function useOverrideBed() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ admissionId, data }: { admissionId: number; data: BedOverrideRequest }) =>
+      inpatientApi.overrideBed(admissionId, data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admission(result.admission.id) });
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admissions() });
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wards() });
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.beds() });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.ward(result.admission.ward),
+      });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.wardBeds(result.admission.ward),
+      });
+      queryClient.invalidateQueries({
+        queryKey: inpatientQueryKeys.wardBedUtilization(result.admission.ward),
+      });
+    },
+  });
+}
+
+export function useSetExpectedDischarge() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      admissionId,
+      data,
+    }: {
+      admissionId: number;
+      data: SetExpectedDischargeRequest;
+    }) => inpatientApi.setExpectedDischarge(admissionId, data),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admission(variables.admissionId) });
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.admissions() });
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wards() });
     },
   });
 }

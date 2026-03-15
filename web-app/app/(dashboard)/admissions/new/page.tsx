@@ -32,6 +32,8 @@ import {
 import { useUser } from '@/lib/auth';
 import {
   useBeds,
+  useRecommendBed,
+  useSmartRecommendBed,
   useCreateAdmission,
   useInpatientWards,
   useCheckWardCompatibility,
@@ -41,10 +43,16 @@ import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters'
 import { useICD10Search } from '@/lib/hooks/use-encounter-form';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { ICD11Select } from '@/components/terminology';
-import { CompatibilityOverrideDialog, BedSelectionGrid } from '@/components/inpatient';
+import { BedRecommendationCard, CompatibilityOverrideDialog, BedSelectionGrid } from '@/components/inpatient';
 import { cn } from '@/lib/utils/cn';
-import type { CompatibilityViolation, CompatibilityCheckResult } from '@/lib/types/inpatient';
+import type {
+  CompatibilityViolation,
+  CompatibilityCheckResult,
+  SmartAdmissionType,
+} from '@/lib/types/inpatient';
 import { useMCHRegistration } from '@/lib/hooks/use-mch';
+
+type BedAssignmentStrategy = 'SMART' | 'RULES' | 'MANUAL';
 
 export default function NewAdmissionPage() {
   const router = useRouter();
@@ -74,7 +82,11 @@ export default function NewAdmissionPage() {
   // Form state
   const [wardId, setWardId] = useState<string>('');
   const [bedId, setBedId] = useState<string>('');
-  const [autoAssignBed, setAutoAssignBed] = useState(false);
+  const [assignmentStrategy, setAssignmentStrategy] = useState<BedAssignmentStrategy>('SMART');
+  const [admissionType, setAdmissionType] = useState<SmartAdmissionType>('ELECTIVE');
+  const [requiresIsolation, setRequiresIsolation] = useState(false);
+  const [requiresOxygen, setRequiresOxygen] = useState(false);
+  const [requiresVentilator, setRequiresVentilator] = useState(false);
   const [payerType, setPayerType] = useState<'CASH' | 'SHA' | 'CORPORATE'>('CASH');
   const [mchRegistrationId, setMchRegistrationId] = useState(initialMchRegistrationParam || '');
   const selectedMchRegistrationId = useMemo(
@@ -102,6 +114,8 @@ export default function NewAdmissionPage() {
   // Fetch all beds for the ward (not just available) so users see full occupancy
   const { data: beds } = useBeds({ ward: selectedWardId });
   const createAdmission = useCreateAdmission();
+  const recommendBed = useRecommendBed();
+  const smartRecommendBed = useSmartRecommendBed();
   const generateBeds = useGenerateWardBeds();
 
   // Get selected ward's capacity from wards list
@@ -145,34 +159,15 @@ export default function NewAdmissionPage() {
   }, [wards, wardId]);
 
   // Handle ward selection with compatibility check
-  const handleWardChange = useCallback(async (newWardId: string) => {
+  const handleWardChange = useCallback((newWardId: string) => {
     setWardId(newWardId);
     setBedId('');
     setCompatibilityViolations([]);
     setCompatibilityResult(null);
     setOverrideReason(null);
-
-    // Check compatibility if patient is selected
-    if (patientId && newWardId) {
-      try {
-        const result = await checkCompatibility.mutateAsync({
-          wardId: Number(newWardId),
-          patientId,
-        });
-
-        setCompatibilityResult(result);
-
-        if (!result.compatible && result.violations?.length > 0) {
-          setCompatibilityViolations(result.violations);
-          setShowCompatibilityDialog(true);
-        }
-      } catch {
-        // If compatibility check fails, allow admission to proceed
-        console.warn('Compatibility check failed, allowing admission');
-        setCompatibilityResult(null);
-      }
-    }
-  }, [patientId, checkCompatibility]);
+    recommendBed.reset();
+    smartRecommendBed.reset();
+  }, [recommendBed, smartRecommendBed]);
 
   // Handle compatibility override
   const handleCompatibilityOverride = useCallback((reason: string) => {
@@ -186,7 +181,80 @@ export default function NewAdmissionPage() {
     setBedId('');
     setCompatibilityViolations([]);
     setCompatibilityResult(null);
-  }, []);
+    recommendBed.reset();
+    smartRecommendBed.reset();
+  }, [recommendBed, smartRecommendBed]);
+
+  useEffect(() => {
+    if (!patientId || !selectedWardId) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    setCompatibilityViolations([]);
+    setCompatibilityResult(null);
+    setOverrideReason(null);
+
+    checkCompatibility.mutateAsync({
+      wardId: selectedWardId,
+      patientId,
+      requiresIsolation,
+    }).then((result) => {
+      if (isCancelled) {
+        return;
+      }
+
+      setCompatibilityResult(result);
+
+      if (!result.compatible && result.violations?.length > 0) {
+        setCompatibilityViolations(result.violations);
+        setShowCompatibilityDialog(true);
+      }
+    }).catch(() => {
+      if (!isCancelled) {
+        console.warn('Compatibility check failed, allowing admission');
+        setCompatibilityResult(null);
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [patientId, selectedWardId, requiresIsolation, checkCompatibility]);
+
+  useEffect(() => {
+    if (!patientId || !selectedWardId || assignmentStrategy === 'MANUAL') {
+      return;
+    }
+
+    const payload = {
+      patient_id: patientId,
+      requires_isolation: requiresIsolation || undefined,
+      requires_oxygen: requiresOxygen || undefined,
+      requires_ventilator: requiresVentilator || undefined,
+      admission_type: admissionType,
+    };
+
+    if (assignmentStrategy === 'SMART') {
+      recommendBed.reset();
+      smartRecommendBed.mutate({ wardId: selectedWardId, data: payload });
+      return;
+    }
+
+    smartRecommendBed.reset();
+    recommendBed.mutate({ wardId: selectedWardId, data: payload });
+  }, [
+    patientId,
+    selectedWardId,
+    assignmentStrategy,
+    admissionType,
+    requiresIsolation,
+    requiresOxygen,
+    requiresVentilator,
+    recommendBed,
+    smartRecommendBed,
+  ]);
 
   // Prefill diagnosis from encounter's primary diagnosis
   useEffect(() => {
@@ -242,7 +310,26 @@ export default function NewAdmissionPage() {
   const hasRequiredMaternityContext = !isMaternityWard || (!!mchRegistrationId && mchRegistrationMatchesPatient);
 
   // With autoAssignBed, bed selection is not required (handled by backend)
-  const canSubmit = !!patientId && !!wardId && (!!bedId || autoAssignBed) && hasDiagnosis && !!user && hasRequiredMaternityContext;
+  const recommendedBedId = useMemo(() => {
+    if (assignmentStrategy === 'MANUAL') {
+      return bedId ? Number(bedId) : null;
+    }
+
+    const recommendation = assignmentStrategy === 'SMART'
+      ? smartRecommendBed.data
+      : recommendBed.data;
+
+    return recommendation?.success && recommendation.assigned_bed_id
+      ? recommendation.assigned_bed_id
+      : null;
+  }, [assignmentStrategy, bedId, smartRecommendBed.data, recommendBed.data]);
+
+  const canSubmit = !!patientId
+    && !!wardId
+    && !!recommendedBedId
+    && hasDiagnosis
+    && !!user
+    && hasRequiredMaternityContext;
 
   const admittingDiagnosis = useICD11
     ? icd11Value?.code || ''
@@ -407,30 +494,72 @@ export default function NewAdmissionPage() {
           {/* Bed Assignment Section */}
           {wardId && (
             <div className="space-y-4">
-              {/* Auto-assign toggle */}
-              <div className="flex items-center justify-between p-3 rounded-md border bg-muted/30">
-                <div className="space-y-0.5">
-                  <Label htmlFor="auto-assign-bed" className="text-sm font-medium cursor-pointer">
-                    Auto-assign bed
-                  </Label>
+              <div className="grid gap-4 rounded-lg border bg-muted/20 p-4 lg:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Assignment strategy</Label>
+                  <Select
+                    value={assignmentStrategy}
+                    onValueChange={(value) => {
+                      setAssignmentStrategy(value as BedAssignmentStrategy);
+                      setBedId('');
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select assignment strategy" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SMART">Smart recommendation (Phase C)</SelectItem>
+                      <SelectItem value="RULES">Rules-based recommendation (Phase B)</SelectItem>
+                      <SelectItem value="MANUAL">Manual bed selection</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <p className="text-xs text-muted-foreground">
-                    System will assign the first available bed in the selected ward
+                    Smart recommendation is the default assisted flow. It evaluates workload, emergency buffer, and discharge planning before you create the admission.
                   </p>
                 </div>
-                <Switch
-                  id="auto-assign-bed"
-                  checked={autoAssignBed}
-                  onCheckedChange={(checked) => {
-                    setAutoAssignBed(checked);
-                    if (checked) {
-                      setBedId(''); // Clear manual selection when enabling auto-assign
-                    }
-                  }}
-                />
+
+                <div className="space-y-2">
+                  <Label>Admission type</Label>
+                  <Select value={admissionType} onValueChange={(value) => setAdmissionType(value as SmartAdmissionType)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select admission type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ELECTIVE">Elective</SelectItem>
+                      <SelectItem value="EMERGENCY">Emergency</SelectItem>
+                      <SelectItem value="TRANSFER">Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              {/* Manual Bed Selection Grid (only shown if not auto-assigning) */}
-              {!autoAssignBed && (
+              <div className="grid gap-3 rounded-lg border p-4 md:grid-cols-3">
+                <div className="flex items-center justify-between gap-4 rounded-md border bg-muted/20 p-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="requires-isolation" className="cursor-pointer text-sm font-medium">Isolation required</Label>
+                    <p className="text-xs text-muted-foreground">Use ward compatibility and recommendation scoring for isolation placement.</p>
+                  </div>
+                  <Switch id="requires-isolation" checked={requiresIsolation} onCheckedChange={setRequiresIsolation} />
+                </div>
+
+                <div className="flex items-center justify-between gap-4 rounded-md border bg-muted/20 p-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="requires-oxygen" className="cursor-pointer text-sm font-medium">Needs oxygen</Label>
+                    <p className="text-xs text-muted-foreground">Include oxygen-equipped beds when evaluating recommendations.</p>
+                  </div>
+                  <Switch id="requires-oxygen" checked={requiresOxygen} onCheckedChange={setRequiresOxygen} />
+                </div>
+
+                <div className="flex items-center justify-between gap-4 rounded-md border bg-muted/20 p-3">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="requires-ventilator" className="cursor-pointer text-sm font-medium">Needs ventilator</Label>
+                    <p className="text-xs text-muted-foreground">Prioritize beds and wards that can support advanced respiratory care.</p>
+                  </div>
+                  <Switch id="requires-ventilator" checked={requiresVentilator} onCheckedChange={setRequiresVentilator} />
+                </div>
+              </div>
+
+              {assignmentStrategy === 'MANUAL' ? (
                 <BedSelectionGrid
                   beds={(Array.isArray(beds) ? beds : beds?.results ?? [])}
                   selectedBedId={bedId}
@@ -441,6 +570,14 @@ export default function NewAdmissionPage() {
                   wardCapacity={selectedWardCapacity}
                   onGenerateBeds={selectedWardId ? () => generateBeds.mutate(selectedWardId) : undefined}
                   isGeneratingBeds={generateBeds.isPending}
+                />
+              ) : (
+                <BedRecommendationCard
+                  strategy={assignmentStrategy}
+                  isLoading={smartRecommendBed.isPending || recommendBed.isPending}
+                  smartRecommendation={smartRecommendBed.data}
+                  ruleRecommendation={recommendBed.data}
+                  onSwitchToManual={() => setAssignmentStrategy('MANUAL')}
                 />
               )}
             </div>
@@ -611,22 +748,20 @@ export default function NewAdmissionPage() {
               onClick={async () => {
                 if (!patientId || !user) return;
                 const admissionDate = new Date().toISOString();
+                if (!recommendedBedId) return;
 
                 await createAdmission.mutateAsync({
                   patient: patientId,
                   ward: Number(wardId),
                   ...(mchRegistrationId ? { mch_registration: Number(mchRegistrationId) } : {}),
-                  // Include bed only if manually selected, otherwise use auto_assign_bed
-                  ...(autoAssignBed
-                    ? { auto_assign_bed: true }
-                    : { bed: Number(bedId) }
-                  ),
+                  bed: recommendedBedId,
                   payer_type: payerType,
                   admission_date: admissionDate,
                   admitting_diagnosis: admittingDiagnosis,
                   admitting_diagnosis_text: admittingDiagnosisText,
                   admitting_officer: user.id,
                   source_encounter: encounterId || undefined,
+                  ...(requiresIsolation ? { requires_isolation: true } : {}),
                   // Include override info if compatibility was overridden
                   ...(overrideReason && {
                     constraint_override: true,
