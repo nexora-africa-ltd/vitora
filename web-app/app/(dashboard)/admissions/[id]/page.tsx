@@ -16,7 +16,9 @@ import {
   Stethoscope,
   User,
   Activity,
-  Plus
+  Plus,
+  CalendarClock,
+  Shuffle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
@@ -45,9 +48,12 @@ import {
 import {
   useAdmission,
   useAdmissionWardRounds,
+  useBeds,
   useKardexByAdmission,
   useCreateReviewRequest,
   useAdmissionReviewRequests,
+  useOverrideBed,
+  useSetExpectedDischarge,
 } from '@/lib/hooks/use-inpatient';
 import { AdmissionOrdersTab, ICURiskAssessmentPanel, DischargeReadinessPanel, ConsumableUsagePanel } from '@/components/inpatient';
 import { CarePlanPanel } from '@/components/encounters/care-plan-panel';
@@ -59,8 +65,18 @@ import { BPMonitoringChart } from '@/components/inpatient/bp-monitoring-chart';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { useToast } from '@/lib/hooks/use-toast';
-import type { ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
+import type { BedOverrideRequest, OverrideReason, ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
 import type { AIQuickAction } from '@/lib/types/ai';
+
+const OVERRIDE_REASON_OPTIONS: { value: OverrideReason; label: string }[] = [
+  { value: 'PATIENT_REQUEST', label: 'Patient Request' },
+  { value: 'STAFF_UNAVAILABLE', label: 'Staff Unavailable' },
+  { value: 'EMERGENCY', label: 'Emergency' },
+  { value: 'SPECIALIZATION_NEEDED', label: 'Specialization Needed' },
+  { value: 'LOAD_BALANCING', label: 'Load Balancing' },
+  { value: 'ADMINISTRATIVE', label: 'Administrative' },
+  { value: 'OTHER', label: 'Other' },
+];
 
 const REVIEW_REQUEST_TYPES: { value: Exclude<ReviewType, 'WARD_ROUND'>; label: string }[] = [
   { value: 'URGENT_REVIEW', label: 'Urgent Review' },
@@ -134,7 +150,10 @@ export default function AdmissionDetailPage() {
   const { data: wardRounds, isLoading: wardRoundsLoading } = useAdmissionWardRounds(admissionId);
   const { data: kardex, isLoading: kardexLoading } = useKardexByAdmission(admissionId);
   const { data: reviewRequests, isLoading: reviewRequestsLoading } = useAdmissionReviewRequests(admissionId);
+  const { data: availableBeds } = useBeds({ ward: admission?.ward, status: 'AVAILABLE' });
   const createReviewRequest = useCreateReviewRequest();
+  const setExpectedDischarge = useSetExpectedDischarge();
+  const overrideBed = useOverrideBed();
 
   // =========================================================================
   // AI Chat Widget — encounter-aware context wiring
@@ -149,6 +168,13 @@ export default function AdmissionDetailPage() {
   // Track which panel was triggered by the AI widget
   const [autoTriggerDischarge, setAutoTriggerDischarge] = useState(false);
   const [autoTriggerCarePlan, setAutoTriggerCarePlan] = useState(false);
+  const [expectedDischargeDialogOpen, setExpectedDischargeDialogOpen] = useState(false);
+  const [bedOverrideDialogOpen, setBedOverrideDialogOpen] = useState(false);
+  const [expectedDischargeValue, setExpectedDischargeValue] = useState('');
+  const [overrideBedId, setOverrideBedId] = useState('');
+  const [overrideReason, setOverrideReason] = useState<OverrideReason>('LOAD_BALANCING');
+  const [overrideJustification, setOverrideJustification] = useState('');
+  const [overrideRequiresApproval, setOverrideRequiresApproval] = useState(false);
 
   useEffect(() => {
     if (!activePanelAction || !clearPanelAction) return;
@@ -288,6 +314,88 @@ export default function AdmissionDetailPage() {
     }
   };
 
+  useEffect(() => {
+    if (!admission?.expected_discharge_date) {
+      setExpectedDischargeValue('');
+      return;
+    }
+
+    const isoDate = new Date(admission.expected_discharge_date);
+    if (Number.isNaN(isoDate.getTime())) {
+      setExpectedDischargeValue('');
+      return;
+    }
+
+    setExpectedDischargeValue(isoDate.toISOString().slice(0, 16));
+  }, [admission?.expected_discharge_date]);
+
+  const handleSaveExpectedDischarge = async () => {
+    if (!admission || !expectedDischargeValue) {
+      toast({
+        title: 'Validation Error',
+        description: 'Select an expected discharge date and time before saving.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await setExpectedDischarge.mutateAsync({
+        admissionId: admission.id,
+        data: {
+          expected_discharge_date: new Date(expectedDischargeValue).toISOString(),
+        },
+      });
+      toast({
+        title: 'Expected discharge updated',
+        description: 'Bed planning information has been updated for this admission.',
+      });
+      setExpectedDischargeDialogOpen(false);
+    } catch (mutationError) {
+      toast({
+        title: 'Update failed',
+        description: mutationError instanceof Error ? mutationError.message : 'Unable to save expected discharge date.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSubmitBedOverride = async () => {
+    if (!admission || !overrideBedId || !overrideJustification.trim()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Select a replacement bed and document the reason for the override.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const payload: BedOverrideRequest = {
+      new_bed_id: Number(overrideBedId),
+      override_reason: overrideReason,
+      justification: overrideJustification.trim(),
+      requires_approval: overrideRequiresApproval,
+    };
+
+    try {
+      await overrideBed.mutateAsync({ admissionId: admission.id, data: payload });
+      toast({
+        title: 'Bed override saved',
+        description: 'The admission has been reassigned to the selected bed.',
+      });
+      setBedOverrideDialogOpen(false);
+      setOverrideBedId('');
+      setOverrideJustification('');
+      setOverrideRequiresApproval(false);
+    } catch (mutationError) {
+      toast({
+        title: 'Override failed',
+        description: mutationError instanceof Error ? mutationError.message : 'Unable to override the current bed assignment.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (isLoading) {
     return <AdmissionDetailSkeleton />;
   }
@@ -333,6 +441,18 @@ export default function AdmissionDetailPage() {
       {/* Actions */}
       {admission.admission_status === 'ACTIVE' && (
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+          <Button variant="outline" onClick={() => setExpectedDischargeDialogOpen(true)}>
+            <CalendarClock className="h-4 w-4 mr-2" />
+            <span className="sm:hidden">Discharge ETA</span>
+            <span className="hidden sm:inline">Expected Discharge</span>
+          </Button>
+
+          <Button variant="outline" onClick={() => setBedOverrideDialogOpen(true)}>
+            <Shuffle className="h-4 w-4 mr-2" />
+            <span className="sm:hidden">Override Bed</span>
+            <span className="hidden sm:inline">Override Bed</span>
+          </Button>
+
           <Button variant="outline" asChild>
             <Link href={`/admissions/${admission.id}/ward-round/new`}>
               <Stethoscope className="h-4 w-4 mr-2" />
@@ -638,6 +758,18 @@ export default function AdmissionDetailPage() {
                   label="Payer Type"
                   value={admission.payer_type_display || admission.payer_type}
                 />
+                <InfoRow
+                  icon={CalendarClock}
+                  label="Expected Discharge"
+                  value={admission.expected_discharge_date ? formatDateTime(admission.expected_discharge_date) : 'Not set'}
+                />
+                {admission.constraint_override && (
+                  <InfoRow
+                    icon={AlertTriangle}
+                    label="Placement Override"
+                    value={admission.constraint_override_reason || 'Compatibility override used'}
+                  />
+                )}
               </CardContent>
             </Card>
 
@@ -908,6 +1040,112 @@ export default function AdmissionDetailPage() {
           />
         </TabsContent>
       </Tabs>
+
+      <Dialog open={expectedDischargeDialogOpen} onOpenChange={setExpectedDischargeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set expected discharge</DialogTitle>
+            <DialogDescription>
+              Record the expected discharge date so the bed board can plan upcoming releases and allocation pressure.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="expected-discharge">Expected discharge date and time</Label>
+              <Input
+                id="expected-discharge"
+                type="datetime-local"
+                value={expectedDischargeValue}
+                onChange={(event) => setExpectedDischargeValue(event.target.value)}
+              />
+            </div>
+            <div className="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
+              Use this for realistic planning. If the patient’s readiness changes after rounds, update the time so the bed board stays accurate.
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExpectedDischargeDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveExpectedDischarge} disabled={setExpectedDischarge.isPending}>
+              {setExpectedDischarge.isPending ? 'Saving...' : 'Save expected discharge'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bedOverrideDialogOpen} onOpenChange={setBedOverrideDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Override bed assignment</DialogTitle>
+            <DialogDescription>
+              Reassign this admission to another available bed in the current ward. Use the transfer workflow for a ward change.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="override-bed">Available bed</Label>
+              <Select value={overrideBedId} onValueChange={setOverrideBedId}>
+                <SelectTrigger id="override-bed">
+                  <SelectValue placeholder="Select a replacement bed" />
+                </SelectTrigger>
+                <SelectContent>
+                  {((availableBeds as any)?.results ?? availableBeds ?? []).map((bed: any) => (
+                    <SelectItem key={bed.id} value={String(bed.id)}>
+                      {bed.bed_number}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="override-reason">Override reason</Label>
+              <Select value={overrideReason} onValueChange={(value) => setOverrideReason(value as OverrideReason)}>
+                <SelectTrigger id="override-reason">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {OVERRIDE_REASON_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="override-justification">Clinical or operational justification</Label>
+              <Textarea
+                id="override-justification"
+                rows={4}
+                value={overrideJustification}
+                onChange={(event) => setOverrideJustification(event.target.value)}
+                placeholder="Document why the current bed is no longer appropriate and why this replacement bed is safer or more practical."
+              />
+            </div>
+
+            <label className="flex items-center gap-3 rounded-lg border bg-muted/20 p-3 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={overrideRequiresApproval}
+                onChange={(event) => setOverrideRequiresApproval(event.target.checked)}
+              />
+              Mark this override for approval follow-up.
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBedOverrideDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitBedOverride} disabled={overrideBed.isPending}>
+              {overrideBed.isPending ? 'Saving...' : 'Save override'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
