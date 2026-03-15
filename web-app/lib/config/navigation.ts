@@ -201,6 +201,7 @@ const _allNavItems: NavItemType[] = [
     moduleKey: 'inpatient',
     facilityModule: 'inpatient',
     children: [
+      { label: 'Bed Board', href: '/inpatient/bed-board', icon: BedDouble, actionKey: 'inpatient.view_ward' },
       { label: 'Wards', href: '/wards', icon: Building2, actionKey: 'inpatient.view_ward' },
       { label: 'Admissions', href: '/admissions', icon: ClipboardList, actionKey: 'inpatient.view_admissions' },
       { label: 'Handover', href: '/admissions/handover', icon: ArrowLeftRight, actionKey: 'inpatient.view_ward' },
