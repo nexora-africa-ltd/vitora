@@ -30,6 +30,8 @@ export interface InpatientWard {
   isolation_capable?: boolean;
   oxygen_equipped?: boolean;
   ventilator_capable?: boolean;
+  // Phase C: Smart allocation
+  emergency_buffer_percent?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -121,6 +123,8 @@ export interface Admission {
   constraint_override?: boolean;
   constraint_override_reason?: string | null;
   constraint_violations?: string[];
+  // Phase C: Smart allocation
+  expected_discharge_date?: string | null;
   // Additional fields for detail view
   clinical_notes?: string;
   diet?: string;
@@ -142,6 +146,8 @@ export interface AdmissionCreateInput {
   bed?: number;
   /** When true, system will auto-assign the first available bed in the ward */
   auto_assign_bed?: boolean;
+  /** When true with auto_assign_bed, use rule-based scoring (Phase B) */
+  use_rules?: boolean;
   payer_type: AdmissionPayerType;
   admission_date: string;
   admitting_diagnosis?: string;
@@ -1143,3 +1149,140 @@ export type FluidBalanceSheetListResponse = PaginatedResponse<FluidBalanceSheet>
 export type FluidBalanceEntryListResponse = PaginatedResponse<FluidBalanceEntry>;
 export type BloodTransfusionListResponse = PaginatedResponse<BloodTransfusion>;
 export type BPMonitoringReadingListResponse = PaginatedResponse<BPMonitoringReading>;
+
+// ============================================================================
+// Rule-Based Bed Assignment Types (Phase B)
+// ============================================================================
+
+export interface BedCandidateEvaluation {
+  bed_id: number;
+  bed_number: string;
+  ward_id: number;
+  ward_name: string;
+  ward_code: string;
+  passed: boolean;
+  matched_constraints: string[];
+  failed_constraints: string[];
+  compatibility_violations: Record<string, unknown>[];
+  rejection_reason: string;
+  score: number;
+  scoring_breakdown: Record<string, unknown>;
+}
+
+export interface RuleBasedBedAssignmentResponse {
+  success: boolean;
+  assigned_bed_id: number | null;
+  assigned_bed_number: string | null;
+  assigned_ward_name: string | null;
+  rule_applied: string | null;
+  decision_id: number | null;
+  decision_outcome: string;
+  decision_reason: string;
+  evaluation_time_ms: number;
+  candidates_evaluated: BedCandidateEvaluation[];
+  scoring_details: Record<string, unknown>;
+  error: string | null;
+}
+
+export type OverrideReason =
+  | 'PATIENT_REQUEST'
+  | 'STAFF_UNAVAILABLE'
+  | 'EMERGENCY'
+  | 'SPECIALIZATION_NEEDED'
+  | 'LOAD_BALANCING'
+  | 'ADMINISTRATIVE'
+  | 'OTHER';
+
+export interface BedOverrideRequest {
+  new_bed_id: number;
+  override_reason: OverrideReason;
+  justification: string;
+  requires_approval?: boolean;
+}
+
+export interface BedOverrideResponse {
+  admission: Admission;
+  override_id: number;
+  old_bed: string;
+  new_bed: string;
+}
+
+// ============================================================================
+// Smart Allocation Types (Phase C)
+// ============================================================================
+
+export type SmartAdmissionType = 'ELECTIVE' | 'EMERGENCY' | 'TRANSFER';
+
+export interface PredictedDischarge {
+  admission_id: number;
+  admission_number: string;
+  patient_name: string;
+  ward_id: number;
+  ward_name: string;
+  bed_id: number;
+  bed_number: string;
+  admission_date: string;
+  expected_discharge_date: string | null;
+  estimated_discharge_date: string | null;
+  source: string;
+  hours_until_available: number | null;
+}
+
+export interface PredictedDischargesResponse {
+  ward_id: number;
+  ward_name: string;
+  hours_ahead: number;
+  count: number;
+  predictions: PredictedDischarge[];
+}
+
+export interface BedUtilization {
+  ward_id: number;
+  ward_name: string;
+  ward_code: string;
+  capacity: number;
+  occupied: number;
+  available: number;
+  reserved: number;
+  maintenance: number;
+  occupancy_rate: number;
+  emergency_buffer_percent: number;
+  emergency_buffer_beds: number;
+  effective_available: number;
+  avg_length_of_stay_days: number | null;
+  predicted_discharges_next_4h: number;
+  predicted_discharges_next_24h: number;
+  workload_score: number;
+}
+
+export interface SmartRecommendBedRequest {
+  patient_id: number;
+  requires_isolation?: boolean;
+  requires_oxygen?: boolean;
+  requires_ventilator?: boolean;
+  admission_type?: SmartAdmissionType;
+}
+
+export interface SmartRecommendBedResponse {
+  success: boolean;
+  assigned_bed_id: number | null;
+  assigned_bed_number: string | null;
+  smart_scores: Record<string, unknown>;
+  emergency_buffer_enforced: boolean;
+  cohort_match_score: number;
+  infection_isolation_triggered: boolean;
+  workload_score: number;
+  predicted_discharges: PredictedDischarge[];
+  evaluation_time_ms: number;
+  error: string | null;
+}
+
+export interface SetExpectedDischargeRequest {
+  expected_discharge_date: string;
+}
+
+export interface SetExpectedDischargeResponse {
+  admission_id: number;
+  admission_number: string;
+  expected_discharge_date: string;
+}

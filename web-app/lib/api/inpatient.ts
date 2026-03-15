@@ -44,6 +44,11 @@ import {
   TransfusionObservationEntrySchema,
   BPMonitoringReadingSchema,
   PaginatedBPMonitoringReadingSchema,
+  RuleBasedBedAssignmentResponseSchema,
+  PredictedDischargesResponseSchema,
+  BedUtilizationSchema,
+  SmartRecommendBedResponseSchema,
+  SetExpectedDischargeResponseSchema,
 } from '@/lib/schemas/inpatient.schema';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { ImagingOrder } from '@/lib/types/imaging';
@@ -119,6 +124,15 @@ import type {
   BPMonitoringReading,
   BPMonitoringReadingCreateData,
   BPMonitoringReadingListResponse,
+  RuleBasedBedAssignmentResponse,
+  BedOverrideRequest,
+  BedOverrideResponse,
+  PredictedDischargesResponse,
+  BedUtilization,
+  SmartRecommendBedRequest,
+  SmartRecommendBedResponse,
+  SetExpectedDischargeRequest,
+  SetExpectedDischargeResponse,
 } from '@/lib/types/inpatient';
 
 type Paginated<T> = { count: number; next: string | null; previous: string | null; results: T[] };
@@ -790,6 +804,112 @@ export const inpatientApi = {
     const response = await apiClient.post('/api/inpatient/bp-readings/', data);
     return parseResponse(BPMonitoringReadingSchema, response.data, {
       context: 'inpatientApi.createBPReading',
+    });
+  },
+
+  // ============================================================================
+  // Rule-Based Bed Assignment (Phase B)
+  // ============================================================================
+
+  /**
+   * Recommend a bed using rule-based scoring without assigning.
+   * Returns scored candidates and the top recommendation.
+   */
+  async recommendBed(
+    wardId: number,
+    data: { patient_id: number; requires_isolation?: boolean; requires_oxygen?: boolean; requires_ventilator?: boolean }
+  ): Promise<RuleBasedBedAssignmentResponse> {
+    const response = await apiClient.post(
+      `/api/inpatient/wards/${wardId}/recommend_bed/`,
+      data
+    );
+    return parseResponse(RuleBasedBedAssignmentResponseSchema, response.data, {
+      context: 'inpatientApi.recommendBed',
+    });
+  },
+
+  /**
+   * Override a bed assignment with justification.
+   * Logs the override to AssignmentOverride for audit.
+   */
+  async overrideBed(
+    admissionId: number,
+    data: BedOverrideRequest
+  ): Promise<BedOverrideResponse> {
+    const response = await apiClient.post(
+      `/api/inpatient/admissions/${admissionId}/override_bed/`,
+      data
+    );
+    return response.data;
+  },
+
+  // ============================================================================
+  // Smart Allocation (Phase C)
+  // ============================================================================
+
+  /**
+   * Get predicted discharges for a ward within a time window.
+   * Combines explicit expected_discharge_date and avg LOS estimates.
+   */
+  async getPredictedDischarges(
+    wardId: number,
+    hoursAhead?: number
+  ): Promise<PredictedDischargesResponse> {
+    const params: Record<string, number> = {};
+    if (hoursAhead) params.hours_ahead = hoursAhead;
+    const response = await apiClient.get(
+      `/api/inpatient/wards/${wardId}/predicted_discharges/`,
+      { params }
+    );
+    return parseResponse(PredictedDischargesResponseSchema, response.data, {
+      context: 'inpatientApi.getPredictedDischarges',
+    });
+  },
+
+  /**
+   * Get comprehensive bed utilization analytics for a ward.
+   * Includes occupancy, buffer, workload, and predicted discharges.
+   */
+  async getBedUtilization(wardId: number): Promise<BedUtilization> {
+    const response = await apiClient.get(
+      `/api/inpatient/wards/${wardId}/bed_utilization/`
+    );
+    return parseResponse(BedUtilizationSchema, response.data, {
+      context: 'inpatientApi.getBedUtilization',
+    });
+  },
+
+  /**
+   * Smart bed recommendation using Phase C allocation algorithm.
+   * Considers infection control, emergency buffer, cohort grouping, and workload.
+   */
+  async smartRecommendBed(
+    wardId: number,
+    data: SmartRecommendBedRequest
+  ): Promise<SmartRecommendBedResponse> {
+    const response = await apiClient.post(
+      `/api/inpatient/wards/${wardId}/smart_recommend_bed/`,
+      data
+    );
+    return parseResponse(SmartRecommendBedResponseSchema, response.data, {
+      context: 'inpatientApi.smartRecommendBed',
+    });
+  },
+
+  /**
+   * Set expected discharge date for an active admission.
+   * Used for bed planning and predictive discharge.
+   */
+  async setExpectedDischarge(
+    admissionId: number,
+    data: SetExpectedDischargeRequest
+  ): Promise<SetExpectedDischargeResponse> {
+    const response = await apiClient.post(
+      `/api/inpatient/admissions/${admissionId}/set_expected_discharge/`,
+      data
+    );
+    return parseResponse(SetExpectedDischargeResponseSchema, response.data, {
+      context: 'inpatientApi.setExpectedDischarge',
     });
   },
 };
