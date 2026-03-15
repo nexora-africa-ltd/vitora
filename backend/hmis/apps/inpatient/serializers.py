@@ -1551,3 +1551,92 @@ class MedicationAdministrationActionSerializer(serializers.Serializer):
     )
     dose_given = serializers.CharField(required=False, allow_blank=True, default="")
     notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+# =============================================================================
+# Rule-Based Bed Assignment Serializers (Phase B)
+# =============================================================================
+
+
+class RuleBasedBedAssignmentRequestSerializer(serializers.Serializer):
+    """Request serializer for rule-based bed assignment recommendation."""
+
+    patient_id = serializers.IntegerField(help_text="Patient ID to assign bed for")
+    requires_isolation = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Whether patient requires isolation",
+    )
+    requires_oxygen = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Whether patient requires oxygen supply",
+    )
+    requires_ventilator = serializers.BooleanField(
+        required=False,
+        default=False,
+        help_text="Whether patient requires ventilator",
+    )
+    admission_type = serializers.ChoiceField(
+        choices=["ELECTIVE", "EMERGENCY", "TRANSFER"],
+        required=False,
+        default="ELECTIVE",
+        help_text="Type of admission",
+    )
+
+
+class BedCandidateSerializer(serializers.Serializer):
+    """Serializer for a bed candidate evaluation result."""
+
+    bed_id = serializers.IntegerField()
+    bed_number = serializers.CharField()
+    ward_id = serializers.IntegerField()
+    ward_name = serializers.CharField()
+    ward_code = serializers.CharField()
+    passed = serializers.SerializerMethodField()
+    matched_constraints = serializers.ListField(child=serializers.CharField())
+    failed_constraints = serializers.ListField(child=serializers.CharField())
+    compatibility_violations = serializers.ListField(child=serializers.DictField())
+    rejection_reason = serializers.CharField(allow_blank=True)
+    score = serializers.FloatField()
+    scoring_breakdown = serializers.DictField()
+
+    def get_passed(self, obj) -> bool:
+        """Determine if bed passed all constraints."""
+        if hasattr(obj, "passed_all_constraints"):
+            return obj.passed_all_constraints
+        return (
+            len(obj.get("failed_constraints", [])) == 0
+            and len(obj.get("compatibility_violations", [])) == 0
+        )
+
+
+class RuleBasedBedAssignmentResponseSerializer(serializers.Serializer):
+    """Response serializer for rule-based bed assignment."""
+
+    success = serializers.BooleanField(help_text="Whether assignment was successful")
+    assigned_bed_id = serializers.IntegerField(
+        allow_null=True, help_text="Assigned bed ID (null if unsuccessful)"
+    )
+    assigned_bed_number = serializers.CharField(
+        allow_null=True, help_text="Assigned bed number"
+    )
+    assigned_ward_name = serializers.CharField(
+        allow_null=True, help_text="Assigned ward name"
+    )
+    rule_applied = serializers.CharField(
+        allow_null=True, help_text="Rule code that was applied (null if none)"
+    )
+    decision_id = serializers.IntegerField(
+        allow_null=True, help_text="AssignmentDecision ID for audit"
+    )
+    decision_outcome = serializers.CharField(help_text="Decision outcome")
+    decision_reason = serializers.CharField(help_text="Decision explanation")
+    evaluation_time_ms = serializers.IntegerField(help_text="Evaluation time in ms")
+    candidates_evaluated = BedCandidateSerializer(
+        many=True, help_text="All evaluated bed candidates"
+    )
+    scoring_details = serializers.DictField(help_text="Scoring summary")
+    error = serializers.CharField(
+        allow_null=True, allow_blank=True, help_text="Error message if failed"
+    )

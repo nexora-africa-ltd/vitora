@@ -386,6 +386,126 @@ class WardViewSet(viewsets.ModelViewSet):
             }
         )
 
+    @extend_schema(
+        summary="Recommend bed using rules-based assignment",
+        description=(
+            "Phase B: Evaluate available beds for a patient using constraint checking "
+            "and scoring rules. Returns the recommended bed without marking it as occupied. "
+            "Uses WardCompatibilityService for constraint validation and AssignmentRule DSL "
+            "for scoring. All decisions are logged to AssignmentDecision for audit."
+        ),
+        request={
+            "type": "object",
+            "properties": {
+                "patient_id": {"type": "integer", "description": "Patient ID"},
+                "requires_isolation": {"type": "boolean", "default": False},
+                "requires_oxygen": {"type": "boolean", "default": False},
+                "requires_ventilator": {"type": "boolean", "default": False},
+                "admission_type": {
+                    "type": "string",
+                    "enum": ["ELECTIVE", "EMERGENCY", "TRANSFER"],
+                    "default": "ELECTIVE",
+                },
+            },
+            "required": ["patient_id"],
+        },
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "success": {"type": "boolean"},
+                    "assigned_bed_id": {"type": "integer", "nullable": True},
+                    "assigned_bed_number": {"type": "string", "nullable": True},
+                    "assigned_ward_name": {"type": "string", "nullable": True},
+                    "rule_applied": {"type": "string", "nullable": True},
+                    "decision_id": {"type": "integer"},
+                    "decision_outcome": {"type": "string"},
+                    "decision_reason": {"type": "string"},
+                    "evaluation_time_ms": {"type": "integer"},
+                    "candidates_evaluated": {"type": "array"},
+                    "scoring_details": {"type": "object"},
+                },
+            }
+        },
+        tags=["Inpatient - Wards"],
+    )
+    @action(detail=True, methods=["post"], url_path="recommend_bed")
+    def recommend_bed(self, request, pk=None):
+        """
+        Recommend a bed for a patient using rules-based assignment.
+
+        Evaluates available beds in this ward against:
+        - Ward compatibility constraints (gender, age, isolation)
+        - Equipment requirements (oxygen, ventilator)
+        - Active BED_ASSIGNMENT rules (scoring, custom constraints)
+
+        Returns the recommended bed WITHOUT marking it as occupied.
+        Call the admissions endpoint with the bed ID to complete the admission.
+
+        Request body:
+            patient_id: Patient ID to evaluate
+            requires_isolation: Whether patient needs isolation (default: false)
+            requires_oxygen: Whether patient needs oxygen supply (default: false)
+            requires_ventilator: Whether patient needs ventilator (default: false)
+            admission_type: Type of admission (ELECTIVE, EMERGENCY, TRANSFER)
+        """
+        from hmis.apps.core.permissions import get_client_ip
+        from hmis.apps.inpatient.serializers import (
+            RuleBasedBedAssignmentRequestSerializer,
+        )
+        from hmis.apps.inpatient.services.bed_rules import bed_assignment_rule_evaluator
+
+        ward = self.get_object()
+
+        # Validate request
+        serializer = RuleBasedBedAssignmentRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        patient_id = serializer.validated_data["patient_id"]
+        try:
+            patient = Patient.objects.get(id=patient_id)
+        except Patient.DoesNotExist:
+            return Response(
+                {"error": f"Patient with ID {patient_id} not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Evaluate beds using rule-based assignment
+        result = bed_assignment_rule_evaluator.evaluate_beds_for_patient(
+            patient=patient,
+            ward=ward,
+            requires_isolation=serializer.validated_data.get("requires_isolation", False),
+            requires_oxygen=serializer.validated_data.get("requires_oxygen", False),
+            requires_ventilator=serializer.validated_data.get("requires_ventilator", False),
+            admission_type=serializer.validated_data.get("admission_type", "ELECTIVE"),
+            user=request.user,
+            ip_address=get_client_ip(request),
+        )
+
+        # Build response
+        response_data = {
+            "success": result.success,
+            "assigned_bed_id": result.assigned_bed.id if result.assigned_bed else None,
+            "assigned_bed_number": (
+                result.assigned_bed.bed_number if result.assigned_bed else None
+            ),
+            "assigned_ward_name": (
+                result.assigned_bed.ward.name if result.assigned_bed else None
+            ),
+            "rule_applied": result.rule_applied.rule_code if result.rule_applied else None,
+            "decision_id": result.decision.id if result.decision else None,
+            "decision_outcome": result.decision.decision_outcome if result.decision else "ERROR",
+            "decision_reason": result.decision.decision_reason if result.decision else "",
+            "evaluation_time_ms": result.evaluation_time_ms,
+            "candidates_evaluated": [e.to_dict() for e in result.candidates_evaluated],
+            "scoring_details": (
+                result.decision.scoring_details if result.decision else {}
+            ),
+            "error": result.error,
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
 
 class SupervisorAlertViewSet(viewsets.ViewSet):
     """
@@ -965,14 +1085,49 @@ class AdmissionViewSet(viewsets.ModelViewSet):
                 raise ValidationError(
                     {"bed": "Bed is required, or set auto_assign_bed=true for automatic assignment"}
                 )
-            try:
-                bed = bed_assignment_service.auto_assign_bed(
+
+            # Phase B: try rule-based assignment first
+            use_rules = bool(self.request.data.get("use_rules", True))
+            if use_rules:
+                requires_isolation = bool(self.request.data.get("requires_isolation", False))
+                requires_oxygen = bool(self.request.data.get("requires_oxygen", False))
+                requires_ventilator = bool(self.request.data.get("requires_ventilator", False))
+                admission_type = str(self.request.data.get("admission_type", "ELECTIVE"))
+
+                rule_result = bed_assignment_service.rule_based_assign_bed(
+                    patient=patient,
                     ward=ward,
                     user=self.request.user,
+                    requires_isolation=requires_isolation,
+                    requires_oxygen=requires_oxygen,
+                    requires_ventilator=requires_ventilator,
+                    admission_type=admission_type,
                     ip_address=get_client_ip(self.request),
+                    mark_as_occupied=True,
                 )
-            except NoBedAvailableError as e:
-                raise ValidationError({"bed": str(e)}) from e
+
+                if rule_result.success and rule_result.assigned_bed:
+                    bed = rule_result.assigned_bed
+                else:
+                    # Fall back to MVP first-available if rules didn't match
+                    try:
+                        bed = bed_assignment_service.auto_assign_bed(
+                            ward=ward,
+                            user=self.request.user,
+                            ip_address=get_client_ip(self.request),
+                        )
+                    except NoBedAvailableError as e:
+                        raise ValidationError({"bed": str(e)}) from e
+            else:
+                # Explicit MVP-only mode
+                try:
+                    bed = bed_assignment_service.auto_assign_bed(
+                        ward=ward,
+                        user=self.request.user,
+                        ip_address=get_client_ip(self.request),
+                    )
+                except NoBedAvailableError as e:
+                    raise ValidationError({"bed": str(e)}) from e
         elif bed.ward_id != ward.id:
             raise ValidationError({"bed": "Selected bed does not belong to the selected ward"})
 
@@ -1244,6 +1399,128 @@ class AdmissionViewSet(viewsets.ModelViewSet):
 
         result_serializer = InpatientConsumableUsageSerializer(usage)
         return Response(result_serializer.data)
+
+    @extend_schema(
+        tags=["Inpatient - Admissions"],
+        summary="Override bed assignment for an admission",
+        description=(
+            "Manually override the bed assignment for an active admission. "
+            "Requires justification and optionally approval. "
+            "The old bed is released and the new bed is marked occupied."
+        ),
+        request={
+            "application/json": {
+                "type": "object",
+                "required": ["new_bed_id", "override_reason", "justification"],
+                "properties": {
+                    "new_bed_id": {"type": "integer", "description": "ID of the new bed"},
+                    "override_reason": {
+                        "type": "string",
+                        "enum": [
+                            "PATIENT_REQUEST",
+                            "STAFF_UNAVAILABLE",
+                            "EMERGENCY",
+                            "SPECIALIZATION_NEEDED",
+                            "LOAD_BALANCING",
+                            "ADMINISTRATIVE",
+                            "OTHER",
+                        ],
+                    },
+                    "justification": {"type": "string"},
+                    "requires_approval": {"type": "boolean", "default": False},
+                },
+            }
+        },
+    )
+    @action(detail=True, methods=["post"], url_path="override_bed")
+    def override_bed(self, request, pk=None):
+        """
+        Manually override the bed assignment for an active admission.
+
+        Releases the current bed and assigns a new one.
+        Creates an AssignmentOverride record for audit trail.
+        """
+        from hmis.apps.scheduling.models import AssignmentOverride
+
+        admission = self.get_object()
+
+        if admission.admission_status != "ACTIVE":
+            return Response(
+                {"error": "Can only override bed for active admissions"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        new_bed_id = request.data.get("new_bed_id")
+        override_reason = request.data.get("override_reason")
+        justification = request.data.get("justification")
+        requires_approval = bool(request.data.get("requires_approval", False))
+
+        if not new_bed_id or not override_reason or not justification:
+            return Response(
+                {"error": "new_bed_id, override_reason, and justification are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            new_bed = Bed.objects.get(id=new_bed_id)
+        except Bed.DoesNotExist:
+            return Response(
+                {"error": f"Bed with ID {new_bed_id} not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if new_bed.status != "AVAILABLE":
+            return Response(
+                {"error": f"Bed {new_bed.bed_number} is not available (status: {new_bed.status})"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        old_bed = admission.bed
+
+        # Create override record
+        override = AssignmentOverride.objects.create(
+            target_type="Admission",
+            target_id=admission.id,
+            original_resource=None,  # Beds aren't scheduling Resources
+            new_resource=None,
+            override_reason=override_reason,
+            justification=justification,
+            overridden_by=request.user,
+            requires_approval=requires_approval,
+        )
+
+        # Release old bed and occupy new one
+        old_bed.mark_available(request.user)
+        new_bed.mark_occupied(request.user)
+        admission.bed = new_bed
+        admission.save(update_fields=["bed", "updated_at"])
+
+        # Audit log
+        AuditLog.log(
+            action="admission_bed_override",
+            user=request.user,
+            resource_type="Admission",
+            resource_id=admission.id,
+            details={
+                "admission_number": admission.admission_number,
+                "old_bed": old_bed.bed_number,
+                "old_ward": old_bed.ward.code,
+                "new_bed": new_bed.bed_number,
+                "new_ward": new_bed.ward.code,
+                "override_reason": override_reason,
+                "justification": justification,
+                "override_id": override.id,
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        serializer = self.get_serializer(admission)
+        return Response({
+            "admission": serializer.data,
+            "override_id": override.id,
+            "old_bed": old_bed.bed_number,
+            "new_bed": new_bed.bed_number,
+        })
 
 
 class DischargeViewSet(viewsets.ModelViewSet):

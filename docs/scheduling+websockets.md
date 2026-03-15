@@ -20,18 +20,24 @@ Key principles:
 | **Phase 2: Assignment Engine** | ✅ Complete | 47 | `hmis.apps.scheduling.services.assignment` |
 | **Phase 3: Domain Events** | 📋 Planned | - | - |
 | **Phase 4: Read Models** | 📋 Planned | - | - |
-| **Phase 5: WebSocket Infrastructure** | ✅ Complete | 15 | `hmis.asgi`, `hmis.apps.clinics` |
-| **Phase 6: Multi-Facility** | 📋 Planned | - | - |
+| **Phase 5: WebSocket Infrastructure** | ✅ Complete | 16 ASGI routing tests + module suites | `hmis.asgi`, `hmis.apps.{clinics,laboratory,inpatient,triage,mch,surveillance}` |
+| **Phase 6: Module-Specific Real-Time Features** | ✅ Active in multiple modules | See module table below | Multiple apps |
+| **Phase 7: Scaling & Reliability** | 📋 Planned | - | - |
 
 ### Module Real-Time Status
 
 | Module | WebSocket | Endpoint | Events |
 |--------|-----------|----------|--------|
-| **Clinics/OPD** | ✅ Complete | `ws/clinics/{id}/queue/` | 6 event types |
-| **Laboratory** | 📋 Planned | `ws/lab/{id}/queue/` | - |
+| **Clinics/OPD** | ✅ Complete | `ws/clinics/{clinic_id}/queue/` | 6 queue event types |
+| **Laboratory** | ✅ Implemented | `ws/lab/encounters/{encounter_id}/`, `ws/lab/orders/{order_id}/`, `ws/lab/clinician/` | 5 lab event types |
+| **Inpatient** | ✅ Implemented | `ws/inpatient/wards/{ward_id}/`, `ws/inpatient/supervisor/alerts/` | 4 ward/supervisor event types |
+| **Triage/Emergency** | ✅ Implemented | `ws/emergency/queue/` | State updates + patient/zone events |
+| **MCH** | ✅ Implemented | `ws/mch/partographs/{partograph_id}/` | Partograph updates |
+| **Surveillance** | ✅ Implemented | `ws/surveillance/alerts/` | Alert + stats events |
 | **Theatre** | 📋 Planned | `ws/theatre/{id}/board/` | - |
-| **Inpatient** | 📋 Planned | `ws/wards/{id}/beds/` | - |
 | **Pharmacy** | 📋 Planned | `ws/pharmacy/{id}/queue/` | - |
+
+Current routing is module-specific, not facility-namespaced yet. The ASGI router currently combines 9 WebSocket URL patterns across clinics, laboratory, MCH, inpatient, triage, and surveillance.
 
 ---
 
@@ -283,8 +289,8 @@ Read models are **derived**, never authoritative.
 ## Phase 5: WebSockets Introduction ✅ INFRASTRUCTURE COMPLETE
 
 > **Infrastructure Implemented**: February 2026  
-> **Test Coverage**: 15 tests passing  
-> **Location**: `backend/hmis/apps/clinics/` (first module)
+> **Verified Coverage**: 16 ASGI routing tests, plus module-specific clinic and inpatient WebSocket suites  
+> **Location**: `backend/hmis/asgi.py`, module routing/consumer files under `backend/hmis/apps/`
 
 ### Objectives
 Enable live updates without impacting core logic.
@@ -296,7 +302,7 @@ Enable live updates without impacting core logic.
 | Django Channels | ✅ Installed | `daphne` + `channels` in INSTALLED_APPS |
 | ASGI Application | ✅ Configured | `hmis/asgi.py` with ProtocolTypeRouter |
 | Channel Layers | ✅ Ready | InMemoryChannelLayer (dev), Redis-ready (prod) |
-| WebSocket Routing | ✅ Implemented | Per-module routing pattern established |
+| WebSocket Routing | ✅ Implemented | 9 active routes combined in `hmis.asgi.py` |
 | Auth Middleware | ✅ Configured | AuthMiddlewareStack wrapping URLRouter |
 
 ### WebSocket Responsibilities
@@ -304,11 +310,12 @@ Enable live updates without impacting core logic.
 - Update queues and boards
 - Notify users of state transitions
 
-### WebSocket Events
-- `schedule.changed`
-- `queue.updated`
-- `assignment.changed`
-- `resource.status.changed`
+### WebSocket Event Families In Use
+- `queue.*` for clinic queue updates
+- `lab.*` for laboratory result and order notifications
+- `ward.*` and `supervisor.*` for inpatient compatibility/escalation flows
+- `emergency.*` for triage dashboard updates
+- `surveillance.*` for case, outbreak, and stats alerts
 
 ### Strict Constraints ✅ ENFORCED
 - WebSockets DO NOT:
@@ -323,7 +330,7 @@ Enable live updates without impacting core logic.
 
 ### Clinics & OPD ✅ COMPLETE
 
-> **Implemented**: February 2026 | 15 tests | `hmis.apps.clinics`
+> **Implemented**: February 2026 | 16 tests | `hmis.apps.clinics`
 
 **WebSocket Endpoint**: `ws://host/ws/clinics/{clinic_id}/queue/`
 
@@ -359,16 +366,94 @@ broadcast_queue_stats(clinic_id, stats)
 ```
 
 ### Diagnostics
-- Sample queue updates
-- Result-ready notifications
+### Laboratory ✅ IMPLEMENTED
+
+> **Location**: `hmis.apps.laboratory`
+
+**WebSocket Endpoints**:
+- `ws://host/ws/lab/encounters/{encounter_id}/`
+- `ws://host/ws/lab/orders/{order_id}/`
+- `ws://host/ws/lab/clinician/`
+
+**Consumers**:
+- `LabEncounterConsumer`
+- `LabOrderConsumer`
+- `LabClinicianConsumer`
+
+**Verified Event Types in Code**:
+- `lab.result_entered`
+- `lab.result_verified`
+- `lab.result_rejected`
+- `lab.critical_alert`
+- `lab.order_completed`
+
+**Broadcast Source**:
+- `hmis.apps.laboratory.signals` triggers broadcasts on result verification and order completion.
 
 ### Theatre
 - Live procedure board
 - Delays and overruns broadcast
 
-### Inpatient & Wards
-- Bed occupancy changes
-- Transfer notifications
+### Inpatient & Wards ✅ IMPLEMENTED
+
+> **Location**: `hmis.apps.inpatient`
+
+**WebSocket Endpoints**:
+- `ws://host/ws/inpatient/wards/{ward_id}/`
+- `ws://host/ws/inpatient/supervisor/alerts/`
+
+**Consumers**:
+- `WardCompatibilityConsumer`
+- `SupervisorAlertConsumer`
+
+**Verified Event Types in Code**:
+- `ward.constraints_updated`
+- `ward.capacity_changed`
+- `ward.compatibility_violation`
+- `supervisor.critical_alert`
+
+**Fallbacks Also Implemented**:
+- `GET /api/inpatient/wards/{id}/updates/` polling fallback
+- `POST /api/inpatient/wards/{id}/generate_beds/` for backfilling bed records
+
+### Triage / Emergency ✅ IMPLEMENTED
+
+> **Location**: `hmis.apps.triage`
+
+**WebSocket Endpoint**: `ws://host/ws/emergency/queue/`
+
+**Consumer**: `EmergencyQueueConsumer`
+
+**Verified Behavior in Code**:
+- Periodic `state_update` payloads with critical patients and zone summaries
+- Group handlers for `emergency.critical_update`, `emergency.zones_update`, and patient events
+
+### MCH ✅ IMPLEMENTED
+
+> **Location**: `hmis.apps.mch`
+
+**WebSocket Endpoint**: `ws://host/ws/mch/partographs/{partograph_id}/`
+
+**Consumer**: `LabourPartographConsumer`
+
+**Verified Event Type in Code**:
+- `partograph_update`
+
+### Surveillance ✅ IMPLEMENTED
+
+> **Location**: `hmis.apps.surveillance`
+
+**WebSocket Endpoint**: `ws://host/ws/surveillance/alerts/`
+
+**Consumer**: `SurveillanceAlertConsumer`
+
+**Verified Event Types in Code**:
+- `surveillance.new_case`
+- `surveillance.immediate_alert`
+- `surveillance.outbreak_alert`
+- `surveillance.overdue_alert`
+- `surveillance.case_notified`
+- periodic `surveillance.stats_update`
 
 ---
 
@@ -382,17 +467,17 @@ broadcast_queue_stats(clinic_id, stats)
 |-----------|--------|----------|
 | Ward capacity tracking | ✅ | `Ward.available_beds`, `Ward.capacity` |
 | Bed status management | ✅ | `Bed.status` (AVAILABLE/OCCUPIED/MAINTENANCE/RESERVED) |
-| Ward compatibility service | ✅ | `inpatient/services/ward_compatibility.py` |
+| Ward compatibility service | ✅ | `inpatient/services/compatibility.py` |
 | Assignment rules DSL | ✅ | `scheduling/services/assignment.py` (supports `BED_ASSIGNMENT` type) |
 | Bed-ward relationship | ✅ | `Bed.ward` FK with unique constraint |
 | Row-level locking support | ✅ | Django `select_for_update()` |
 
 ---
 
-### Phase A: MVP — First Available Bed (Est: 1-1.5 days)
+### Phase A: MVP — First Available Bed ✅ COMPLETE
 
-> **Status**: 🟦 In Progress  
-> **Target**: February 2026
+> **Status**: ✅ Complete  
+> **Implemented**: February 2026
 
 #### Algorithm
 ```
@@ -408,8 +493,12 @@ broadcast_queue_stats(clinic_id, stats)
 - [x] `auto_assign_bed()` function with atomic locking
 - [x] `get_available_beds()` query helper
 - [x] API flag: `auto_assign_bed: bool` on admission create
-- [ ] Tests: unit + concurrent access (race conditions)
-- [ ] Audit logging for auto-assignments
+- [x] Tests: unit + concurrent access (race conditions)
+- [x] Audit logging for auto-assignments
+
+**Verified Coverage**:
+- 13 service tests in `tests/inpatient/test_bed_assignment_service.py`
+- Admission API coverage for `auto_assign_bed=true` in `tests/inpatient/test_inpatient_api_admission.py`
 
 #### API Changes
 ```python
@@ -439,10 +528,12 @@ def auto_assign_bed(ward: Ward, user: User) -> Bed:
 
 ---
 
-### Phase B: Rules-Based Assignment (Est: 2-3 days)
+### Phase B: Rules-Based Assignment ✅ COMPLETE
 
-> **Status**: 📋 Planned  
-> **Target**: After MVP validation
+> **Status**: ✅ Complete  
+> **Implemented**: March 2026  
+> **Test Coverage**: 29 tests in `tests/inpatient/test_bed_rules.py`  
+> **Location**: `backend/hmis/apps/inpatient/services/bed_rules.py`
 
 #### Algorithm
 ```
@@ -453,12 +544,25 @@ def auto_assign_bed(ward: Ward, user: User) -> Bed:
    - Isolation capability (if required)
    - Equipment needs (oxygen, ventilator)
 3. Score candidates based on:
-   - Proximity to nursing station (for high-acuity)
-   - Current ward load balancing
-   - Patient preference (window/aisle)
+   - Ward occupancy rate (load balancing)
+   - Bed type match
+   - Ward compatibility violations
 4. Select highest-scoring bed
-5. Log decision with full explanation
+5. Log decision with full explanation to AssignmentDecision
 ```
+
+#### Implementation Details
+
+| Component | Location |
+|-----------|----------|
+| `BedAssignmentRuleEvaluator` | `inpatient/services/bed_rules.py` |
+| `BedCandidateEvaluation` | Dataclass tracking per-bed constraint/score results |
+| `BedAssignmentRuleResult` | Final outcome with decision ID and metrics |
+| `rule_based_assign_bed()` | `BedAssignmentService` method (facade) |
+| `recommend_bed` endpoint | `POST /api/inpatient/wards/{id}/recommend_bed/` |
+| `override_bed` endpoint | `POST /api/inpatient/admissions/{id}/override_bed/` |
+| Admission integration | `use_rules=true` flag on `POST /api/inpatient/admissions/` |
+| Seed command | `python manage.py seed_bed_assignment_rules` (7 ward-type rules) |
 
 #### Rule DSL Example
 ```yaml
@@ -489,13 +593,26 @@ fallback:
   notify: ward_nurse_in_charge
 ```
 
+#### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/inpatient/wards/{id}/recommend_bed/` | POST | Returns scored bed recommendation without marking occupied |
+| `/api/inpatient/admissions/` | POST | Accepts `auto_assign_bed=true` + `use_rules=true` for rule-based assignment |
+| `/api/inpatient/admissions/{id}/override_bed/` | POST | Manual bed override with justification + `AssignmentOverride` logging |
+
+#### Admin UI
+- `AssignmentRuleAdmin` — manage JSON rule definitions, priorities, versioning
+- `AssignmentDecisionAdmin` — read-only audit log with color-coded outcome badges
+- `AssignmentOverrideAdmin` — manual override tracking with approval workflow
+
 #### Deliverables
-- [ ] Integrate with existing `AssignmentRule` model
-- [ ] Create `BedAssignmentRuleEvaluator` class
-- [ ] Seed default rules for common ward types
-- [ ] Decision logging to `AssignmentDecision` table
-- [ ] Admin UI for rule management
-- [ ] Override workflow for manual bed selection
+- [x] Integrate with existing `AssignmentRule` model
+- [x] Create `BedAssignmentRuleEvaluator` class
+- [x] Seed default rules for common ward types
+- [x] Decision logging to `AssignmentDecision` table
+- [x] Admin UI for rule management
+- [x] Override workflow for manual bed selection
 
 ---
 
@@ -542,16 +659,21 @@ fallback:
 
 ---
 
-### WebSocket Events (Phase 5+)
+### Current Inpatient WebSocket Surface
 
-**Endpoint**: `ws://host/ws/wards/{ward_id}/beds/`
+**Endpoints Implemented Now**:
+- `ws://host/ws/inpatient/wards/{ward_id}/`
+- `ws://host/ws/inpatient/supervisor/alerts/`
 
 | Event | Trigger | Payload |
 |-------|---------|---------|
-| `bed_assigned` | Auto/manual assignment | bed_id, patient_id, admission_id |
-| `bed_vacated` | Discharge/transfer | bed_id, previous_patient_id |
-| `bed_status_changed` | Maintenance/cleaning | bed_id, old_status, new_status |
-| `occupancy_updated` | Any bed change | ward_id, available, occupied, total |
+| `ward.constraints_updated` | Ward rules/limits changed | ward_id, constraint fields |
+| `ward.capacity_changed` | Bed availability changed | ward_id, available_beds |
+| `ward.compatibility_violation` | Admission violates ward constraints | admission_id, violations |
+| `supervisor.critical_alert` | Critical override/escalation | alert details |
+
+**Not Yet Implemented**:
+- A dedicated `ws/wards/{ward_id}/beds/` bed-board channel still remains future work.
 
 ---
 
@@ -725,7 +847,10 @@ Sprint 9 (overlap)           Sprints 10–11 (full)
 [WS Infrastructure] ██████████ ✅
 [Channel Design] █████████ ✅
 [Client Sync] ██████████ ✅
+[Module Routing] ██████████ ✅
 [Clinics Queue] ██████████ ✅
+[Lab Notifications] ██████████ ✅
+[Inpatient Alerts] ██████████ ✅
 ```
 
 **Exit criteria** ✅
@@ -733,11 +858,11 @@ Sprint 9 (overlap)           Sprints 10–11 (full)
 * Real-time UX without correctness dependency ✅
 * REST fallback works ✅
 
-**Completed**: February 2026 | 15 tests | Django Channels + Daphne
+**Completed**: February 2026 | 16 ASGI routing tests plus module suites | Django Channels + Daphne
 
 ---
 
-### 🟦 Phase 6: Multi-Facility Hardening (Sprints 14–16)
+### 🟦 Phase 7: Multi-Facility Hardening (Sprints 14–16)
 
 ```
 [Facility Partitioning] ██████
@@ -826,79 +951,26 @@ audit:
 
 ### Naming Convention
 
+Current implementation does **not** yet follow a single facility-scoped URL convention. Routes are module-specific and combined centrally in `hmis.asgi.py`. Facility namespacing remains a future hardening step.
+
 ```
 /ws/{facility_id}/{module}/{resource}
 ```
 
 ---
 
-### Core Channels
+### Current Active Channels
 
-#### Scheduling
+| Module | Current Routes |
+|--------|----------------|
+| Clinics | `/ws/clinics/{clinic_id}/queue/` |
+| Laboratory | `/ws/lab/encounters/{encounter_id}/`, `/ws/lab/orders/{order_id}/`, `/ws/lab/clinician/` |
+| Inpatient | `/ws/inpatient/wards/{ward_id}/`, `/ws/inpatient/supervisor/alerts/` |
+| Triage | `/ws/emergency/queue/` |
+| MCH | `/ws/mch/partographs/{partograph_id}/` |
+| Surveillance | `/ws/surveillance/alerts/` |
 
-```
-/ws/{facility}/scheduling/appointments
-```
-
-```json
-{
-  "event": "schedule.changed",
-  "appointment_id": "apt_001",
-  "status": "CHECKED_IN",
-  "timestamp": "2026-01-03T09:42:00Z"
-}
-```
-
----
-
-#### Assignment
-
-```
-/ws/{facility}/assignments
-```
-
-```json
-{
-  "event": "assignment.changed",
-  "resource_type": "doctor",
-  "resource_id": "staff_123",
-  "appointment_id": "apt_001",
-  "reason": "auto_assignment"
-}
-```
-
----
-
-#### Queues
-
-```
-/ws/{facility}/queues/opd
-```
-
-```json
-{
-  "event": "queue.updated",
-  "queue": "opd",
-  "position": 3,
-  "appointment_id": "apt_001"
-}
-```
-
----
-
-#### Resource Status
-
-```
-/ws/{facility}/resources/beds
-```
-
-```json
-{
-  "event": "resource.status.changed",
-  "resource_id": "bed_12",
-  "status": "occupied"
-}
-```
+These routes are read-only notification channels. Scheduling and assignment still remain authoritative in REST/services, not WebSocket endpoints.
 
 ---
 
