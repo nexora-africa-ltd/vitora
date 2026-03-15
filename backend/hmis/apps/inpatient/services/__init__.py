@@ -4,6 +4,11 @@ from hmis.apps.inpatient.services.bed_assignment import (
     NoBedAvailableError,
     bed_assignment_service,
 )
+from hmis.apps.inpatient.services.bed_rules import (
+    BedAssignmentRuleEvaluator,
+    BedAssignmentRuleResult,
+    BedCandidateEvaluation,
+)
 from hmis.apps.inpatient.services.compatibility import (
     CompatibilityResult,
     CompatibilityViolation,
@@ -16,6 +21,10 @@ __all__ = [
     "BedAssignmentService",
     "NoBedAvailableError",
     "bed_assignment_service",
+    # Bed rules (Phase B)
+    "BedAssignmentRuleEvaluator",
+    "BedAssignmentRuleResult",
+    "BedCandidateEvaluation",
     # Ward compatibility
     "CompatibilityResult",
     "CompatibilityViolation",
