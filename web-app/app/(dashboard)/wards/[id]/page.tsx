@@ -16,6 +16,7 @@ import {
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { WebSocketStatus } from '@/components/ui/websocket-status';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -41,13 +42,17 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/lib/hooks/use-toast';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useWardCompatibilityUpdates } from '@/lib/hooks';
 import type { BedStatus } from '@/lib/types/inpatient';
 import {
   useInpatientWard,
   useWardBeds,
   useAdmissions,
+  useBedUtilization,
+  usePredictedDischarges,
   useUpdateBed
 } from '@/lib/hooks/use-inpatient';
+import { formatDateTime } from '@/lib/utils/format';
 
 const BED_STATUSES = [
   { value: 'AVAILABLE', label: 'Available' },
@@ -75,6 +80,13 @@ export default function WardDetailPage() {
     admission_status: 'ACTIVE',
     page_size: 100
   });
+  const { data: bedUtilization } = useBedUtilization(wardId);
+  const { data: predictedDischarges } = usePredictedDischarges(wardId, 24);
+  const {
+    events: wardEvents,
+    connectionState,
+    lastUpdated,
+  } = useWardCompatibilityUpdates(Number.isNaN(wardId) ? null : wardId);
 
   const isLoading = wardLoading || bedsLoading || admissionsLoading;
 
@@ -126,6 +138,24 @@ export default function WardDetailPage() {
   };
 
   const stats = useMemo(() => {
+    if (bedUtilization) {
+      return {
+        available: bedUtilization.available,
+        occupied: bedUtilization.occupied,
+        maintenance: bedUtilization.maintenance,
+        reserved: bedUtilization.reserved,
+        total: bedUtilization.capacity,
+        occupancyRate: bedUtilization.occupancy_rate,
+        effectiveAvailable: bedUtilization.effective_available,
+        emergencyBufferBeds: bedUtilization.emergency_buffer_beds,
+        emergencyBufferPercent: bedUtilization.emergency_buffer_percent,
+        predictedNext4h: bedUtilization.predicted_discharges_next_4h,
+        predictedNext24h: bedUtilization.predicted_discharges_next_24h,
+        workloadScore: bedUtilization.workload_score,
+        averageLengthOfStay: bedUtilization.avg_length_of_stay_days,
+      };
+    }
+
     // Use ward's computed properties (based on capacity) for totals
     const total = ward?.total_beds ?? 0;
     const available = ward?.available_beds ?? 0;
@@ -136,8 +166,22 @@ export default function WardDetailPage() {
     const maintenance = bedsList.filter((b: any) => b.status === 'MAINTENANCE').length;
     const reserved = bedsList.filter((b: any) => b.status === 'RESERVED').length;
 
-    return { available, occupied, maintenance, reserved, total, occupancyRate };
-  }, [ward, bedsList]);
+    return {
+      available,
+      occupied,
+      maintenance,
+      reserved,
+      total,
+      occupancyRate,
+      effectiveAvailable: available,
+      emergencyBufferBeds: 0,
+      emergencyBufferPercent: 0,
+      predictedNext4h: 0,
+      predictedNext24h: 0,
+      workloadScore: 0,
+      averageLengthOfStay: null,
+    };
+  }, [ward, bedsList, bedUtilization]);
 
   if (isLoading) {
     return <WardDetailSkeleton />;
@@ -199,12 +243,20 @@ export default function WardDetailPage() {
               {stats.occupied} of {stats.total} beds occupied ({stats.occupancyRate}%)
             </p>
           </div>
-          <Badge
-            variant={ward.ward_type === 'ICU' ? 'destructive' : 'outline'}
-            className="shrink-0 w-fit self-start sm:self-auto"
-          >
-            {ward.ward_type_display || ward.ward_type}
-          </Badge>
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            <WebSocketStatus
+              connectionState={connectionState}
+              lastUpdate={lastUpdated}
+              showLabel
+              size="sm"
+            />
+            <Badge
+              variant={ward.ward_type === 'ICU' ? 'destructive' : 'outline'}
+              className="shrink-0 w-fit self-start sm:self-auto"
+            >
+              {ward.ward_type_display || ward.ward_type}
+            </Badge>
+          </div>
         </div>
 
       {/* Stats */}
@@ -251,6 +303,135 @@ export default function WardDetailPage() {
           <p className="text-sm text-muted-foreground mt-2">
             {stats.occupied} of {stats.total} beds occupied
           </p>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="relative overflow-hidden">
+          <div
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+            aria-hidden="true"
+          />
+          <CardHeader className="relative pb-3">
+            <CardTitle className="text-base">Smart allocation snapshot</CardTitle>
+            <CardDescription>Phase C planning signals for this ward.</CardDescription>
+          </CardHeader>
+          <CardContent className="relative space-y-3">
+            <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
+              <span className="text-muted-foreground">Effective available beds</span>
+              <span className="font-semibold">{stats.effectiveAvailable}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
+              <span className="text-muted-foreground">Emergency buffer</span>
+              <span className="font-semibold">{stats.emergencyBufferBeds} beds ({stats.emergencyBufferPercent}%)</span>
+            </div>
+            <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
+              <span className="text-muted-foreground">Predicted releases in 4h</span>
+              <span className="font-semibold">{stats.predictedNext4h}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
+              <span className="text-muted-foreground">Predicted releases in 24h</span>
+              <span className="font-semibold">{stats.predictedNext24h}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden">
+          <div
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+            aria-hidden="true"
+          />
+          <CardHeader className="relative pb-3">
+            <CardTitle className="text-base">Workload and stay profile</CardTitle>
+            <CardDescription>Use these values when deciding whether to override or hold beds.</CardDescription>
+          </CardHeader>
+          <CardContent className="relative space-y-3">
+            <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
+              <span className="text-muted-foreground">Workload score</span>
+              <span className="font-semibold">{stats.workloadScore.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
+              <span className="text-muted-foreground">Average length of stay</span>
+              <span className="font-semibold">
+                {stats.averageLengthOfStay == null ? 'N/A' : `${stats.averageLengthOfStay.toFixed(1)} days`}
+              </span>
+            </div>
+            <div className="rounded-md border bg-muted/20 p-3 text-sm text-muted-foreground">
+              Emergency admissions can still use the reserved buffer, but non-emergency placements should not consume it unless staff intentionally override the recommendation path.
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden">
+          <div
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+            aria-hidden="true"
+          />
+          <CardHeader className="relative pb-3">
+            <CardTitle className="text-base">Predicted discharges</CardTitle>
+            <CardDescription>Near-term bed releases based on expected discharge dates and LOS estimates.</CardDescription>
+          </CardHeader>
+          <CardContent className="relative space-y-3">
+            {!predictedDischarges || predictedDischarges.predictions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No predicted discharges in the next 24 hours.</p>
+            ) : (
+              predictedDischarges.predictions.slice(0, 4).map((prediction) => (
+                <div key={prediction.admission_id} className="rounded-md border bg-muted/20 p-3">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{prediction.bed_number} • {prediction.patient_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {prediction.expected_discharge_date
+                          ? `Expected ${formatDateTime(prediction.expected_discharge_date)}`
+                          : 'Estimated from average length of stay'}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="w-fit shrink-0">
+                      {prediction.hours_until_available == null ? 'Timing unavailable' : `${prediction.hours_until_available}h`}
+                    </Badge>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-base">Live ward activity</CardTitle>
+            <HelpPopover content="Real-time ward constraint and capacity events stream here. When the socket is unavailable, the page falls back to polling." />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {wardEvents.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No live ward events captured yet for this session.</p>
+          ) : (
+            <div className="space-y-2">
+              {wardEvents.slice(0, 5).map((event, index) => (
+                <div key={`${event.timestamp}-${event.type}-${index}`} className="rounded-md border bg-muted/20 p-3">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{event.type.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {event.patient_name ? `${event.patient_name} • ` : ''}{formatDateTime(event.timestamp)}
+                      </p>
+                    </div>
+                    {event.violations && event.violations.length > 0 && (
+                      <Badge variant="outline" className="w-fit shrink-0">
+                        {event.violations.length} violation{event.violations.length === 1 ? '' : 's'}
+                      </Badge>
+                    )}
+                  </div>
+                  {event.violations && event.violations.length > 0 && (
+                    <p className="mt-2 text-xs text-muted-foreground">{event.violations.join(', ')}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
