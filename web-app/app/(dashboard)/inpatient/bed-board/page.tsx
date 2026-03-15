@@ -9,6 +9,10 @@ import {
   Building2,
   CalendarClock,
   ChevronRight,
+  ClipboardList,
+  Clock3,
+  Info,
+  ShieldAlert,
   Search,
   Users,
 } from 'lucide-react';
@@ -20,34 +24,121 @@ import { WebSocketStatus } from '@/components/ui/websocket-status';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import {
-  useInpatientWards,
   useAdmissions,
   useBedUtilization,
+  useBeds,
+  useInpatientWards,
+  useKardexList,
+  useMarkBedAvailable,
+  usePredictedDischarges,
+  useShiftHandovers,
 } from '@/lib/hooks/use-inpatient';
 import { useSupervisorAlerts } from '@/lib/hooks';
+import { formatDateTime } from '@/lib/utils/format';
+import type { Admission, NursingKardex, ShiftHandover } from '@/lib/types/inpatient';
+
+type WardPlanningSnapshot = {
+  highFallRiskCount: number;
+  highPressureRiskCount: number;
+  isolationCount: number;
+  recentHandoverCount: number;
+  pendingWardHandovers: number;
+};
 
 export default function InpatientBedBoardPage() {
   const { refresh, isRefreshing } = usePageRefresh();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedWardPredictionId, setSelectedWardPredictionId] = useState<number | null>(null);
 
   const { data: wards, isLoading: wardsLoading } = useInpatientWards();
   const { data: admissions, isLoading: admissionsLoading } = useAdmissions({
     admission_status: 'ACTIVE',
     page_size: 200,
   });
+  const { data: kardexList, isLoading: kardexLoading } = useKardexList({ page_size: 200 });
+  const { data: cleaningBedsData, isLoading: cleaningBedsLoading } = useBeds({ status: 'CLEANING' });
+  const { data: shiftHandovers, isLoading: handoversLoading } = useShiftHandovers({ page_size: 100, ordering: '-shift_date' });
+  const markBedAvailable = useMarkBedAvailable();
   const {
     alerts,
     connectionState,
     lastUpdated,
   } = useSupervisorAlerts();
+  const { data: predictionDetail, isLoading: predictionDetailLoading } = usePredictedDischarges(
+    selectedWardPredictionId ?? undefined,
+    24
+  );
 
   const wardsList = useMemo(() => ((wards as any)?.results ?? wards ?? []), [wards]);
+  const admissionsList = useMemo(() => ((admissions as any)?.results ?? admissions ?? []), [admissions]);
+  const cleaningBeds = useMemo(() => ((cleaningBedsData as any)?.results ?? cleaningBedsData ?? []), [cleaningBedsData]);
+  const kardexEntries = useMemo(() => ((kardexList as any)?.results ?? kardexList ?? []), [kardexList]);
+  const handoverEntries = useMemo(() => ((shiftHandovers as any)?.results ?? shiftHandovers ?? []), [shiftHandovers]);
+
+  const admissionsById = useMemo(() => {
+    return new Map<number, Admission>(admissionsList.map((admission: Admission) => [admission.id, admission]));
+  }, [admissionsList]);
+
+  const wardPlanningByWardId = useMemo(() => {
+    const result = new Map<number, WardPlanningSnapshot>();
+
+    const ensureSnapshot = (wardId: number) => {
+      if (!result.has(wardId)) {
+        result.set(wardId, {
+          highFallRiskCount: 0,
+          highPressureRiskCount: 0,
+          isolationCount: 0,
+          recentHandoverCount: 0,
+          pendingWardHandovers: 0,
+        });
+      }
+
+      return result.get(wardId)!;
+    };
+
+    kardexEntries.forEach((kardex: NursingKardex) => {
+      const admission = admissionsById.get(kardex.admission);
+      if (!admission?.ward) {
+        return;
+      }
+
+      const snapshot = ensureSnapshot(admission.ward);
+      if (kardex.fall_risk === 'HIGH') {
+        snapshot.highFallRiskCount += 1;
+      }
+      if (kardex.pressure_sore_risk === 'HIGH') {
+        snapshot.highPressureRiskCount += 1;
+      }
+      if (kardex.isolation_required) {
+        snapshot.isolationCount += 1;
+      }
+      if ((kardex.handover_notes?.length ?? 0) > 0 || (kardex.shift_notes?.length ?? 0) > 0) {
+        snapshot.recentHandoverCount += 1;
+      }
+    });
+
+    handoverEntries.forEach((handover: ShiftHandover) => {
+      if (!handover.ward || handover.is_acknowledged) {
+        return;
+      }
+      ensureSnapshot(handover.ward).pendingWardHandovers += 1;
+    });
+
+    return result;
+  }, [admissionsById, handoverEntries, kardexEntries]);
   const filteredWards = useMemo(() => {
     if (!searchQuery) {
       return wardsList;
@@ -67,7 +158,7 @@ export default function InpatientBedBoardPage() {
   const occupiedBeds = wardsList.reduce((sum: number, ward: any) => sum + (ward.occupied_beds || 0), 0);
   const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
 
-  if (wardsLoading || admissionsLoading) {
+  if (wardsLoading || admissionsLoading || kardexLoading || handoversLoading || cleaningBedsLoading) {
     return <BedBoardSkeleton />;
   }
 
@@ -112,6 +203,9 @@ export default function InpatientBedBoardPage() {
                 <div className="rounded-full border bg-background/80 px-3 py-1 text-xs text-muted-foreground">
                   {pendingAlerts.length} pending supervisor alert{pendingAlerts.length === 1 ? '' : 's'}
                 </div>
+                <div className="rounded-full border bg-background/80 px-3 py-1 text-xs text-muted-foreground">
+                  {cleaningBeds.length} bed{cleaningBeds.length === 1 ? '' : 's'} awaiting housekeeping
+                </div>
               </div>
             </div>
 
@@ -119,6 +213,7 @@ export default function InpatientBedBoardPage() {
               <SummaryTile icon={Building2} title="Wards" value={wardsList.length} description="Active inpatient locations" />
               <SummaryTile icon={BedDouble} title="Beds Occupied" value={`${occupiedBeds}/${totalBeds}`} description={`${occupancyRate}% hospital occupancy`} />
               <SummaryTile icon={Users} title="Active Admissions" value={activeAdmissions} description="Current inpatient census" />
+              <SummaryTile icon={ClipboardList} title="Cleaning Queue" value={cleaningBeds.length} description="Beds awaiting turnover completion" />
               <SummaryTile icon={AlertTriangle} title="Pending Alerts" value={pendingAlerts.length} description="Critical overrides awaiting review" variant={pendingAlerts.length > 0 ? 'warning' : 'default'} />
             </div>
           </div>
@@ -149,7 +244,12 @@ export default function InpatientBedBoardPage() {
               ) : (
                 <div className="grid gap-4 xl:grid-cols-2">
                   {filteredWards.map((ward: any) => (
-                    <BedBoardWardCard key={ward.id} ward={ward} />
+                    <BedBoardWardCard
+                      key={ward.id}
+                      ward={ward}
+                      planningSnapshot={wardPlanningByWardId.get(ward.id)}
+                      onOpenPredictions={() => setSelectedWardPredictionId(ward.id)}
+                    />
                   ))}
                 </div>
               )}
@@ -220,6 +320,43 @@ export default function InpatientBedBoardPage() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card className="border-primary/10 shadow-sm">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <CardTitle>Housekeeping queue</CardTitle>
+                  <HelpPopover content="Beds move into CLEANING after discharges and transfers. Housekeeping or ward staff can mark each bed available again once turnover is complete." />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-muted-foreground">
+                {cleaningBeds.length === 0 ? (
+                  <div className="rounded-xl border bg-muted/20 p-4">
+                    No beds are currently waiting for housekeeping turnover.
+                  </div>
+                ) : (
+                  cleaningBeds.slice(0, 8).map((bed: any) => (
+                    <div key={bed.id} className="rounded-xl border bg-muted/20 p-4">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">{bed.ward_name} • {bed.bed_number}</p>
+                          <p className="text-xs text-muted-foreground">{bed.notes || 'Awaiting room turnover'}</p>
+                          {bed.status_changed_at && (
+                            <p className="mt-1 text-xs text-muted-foreground">Entered cleaning {formatDateTime(bed.status_changed_at)}</p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => markBedAvailable.mutate(bed.id)}
+                          disabled={markBedAvailable.isPending}
+                        >
+                          Mark ready
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="supervision" className="space-y-4">
@@ -243,6 +380,72 @@ export default function InpatientBedBoardPage() {
             <ConstraintOverrideMetrics className="border-primary/10 shadow-sm" />
           </TabsContent>
         </Tabs>
+
+        <Dialog open={selectedWardPredictionId !== null} onOpenChange={(open) => !open && setSelectedWardPredictionId(null)}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Predicted discharge details</DialogTitle>
+              <DialogDescription>
+                Drill into the next 24 hours of predicted bed releases for the selected ward, including whether each estimate is clinician-set or LOS-derived.
+              </DialogDescription>
+            </DialogHeader>
+
+            {predictionDetailLoading || !predictionDetail ? (
+              <div className="space-y-3">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ) : predictionDetail.predictions.length === 0 ? (
+              <div className="rounded-xl border bg-muted/20 p-6 text-sm text-muted-foreground">
+                No predicted discharges are available for this ward in the next 24 hours.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {predictionDetail.predictions.map((prediction) => (
+                  <div key={prediction.admission_id} className="rounded-xl border bg-muted/20 p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">{prediction.patient_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {prediction.ward_name} • Bed {prediction.bed_number} • Admission {prediction.admission_number}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="w-fit shrink-0">
+                        {prediction.hours_until_available == null ? 'Timing unavailable' : `${Math.round(prediction.hours_until_available)}h`}
+                      </Badge>
+                    </div>
+
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-lg border bg-background/70 p-3">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Prediction source</p>
+                        <p className="mt-1 text-sm font-medium">{prediction.source === 'expected_discharge' ? 'Expected discharge date' : 'Average length of stay estimate'}</p>
+                      </div>
+                      <div className="rounded-lg border bg-background/70 p-3">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Expected or estimated time</p>
+                        <p className="mt-1 text-sm font-medium">
+                          {prediction.expected_discharge_date
+                            ? formatDateTime(prediction.expected_discharge_date)
+                            : prediction.estimated_discharge_date
+                              ? formatDateTime(prediction.estimated_discharge_date)
+                              : 'Unavailable'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/admissions/${prediction.admission_id}`}>Open admission</Link>
+                      </Button>
+                      <Button size="sm" asChild>
+                        <Link href={`/wards/${prediction.ward_id}`}>Open ward board</Link>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </PullToRefresh>
   );
@@ -273,7 +476,15 @@ function SummaryTile({
   );
 }
 
-function BedBoardWardCard({ ward }: { ward: any }) {
+function BedBoardWardCard({
+  ward,
+  planningSnapshot,
+  onOpenPredictions,
+}: {
+  ward: any;
+  planningSnapshot?: WardPlanningSnapshot;
+  onOpenPredictions: () => void;
+}) {
   const { data: utilization, isLoading } = useBedUtilization(ward.id);
 
   if (isLoading || !utilization) {
@@ -314,9 +525,17 @@ function BedBoardWardCard({ ward }: { ward: any }) {
 
         <div className="grid gap-2 sm:grid-cols-2">
           <MetricPill icon={Bed} label="Available" value={utilization.available} />
+          <MetricPill icon={ClipboardList} label="Cleaning" value={utilization.cleaning} />
           <MetricPill icon={Users} label="Occupied" value={utilization.occupied} />
           <MetricPill icon={AlertTriangle} label="Emergency buffer" value={utilization.emergency_buffer_beds} />
           <MetricPill icon={CalendarClock} label="Predicted 24h" value={utilization.predicted_discharges_next_24h} />
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2">
+          <MetricPill icon={ShieldAlert} label="Isolation blockers" value={planningSnapshot?.isolationCount ?? 0} />
+          <MetricPill icon={AlertTriangle} label="High fall risk" value={planningSnapshot?.highFallRiskCount ?? 0} />
+          <MetricPill icon={ClipboardList} label="High pressure risk" value={planningSnapshot?.highPressureRiskCount ?? 0} />
+          <MetricPill icon={Clock3} label="Pending handovers" value={planningSnapshot?.pendingWardHandovers ?? 0} />
         </div>
 
         <div className="rounded-xl border bg-muted/20 p-3 text-sm">
@@ -328,16 +547,32 @@ function BedBoardWardCard({ ward }: { ward: any }) {
             <span className="text-muted-foreground">Workload score</span>
             <span className="font-semibold">{utilization.workload_score.toFixed(2)}</span>
           </div>
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-muted-foreground">Recent Kardex/handover activity</span>
+            <span className="font-semibold">{planningSnapshot?.recentHandoverCount ?? 0}</span>
+          </div>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button variant="outline" size="sm" className="w-full sm:flex-1" asChild>
             <Link href={`/wards/${ward.id}`}>Open ward board</Link>
           </Button>
+          <Button variant="outline" size="sm" className="w-full sm:flex-1" onClick={onOpenPredictions}>
+            View releases
+          </Button>
           <Button size="sm" className="w-full sm:flex-1" asChild disabled={utilization.effective_available <= 0 && utilization.predicted_discharges_next_24h <= 0}>
             <Link href={`/admissions/new?ward=${ward.id}`}>Place patient</Link>
           </Button>
         </div>
+
+        {utilization.cleaning > 0 && (
+          <div className="rounded-xl border border-dashed bg-background/70 p-3 text-xs text-muted-foreground">
+            <div className="flex items-start gap-2">
+              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {utilization.cleaning} bed{utilization.cleaning === 1 ? '' : 's'} currently sit in the housekeeping queue for this ward.
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

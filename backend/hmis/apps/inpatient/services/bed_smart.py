@@ -80,6 +80,7 @@ class BedUtilization:
     capacity: int
     occupied: int
     available: int
+    cleaning: int
     reserved: int
     maintenance: int
     occupancy_rate: float
@@ -99,6 +100,7 @@ class BedUtilization:
             "capacity": self.capacity,
             "occupied": self.occupied,
             "available": self.available,
+            "cleaning": self.cleaning,
             "reserved": self.reserved,
             "maintenance": self.maintenance,
             "occupancy_rate": self.occupancy_rate,
@@ -413,6 +415,7 @@ class SmartBedAllocationService:
         """Calculate comprehensive bed utilization analytics for a ward."""
         occupied = ward.beds.filter(status="OCCUPIED").count()
         available = ward.beds.filter(status="AVAILABLE").count()
+        cleaning = ward.beds.filter(status="CLEANING").count()
         reserved = ward.beds.filter(status="RESERVED").count()
         maintenance = ward.beds.filter(status="MAINTENANCE").count()
 
@@ -431,6 +434,7 @@ class SmartBedAllocationService:
             capacity=ward.capacity,
             occupied=occupied,
             available=available,
+            cleaning=cleaning,
             reserved=reserved,
             maintenance=maintenance,
             occupancy_rate=ward.occupancy_rate,

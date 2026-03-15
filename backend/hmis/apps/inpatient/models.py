@@ -272,15 +272,16 @@ class Ward(TimeStampedModel):
     @property
     def available_beds(self) -> int:
         """
-        Count of available beds (capacity minus occupied, maintenance, reserved).
+        Count of available beds (capacity minus occupied, cleaning, maintenance, reserved).
 
         Returns:
             Number of available beds
         """
         occupied = self.beds.filter(status="OCCUPIED").count()
+        cleaning = self.beds.filter(status="CLEANING").count()
         maintenance = self.beds.filter(status="MAINTENANCE").count()
         reserved = self.beds.filter(status="RESERVED").count()
-        return max(0, self.capacity - occupied - maintenance - reserved)
+        return max(0, self.capacity - occupied - cleaning - maintenance - reserved)
 
     @property
     def total_beds(self) -> int:
@@ -337,6 +338,7 @@ class Bed(TimeStampedModel):
     BED_STATUS_CHOICES = [
         ("AVAILABLE", "Available"),
         ("OCCUPIED", "Occupied"),
+        ("CLEANING", "Cleaning In Progress"),
         ("MAINTENANCE", "Under Maintenance"),
         ("RESERVED", "Reserved"),
     ]
@@ -420,6 +422,19 @@ class Bed(TimeStampedModel):
         self.status = "AVAILABLE"
         self.status_changed_by = user
         self.notes = ""
+        self.save()
+
+    def mark_cleaning(self, user, reason=""):
+        """
+        Transition bed to CLEANING status with housekeeping context.
+
+        Args:
+            user: User performing the action
+            reason: Reason or note for turnover workflow
+        """
+        self.status = "CLEANING"
+        self.status_changed_by = user
+        self.notes = reason
         self.save()
 
     def mark_maintenance(self, user, reason):
@@ -1081,13 +1096,13 @@ class Discharge(TimeStampedModel):
         self.admission.discharge_date = self.discharge_date
         self.admission.save()
 
-        # Update bed status to AVAILABLE
+        # Move bed into housekeeping turnover workflow
         bed = self.admission.bed
         if bed.status == "OCCUPIED":
-            bed.status = "AVAILABLE"
-            bed.status_changed_by = self.discharged_by
-            bed.notes = ""
-            bed.save()
+            bed.mark_cleaning(
+                self.discharged_by,
+                reason=f"Patient discharged on {self.discharge_date.isoformat()} - awaiting housekeeping",
+            )
 
     def clean(self):
         """Validate discharge data."""
@@ -1222,12 +1237,15 @@ class Transfer(TimeStampedModel):
         # Call parent save first
         super().save(*args, **kwargs)
 
-        # Update source bed status to AVAILABLE
+        # Move source bed into housekeeping turnover workflow
         if self.source_bed.status == "OCCUPIED":
-            self.source_bed.status = "AVAILABLE"
-            self.source_bed.status_changed_by = self.transferred_by
-            self.source_bed.notes = ""
-            self.source_bed.save()
+            self.source_bed.mark_cleaning(
+                self.transferred_by,
+                reason=(
+                    f"Patient transferred to {self.destination_ward.code} on "
+                    f"{self.transfer_date.isoformat()} - awaiting housekeeping"
+                ),
+            )
 
         # Update destination bed status to OCCUPIED
         if self.destination_bed.status == "AVAILABLE":

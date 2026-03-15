@@ -6,6 +6,7 @@ Test Coverage (15 tests):
 - Unique bed number per ward
 - Status transitions: AVAILABLE → OCCUPIED
 - Status transitions: OCCUPIED → AVAILABLE
+- Status transitions: OCCUPIED → CLEANING
 - Status transitions: AVAILABLE → MAINTENANCE
 - Status transitions: MAINTENANCE → AVAILABLE
 - Status transitions: AVAILABLE → RESERVED
@@ -183,6 +184,25 @@ class TestBedStatusTransitions:
         assert bed.status_changed_by == test_user
         assert bed.notes == ""
 
+    def test_mark_cleaning_with_reason(self, sample_ward, test_user):
+        """Should transition bed to CLEANING with housekeeping context."""
+        bed = Bed.objects.create(ward=sample_ward, bed_number="B-205A", status="OCCUPIED")
+
+        reason = "Patient discharged - awaiting housekeeping"
+        bed.mark_cleaning(test_user, reason)
+        bed.refresh_from_db()
+
+        assert bed.status == "CLEANING"
+        assert bed.status_changed_by == test_user
+        assert bed.notes == reason
+
+    def test_mark_occupied_from_cleaning_fails(self, sample_ward, test_user):
+        """Should not allow CLEANING → OCCUPIED transition until turnover completes."""
+        bed = Bed.objects.create(ward=sample_ward, bed_number="B-205B", status="CLEANING")
+
+        with pytest.raises(ValueError, match="Cannot occupy bed with status CLEANING"):
+            bed.mark_occupied(test_user)
+
     def test_mark_maintenance_with_reason(self, sample_ward, test_user):
         """Should transition to MAINTENANCE with reason."""
         bed = Bed.objects.create(ward=sample_ward, bed_number="B-206", status="AVAILABLE")
@@ -258,16 +278,19 @@ class TestBedQueryOperations:
         Bed.objects.create(ward=sample_ward, bed_number="B-01", status="AVAILABLE")
         Bed.objects.create(ward=sample_ward, bed_number="B-02", status="AVAILABLE")
         Bed.objects.create(ward=sample_ward, bed_number="B-03", status="OCCUPIED")
+        Bed.objects.create(ward=sample_ward, bed_number="B-03A", status="CLEANING")
         Bed.objects.create(ward=sample_ward, bed_number="B-04", status="MAINTENANCE")
         Bed.objects.create(ward=sample_ward, bed_number="B-05", status="RESERVED")
 
         available_beds = Bed.objects.filter(status="AVAILABLE")
         occupied_beds = Bed.objects.filter(status="OCCUPIED")
+        cleaning_beds = Bed.objects.filter(status="CLEANING")
         maintenance_beds = Bed.objects.filter(status="MAINTENANCE")
         reserved_beds = Bed.objects.filter(status="RESERVED")
 
         assert available_beds.count() == 2
         assert occupied_beds.count() == 1
+        assert cleaning_beds.count() == 1
         assert maintenance_beds.count() == 1
         assert reserved_beds.count() == 1
 

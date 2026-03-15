@@ -28,7 +28,7 @@ export const InpatientWardTypeSchema = z.enum([
   'ISOLATION',
 ]);
 
-export const BedStatusSchema = z.enum(['AVAILABLE', 'OCCUPIED', 'MAINTENANCE', 'RESERVED']);
+export const BedStatusSchema = z.enum(['AVAILABLE', 'OCCUPIED', 'CLEANING', 'MAINTENANCE', 'RESERVED']);
 
 export const AdmissionRecommendationStatusSchema = z.enum(['PENDING', 'ACCEPTED', 'DECLINED', 'EXPIRED']);
 
@@ -1097,6 +1097,7 @@ export const BedUtilizationSchema = z.object({
   capacity: z.number(),
   occupied: z.number(),
   available: z.number(),
+  cleaning: z.number(),
   reserved: z.number(),
   maintenance: z.number(),
   occupancy_rate: z.number(),

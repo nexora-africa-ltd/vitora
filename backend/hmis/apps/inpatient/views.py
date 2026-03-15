@@ -42,6 +42,7 @@ from .serializers import (
     AdmissionRecommendationSerializer,
     AdmissionSerializer,
     BedSerializer,
+    BedTurnoverActionSerializer,
     BloodTransfusionCreateSerializer,
     BloodTransfusionSerializer,
     BPMonitoringReadingCreateSerializer,
@@ -116,7 +117,7 @@ class WardViewSet(viewsets.ModelViewSet):
         List all beds for a specific ward.
 
         Query parameters:
-        - status: Filter by bed status (AVAILABLE, OCCUPIED, MAINTENANCE, RESERVED)
+        - status: Filter by bed status (AVAILABLE, OCCUPIED, CLEANING, MAINTENANCE, RESERVED)
         """
         ward = self.get_object()
         beds = Bed.objects.filter(ward=ward)
@@ -1025,6 +1026,51 @@ class BedViewSet(viewsets.ModelViewSet):
                 },
                 ip_address=get_client_ip(self.request),
             )
+
+    @action(detail=True, methods=["post"], url_path="mark_cleaning")
+    def mark_cleaning(self, request, pk=None):
+        """Move a bed into housekeeping turnover workflow."""
+        bed = self.get_object()
+        serializer = BedTurnoverActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        bed.mark_cleaning(
+            request.user,
+            reason=serializer.validated_data.get("notes", ""),
+        )
+
+        AuditLog.log(
+            action="bed_turnover_start",
+            user=request.user,
+            resource_type="Bed",
+            resource_id=bed.id,
+            details={
+                "new_status": bed.status,
+                "notes": bed.notes,
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        return Response(self.get_serializer(bed).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"], url_path="mark_available")
+    def mark_available(self, request, pk=None):
+        """Complete housekeeping turnover and return bed to available."""
+        bed = self.get_object()
+        bed.mark_available(request.user)
+
+        AuditLog.log(
+            action="bed_turnover_complete",
+            user=request.user,
+            resource_type="Bed",
+            resource_id=bed.id,
+            details={
+                "new_status": bed.status,
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        return Response(self.get_serializer(bed).data, status=status.HTTP_200_OK)
 
 
 class AdmissionRecommendationViewSet(viewsets.ModelViewSet):

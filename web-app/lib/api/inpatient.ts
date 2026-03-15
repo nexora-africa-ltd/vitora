@@ -195,6 +195,18 @@ export const inpatientApi = {
     return parseResponse(BedSchema, response.data, { context: 'inpatientApi.updateBed' });
   },
 
+  async markBedCleaning(bedId: number, notes?: string): Promise<Bed> {
+    const response = await apiClient.post<Bed>(`/api/inpatient/beds/${bedId}/mark_cleaning/`, {
+      ...(notes ? { notes } : {}),
+    });
+    return parseResponse(BedSchema, response.data, { context: 'inpatientApi.markBedCleaning' });
+  },
+
+  async markBedAvailable(bedId: number): Promise<Bed> {
+    const response = await apiClient.post<Bed>(`/api/inpatient/beds/${bedId}/mark_available/`, {});
+    return parseResponse(BedSchema, response.data, { context: 'inpatientApi.markBedAvailable' });
+  },
+
   // ============================================================================
   // Admission Recommendations
   // ============================================================================

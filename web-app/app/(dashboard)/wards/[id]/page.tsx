@@ -57,6 +57,7 @@ import { formatDateTime } from '@/lib/utils/format';
 const BED_STATUSES = [
   { value: 'AVAILABLE', label: 'Available' },
   { value: 'OCCUPIED', label: 'Occupied' },
+  { value: 'CLEANING', label: 'Cleaning' },
   { value: 'MAINTENANCE', label: 'Maintenance' },
   { value: 'RESERVED', label: 'Reserved' },
 ];
@@ -143,6 +144,7 @@ export default function WardDetailPage() {
         available: bedUtilization.available,
         occupied: bedUtilization.occupied,
         maintenance: bedUtilization.maintenance,
+        cleaning: bedUtilization.cleaning,
         reserved: bedUtilization.reserved,
         total: bedUtilization.capacity,
         occupancyRate: bedUtilization.occupancy_rate,
@@ -164,11 +166,13 @@ export default function WardDetailPage() {
 
     // Count maintenance/reserved from actual bed records for display
     const maintenance = bedsList.filter((b: any) => b.status === 'MAINTENANCE').length;
+    const cleaning = bedsList.filter((b: any) => b.status === 'CLEANING').length;
     const reserved = bedsList.filter((b: any) => b.status === 'RESERVED').length;
 
     return {
       available,
       occupied,
+      cleaning,
       maintenance,
       reserved,
       total,
@@ -332,6 +336,10 @@ export default function WardDetailPage() {
             <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
               <span className="text-muted-foreground">Predicted releases in 24h</span>
               <span className="font-semibold">{stats.predictedNext24h}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
+              <span className="text-muted-foreground">Beds in cleaning</span>
+              <span className="font-semibold">{stats.cleaning}</span>
             </div>
           </CardContent>
         </Card>
@@ -513,6 +521,7 @@ export default function WardDetailPage() {
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="secondary" className="shrink-0 w-fit">Available</Badge>
             <Badge variant="default" className="shrink-0 w-fit">Occupied</Badge>
+            <Badge variant="outline" className="shrink-0 w-fit">Cleaning</Badge>
             <Badge variant="outline" className="shrink-0 w-fit">Maintenance</Badge>
             <Badge variant="outline" className="shrink-0 w-fit">Reserved</Badge>
           </div>

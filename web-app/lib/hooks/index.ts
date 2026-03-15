@@ -71,6 +71,8 @@ export {
   useCreateAdmission,
   useUpdateAdmission,
   useUpdateBed,
+  useMarkBedCleaning,
+  useMarkBedAvailable,
 } from './use-inpatient';
 
 // Ward compatibility real-time updates
