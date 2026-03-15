@@ -506,6 +506,118 @@ class WardViewSet(viewsets.ModelViewSet):
 
         return Response(response_data, status=status.HTTP_200_OK)
 
+    # ------------------------------------------------------------------ #
+    # Phase C: Smart Allocation Endpoints
+    # ------------------------------------------------------------------ #
+
+    @extend_schema(
+        summary="Get predicted discharges for bed planning",
+        description=(
+            "Phase C: Returns admissions expected to free beds within the "
+            "given time window. Uses explicit expected_discharge_date (set by "
+            "clinicians) and average LOS estimates as fallback."
+        ),
+        parameters=[
+            OpenApiParameter(
+                "hours_ahead",
+                type=int,
+                location="query",
+                description="Hours to look ahead (default: 24)",
+                required=False,
+            ),
+        ],
+        tags=["Inpatient - Smart Allocation"],
+    )
+    @action(detail=True, methods=["get"], url_path="predicted_discharges")
+    def predicted_discharges(self, request, pk=None):
+        """List predicted discharges for a ward."""
+        from hmis.apps.inpatient.services.bed_smart import smart_bed_allocation_service
+
+        ward = self.get_object()
+        hours_ahead = int(request.query_params.get("hours_ahead", 24))
+        hours_ahead = max(1, min(hours_ahead, 168))  # 1h to 7 days
+
+        predictions = smart_bed_allocation_service.get_predicted_discharges(
+            ward, hours_ahead=hours_ahead
+        )
+        return Response(
+            {
+                "ward_id": ward.id,
+                "ward_name": ward.name,
+                "hours_ahead": hours_ahead,
+                "count": len(predictions),
+                "predictions": [p.to_dict() for p in predictions],
+            }
+        )
+
+    @extend_schema(
+        summary="Get bed utilization analytics",
+        description=(
+            "Phase C: Comprehensive bed utilization statistics including "
+            "emergency buffer, workload score, average LOS, and discharge "
+            "predictions."
+        ),
+        tags=["Inpatient - Smart Allocation"],
+    )
+    @action(detail=True, methods=["get"], url_path="bed_utilization")
+    def bed_utilization(self, request, pk=None):
+        """Get bed utilization analytics for a ward."""
+        from hmis.apps.inpatient.services.bed_smart import smart_bed_allocation_service
+
+        ward = self.get_object()
+        utilization = smart_bed_allocation_service.get_bed_utilization(ward)
+        return Response(utilization.to_dict())
+
+    @extend_schema(
+        summary="Smart bed recommendation (Phase C)",
+        description=(
+            "Phase C: Recommend a bed using smart allocation that includes "
+            "infection control auto-detection, emergency buffer enforcement, "
+            "cohort grouping scoring, and workload balancing — on top of "
+            "Phase B rule-based evaluation. Returns recommendation WITHOUT "
+            "marking bed as occupied."
+        ),
+        tags=["Inpatient - Smart Allocation"],
+    )
+    @action(detail=True, methods=["post"], url_path="smart_recommend_bed")
+    def smart_recommend_bed(self, request, pk=None):
+        """Smart bed recommendation with Phase C features."""
+        from hmis.apps.core.permissions import get_client_ip
+        from hmis.apps.inpatient.serializers import SmartRecommendBedRequestSerializer
+        from hmis.apps.inpatient.services.bed_smart import smart_bed_allocation_service
+
+        ward = self.get_object()
+        serializer = SmartRecommendBedRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        patient_id = serializer.validated_data["patient_id"]
+        try:
+            patient = Patient.objects.get(id=patient_id)
+        except Patient.DoesNotExist:
+            return Response(
+                {"error": f"Patient with ID {patient_id} not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        result = smart_bed_allocation_service.smart_assign_bed(
+            patient=patient,
+            ward=ward,
+            user=request.user,
+            requires_isolation=serializer.validated_data.get("requires_isolation", False),
+            requires_oxygen=serializer.validated_data.get("requires_oxygen", False),
+            requires_ventilator=serializer.validated_data.get("requires_ventilator", False),
+            admission_type=serializer.validated_data.get("admission_type", "ELECTIVE"),
+            ip_address=get_client_ip(request),
+            mark_as_occupied=False,
+        )
+
+        response_data = result.to_dict()
+        response_data["predicted_discharges"] = [
+            p.to_dict() for p in result.predicted_discharges
+        ]
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
 
 class SupervisorAlertViewSet(viewsets.ViewSet):
     """
@@ -1521,6 +1633,64 @@ class AdmissionViewSet(viewsets.ModelViewSet):
             "old_bed": old_bed.bed_number,
             "new_bed": new_bed.bed_number,
         })
+
+    # ------------------------------------------------------------------ #
+    # Phase C: Smart Allocation — Expected Discharge
+    # ------------------------------------------------------------------ #
+
+    @extend_schema(
+        summary="Set expected discharge date for bed planning",
+        description=(
+            "Phase C: Set or update the expected discharge date for an active "
+            "admission. Used by clinicians during ward rounds to enable "
+            "predictive bed allocation."
+        ),
+        tags=["Inpatient - Smart Allocation"],
+    )
+    @action(detail=True, methods=["post"], url_path="set_expected_discharge")
+    def set_expected_discharge(self, request, pk=None):
+        """Set expected discharge date for an admission."""
+        from hmis.apps.inpatient.serializers import SetExpectedDischargeSerializer
+
+        admission = self.get_object()
+
+        if admission.admission_status != "ACTIVE":
+            return Response(
+                {"error": "Can only set expected discharge for active admissions"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = SetExpectedDischargeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        admission.expected_discharge_date = serializer.validated_data[
+            "expected_discharge_date"
+        ]
+        admission.save(update_fields=["expected_discharge_date", "updated_at"])
+
+        AuditLog.log(
+            action="admission_expected_discharge_set",
+            user=request.user,
+            resource_type="Admission",
+            resource_id=admission.id,
+            details={
+                "admission_number": admission.admission_number,
+                "expected_discharge_date": (
+                    admission.expected_discharge_date.isoformat()
+                ),
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        return Response(
+            {
+                "admission_id": admission.id,
+                "admission_number": admission.admission_number,
+                "expected_discharge_date": (
+                    admission.expected_discharge_date.isoformat()
+                ),
+            }
+        )
 
 
 class DischargeViewSet(viewsets.ModelViewSet):

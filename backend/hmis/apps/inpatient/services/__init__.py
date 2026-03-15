@@ -9,6 +9,10 @@ from hmis.apps.inpatient.services.bed_rules import (
     BedAssignmentRuleResult,
     BedCandidateEvaluation,
 )
+from hmis.apps.inpatient.services.bed_smart import (
+    SmartBedAllocationService,
+    smart_bed_allocation_service,
+)
 from hmis.apps.inpatient.services.compatibility import (
     CompatibilityResult,
     CompatibilityViolation,
@@ -25,6 +29,9 @@ __all__ = [
     "BedAssignmentRuleEvaluator",
     "BedAssignmentRuleResult",
     "BedCandidateEvaluation",
+    # Smart allocation (Phase C)
+    "SmartBedAllocationService",
+    "smart_bed_allocation_service",
     # Ward compatibility
     "CompatibilityResult",
     "CompatibilityViolation",

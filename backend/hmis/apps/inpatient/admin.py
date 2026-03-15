@@ -33,10 +33,11 @@ class WardAdmin(admin.ModelAdmin):
         "ward_type",
         "capacity",
         "daily_rate",
+        "emergency_buffer_percent",
         "is_active",
         "created_at",
     ]
-    list_filter = ["ward_type", "is_active", "created_at"]
+    list_filter = ["ward_type", "is_active", "emergency_buffer_percent", "created_at"]
     search_fields = ["name", "code", "ward_type"]
     readonly_fields = ["created_at", "updated_at"]
     ordering = ["name"]
@@ -207,6 +208,7 @@ class AdmissionAdmin(admin.ModelAdmin):
                     "payer_type",
                     "insurance_details",
                     "discharge_date",
+                    "expected_discharge_date",
                 )
             },
         ),

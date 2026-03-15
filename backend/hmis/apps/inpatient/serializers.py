@@ -65,6 +65,7 @@ class InpatientWardSerializer(serializers.ModelSerializer):
             "isolation_capable",
             "oxygen_equipped",
             "ventilator_capable",
+            "emergency_buffer_percent",
             "available_beds",
             "total_beds",
             "occupied_beds",
@@ -232,6 +233,7 @@ class AdmissionSerializer(serializers.ModelSerializer):
             "constraint_override",
             "constraint_override_reason",
             "constraint_violations",
+            "expected_discharge_date",
             "length_of_stay",
             "created_at",
             "updated_at",
@@ -1640,3 +1642,102 @@ class RuleBasedBedAssignmentResponseSerializer(serializers.Serializer):
     error = serializers.CharField(
         allow_null=True, allow_blank=True, help_text="Error message if failed"
     )
+
+
+# =============================================================================
+# Smart Allocation Serializers (Phase C)
+# =============================================================================
+
+
+class SetExpectedDischargeSerializer(serializers.Serializer):
+    """Request serializer for setting expected discharge date."""
+
+    expected_discharge_date = serializers.DateTimeField(
+        help_text="Expected discharge date and time",
+    )
+
+    def validate_expected_discharge_date(self, value):
+        from django.utils import timezone
+
+        if value <= timezone.now():
+            raise serializers.ValidationError(
+                "Expected discharge date must be in the future."
+            )
+        return value
+
+
+class PredictedDischargeSerializer(serializers.Serializer):
+    """Serializer for predicted discharge information."""
+
+    admission_id = serializers.IntegerField()
+    admission_number = serializers.CharField()
+    patient_name = serializers.CharField()
+    ward_id = serializers.IntegerField()
+    ward_name = serializers.CharField()
+    bed_id = serializers.IntegerField()
+    bed_number = serializers.CharField()
+    admission_date = serializers.CharField()
+    expected_discharge_date = serializers.CharField(allow_null=True)
+    estimated_discharge_date = serializers.CharField(allow_null=True)
+    source = serializers.CharField()
+    hours_until_available = serializers.FloatField(allow_null=True)
+
+
+class BedUtilizationSerializer(serializers.Serializer):
+    """Serializer for bed utilization analytics."""
+
+    ward_id = serializers.IntegerField()
+    ward_name = serializers.CharField()
+    ward_code = serializers.CharField()
+    capacity = serializers.IntegerField()
+    occupied = serializers.IntegerField()
+    available = serializers.IntegerField()
+    reserved = serializers.IntegerField()
+    maintenance = serializers.IntegerField()
+    occupancy_rate = serializers.FloatField()
+    emergency_buffer_percent = serializers.IntegerField()
+    emergency_buffer_beds = serializers.IntegerField()
+    effective_available = serializers.IntegerField()
+    avg_length_of_stay_days = serializers.FloatField(allow_null=True)
+    predicted_discharges_next_4h = serializers.IntegerField()
+    predicted_discharges_next_24h = serializers.IntegerField()
+    workload_score = serializers.FloatField()
+
+
+class SmartRecommendBedRequestSerializer(serializers.Serializer):
+    """Request serializer for smart bed recommendation."""
+
+    patient_id = serializers.IntegerField(help_text="Patient ID")
+    requires_isolation = serializers.BooleanField(
+        required=False, default=False,
+        help_text="Whether patient requires isolation (auto-detected if not set)",
+    )
+    requires_oxygen = serializers.BooleanField(
+        required=False, default=False,
+        help_text="Whether patient requires oxygen supply",
+    )
+    requires_ventilator = serializers.BooleanField(
+        required=False, default=False,
+        help_text="Whether patient requires ventilator",
+    )
+    admission_type = serializers.ChoiceField(
+        choices=["ELECTIVE", "EMERGENCY", "TRANSFER"],
+        required=False, default="ELECTIVE",
+        help_text="Type of admission",
+    )
+
+
+class SmartRecommendBedResponseSerializer(serializers.Serializer):
+    """Response serializer for smart bed recommendation."""
+
+    success = serializers.BooleanField()
+    assigned_bed_id = serializers.IntegerField(allow_null=True)
+    assigned_bed_number = serializers.CharField(allow_null=True)
+    smart_scores = serializers.DictField()
+    emergency_buffer_enforced = serializers.BooleanField()
+    cohort_match_score = serializers.FloatField()
+    infection_isolation_triggered = serializers.BooleanField()
+    workload_score = serializers.FloatField()
+    predicted_discharges = PredictedDischargeSerializer(many=True)
+    evaluation_time_ms = serializers.IntegerField()
+    error = serializers.CharField(allow_null=True, allow_blank=True)

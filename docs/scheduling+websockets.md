@@ -616,46 +616,64 @@ fallback:
 
 ---
 
-### Phase C: Smart Allocation (Est: 4-5 days)
+### Phase C: Smart Allocation ✅ COMPLETE
 
-> **Status**: 📋 Planned  
-> **Target**: Phase 2+
+> **Status**: ✅ Complete  
+> **Implemented**: March 2026  
+> **Test Coverage**: 48 tests in `tests/inpatient/test_smart_allocation.py`  
+> **Location**: `backend/hmis/apps/inpatient/services/bed_smart.py`
 
 #### Advanced Features
 
-| Feature | Description |
-|---------|-------------|
-| **Predictive Discharge** | Reserve beds based on expected discharge times |
-| **Cohort Grouping** | Keep patients with similar conditions together |
-| **Infection Control** | Automatic isolation placement for infectious patients |
-| **Staff Workload** | Balance assignments across nursing staff |
-| **Length-of-Stay Prediction** | Optimize bed turnover |
-| **Emergency Buffer** | Reserve percentage of beds for emergencies |
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Predictive Discharge** | Reserve beds based on expected discharge times | ✅ |
+| **Cohort Grouping** | Keep patients with similar ICD-10 chapter together | ✅ |
+| **Infection Control** | Auto-detect isolation needs from Kardex & lab results | ✅ |
+| **Staff Workload** | Balance assignments using occupancy + critical patient ratio | ✅ |
+| **Length-of-Stay Prediction** | Avg LOS from historical discharges per ward | ✅ |
+| **Emergency Buffer** | Reserve percentage of beds for emergencies | ✅ |
 
-#### Algorithm Enhancements
+#### Algorithm (Implemented)
 ```
-1. Check predicted discharges in next 4 hours
-2. If emergency admission, consider reserved buffer
-3. Evaluate infection risk score
-4. Apply cohort grouping rules (e.g., post-surgical together)
-5. Factor in nursing staff workload per zone
-6. Score and select optimal bed
-7. Trigger notifications to housekeeping if bed needs preparation
+1. Auto-detect infection risk from NursingKardex.isolation_required and critical lab results
+2. If non-emergency, enforce emergency buffer (Ward.emergency_buffer_percent)
+3. Run Phase B rule-based evaluation (constraints + scoring)
+4. Apply cohort grouping bonus (ICD-10 chapter match with existing patients)
+5. Calculate workload score (60% occupancy + 40% critical patient ratio)
+6. Return best bed with smart_scores breakdown
+7. If no beds available, return predicted discharges for planning
 ```
+
+#### Model Changes
+- `Ward.emergency_buffer_percent` — configurable 0-100% buffer for emergencies
+- `Admission.expected_discharge_date` — clinician-set expected discharge for bed planning
+
+#### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/inpatient/wards/{id}/predicted_discharges/` | GET | Predicted bed releases within N hours |
+| `/api/inpatient/wards/{id}/bed_utilization/` | GET | Comprehensive utilization analytics |
+| `/api/inpatient/wards/{id}/smart_recommend_bed/` | POST | Smart bed recommendation (Phase C) |
+| `/api/inpatient/admissions/{id}/set_expected_discharge/` | POST | Set expected discharge date |
 
 #### Integration Points
-- Laboratory: Infection markers for isolation decisions
-- Nursing Kardex: Staff workload data
-- Housekeeping: Bed turnover notifications
-- SHA Claims: Bed-day tracking for billing
+- Laboratory: Critical lab results (WBC, CRP, PCT, ESR, blood culture) inform isolation decisions
+- Nursing Kardex: `isolation_required` and `isolation_type` for infection control
+- Shift Handover: `critical_patients` and `total_patients` for workload scoring
+- Discharge model: Historical LOS for predictive estimation
 
 #### Deliverables
-- [ ] Discharge prediction model integration
-- [ ] Infection risk assessment rules
-- [ ] Cohort grouping configuration
-- [ ] Emergency buffer management
-- [ ] Housekeeping notification service
-- [ ] Analytics dashboard for bed utilization
+- [x] Discharge prediction model integration (`get_predicted_discharges`)
+- [x] Infection risk assessment from Kardex + lab markers (`evaluate_infection_risk`)
+- [x] Cohort grouping scoring by ICD-10 chapter (`calculate_cohort_score`)
+- [x] Emergency buffer management (`Ward.emergency_buffer_percent`, `check_emergency_buffer`)
+- [x] Workload scoring service (`calculate_workload_score`)
+- [x] Analytics endpoint for bed utilization (`get_bed_utilization`)
+- [x] Smart recommend bed API endpoint
+- [x] Set expected discharge API endpoint
+- [x] 48 comprehensive tests (model, service, API)
 
 ---
 

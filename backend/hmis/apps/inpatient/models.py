@@ -183,6 +183,12 @@ class Ward(TimeStampedModel):
         help_text="Whether ward supports ventilated patients",
     )
 
+    # Phase C: Smart Allocation
+    emergency_buffer_percent = models.PositiveIntegerField(
+        default=0,
+        help_text="Percentage of beds reserved for emergency admissions (0-100)",
+    )
+
     class Meta(TimeStampedModel.Meta):
         """Meta options for Ward model."""
 
@@ -193,6 +199,14 @@ class Ward(TimeStampedModel):
     def __str__(self):
         """Return string representation."""
         return f"{self.name} ({self.code})"
+
+    def clean(self):
+        """Validate ward data."""
+        super().clean()
+        if self.emergency_buffer_percent > 100:
+            raise ValidationError(
+                {"emergency_buffer_percent": "Buffer percentage cannot exceed 100."}
+            )
 
     def save(self, *args, **kwargs):
         """Auto-populate compatibility defaults and create beds on ward creation."""
@@ -759,6 +773,13 @@ class Admission(TimeStampedModel):
         null=True,
         blank=True,
         help_text="Date and time of discharge",
+    )
+
+    # Phase C: Smart Allocation — predicted discharge planning
+    expected_discharge_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Clinician-set expected discharge date for bed planning",
     )
 
     class Meta(TimeStampedModel.Meta):
