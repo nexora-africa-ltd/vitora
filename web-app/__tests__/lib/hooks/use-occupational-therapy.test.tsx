@@ -1,4 +1,137 @@
+import React from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  otKeys,
+  useApproveOTOrder,
+  useAssignOTTherapist,
+  useCancelOTOrder,
+  useCancelOTSession,
+  useCompleteOTOrder,
+  useCompleteOTSession,
+  useCreateOTOrder,
+  useCreateOTSession,
+  useDeleteOTOrder,
+  useGenerateOTSessions,
+  useMarkOTSessionNoShow,
+  useOTOrder,
+  useOTOrderByNumber,
+  useOTOrderSessions,
+  useOTOrders,
+  useOTSession,
+  useOTSessions,
+  useOTTreatmentType,
+  useOTTreatmentTypes,
+  useRejectOTOrder,
+  useRescheduleOTSession,
+  useStartOTOrder,
+  useStartOTSession,
+  useUpdateOTOrder,
+} from '@/lib/hooks/use-occupational-therapy';
+import { occupationalTherapyApi } from '@/lib/api/occupational-therapy';
+
+jest.mock('@/lib/api/occupational-therapy', () => ({
+  occupationalTherapyApi: {
+    listTreatmentTypes: jest.fn(),
+    getTreatmentType: jest.fn(),
+    listOrders: jest.fn(),
+    getOrder: jest.fn(),
+    getOrderByNumber: jest.fn(),
+    createOrder: jest.fn(),
+    updateOrder: jest.fn(),
+    deleteOrder: jest.fn(),
+    approveOrder: jest.fn(),
+    rejectOrder: jest.fn(),
+    assignTherapist: jest.fn(),
+    generateSessions: jest.fn(),
+    startOrder: jest.fn(),
+    completeOrder: jest.fn(),
+    cancelOrder: jest.fn(),
+    listSessions: jest.fn(),
+    getSession: jest.fn(),
+    getOrderSessions: jest.fn(),
+    createSession: jest.fn(),
+    startSession: jest.fn(),
+    completeSession: jest.fn(),
+    cancelSession: jest.fn(),
+    markNoShow: jest.fn(),
+    rescheduleSession: jest.fn(),
+  },
+}));
+
+const mockOtApi = occupationalTherapyApi as jest.Mocked<typeof occupationalTherapyApi>;
+
+function createWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
+  });
+  const invalidateQueries = jest.spyOn(queryClient, 'invalidateQueries');
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+  wrapper.displayName = 'OTHookWrapper';
+  return { wrapper, invalidateQueries };
+}
+
+describe('use-occupational-therapy hooks', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('builds OT query keys and fetches order/session queries', async () => {
+    expect(otKeys.order(1)).toEqual(['occupational-therapy', 'orders', 'detail', 1]);
+    mockOtApi.listTreatmentTypes.mockResolvedValue([{ id: 1 }] as never);
+    mockOtApi.getTreatmentType.mockResolvedValue({ id: 1 } as never);
+    mockOtApi.listOrders.mockResolvedValue([{ id: 2 }] as never);
+    mockOtApi.getOrder.mockResolvedValue({ id: 2 } as never);
+    mockOtApi.getOrderByNumber.mockResolvedValue({ id: 2 } as never);
+    mockOtApi.listSessions.mockResolvedValue([{ id: 3 }] as never);
+    mockOtApi.getSession.mockResolvedValue({ id: 3 } as never);
+    mockOtApi.getOrderSessions.mockResolvedValue([{ id: 3 }] as never);
+
+    const wrapper = createWrapper().wrapper;
+    const hooks = [
+      renderHook(() => useOTTreatmentTypes({ is_active: true } as never), { wrapper }),
+      renderHook(() => useOTTreatmentType(1), { wrapper }),
+      renderHook(() => useOTOrders({ status: 'PENDING' } as never), { wrapper }),
+      renderHook(() => useOTOrder(2), { wrapper }),
+      renderHook(() => useOTOrderByNumber('OT-001'), { wrapper }),
+      renderHook(() => useOTSessions({ status: 'SCHEDULED' } as never), { wrapper }),
+      renderHook(() => useOTSession(3), { wrapper }),
+      renderHook(() => useOTOrderSessions(2), { wrapper }),
+    ];
+    await waitFor(() => hooks.forEach((hook) => expect(hook.result.current.isSuccess).toBe(true)));
+  });
+
+  it('invalidates OT caches for order and session mutations', async () => {
+    const ctx = createWrapper();
+    const cases = [
+      { useHook: useCreateOTOrder, api: mockOtApi.createOrder, input: { patient: 1 }, called: [{ patient: 1 }], keys: [otKeys.orders()] },
+      { useHook: useUpdateOTOrder, api: mockOtApi.updateOrder, input: { id: 2, data: { notes: 'updated' } }, called: [2, { notes: 'updated' }], keys: [otKeys.order(2), otKeys.orders()] },
+      { useHook: useDeleteOTOrder, api: mockOtApi.deleteOrder, input: 2, called: [2], keys: [otKeys.orders()] },
+      { useHook: useApproveOTOrder, api: mockOtApi.approveOrder, input: 2, called: [2], keys: [otKeys.order(2), otKeys.orders()] },
+      { useHook: useRejectOTOrder, api: mockOtApi.rejectOrder, input: { id: 2, reason: 'reject' }, called: [2, 'reject'], keys: [otKeys.order(2), otKeys.orders()] },
+      { useHook: useAssignOTTherapist, api: mockOtApi.assignTherapist, input: { id: 2, therapistId: 7 }, called: [2, 7], keys: [otKeys.order(2), otKeys.orders()] },
+      { useHook: useGenerateOTSessions, api: mockOtApi.generateSessions, input: { id: 2, count: 2 }, called: [2, 2], keys: [otKeys.order(2), otKeys.orderSessions(2), otKeys.sessions()] },
+      { useHook: useStartOTOrder, api: mockOtApi.startOrder, input: 2, called: [2], keys: [otKeys.order(2), otKeys.orders()] },
+      { useHook: useCompleteOTOrder, api: mockOtApi.completeOrder, input: 2, called: [2], keys: [otKeys.order(2), otKeys.orders()] },
+      { useHook: useCancelOTOrder, api: mockOtApi.cancelOrder, input: { id: 2, reason: 'cancel' }, called: [2, 'cancel'], keys: [otKeys.order(2), otKeys.orders()] },
+      { useHook: useCreateOTSession, api: mockOtApi.createSession, input: { order: 2 }, called: [{ order: 2 }], keys: [otKeys.sessions(), otKeys.orderSessions(2)] },
+      { useHook: useStartOTSession, api: mockOtApi.startSession, input: 3, called: [3], keys: [otKeys.session(3), otKeys.sessions()] },
+      { useHook: useCompleteOTSession, api: mockOtApi.completeSession, input: { id: 3, data: { summary: 'done' } }, called: [3, { summary: 'done' }], resolved: { order: 2 }, keys: [otKeys.session(3), otKeys.sessions(), otKeys.order(2)] },
+      { useHook: useCancelOTSession, api: mockOtApi.cancelSession, input: { id: 3, reason: 'cancel' }, called: [3, 'cancel'], keys: [otKeys.session(3), otKeys.sessions()] },
+      { useHook: useMarkOTSessionNoShow, api: mockOtApi.markNoShow, input: 3, called: [3], keys: [otKeys.session(3), otKeys.sessions()] },
+      { useHook: useRescheduleOTSession, api: mockOtApi.rescheduleSession, input: { id: 3, newDate: '2026-03-20', newTime: '11:00' }, called: [3, '2026-03-20', '11:00'], keys: [otKeys.session(3), otKeys.sessions()] },
+    ];
+    for (const testCase of cases) {
+      testCase.api.mockResolvedValueOnce((testCase as any).resolved ?? { ok: true });
+      const { result } = renderHook(() => testCase.useHook(), { wrapper: ctx.wrapper });
+      await act(async () => {
+        await result.current.mutateAsync(testCase.input as never);
+      });
+      expect(testCase.api).toHaveBeenCalledWith(...(testCase.called as []));
+      testCase.keys.forEach((key) => expect(ctx.invalidateQueries).toHaveBeenCalledWith({ queryKey: key }));
+    }
+  });
+});import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import {
