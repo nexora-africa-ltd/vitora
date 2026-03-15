@@ -36,7 +36,7 @@ export interface InpatientWard {
   updated_at?: string;
 }
 
-export type BedStatus = 'AVAILABLE' | 'OCCUPIED' | 'MAINTENANCE' | 'RESERVED';
+export type BedStatus = 'AVAILABLE' | 'OCCUPIED' | 'CLEANING' | 'MAINTENANCE' | 'RESERVED';
 
 export type BedType = 'STANDARD' | 'PRIVATE' | 'ICU' | 'HDU' | 'ISOLATION';
 
@@ -1243,6 +1243,7 @@ export interface BedUtilization {
   capacity: number;
   occupied: number;
   available: number;
+  cleaning: number;
   reserved: number;
   maintenance: number;
   occupancy_rate: number;

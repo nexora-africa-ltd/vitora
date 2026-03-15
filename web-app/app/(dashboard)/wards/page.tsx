@@ -216,20 +216,21 @@ function WardCard({ ward }: { ward: any }) {
 
   const totalBeds = ward.total_beds || 0;
   const occupiedBeds = ward.occupied_beds || 0;
-  const availableBeds = totalBeds - occupiedBeds;
-  const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
-
-  const occupancyColor = occupancyRate >= 90 ? 'text-destructive' : 'text-muted-foreground';
-
   const bedStatusCounts = useMemo(() => {
     const bedsList = (Array.isArray(beds) ? beds : beds?.results ?? []);
     return {
       available: bedsList.filter((b: any) => b.status === 'AVAILABLE').length,
       occupied: bedsList.filter((b: any) => b.status === 'OCCUPIED').length,
+      cleaning: bedsList.filter((b: any) => b.status === 'CLEANING').length,
       maintenance: bedsList.filter((b: any) => b.status === 'MAINTENANCE').length,
       reserved: bedsList.filter((b: any) => b.status === 'RESERVED').length,
     };
   }, [beds]);
+
+  const availableBeds = bedStatusCounts.available || ward.available_beds || Math.max(totalBeds - occupiedBeds, 0);
+  const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
+
+  const occupancyColor = occupancyRate >= 90 ? 'text-destructive' : 'text-muted-foreground';
 
   return (
     <Card>
@@ -273,6 +274,14 @@ function WardCard({ ward }: { ward: any }) {
               <span>Maintenance</span>
               <Badge variant="secondary" className="shrink-0 w-fit self-start sm:self-auto">
                 {bedStatusCounts.maintenance}
+              </Badge>
+            </div>
+          )}
+          {bedStatusCounts.cleaning > 0 && (
+            <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+              <span>Cleaning</span>
+              <Badge variant="secondary" className="shrink-0 w-fit self-start sm:self-auto">
+                {bedStatusCounts.cleaning}
               </Badge>
             </div>
           )}

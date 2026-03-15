@@ -161,7 +161,7 @@ class TestDischargeCreation:
         assert discharge.lab_results_acknowledged is True
 
     def test_bed_status_update_on_discharge(self, active_admission, test_user):
-        """Should update bed status to AVAILABLE on discharge."""
+        """Should move the bed to CLEANING on discharge for housekeeping turnover."""
         bed = active_admission.bed
         assert bed.status == "OCCUPIED"
 
@@ -181,7 +181,7 @@ class TestDischargeCreation:
         )
 
         bed.refresh_from_db()
-        assert bed.status == "AVAILABLE"
+        assert bed.status == "CLEANING"
 
     def test_admission_status_update_on_discharge(self, active_admission, test_user):
         """Should update admission status to DISCHARGED."""

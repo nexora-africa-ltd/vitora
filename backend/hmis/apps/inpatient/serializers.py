@@ -104,6 +104,17 @@ class BedSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "status_changed_at", "created_at", "updated_at"]
 
 
+class BedTurnoverActionSerializer(serializers.Serializer):
+    """Serializer for housekeeping turnover actions."""
+
+    notes = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+        help_text="Optional housekeeping or turnover notes",
+    )
+
+
 class AdmissionRecommendationSerializer(serializers.ModelSerializer):
     """Serializer for AdmissionRecommendation model."""
 
@@ -1692,6 +1703,7 @@ class BedUtilizationSerializer(serializers.Serializer):
     capacity = serializers.IntegerField()
     occupied = serializers.IntegerField()
     available = serializers.IntegerField()
+    cleaning = serializers.IntegerField()
     reserved = serializers.IntegerField()
     maintenance = serializers.IntegerField()
     occupancy_rate = serializers.FloatField()

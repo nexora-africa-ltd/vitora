@@ -181,8 +181,7 @@ export function useBeds(params?: BedListParams) {
   return useQuery({
     queryKey: inpatientQueryKeys.beds(params),
     queryFn: () => inpatientApi.listBeds(params),
-    // Only fetch when ward is specified to avoid fetching all beds
-    enabled: params?.ward !== undefined,
+    enabled: params !== undefined,
   });
 }
 
@@ -190,6 +189,27 @@ export function useUpdateBed() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<Bed> }) => inpatientApi.updateBed(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
+    },
+  });
+}
+
+export function useMarkBedCleaning() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ bedId, notes }: { bedId: number; notes?: string }) =>
+      inpatientApi.markBedCleaning(bedId, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
+    },
+  });
+}
+
+export function useMarkBedAvailable() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (bedId: number) => inpatientApi.markBedAvailable(bedId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.all });
     },

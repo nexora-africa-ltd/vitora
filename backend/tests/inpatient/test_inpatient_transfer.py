@@ -172,7 +172,7 @@ class TestTransferCreation:
         destination_bed,
         test_user,
     ):
-        """Should update source bed status to AVAILABLE."""
+        """Should move the source bed to CLEANING after transfer."""
         assert source_bed.status == "OCCUPIED"
 
         transfer = Transfer.objects.create(
@@ -188,7 +188,7 @@ class TestTransferCreation:
         )
 
         source_bed.refresh_from_db()
-        assert source_bed.status == "AVAILABLE"
+        assert source_bed.status == "CLEANING"
 
     def test_destination_bed_status_update_on_transfer(
         self,
@@ -245,6 +245,11 @@ class TestTransferCreation:
         active_admission.refresh_from_db()
         assert active_admission.ward == destination_ward
         assert active_admission.bed == destination_bed
+
+        source_bed.refresh_from_db()
+        destination_bed.refresh_from_db()
+        assert source_bed.status == "CLEANING"
+        assert destination_bed.status == "OCCUPIED"
 
 
 @pytest.mark.django_db

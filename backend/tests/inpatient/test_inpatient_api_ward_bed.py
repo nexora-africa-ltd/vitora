@@ -6,6 +6,7 @@ Phase 7a: Ward & Bed Management API (8 tests)
 - Ward detail with bed count
 - Bed listing for a ward
 - Bed status update
+- Bed turnover actions
 - Bed availability filtering
 - Ward search functionality
 - Permission checks
@@ -143,3 +144,34 @@ class TestBedAPI:
         assert len(response.data["results"]) >= 2
         for bed in response.data["results"]:
             assert bed["status"] == "AVAILABLE"
+
+    def test_mark_bed_cleaning(self, authenticated_client, sample_bed):
+        """Should transition a bed into CLEANING via turnover action."""
+        sample_bed.status = "OCCUPIED"
+        sample_bed.save(update_fields=["status", "updated_at"])
+
+        response = authenticated_client.post(
+            f"/api/inpatient/beds/{sample_bed.id}/mark_cleaning/",
+            {"notes": "Patient discharged - housekeeping pending"},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "CLEANING"
+        assert response.data["notes"] == "Patient discharged - housekeeping pending"
+
+    def test_mark_bed_available_after_cleaning(self, authenticated_client, sample_bed):
+        """Should complete turnover and return a cleaning bed to AVAILABLE."""
+        sample_bed.status = "CLEANING"
+        sample_bed.notes = "Ready for housekeeping"
+        sample_bed.save(update_fields=["status", "notes", "updated_at"])
+
+        response = authenticated_client.post(
+            f"/api/inpatient/beds/{sample_bed.id}/mark_available/",
+            {},
+            format="json",
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "AVAILABLE"
+        assert response.data["notes"] == ""
