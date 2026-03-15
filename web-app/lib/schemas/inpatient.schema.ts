@@ -131,6 +131,7 @@ export const WardSchema = z.object({
   min_age_years: z.number().nullable().optional(),
   oxygen_equipped: z.boolean().optional(),
   ventilator_capable: z.boolean().optional(),
+  emergency_buffer_percent: z.number().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });
@@ -230,6 +231,7 @@ export const AdmissionSchema = z.object({
   constraint_override: z.boolean().optional(),
   constraint_override_reason: z.string().nullable().optional(),
   constraint_violations: z.array(z.string()).optional(),
+  expected_discharge_date: z.string().nullable().optional(),
   clinical_notes: z.string().optional(),
   diet: z.string().optional(),
   special_instructions: z.string().optional(),
@@ -1018,3 +1020,117 @@ export const PaginatedBPMonitoringReadingSchema = z.object({
   previous: z.string().nullable(),
   results: z.array(BPMonitoringReadingSchema),
 });
+
+// =============================================================================
+// RULE-BASED BED ASSIGNMENT SCHEMAS (Phase B)
+// =============================================================================
+
+export const BedCandidateEvaluationSchema = z.object({
+  bed_id: z.number(),
+  bed_number: z.string(),
+  ward_id: z.number(),
+  ward_name: z.string(),
+  ward_code: z.string(),
+  passed: z.boolean(),
+  matched_constraints: z.array(z.string()),
+  failed_constraints: z.array(z.string()),
+  compatibility_violations: z.array(z.record(z.unknown())),
+  rejection_reason: z.string(),
+  score: z.number(),
+  scoring_breakdown: z.record(z.unknown()),
+});
+
+export type BedCandidateEvaluationSchemaType = z.infer<typeof BedCandidateEvaluationSchema>;
+
+export const RuleBasedBedAssignmentResponseSchema = z.object({
+  success: z.boolean(),
+  assigned_bed_id: z.number().nullable(),
+  assigned_bed_number: z.string().nullable(),
+  assigned_ward_name: z.string().nullable(),
+  rule_applied: z.string().nullable(),
+  decision_id: z.number().nullable(),
+  decision_outcome: z.string(),
+  decision_reason: z.string(),
+  evaluation_time_ms: z.number(),
+  candidates_evaluated: z.array(BedCandidateEvaluationSchema),
+  scoring_details: z.record(z.unknown()),
+  error: z.string().nullable(),
+});
+
+export type RuleBasedBedAssignmentResponseSchemaType = z.infer<typeof RuleBasedBedAssignmentResponseSchema>;
+
+// =============================================================================
+// SMART ALLOCATION SCHEMAS (Phase C)
+// =============================================================================
+
+export const PredictedDischargeSchema = z.object({
+  admission_id: z.number(),
+  admission_number: z.string(),
+  patient_name: z.string(),
+  ward_id: z.number(),
+  ward_name: z.string(),
+  bed_id: z.number(),
+  bed_number: z.string(),
+  admission_date: z.string(),
+  expected_discharge_date: z.string().nullable(),
+  estimated_discharge_date: z.string().nullable(),
+  source: z.string(),
+  hours_until_available: z.number().nullable(),
+});
+
+export type PredictedDischargeSchemaType = z.infer<typeof PredictedDischargeSchema>;
+
+export const PredictedDischargesResponseSchema = z.object({
+  ward_id: z.number(),
+  ward_name: z.string(),
+  hours_ahead: z.number(),
+  count: z.number(),
+  predictions: z.array(PredictedDischargeSchema),
+});
+
+export type PredictedDischargesResponseSchemaType = z.infer<typeof PredictedDischargesResponseSchema>;
+
+export const BedUtilizationSchema = z.object({
+  ward_id: z.number(),
+  ward_name: z.string(),
+  ward_code: z.string(),
+  capacity: z.number(),
+  occupied: z.number(),
+  available: z.number(),
+  reserved: z.number(),
+  maintenance: z.number(),
+  occupancy_rate: z.number(),
+  emergency_buffer_percent: z.number(),
+  emergency_buffer_beds: z.number(),
+  effective_available: z.number(),
+  avg_length_of_stay_days: z.number().nullable(),
+  predicted_discharges_next_4h: z.number(),
+  predicted_discharges_next_24h: z.number(),
+  workload_score: z.number(),
+});
+
+export type BedUtilizationSchemaType = z.infer<typeof BedUtilizationSchema>;
+
+export const SmartRecommendBedResponseSchema = z.object({
+  success: z.boolean(),
+  assigned_bed_id: z.number().nullable(),
+  assigned_bed_number: z.string().nullable(),
+  smart_scores: z.record(z.unknown()),
+  emergency_buffer_enforced: z.boolean(),
+  cohort_match_score: z.number(),
+  infection_isolation_triggered: z.boolean(),
+  workload_score: z.number(),
+  predicted_discharges: z.array(PredictedDischargeSchema),
+  evaluation_time_ms: z.number(),
+  error: z.string().nullable(),
+});
+
+export type SmartRecommendBedResponseSchemaType = z.infer<typeof SmartRecommendBedResponseSchema>;
+
+export const SetExpectedDischargeResponseSchema = z.object({
+  admission_id: z.number(),
+  admission_number: z.string(),
+  expected_discharge_date: z.string(),
+});
+
+export type SetExpectedDischargeResponseSchemaType = z.infer<typeof SetExpectedDischargeResponseSchema>;
