@@ -30,7 +30,7 @@ from django.utils import timezone
 
 from hmis.apps.core.models import County, SubCounty
 from hmis.apps.encounters.models import Encounter
-from hmis.apps.inpatient.models import Admission, Bed, Discharge, Ward
+from hmis.apps.inpatient.models import Admission, Bed, Discharge, DischargeDiagnosis, Ward
 from hmis.apps.patients.models import Patient
 
 User = get_user_model()
@@ -515,3 +515,99 @@ class TestDischargeQueries:
 
         normal_discharges = Discharge.objects.filter(discharge_type="NORMAL")
         assert normal_discharges.count() == 1
+
+
+@pytest.mark.django_db
+class TestDischargeDiagnosis:
+    """Tests for DischargeDiagnosis model (multi-diagnosis support)."""
+
+    @pytest.fixture
+    def discharge(self, active_admission, test_user):
+        """Create a basic discharge for diagnosis tests."""
+        return Discharge.objects.create(
+            admission=active_admission,
+            discharge_type="NORMAL",
+            discharge_date=timezone.now(),
+            discharged_by=test_user,
+            admission_diagnosis="K35.8",
+            final_diagnosis="K35.8",
+            final_diagnosis_text="Acute appendicitis",
+            treatment_summary="Appendectomy performed",
+            patient_instructions="Rest and follow up",
+            pharmacy_cleared=True,
+            billing_cleared=True,
+            lab_results_acknowledged=True,
+        )
+
+    def test_create_primary_diagnosis(self, discharge):
+        """Should create a primary diagnosis for a discharge."""
+        diag = DischargeDiagnosis.objects.create(
+            discharge=discharge,
+            role="PRIMARY",
+            code="K35.8",
+            description="Acute appendicitis, other and unspecified",
+        )
+        assert diag.id is not None
+        assert diag.role == "PRIMARY"
+        assert diag.code == "K35.8"
+        assert diag.get_role_display() == "Primary Diagnosis"
+
+    def test_create_multiple_diagnoses(self, discharge):
+        """Should support primary, secondary, and complication diagnoses."""
+        DischargeDiagnosis.objects.create(
+            discharge=discharge, role="PRIMARY", code="K35.8", description="Acute appendicitis"
+        )
+        DischargeDiagnosis.objects.create(
+            discharge=discharge, role="SECONDARY", code="E11.9", description="Type 2 diabetes mellitus"
+        )
+        DischargeDiagnosis.objects.create(
+            discharge=discharge, role="SECONDARY", code="I10", description="Essential hypertension"
+        )
+        DischargeDiagnosis.objects.create(
+            discharge=discharge, role="COMPLICATION", code="T81.4", description="Post-procedural infection"
+        )
+
+        assert discharge.diagnoses.count() == 4
+        assert discharge.diagnoses.filter(role="PRIMARY").count() == 1
+        assert discharge.diagnoses.filter(role="SECONDARY").count() == 2
+        assert discharge.diagnoses.filter(role="COMPLICATION").count() == 1
+
+    def test_unique_primary_constraint(self, discharge):
+        """Should prevent duplicate primary diagnoses on the same discharge."""
+        DischargeDiagnosis.objects.create(
+            discharge=discharge, role="PRIMARY", code="K35.8", description="Acute appendicitis"
+        )
+        with pytest.raises(IntegrityError):
+            DischargeDiagnosis.objects.create(
+                discharge=discharge, role="PRIMARY", code="J18.9", description="Pneumonia"
+            )
+
+    def test_multiple_secondary_allowed(self, discharge):
+        """Should allow multiple secondary diagnoses."""
+        DischargeDiagnosis.objects.create(
+            discharge=discharge, role="SECONDARY", code="E11.9", description="DM2"
+        )
+        DischargeDiagnosis.objects.create(
+            discharge=discharge, role="SECONDARY", code="I10", description="HTN"
+        )
+        assert discharge.diagnoses.filter(role="SECONDARY").count() == 2
+
+    def test_cascade_delete(self, discharge):
+        """Should delete diagnoses when discharge is deleted."""
+        DischargeDiagnosis.objects.create(
+            discharge=discharge, role="PRIMARY", code="K35.8", description="Appendicitis"
+        )
+        DischargeDiagnosis.objects.create(
+            discharge=discharge, role="SECONDARY", code="I10", description="HTN"
+        )
+        assert DischargeDiagnosis.objects.count() == 2
+
+        discharge.delete()
+        assert DischargeDiagnosis.objects.count() == 0
+
+    def test_string_representation(self, discharge):
+        """Should return descriptive string."""
+        diag = DischargeDiagnosis.objects.create(
+            discharge=discharge, role="PRIMARY", code="K35.8", description="Acute appendicitis"
+        )
+        assert str(diag) == "Primary Diagnosis: K35.8 - Acute appendicitis"

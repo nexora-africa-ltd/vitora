@@ -1166,6 +1166,60 @@ class Discharge(TimeStampedModel):
         return delta.days
 
 
+class DischargeDiagnosis(TimeStampedModel):
+    """
+    Individual diagnosis recorded at discharge.
+
+    Each Discharge can have multiple diagnoses with different roles:
+    - PRIMARY: the principal condition treated during the admission
+    - SECONDARY: comorbidities managed during the stay
+    - COMPLICATION: conditions that arose during admission
+
+    ICD-10 or ICD-11 codes accepted. SHA claims integration pulls
+    primary and secondary diagnoses from these records.
+    """
+
+    class DiagnosisRole(models.TextChoices):
+        PRIMARY = "PRIMARY", "Primary Diagnosis"
+        SECONDARY = "SECONDARY", "Secondary Diagnosis"
+        COMPLICATION = "COMPLICATION", "Complication"
+
+    discharge = models.ForeignKey(
+        Discharge,
+        on_delete=models.CASCADE,
+        related_name="diagnoses",
+        help_text="Discharge this diagnosis belongs to",
+    )
+    role = models.CharField(
+        max_length=15,
+        choices=DiagnosisRole.choices,
+        help_text="Role of this diagnosis (PRIMARY, SECONDARY, COMPLICATION)",
+    )
+    code = models.CharField(
+        max_length=20,
+        help_text="ICD-10 or ICD-11 code",
+    )
+    description = models.CharField(
+        max_length=500,
+        help_text="Diagnosis description text",
+    )
+
+    class Meta(TimeStampedModel.Meta):
+        ordering = ["role", "id"]
+        verbose_name = "Discharge Diagnosis"
+        verbose_name_plural = "Discharge Diagnoses"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["discharge", "role"],
+                condition=models.Q(role="PRIMARY"),
+                name="unique_primary_diagnosis_per_discharge",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.get_role_display()}: {self.code} - {self.description}"
+
+
 class Transfer(TimeStampedModel):
     """
     Patient transfer between wards.

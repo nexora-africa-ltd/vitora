@@ -18,6 +18,7 @@ from .models import (
     BloodTransfusionObservation,
     BPMonitoringReading,
     Discharge,
+    DischargeDiagnosis,
     FluidBalanceEntry,
     FluidBalanceSheet,
     InpatientConsumableUsage,
@@ -327,11 +328,29 @@ class AdmissionSerializer(serializers.ModelSerializer):
         return admission
 
 
+class DischargeDiagnosisSerializer(serializers.ModelSerializer):
+    """Serializer for individual discharge diagnosis."""
+
+    role_display = serializers.CharField(source="get_role_display", read_only=True)
+
+    class Meta:
+        model = DischargeDiagnosis
+        fields = [
+            "id",
+            "role",
+            "role_display",
+            "code",
+            "description",
+        ]
+        read_only_fields = ["id"]
+
+
 class DischargeSerializer(serializers.ModelSerializer):
     """Serializer for Discharge model."""
 
     admission_number = serializers.CharField(source="admission.admission_number", read_only=True)
     patient_name = serializers.SerializerMethodField()
+    diagnoses = DischargeDiagnosisSerializer(many=True, required=False)
     mch_registration = serializers.IntegerField(source="admission.mch_registration_id", read_only=True)
     mch_registration_number = serializers.CharField(
         source="admission.mch_registration.mch_number", read_only=True
@@ -367,6 +386,7 @@ class DischargeSerializer(serializers.ModelSerializer):
             "admission_diagnosis",
             "final_diagnosis",
             "final_diagnosis_text",
+            "diagnoses",
             "procedures_performed",
             "treatment_summary",
             "discharge_medications",
@@ -479,12 +499,40 @@ class DischargeSerializer(serializers.ModelSerializer):
         )
 
     def create(self, validated_data):
+        diagnoses_data = validated_data.pop("diagnoses", [])
         discharge = super().create(validated_data)
+
+        # Create nested diagnoses
+        for diag in diagnoses_data:
+            DischargeDiagnosis.objects.create(discharge=discharge, **diag)
+
+        # Backfill legacy fields from primary diagnosis for backward compat
+        primary = next((d for d in diagnoses_data if d.get("role") == "PRIMARY"), None)
+        if primary and not discharge.final_diagnosis:
+            discharge.final_diagnosis = primary["code"][:10]
+            discharge.final_diagnosis_text = primary["description"][:255]
+            discharge.save(update_fields=["final_diagnosis", "final_diagnosis_text", "updated_at"])
+
         self._apply_maternity_continuity(discharge)
         return discharge
 
     def update(self, instance, validated_data):
+        diagnoses_data = validated_data.pop("diagnoses", None)
         discharge = super().update(instance, validated_data)
+
+        # Replace diagnoses if provided
+        if diagnoses_data is not None:
+            discharge.diagnoses.all().delete()
+            for diag in diagnoses_data:
+                DischargeDiagnosis.objects.create(discharge=discharge, **diag)
+
+            # Backfill legacy fields
+            primary = next((d for d in diagnoses_data if d.get("role") == "PRIMARY"), None)
+            if primary:
+                discharge.final_diagnosis = primary["code"][:10]
+                discharge.final_diagnosis_text = primary["description"][:255]
+                discharge.save(update_fields=["final_diagnosis", "final_diagnosis_text", "updated_at"])
+
         if discharge.admission.mch_registration_id and discharge.maternity_continuity_action in {
             "SCHEDULE_EARLY_PNC",
             "ROUTE_TO_PNC_QUEUE",

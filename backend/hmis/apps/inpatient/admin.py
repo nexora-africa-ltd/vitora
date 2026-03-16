@@ -13,6 +13,7 @@ from .models import (
     BloodTransfusionObservation,
     BPMonitoringReading,
     Discharge,
+    DischargeDiagnosis,
     FluidBalanceEntry,
     FluidBalanceSheet,
     InpatientConsumableUsage,
@@ -231,10 +232,17 @@ class AdmissionAdmin(admin.ModelAdmin):
     )
 
 
+class DischargeDiagnosisInline(admin.TabularInline):
+    model = DischargeDiagnosis
+    extra = 1
+    fields = ["role", "code", "description"]
+
+
 @admin.register(Discharge)
 class DischargeAdmin(admin.ModelAdmin):
     """Admin interface for Discharge model."""
 
+    inlines = [DischargeDiagnosisInline]
     list_display = [
         "admission",
         "discharge_type",
