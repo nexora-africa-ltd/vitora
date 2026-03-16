@@ -47,6 +47,8 @@ export const ACTION_PERMISSIONS = {
 
   // === Inpatient Module ===
   'inpatient.view_ward': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'inpatient.manage_ward': ['ADMIN'],
+  'inpatient.create_admission': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
   'inpatient.view_admissions': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
   'inpatient.record_vitals': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
   'inpatient.make_rounds': ['DOCTOR', 'CLINICAL_OFFICER'],

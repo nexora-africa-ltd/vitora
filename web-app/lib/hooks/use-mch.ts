@@ -2,10 +2,19 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { labourPartographObservationsApi, labourPartographsApi, mchRegistrationsApi } from '@/lib/api/mch';
-import type { MCHRegistration, 
+import type { MCHRegistration,
+  MCHRegistrationListParams,
   LabourPartographCreateData,
   LabourPartographObservationCreateData,
 } from '@/lib/types/mch';
+
+export function useMCHRegistrations(params?: MCHRegistrationListParams, enabled = true) {
+  return useQuery({
+    queryKey: ['mch-registrations', params ?? {}],
+    queryFn: () => mchRegistrationsApi.list(params),
+    enabled,
+  });
+}
 
 export function useMCHRegistration(registrationId: number | undefined) {
   return useQuery<MCHRegistration>({

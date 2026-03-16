@@ -101,7 +101,7 @@ export default function ReviewRequestsPage() {
   };
 
   const handleRowClick = (review: ReviewRequest) => {
-    router.push(`/admissions/${review.admission}`);
+    router.push(`/inpatient/reviews/${review.id}`);
   };
 
   return (

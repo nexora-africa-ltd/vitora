@@ -146,6 +146,17 @@ export function useUpdateWard() {
   });
 }
 
+export function useCreateWard() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Parameters<typeof inpatientApi.createWard>[0]) =>
+      inpatientApi.createWard(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.wards() });
+    },
+  });
+}
+
 /**
  * Generate missing beds for a ward based on its capacity.
  * Creates bed records up to the ward's capacity if fewer beds currently exist.

@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Save, X, AlertCircle, User, UserPlus, AlertTriangle, Sparkles, ChevronDown } from 'lucide-react';
+import { Save, X, AlertCircle, User, UserPlus, AlertTriangle, Sparkles, ChevronDown, CheckCircle2, Bed, Stethoscope, Shield, CreditCard, Baby } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
@@ -53,7 +54,8 @@ import type {
   CompatibilityCheckResult,
   SmartAdmissionType,
 } from '@/lib/types/inpatient';
-import { useMCHRegistration } from '@/lib/hooks/use-mch';
+import { useMCHRegistrations } from '@/lib/hooks/use-mch';
+import type { MCHRegistrationListItem } from '@/lib/types/mch';
 
 type BedAssignmentStrategy = 'SMART' | 'RULES' | 'MANUAL';
 
@@ -93,11 +95,8 @@ export default function NewAdmissionPage() {
   const [requiresVentilator, setRequiresVentilator] = useState(false);
   const [payerType, setPayerType] = useState<'CASH' | 'SHA' | 'CORPORATE'>('CASH');
   const [mchRegistrationId, setMchRegistrationId] = useState(initialMchRegistrationParam || '');
-  const selectedMchRegistrationId = useMemo(
-    () => (mchRegistrationId ? Number(mchRegistrationId) : undefined),
-    [mchRegistrationId]
-  );
-  const { data: mchRegistrationData } = useMCHRegistration(selectedMchRegistrationId);
+  const [mchManualMode, setMchManualMode] = useState(false);
+  const [mchManualSearch, setMchManualSearch] = useState('');
 
   // Diagnosis state
   const [diagnosisValue, setDiagnosisValue] = useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue());
@@ -129,6 +128,54 @@ export default function NewAdmissionPage() {
     return wardsList.find((w: any) => String(w.id) === wardId) ?? null;
   }, [wards, wardId]);
   const isMaternityWard = selectedWard?.ward_type === 'MATERNITY';
+
+  // --- MCH registration linking (must come after isMaternityWard) ---
+  // Fetch active MCH registrations for the selected patient
+  const { data: mchRegistrationsResponse, isLoading: mchLoading } = useMCHRegistrations(
+    { mother: patientId ?? undefined, status: 'ACTIVE' as any, page_size: 20 },
+    !!patientId && isMaternityWard
+  );
+  const mchRegistrations: MCHRegistrationListItem[] = useMemo(
+    () => mchRegistrationsResponse?.results ?? [],
+    [mchRegistrationsResponse]
+  );
+
+  // Search by MCH number when in manual mode
+  const { data: mchSearchResponse } = useMCHRegistrations(
+    { search: mchManualSearch, page_size: 10 },
+    mchManualMode && mchManualSearch.length >= 3
+  );
+  const mchSearchResults: MCHRegistrationListItem[] = useMemo(
+    () => mchSearchResponse?.results ?? [],
+    [mchSearchResponse]
+  );
+
+  // Auto-select when there's exactly one active MCH registration
+  useEffect(() => {
+    if (!isMaternityWard || mchManualMode) return;
+    const single = mchRegistrations.length === 1 ? mchRegistrations[0] : undefined;
+    if (single && !mchRegistrationId) {
+      setMchRegistrationId(String(single.id));
+    }
+  }, [mchRegistrations, isMaternityWard, mchManualMode, mchRegistrationId]);
+
+  // Clear MCH selection when ward changes away from maternity
+  useEffect(() => {
+    if (!isMaternityWard) {
+      setMchRegistrationId('');
+      setMchManualMode(false);
+      setMchManualSearch('');
+    }
+  }, [isMaternityWard]);
+
+  // Resolve the selected MCH registration data from the lists
+  const mchRegistrationData: MCHRegistrationListItem | undefined = useMemo(() => {
+    if (!mchRegistrationId) return undefined;
+    const id = Number(mchRegistrationId);
+    return mchRegistrations.find((r) => r.id === id)
+      ?? mchSearchResults.find((r) => r.id === id);
+  }, [mchRegistrationId, mchRegistrations, mchSearchResults]);
+
   const mchRegistrationMatchesPatient = !mchRegistrationData || !patientId || mchRegistrationData.mother === patientId;
 
   // Show toast on generate beds success/error
@@ -140,6 +187,9 @@ export default function NewAdmissionPage() {
       toast.error('Failed to generate beds. Please try again or contact admin.');
     }
   }, [generateBeds.isSuccess, generateBeds.isError, generateBeds.data]);
+
+  // Confirmation dialog state
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   // Compatibility state
   const [compatibilityViolations, setCompatibilityViolations] = useState<CompatibilityViolation[]>([]);
@@ -393,6 +443,50 @@ export default function NewAdmissionPage() {
     || diagnosisValue.snomedDisplay
     || '';
 
+  // Resolve the selected bed number for the confirmation dialog
+  const selectedBedNumber = useMemo(() => {
+    if (assignmentStrategy === 'MANUAL') {
+      const bedsList = Array.isArray(beds) ? beds : beds?.results ?? [];
+      const bed = bedsList.find((b: any) => String(b.id) === bedId);
+      return bed?.bed_number || `Bed #${bedId}`;
+    }
+    const recommendation = assignmentStrategy === 'SMART' ? smartRecommendBed.data : recommendBed.data;
+    return recommendation?.assigned_bed_number || (recommendedBedId ? `Bed #${recommendedBedId}` : '');
+  }, [assignmentStrategy, beds, bedId, smartRecommendBed.data, recommendBed.data, recommendedBedId]);
+
+  const handleSubmitAdmission = async () => {
+    if (!patientId || !user || !recommendedBedId) return;
+    const admissionDate = new Date().toISOString();
+
+    try {
+      await createAdmission.mutateAsync({
+        patient: patientId,
+        ward: Number(wardId),
+        ...(mchRegistrationId ? { mch_registration: Number(mchRegistrationId) } : {}),
+        bed: recommendedBedId,
+        payer_type: payerType,
+        admission_date: admissionDate,
+        admitting_diagnosis: admittingDiagnosis,
+        admitting_diagnosis_text: admittingDiagnosisText,
+        admitting_officer: user.id,
+        source_encounter: encounterId || undefined,
+        ...(requiresIsolation ? { requires_isolation: true } : {}),
+        ...(overrideReason && {
+          constraint_override: true,
+          constraint_override_reason: overrideReason,
+          constraint_violations: compatibilityViolations.map((v) => v.message),
+        }),
+      });
+
+      setShowConfirmDialog(false);
+      toast.success('Admission created successfully');
+      router.push('/admissions');
+    } catch (err) {
+      const message = getApiErrorMessage(err);
+      toast.error('Failed to create admission', { description: message });
+    }
+  };
+
   return (
     <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
       <PageHeader
@@ -618,34 +712,208 @@ export default function NewAdmissionPage() {
           </div>
 
           {isMaternityWard && (
-            <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/70 p-4">
-              <div className="space-y-1">
-                <Label htmlFor="mch-registration">MCH Registration *</Label>
-                <p className="text-sm text-muted-foreground">
-                  Maternity admissions must be linked to the pregnancy registration to preserve labour, delivery, and postpartum continuity.
-                </p>
+            <div className="space-y-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/40 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <Label>MCH Registration *</Label>
+                  <HelpPopover content="Maternity admissions must be linked to the pregnancy registration to preserve labour, delivery, and postpartum continuity." />
+                </div>
+                {!mchManualMode && mchRegistrations.length > 0 && (
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                    onClick={() => setMchManualMode(true)}
+                  >
+                    Search by MCH number
+                  </button>
+                )}
+                {mchManualMode && (
+                  <button
+                    type="button"
+                    className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                    onClick={() => {
+                      setMchManualMode(false);
+                      setMchManualSearch('');
+                      // Re-auto-select if single result
+                      if (mchRegistrations.length === 1 && mchRegistrations[0]) {
+                        setMchRegistrationId(String(mchRegistrations[0].id));
+                      }
+                    }}
+                  >
+                    Back to auto-select
+                  </button>
+                )}
               </div>
-              <Input
-                id="mch-registration"
-                value={mchRegistrationId}
-                onChange={(e) => setMchRegistrationId(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="Enter MCH registration ID"
-                inputMode="numeric"
-              />
-              {mchRegistrationData && (
-                <div className="rounded-md border bg-background/80 p-3 text-sm">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline">{mchRegistrationData.mch_number}</Badge>
-                    <Badge variant="secondary">{mchRegistrationData.status}</Badge>
-                  </div>
-                  <p className="mt-2 font-medium">
-                    {mchRegistrationData.mother_name}
-                  </p>
-                  <p className="text-muted-foreground">
-                    Registered on {mchRegistrationData.registration_date}
-                  </p>
+
+              {/* Loading state */}
+              {mchLoading && (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full rounded-md" />
+                  <Skeleton className="h-4 w-48" />
                 </div>
               )}
+
+              {/* Auto-resolve mode */}
+              {!mchManualMode && !mchLoading && (
+                <>
+                  {/* No registrations found */}
+                  {mchRegistrations.length === 0 && (
+                    <div className="rounded-md border border-dashed p-3 text-sm space-y-2">
+                      <p className="text-muted-foreground">
+                        No active MCH registration found for this patient.
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          asChild
+                        >
+                          <Link href={`/mch/registrations/new?patient=${patientId}&returnTo=${encodeURIComponent(`/admissions/new?patient=${patientId}${encounterId ? `&encounter=${encounterId}` : ''}`)}`}>
+                            <Baby className="h-3.5 w-3.5 mr-1.5" />
+                            Create MCH Registration
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setMchManualMode(true)}
+                        >
+                          Search manually
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Single registration — auto-selected */}
+                  {mchRegistrations.length === 1 && mchRegistrationData && (
+                    <div className="rounded-md border bg-background/80 p-3 text-sm">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">{mchRegistrationData.mch_number}</Badge>
+                        <Badge variant="secondary">{mchRegistrationData.status}</Badge>
+                        {mchRegistrationData.is_high_risk && (
+                          <Badge variant="destructive">High Risk</Badge>
+                        )}
+                        <Badge variant="outline" className="ml-auto text-xs bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Auto-selected
+                        </Badge>
+                      </div>
+                      {mchRegistrationData.edd && (
+                        <p className="mt-2 text-muted-foreground">
+                          EDD: {mchRegistrationData.edd}
+                          {mchRegistrationData.gestation_display && ` • ${mchRegistrationData.gestation_display}`}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Multiple registrations — dropdown */}
+                  {mchRegistrations.length > 1 && (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">
+                        {mchRegistrations.length} active pregnancies found. Select the one for this admission.
+                      </p>
+                      <Select value={mchRegistrationId} onValueChange={setMchRegistrationId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select MCH registration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {mchRegistrations.map((reg) => (
+                            <SelectItem key={reg.id} value={String(reg.id)}>
+                              {reg.mch_number}
+                              {reg.edd ? ` • EDD: ${reg.edd}` : ''}
+                              {reg.is_high_risk ? ' • High Risk' : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {mchRegistrationData && (
+                        <div className="rounded-md border bg-background/80 p-3 text-sm">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline">{mchRegistrationData.mch_number}</Badge>
+                            <Badge variant="secondary">{mchRegistrationData.status}</Badge>
+                            {mchRegistrationData.is_high_risk && (
+                              <Badge variant="destructive">High Risk</Badge>
+                            )}
+                          </div>
+                          {mchRegistrationData.edd && (
+                            <p className="mt-2 text-muted-foreground">
+                              EDD: {mchRegistrationData.edd}
+                              {mchRegistrationData.gestation_display && ` • ${mchRegistrationData.gestation_display}`}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Manual search mode */}
+              {mchManualMode && (
+                <div className="space-y-2">
+                  <Input
+                    id="mch-search"
+                    value={mchManualSearch}
+                    onChange={(e) => setMchManualSearch(e.target.value)}
+                    placeholder="Search by MCH number, patient name, or MRN"
+                  />
+                  {mchManualSearch.length > 0 && mchManualSearch.length < 3 && (
+                    <p className="text-xs text-muted-foreground">Type at least 3 characters to search</p>
+                  )}
+                  {mchSearchResults.length > 0 && (
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {mchSearchResults.map((reg) => (
+                        <button
+                          key={reg.id}
+                          type="button"
+                          onClick={() => {
+                            setMchRegistrationId(String(reg.id));
+                            setMchManualSearch('');
+                          }}
+                          className={cn(
+                            'flex w-full items-center justify-between rounded-md border p-2 text-left text-sm transition-colors hover:bg-accent',
+                            String(reg.id) === mchRegistrationId && 'ring-2 ring-primary'
+                          )}
+                        >
+                          <div className="min-w-0">
+                            <span className="font-medium">{reg.mch_number}</span>
+                            <span className="text-muted-foreground"> • {reg.mother_name}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Badge variant="secondary" className="text-xs">{reg.status}</Badge>
+                            {reg.is_high_risk && <Badge variant="destructive" className="text-xs">HR</Badge>}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {mchManualSearch.length >= 3 && mchSearchResults.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No registrations found matching &ldquo;{mchManualSearch}&rdquo;</p>
+                  )}
+                  {/* Show selected registration from manual search */}
+                  {mchRegistrationData && mchManualMode && (
+                    <div className="rounded-md border bg-background/80 p-3 text-sm">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">{mchRegistrationData.mch_number}</Badge>
+                        <Badge variant="secondary">{mchRegistrationData.status}</Badge>
+                        {mchRegistrationData.is_high_risk && (
+                          <Badge variant="destructive">High Risk</Badge>
+                        )}
+                      </div>
+                      <p className="mt-1 text-muted-foreground">{mchRegistrationData.mother_name}</p>
+                      {mchRegistrationData.edd && (
+                        <p className="text-muted-foreground">
+                          EDD: {mchRegistrationData.edd}
+                          {mchRegistrationData.gestation_display && ` • ${mchRegistrationData.gestation_display}`}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Patient mismatch warning */}
               {mchRegistrationData && !mchRegistrationMatchesPatient && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
@@ -778,43 +1046,11 @@ export default function NewAdmissionPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 pt-4 border-t">
             <Button
               disabled={!canSubmit || createAdmission.isPending}
-              onClick={async () => {
-                if (!patientId || !user) return;
-                const admissionDate = new Date().toISOString();
-                if (!recommendedBedId) return;
-
-                try {
-                  await createAdmission.mutateAsync({
-                    patient: patientId,
-                    ward: Number(wardId),
-                    ...(mchRegistrationId ? { mch_registration: Number(mchRegistrationId) } : {}),
-                    bed: recommendedBedId,
-                    payer_type: payerType,
-                    admission_date: admissionDate,
-                    admitting_diagnosis: admittingDiagnosis,
-                    admitting_diagnosis_text: admittingDiagnosisText,
-                    admitting_officer: user.id,
-                    source_encounter: encounterId || undefined,
-                    ...(requiresIsolation ? { requires_isolation: true } : {}),
-                    // Include override info if compatibility was overridden
-                    ...(overrideReason && {
-                      constraint_override: true,
-                      constraint_override_reason: overrideReason,
-                      constraint_violations: compatibilityViolations.map((v) => v.message),
-                    }),
-                  });
-
-                  toast.success('Admission created successfully');
-                  router.push('/admissions');
-                } catch (err) {
-                  const message = getApiErrorMessage(err);
-                  toast.error('Failed to create admission', { description: message });
-                }
-              }}
+              onClick={() => setShowConfirmDialog(true)}
               className="w-full sm:w-auto"
             >
               <Save className="h-4 w-4 mr-2" />
-              {createAdmission.isPending ? 'Creating...' : 'Create Admission'}
+              Review &amp; Admit
             </Button>
             {createAdmission.error && (
               <p className="text-sm text-destructive">{getApiErrorMessage(createAdmission.error)}</p>
@@ -852,6 +1088,174 @@ export default function NewAdmissionPage() {
             >
               <User className="h-4 w-4 mr-2" />
               Select Patient
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Admission Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <DialogTitle>Confirm Admission</DialogTitle>
+              <HelpPopover content="Review the admission details carefully before confirming. This will create an active admission record and assign the bed to this patient." />
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Patient */}
+            <div className="flex items-start gap-3">
+              <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-primary/10 mt-0.5">
+                <User className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm text-muted-foreground">Patient</p>
+                <p className="font-medium">
+                  {patientData ? `${patientData.first_name} ${patientData.last_name}` : `Patient #${patientId}`}
+                </p>
+                {patientData?.mrn && (
+                  <p className="text-sm text-muted-foreground">MRN: {patientData.mrn}</p>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Ward & Bed */}
+            <div className="flex items-start gap-3">
+              <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-primary/10 mt-0.5">
+                <Bed className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-muted-foreground">Ward &amp; Bed</p>
+                <p className="font-medium">{selectedWardName || `Ward #${wardId}`}</p>
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <span>{selectedBedNumber}</span>
+                  {assignmentStrategy !== 'MANUAL' && (
+                    <Badge variant="outline" className="text-xs">
+                      {assignmentStrategy === 'SMART' ? 'Smart' : 'Rules'}-assigned
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Diagnosis */}
+            <div className="flex items-start gap-3">
+              <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-primary/10 mt-0.5">
+                <Stethoscope className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm text-muted-foreground">Admitting Diagnosis</p>
+                <p className="font-medium">{admittingDiagnosis}</p>
+                {admittingDiagnosisText && (
+                  <p className="text-sm text-muted-foreground">{admittingDiagnosisText}</p>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Admission details grid */}
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-muted-foreground">Admission Type</p>
+                <p className="font-medium">{admissionType}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Payer</p>
+                <div className="flex items-center gap-1.5">
+                  <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+                  <p className="font-medium">{payerType}</p>
+                </div>
+              </div>
+              {encounterId && (
+                <div>
+                  <p className="text-muted-foreground">Source Encounter</p>
+                  <p className="font-medium">#{encounterId}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Special requirements */}
+            {(requiresIsolation || requiresOxygen || requiresVentilator) && (
+              <>
+                <Separator />
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-amber-100 dark:bg-amber-950/50 mt-0.5">
+                    <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground">Special Requirements</p>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {requiresIsolation && <Badge variant="secondary">Isolation</Badge>}
+                      {requiresOxygen && <Badge variant="secondary">Oxygen</Badge>}
+                      {requiresVentilator && <Badge variant="secondary">Ventilator</Badge>}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* MCH Registration (maternity) */}
+            {isMaternityWard && mchRegistrationData && (
+              <>
+                <Separator />
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-pink-100 dark:bg-pink-950/50 mt-0.5">
+                    <Baby className="h-4 w-4 text-pink-600 dark:text-pink-400" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground">MCH Registration</p>
+                    <p className="font-medium">{mchRegistrationData.mch_number}</p>
+                    {mchRegistrationData.edd && (
+                      <p className="text-sm text-muted-foreground">
+                        EDD: {mchRegistrationData.edd}
+                        {mchRegistrationData.gestation_display && ` • ${mchRegistrationData.gestation_display}`}
+                      </p>
+                    )}
+                    {mchRegistrationData.is_high_risk && (
+                      <Badge variant="destructive" className="mt-1">High Risk</Badge>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Compatibility override warning */}
+            {overrideReason && compatibilityViolations.length > 0 && (
+              <>
+                <Separator />
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    {compatibilityViolations.length} compatibility warning{compatibilityViolations.length > 1 ? 's' : ''} overridden.
+                    Reason: {overrideReason}
+                  </AlertDescription>
+                </Alert>
+              </>
+            )}
+          </div>
+
+          <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+              disabled={createAdmission.isPending}
+              className="w-full sm:w-auto"
+            >
+              Back to Edit
+            </Button>
+            <Button
+              onClick={handleSubmitAdmission}
+              disabled={createAdmission.isPending}
+              className="w-full sm:w-auto"
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              {createAdmission.isPending ? 'Creating...' : 'Confirm Admission'}
             </Button>
           </DialogFooter>
         </DialogContent>

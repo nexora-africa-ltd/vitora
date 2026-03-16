@@ -70,13 +70,13 @@ export default function TheatrePage() {
           </div>
           <h2 className="text-2xl font-semibold mb-2">Coming Soon</h2>
           <p className="text-muted-foreground max-w-md">
-            The Theatre module is planned for Phase 2. It will provide end-to-end theatre
+            The Theatre module is planned to be implemented in a future sprint. It will provide end-to-end theatre
             management including scheduling, pre/intra/post-op workflows, and utilization
             reporting.
           </p>
           <Badge variant="secondary" className="mt-4">
             <Stethoscope className="h-3 w-3 mr-1" />
-            Planned Phase 2 Feature
+            Planned Feature
           </Badge>
 
           <div className="flex flex-col sm:flex-row gap-2 mt-6">

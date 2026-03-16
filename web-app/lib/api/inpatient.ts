@@ -153,6 +153,11 @@ export const inpatientApi = {
     return parseResponse(WardSchema, response.data, { context: 'inpatientApi.getWard' });
   },
 
+  async createWard(data: Omit<InpatientWard, 'id' | 'created_at' | 'updated_at' | 'available_beds' | 'total_beds' | 'occupied_beds' | 'occupancy_rate' | 'ward_type_display'>): Promise<InpatientWard> {
+    const response = await apiClient.post<InpatientWard>('/api/inpatient/wards/', data);
+    return parseResponse(WardSchema, response.data, { context: 'inpatientApi.createWard' });
+  },
+
   async updateWard(wardId: number, data: Partial<InpatientWard>): Promise<InpatientWard> {
     const response = await apiClient.patch<InpatientWard>(`/api/inpatient/wards/${wardId}/`, data);
     return parseResponse(WardSchema, response.data, { context: 'inpatientApi.updateWard' });
