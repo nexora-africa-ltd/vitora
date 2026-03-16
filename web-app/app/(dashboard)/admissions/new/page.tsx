@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Save, Search, X, AlertCircle, User, UserPlus, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -221,7 +222,8 @@ export default function NewAdmissionPage() {
     return () => {
       isCancelled = true;
     };
-  }, [patientId, selectedWardId, requiresIsolation, checkCompatibility]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId, selectedWardId, requiresIsolation]);
 
   useEffect(() => {
     if (!patientId || !selectedWardId || assignmentStrategy === 'MANUAL') {
@@ -244,6 +246,7 @@ export default function NewAdmissionPage() {
 
     smartRecommendBed.reset();
     recommendBed.mutate({ wardId: selectedWardId, data: payload });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     patientId,
     selectedWardId,
@@ -252,8 +255,6 @@ export default function NewAdmissionPage() {
     requiresIsolation,
     requiresOxygen,
     requiresVentilator,
-    recommendBed,
-    smartRecommendBed,
   ]);
 
   // Prefill diagnosis from encounter's primary diagnosis
@@ -496,7 +497,10 @@ export default function NewAdmissionPage() {
             <div className="space-y-4">
               <div className="grid gap-4 rounded-lg border bg-muted/20 p-4 lg:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Assignment strategy</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Label>Assignment strategy</Label>
+                    <HelpPopover content="Smart recommendation is the default assisted flow. It evaluates workload, emergency buffer, and discharge planning before you create the admission. Rules-based applies ward constraints and scores candidates. Manual lets you pick any available bed directly." />
+                  </div>
                   <Select
                     value={assignmentStrategy}
                     onValueChange={(value) => {
@@ -508,18 +512,18 @@ export default function NewAdmissionPage() {
                       <SelectValue placeholder="Select assignment strategy" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="SMART">Smart recommendation (Phase C)</SelectItem>
-                      <SelectItem value="RULES">Rules-based recommendation (Phase B)</SelectItem>
+                      <SelectItem value="SMART">Smart recommendation (preview)</SelectItem>
+                      <SelectItem value="RULES">Rules-based recommendation</SelectItem>
                       <SelectItem value="MANUAL">Manual bed selection</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Smart recommendation is the default assisted flow. It evaluates workload, emergency buffer, and discharge planning before you create the admission.
-                  </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Admission type</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Label>Admission type</Label>
+                    <HelpPopover content="Elective admissions are planned in advance. Emergency admissions bypass normal capacity checks. Transfers come from another facility or ward." />
+                  </div>
                   <Select value={admissionType} onValueChange={(value) => setAdmissionType(value as SmartAdmissionType)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select admission type" />
@@ -535,25 +539,25 @@ export default function NewAdmissionPage() {
 
               <div className="grid gap-3 rounded-lg border p-4 md:grid-cols-3">
                 <div className="flex items-center justify-between gap-4 rounded-md border bg-muted/20 p-3">
-                  <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
                     <Label htmlFor="requires-isolation" className="cursor-pointer text-sm font-medium">Isolation required</Label>
-                    <p className="text-xs text-muted-foreground">Use ward compatibility and recommendation scoring for isolation placement.</p>
+                    <HelpPopover content="Filters for isolation-compatible beds and factors infection control into ward scoring." />
                   </div>
                   <Switch id="requires-isolation" checked={requiresIsolation} onCheckedChange={setRequiresIsolation} />
                 </div>
 
                 <div className="flex items-center justify-between gap-4 rounded-md border bg-muted/20 p-3">
-                  <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
                     <Label htmlFor="requires-oxygen" className="cursor-pointer text-sm font-medium">Needs oxygen</Label>
-                    <p className="text-xs text-muted-foreground">Include oxygen-equipped beds when evaluating recommendations.</p>
+                    <HelpPopover content="Restricts recommendations to beds with oxygen supply so the patient can be safely placed." />
                   </div>
                   <Switch id="requires-oxygen" checked={requiresOxygen} onCheckedChange={setRequiresOxygen} />
                 </div>
 
                 <div className="flex items-center justify-between gap-4 rounded-md border bg-muted/20 p-3">
-                  <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
                     <Label htmlFor="requires-ventilator" className="cursor-pointer text-sm font-medium">Needs ventilator</Label>
-                    <p className="text-xs text-muted-foreground">Prioritize beds and wards that can support advanced respiratory care.</p>
+                    <HelpPopover content="Prioritises beds and wards that can support mechanical ventilation and advanced respiratory care." />
                   </div>
                   <Switch id="requires-ventilator" checked={requiresVentilator} onCheckedChange={setRequiresVentilator} />
                 </div>

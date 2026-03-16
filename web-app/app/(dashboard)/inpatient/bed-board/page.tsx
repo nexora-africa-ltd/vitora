@@ -185,7 +185,7 @@ export default function InpatientBedBoardPage() {
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.18),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.14),transparent_34%)]"
             aria-hidden="true"
           />
-          <div className="relative grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+          <div className="relative space-y-5">
             <div className="space-y-4">
               <Badge variant="outline" className="w-fit border-primary/30 bg-background/80 px-3 py-1 text-xs uppercase tracking-[0.24em] text-muted-foreground">
                 Operational Command Surface
@@ -209,7 +209,7 @@ export default function InpatientBedBoardPage() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
               <SummaryTile icon={Building2} title="Wards" value={wardsList.length} description="Active inpatient locations" />
               <SummaryTile icon={BedDouble} title="Beds Occupied" value={`${occupiedBeds}/${totalBeds}`} description={`${occupancyRate}% hospital occupancy`} />
               <SummaryTile icon={Users} title="Active Admissions" value={activeAdmissions} description="Current inpatient census" />
@@ -219,62 +219,26 @@ export default function InpatientBedBoardPage() {
           </div>
         </section>
 
-        <div className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
-          <Card className="overflow-hidden border-primary/10 shadow-sm">
-            <CardHeader className="space-y-3">
+        <Card className="overflow-hidden border-primary/10 shadow-sm">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <CardTitle>Ward planning board</CardTitle>
-                <HelpPopover content="These cards reuse the same utilization and discharge-planning signals shown on the ward detail pages, but aggregate them into one place for bed managers." />
+                <CardTitle>Supervisor summary</CardTitle>
+                <HelpPopover content="Critical constraint overrides awaiting supervisor acknowledgement. Open the full alerts workspace to review and resolve each escalation." />
               </div>
-              <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search wards by name, code, or type"
-                  className="pl-9"
-                />
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/inpatient/alerts">Open full alerts</Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {pendingAlerts.length === 0 ? (
+              <div className="rounded-xl border bg-muted/20 p-4 text-sm text-muted-foreground">
+                No pending supervisor acknowledgements right now.
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {filteredWards.length === 0 ? (
-                <div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
-                  No wards matched your search.
-                </div>
-              ) : (
-                <div className="grid gap-4 xl:grid-cols-2">
-                  {filteredWards.map((ward: any) => (
-                    <BedBoardWardCard
-                      key={ward.id}
-                      ward={ward}
-                      planningSnapshot={wardPlanningByWardId.get(ward.id)}
-                      onOpenPredictions={() => setSelectedWardPredictionId(ward.id)}
-                    />
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden border-primary/10 shadow-sm">
-            <CardHeader>
-              <div className="flex items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <CardTitle>Supervisor summary</CardTitle>
-                  <CardDescription>Reuse the alert workspace for full acknowledgement, but keep the current exception load visible here.</CardDescription>
-                </div>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/inpatient/alerts">Open full alerts</Link>
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {pendingAlerts.length === 0 ? (
-                <div className="rounded-xl border bg-muted/20 p-4 text-sm text-muted-foreground">
-                  No pending supervisor acknowledgements right now.
-                </div>
-              ) : (
-                pendingAlerts.slice(0, 4).map((alert) => (
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {pendingAlerts.slice(0, 4).map((alert) => (
                   <div key={alert.admission_id} className="rounded-xl border bg-muted/20 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -293,11 +257,47 @@ export default function InpatientBedBoardPage() {
                       </Link>
                     </Button>
                   </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="overflow-hidden border-primary/10 shadow-sm">
+          <CardHeader className="space-y-3">
+            <div className="flex items-center gap-2">
+              <CardTitle>Ward planning board</CardTitle>
+              <HelpPopover content="These cards reuse the same utilization and discharge-planning signals shown on the ward detail pages, but aggregate them into one place for bed managers." />
+            </div>
+            <div className="relative max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search wards by name, code, or type"
+                className="pl-9"
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {filteredWards.length === 0 ? (
+              <div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
+                No wards matched your search.
+              </div>
+            ) : (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {filteredWards.map((ward: any) => (
+                  <BedBoardWardCard
+                    key={ward.id}
+                    ward={ward}
+                    planningSnapshot={wardPlanningByWardId.get(ward.id)}
+                    onOpenPredictions={() => setSelectedWardPredictionId(ward.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Tabs defaultValue="capacity" className="space-y-4">
           <TabsList>
@@ -476,6 +476,64 @@ function SummaryTile({
   );
 }
 
+function getWardTheme(wardType: string, genderRestriction?: string | null) {
+  // Gender-restricted wards take priority for coloring
+  if (genderRestriction === 'MALE_ONLY') {
+    return {
+      border: 'border-blue-300/40 dark:border-blue-500/30',
+      gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.10),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(37,99,235,0.07),transparent_50%)]',
+      badge: 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-600 dark:bg-blue-950/50 dark:text-blue-300',
+    };
+  }
+  if (genderRestriction === 'FEMALE_ONLY' && wardType !== 'MATERNITY') {
+    return {
+      border: 'border-pink-300/40 dark:border-pink-500/30',
+      gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(236,72,153,0.10),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(219,39,119,0.07),transparent_50%)]',
+      badge: 'border-pink-300 bg-pink-50 text-pink-700 dark:border-pink-600 dark:bg-pink-950/50 dark:text-pink-300',
+    };
+  }
+
+  switch (wardType) {
+    case 'PEDIATRIC':
+      return {
+        border: 'border-emerald-300/40 dark:border-emerald-500/30',
+        gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,0.12),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(251,191,36,0.08),transparent_50%)]',
+        badge: 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300',
+      };
+    case 'MATERNITY':
+      return {
+        border: 'border-pink-300/40 dark:border-pink-500/30',
+        gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(244,114,182,0.10),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(236,72,153,0.07),transparent_50%)]',
+        badge: 'border-pink-300 bg-pink-50 text-pink-700 dark:border-pink-600 dark:bg-pink-950/50 dark:text-pink-300',
+      };
+    case 'ICU':
+      return {
+        border: 'border-red-300/40 dark:border-red-500/30',
+        gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.10),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(220,38,38,0.07),transparent_50%)]',
+        badge: 'border-red-300 bg-red-50 text-red-700 dark:border-red-600 dark:bg-red-950/50 dark:text-red-300',
+      };
+    case 'ISOLATION':
+      return {
+        border: 'border-amber-300/40 dark:border-amber-500/30',
+        gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.10),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(217,119,6,0.07),transparent_50%)]',
+        badge: 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-600 dark:bg-amber-950/50 dark:text-amber-300',
+      };
+    case 'SURGICAL':
+      return {
+        border: 'border-violet-300/40 dark:border-violet-500/30',
+        gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,0.08),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(109,40,217,0.06),transparent_50%)]',
+        badge: 'border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-600 dark:bg-violet-950/50 dark:text-violet-300',
+      };
+    case 'MEDICAL':
+    default:
+      return {
+        border: 'border-primary/10',
+        gradient: 'bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]',
+        badge: '',
+      };
+  }
+}
+
 function BedBoardWardCard({
   ward,
   planningSnapshot,
@@ -497,19 +555,26 @@ function BedBoardWardCard({
       ? 'text-amber-600 dark:text-amber-400'
       : 'text-foreground';
 
+  // Color scheme based on ward type and gender restriction
+  const wardTheme = getWardTheme(ward.ward_type, ward.gender_restriction);
+
   return (
-    <Card className="relative overflow-hidden border-primary/10">
+    <Card className={`relative overflow-hidden ${wardTheme.border}`}>
       <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.06),transparent_50%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.05),transparent_50%)]"
+        className={`pointer-events-none absolute inset-0 ${wardTheme.gradient}`}
         aria-hidden="true"
       />
       <CardHeader className="relative pb-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-lg">{utilization.ward_name}</CardTitle>
+            <CardTitle className="text-lg">
+              <Link href={`/wards/${ward.id}`} className="hover:underline hover:text-primary transition-colors">
+                {utilization.ward_name}
+              </Link>
+            </CardTitle>
             <CardDescription>{utilization.ward_code}</CardDescription>
           </div>
-          <Badge variant={ward.ward_type === 'ICU' ? 'destructive' : 'outline'} className="shrink-0">
+          <Badge variant={ward.ward_type === 'ICU' ? 'destructive' : 'outline'} className={`shrink-0 ${wardTheme.badge}`}>
             {ward.ward_type_display || ward.ward_type}
           </Badge>
         </div>
