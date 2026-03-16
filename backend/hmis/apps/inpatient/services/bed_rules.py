@@ -371,6 +371,8 @@ class BedAssignmentRuleEvaluator:
             patient=patient,
             ward=bed.ward,
             requires_isolation=context.get("requires_isolation", False),
+            requires_oxygen=context.get("requires_oxygen", False),
+            requires_ventilator=context.get("requires_ventilator", False),
         )
 
         if not compatibility_result.compatible:
@@ -379,18 +381,7 @@ class BedAssignmentRuleEvaluator:
                 if not evaluation.rejection_reason:
                     evaluation.rejection_reason = violation.message
 
-        # 2. Check equipment requirements
-        if context.get("requires_oxygen") and not bed.ward.oxygen_equipped:
-            evaluation.failed_constraints.append("oxygen_required")
-            if not evaluation.rejection_reason:
-                evaluation.rejection_reason = "Ward is not oxygen-equipped"
-
-        if context.get("requires_ventilator") and not bed.ward.ventilator_capable:
-            evaluation.failed_constraints.append("ventilator_required")
-            if not evaluation.rejection_reason:
-                evaluation.rejection_reason = "Ward is not ventilator-capable"
-
-        # 3. Check rule-specific constraints
+        # 2. Check rule-specific constraints
         if rule:
             rule_def = rule.rule_definition
             constraints = rule_def.get("constraints", [])

@@ -40,6 +40,8 @@ class WardCompatibilityService:
         patient: Patient,
         ward: Ward,
         requires_isolation: bool = False,
+        requires_oxygen: bool = False,
+        requires_ventilator: bool = False,
     ) -> CompatibilityResult:
         violations: list[CompatibilityViolation] = []
 
@@ -58,6 +60,30 @@ class WardCompatibilityService:
                     severity="CRITICAL",
                     message=(
                         f"Patient requires isolation but {ward.name} is not isolation-capable"
+                    ),
+                    override_allowed=False,
+                )
+            )
+
+        if requires_oxygen and not ward.oxygen_equipped:
+            violations.append(
+                CompatibilityViolation(
+                    code="OXYGEN_REQUIRED",
+                    severity="CRITICAL",
+                    message=(
+                        f"Patient requires oxygen but {ward.name} is not oxygen-equipped"
+                    ),
+                    override_allowed=True,
+                )
+            )
+
+        if requires_ventilator and not ward.ventilator_capable:
+            violations.append(
+                CompatibilityViolation(
+                    code="VENTILATOR_REQUIRED",
+                    severity="CRITICAL",
+                    message=(
+                        f"Patient requires ventilator but {ward.name} is not ventilator-capable"
                     ),
                     override_allowed=False,
                 )

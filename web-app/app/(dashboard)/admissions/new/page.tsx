@@ -201,6 +201,8 @@ export default function NewAdmissionPage() {
       wardId: selectedWardId,
       patientId,
       requiresIsolation,
+      requiresOxygen,
+      requiresVentilator,
     }).then((result) => {
       if (isCancelled) {
         return;
@@ -223,7 +225,7 @@ export default function NewAdmissionPage() {
       isCancelled = true;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId, selectedWardId, requiresIsolation]);
+  }, [patientId, selectedWardId, requiresIsolation, requiresOxygen, requiresVentilator]);
 
   useEffect(() => {
     if (!patientId || !selectedWardId || assignmentStrategy === 'MANUAL') {
