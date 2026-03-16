@@ -10,14 +10,23 @@ from .models import (
     Admission,
     AdmissionRecommendation,
     Bed,
+    BloodTransfusionObservation,
+    BPMonitoringReading,
     Discharge,
+    FluidBalanceEntry,
+    FluidBalanceSheet,
     InpatientConsumableUsage,
     KardexHandoverNote,
     KardexShiftNote,
+    MedicationAdministration,
     NursingCarePlanEntry,
     NursingKardex,
+    ReviewRequest,
     ShiftHandover,
+    SupervisorAlertAcknowledgment,
+    TemperatureReading,
     Transfer,
+    TransfusionObservationEntry,
     Ward,
     WardRound,
 )
@@ -785,3 +794,425 @@ class ShiftHandoverAdmin(admin.ModelAdmin):
         return "✓ Acknowledged" if obj.is_acknowledged else "⏳ Pending"
 
     is_acknowledged_display.short_description = "Status"
+
+
+# ============================================================================
+# Review Requests
+# ============================================================================
+
+
+@admin.register(ReviewRequest)
+class ReviewRequestAdmin(admin.ModelAdmin):
+    """Admin interface for ReviewRequest model."""
+
+    list_display = [
+        "admission",
+        "review_type",
+        "urgency",
+        "status",
+        "requested_by",
+        "assigned_to",
+        "requested_at",
+    ]
+    list_filter = ["status", "urgency", "review_type", "requested_at"]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+        "admission__patient__mrn",
+        "requested_by__username",
+        "assigned_to__username",
+        "reason",
+    ]
+    readonly_fields = [
+        "requested_at",
+        "acknowledged_at",
+        "acknowledged_by",
+        "completed_at",
+        "created_at",
+        "updated_at",
+    ]
+    ordering = ["-requested_at"]
+
+    fieldsets = (
+        (
+            "Request Details",
+            {
+                "fields": (
+                    "admission",
+                    "review_type",
+                    "urgency",
+                    "reason",
+                    "clinical_context",
+                    "requested_by",
+                    "requested_at",
+                )
+            },
+        ),
+        (
+            "Assignment",
+            {
+                "fields": (
+                    "consultant_specialty",
+                    "assigned_to",
+                )
+            },
+        ),
+        (
+            "Status & Resolution",
+            {
+                "fields": (
+                    "status",
+                    "acknowledged_at",
+                    "acknowledged_by",
+                    "completed_at",
+                    "cancellation_reason",
+                )
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+
+# ============================================================================
+# Supervisor Alerts
+# ============================================================================
+
+
+@admin.register(SupervisorAlertAcknowledgment)
+class SupervisorAlertAcknowledgmentAdmin(admin.ModelAdmin):
+    """Admin interface for SupervisorAlertAcknowledgment model."""
+
+    list_display = [
+        "admission",
+        "acknowledged_by",
+        "acknowledged_at",
+    ]
+    list_filter = ["acknowledged_at"]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+        "acknowledged_by__username",
+        "notes",
+    ]
+    readonly_fields = ["admission", "acknowledged_by", "acknowledged_at", "created_at", "updated_at"]
+    ordering = ["-acknowledged_at"]
+
+
+# ============================================================================
+# Observation Charts
+# ============================================================================
+
+
+@admin.register(TemperatureReading)
+class TemperatureReadingAdmin(admin.ModelAdmin):
+    """Admin interface for TemperatureReading model."""
+
+    list_display = [
+        "admission",
+        "temperature",
+        "pulse",
+        "respiratory_rate",
+        "recorded_by",
+        "recorded_at",
+    ]
+    list_filter = ["recorded_at"]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+        "admission__patient__mrn",
+        "recorded_by__username",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    ordering = ["-recorded_at"]
+
+
+@admin.register(BPMonitoringReading)
+class BPMonitoringReadingAdmin(admin.ModelAdmin):
+    """Admin interface for BPMonitoringReading model."""
+
+    list_display = [
+        "admission",
+        "bp_display",
+        "pulse",
+        "position",
+        "recorded_by",
+        "recorded_at",
+    ]
+    list_filter = ["position", "recorded_at"]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+        "admission__patient__mrn",
+        "recorded_by__username",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    ordering = ["-recorded_at"]
+
+    def bp_display(self, obj):
+        """Display blood pressure."""
+        return f"{obj.systolic}/{obj.diastolic}"
+
+    bp_display.short_description = "BP (mmHg)"
+
+
+# ============================================================================
+# Fluid Balance
+# ============================================================================
+
+
+class FluidBalanceEntryInline(admin.TabularInline):
+    """Inline admin for fluid balance entries within a sheet."""
+
+    model = FluidBalanceEntry
+    extra = 0
+    readonly_fields = ["recorded_by", "created_at"]
+    fields = [
+        "recorded_at",
+        "recorded_by",
+        "entry_type",
+        "item_type",
+        "bottle_number",
+        "amount_ml",
+        "specific_gravity",
+        "notes",
+    ]
+
+
+@admin.register(FluidBalanceSheet)
+class FluidBalanceSheetAdmin(admin.ModelAdmin):
+    """Admin interface for FluidBalanceSheet model."""
+
+    list_display = [
+        "admission",
+        "chart_date",
+        "total_intake_display",
+        "total_output_display",
+        "net_balance_display",
+        "recorded_by",
+    ]
+    list_filter = ["chart_date"]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+        "admission__patient__mrn",
+        "recorded_by__username",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    ordering = ["-chart_date"]
+    inlines = [FluidBalanceEntryInline]
+
+    def total_intake_display(self, obj):
+        return f"{obj.total_intake_ml} ml"
+
+    total_intake_display.short_description = "Total Intake"
+
+    def total_output_display(self, obj):
+        return f"{obj.total_output_ml} ml"
+
+    total_output_display.short_description = "Total Output"
+
+    def net_balance_display(self, obj):
+        balance = obj.net_balance_ml
+        sign = "+" if balance >= 0 else ""
+        return f"{sign}{balance} ml"
+
+    net_balance_display.short_description = "Net Balance"
+
+
+@admin.register(FluidBalanceEntry)
+class FluidBalanceEntryAdmin(admin.ModelAdmin):
+    """Admin interface for FluidBalanceEntry model (standalone access)."""
+
+    list_display = [
+        "fluid_balance_sheet",
+        "entry_type",
+        "item_type",
+        "amount_ml",
+        "recorded_by",
+        "recorded_at",
+    ]
+    list_filter = ["entry_type", "recorded_at"]
+    search_fields = [
+        "fluid_balance_sheet__admission__admission_number",
+        "fluid_balance_sheet__admission__patient__first_name",
+        "fluid_balance_sheet__admission__patient__last_name",
+        "item_type",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    ordering = ["-recorded_at"]
+
+
+# ============================================================================
+# Blood Transfusions
+# ============================================================================
+
+
+class TransfusionObservationEntryInline(admin.TabularInline):
+    """Inline admin for transfusion observation entries."""
+
+    model = TransfusionObservationEntry
+    extra = 0
+    readonly_fields = ["recorded_by", "created_at"]
+    fields = [
+        "observation_interval",
+        "exact_time",
+        "recorded_by",
+        "blood_pressure",
+        "temperature",
+        "pulse",
+        "respiratory_rate",
+        "remarks",
+    ]
+
+
+@admin.register(BloodTransfusionObservation)
+class BloodTransfusionObservationAdmin(admin.ModelAdmin):
+    """Admin interface for BloodTransfusionObservation model."""
+
+    list_display = [
+        "admission",
+        "blood_product",
+        "blood_unit_number",
+        "amount_ml",
+        "status",
+        "reaction_occurred",
+        "transfusion_date",
+        "started_by",
+    ]
+    list_filter = ["status", "blood_product", "reaction_occurred", "transfusion_date"]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+        "admission__patient__mrn",
+        "blood_unit_number",
+        "started_by__username",
+        "diagnosis",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    ordering = ["-transfusion_date"]
+    inlines = [TransfusionObservationEntryInline]
+
+    fieldsets = (
+        (
+            "Admission & Status",
+            {
+                "fields": (
+                    "admission",
+                    "status",
+                    "diagnosis",
+                )
+            },
+        ),
+        (
+            "Blood Product",
+            {
+                "fields": (
+                    "blood_product",
+                    "blood_product_other",
+                    "blood_unit_number",
+                    "blood_group",
+                    "amount_ml",
+                )
+            },
+        ),
+        (
+            "Timing & Staff",
+            {
+                "fields": (
+                    "transfusion_date",
+                    "time_started",
+                    "time_ended",
+                    "started_by",
+                    "counter_checked_by",
+                )
+            },
+        ),
+        (
+            "Reaction",
+            {
+                "fields": (
+                    "reaction_occurred",
+                    "reaction_type",
+                    "reaction_action_taken",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+
+@admin.register(TransfusionObservationEntry)
+class TransfusionObservationEntryAdmin(admin.ModelAdmin):
+    """Admin interface for TransfusionObservationEntry model (standalone access)."""
+
+    list_display = [
+        "transfusion",
+        "observation_interval",
+        "exact_time",
+        "blood_pressure",
+        "temperature",
+        "pulse",
+        "recorded_by",
+    ]
+    list_filter = ["observation_interval"]
+    search_fields = [
+        "transfusion__admission__admission_number",
+        "transfusion__admission__patient__first_name",
+        "transfusion__admission__patient__last_name",
+        "recorded_by__username",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    ordering = ["exact_time"]
+
+
+# ============================================================================
+# Medication Administration
+# ============================================================================
+
+
+@admin.register(MedicationAdministration)
+class MedicationAdministrationAdmin(admin.ModelAdmin):
+    """Admin interface for MedicationAdministration model."""
+
+    list_display = [
+        "admission",
+        "prescription_item",
+        "status",
+        "dose_given",
+        "route",
+        "scheduled_time",
+        "actual_time",
+        "administered_by",
+        "is_prn",
+    ]
+    list_filter = ["status", "is_prn", "scheduled_time", "route"]
+    search_fields = [
+        "admission__admission_number",
+        "admission__patient__first_name",
+        "admission__patient__last_name",
+        "admission__patient__mrn",
+        "prescription_item__drug__generic_name",
+        "dose_given",
+        "administered_by__username",
+    ]
+    readonly_fields = ["created_at", "updated_at"]
+    ordering = ["-scheduled_time"]
