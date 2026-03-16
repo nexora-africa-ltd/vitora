@@ -157,6 +157,35 @@ class SHAClaimsService:
         if not secondary_diagnosis_codes:
             secondary_diagnosis_codes = getattr(encounter, "secondary_diagnosis_codes", []) or []
 
+        # For IPD claims, fall back to discharge diagnoses if encounter has none
+        if claim_type == SHAClaim.ClaimType.INPATIENT or (
+            not claim_type and encounter.encounter_type == "IPD"
+        ):
+            if not primary_diagnosis_code:
+                admission = getattr(encounter, "admission", None)
+                if admission is None and hasattr(encounter, "patient"):
+                    from hmis.apps.inpatient.models import Admission
+
+                    admission = (
+                        Admission.objects.filter(patient=encounter.patient)
+                        .order_by("-admission_date")
+                        .first()
+                    )
+                if admission is not None:
+                    discharge = getattr(admission, "discharge", None)
+                    if discharge is not None and hasattr(discharge, "diagnoses"):
+                        d_primary = discharge.diagnoses.filter(role="PRIMARY").first()
+                        if d_primary:
+                            primary_diagnosis_code = d_primary.code or ""
+                            primary_diagnosis_description = d_primary.description or ""
+                        if not secondary_diagnosis_codes:
+                            d_secondaries = discharge.diagnoses.filter(
+                                role__in=["SECONDARY", "COMPLICATION"]
+                            )
+                            for dd in d_secondaries:
+                                if dd.code:
+                                    secondary_diagnosis_codes.append(dd.code)
+
         # Build claim data - always include required fields even if empty (model validation will catch)
         claim_data = {
             "patient": patient,
