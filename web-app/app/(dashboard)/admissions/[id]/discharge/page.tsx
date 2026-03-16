@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
-import { Save, Plus, Trash2, Clock, CheckCircle2 } from 'lucide-react';
+import { Save, Plus, Trash2, Clock, CheckCircle2, BrainCircuit, Loader2, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { DiagnosisCodeInput, emptyDiagnosisCodeValue, type DiagnosisCodeValue } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,16 +17,30 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { DischargeReadinessPanel } from '@/components/inpatient/discharge-readiness-panel';
 import { useAdmission, useCreateDischarge } from '@/lib/hooks/use-inpatient';
+import { useAIEnabled, useAIClinicalAssist, useAICDSEvaluate } from '@/lib/hooks/use-ai';
+import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { DischargeType, DischargeMedication, MaternityContinuityAction } from '@/lib/types/inpatient';
+import type { AICDSAlertItem } from '@/lib/types/ai';
 
 const DISCHARGE_TYPES: { value: DischargeType; label: string }[] = [
   { value: 'NORMAL', label: 'Normal Discharge' },
@@ -58,6 +73,11 @@ export default function DischargePage() {
 
   const { data: admission, isLoading } = useAdmission(admissionId);
   const createDischarge = useCreateDischarge();
+  const isAIEnabled = useAIEnabled();
+  const clinicalAssist = useAIClinicalAssist();
+  const cdsEvaluate = useAICDSEvaluate();
+  const chatCtx = useOptionalAIChatContext();
+  const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
 
   const [dischargeType, setDischargeType] = useState<DischargeType>('NORMAL');
   const [dischargeSummary, setDischargeSummary] = useState('');
@@ -72,6 +92,10 @@ export default function DischargePage() {
   const [billingClearance, setBillingClearance] = useState(false);
   const [pharmacyClearance, setPharmacyClearance] = useState(false);
   const [nursingClearance, setNursingClearance] = useState(false);
+
+  // CDS safety check dialog state
+  const [cdsAlerts, setCdsAlerts] = useState<AICDSAlertItem[]>([]);
+  const [showCdsDialog, setShowCdsDialog] = useState(false);
 
   // Calculate length of stay
   const lengthOfStay = useMemo(() => {
@@ -93,6 +117,32 @@ export default function DischargePage() {
       setMaternityContinuityAction('SCHEDULE_EARLY_PNC');
     }
   }, [admission?.mch_registration, maternityContinuityAction]);
+
+  // Wire TibaBot context so the AI chat widget is admission-aware
+  useEffect(() => {
+    if (!setEncounterAwareContext || !admission) return;
+
+    setEncounterAwareContext(
+      {
+        patient_age: admission.patient_age ?? 0,
+        patient_sex: admission.patient_gender === 'M' ? 'male' : 'female',
+        allergies: [],
+        comorbidities: [],
+        current_medications: [],
+      },
+      {
+        chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || undefined,
+        ward_name: admission.ward_name || undefined,
+        bed_number: admission.bed_number || undefined,
+        admission_status: admission.admission_status,
+        length_of_stay_days: lengthOfStay,
+      }
+    );
+
+    return () => {
+      setEncounterAwareContext(null, null);
+    };
+  }, [admission, setEncounterAwareContext, lengthOfStay]);
 
   const addMedication = () => {
     const newMed: DischargeMedication = {
@@ -117,6 +167,84 @@ export default function DischargePage() {
 
   const removeMedication = (index: number) => {
     setMedications(medications.filter((_, i) => i !== index));
+  };
+
+  // AI-generate discharge summary
+  const handleGenerateSummary = useCallback(async () => {
+    if (!admission) return;
+    const diagnosis = finalDiagnosis.icd11Display || finalDiagnosis.icd10Display || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
+    const medsText = medications.filter((m) => m.drug_name).map((m) => `${m.drug_name} ${m.dosage} ${m.frequency}`).join(', ');
+    const query = `Generate a concise discharge summary for a ${admission.patient_age ?? 'unknown age'}-year-old patient admitted for ${diagnosis}. Length of stay: ${lengthOfStay} days. Ward: ${admission.ward_name || 'N/A'}. Discharge type: ${dischargeType}.${medsText ? ` Discharge medications: ${medsText}.` : ''} Include: hospital course, treatment given, condition at discharge, and follow-up plan.`;
+
+    try {
+      const result = await clinicalAssist.mutateAsync({
+        query,
+        patient_context: {
+          patient_age: admission.patient_age ?? 0,
+          patient_sex: admission.patient_gender === 'M' ? 'male' : 'female',
+        },
+      });
+      if (result.response) {
+        setDischargeSummary(result.response);
+        toast({ title: 'Draft Generated', description: 'TibaBot drafted a discharge summary. Please review and edit.' });
+      }
+    } catch {
+      toast({ title: 'Generation Failed', description: 'Could not generate discharge summary. Please write it manually.', variant: 'destructive' });
+    }
+  }, [admission, finalDiagnosis, medications, lengthOfStay, dischargeType, clinicalAssist, toast]);
+
+  // AI-generate patient instructions
+  const handleGenerateInstructions = useCallback(async () => {
+    if (!admission) return;
+    const diagnosis = finalDiagnosis.icd11Display || finalDiagnosis.icd10Display || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
+    const medsText = medications.filter((m) => m.drug_name).map((m) => `${m.drug_name} ${m.dosage} ${m.frequency} for ${m.duration || 'as directed'}${m.instructions ? ` (${m.instructions})` : ''}`).join('; ');
+    const query = `Generate clear, patient-friendly discharge instructions for a patient diagnosed with ${diagnosis}.${medsText ? ` Medications to take at home: ${medsText}.` : ''} Include: medication schedule, dietary advice, activity restrictions, red-flag symptoms to watch for, and when to return to hospital. Use simple language.`;
+
+    try {
+      const result = await clinicalAssist.mutateAsync({
+        query,
+        patient_context: {
+          patient_age: admission.patient_age ?? 0,
+          patient_sex: admission.patient_gender === 'M' ? 'male' : 'female',
+        },
+      });
+      if (result.response) {
+        setPatientInstructions(result.response);
+        toast({ title: 'Draft Generated', description: 'TibaBot drafted patient instructions. Please review and edit.' });
+      }
+    } catch {
+      toast({ title: 'Generation Failed', description: 'Could not generate patient instructions. Please write them manually.', variant: 'destructive' });
+    }
+  }, [admission, finalDiagnosis, medications, clinicalAssist, toast]);
+
+  // Execute the actual discharge submission
+  const executeDischarge = async () => {
+    if (!admission) return;
+    try {
+      await createDischarge.mutateAsync({
+        admission: admissionId,
+        discharge_type: dischargeType,
+        discharge_date: new Date().toISOString(),
+        discharged_by: user?.id || 0,
+        admission_diagnosis: admission.admitting_diagnosis || '',
+        final_diagnosis: finalDiagnosis.icd11Code || finalDiagnosis.icd10Display?.split(' - ')[0] || admission.admitting_diagnosis || '',
+        final_diagnosis_text: finalDiagnosis.icd11Display?.split(' - ').slice(1).join(' - ') || finalDiagnosis.icd10Display?.split(' - ').slice(1).join(' - ') || admission.admitting_diagnosis_text || '',
+        treatment_summary: dischargeSummary,
+        patient_instructions: patientInstructions,
+        maternity_continuity_action: admission.mch_registration ? maternityContinuityAction : undefined,
+        follow_up_date: requiresScheduledFollowUpDate ? followUpDate || undefined : undefined,
+        follow_up_instructions: followUpInstructions || undefined,
+        discharge_medications: medications.filter((m) => m.drug_name),
+        billing_clearance: billingClearance,
+        pharmacy_clearance: pharmacyClearance,
+        nursing_clearance: nursingClearance,
+      });
+      toast({ title: 'Success', description: 'Patient discharged successfully' });
+      router.push('/admissions');
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to discharge patient', variant: 'destructive' });
+      console.error(error);
+    }
   };
 
   const handleSubmit = async () => {
@@ -156,38 +284,28 @@ export default function DischargePage() {
       return;
     }
 
-    try {
-      await createDischarge.mutateAsync({
-        admission: admissionId,
-        discharge_type: dischargeType,
-        discharge_date: new Date().toISOString(),
-        discharged_by: user?.id || 0,
-        admission_diagnosis: admission.admitting_diagnosis || '',
-        final_diagnosis: finalDiagnosis.icd11Code || finalDiagnosis.icd10Display?.split(' - ')[0] || admission.admitting_diagnosis || '',
-        final_diagnosis_text: finalDiagnosis.icd11Display?.split(' - ').slice(1).join(' - ') || finalDiagnosis.icd10Display?.split(' - ').slice(1).join(' - ') || admission.admitting_diagnosis_text || '',
-        treatment_summary: dischargeSummary,
-        patient_instructions: patientInstructions,
-        maternity_continuity_action: admission.mch_registration ? maternityContinuityAction : undefined,
-        follow_up_date: requiresScheduledFollowUpDate ? followUpDate || undefined : undefined,
-        follow_up_instructions: followUpInstructions || undefined,
-        discharge_medications: medications.filter((m) => m.drug_name),
-        billing_clearance: billingClearance,
-        pharmacy_clearance: pharmacyClearance,
-        nursing_clearance: nursingClearance,
-      });
-      toast({
-        title: 'Success',
-        description: 'Patient discharged successfully',
-      });
-      router.push('/admissions');
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to discharge patient',
-        variant: 'destructive',
-      });
-      console.error(error);
+    // Run CDS safety checks if AI is enabled
+    if (isAIEnabled) {
+      try {
+        const diagnosisText = finalDiagnosis.icd11Display || finalDiagnosis.icd10Display || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
+        const medNames = medications.filter((m) => m.drug_name).map((m) => m.drug_name);
+        const cdsResult = await cdsEvaluate.mutateAsync({
+          medications: medNames,
+          diagnoses: [diagnosisText].filter(Boolean),
+          patient_age: admission.patient_age,
+          patient_sex: admission.patient_gender === 'M' ? 'male' : admission.patient_gender === 'F' ? 'female' : null,
+        });
+        if (cdsResult.alerts && cdsResult.alerts.length > 0) {
+          setCdsAlerts(cdsResult.alerts);
+          setShowCdsDialog(true);
+          return; // Wait for clinician to acknowledge
+        }
+      } catch {
+        // CDS check failed — proceed without blocking discharge
+      }
     }
+
+    await executeDischarge();
   };
 
   if (isLoading) {
@@ -273,6 +391,17 @@ export default function DischargePage() {
           )}
         </CardContent>
       </Card>
+
+      {/* AI Discharge Readiness Assessment */}
+      {isAIEnabled && (
+        <DischargeReadinessPanel
+          admissionId={admissionId}
+          patientAge={admission.patient_age ?? 0}
+          primaryDiagnosis={admission.admitting_diagnosis_text || admission.admitting_diagnosis || ''}
+          daysAdmitted={lengthOfStay}
+          hasFollowUpArranged={!!followUpDate}
+        />
+      )}
 
       {/* Department Clearances */}
       <Card>
@@ -362,7 +491,26 @@ export default function DischargePage() {
 
           {/* Discharge Summary (Treatment Summary) */}
           <div className="space-y-2">
-            <Label htmlFor="discharge-summary">Discharge Summary *</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="discharge-summary">Discharge Summary *</Label>
+              {isAIEnabled && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleGenerateSummary}
+                  disabled={clinicalAssist.isPending}
+                  className="gap-1.5 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400"
+                >
+                  {clinicalAssist.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <BrainCircuit className="h-3.5 w-3.5" />
+                  )}
+                  Generate with TibaBot
+                </Button>
+              )}
+            </div>
             <Textarea
               id="discharge-summary"
               value={dischargeSummary}
@@ -374,7 +522,26 @@ export default function DischargePage() {
 
           {/* Patient Instructions */}
           <div className="space-y-2">
-            <Label htmlFor="patient-instructions">Patient Instructions *</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="patient-instructions">Patient Instructions *</Label>
+              {isAIEnabled && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleGenerateInstructions}
+                  disabled={clinicalAssist.isPending}
+                  className="gap-1.5 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400"
+                >
+                  {clinicalAssist.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <BrainCircuit className="h-3.5 w-3.5" />
+                  )}
+                  Generate with TibaBot
+                </Button>
+              )}
+            </div>
             <Textarea
               id="patient-instructions"
               value={patientInstructions}
@@ -532,12 +699,66 @@ export default function DischargePage() {
         </Button>
         <Button
           onClick={handleSubmit}
-          disabled={createDischarge.isPending || !dischargeSummary || !patientInstructions || !allClearancesComplete || (requiresScheduledFollowUpDate && !followUpDate)}
+          disabled={createDischarge.isPending || cdsEvaluate.isPending || !dischargeSummary || !patientInstructions || !allClearancesComplete || (requiresScheduledFollowUpDate && !followUpDate)}
         >
-          <Save className="h-4 w-4 mr-2" />
-          {createDischarge.isPending ? 'Discharging...' : 'Confirm Discharge'}
+          {cdsEvaluate.isPending ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Save className="h-4 w-4 mr-2" />
+          )}
+          {createDischarge.isPending ? 'Discharging...' : cdsEvaluate.isPending ? 'Running safety checks...' : 'Confirm Discharge'}
         </Button>
       </div>
+
+      {/* CDS Safety Check Dialog */}
+      <AlertDialog open={showCdsDialog} onOpenChange={setShowCdsDialog}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-amber-500" />
+              Safety Alerts
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              TibaBot identified the following concerns. Review before proceeding.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-3 max-h-64 overflow-y-auto">
+            {cdsAlerts.map((alert, i) => (
+              <div
+                key={i}
+                className={`rounded-lg border p-3 space-y-1 ${
+                  alert.severity === 'critical'
+                    ? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30'
+                    : alert.severity === 'high'
+                      ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30'
+                      : 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className={`h-4 w-4 shrink-0 ${
+                    alert.severity === 'critical' ? 'text-red-600' : alert.severity === 'high' ? 'text-amber-600' : 'text-blue-600'
+                  }`} />
+                  <span className="text-sm font-medium">{alert.title}</span>
+                  <Badge variant="outline" className="ml-auto text-xs">{alert.severity}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{alert.message}</p>
+                {alert.recommendation && (
+                  <p className="text-xs text-muted-foreground italic">{alert.recommendation}</p>
+                )}
+              </div>
+            ))}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go Back & Review</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeDischarge}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              Acknowledge & Discharge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

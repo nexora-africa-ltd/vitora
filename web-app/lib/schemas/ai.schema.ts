@@ -252,7 +252,7 @@ export const AILabInterpretResponseSchema = z.object({
 
 /** Schema for a single discharge criterion */
 export const AIDischargeCriterionSchema = z.object({
-  name: z.string(),
+  name: z.string().optional().default('Unnamed criterion'),
   category: z.string(),
   met: z.boolean(),
   details: z.string().optional(),
