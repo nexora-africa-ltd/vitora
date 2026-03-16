@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -82,13 +83,26 @@ export default function WardsPage() {
           title="Wards"
           helpContent="Manage wards, bed occupancy, and inpatient locations. Pull down to refresh on mobile, or use the refresh button in the header."
           actions={
-            <Button asChild className="gap-2 w-full sm:w-auto">
-              <Link href="/admissions/new">
-                <Plus className="h-4 w-4" />
-                <span className="sm:hidden">Admit</span>
-                <span className="hidden sm:inline">New Admission</span>
-              </Link>
-            </Button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <PermissionGate action="inpatient.manage_ward">
+                <Button variant="outline" asChild className="gap-2 flex-1 sm:flex-none">
+                  <Link href="/wards/new">
+                    <Plus className="h-4 w-4" />
+                    <span className="sm:hidden">Ward</span>
+                    <span className="hidden sm:inline">New Ward</span>
+                  </Link>
+                </Button>
+              </PermissionGate>
+              <PermissionGate action="inpatient.create_admission">
+                <Button asChild className="gap-2 flex-1 sm:flex-none">
+                  <Link href="/admissions/new">
+                    <Plus className="h-4 w-4" />
+                    <span className="sm:hidden">Admit</span>
+                    <span className="hidden sm:inline">New Admission</span>
+                  </Link>
+                </Button>
+              </PermissionGate>
+            </div>
           }
         />
 
@@ -302,11 +316,13 @@ function WardCard({ ward }: { ward: any }) {
               View Details
             </Link>
           </Button>
-          <Button size="sm" className="w-full sm:flex-1" asChild disabled={availableBeds === 0}>
-            <Link href={`/admissions/new?ward=${ward.id}`}>
-              Admit Patient
-            </Link>
-          </Button>
+          <PermissionGate action="inpatient.create_admission">
+            <Button size="sm" className="w-full sm:flex-1" asChild disabled={availableBeds === 0}>
+              <Link href={`/admissions/new?ward=${ward.id}`}>
+                Admit Patient
+              </Link>
+            </Button>
+          </PermissionGate>
         </div>
       </CardContent>
     </Card>

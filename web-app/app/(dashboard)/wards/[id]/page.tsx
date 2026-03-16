@@ -16,6 +16,7 @@ import {
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { PermissionGate } from '@/components/shared/permission-gate';
 import { WebSocketStatus } from '@/components/ui/websocket-status';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,7 +51,8 @@ import {
   useAdmissions,
   useBedUtilization,
   usePredictedDischarges,
-  useUpdateBed
+  useUpdateBed,
+  useGenerateWardBeds,
 } from '@/lib/hooks/use-inpatient';
 import { formatDateTime } from '@/lib/utils/format';
 
@@ -217,18 +219,22 @@ export default function WardDetailPage() {
           helpContent={ward.description || 'View ward details, current patients, and bed layout.'}
           actions={
             <>
-              <Button variant="outline" size="sm" asChild className="gap-2 w-full sm:w-auto">
-                <Link href={`/wards/${wardId}/edit`}>
-                  <Settings className="h-4 w-4" />
-                  Manage
-                </Link>
-              </Button>
-              <Button size="sm" asChild disabled={stats.available === 0} className="gap-2 w-full sm:w-auto">
-                <Link href={`/admissions/new?ward=${wardId}`}>
-                  <Plus className="h-4 w-4" />
-                  Admit
-                </Link>
-              </Button>
+              <PermissionGate action="inpatient.manage_ward">
+                <Button variant="outline" size="sm" asChild className="gap-2 w-full sm:w-auto">
+                  <Link href={`/wards/${wardId}/edit`}>
+                    <Settings className="h-4 w-4" />
+                    Manage
+                  </Link>
+                </Button>
+              </PermissionGate>
+              <PermissionGate action="inpatient.create_admission">
+                <Button size="sm" asChild disabled={stats.available === 0} className="gap-2 w-full sm:w-auto">
+                  <Link href={`/admissions/new?ward=${wardId}`}>
+                    <Plus className="h-4 w-4" />
+                    Admit
+                  </Link>
+                </Button>
+              </PermissionGate>
             </>
           }
         />
@@ -318,7 +324,7 @@ export default function WardDetailPage() {
           />
           <CardHeader className="relative pb-3">
             <CardTitle className="text-base">Smart allocation snapshot</CardTitle>
-            <CardDescription>Phase C planning signals for this ward.</CardDescription>
+            <CardDescription>Real-time capacity and allocation insights.</CardDescription>
           </CardHeader>
           <CardContent className="relative space-y-3">
             <div className="flex items-center justify-between rounded-md bg-muted/40 p-3 text-sm">
@@ -529,9 +535,12 @@ export default function WardDetailPage() {
           <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {bedsList.length === 0 ? (
               <Card className="col-span-full">
-                <CardContent className="py-8 text-center">
+                <CardContent className="py-8 text-center space-y-4">
                   <Bed className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                   <p className="text-muted-foreground">No beds configured for this ward.</p>
+                  {ward && ward.capacity > 0 && (
+                    <GenerateBedsButton wardId={Number(wardId)} />
+                  )}
                 </CardContent>
               </Card>
             ) : (
@@ -721,6 +730,36 @@ function BedStatusDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Button to generate missing beds for a ward */
+function GenerateBedsButton({ wardId }: { wardId: number }) {
+  const generateBeds = useGenerateWardBeds();
+  const { toast } = useToast();
+
+  return (
+    <Button
+      variant="outline"
+      disabled={generateBeds.isPending}
+      onClick={async () => {
+        try {
+          const result = await generateBeds.mutateAsync(wardId);
+          toast({
+            title: 'Beds Generated',
+            description: `Created ${result.created} bed(s) (total: ${result.total})`,
+          });
+        } catch {
+          toast({
+            title: 'Failed to generate beds',
+            variant: 'destructive',
+          });
+        }
+      }}
+    >
+      <Plus className="h-4 w-4 mr-2" />
+      {generateBeds.isPending ? 'Generating...' : 'Generate Beds'}
+    </Button>
   );
 }
 

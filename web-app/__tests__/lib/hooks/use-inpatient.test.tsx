@@ -422,7 +422,7 @@ describe('ward compatibility checks', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(mockInpatientApi.checkWardCompatibility).toHaveBeenCalledWith(1, 99, false);
+    expect(mockInpatientApi.checkWardCompatibility).toHaveBeenCalledWith(1, 99, false, undefined, undefined);
     expect(result.current.data?.compatible).toBe(true);
   });
 

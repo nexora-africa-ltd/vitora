@@ -702,7 +702,7 @@ export const WardCurrentStateSchema = z.object({
   isolation_capable: z.boolean(),
   oxygen_equipped: z.boolean(),
   ventilator_capable: z.boolean(),
-  maternity_designated: z.boolean(),
+  maternity_designated: z.boolean().optional().default(false),
   available_beds: z.number(),
 });
 
