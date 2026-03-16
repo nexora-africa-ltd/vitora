@@ -30,6 +30,7 @@ export interface InpatientWard {
   isolation_capable?: boolean;
   oxygen_equipped?: boolean;
   ventilator_capable?: boolean;
+  maternity_designated?: boolean;
   // Phase C: Smart allocation
   emergency_buffer_percent?: number;
   created_at?: string;
@@ -818,6 +819,7 @@ export interface WardCurrentState {
   isolation_capable: boolean;
   oxygen_equipped: boolean;
   ventilator_capable: boolean;
+  maternity_designated: boolean;
   available_beds: number;
 }
 
@@ -1286,4 +1288,46 @@ export interface SetExpectedDischargeResponse {
   admission_id: number;
   admission_number: string;
   expected_discharge_date: string;
+}
+
+// --- Ward Recommendation ---
+
+export interface WardRecommendationRankedWard {
+  ward_id: number;
+  ward_name: string;
+  ward_code: string;
+  ward_type: string;
+  ward_type_display: string;
+  compatible: boolean;
+  score: number;
+  scores: Record<string, number>;
+  total_beds: number;
+  available_beds: number;
+  effective_available: number;
+  occupancy_rate: number;
+  violations: string[];
+  rejection_reason: string;
+  reason: string;
+  recommended: boolean;
+}
+
+export interface WardRecommendationResponse {
+  success: boolean;
+  recommended_ward_id: number | null;
+  recommended_ward_name: string | null;
+  ranked_wards: WardRecommendationRankedWard[];
+  incompatible_wards: Array<{
+    ward_id: number;
+    ward_name: string;
+    ward_code: string;
+    ward_type: string;
+    ward_type_display: string;
+    compatible: boolean;
+    violations: string[];
+    rejection_reason: string;
+  }>;
+  total_evaluated: number;
+  infection_isolation_triggered: boolean;
+  evaluation_time_ms: number;
+  error: string | null;
 }

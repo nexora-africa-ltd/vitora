@@ -4,8 +4,8 @@ Views for the inpatient app.
 
 from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import OpenApiParameter, extend_schema
-from rest_framework import filters, status, viewsets
+from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
+from rest_framework import filters, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -622,6 +622,57 @@ class WardViewSet(viewsets.ModelViewSet):
         ]
 
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+    @extend_schema(
+        summary="Smart ward recommendation",
+        description=(
+            "Evaluate all active wards and rank them for a patient based on "
+            "compatibility, availability, occupancy, cohort match, and workload. "
+            "Returns a ranked list of compatible wards and a list of incompatible wards with reasons."
+        ),
+        request=inline_serializer(
+            name="RecommendWardRequest",
+            fields={
+                "patient_id": serializers.IntegerField(help_text="Patient ID"),
+                "requires_isolation": serializers.BooleanField(required=False, default=False),
+                "requires_oxygen": serializers.BooleanField(required=False, default=False),
+                "requires_ventilator": serializers.BooleanField(required=False, default=False),
+                "admission_type": serializers.ChoiceField(
+                    choices=["ELECTIVE", "EMERGENCY", "TRANSFER"],
+                    required=False, default="ELECTIVE",
+                ),
+            },
+        ),
+        tags=["Inpatient - Wards"],
+    )
+    @action(detail=False, methods=["post"], url_path="recommend_ward")
+    def recommend_ward(self, request):
+        """Smart ward recommendation — evaluate all wards for a patient."""
+        from hmis.apps.inpatient.serializers import RecommendWardRequestSerializer
+        from hmis.apps.inpatient.services.bed_smart import smart_bed_allocation_service
+
+        serializer = RecommendWardRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        patient_id = serializer.validated_data["patient_id"]
+        try:
+            patient = Patient.objects.get(id=patient_id)
+        except Patient.DoesNotExist:
+            return Response(
+                {"error": f"Patient with ID {patient_id} not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        result = smart_bed_allocation_service.recommend_ward(
+            patient=patient,
+            requires_isolation=serializer.validated_data.get("requires_isolation", False),
+            requires_oxygen=serializer.validated_data.get("requires_oxygen", False),
+            requires_ventilator=serializer.validated_data.get("requires_ventilator", False),
+            admission_type=serializer.validated_data.get("admission_type", "ELECTIVE"),
+        )
+
+        return Response(result.to_dict(), status=status.HTTP_200_OK)
 
 
 class SupervisorAlertViewSet(viewsets.ViewSet):
@@ -1309,13 +1360,30 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         override_reason = str(self.request.data.get("constraint_override_reason", "") or "")
 
         if not result.compatible and not override_requested:
+            violation_details = [
+                {
+                    "code": v.code,
+                    "severity": v.severity,
+                    "message": v.message,
+                    "override_allowed": v.override_allowed,
+                }
+                for v in result.violations
+            ]
             raise ValidationError(
                 {
                     "compatibility": (
-                        "Patient is not compatible with this ward. "
-                        "Set constraint_override=true to proceed."
+                        f"This patient cannot be placed in {bed.ward.name} "
+                        f"due to {len(result.violations)} constraint "
+                        f"violation{'s' if len(result.violations) != 1 else ''}. "
+                        "Review the violations below and either choose a different "
+                        "ward or provide a constraint_override with a reason."
                     ),
-                    "violations": [v.message for v in result.violations],
+                    "violations": violation_details,
+                    "ward_name": bed.ward.name,
+                    "has_critical": result.has_critical_violations,
+                    "override_available": any(
+                        v.override_allowed for v in result.violations
+                    ),
                 }
             )
 

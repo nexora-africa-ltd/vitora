@@ -702,6 +702,7 @@ export const WardCurrentStateSchema = z.object({
   isolation_capable: z.boolean(),
   oxygen_equipped: z.boolean(),
   ventilator_capable: z.boolean(),
+  maternity_designated: z.boolean(),
   available_beds: z.number(),
 });
 
@@ -1135,3 +1136,45 @@ export const SetExpectedDischargeResponseSchema = z.object({
 });
 
 export type SetExpectedDischargeResponseSchemaType = z.infer<typeof SetExpectedDischargeResponseSchema>;
+
+// --- Ward Recommendation ---
+
+export const WardRecommendationRankedWardSchema = z.object({
+  ward_id: z.number(),
+  ward_name: z.string(),
+  ward_code: z.string(),
+  ward_type: z.string(),
+  ward_type_display: z.string().optional().default(''),
+  compatible: z.boolean().optional().default(true),
+  score: z.number(),
+  scores: z.record(z.number()).optional().default({}),
+  total_beds: z.number().optional().default(0),
+  available_beds: z.number(),
+  effective_available: z.number().optional().default(0),
+  occupancy_rate: z.number(),
+  violations: z.array(z.string()).optional().default([]),
+  rejection_reason: z.string().optional().default(''),
+  reason: z.string(),
+  recommended: z.boolean(),
+});
+
+export const WardRecommendationResponseSchema = z.object({
+  success: z.boolean(),
+  recommended_ward_id: z.number().nullable(),
+  recommended_ward_name: z.string().nullable(),
+  ranked_wards: z.array(WardRecommendationRankedWardSchema),
+  incompatible_wards: z.array(z.object({
+    ward_id: z.number(),
+    ward_name: z.string(),
+    ward_code: z.string(),
+    ward_type: z.string(),
+    ward_type_display: z.string().optional().default(''),
+    compatible: z.boolean().optional().default(false),
+    violations: z.array(z.string()),
+    rejection_reason: z.string().optional().default(''),
+  })),
+  total_evaluated: z.number(),
+  infection_isolation_triggered: z.boolean(),
+  evaluation_time_ms: z.number(),
+  error: z.string().nullable(),
+});

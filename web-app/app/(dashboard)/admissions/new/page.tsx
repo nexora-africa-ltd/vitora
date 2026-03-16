@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Save, Search, X, AlertCircle, User, UserPlus, AlertTriangle } from 'lucide-react';
+import { Save, X, AlertCircle, User, UserPlus, AlertTriangle, Sparkles, ChevronDown } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
@@ -39,12 +39,14 @@ import {
   useInpatientWards,
   useCheckWardCompatibility,
   useGenerateWardBeds,
+  useRecommendWard,
 } from '@/lib/hooks/use-inpatient';
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
-import { useICD10Search } from '@/lib/hooks/use-encounter-form';
 import { usePatient } from '@/lib/hooks/use-patients';
-import { ICD11Select } from '@/components/terminology';
+import { DiagnosisCodeInput, emptyDiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
+import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { BedRecommendationCard, CompatibilityOverrideDialog, BedSelectionGrid } from '@/components/inpatient';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { cn } from '@/lib/utils/cn';
 import type {
   CompatibilityViolation,
@@ -83,6 +85,7 @@ export default function NewAdmissionPage() {
   // Form state
   const [wardId, setWardId] = useState<string>('');
   const [bedId, setBedId] = useState<string>('');
+  const [wardAssignmentMode, setWardAssignmentMode] = useState<'auto' | 'manual'>('auto');
   const [assignmentStrategy, setAssignmentStrategy] = useState<BedAssignmentStrategy>('SMART');
   const [admissionType, setAdmissionType] = useState<SmartAdmissionType>('ELECTIVE');
   const [requiresIsolation, setRequiresIsolation] = useState(false);
@@ -97,12 +100,7 @@ export default function NewAdmissionPage() {
   const { data: mchRegistrationData } = useMCHRegistration(selectedMchRegistrationId);
 
   // Diagnosis state
-  const [useICD11, setUseICD11] = useState(true); // Default to ICD-11 (SHA standard)
-  const [icd10Code, setIcd10Code] = useState('');
-  const [icd10Text, setIcd10Text] = useState('');
-  const [icd11Value, setIcd11Value] = useState<{ code: string; title: string } | null>(null);
-  const [icd10SearchQuery, setIcd10SearchQuery] = useState('');
-  const [isIcd10SearchOpen, setIsIcd10SearchOpen] = useState(false);
+  const [diagnosisValue, setDiagnosisValue] = useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue());
   const [diagnosisPrefilled, setDiagnosisPrefilled] = useState(false);
 
   // Fetch encounter data if encounterId provided (for prefilling diagnosis)
@@ -117,6 +115,7 @@ export default function NewAdmissionPage() {
   const createAdmission = useCreateAdmission();
   const recommendBed = useRecommendBed();
   const smartRecommendBed = useSmartRecommendBed();
+  const wardRecommendation = useRecommendWard();
   const generateBeds = useGenerateWardBeds();
 
   // Get selected ward's capacity from wards list
@@ -141,9 +140,6 @@ export default function NewAdmissionPage() {
       toast.error('Failed to generate beds. Please try again or contact admin.');
     }
   }, [generateBeds.isSuccess, generateBeds.isError, generateBeds.data]);
-
-  // ICD-10 search
-  const { data: icd10SearchResults, isLoading: isSearching } = useICD10Search(icd10SearchQuery);
 
   // Compatibility state
   const [compatibilityViolations, setCompatibilityViolations] = useState<CompatibilityViolation[]>([]);
@@ -185,6 +181,74 @@ export default function NewAdmissionPage() {
     recommendBed.reset();
     smartRecommendBed.reset();
   }, [recommendBed, smartRecommendBed]);
+
+  // Auto-trigger ward recommendation when patient is available
+  const [wardRecommendationData, setWardRecommendationData] = useState<typeof wardRecommendation.data>(undefined);
+  const [wardRecommendationLoading, setWardRecommendationLoading] = useState(false);
+  const [wardRecommendationError, setWardRecommendationError] = useState(false);
+  const [hasRunWardRecommendation, setHasRunWardRecommendation] = useState(false);
+
+  useEffect(() => {
+    if (!patientId || wardAssignmentMode !== 'auto') {
+      return;
+    }
+
+    const isRetrigger = hasRunWardRecommendation;
+    let isCancelled = false;
+    setWardRecommendationLoading(true);
+    setWardRecommendationError(false);
+    setWardRecommendationData(undefined);
+
+    wardRecommendation.mutateAsync({
+      patient_id: patientId,
+      requires_isolation: requiresIsolation,
+      requires_oxygen: requiresOxygen,
+      requires_ventilator: requiresVentilator,
+      admission_type: admissionType,
+    }).then((result) => {
+      if (!isCancelled) {
+        setWardRecommendationData(result);
+        setWardRecommendationLoading(false);
+        setHasRunWardRecommendation(true);
+
+        if (isRetrigger) {
+          if (result.success) {
+            toast.info(`Ward recommendation updated — ${result.recommended_ward_name}`, {
+              description: `${result.ranked_wards.length} compatible ward${result.ranked_wards.length !== 1 ? 's' : ''}, ${result.incompatible_wards.length} excluded`,
+            });
+          } else {
+            toast.warning('No compatible wards match the updated requirements');
+          }
+        }
+      }
+    }).catch(() => {
+      if (!isCancelled) {
+        setWardRecommendationError(true);
+        setWardRecommendationLoading(false);
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId, wardAssignmentMode, requiresIsolation, requiresOxygen, requiresVentilator, admissionType]);
+
+  // Auto-select the top recommended ward
+  useEffect(() => {
+    if (
+      wardAssignmentMode !== 'auto' ||
+      !wardRecommendationData?.success ||
+      !wardRecommendationData.recommended_ward_id
+    ) {
+      return;
+    }
+    const recommendedId = String(wardRecommendationData.recommended_ward_id);
+    if (wardId !== recommendedId) {
+      handleWardChange(recommendedId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wardRecommendationData, wardAssignmentMode]);
 
   useEffect(() => {
     if (!patientId || !selectedWardId) {
@@ -267,49 +331,34 @@ export default function NewAdmissionPage() {
         || encounterDiagnoses[0];
 
       if (primaryDiagnosis) {
-        // Check if it has ICD-11 code
         if (primaryDiagnosis.icd11_code) {
-          setUseICD11(true);
-          setIcd11Value({
-            code: primaryDiagnosis.icd11_code,
-            title: primaryDiagnosis.icd11_display || primaryDiagnosis.free_text_diagnosis || '',
+          setDiagnosisValue({
+            ...emptyDiagnosisCodeValue(),
+            icd11Code: primaryDiagnosis.icd11_code,
+            icd11Display: `${primaryDiagnosis.icd11_code} - ${primaryDiagnosis.icd11_display || primaryDiagnosis.free_text_diagnosis || ''}`,
           });
-        }
-        // Check if it has ICD-10 code
-        else if (primaryDiagnosis.icd10_code || primaryDiagnosis.icd10_display) {
-          setUseICD11(false);
-          const displayParts = (primaryDiagnosis.icd10_display || '').split(' - ');
-          setIcd10Code(displayParts[0] || String(primaryDiagnosis.icd10_code || ''));
-          setIcd10Text(displayParts.slice(1).join(' - ') || primaryDiagnosis.free_text_diagnosis || '');
-        }
-        // Fallback to free text
-        else if (primaryDiagnosis.free_text_diagnosis) {
-          setIcd10Text(primaryDiagnosis.free_text_diagnosis);
+        } else if (primaryDiagnosis.icd10_code || primaryDiagnosis.icd10_display) {
+          const display = primaryDiagnosis.icd10_display || '';
+          const code = display.split(' - ')[0] || String(primaryDiagnosis.icd10_code || '');
+          const text = display.split(' - ').slice(1).join(' - ') || primaryDiagnosis.free_text_diagnosis || '';
+          setDiagnosisValue({
+            ...emptyDiagnosisCodeValue(),
+            icd10Code: primaryDiagnosis.icd10_code || null,
+            icd10Display: `${code} - ${text}`,
+          });
+        } else if (primaryDiagnosis.free_text_diagnosis) {
+          setDiagnosisValue({
+            ...emptyDiagnosisCodeValue(),
+            icd10Display: primaryDiagnosis.free_text_diagnosis,
+          });
         }
         setDiagnosisPrefilled(true);
       }
     }
   }, [encounterDiagnoses, diagnosisPrefilled]);
 
-  // Handle ICD-10 code selection
-  const handleSelectICD10 = (code: any) => {
-    setIcd10Code(code.code);
-    setIcd10Text(code.short_description || code.description);
-    setIcd10SearchQuery('');
-    setIsIcd10SearchOpen(false);
-  };
-
-  // Clear diagnosis
-  const handleClearDiagnosis = () => {
-    setIcd10Code('');
-    setIcd10Text('');
-    setIcd11Value(null);
-  };
-
   // Computed values
-  const hasDiagnosis = useICD11
-    ? !!icd11Value
-    : (!!icd10Code || !!icd10Text);
+  const hasDiagnosis = !!(diagnosisValue.icd11Code || diagnosisValue.icd10Code || diagnosisValue.icd10Display || diagnosisValue.snomedCode);
   const hasRequiredMaternityContext = !isMaternityWard || (!!mchRegistrationId && mchRegistrationMatchesPatient);
 
   // With autoAssignBed, bed selection is not required (handled by backend)
@@ -334,13 +383,15 @@ export default function NewAdmissionPage() {
     && !!user
     && hasRequiredMaternityContext;
 
-  const admittingDiagnosis = useICD11
-    ? icd11Value?.code || ''
-    : icd10Code;
+  const admittingDiagnosis = diagnosisValue.icd11Code
+    || diagnosisValue.icd10Display?.split(' - ')[0]
+    || diagnosisValue.snomedCode
+    || '';
 
-  const admittingDiagnosisText = useICD11
-    ? icd11Value?.title || ''
-    : icd10Text;
+  const admittingDiagnosisText = diagnosisValue.icd11Display?.split(' - ').slice(1).join(' - ')
+    || diagnosisValue.icd10Display?.split(' - ').slice(1).join(' - ')
+    || diagnosisValue.snomedDisplay
+    || '';
 
   return (
     <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
@@ -428,21 +479,133 @@ export default function NewAdmissionPage() {
             )}
           </div>
 
-          {/* Ward Selection */}
-          <div className="space-y-2">
-            <Label>Ward</Label>
-            <Select value={wardId} onValueChange={handleWardChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select ward" />
-              </SelectTrigger>
-              <SelectContent>
-                {((wards as any)?.results ?? wards ?? []).map((w: any) => (
-                  <SelectItem key={w.id} value={String(w.id)}>
-                    {w.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Ward Assignment */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Label>Ward placement</Label>
+                <HelpPopover content="Smart assignment evaluates all wards for compatibility, workload, occupancy, and patient needs, then auto-selects the best option. Switch to manual to pick a specific ward." />
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={wardAssignmentMode === 'auto' ? 'default' : 'outline'} className="text-xs">
+                  {wardAssignmentMode === 'auto' ? 'Smart' : 'Manual'}
+                </Badge>
+                <Switch
+                  checked={wardAssignmentMode === 'auto'}
+                  onCheckedChange={(checked) => {
+                    setWardAssignmentMode(checked ? 'auto' : 'manual');
+                    if (checked) {
+                      // Switching back to auto — clear manual selection and re-trigger
+                      setWardId('');
+                      setBedId('');
+                      setWardRecommendationData(undefined);
+                      setWardRecommendationError(false);
+                      wardRecommendation.reset();
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            {wardAssignmentMode === 'auto' ? (
+              <div className="space-y-2">
+                {/* Loading state */}
+                {wardRecommendationLoading && (
+                  <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="h-4 w-4 animate-pulse text-primary" />
+                      <p className="text-sm text-muted-foreground">Evaluating wards for best placement...</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Skeleton className="h-10 w-full rounded-md" />
+                      <Skeleton className="h-10 w-full rounded-md" />
+                      <Skeleton className="h-10 w-3/4 rounded-md" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Recommendation results */}
+                {!wardRecommendationLoading && wardRecommendationData && (
+                  <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium">
+                          {wardRecommendationData.success
+                            ? `Recommended: ${wardRecommendationData.recommended_ward_name}`
+                            : 'No compatible ward found'}
+                        </p>
+                        <HelpPopover content="Wards are ranked by a composite score: availability (30%), occupancy (20%), demographic affinity — gender, age, ward type, and capability match (20%), diagnosis cohort match (15%), and staff workload balance (15%). Wards that fail hard constraints (equipment requirements) are excluded entirely." />
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        {wardRecommendationData.evaluation_time_ms} ms
+                      </Badge>
+                    </div>
+                    {wardRecommendationData.ranked_wards.length > 0 && (
+                      <div className="space-y-1">
+                        {wardRecommendationData.ranked_wards.slice(0, 3).map((rw, idx) => (
+                          <button
+                            key={rw.ward_id}
+                            type="button"
+                            onClick={() => handleWardChange(String(rw.ward_id))}
+                            className={cn(
+                              'flex w-full items-center justify-between rounded-md border p-2 text-left text-sm transition-colors hover:bg-accent',
+                              idx === 0 && 'border-primary/30 bg-primary/5',
+                              String(rw.ward_id) === wardId && 'ring-2 ring-primary'
+                            )}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={cn(
+                                'flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs font-bold',
+                                idx === 0 ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                              )}>
+                                {idx + 1}
+                              </span>
+                              <span className="truncate font-medium">{rw.ward_name}</span>
+                              <span className="text-xs text-muted-foreground">{rw.ward_type}</span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-xs text-muted-foreground">{rw.available_beds} beds</span>
+                              <Badge variant="outline" className="text-xs">Score {rw.score.toFixed(1)}</Badge>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {wardRecommendationData.incompatible_wards.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {wardRecommendationData.incompatible_wards.length} ward{wardRecommendationData.incompatible_wards.length !== 1 ? 's' : ''} excluded due to constraint violations
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Error state */}
+                {wardRecommendationError && (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                    <p className="text-sm text-destructive">Ward recommendation failed. Switch to manual to select a ward.</p>
+                  </div>
+                )}
+
+                {/* No patient selected */}
+                {!patientId && (
+                  <p className="text-xs text-muted-foreground">Select a patient to get a ward recommendation.</p>
+                )}
+              </div>
+            ) : (
+              /* Manual ward selection */
+              <Select value={wardId} onValueChange={handleWardChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select ward" />
+                </SelectTrigger>
+                <SelectContent>
+                  {((wards as any)?.results ?? wards ?? []).map((w: any) => (
+                    <SelectItem key={w.id} value={String(w.id)}>
+                      {w.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             {/* Compatibility warning indicator */}
             {compatibilityViolations.length > 0 && overrideReason && (
               <div className="flex items-center gap-2 text-sm text-warning">
@@ -589,148 +752,12 @@ export default function NewAdmissionPage() {
             </div>
           )}
 
-          {/* Diagnosis Section with ICD-10/ICD-11 Toggle */}
-          <div className="space-y-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <Label className="text-base font-medium">Admitting Diagnosis</Label>
-              <div className="flex items-center gap-2">
-                <span className={cn("text-sm", !useICD11 && "font-medium")}>ICD-10</span>
-                <Switch
-                  checked={useICD11}
-                  onCheckedChange={(checked) => {
-                    setUseICD11(checked);
-                    handleClearDiagnosis();
-                  }}
-                />
-                <span className={cn("text-sm", useICD11 && "font-medium")}>ICD-11</span>
-              </div>
-            </div>
-
-            {/* Show selected diagnosis */}
-            {hasDiagnosis ? (
-              <div className="flex flex-col gap-2 p-3 rounded-md border bg-muted/50 sm:flex-row sm:items-center">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="outline" className="font-mono shrink-0">
-                    {admittingDiagnosis}
-                  </Badge>
-                  <Badge variant="secondary" className="text-xs shrink-0">
-                    {useICD11 ? 'ICD-11' : 'ICD-10'}
-                  </Badge>
-                  {diagnosisPrefilled && (
-                    <Badge variant="outline" className="text-xs bg-blue-50 shrink-0">
-                      From Encounter
-                    </Badge>
-                  )}
-                </div>
-                <span className="flex-1 text-sm truncate min-w-0">
-                  {admittingDiagnosisText}
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="self-end sm:self-auto shrink-0"
-                  onClick={handleClearDiagnosis}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <>
-                {/* ICD-11 Search */}
-                {useICD11 && (
-                  <ICD11Select
-                    value={icd11Value}
-                    onSelect={setIcd11Value}
-                    placeholder="Search ICD-11 codes (e.g., malaria, pneumonia, diabetes)..."
-                  />
-                )}
-
-                {/* ICD-10 Search */}
-                {!useICD11 && (
-                  <div className="space-y-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        type="text"
-                        placeholder="Search ICD-10 codes (e.g., malaria, J18, B50)..."
-                        value={icd10SearchQuery}
-                        onChange={(e) => {
-                          setIcd10SearchQuery(e.target.value);
-                          setIsIcd10SearchOpen(true);
-                        }}
-                        onFocus={() => setIsIcd10SearchOpen(true)}
-                        className="pl-9"
-                      />
-
-                      {/* Search Results Dropdown */}
-                      {isIcd10SearchOpen && icd10SearchQuery.length >= 2 && (
-                        <Card className="absolute z-50 mt-1 w-full shadow-lg max-h-64 overflow-y-auto">
-                          <CardContent className="p-2">
-                            {isSearching ? (
-                              <div className="space-y-2">
-                                {[1, 2, 3].map((i) => (
-                                  <div key={i} className="flex items-center gap-2 p-2">
-                                    <Skeleton className="h-5 w-16" />
-                                    <Skeleton className="h-4 flex-1" />
-                                  </div>
-                                ))}
-                              </div>
-                            ) : icd10SearchResults && icd10SearchResults.length > 0 ? (
-                              <ul className="space-y-1">
-                                {icd10SearchResults.map((code: any) => (
-                                  <li key={code.id}>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleSelectICD10(code)}
-                                      className="w-full flex items-start gap-2 p-2 rounded-md hover:bg-accent transition-colors text-left"
-                                    >
-                                      <Badge variant="outline" className="font-mono shrink-0">
-                                        {code.code}
-                                      </Badge>
-                                      <span className="text-sm">
-                                        {code.short_description || code.description}
-                                      </span>
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <p className="text-center text-muted-foreground py-4 text-sm">
-                                No ICD-10 codes found for &quot;{icd10SearchQuery}&quot;
-                              </p>
-                            )}
-                          </CardContent>
-                        </Card>
-                      )}
-                    </div>
-
-                    {/* Manual entry fallback */}
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="manual-icd10-code">ICD-10 Code (manual)</Label>
-                        <Input
-                          id="manual-icd10-code"
-                          value={icd10Code}
-                          onChange={(e) => setIcd10Code(e.target.value.toUpperCase())}
-                          placeholder="e.g., B50.0"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="manual-diagnosis-text">Diagnosis Description</Label>
-                        <Input
-                          id="manual-diagnosis-text"
-                          value={icd10Text}
-                          onChange={(e) => setIcd10Text(e.target.value)}
-                          placeholder="e.g., Plasmodium falciparum malaria with cerebral complications"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+          {/* Admitting Diagnosis */}
+          <DiagnosisCodeInput
+            value={diagnosisValue}
+            onChange={setDiagnosisValue}
+            label="Admitting Diagnosis"
+          />
 
           {/* Payer Type */}
           <div className="space-y-2">
@@ -756,27 +783,33 @@ export default function NewAdmissionPage() {
                 const admissionDate = new Date().toISOString();
                 if (!recommendedBedId) return;
 
-                await createAdmission.mutateAsync({
-                  patient: patientId,
-                  ward: Number(wardId),
-                  ...(mchRegistrationId ? { mch_registration: Number(mchRegistrationId) } : {}),
-                  bed: recommendedBedId,
-                  payer_type: payerType,
-                  admission_date: admissionDate,
-                  admitting_diagnosis: admittingDiagnosis,
-                  admitting_diagnosis_text: admittingDiagnosisText,
-                  admitting_officer: user.id,
-                  source_encounter: encounterId || undefined,
-                  ...(requiresIsolation ? { requires_isolation: true } : {}),
-                  // Include override info if compatibility was overridden
-                  ...(overrideReason && {
-                    constraint_override: true,
-                    constraint_override_reason: overrideReason,
-                    constraint_violations: compatibilityViolations.map((v) => v.message),
-                  }),
-                });
+                try {
+                  await createAdmission.mutateAsync({
+                    patient: patientId,
+                    ward: Number(wardId),
+                    ...(mchRegistrationId ? { mch_registration: Number(mchRegistrationId) } : {}),
+                    bed: recommendedBedId,
+                    payer_type: payerType,
+                    admission_date: admissionDate,
+                    admitting_diagnosis: admittingDiagnosis,
+                    admitting_diagnosis_text: admittingDiagnosisText,
+                    admitting_officer: user.id,
+                    source_encounter: encounterId || undefined,
+                    ...(requiresIsolation ? { requires_isolation: true } : {}),
+                    // Include override info if compatibility was overridden
+                    ...(overrideReason && {
+                      constraint_override: true,
+                      constraint_override_reason: overrideReason,
+                      constraint_violations: compatibilityViolations.map((v) => v.message),
+                    }),
+                  });
 
-                router.push('/admissions');
+                  toast.success('Admission created successfully');
+                  router.push('/admissions');
+                } catch (err) {
+                  const message = getApiErrorMessage(err);
+                  toast.error('Failed to create admission', { description: message });
+                }
               }}
               className="w-full sm:w-auto"
             >
@@ -784,7 +817,7 @@ export default function NewAdmissionPage() {
               {createAdmission.isPending ? 'Creating...' : 'Create Admission'}
             </Button>
             {createAdmission.error && (
-              <p className="text-sm text-destructive">Failed to create admission. Please try again.</p>
+              <p className="text-sm text-destructive">{getApiErrorMessage(createAdmission.error)}</p>
             )}
           </div>
         </CardContent>

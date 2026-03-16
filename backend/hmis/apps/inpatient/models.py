@@ -106,6 +106,23 @@ class Ward(TimeStampedModel):
         "MATERNITY": {"min_age_years": 12, "max_age_years": 55},
     }
 
+    # Ward type → auto-applied capability defaults (on create or ward_type change)
+    WARD_TYPE_CAPABILITY_DEFAULTS: dict[str, dict[str, object]] = {
+        "MATERNITY": {
+            "maternity_designated": True,
+            "gender_restriction": "FEMALE_ONLY",
+        },
+        "ISOLATION": {
+            "isolation_capable": True,
+        },
+        "ICU": {
+            "oxygen_equipped": True,
+            "ventilator_capable": True,
+            "isolation_capable": True,
+        },
+        "PEDIATRIC": {},  # age defaults handled separately via WARD_TYPE_AGE_DEFAULTS
+    }
+
     name = models.CharField(
         max_length=100,
         unique=True,
@@ -182,6 +199,10 @@ class Ward(TimeStampedModel):
         default=False,
         help_text="Whether ward supports ventilated patients",
     )
+    maternity_designated = models.BooleanField(
+        default=False,
+        help_text="Whether ward is designated for maternity patients (enforces female-only admission)",
+    )
 
     # Phase C: Smart Allocation
     emergency_buffer_percent = models.PositiveIntegerField(
@@ -212,6 +233,7 @@ class Ward(TimeStampedModel):
         """Auto-populate compatibility defaults and create beds on ward creation."""
         is_new = self.pk is None
 
+        # Auto-apply age defaults for known ward types (on create only, if unset)
         if is_new and self.ward_type in self.WARD_TYPE_AGE_DEFAULTS:
             defaults = self.WARD_TYPE_AGE_DEFAULTS[self.ward_type]
             if self.min_age_years is None:
@@ -219,8 +241,21 @@ class Ward(TimeStampedModel):
             if self.max_age_years is None:
                 self.max_age_years = defaults.get("max_age_years")
 
-            if self.ward_type == "MATERNITY" and self.gender_restriction == "ANY":
-                self.gender_restriction = "FEMALE_ONLY"
+        # Auto-apply capability defaults from ward type
+        capability_defaults = self.WARD_TYPE_CAPABILITY_DEFAULTS.get(self.ward_type, {})
+        for field_name, default_value in capability_defaults.items():
+            current = getattr(self, field_name, None)
+            # For booleans: only set if currently False (don't override explicit True)
+            # For choice fields: only set if currently at the neutral default
+            if isinstance(default_value, bool):
+                if not current:
+                    setattr(self, field_name, default_value)
+            elif field_name == "gender_restriction" and current == "ANY":
+                setattr(self, field_name, default_value)
+
+        # Maternity-designated wards must always be female-only
+        if self.maternity_designated and self.gender_restriction != "FEMALE_ONLY":
+            self.gender_restriction = "FEMALE_ONLY"
 
         super().save(*args, **kwargs)
 

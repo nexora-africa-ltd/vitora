@@ -282,6 +282,116 @@ class SmartBedAllocationService:
         return (effective > 0, effective)
 
     # ------------------------------------------------------------------ #
+    #  Affinity Scoring (demographics + capability match)
+    # ------------------------------------------------------------------ #
+
+    def _calculate_affinity_score(
+        self,
+        patient: "Patient",
+        ward: "Ward",
+        requires_isolation: bool = False,
+        requires_oxygen: bool = False,
+        requires_ventilator: bool = False,
+    ) -> float:
+        """
+        Score how well a ward matches the patient's demographics and needs.
+
+        Returns 0-100 where higher = better fit.
+
+        Factors (each 0-25):
+        - Gender match: FEMALE_ONLY ward for female patient = 25, ANY = 15, mismatch = 0
+        - Age/ward-type fit: patient age falls in ward's target range = 25
+        - Capability match: ward capabilities match what the patient needs (not over/under)
+        - Specialization penalty: over-specialized wards (ICU, isolation) when not needed
+        """
+        score = 0.0
+
+        # ---- Gender match (0-25) ----
+        patient_gender = patient.gender  # 'M', 'F', 'O'
+        restriction = ward.gender_restriction
+
+        if restriction == "ANY":
+            # Generic ward — acceptable but not preferred over a gender-matched one
+            score += 15
+        elif (restriction == "FEMALE_ONLY" and patient_gender == "F") or (
+            restriction == "MALE_ONLY" and patient_gender == "M"
+        ):
+            # Perfect gender match
+            score += 25
+        else:
+            # Gender mismatch (shouldn't happen — compatibility filters these)
+            score += 0
+
+        # ---- Age / ward-type fit (0-25) ----
+        from datetime import date
+
+        patient_age = (date.today() - patient.date_of_birth).days // 365
+
+        ward_type = ward.ward_type
+        age_fit = 15  # default: neutral — general ward
+
+        if ward_type == "PEDIATRIC":
+            age_fit = 25 if patient_age <= 14 else 5
+        elif ward_type == "MATERNITY":
+            age_fit = 25 if (patient_gender == "F" and 12 <= patient_age <= 55) else 5
+        elif ward_type == "ICU":
+            # ICU is appropriate for any age but is specialized
+            age_fit = 15
+        elif ward_type in ("MEDICAL", "SURGICAL"):
+            # General wards — moderate fit for adults, less for children
+            age_fit = 20 if patient_age > 14 else 10
+
+        score += age_fit
+
+        # ---- Capability match (0-25) ----
+        # Reward wards that have what the patient needs; penalize wards that
+        # are over-equipped (waste of specialized resources)
+        needed_caps = {
+            "isolation": requires_isolation,
+            "oxygen": requires_oxygen,
+            "ventilator": requires_ventilator,
+        }
+        ward_caps = {
+            "isolation": ward.isolation_capable,
+            "oxygen": ward.oxygen_equipped,
+            "ventilator": ward.ventilator_capable,
+        }
+
+        cap_score = 25.0
+        for cap_name, needed in needed_caps.items():
+            has_cap = ward_caps[cap_name]
+            if needed and has_cap:
+                pass  # perfect — no change
+            elif needed and not has_cap:
+                cap_score -= 10  # missing needed capability (shouldn't happen after filter)
+            elif not needed and has_cap:
+                cap_score -= 5  # over-specialized — mild penalty
+
+        score += max(cap_score, 0)
+
+        # ---- Specialization penalty (0-25) ----
+        # General wards are preferred when no special needs are present.
+        # Specialized wards (ICU, ISOLATION) should rank lower unless needed.
+        has_special_needs = requires_isolation or requires_oxygen or requires_ventilator
+        spec_score = 25.0
+
+        if not has_special_needs:
+            if ward_type == "ICU":
+                spec_score = 5  # heavy penalty — ICU beds are scarce
+            elif ward_type == "ISOLATION":
+                spec_score = 10  # moderate penalty
+        else:
+            # Patient has special needs — specialized ward is appropriate
+            if ward_type == "ICU" and (requires_ventilator or requires_oxygen):
+                spec_score = 25
+            elif ward_type == "ISOLATION" and requires_isolation:
+                spec_score = 25
+
+        score += spec_score
+
+        return min(score, 100.0)
+
+    # ------------------------------------------------------------------ #
     #  Cohort Grouping
     # ------------------------------------------------------------------ #
 
@@ -639,6 +749,241 @@ class SmartBedAllocationService:
             pass
 
         return None
+
+    # ------------------------------------------------------------------ #
+    #  Smart Ward Recommendation
+    # ------------------------------------------------------------------ #
+
+    def recommend_ward(
+        self,
+        patient: "Patient",
+        requires_isolation: bool = False,
+        requires_oxygen: bool = False,
+        requires_ventilator: bool = False,
+        admission_type: str = "ELECTIVE",
+    ) -> "WardRecommendationResult":
+        """
+        Evaluate all active wards and rank them for a patient.
+
+        Scoring factors:
+        - Compatibility (hard filter — incompatible wards are excluded)
+        - Effective availability (available minus emergency buffer)
+        - Occupancy rate (prefer less crowded wards)
+        - Cohort match (prefer wards with similar diagnoses)
+        - Workload balance (prefer lower staff workload)
+        - Equipment match bonus (ward has the required capabilities)
+
+        Returns ranked list of wards with scores and reasoning.
+        """
+        from hmis.apps.inpatient.services.compatibility import ward_compatibility_service
+
+        start_time = time.time()
+        is_emergency = admission_type == "EMERGENCY"
+
+        # Auto-detect infection risk
+        infection_detected, _ = self.evaluate_infection_risk(patient)
+        if infection_detected and not requires_isolation:
+            requires_isolation = True
+
+        wards = Ward.objects.filter(is_active=True).prefetch_related("beds")
+        ranked: list[WardCandidate] = []
+        incompatible: list[WardCandidate] = []
+
+        for ward in wards:
+            # 1. Hard compatibility check
+            compat = ward_compatibility_service.check_compatibility(
+                patient=patient,
+                ward=ward,
+                requires_isolation=requires_isolation,
+                requires_oxygen=requires_oxygen,
+                requires_ventilator=requires_ventilator,
+            )
+
+            candidate = WardCandidate(
+                ward_id=ward.id,
+                ward_name=ward.name,
+                ward_code=ward.code,
+                ward_type=ward.ward_type,
+                ward_type_display=ward.get_ward_type_display(),
+            )
+
+            if not compat.compatible:
+                candidate.compatible = False
+                candidate.violations = [v.message for v in compat.violations]
+                candidate.rejection_reason = compat.violations[0].message if compat.violations else "Incompatible"
+                incompatible.append(candidate)
+                continue
+
+            # 2. Availability
+            buffer_allowed, effective = self.check_emergency_buffer(ward, is_emergency)
+            candidate.total_beds = ward.total_beds
+            candidate.available_beds = ward.available_beds
+            candidate.effective_available = effective
+            candidate.occupancy_rate = ward.occupancy_rate
+
+            if effective <= 0 and not is_emergency:
+                candidate.compatible = False
+                candidate.rejection_reason = (
+                    f"No effective beds available (emergency buffer reserves "
+                    f"{self.get_emergency_buffer_beds(ward)} bed(s))"
+                )
+                incompatible.append(candidate)
+                continue
+
+            if ward.available_beds <= 0:
+                candidate.compatible = False
+                candidate.rejection_reason = "Ward is fully occupied"
+                incompatible.append(candidate)
+                continue
+
+            # 3. Scoring
+            cohort = self.calculate_cohort_score(patient, ward)
+            workload = self.calculate_workload_score(ward)
+
+            # 3a. Affinity scoring — reward wards that match patient demographics
+            affinity = self._calculate_affinity_score(
+                patient, ward,
+                requires_isolation=requires_isolation,
+                requires_oxygen=requires_oxygen,
+                requires_ventilator=requires_ventilator,
+            )
+
+            # Composite score (higher = better)
+            # - Availability weight: 30 (scaled from effective beds)
+            # - Low occupancy weight: 20 (inverted occupancy %)
+            # - Affinity weight: 20 (gender/age/ward-type/capability match)
+            # - Cohort match weight: 15
+            # - Low workload weight: 15 (inverted workload score)
+            availability_score = min(effective / max(ward.total_beds, 1), 1.0) * 30
+            occupancy_score = (1.0 - ward.occupancy_rate / 100) * 20
+            affinity_score = (affinity / 100) * 20
+            cohort_score = (cohort / 100) * 15
+            workload_penalty = max(0, 1.0 - workload) * 15
+
+            composite = round(
+                availability_score + occupancy_score + affinity_score + cohort_score + workload_penalty,
+                2,
+            )
+
+            candidate.score = composite
+            candidate.scores = {
+                "availability": round(availability_score, 2),
+                "occupancy": round(occupancy_score, 2),
+                "affinity": round(affinity_score, 2),
+                "cohort_match": round(cohort_score, 2),
+                "workload": round(workload_penalty, 2),
+            }
+
+            # Build recommendation reason
+            reasons = []
+            if effective >= 3:
+                reasons.append(f"{effective} beds available")
+            elif effective > 0:
+                reasons.append(f"only {effective} bed(s) remaining")
+            if affinity > 70:
+                reasons.append("strong demographic match")
+            elif affinity < 30:
+                reasons.append("low demographic match")
+            if cohort > 50:
+                reasons.append("strong diagnosis cohort match")
+            if workload < 0.5:
+                reasons.append("low staff workload")
+            elif workload > 0.8:
+                reasons.append("high staff workload")
+            candidate.reason = "; ".join(reasons) if reasons else "Compatible ward"
+
+            ranked.append(candidate)
+
+        # Sort by composite score descending
+        ranked.sort(key=lambda c: c.score, reverse=True)
+
+        # Tag the top pick
+        if ranked:
+            ranked[0].recommended = True
+
+        evaluation_time_ms = int((time.time() - start_time) * 1000)
+
+        return WardRecommendationResult(
+            success=len(ranked) > 0,
+            recommended_ward_id=ranked[0].ward_id if ranked else None,
+            recommended_ward_name=ranked[0].ward_name if ranked else None,
+            ranked_wards=[c.to_dict() for c in ranked],
+            incompatible_wards=[c.to_dict() for c in incompatible],
+            total_evaluated=len(wards),
+            infection_isolation_triggered=infection_detected,
+            evaluation_time_ms=evaluation_time_ms,
+            error=("No compatible wards found for this patient" if not ranked else None),
+        )
+
+
+@dataclass
+class WardCandidate:
+    """A ward evaluated for patient placement."""
+
+    ward_id: int
+    ward_name: str
+    ward_code: str
+    ward_type: str
+    ward_type_display: str
+    compatible: bool = True
+    score: float = 0.0
+    scores: dict[str, float] = field(default_factory=dict)
+    total_beds: int = 0
+    available_beds: int = 0
+    effective_available: int = 0
+    occupancy_rate: float = 0.0
+    violations: list[str] = field(default_factory=list)
+    rejection_reason: str = ""
+    reason: str = ""
+    recommended: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "ward_id": self.ward_id,
+            "ward_name": self.ward_name,
+            "ward_code": self.ward_code,
+            "ward_type": self.ward_type,
+            "ward_type_display": self.ward_type_display,
+            "compatible": self.compatible,
+            "score": self.score,
+            "scores": self.scores,
+            "total_beds": self.total_beds,
+            "available_beds": self.available_beds,
+            "effective_available": self.effective_available,
+            "occupancy_rate": self.occupancy_rate,
+            "violations": self.violations,
+            "rejection_reason": self.rejection_reason,
+            "reason": self.reason,
+            "recommended": self.recommended,
+        }
+
+
+@dataclass
+class WardRecommendationResult:
+    """Result of smart ward recommendation."""
+
+    success: bool
+    recommended_ward_id: int | None
+    recommended_ward_name: str | None
+    ranked_wards: list[dict[str, Any]]
+    incompatible_wards: list[dict[str, Any]]
+    total_evaluated: int
+    infection_isolation_triggered: bool
+    evaluation_time_ms: int
+    error: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "success": self.success,
+            "recommended_ward_id": self.recommended_ward_id,
+            "recommended_ward_name": self.recommended_ward_name,
+            "ranked_wards": self.ranked_wards,
+            "incompatible_wards": self.incompatible_wards,
+            "total_evaluated": self.total_evaluated,
+            "infection_isolation_triggered": self.infection_isolation_triggered,
+            "evaluation_time_ms": self.evaluation_time_ms,
+            "error": self.error,
+        }
 
 
 # Module-level singleton
