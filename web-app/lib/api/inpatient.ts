@@ -49,6 +49,7 @@ import {
   BedUtilizationSchema,
   SmartRecommendBedResponseSchema,
   SetExpectedDischargeResponseSchema,
+  WardRecommendationResponseSchema,
 } from '@/lib/schemas/inpatient.schema';
 import type { LabOrder } from '@/lib/types/laboratory';
 import type { ImagingOrder } from '@/lib/types/imaging';
@@ -133,6 +134,7 @@ import type {
   SmartRecommendBedResponse,
   SetExpectedDischargeRequest,
   SetExpectedDischargeResponse,
+  WardRecommendationResponse,
 } from '@/lib/types/inpatient';
 
 type Paginated<T> = { count: number; next: string | null; previous: string | null; results: T[] };
@@ -929,6 +931,28 @@ export const inpatientApi = {
     );
     return parseResponse(SetExpectedDischargeResponseSchema, response.data, {
       context: 'inpatientApi.setExpectedDischarge',
+    });
+  },
+
+  /**
+   * Smart ward recommendation — evaluate all active wards for a patient
+   * and return a ranked list with the best placement.
+   */
+  async recommendWard(
+    data: {
+      patient_id: number;
+      requires_isolation?: boolean;
+      requires_oxygen?: boolean;
+      requires_ventilator?: boolean;
+      admission_type?: string;
+    }
+  ): Promise<WardRecommendationResponse> {
+    const response = await apiClient.post(
+      '/api/inpatient/wards/recommend_ward/',
+      data
+    );
+    return parseResponse(WardRecommendationResponseSchema, response.data, {
+      context: 'inpatientApi.recommendWard',
     });
   },
 };

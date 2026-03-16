@@ -1018,3 +1018,18 @@ export function useCreateBPReading() {
     },
   });
 }
+
+/**
+ * Smart ward recommendation — evaluate all wards for a patient.
+ */
+export function useRecommendWard() {
+  return useMutation({
+    mutationFn: (data: {
+      patient_id: number;
+      requires_isolation?: boolean;
+      requires_oxygen?: boolean;
+      requires_ventilator?: boolean;
+      admission_type?: string;
+    }) => inpatientApi.recommendWard(data),
+  });
+}

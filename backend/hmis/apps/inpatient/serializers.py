@@ -65,6 +65,7 @@ class InpatientWardSerializer(serializers.ModelSerializer):
             "isolation_capable",
             "oxygen_equipped",
             "ventilator_capable",
+            "maternity_designated",
             "emergency_buffer_percent",
             "available_beds",
             "total_beds",
@@ -1063,6 +1064,7 @@ class WardCurrentStateSerializer(serializers.Serializer):
     isolation_capable = serializers.BooleanField(help_text="Ward has isolation capability")
     oxygen_equipped = serializers.BooleanField(help_text="Ward has oxygen equipment")
     ventilator_capable = serializers.BooleanField(help_text="Ward has ventilator capability")
+    maternity_designated = serializers.BooleanField(help_text="Ward is designated for maternity patients")
     available_beds = serializers.IntegerField(help_text="Number of available beds")
 
 
@@ -1751,5 +1753,63 @@ class SmartRecommendBedResponseSerializer(serializers.Serializer):
     infection_isolation_triggered = serializers.BooleanField()
     workload_score = serializers.FloatField()
     predicted_discharges = PredictedDischargeSerializer(many=True)
+    evaluation_time_ms = serializers.IntegerField()
+    error = serializers.CharField(allow_null=True, allow_blank=True)
+
+
+class RecommendWardRequestSerializer(serializers.Serializer):
+    """Request serializer for smart ward recommendation."""
+
+    patient_id = serializers.IntegerField(help_text="Patient ID")
+    requires_isolation = serializers.BooleanField(
+        required=False, default=False,
+        help_text="Whether patient requires isolation",
+    )
+    requires_oxygen = serializers.BooleanField(
+        required=False, default=False,
+        help_text="Whether patient requires oxygen supply",
+    )
+    requires_ventilator = serializers.BooleanField(
+        required=False, default=False,
+        help_text="Whether patient requires ventilator",
+    )
+    admission_type = serializers.ChoiceField(
+        choices=["ELECTIVE", "EMERGENCY", "TRANSFER"],
+        required=False, default="ELECTIVE",
+        help_text="Type of admission",
+    )
+
+
+class WardCandidateSerializer(serializers.Serializer):
+    """Serializer for a ward candidate in recommendation results."""
+
+    ward_id = serializers.IntegerField()
+    ward_name = serializers.CharField()
+    ward_code = serializers.CharField()
+    ward_type = serializers.CharField()
+    ward_type_display = serializers.CharField()
+    compatible = serializers.BooleanField()
+    score = serializers.FloatField()
+    scores = serializers.DictField()
+    total_beds = serializers.IntegerField()
+    available_beds = serializers.IntegerField()
+    effective_available = serializers.IntegerField()
+    occupancy_rate = serializers.FloatField()
+    violations = serializers.ListField(child=serializers.CharField())
+    rejection_reason = serializers.CharField(allow_blank=True)
+    reason = serializers.CharField(allow_blank=True)
+    recommended = serializers.BooleanField()
+
+
+class RecommendWardResponseSerializer(serializers.Serializer):
+    """Response serializer for smart ward recommendation."""
+
+    success = serializers.BooleanField()
+    recommended_ward_id = serializers.IntegerField(allow_null=True)
+    recommended_ward_name = serializers.CharField(allow_null=True)
+    ranked_wards = WardCandidateSerializer(many=True)
+    incompatible_wards = WardCandidateSerializer(many=True)
+    total_evaluated = serializers.IntegerField()
+    infection_isolation_triggered = serializers.BooleanField()
     evaluation_time_ms = serializers.IntegerField()
     error = serializers.CharField(allow_null=True, allow_blank=True)
