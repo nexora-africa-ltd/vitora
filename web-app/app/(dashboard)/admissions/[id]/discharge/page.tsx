@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { Save, Plus, Trash2, Clock, CheckCircle2, BrainCircuit, Loader2, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
-import { DiagnosisCodeInput, emptyDiagnosisCodeValue, type DiagnosisCodeValue } from '@/components/shared';
+import { MultiDiagnosisInput, type DiagnosisEntry } from '@/components/shared';
+import { emptyDiagnosisCodeValue } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -82,7 +83,7 @@ export default function DischargePage() {
   const [dischargeType, setDischargeType] = useState<DischargeType>('NORMAL');
   const [dischargeSummary, setDischargeSummary] = useState('');
   const [followUpInstructions, setFollowUpInstructions] = useState('');
-  const [finalDiagnosis, setFinalDiagnosis] = useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue());
+  const [diagnoses, setDiagnoses] = useState<DiagnosisEntry[]>([]);
   const [patientInstructions, setPatientInstructions] = useState('');
   const [followUpDate, setFollowUpDate] = useState('');
   const [medications, setMedications] = useState<DischargeMedication[]>([]);
@@ -172,7 +173,9 @@ export default function DischargePage() {
   // AI-generate discharge summary
   const handleGenerateSummary = useCallback(async () => {
     if (!admission) return;
-    const diagnosis = finalDiagnosis.icd11Display || finalDiagnosis.icd10Display || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
+    const primaryEntry = diagnoses.find((d) => d.role === 'PRIMARY');
+    const primaryDisplay = primaryEntry?.code.icd11Display || primaryEntry?.code.icd10Display || '';
+    const diagnosis = primaryDisplay || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
     const medsText = medications.filter((m) => m.drug_name).map((m) => `${m.drug_name} ${m.dosage} ${m.frequency}`).join(', ');
     const query = `Generate a concise discharge summary for a ${admission.patient_age ?? 'unknown age'}-year-old patient admitted for ${diagnosis}. Length of stay: ${lengthOfStay} days. Ward: ${admission.ward_name || 'N/A'}. Discharge type: ${dischargeType}.${medsText ? ` Discharge medications: ${medsText}.` : ''} Include: hospital course, treatment given, condition at discharge, and follow-up plan.`;
 
@@ -191,12 +194,14 @@ export default function DischargePage() {
     } catch {
       toast({ title: 'Generation Failed', description: 'Could not generate discharge summary. Please write it manually.', variant: 'destructive' });
     }
-  }, [admission, finalDiagnosis, medications, lengthOfStay, dischargeType, clinicalAssist, toast]);
+  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, clinicalAssist, toast]);
 
   // AI-generate patient instructions
   const handleGenerateInstructions = useCallback(async () => {
     if (!admission) return;
-    const diagnosis = finalDiagnosis.icd11Display || finalDiagnosis.icd10Display || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
+    const primaryEntry = diagnoses.find((d) => d.role === 'PRIMARY');
+    const primaryDisplay = primaryEntry?.code.icd11Display || primaryEntry?.code.icd10Display || '';
+    const diagnosis = primaryDisplay || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
     const medsText = medications.filter((m) => m.drug_name).map((m) => `${m.drug_name} ${m.dosage} ${m.frequency} for ${m.duration || 'as directed'}${m.instructions ? ` (${m.instructions})` : ''}`).join('; ');
     const query = `Generate clear, patient-friendly discharge instructions for a patient diagnosed with ${diagnosis}.${medsText ? ` Medications to take at home: ${medsText}.` : ''} Include: medication schedule, dietary advice, activity restrictions, red-flag symptoms to watch for, and when to return to hospital. Use simple language.`;
 
@@ -215,11 +220,21 @@ export default function DischargePage() {
     } catch {
       toast({ title: 'Generation Failed', description: 'Could not generate patient instructions. Please write them manually.', variant: 'destructive' });
     }
-  }, [admission, finalDiagnosis, medications, clinicalAssist, toast]);
+  }, [admission, diagnoses, medications, clinicalAssist, toast]);
+
+  // Helper to extract code string from DiagnosisEntry
+  const getDiagCode = (entry: DiagnosisEntry) =>
+    entry.code.icd11Code || entry.code.icd10Display?.split(' - ')[0] || '';
+  const getDiagDescription = (entry: DiagnosisEntry) =>
+    entry.code.icd11Display?.split(' - ').slice(1).join(' - ') ||
+    entry.code.icd10Display?.split(' - ').slice(1).join(' - ') || '';
 
   // Execute the actual discharge submission
   const executeDischarge = async () => {
     if (!admission) return;
+    const primaryEntry = diagnoses.find((d) => d.role === 'PRIMARY');
+    const primaryCode = primaryEntry ? getDiagCode(primaryEntry) : admission.admitting_diagnosis || '';
+    const primaryText = primaryEntry ? getDiagDescription(primaryEntry) : admission.admitting_diagnosis_text || '';
     try {
       await createDischarge.mutateAsync({
         admission: admissionId,
@@ -227,8 +242,15 @@ export default function DischargePage() {
         discharge_date: new Date().toISOString(),
         discharged_by: user?.id || 0,
         admission_diagnosis: admission.admitting_diagnosis || '',
-        final_diagnosis: finalDiagnosis.icd11Code || finalDiagnosis.icd10Display?.split(' - ')[0] || admission.admitting_diagnosis || '',
-        final_diagnosis_text: finalDiagnosis.icd11Display?.split(' - ').slice(1).join(' - ') || finalDiagnosis.icd10Display?.split(' - ').slice(1).join(' - ') || admission.admitting_diagnosis_text || '',
+        final_diagnosis: primaryCode,
+        final_diagnosis_text: primaryText,
+        diagnoses: diagnoses
+          .filter((d) => getDiagCode(d))
+          .map((d) => ({
+            role: d.role,
+            code: getDiagCode(d),
+            description: getDiagDescription(d),
+          })),
         treatment_summary: dischargeSummary,
         patient_instructions: patientInstructions,
         maternity_continuity_action: admission.mch_registration ? maternityContinuityAction : undefined,
@@ -287,11 +309,16 @@ export default function DischargePage() {
     // Run CDS safety checks if AI is enabled
     if (isAIEnabled) {
       try {
-        const diagnosisText = finalDiagnosis.icd11Display || finalDiagnosis.icd10Display || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
+        const allDiagTexts = diagnoses
+          .map((d) => d.code.icd11Display || d.code.icd10Display || '')
+          .filter(Boolean);
+        if (allDiagTexts.length === 0 && (admission.admitting_diagnosis_text || admission.admitting_diagnosis)) {
+          allDiagTexts.push(admission.admitting_diagnosis_text || admission.admitting_diagnosis || '');
+        }
         const medNames = medications.filter((m) => m.drug_name).map((m) => m.drug_name);
         const cdsResult = await cdsEvaluate.mutateAsync({
           medications: medNames,
-          diagnoses: [diagnosisText].filter(Boolean),
+          diagnoses: allDiagTexts,
           patient_age: admission.patient_age,
           patient_sex: admission.patient_gender === 'M' ? 'male' : admission.patient_gender === 'F' ? 'female' : null,
         });
@@ -481,12 +508,11 @@ export default function DischargePage() {
             </Select>
           </div>
 
-          {/* Final Diagnosis */}
-          <DiagnosisCodeInput
-            value={finalDiagnosis}
-            onChange={setFinalDiagnosis}
-            label="Final Diagnosis"
-            placeholder="Search for diagnosis..."
+          {/* Discharge Diagnoses (multi) */}
+          <MultiDiagnosisInput
+            value={diagnoses}
+            onChange={setDiagnoses}
+            label="Discharge Diagnoses"
           />
 
           {/* Discharge Summary (Treatment Summary) */}

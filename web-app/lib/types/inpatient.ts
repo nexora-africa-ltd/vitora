@@ -188,6 +188,16 @@ export type MaternityContinuityStatus =
   | 'SCHEDULED'
   | 'QUEUED';
 
+export type DiagnosisRole = 'PRIMARY' | 'SECONDARY' | 'COMPLICATION';
+
+export interface DischargeDiagnosis {
+  id?: number;
+  role: DiagnosisRole;
+  role_display?: string;
+  code: string;
+  description: string;
+}
+
 export interface DischargeMedication {
   drug_name: string;
   dosage: string;
@@ -211,6 +221,7 @@ export interface Discharge {
   admission_diagnosis: string;
   final_diagnosis: string;
   final_diagnosis_text: string;
+  diagnoses?: DischargeDiagnosis[];
   procedures_performed?: string;
   treatment_summary: string;
   discharge_medications: DischargeMedication[];
@@ -241,6 +252,7 @@ export interface DischargeCreateData {
   admission_diagnosis: string;
   final_diagnosis: string;
   final_diagnosis_text: string;
+  diagnoses?: Omit<DischargeDiagnosis, 'id' | 'role_display'>[];
   procedures_performed?: string;
   treatment_summary: string;
   discharge_medications?: DischargeMedication[];

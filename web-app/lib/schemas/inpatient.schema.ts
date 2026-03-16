@@ -256,6 +256,16 @@ export const DischargeMedicationSchema = z.object({
 
 export type DischargeMedicationSchemaType = z.infer<typeof DischargeMedicationSchema>;
 
+export const DiagnosisRoleSchema = z.enum(['PRIMARY', 'SECONDARY', 'COMPLICATION']);
+
+export const DischargeDiagnosisSchema = z.object({
+  id: z.number().optional(),
+  role: DiagnosisRoleSchema,
+  role_display: z.string().optional(),
+  code: z.string(),
+  description: z.string(),
+}).passthrough();
+
 export const DischargeSchema = z.object({
   id: z.number(),
   admission: z.number(),
@@ -271,6 +281,7 @@ export const DischargeSchema = z.object({
   admission_diagnosis: z.string(),
   final_diagnosis: z.string(),
   final_diagnosis_text: z.string(),
+  diagnoses: z.array(DischargeDiagnosisSchema).optional(),
   procedures_performed: z.string().optional(),
   treatment_summary: z.string(),
   discharge_medications: z.array(DischargeMedicationSchema),
