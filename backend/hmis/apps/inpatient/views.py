@@ -1836,7 +1836,7 @@ class DischargeViewSet(viewsets.ModelViewSet):
         "admission__mch_registration",
         "pnc_clinic_visit",
         "pnc_appointment",
-    )
+    ).prefetch_related("diagnoses")
     serializer_class = DischargeSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
