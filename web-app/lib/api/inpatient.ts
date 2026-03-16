@@ -491,11 +491,18 @@ export const inpatientApi = {
   async checkWardCompatibility(
     wardId: number,
     patientId: number,
-    requiresIsolation?: boolean
+    requiresIsolation?: boolean,
+    requiresOxygen?: boolean,
+    requiresVentilator?: boolean
   ): Promise<CompatibilityCheckResult> {
     const response = await apiClient.post<CompatibilityCheckResult>(
       `/api/inpatient/wards/${wardId}/check_compatibility/`,
-      { patient_id: patientId, requires_isolation: requiresIsolation ?? false }
+      {
+        patient_id: patientId,
+        requires_isolation: requiresIsolation ?? false,
+        requires_oxygen: requiresOxygen ?? false,
+        requires_ventilator: requiresVentilator ?? false,
+      }
     );
     return parseResponse(CompatibilityCheckResultSchema, response.data, { context: 'inpatientApi.checkWardCompatibility' });
   },

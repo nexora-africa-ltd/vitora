@@ -142,6 +142,8 @@ class WardViewSet(viewsets.ModelViewSet):
         ward = self.get_object()
         patient_id = request.data.get("patient_id")
         requires_isolation = bool(request.data.get("requires_isolation", False))
+        requires_oxygen = bool(request.data.get("requires_oxygen", False))
+        requires_ventilator = bool(request.data.get("requires_ventilator", False))
 
         if not patient_id:
             return Response({"error": "patient_id required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -155,6 +157,8 @@ class WardViewSet(viewsets.ModelViewSet):
             patient=patient,
             ward=ward,
             requires_isolation=requires_isolation,
+            requires_oxygen=requires_oxygen,
+            requires_ventilator=requires_ventilator,
         )
 
         return Response(
@@ -1289,12 +1293,16 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         elif bed.ward_id != ward.id:
             raise ValidationError({"bed": "Selected bed does not belong to the selected ward"})
 
-        # Check compatibility (admission flow currently assumes requires_isolation is provided by the client)
+        # Check compatibility (admission flow currently assumes requirements are provided by the client)
         requires_isolation = bool(self.request.data.get("requires_isolation", False))
+        requires_oxygen = bool(self.request.data.get("requires_oxygen", False))
+        requires_ventilator = bool(self.request.data.get("requires_ventilator", False))
         result = ward_compatibility_service.check_compatibility(
             patient=patient,
             ward=bed.ward,
             requires_isolation=requires_isolation,
+            requires_oxygen=requires_oxygen,
+            requires_ventilator=requires_ventilator,
         )
 
         override_requested = bool(self.request.data.get("constraint_override", False))

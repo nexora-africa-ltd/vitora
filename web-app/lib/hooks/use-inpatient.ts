@@ -266,11 +266,15 @@ export function useCheckWardCompatibility() {
       wardId,
       patientId,
       requiresIsolation,
+      requiresOxygen,
+      requiresVentilator,
     }: {
       wardId: number;
       patientId: number;
       requiresIsolation?: boolean;
-    }) => inpatientApi.checkWardCompatibility(wardId, patientId, requiresIsolation),
+      requiresOxygen?: boolean;
+      requiresVentilator?: boolean;
+    }) => inpatientApi.checkWardCompatibility(wardId, patientId, requiresIsolation, requiresOxygen, requiresVentilator),
   });
 }
 
