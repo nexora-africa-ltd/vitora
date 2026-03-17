@@ -26,10 +26,13 @@ export default function NewEncounterDiagnosisPage() {
     updateDiagnosis,
     markSectionComplete,
     getPatient,
+    getDetails,
   } = useNewEncounterStore();
 
   const diagnoses = getDiagnoses();
   const { data: patientData } = getPatient();
+  const details = getDetails();
+  const isIPD = details.encounter_type === 'IPD';
 
   // Redirect if missing required data
   useEffect(() => {
@@ -77,8 +80,12 @@ export default function NewEncounterDiagnosisPage() {
 
   // Navigate to next step
   const handleNext = useCallback(() => {
-    router.push('/encounters/new/review');
-  }, [router]);
+    if (isIPD) {
+      router.push('/encounters/new/admission');
+    } else {
+      router.push('/encounters/new/review');
+    }
+  }, [router, isIPD]);
 
   if (!patientData) {
     return null;
@@ -115,7 +122,7 @@ export default function NewEncounterDiagnosisPage() {
             Back
           </Button>
           <Button onClick={handleNext}>
-            Next: Review
+            {isIPD ? 'Next: Admission' : 'Next: Review'}
             <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         </div>
