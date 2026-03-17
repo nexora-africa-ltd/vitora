@@ -1771,7 +1771,58 @@ class CertificateViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelM
             "is_revoked": result.is_revoked,
             "ca_active": result.ca_active,
             "errors": result.errors,
+            "chain": result.chain,
         })
+
+    @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
+    def create_intermediate(self, request):
+        """Create an intermediate CA signed by the root CA (admin only)."""
+        from .services.pki_service import PKIService
+
+        name = request.data.get("name", "Facility Intermediate CA")
+        org = request.data.get("org", "Health Facility")
+        country = request.data.get("country", "KE")
+        key_size = int(request.data.get("key_size", 2048))
+        validity_years = int(request.data.get("validity_years", 5))
+        parent_ca_id = request.data.get("parent_ca_id")
+
+        if parent_ca_id:
+            try:
+                parent_ca = CertificateAuthority.objects.get(
+                    pk=parent_ca_id, is_active=True
+                )
+            except CertificateAuthority.DoesNotExist:
+                return Response(
+                    {"error": "Specified parent CA not found or inactive"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        else:
+            parent_ca = CertificateAuthority.objects.filter(
+                is_root=True, is_active=True
+            ).first()
+            if parent_ca is None:
+                return Response(
+                    {"error": "No active root CA found. Initialize one first."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        service = PKIService()
+        try:
+            ca = service.create_intermediate_ca(
+                parent_ca=parent_ca,
+                name=name,
+                org=org,
+                country=country,
+                key_size=key_size,
+                validity_years=validity_years,
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            CertificateAuthoritySerializer(ca).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class DocumentSignatureViewSet(viewsets.GenericViewSet, ListModelMixin, RetrieveModelMixin):

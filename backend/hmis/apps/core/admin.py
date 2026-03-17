@@ -871,15 +871,86 @@ class FacilityAdmin(admin.ModelAdmin):
 
 @admin.register(CertificateAuthority)
 class CertificateAuthorityAdmin(admin.ModelAdmin):
-    """Admin for Certificate Authority."""
+    """Admin for Certificate Authority with intermediate CA creation support."""
 
-    list_display = ["name", "serial_number", "is_active", "is_root", "valid_from", "valid_to", "key_size"]
+    list_display = [
+        "name", "ca_type_badge", "serial_number", "parent_ca",
+        "is_active", "valid_from", "valid_to", "key_size",
+    ]
     list_filter = ["is_active", "is_root"]
     readonly_fields = [
         "serial_number", "subject_dn", "public_key_pem", "certificate_pem",
-        "valid_from", "valid_to", "is_root", "key_size", "created_at", "updated_at",
+        "private_key_pem_encrypted",
+        "valid_from", "valid_to", "is_root", "parent_ca", "key_size",
+        "created_at", "updated_at",
     ]
-    search_fields = ["name", "serial_number"]
+    search_fields = ["name", "serial_number", "subject_dn"]
+    fieldsets = (
+        (None, {
+            "fields": ("name", "serial_number", "subject_dn"),
+        }),
+        ("Hierarchy", {
+            "fields": ("is_root", "parent_ca"),
+        }),
+        ("Validity", {
+            "fields": ("valid_from", "valid_to", "is_active", "key_size"),
+        }),
+        ("Keys & Certificate (read-only)", {
+            "classes": ("collapse",),
+            "fields": ("public_key_pem", "certificate_pem", "private_key_pem_encrypted"),
+        }),
+        ("Timestamps", {
+            "fields": ("created_at", "updated_at"),
+        }),
+    )
+    actions = ["create_intermediate_ca_action"]
+
+    @admin.display(description="Type", ordering="is_root")
+    def ca_type_badge(self, obj):
+        from django.utils.html import format_html
+
+        if obj.is_root:
+            return format_html(
+                '<span style="background:#dcfce7;color:#166534;padding:2px 8px;'
+                'border-radius:4px;font-size:11px;font-weight:600;">Root</span>'
+            )
+        return format_html(
+            '<span style="background:#dbeafe;color:#1e40af;padding:2px 8px;'
+            'border-radius:4px;font-size:11px;font-weight:600;">Intermediate</span>'
+        )
+
+    @admin.action(description="Create intermediate CA from selected root CA")
+    def create_intermediate_ca_action(self, request, queryset):
+        """Create an intermediate CA signed by the selected root CA."""
+        from .services.pki_service import PKIService
+
+        root_cas = queryset.filter(is_root=True, is_active=True)
+        if root_cas.count() != 1:
+            self.message_user(
+                request,
+                "Select exactly one active root CA to create an intermediate CA.",
+                level="error",
+            )
+            return
+
+        parent_ca = root_cas.first()
+        service = PKIService()
+        try:
+            ca = service.create_intermediate_ca(
+                parent_ca=parent_ca,
+                name="Facility Intermediate CA",
+                org="Health Facility",
+            )
+            self.message_user(
+                request,
+                f"Intermediate CA '{ca.name}' created (signed by '{parent_ca.name}').",
+            )
+        except ValueError as e:
+            self.message_user(request, f"Failed: {e}", level="error")
+
+    def has_add_permission(self, request):
+        """Prevent manual CA creation — use init_pki_ca or create_intermediate_ca_action."""
+        return False
 
 
 @admin.register(UserCertificate)

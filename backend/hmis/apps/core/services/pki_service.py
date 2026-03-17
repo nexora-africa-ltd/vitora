@@ -40,10 +40,13 @@ class CertificateVerifyResult:
     is_revoked: bool = False
     ca_active: bool = True
     errors: list[str] | None = None
+    chain: list[str] | None = None
 
     def __post_init__(self):
         if self.errors is None:
             self.errors = []
+        if self.chain is None:
+            self.chain = []
 
 
 class PKIService:
@@ -168,6 +171,168 @@ class PKIService:
         logger.info(f"Root CA initialized: {ca.name} (serial: {ca.serial_number})")
         return ca
 
+    def create_intermediate_ca(
+        self,
+        parent_ca,
+        name: str = "Facility Intermediate CA",
+        org: str = "Health Facility",
+        country: str = "KE",
+        key_size: int = 2048,
+        validity_years: int = 5,
+    ):
+        """
+        Create an intermediate CA signed by a parent CA.
+
+        Used in multi-tenant deployments where each facility gets its own
+        intermediate CA for issuing user certificates, while all chain
+        back to the Vitora root CA.
+
+        Args:
+            parent_ca: Parent CertificateAuthority (root or another intermediate).
+            name: Intermediate CA common name.
+            org: Organization name (typically the facility name).
+            country: ISO country code.
+            key_size: RSA key size in bits.
+            validity_years: CA certificate validity in years.
+
+        Returns:
+            CertificateAuthority instance.
+
+        Raises:
+            ValueError: If parent CA is expired or inactive.
+        """
+        from hmis.apps.core.kms import get_kms_provider
+        from hmis.apps.core.models import CertificateAuthority
+
+        if parent_ca.is_expired:
+            raise ValueError(f"Parent CA '{parent_ca.name}' has expired.")
+
+        if not parent_ca.is_active:
+            raise ValueError(f"Parent CA '{parent_ca.name}' is not active.")
+
+        # Idempotent: check if an active intermediate with this name already exists
+        existing = CertificateAuthority.objects.filter(
+            name=name, is_root=False, is_active=True
+        ).first()
+        if existing:
+            logger.info(f"Active intermediate CA already exists: {existing.name}")
+            return existing
+
+        # Cap validity to not exceed parent
+        now = datetime.now(timezone.utc)
+        max_valid_to = parent_ca.valid_to.replace(tzinfo=timezone.utc) if parent_ca.valid_to.tzinfo is None else parent_ca.valid_to
+        requested_valid_to = now + timedelta(days=validity_years * 365)
+        valid_to = min(requested_valid_to, max_valid_to)
+
+        # Generate RSA key pair
+        private_key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=key_size,
+        )
+        public_key = private_key.public_key()
+
+        # Build subject DN
+        subject = x509.Name([
+            x509.NameAttribute(NameOID.COUNTRY_NAME, country),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, org),
+            x509.NameAttribute(NameOID.COMMON_NAME, name),
+        ])
+
+        # Issuer is the parent CA
+        parent_org = (
+            parent_ca.subject_dn.split("O=")[1].split(",")[0].strip()
+            if "O=" in parent_ca.subject_dn
+            else "Nexora Africa Ltd"
+        )
+        issuer = x509.Name([
+            x509.NameAttribute(NameOID.COUNTRY_NAME, country),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, parent_org),
+            x509.NameAttribute(NameOID.COMMON_NAME, parent_ca.name),
+        ])
+
+        # Load parent CA private key to sign
+        kms = get_kms_provider()
+        parent_private_key_pem = kms.decrypt(
+            parent_ca.private_key_pem_encrypted.encode("latin-1"),
+            context={"purpose": "sign_intermediate_ca", "ca_name": name},
+        )
+        parent_private_key = serialization.load_pem_private_key(
+            parent_private_key_pem, password=None
+        )
+
+        serial = int(uuid.uuid4().hex[:16], 16)
+
+        # Build intermediate CA certificate (path_length=0: can only sign end-entity)
+        cert = (
+            x509.CertificateBuilder()
+            .subject_name(subject)
+            .issuer_name(issuer)
+            .public_key(public_key)
+            .serial_number(serial)
+            .not_valid_before(now)
+            .not_valid_after(valid_to)
+            .add_extension(
+                x509.BasicConstraints(ca=True, path_length=0),
+                critical=True,
+            )
+            .add_extension(
+                x509.KeyUsage(
+                    digital_signature=True,
+                    key_cert_sign=True,
+                    crl_sign=True,
+                    content_commitment=False,
+                    key_encipherment=False,
+                    data_encipherment=False,
+                    key_agreement=False,
+                    encipher_only=False,
+                    decipher_only=False,
+                ),
+                critical=True,
+            )
+            .sign(parent_private_key, hashes.SHA256())
+        )
+
+        # Serialize keys
+        private_key_pem = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        public_key_pem = public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        cert_pem = cert.public_bytes(serialization.Encoding.PEM)
+
+        # Encrypt private key with KMS
+        encrypted_private_key = kms.encrypt(
+            private_key_pem,
+            context={"purpose": "ca_private_key", "ca_name": name},
+        )
+
+        subject_dn = f"CN={name}, O={org}, C={country}"
+
+        ca = CertificateAuthority.objects.create(
+            name=name,
+            serial_number=format(serial, "x"),
+            subject_dn=subject_dn,
+            public_key_pem=public_key_pem.decode(),
+            private_key_pem_encrypted=encrypted_private_key.decode("latin-1"),
+            certificate_pem=cert_pem.decode(),
+            valid_from=now,
+            valid_to=valid_to,
+            is_root=False,
+            parent_ca=parent_ca,
+            is_active=True,
+            key_size=key_size,
+        )
+
+        logger.info(
+            f"Intermediate CA initialized: {ca.name} "
+            f"(serial: {ca.serial_number}, parent: {parent_ca.name})"
+        )
+        return ca
+
     def issue_user_certificate(
         self,
         user,
@@ -195,9 +360,16 @@ class PKIService:
         from hmis.apps.core.models import CertificateAuthority, UserCertificate
 
         if ca is None:
-            ca = CertificateAuthority.objects.filter(is_root=True, is_active=True).first()
+            # Prefer an active intermediate CA over root for user cert issuance
+            ca = CertificateAuthority.objects.filter(
+                is_root=False, is_active=True
+            ).first()
             if ca is None:
-                raise ValueError("No active root CA found. Run 'init_pki_ca' first.")
+                ca = CertificateAuthority.objects.filter(
+                    is_root=True, is_active=True
+                ).first()
+            if ca is None:
+                raise ValueError("No active CA found. Run 'init_pki_ca' first.")
 
         if ca.is_expired:
             raise ValueError(f"CA '{ca.name}' has expired.")
@@ -334,17 +506,51 @@ class PKIService:
         logger.info(f"Certificate revoked: {cert.serial_number} (reason: {reason})")
         return revocation
 
+    def _build_chain(self, ca) -> list[str]:
+        """
+        Build the CA chain from the issuing CA up to the root.
+
+        Returns a list of CA subject DNs from immediate issuer to root.
+        """
+        chain = []
+        current = ca
+        seen = set()  # Prevent infinite loops
+        while current and current.pk not in seen:
+            chain.append(current.subject_dn)
+            seen.add(current.pk)
+            current = current.parent_ca
+        return chain
+
+    def _validate_chain(self, ca) -> list[str]:
+        """
+        Walk the CA chain and collect errors for any broken link.
+
+        Returns list of error strings (empty if chain is healthy).
+        """
+        errors = []
+        current = ca
+        seen = set()
+        while current and current.pk not in seen:
+            seen.add(current.pk)
+            label = "Root CA" if current.is_root else f"Intermediate CA '{current.name}'"
+            if not current.is_active:
+                errors.append(f"{label} is no longer active")
+            if current.is_expired:
+                errors.append(f"{label} certificate has expired")
+            current = current.parent_ca
+        return errors
+
     def verify_certificate(self, cert) -> CertificateVerifyResult:
         """
         Verify a certificate's validity.
 
-        Checks expiry, revocation status, and CA chain.
+        Checks expiry, revocation status, and full CA chain (intermediate → root).
 
         Args:
             cert: UserCertificate to verify.
 
         Returns:
-            CertificateVerifyResult with details.
+            CertificateVerifyResult with details and chain info.
         """
         errors = []
 
@@ -352,10 +558,14 @@ class PKIService:
             errors.append("Certificate has expired")
         if cert.is_revoked:
             errors.append(f"Certificate is revoked (reason: {cert.revocation_reason})")
-        if not cert.certificate_authority.is_active:
-            errors.append("Issuing CA is no longer active")
-        if cert.certificate_authority.is_expired:
-            errors.append("Issuing CA certificate has expired")
+
+        # Validate entire CA chain (intermediate → root)
+        chain_errors = self._validate_chain(cert.certificate_authority)
+        errors.extend(chain_errors)
+
+        # Build full chain: user cert → intermediate(s) → root
+        ca_chain = self._build_chain(cert.certificate_authority)
+        full_chain = [cert.subject_dn] + ca_chain
 
         return CertificateVerifyResult(
             valid=len(errors) == 0,
@@ -369,6 +579,7 @@ class PKIService:
             is_revoked=cert.is_revoked,
             ca_active=cert.certificate_authority.is_active,
             errors=errors,
+            chain=full_chain,
         )
 
     def get_crl(self, ca) -> bytes:

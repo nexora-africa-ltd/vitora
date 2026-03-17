@@ -14,6 +14,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { StaffSearchCombobox } from '@/components/clinics/staff-search-combobox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,7 +31,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { HelpPopover } from '@/components/shared/help-popover';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -61,7 +61,7 @@ export default function CertificatesPage() {
   const [issueDialogOpen, setIssueDialogOpen] = useState(false);
   const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
   const [selectedCert, setSelectedCert] = useState<UserCertificate | null>(null);
-  const [issueUserId, setIssueUserId] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState<number | undefined>(undefined);
   const [issueValidity, setIssueValidity] = useState('2');
   const [revokeReason, setRevokeReason] = useState('CESSATION');
 
@@ -84,14 +84,14 @@ export default function CertificatesPage() {
   const issueMutation = useMutation({
     mutationFn: () =>
       certificatesApi.issue({
-        user_id: parseInt(issueUserId, 10),
+        user_id: selectedUserId!,
         validity_years: parseInt(issueValidity, 10),
       }),
     onSuccess: () => {
       toast.success('Certificate issued.');
       queryClient.invalidateQueries({ queryKey: ['user-certificates'] });
       setIssueDialogOpen(false);
-      setIssueUserId('');
+      setSelectedUserId(undefined);
     },
     onError: () => {
       toast.error('Failed to issue certificate.');
@@ -214,7 +214,7 @@ export default function CertificatesPage() {
               </div>
             ) : cas.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">
-                No Certificate Authority configured. Run <code className="text-xs bg-muted px-1 py-0.5 rounded">python manage.py init_pki_ca</code>.
+                No Certificate Authority has been set up yet. Please contact your system administrator to initialize the PKI infrastructure.
               </p>
             ) : (
               <div className="space-y-3">
@@ -227,7 +227,11 @@ export default function CertificatesPage() {
                       <div className="flex items-center gap-2">
                         <ShieldCheck className="h-4 w-4 text-green-600 shrink-0" />
                         <span className="font-medium text-sm truncate">{ca.name}</span>
-                        {ca.is_root && <Badge variant="outline" className="text-xs">Root</Badge>}
+                        {ca.is_root ? (
+                          <Badge variant="outline" className="text-xs">Root</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">Intermediate</Badge>
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1 truncate">
                         {ca.subject_dn} &bull; RSA-{ca.key_size}
@@ -269,7 +273,7 @@ export default function CertificatesPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-sm">
-                          {cert.user_full_name || cert.username}
+                          {cert.user_name || cert.username}
                         </span>
                         <CertStatusBadge cert={cert} />
                       </div>
@@ -314,13 +318,11 @@ export default function CertificatesPage() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <Label htmlFor="user-id">User ID</Label>
-              <Input
-                id="user-id"
-                type="number"
-                value={issueUserId}
-                onChange={(e) => setIssueUserId(e.target.value)}
-                placeholder="Enter user ID"
+              <Label>Staff Member</Label>
+              <StaffSearchCombobox
+                value={selectedUserId}
+                onSelect={(userId) => setSelectedUserId(userId)}
+                placeholder="Select staff member to issue certificate..."
               />
             </div>
             <div>
@@ -344,7 +346,7 @@ export default function CertificatesPage() {
             </Button>
             <Button
               onClick={() => issueMutation.mutate()}
-              disabled={!issueUserId || issueMutation.isPending}
+              disabled={!selectedUserId || issueMutation.isPending}
             >
               {issueMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Issue
@@ -367,7 +369,7 @@ export default function CertificatesPage() {
               <div className="text-sm">
                 <p>
                   Revoking certificate for{' '}
-                  <strong>{selectedCert.user_full_name || selectedCert.username}</strong>
+                  <strong>{selectedCert.user_name || selectedCert.username}</strong>
                 </p>
                 <p className="text-muted-foreground text-xs mt-1">
                   Serial: {selectedCert.serial_number}

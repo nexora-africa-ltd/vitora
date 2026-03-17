@@ -55,7 +55,8 @@ services:
         python manage.py seed_snomed_common &&
         python manage.py seed_kenhdd_elements &&
         python manage.py seed_bed_assignment_rules &&
-        python manage.py seed_allied_health_demo
+        python manage.py seed_allied_health_demo &&
+        python manage.py init_pki_ca
       fi
     startCommand: daphne -b 0.0.0.0 -p $PORT hmis.asgi:application
     healthCheckPath: /api/health/

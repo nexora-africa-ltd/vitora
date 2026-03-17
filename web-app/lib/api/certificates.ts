@@ -10,6 +10,7 @@
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
+  CertificateAuthoritySchema,
   CertificateAuthorityArraySchema,
   UserCertificateSchema,
   PaginatedUserCertificateSchema,
@@ -23,6 +24,7 @@ import type {
   UserCertificate,
   IssueCertificateData,
   RevokeCertificateData,
+  CreateIntermediateCAData,
   DocumentSignature,
   SignDocumentData,
   SignatureVerificationResult,
@@ -81,6 +83,16 @@ export const certificatesApi = {
     const response = await apiClient.post(`/api/core/certificates/${id}/revoke/`, data);
     return parseResponse(UserCertificateSchema, response.data, {
       context: 'certificatesApi.revoke',
+    });
+  },
+
+  /**
+   * Create an intermediate CA signed by the root CA (admin only).
+   */
+  createIntermediateCA: async (data: CreateIntermediateCAData): Promise<CertificateAuthority> => {
+    const response = await apiClient.post('/api/core/certificates/create_intermediate/', data);
+    return parseResponse(CertificateAuthoritySchema, response.data, {
+      context: 'certificatesApi.createIntermediateCA',
     });
   },
 };

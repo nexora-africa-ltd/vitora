@@ -60,6 +60,7 @@ help:
 	@echo "  seed-diseases-update - Update diseases from JSON"
 	@echo "  seed-surveillance - Seed surveillance demo cases for DHIS2 testing"
 	@echo "  seed-surveillance-clear - Clear and re-seed surveillance demo data"
+	@echo "  init-pki        - Initialize PKI Certificate Authority (idempotent)"
 	@echo "  import-all      - Run all data imports"
 	@echo ""
 	@echo "Setup:"
@@ -330,8 +331,13 @@ seed-kepi:
 	@echo "Seeding KEPI immunization schedule..."
 	poetry run python manage.py seed_kepi_schedule
 
+# Initialize PKI Certificate Authority (idempotent - skips if already exists)
+init-pki:
+	@echo "Initializing PKI Certificate Authority..."
+	poetry run python manage.py init_pki_ca
+
 # Import all data - run after fresh database setup
-import-all: migrate import-locations import-icd10 import-loinc import-drugs load-roles load-templates load-lab-ranges create-lab-queues seed-diseases seed-kepi
+import-all: migrate import-locations import-icd10 import-loinc import-drugs load-roles load-templates load-lab-ranges create-lab-queues seed-diseases seed-kepi init-pki
 	@echo "All data imports complete!"
 
 # Setup fresh database with all data

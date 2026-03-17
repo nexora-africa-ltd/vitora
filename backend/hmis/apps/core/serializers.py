@@ -856,6 +856,7 @@ class CertificateAuthoritySerializer(serializers.ModelSerializer):
     """Serializer for CertificateAuthority (public info only)."""
 
     is_expired = serializers.BooleanField(read_only=True)
+    ca_type = serializers.SerializerMethodField()
 
     class Meta:
         model = CertificateAuthority
@@ -867,12 +868,17 @@ class CertificateAuthoritySerializer(serializers.ModelSerializer):
             "valid_from",
             "valid_to",
             "is_root",
+            "parent_ca",
             "is_active",
             "is_expired",
             "key_size",
+            "ca_type",
             "created_at",
         ]
         read_only_fields = fields
+
+    def get_ca_type(self, obj) -> str:
+        return "root" if obj.is_root else "intermediate"
 
 
 class UserCertificateSerializer(serializers.ModelSerializer):

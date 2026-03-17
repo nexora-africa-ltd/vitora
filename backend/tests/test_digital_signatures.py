@@ -116,7 +116,7 @@ class TestUserCertificateIssuance:
 
     def test_no_ca_raises_error(self, db, test_user, pki_service):
         """Issuing without an active CA raises ValueError."""
-        with pytest.raises(ValueError, match="No active root CA"):
+        with pytest.raises(ValueError, match="No active CA"):
             pki_service.issue_user_certificate(user=test_user)
 
 
