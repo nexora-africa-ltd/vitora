@@ -7,6 +7,8 @@ import { Save, X, AlertCircle, User, UserPlus, AlertTriangle, Sparkles, ChevronD
 import { Separator } from '@/components/ui/separator';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { VisibilityToggle } from '@/components/shared/visibility-toggle';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -44,8 +46,9 @@ import {
 } from '@/lib/hooks/use-inpatient';
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { usePatient } from '@/lib/hooks/use-patients';
-import { DiagnosisCodeInput, emptyDiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
+import { emptyDiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
+import { MultiDiagnosisInput, type DiagnosisEntry } from '@/components/shared/multi-diagnosis-input';
 import { BedRecommendationCard, CompatibilityOverrideDialog, BedSelectionGrid } from '@/components/inpatient';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { cn } from '@/lib/utils/cn';
@@ -98,8 +101,8 @@ export default function NewAdmissionPage() {
   const [mchManualMode, setMchManualMode] = useState(false);
   const [mchManualSearch, setMchManualSearch] = useState('');
 
-  // Diagnosis state
-  const [diagnosisValue, setDiagnosisValue] = useState<DiagnosisCodeValue>(emptyDiagnosisCodeValue());
+  // Diagnosis state (multi-diagnosis)
+  const [diagnosisEntries, setDiagnosisEntries] = useState<DiagnosisEntry[]>([]);
   const [diagnosisPrefilled, setDiagnosisPrefilled] = useState(false);
 
   // Fetch encounter data if encounterId provided (for prefilling diagnosis)
@@ -237,6 +240,7 @@ export default function NewAdmissionPage() {
   const [wardRecommendationLoading, setWardRecommendationLoading] = useState(false);
   const [wardRecommendationError, setWardRecommendationError] = useState(false);
   const [hasRunWardRecommendation, setHasRunWardRecommendation] = useState(false);
+  const [showIncompatibleWards, setShowIncompatibleWards] = useState(false);
 
   useEffect(() => {
     if (!patientId || wardAssignmentMode !== 'auto') {
@@ -373,42 +377,50 @@ export default function NewAdmissionPage() {
     requiresVentilator,
   ]);
 
-  // Prefill diagnosis from encounter's primary diagnosis
+  // Prefill diagnoses from encounter diagnoses
   useEffect(() => {
     if (encounterDiagnoses && !diagnosisPrefilled) {
-      // Find primary diagnosis or use first one
-      const primaryDiagnosis = encounterDiagnoses.find((d: any) => d.diagnosis_type === 'PRIMARY')
-        || encounterDiagnoses[0];
-
-      if (primaryDiagnosis) {
-        if (primaryDiagnosis.icd11_code) {
-          setDiagnosisValue({
-            ...emptyDiagnosisCodeValue(),
-            icd11Code: primaryDiagnosis.icd11_code,
-            icd11Display: `${primaryDiagnosis.icd11_code} - ${primaryDiagnosis.icd11_display || primaryDiagnosis.free_text_diagnosis || ''}`,
-          });
-        } else if (primaryDiagnosis.icd10_code || primaryDiagnosis.icd10_display) {
-          const display = primaryDiagnosis.icd10_display || '';
-          const code = display.split(' - ')[0] || String(primaryDiagnosis.icd10_code || '');
-          const text = display.split(' - ').slice(1).join(' - ') || primaryDiagnosis.free_text_diagnosis || '';
-          setDiagnosisValue({
-            ...emptyDiagnosisCodeValue(),
-            icd10Code: primaryDiagnosis.icd10_code || null,
-            icd10Display: `${code} - ${text}`,
-          });
-        } else if (primaryDiagnosis.free_text_diagnosis) {
-          setDiagnosisValue({
-            ...emptyDiagnosisCodeValue(),
-            icd10Display: primaryDiagnosis.free_text_diagnosis,
-          });
+      const entries: DiagnosisEntry[] = [];
+      for (const d of encounterDiagnoses) {
+        const role = d.diagnosis_type === 'PRIMARY' ? 'PRIMARY' as const : 'SECONDARY' as const;
+        let code: DiagnosisCodeValue = emptyDiagnosisCodeValue();
+        if (d.icd11_code) {
+          code = { ...code, icd11Code: d.icd11_code, icd11Display: `${d.icd11_code} - ${d.icd11_display || d.free_text_diagnosis || ''}` };
+        } else if (d.icd10_code || d.icd10_display) {
+          const display = d.icd10_display || '';
+          const codeStr = display.split(' - ')[0] || String(d.icd10_code || '');
+          const text = display.split(' - ').slice(1).join(' - ') || d.free_text_diagnosis || '';
+          code = { ...code, icd10Code: d.icd10_code || null, icd10Display: `${codeStr} - ${text}` };
+        } else if (d.free_text_diagnosis) {
+          code = { ...code, icd10Display: d.free_text_diagnosis };
         }
+        entries.push({ role, code });
+      }
+      // Ensure at least the primary exists
+      if (entries.length === 0) {
+        const primary = encounterDiagnoses.find((d: any) => d.diagnosis_type === 'PRIMARY') || encounterDiagnoses[0];
+        if (primary) {
+          let code: DiagnosisCodeValue = emptyDiagnosisCodeValue();
+          if (primary.icd11_code) {
+            code = { ...code, icd11Code: primary.icd11_code, icd11Display: `${primary.icd11_code} - ${primary.icd11_display || primary.free_text_diagnosis || ''}` };
+          } else if (primary.free_text_diagnosis) {
+            code = { ...code, icd10Display: primary.free_text_diagnosis };
+          }
+          entries.push({ role: 'PRIMARY', code });
+        }
+      }
+      if (entries.length > 0) {
+        setDiagnosisEntries(entries);
         setDiagnosisPrefilled(true);
       }
     }
   }, [encounterDiagnoses, diagnosisPrefilled]);
 
   // Computed values
-  const hasDiagnosis = !!(diagnosisValue.icd11Code || diagnosisValue.icd10Code || diagnosisValue.icd10Display || diagnosisValue.snomedCode);
+  // Extract primary diagnosis from multi-diagnosis entries
+  const primaryEntry = diagnosisEntries.find((e) => e.role === 'PRIMARY');
+  const primaryDiagnosisValue = primaryEntry?.code ?? emptyDiagnosisCodeValue();
+  const hasDiagnosis = !!(primaryDiagnosisValue.icd11Code || primaryDiagnosisValue.icd10Code || primaryDiagnosisValue.icd10Display || primaryDiagnosisValue.snomedCode);
   const hasRequiredMaternityContext = !isMaternityWard || (!!mchRegistrationId && mchRegistrationMatchesPatient);
 
   // With autoAssignBed, bed selection is not required (handled by backend)
@@ -433,15 +445,17 @@ export default function NewAdmissionPage() {
     && !!user
     && hasRequiredMaternityContext;
 
-  const admittingDiagnosis = diagnosisValue.icd11Code
-    || diagnosisValue.icd10Display?.split(' - ')[0]
-    || diagnosisValue.snomedCode
+  const admittingDiagnosis = primaryDiagnosisValue.icd11Code
+    || primaryDiagnosisValue.icd10Display?.split(' - ')[0]
+    || primaryDiagnosisValue.snomedCode
     || '';
 
-  const admittingDiagnosisText = diagnosisValue.icd11Display?.split(' - ').slice(1).join(' - ')
-    || diagnosisValue.icd10Display?.split(' - ').slice(1).join(' - ')
-    || diagnosisValue.snomedDisplay
+  const admittingDiagnosisText = primaryDiagnosisValue.icd11Display?.split(' - ').slice(1).join(' - ')
+    || primaryDiagnosisValue.icd10Display?.split(' - ').slice(1).join(' - ')
+    || primaryDiagnosisValue.snomedDisplay
     || '';
+
+  const secondaryDiagnoses = diagnosisEntries.filter((e) => e.role !== 'PRIMARY');
 
   // Resolve the selected bed number for the confirmation dialog
   const selectedBedNumber = useMemo(() => {
@@ -666,9 +680,52 @@ export default function NewAdmissionPage() {
                       </div>
                     )}
                     {wardRecommendationData.incompatible_wards.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        {wardRecommendationData.incompatible_wards.length} ward{wardRecommendationData.incompatible_wards.length !== 1 ? 's' : ''} excluded due to constraint violations
-                      </p>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground">
+                            {wardRecommendationData.incompatible_wards.length} ward{wardRecommendationData.incompatible_wards.length !== 1 ? 's' : ''} excluded due to constraint violations
+                          </span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span>
+                                  <VisibilityToggle
+                                    isVisible={showIncompatibleWards}
+                                    onToggle={() => setShowIncompatibleWards((v) => !v)}
+                                    label="excluded wards"
+                                    size="sm"
+                                    className="h-6 w-6"
+                                  />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="right">
+                                {showIncompatibleWards ? 'Hide' : 'Show'} excluded wards
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        {showIncompatibleWards && (
+                          <div className="space-y-1">
+                            {wardRecommendationData.incompatible_wards.map((iw) => (
+                              <div
+                                key={iw.ward_id}
+                                className="flex items-start gap-2 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30 p-2 text-sm"
+                              >
+                                <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+                                <div className="min-w-0">
+                                  <span className="font-medium">{iw.ward_name}</span>
+                                  <span className="text-xs text-muted-foreground ml-1.5">{iw.ward_type_display || iw.ward_type}</span>
+                                  <ul className="mt-0.5 text-xs text-muted-foreground list-disc list-inside">
+                                    {iw.violations.map((v, vi) => (
+                                      <li key={vi}>{v}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -1020,11 +1077,11 @@ export default function NewAdmissionPage() {
             </div>
           )}
 
-          {/* Admitting Diagnosis */}
-          <DiagnosisCodeInput
-            value={diagnosisValue}
-            onChange={setDiagnosisValue}
-            label="Admitting Diagnosis"
+          {/* Admitting Diagnoses */}
+          <MultiDiagnosisInput
+            value={diagnosisEntries}
+            onChange={setDiagnosisEntries}
+            label="Admitting Diagnoses"
           />
 
           {/* Payer Type */}
@@ -1148,11 +1205,27 @@ export default function NewAdmissionPage() {
               <div className="flex items-center justify-center w-8 h-8 shrink-0 rounded-full bg-primary/10 mt-0.5">
                 <Stethoscope className="h-4 w-4 text-primary" />
               </div>
-              <div className="min-w-0">
-                <p className="text-sm text-muted-foreground">Admitting Diagnosis</p>
+              <div className="min-w-0 space-y-1">
+                <p className="text-sm text-muted-foreground">Admitting Diagnoses</p>
                 <p className="font-medium">{admittingDiagnosis}</p>
                 {admittingDiagnosisText && (
                   <p className="text-sm text-muted-foreground">{admittingDiagnosisText}</p>
+                )}
+                {secondaryDiagnoses.length > 0 && (
+                  <div className="mt-1 space-y-0.5">
+                    {secondaryDiagnoses.map((entry, idx) => {
+                      const code = entry.code.icd11Code || entry.code.icd10Display?.split(' - ')[0] || entry.code.snomedCode || '';
+                      const text = entry.code.icd11Display?.split(' - ').slice(1).join(' - ')
+                        || entry.code.icd10Display?.split(' - ').slice(1).join(' - ')
+                        || entry.code.snomedDisplay || '';
+                      return (
+                        <p key={idx} className="text-sm text-muted-foreground">
+                          <Badge variant="outline" className="text-xs mr-1.5">{entry.role}</Badge>
+                          {code}{text ? ` — ${text}` : ''}
+                        </p>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </div>
