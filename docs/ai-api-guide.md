@@ -652,7 +652,7 @@ X-API-Key: your-api-key
 | `admission_context` | AdmissionContext | Yes | Structured admission / encounter data (see below) |
 | `encounter_context` | EncounterContext | No | Chief complaint, vitals, HPI, examination findings |
 | `facility_context` | FacilityContext | No | Facility level (1-6) and county |
-| `output_format` | string | No | `"markdown"` (default) or `"structured"` (JSON sections) |
+| `output_format` | string | No | `"markdown"` (default), `"structured"` (JSON sections), or `"fhir"` (FHIR R4 Composition) |
 | `additional_instructions` | string (max 2000) | No | Extra guidance for the LLM |
 | `include_icd10_codes` | bool | No | Include ICD-10 code suggestions (default: `true`) |
 | `system_instruction` | string (max 2000) | No | Host application instruction injected into the system prompt |
@@ -725,6 +725,73 @@ X-API-Key: your-api-key
 **Response (`output_format: "markdown"`):**
 
 Returns the same schema, but `full_text` contains the complete rendered Markdown document and `sections` are parsed from the Markdown headings.
+
+**Response (`output_format: "fhir"`):**
+
+Returns the same schema, plus a `fhir_resource` field containing a FHIR R4 `Composition` resource. The `full_text` field is empty (use the FHIR resource instead).
+
+```json
+{
+  "document_type": "discharge_summary",
+  "sections": [...],
+  "full_text": "",
+  "fhir_resource": {
+    "resourceType": "Composition",
+    "status": "final",
+    "type": {
+      "coding": [
+        {
+          "system": "http://loinc.org",
+          "code": "18842-5",
+          "display": "Discharge summary"
+        }
+      ],
+      "text": "Discharge summary"
+    },
+    "subject": {
+      "display": "32y/M"
+    },
+    "date": "2026-03-17T12:00:00Z",
+    "title": "Discharge summary",
+    "section": [
+      {
+        "title": "Hospital Course",
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">Patient admitted with...</div>"
+        }
+      },
+      {
+        "title": "Discharge Medications",
+        "text": {
+          "status": "generated",
+          "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">1. Doxycycline 100mg BD...</div>"
+        }
+      }
+    ],
+    "encounter": {
+      "display": "Admitted: 2025-06-01 | Discharged: 2025-06-04 | Ward: Medical Ward"
+    },
+    "author": [
+      {"display": "TibaBot Clinical Documentation AI (review required)"}
+    ]
+  },
+  "suggested_icd10_codes": [...],
+  "processing_time_ms": 3200,
+  "model_used": "llama-3.3-70b-versatile",
+  "disclaimer": "AI-generated clinical document. Must be reviewed and approved by the responsible clinician before use."
+}
+```
+
+**LOINC Codes per Document Type:**
+
+| Document Type | LOINC Code | Display |
+|--------------|------------|---------|
+| `discharge_summary` | 18842-5 | Discharge summary |
+| `soap` | 11506-3 | Progress note |
+| `progress_note` | 11506-3 | Progress note |
+| `referral_letter` | 57133-1 | Referral note |
+| `clerking_note` | 11488-4 | Consultation note |
 
 **SOAP Note Example:**
 ```json
