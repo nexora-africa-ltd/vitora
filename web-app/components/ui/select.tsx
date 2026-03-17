@@ -33,6 +33,7 @@ const Select: React.FC<SelectProps> = ({ value, defaultValue = '', onValueChange
   const [open, setOpen] = React.useState(false)
   const [registryVersion, setRegistryVersion] = React.useState(0)
   const itemRegistryRef = React.useRef<Map<string, string>>(new Map())
+  const containerRef = React.useRef<HTMLDivElement>(null)
   const listboxId = React.useId()
 
   const handleValueChange = React.useCallback((newValue: string, newDisplayText?: string) => {
@@ -53,6 +54,28 @@ const Select: React.FC<SelectProps> = ({ value, defaultValue = '', onValueChange
   }, [])
 
   const currentValue = value !== undefined ? value : internalValue
+
+  // Close on outside click
+  React.useEffect(() => {
+    if (!open) return
+
+    const onPointerDown = (e: PointerEvent) => {
+      const container = containerRef.current
+      if (!container) return
+      if (!container.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+
+    const raf = requestAnimationFrame(() => {
+      document.addEventListener("pointerdown", onPointerDown, true)
+    })
+
+    return () => {
+      cancelAnimationFrame(raf)
+      document.removeEventListener("pointerdown", onPointerDown, true)
+    }
+  }, [open])
 
   // Sync displayText when controlled value changes or registry updates
   React.useEffect(() => {
@@ -105,7 +128,7 @@ const Select: React.FC<SelectProps> = ({ value, defaultValue = '', onValueChange
 
   return (
     <SelectContext.Provider value={{ value: currentValue, displayText, onValueChange: handleValueChange, open, setOpen, registerItem, itemRegistry: itemRegistryRef.current, listboxId }}>
-      <div className="relative">
+      <div ref={containerRef} className="relative">
         {children}
       </div>
     </SelectContext.Provider>
