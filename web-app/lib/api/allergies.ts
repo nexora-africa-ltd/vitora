@@ -34,7 +34,7 @@ export const allergiesApi = {
    */
   async listByPatient(patientId: number): Promise<AllergyListItem[]> {
     const response = await apiClient.get(`/api/patients/${patientId}/allergies/`);
-    return parseResponse(z.array(AllergyListSchema), response.data, {
+    return parseResponse(z.array(AllergyListSchema), response.data.results || [], {
       context: 'allergiesApi.listByPatient',
     });
   },
@@ -92,7 +92,7 @@ export const allergiesApi = {
     search?: string;
   }): Promise<AllergyListItem[]> {
     const response = await apiClient.get('/api/allergies/', { params });
-    return parseResponse(z.array(AllergyListSchema), response.data, {
+    return parseResponse(z.array(AllergyListSchema), response.data.results || [], {
       context: 'allergiesApi.list',
     });
   },
