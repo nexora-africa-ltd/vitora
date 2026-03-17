@@ -1517,6 +1517,241 @@ class ClerkingStructureResponseSerializer(serializers.Serializer):
 
 
 # =============================================================================
+# Phase 6 — Clinical Document Generation
+# =============================================================================
+
+DOCUMENT_TYPE_CHOICES = [
+    ("discharge_summary", "Discharge Summary"),
+    ("soap", "SOAP Note"),
+    ("progress_note", "Progress Note"),
+    ("referral_letter", "Referral Letter"),
+    ("clerking_note", "Clerking Note"),
+]
+
+DISCHARGE_TYPE_CHOICES = [
+    ("NORMAL", "Normal"),
+    ("AMA", "Against Medical Advice"),
+    ("TRANSFER", "Transfer"),
+    ("DEATH", "Death"),
+    ("DAMA", "Discharge Against Medical Advice"),
+]
+
+OUTPUT_FORMAT_CHOICES = [
+    ("markdown", "Markdown"),
+    ("structured", "Structured JSON"),
+    ("fhir", "FHIR R4 Composition"),
+]
+
+
+class ClinicalDocPatientContextSerializer(serializers.Serializer):
+    """Patient demographics and clinical context for clinical document generation."""
+
+    patient_age = serializers.IntegerField(
+        min_value=0, max_value=150,
+        help_text="Patient age in years.",
+    )
+    patient_sex = serializers.CharField(
+        help_text='Patient sex: "M", "F", "male", or "female".',
+    )
+    allergies = serializers.ListField(
+        child=serializers.CharField(max_length=200),
+        required=False, default=list,
+    )
+    comorbidities = serializers.ListField(
+        child=serializers.CharField(max_length=200),
+        required=False, default=list,
+    )
+    current_medications = serializers.ListField(
+        child=serializers.CharField(max_length=200),
+        required=False, default=list,
+    )
+    facility_level = serializers.IntegerField(
+        required=False, allow_null=True, min_value=1, max_value=6,
+    )
+
+
+class ClinicalDocAdmissionContextSerializer(serializers.Serializer):
+    """Admission / encounter data for clinical document generation."""
+
+    primary_diagnosis = serializers.CharField(
+        min_length=2, max_length=500,
+        help_text="Primary diagnosis (free text or ICD-10 description).",
+    )
+    icd10_code = serializers.CharField(
+        required=False, allow_blank=True, max_length=20,
+        help_text='ICD-10 code e.g. "A54.0".',
+    )
+    secondary_diagnoses = serializers.ListField(
+        child=serializers.CharField(max_length=300),
+        required=False, default=list,
+    )
+    admission_date = serializers.CharField(
+        required=False, allow_blank=True,
+        help_text="Admission date (ISO 8601).",
+    )
+    discharge_date = serializers.CharField(
+        required=False, allow_blank=True,
+        help_text="Discharge date (ISO 8601).",
+    )
+    length_of_stay_days = serializers.IntegerField(
+        required=False, allow_null=True, min_value=0, max_value=3650,
+    )
+    ward = serializers.CharField(
+        required=False, allow_blank=True, max_length=200,
+    )
+    discharge_type = serializers.ChoiceField(
+        choices=DISCHARGE_TYPE_CHOICES,
+        required=False,
+    )
+    procedures_performed = serializers.ListField(
+        child=serializers.CharField(max_length=300),
+        required=False, default=list,
+    )
+    medications_given = serializers.ListField(
+        child=serializers.CharField(max_length=300),
+        required=False, default=list,
+    )
+    discharge_medications = serializers.ListField(
+        child=serializers.CharField(max_length=300),
+        required=False, default=list,
+    )
+    key_investigations = serializers.ListField(
+        child=serializers.CharField(max_length=300),
+        required=False, default=list,
+    )
+    complications = serializers.ListField(
+        child=serializers.CharField(max_length=300),
+        required=False, default=list,
+    )
+    condition_at_discharge = serializers.CharField(
+        required=False, allow_blank=True, max_length=1000,
+    )
+
+
+class ClinicalDocVitalsSerializer(serializers.Serializer):
+    """Vitals for encounter context."""
+
+    blood_pressure_systolic = serializers.IntegerField(
+        required=False, allow_null=True,
+    )
+    blood_pressure_diastolic = serializers.IntegerField(
+        required=False, allow_null=True,
+    )
+    heart_rate = serializers.IntegerField(
+        required=False, allow_null=True,
+    )
+    temperature = serializers.FloatField(
+        required=False, allow_null=True,
+    )
+    respiratory_rate = serializers.IntegerField(
+        required=False, allow_null=True,
+    )
+    spo2 = serializers.FloatField(
+        required=False, allow_null=True,
+    )
+
+
+class ClinicalDocEncounterContextSerializer(serializers.Serializer):
+    """Encounter context for clinical document generation."""
+
+    chief_complaint = serializers.CharField(
+        required=False, allow_blank=True, max_length=2000,
+    )
+    vitals = ClinicalDocVitalsSerializer(required=False)
+    hpi = serializers.CharField(
+        required=False, allow_blank=True, max_length=5000,
+        help_text="History of Present Illness.",
+    )
+    examination_findings = serializers.CharField(
+        required=False, allow_blank=True, max_length=5000,
+    )
+
+
+class ClinicalDocFacilityContextSerializer(serializers.Serializer):
+    """Facility context for clinical document generation."""
+
+    level = serializers.IntegerField(
+        required=False, allow_null=True, min_value=1, max_value=6,
+    )
+    county = serializers.CharField(
+        required=False, allow_blank=True, max_length=100,
+    )
+
+
+class ClinicalDocGenerateRequestSerializer(serializers.Serializer):
+    """Request body for POST /api/ai/clinical/document/."""
+
+    document_type = serializers.ChoiceField(
+        choices=DOCUMENT_TYPE_CHOICES,
+        help_text="Type of clinical document to generate.",
+    )
+    patient_context = ClinicalDocPatientContextSerializer()
+    admission_context = ClinicalDocAdmissionContextSerializer()
+    encounter_context = ClinicalDocEncounterContextSerializer(required=False)
+    facility_context = ClinicalDocFacilityContextSerializer(required=False)
+    output_format = serializers.ChoiceField(
+        choices=OUTPUT_FORMAT_CHOICES,
+        default="markdown",
+        required=False,
+    )
+    include_icd10_codes = serializers.BooleanField(
+        default=True, required=False,
+    )
+    additional_instructions = serializers.CharField(
+        required=False, allow_blank=True, max_length=2000,
+    )
+    system_instruction = serializers.CharField(
+        required=False, allow_blank=True, max_length=2000,
+    )
+
+
+class ClinicalDocSectionSerializer(serializers.Serializer):
+    """A single section of a generated clinical document."""
+
+    section_id = serializers.CharField()
+    title = serializers.CharField()
+    content = serializers.CharField()
+
+
+class ClinicalDocICD10SuggestionSerializer(serializers.Serializer):
+    """Suggested ICD-10 code from the generated document."""
+
+    code = serializers.CharField()
+    description = serializers.CharField()
+    confidence = serializers.FloatField(min_value=0.0, max_value=1.0)
+
+
+class ClinicalDocCitationSerializer(serializers.Serializer):
+    """Citation from clinical guidelines."""
+
+    source = serializers.CharField()
+    section = serializers.CharField(required=False, allow_blank=True)
+
+
+class ClinicalDocGenerateResponseSerializer(serializers.Serializer):
+    """Response from POST /api/ai/clinical/document/."""
+
+    document_type = serializers.CharField()
+    sections = ClinicalDocSectionSerializer(many=True)
+    full_text = serializers.CharField(allow_blank=True)
+    suggested_icd10_codes = ClinicalDocICD10SuggestionSerializer(
+        many=True, required=False,
+    )
+    safety_alerts = serializers.ListField(
+        child=serializers.CharField(),
+        required=False, default=list,
+    )
+    has_safety_concerns = serializers.BooleanField(required=False, default=False)
+    citations = ClinicalDocCitationSerializer(many=True, required=False)
+    fhir_resource = serializers.DictField(required=False, allow_null=True)
+    processing_time_ms = serializers.FloatField(required=False)
+    model_used = serializers.CharField(required=False, allow_blank=True)
+    disclaimer = serializers.CharField(required=False)
+    mode = serializers.CharField(required=False)
+    error = serializers.CharField(required=False, allow_null=True)
+
+
+# =============================================================================
 # Phase 5 — Enhanced CDS Evaluation
 # =============================================================================
 

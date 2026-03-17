@@ -64,6 +64,8 @@ from .serializers import (
     ClerkingStructureResponseSerializer,
     ClinicalAssistRequestSerializer,
     ClinicalChatRequestSerializer,
+    ClinicalDocGenerateRequestSerializer,
+    ClinicalDocGenerateResponseSerializer,
     ConditionPredictRequestSerializer,
     ConditionPredictResponseSerializer,
     DischargeAssessRequestSerializer,
@@ -1796,6 +1798,84 @@ class ClerkingStructureView(AIFeatureGatedMixin, APIView):
             result = clerking_structure_fallback(data)
 
         response_serializer = ClerkingStructureResponseSerializer(data=result)
+        if response_serializer.is_valid():
+            return Response(response_serializer.data)
+        return Response(result)
+
+
+# =============================================================================
+# Phase 6 — Clinical Document Generation
+# =============================================================================
+
+
+class ClinicalDocumentGenerateView(AIFeatureGatedMixin, APIView):
+    """
+    Generate structured clinical documents using TibaBot LLM.
+
+    POST /api/ai/clinical/document/
+
+    Supports: discharge_summary, soap, progress_note, referral_letter,
+    clerking_note. Output formats: markdown, structured, fhir.
+
+    Falls back to empty template when TibaBot is unavailable.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request: Request) -> Response:
+        serializer = ClinicalDocGenerateRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        # Enrich with server-side context
+        payload = {
+            **data,
+            "user_context": build_user_context(request),
+        }
+        # Merge facility context: prefer client-supplied, fill gaps from server
+        client_facility = data.get("facility_context") or {}
+        server_facility = build_facility_context(request)
+        raw_level = client_facility.get("level") or server_facility.get("facility_level")
+        # Coerce level to int — settings may store it as "L3" / "L4" etc.
+        facility_level: int | None = None
+        if raw_level is not None:
+            if isinstance(raw_level, int):
+                facility_level = raw_level
+            elif isinstance(raw_level, str):
+                digits = "".join(c for c in raw_level if c.isdigit())
+                facility_level = int(digits) if digits else None
+        payload["facility_context"] = {
+            "level": facility_level,
+            "county": client_facility.get("county") or server_facility.get("county"),
+        }
+
+        AuditLog.log(
+            action="ai_clinical_document_generate",
+            user=request.user,
+            resource_type="AI",
+            resource_id=0,
+            ip_address=_get_client_ip(request),
+            details={
+                "document_type": data["document_type"],
+                "output_format": data.get("output_format", "markdown"),
+            },
+        )
+
+        try:
+            client = get_tibabot_client()
+            result = client.generate_clinical_document(payload)
+            result["mode"] = "tibabot"
+        except (TibaBotUnavailableError, TibaBotError) as exc:
+            logger.warning(
+                "TibaBot unavailable for clinical document generation: %s: %s",
+                type(exc).__name__,
+                exc,
+            )
+            from .services.clerking_fallback import clinical_document_fallback
+
+            result = clinical_document_fallback(data)
+
+        response_serializer = ClinicalDocGenerateResponseSerializer(data=result)
         if response_serializer.is_valid():
             return Response(response_serializer.data)
         return Response(result)

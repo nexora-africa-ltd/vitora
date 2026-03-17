@@ -39,6 +39,8 @@ import type {
   AIClerkingAutocompleteResponse,
   AIClerkingStructureRequest,
   AIClerkingStructureResponse,
+  AIClinicalDocumentRequest,
+  AIClinicalDocumentResponse,
   AICDSEvaluateRequest,
   AICDSEvaluateResponse,
   StoredCarePlanResult,
@@ -432,6 +434,23 @@ export function useAIClerkingAutocomplete() {
 export function useAIClerkingStructure() {
   return useMutation<AIClerkingStructureResponse, Error, AIClerkingStructureRequest>({
     mutationFn: (data) => aiApi.clerkingStructure(data),
+    retry: false,
+  });
+}
+
+// =============================================================================
+// Phase 6 Hooks — Clinical Document Generation
+// =============================================================================
+
+/**
+ * Hook for generating structured clinical documents via TibaBot.
+ *
+ * Supports discharge summaries, SOAP notes, progress notes,
+ * referral letters, and clerking notes with structured context.
+ */
+export function useAIClinicalDocument() {
+  return useMutation<AIClinicalDocumentResponse, Error, AIClinicalDocumentRequest>({
+    mutationFn: (data) => aiApi.generateClinicalDocument(data),
     retry: false,
   });
 }

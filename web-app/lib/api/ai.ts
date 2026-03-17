@@ -26,6 +26,7 @@ import {
   AICarePlanConditionsResponseSchema,
   AIClerkingAutocompleteResponseSchema,
   AIClerkingStructureResponseSchema,
+  AIClinicalDocumentResponseSchema,
   AICDSEvaluateResponseSchema,
   StoredCarePlanResultSchema,
   StoredCDSResultSchema,
@@ -66,6 +67,8 @@ import type {
   AIClerkingAutocompleteResponse,
   AIClerkingStructureRequest,
   AIClerkingStructureResponse,
+  AIClinicalDocumentRequest,
+  AIClinicalDocumentResponse,
   AICDSEvaluateRequest,
   AICDSEvaluateResponse,
   StoredCarePlanResult,
@@ -427,6 +430,27 @@ export const aiApi = {
     const response = await apiClient.post('/api/ai/clerking/structure/', data);
     return parseResponse(AIClerkingStructureResponseSchema, response.data, {
       context: 'aiApi.clerkingStructure',
+    });
+  },
+
+  // ===========================================================================
+  // Phase 6 — Clinical Document Generation
+  // ===========================================================================
+
+  /**
+   * Generate a structured clinical document using TibaBot LLM.
+   *
+   * Supports discharge summaries, SOAP notes, progress notes,
+   * referral letters, and clerking notes with structured patient,
+   * admission, and encounter context.
+   *
+   * @param data - Document type, patient/admission/encounter context, output format
+   * @returns Generated document with sections, ICD-10 suggestions, citations
+   */
+  generateClinicalDocument: async (data: AIClinicalDocumentRequest): Promise<AIClinicalDocumentResponse> => {
+    const response = await apiClient.post('/api/ai/clinical/document/', data);
+    return parseResponse(AIClinicalDocumentResponseSchema, response.data, {
+      context: 'aiApi.generateClinicalDocument',
     });
   },
 

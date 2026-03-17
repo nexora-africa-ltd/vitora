@@ -1,8 +1,9 @@
 """
-Local fallback for clerking assist features.
+Local fallback for clerking assist and clinical document generation features.
 
-Returns empty suggestions when TibaBot is unavailable.
-Autocomplete and structure features require LLM — no meaningful fallback.
+Returns empty suggestions/templates when TibaBot is unavailable.
+Autocomplete, structure, and document generation features require LLM —
+no meaningful fallback.
 """
 
 from __future__ import annotations
@@ -13,6 +14,41 @@ from typing import Any
 _NOTE_SECTIONS: dict[str, list[str]] = {
     "soap": ["Subjective", "Objective", "Assessment", "Plan"],
     "sbar": ["Situation", "Background", "Assessment", "Recommendation"],
+}
+
+# Default document section templates per document type
+_DOCUMENT_SECTIONS: dict[str, list[dict[str, str]]] = {
+    "discharge_summary": [
+        {"section_id": "patient_information", "title": "Patient Information", "content": ""},
+        {"section_id": "hospital_course", "title": "Hospital Course", "content": ""},
+        {"section_id": "discharge_medications", "title": "Discharge Medications", "content": ""},
+        {"section_id": "condition_at_discharge", "title": "Condition at Discharge", "content": ""},
+        {"section_id": "follow_up", "title": "Follow-Up and Instructions", "content": ""},
+    ],
+    "soap": [
+        {"section_id": "subjective", "title": "Subjective", "content": ""},
+        {"section_id": "objective", "title": "Objective", "content": ""},
+        {"section_id": "assessment", "title": "Assessment", "content": ""},
+        {"section_id": "plan", "title": "Plan", "content": ""},
+    ],
+    "progress_note": [
+        {"section_id": "interval_history", "title": "Interval History", "content": ""},
+        {"section_id": "examination", "title": "Examination", "content": ""},
+        {"section_id": "assessment", "title": "Assessment", "content": ""},
+        {"section_id": "plan", "title": "Plan", "content": ""},
+    ],
+    "referral_letter": [
+        {"section_id": "referral_to", "title": "Referral To", "content": ""},
+        {"section_id": "clinical_summary", "title": "Clinical Summary", "content": ""},
+        {"section_id": "reason_for_referral", "title": "Reason for Referral", "content": ""},
+        {"section_id": "current_management", "title": "Current Management", "content": ""},
+    ],
+    "clerking_note": [
+        {"section_id": "presenting_complaint", "title": "Presenting Complaint", "content": ""},
+        {"section_id": "history", "title": "History of Presenting Illness", "content": ""},
+        {"section_id": "examination", "title": "Examination", "content": ""},
+        {"section_id": "assessment_plan", "title": "Assessment and Plan", "content": ""},
+    ],
 }
 
 
@@ -34,5 +70,28 @@ def clerking_structure_fallback(payload: dict[str, Any]) -> dict[str, Any]:
         "structured_note": {section: "" for section in sections},
         "sections": sections,
         "original_text": free_text,
+        "mode": "fallback",
+    }
+
+
+def clinical_document_fallback(payload: dict[str, Any]) -> dict[str, Any]:
+    """Return empty document template when TibaBot is unavailable."""
+    document_type = payload.get("document_type", "discharge_summary")
+    sections = _DOCUMENT_SECTIONS.get(
+        document_type, _DOCUMENT_SECTIONS["discharge_summary"]
+    )
+
+    return {
+        "document_type": document_type,
+        "sections": sections,
+        "full_text": "",
+        "suggested_icd10_codes": [],
+        "safety_alerts": [],
+        "has_safety_concerns": False,
+        "citations": [],
+        "disclaimer": (
+            "AI document generation unavailable. "
+            "Empty template provided — please complete manually."
+        ),
         "mode": "fallback",
     }

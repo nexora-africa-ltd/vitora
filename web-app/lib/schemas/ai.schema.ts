@@ -368,6 +368,47 @@ export const AIClerkingStructureResponseSchema = z.object({
 }).passthrough();
 
 // =============================================================================
+// Phase 6 — Clinical Document Generation
+// =============================================================================
+
+/** Schema for a section of a generated clinical document */
+export const ClinicalDocSectionSchema = z.object({
+  section_id: z.string(),
+  title: z.string(),
+  content: z.string(),
+}).passthrough();
+
+/** Schema for a suggested ICD-10 code from the generated document */
+export const ClinicalDocICD10SuggestionSchema = z.object({
+  code: z.string(),
+  description: z.string(),
+  confidence: z.number().min(0).max(1),
+}).passthrough();
+
+/** Schema for a clinical guideline citation */
+export const ClinicalDocCitationSchema = z.object({
+  source: z.string(),
+  section: z.string().optional(),
+}).passthrough();
+
+/** Schema for POST /api/ai/clinical/document/ response */
+export const AIClinicalDocumentResponseSchema = z.object({
+  document_type: z.string(),
+  sections: z.array(ClinicalDocSectionSchema),
+  full_text: z.string(),
+  suggested_icd10_codes: z.array(ClinicalDocICD10SuggestionSchema).optional(),
+  safety_alerts: z.array(z.string()).optional(),
+  has_safety_concerns: z.boolean().optional(),
+  citations: z.array(ClinicalDocCitationSchema).optional(),
+  fhir_resource: z.record(z.unknown()).nullable().optional(),
+  processing_time_ms: z.number().optional(),
+  model_used: z.string().optional(),
+  disclaimer: z.string().optional(),
+  mode: z.string().optional(),
+  error: z.string().nullable().optional(),
+}).passthrough();
+
+// =============================================================================
 // Phase 5 — Enhanced CDS Evaluation
 // =============================================================================
 
