@@ -456,6 +456,17 @@ export function useDischarge(dischargeId: number | undefined) {
   });
 }
 
+export function useDischargeByAdmission(admissionId: number | undefined) {
+  return useQuery({
+    queryKey: [...inpatientQueryKeys.discharges(), 'by-admission', admissionId],
+    enabled: typeof admissionId === 'number',
+    queryFn: async () => {
+      const result = await inpatientApi.listDischarges({ admission: admissionId!, page_size: 1 });
+      return result.results[0] ?? null;
+    },
+  });
+}
+
 export function useCreateDischarge() {
   const queryClient = useQueryClient();
   return useMutation({

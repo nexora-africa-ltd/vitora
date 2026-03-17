@@ -588,6 +588,18 @@ export default function AdmissionDetailPage() {
         </div>
       )}
 
+      {/* Actions for discharged admissions */}
+      {admission.admission_status === 'DISCHARGED' && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+          <Button variant="default" asChild>
+            <Link href={`/admissions/${admission.id}/discharge-details`}>
+              <FileText className="h-4 w-4 mr-2" />
+              View Discharge Details
+            </Link>
+          </Button>
+        </div>
+      )}
+
       {/* Quick Stats */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
         <Card>
