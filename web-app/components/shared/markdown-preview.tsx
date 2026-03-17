@@ -14,7 +14,37 @@ import { cn } from '@/lib/utils/cn';
 
 /** Strip markdown syntax while preserving readable structure. */
 function markdownToPlainText(md: string): string {
-  return md
+  let text = md;
+
+  // Convert markdown tables to indented key-value pairs
+  // Detect table blocks: header row + separator row + data rows
+  text = text.replace(
+    /^(\|.+\|)\n(\|[-: |]+\|)\n((\|.+\|\n?)+)/gm,
+    (tableBlock) => {
+      const rows = tableBlock.trim().split('\n');
+      if (rows.length < 3) return tableBlock;
+      const headerRow = rows[0] ?? '';
+      const headers = headerRow
+        .split('|')
+        .map((h) => h.trim())
+        .filter(Boolean);
+      // Skip separator row (index 1)
+      const dataRows = rows.slice(2);
+      return dataRows
+        .map((row) => {
+          const cells = row
+            .split('|')
+            .map((c) => c.trim())
+            .filter(Boolean);
+          return headers
+            .map((header, i) => `${header}: ${cells[i] || ''}`)
+            .join(', ');
+        })
+        .join('\n');
+    }
+  );
+
+  return text
     // Remove heading markers but keep the text
     .replace(/^#{1,6}\s+/gm, '')
     // Bold / italic → just the text

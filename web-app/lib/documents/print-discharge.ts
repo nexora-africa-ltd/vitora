@@ -20,6 +20,46 @@ import {
 // Markdown → HTML (lightweight, no external dependency)
 // =============================================================================
 
+/** Detect whether content contains markdown syntax. */
+function looksLikeMarkdown(text: string): boolean {
+  return /^#{1,3}\s|^\*\*|\*\*$|^- |^\d+\.\s|^>|^\|.+\|/m.test(text);
+}
+
+/** Convert content to safe HTML — handles both markdown and plain text. */
+function contentToHtml(text: string): string {
+  if (looksLikeMarkdown(text)) {
+    return markdownToHtml(text);
+  }
+  // Plain text: escape, preserve line breaks and paragraph spacing
+  return escapeHtml(text)
+    .split(/\n{2,}/)
+    .map((block) => `<p>${block.trim().replace(/\n/g, '<br/>')}</p>`)
+    .join('\n');
+}
+
+/**
+ * Strip AI advisory content that should not appear on the printed document.
+ * Removes:
+ *  - Fully italic paragraphs (advisory notes wrapped in *...* or _..._ )
+ *  - "Not documented (...)" placeholder lines
+ *  - Standalone parenthetical instructions "(If ... )"
+ */
+function stripAdvisoryContent(md: string): string {
+  return md
+    .split(/\n{2,}/)
+    .filter((block) => {
+      const trimmed = block.trim();
+      // Remove blocks that are entirely italic: *text* or _text_ (possibly multi-line)
+      if (/^\*[^*]+\*$/.test(trimmed) || /^_[^_]+_$/.test(trimmed)) return false;
+      // Remove "Not documented (reason)" lines
+      if (/^not documented\b/i.test(trimmed)) return false;
+      // Remove standalone parenthetical instruction blocks
+      if (/^\([^)]{20,}\)$/.test(trimmed)) return false;
+      return true;
+    })
+    .join('\n\n');
+}
+
 /** Convert markdown to safe HTML for print output. */
 function markdownToHtml(md: string): string {
   let html = escapeHtml(md);
@@ -36,6 +76,39 @@ function markdownToHtml(md: string): string {
 
   // Horizontal rules
   html = html.replace(/^---$/gm, '<hr/>');
+
+  // GFM Tables: consecutive lines starting with | ... |
+  html = html.replace(/(^\|.+\|\s*$(?:\n\|.+\|\s*$)+)/gm, (block) => {
+    const rows = block.split('\n').filter((r) => r.trim());
+    // Detect separator row (e.g. | --- | --- | or |:---|---:|)
+    const sepIdx = rows.findIndex((r) => /^\|(\s*:?-{2,}:?\s*\|)+\s*$/.test(r.trim()));
+    let headerRows: string[] = [];
+    let bodyRows: string[] = [];
+    if (sepIdx > 0) {
+      headerRows = rows.slice(0, sepIdx);
+      bodyRows = rows.slice(sepIdx + 1);
+    } else {
+      bodyRows = rows;
+    }
+    const parseRow = (row: string, tag: 'td' | 'th') =>
+      '<tr>' +
+      row
+        .replace(/^\|\s*/, '')
+        .replace(/\s*\|$/, '')
+        .split('|')
+        .map((cell) => `<${tag}>${cell.trim()}</${tag}>`)
+        .join('') +
+      '</tr>';
+    let tableHtml = '<table>';
+    if (headerRows.length) {
+      tableHtml += '<thead>' + headerRows.map((r) => parseRow(r, 'th')).join('') + '</thead>';
+    }
+    if (bodyRows.length) {
+      tableHtml += '<tbody>' + bodyRows.map((r) => parseRow(r, 'td')).join('') + '</tbody>';
+    }
+    tableHtml += '</table>';
+    return tableHtml;
+  });
 
   // Unordered lists: consecutive lines starting with "- "
   html = html.replace(/(^- .+$(\n- .+$)*)/gm, (block) => {
@@ -181,6 +254,25 @@ const DISCHARGE_CSS = `
 
   .content strong { font-weight: 700; }
   .content em { font-style: italic; }
+
+  .content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 10.5pt;
+  }
+  .content th, .content td {
+    border: 1px solid #999;
+    padding: 6px 10px;
+    text-align: left;
+  }
+  .content th {
+    background: #f2f2f2;
+    font-weight: 600;
+  }
+  .content tr:nth-child(even) td {
+    background: #fafafa;
+  }
   .content hr { border: none; border-top: 1px solid #ccc; margin: 12px 0; }
 
   .footer {
@@ -215,6 +307,48 @@ const DISCHARGE_CSS = `
   @media print {
     body { padding: 10mm 15mm; }
     .no-print { display: none !important; }
+
+    /* Keep header + patient info together on first page */
+    .header, .patient-info {
+      page-break-inside: avoid;
+    }
+
+    /* Allow natural breaks between content blocks */
+    .content {
+      orphans: 3;
+      widows: 3;
+    }
+
+    /* Don't strand headings at the bottom of a page */
+    .content h1, .content h2, .content h3 {
+      page-break-after: avoid;
+    }
+
+    /* Keep list items together when possible */
+    .content ul, .content ol {
+      page-break-inside: avoid;
+    }
+
+    /* Tables: allow page breaks between rows but never inside a row */
+    .content table {
+      page-break-inside: auto;
+    }
+    .content thead {
+      display: table-header-group;  /* Repeat header on every page */
+    }
+    .content tr {
+      page-break-inside: avoid;
+    }
+
+    /* Signature block must stay together and on the last page */
+    .signature-block {
+      page-break-inside: avoid;
+    }
+
+    /* Footer stays at the bottom */
+    .footer {
+      page-break-inside: avoid;
+    }
   }
 `;
 
@@ -250,7 +384,7 @@ function buildDischargeHtml(data: DischargeDocumentData): string {
   ${data.admittingDiagnosis ? `<div class="row"><span class="label">Diagnosis:</span><span class="value">${escapeHtml(data.admittingDiagnosis)}</span></div>` : ''}
 </div>
 
-<div class="content">${markdownToHtml(data.content)}</div>
+<div class="content">${contentToHtml(stripAdvisoryContent(data.content))}</div>
 
 <div class="signature-block">
   <div class="sig">
