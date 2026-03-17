@@ -56,6 +56,17 @@ export interface NewEncounterNotes {
   clinical_template_data?: Record<string, Record<string, unknown>> | null;
 }
 
+export interface NewEncounterAdmission {
+  wardId: number | null;
+  bedId: number | null;
+  wardName?: string;
+  bedNumber?: string;
+  payerType: 'CASH' | 'SHA' | 'CORPORATE';
+  requiresIsolation: boolean;
+  requiresOxygen: boolean;
+  requiresVentilator: boolean;
+}
+
 export interface NewEncounterSession {
   // Session ID (unique per session)
   sessionId: string;
@@ -78,6 +89,7 @@ export interface NewEncounterSession {
   history: NewEncounterHistory;
   notes: NewEncounterNotes;
   diagnoses: DiagnosisFormData[];
+  admission: NewEncounterAdmission;
 
   // Tracking
   startedAt: Date;
@@ -95,6 +107,7 @@ export interface NewEncounterSession {
     history: boolean;
     notes: boolean;
     diagnosis: boolean;
+    admission: boolean;
   };
 }
 
@@ -150,6 +163,10 @@ interface NewEncounterState {
   removeDiagnosis: (index: number) => void;
   updateDiagnosis: (index: number, diagnosis: DiagnosisFormData) => void;
 
+  // Actions - Admission (IPD only)
+  setAdmission: (admission: Partial<NewEncounterAdmission>) => void;
+  getAdmission: () => NewEncounterAdmission;
+
   // Actions - Section Completion
   markSectionComplete: (section: keyof NewEncounterSession['completedSections']) => void;
   getSectionCompletion: () => NewEncounterSession['completedSections'] | null;
@@ -189,6 +206,14 @@ function createInitialSession(): NewEncounterSession {
     history: {},
     notes: {},
     diagnoses: [],
+    admission: {
+      wardId: null,
+      bedId: null,
+      payerType: 'CASH',
+      requiresIsolation: false,
+      requiresOxygen: false,
+      requiresVentilator: false,
+    },
     startedAt: now,
     lastUpdatedAt: now,
     isDirty: false,
@@ -200,6 +225,7 @@ function createInitialSession(): NewEncounterSession {
       history: false,
       notes: false,
       diagnosis: false,
+      admission: false,
     },
   };
 }
@@ -472,6 +498,33 @@ export const useNewEncounterStore = create<NewEncounterState>()(
             },
           };
         });
+      },
+
+      // Admission
+      setAdmission: (admission) => {
+        set((state) => {
+          if (!state.session) return state;
+          return {
+            session: {
+              ...state.session,
+              admission: { ...state.session.admission, ...admission },
+              lastUpdatedAt: new Date(),
+              isDirty: true,
+            },
+          };
+        });
+      },
+
+      getAdmission: () => {
+        const session = get().session;
+        return session?.admission ?? {
+          wardId: null,
+          bedId: null,
+          payerType: 'CASH',
+          requiresIsolation: false,
+          requiresOxygen: false,
+          requiresVentilator: false,
+        };
       },
 
       // Section Completion

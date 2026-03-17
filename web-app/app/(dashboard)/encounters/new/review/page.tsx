@@ -39,6 +39,8 @@ import {
 import { useNewEncounterStore } from '@/lib/stores/new-encounter-store';
 import { useCreateEncounterWithValidation } from '@/lib/hooks/use-encounter-form';
 import { useCheckInPatient } from '@/lib/hooks/use-triage';
+import { useCreateAdmission } from '@/lib/hooks/use-inpatient';
+import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { useAISuggestionAudit } from '@/lib/hooks/use-ai';
 import { useSmartSuggestions } from '@/lib/hooks/use-smart-suggestions';
@@ -89,11 +91,14 @@ export default function NewEncounterReviewPage() {
     hasVitals,
     getSectionCompletion,
     getFormData,
+    getAdmission,
     clearSession,
   } = useNewEncounterStore();
 
   const createEncounter = useCreateEncounterWithValidation();
   const checkInPatient = useCheckInPatient();
+  const createAdmission = useCreateAdmission();
+  const user = useUser();
   const { mutate: auditSuggestionAction } = useAISuggestionAudit();
 
   const [showTriageModal, setShowTriageModal] = useState(false);
@@ -118,14 +123,17 @@ export default function NewEncounterReviewPage() {
   const vitals = getVitals();
   const vitalsRecorded = hasVitals();
   const completion = getSectionCompletion();
+  const admission = getAdmission();
+  const isIPD = details.encounter_type === 'IPD';
 
   // Check if required sections are complete
   const canCreate = useMemo(() => {
-    return (
-      patientData !== null &&
-      details.chief_complaint.trim() !== ''
-    );
-  }, [patientData, details]);
+    const baseReady = patientData !== null && details.chief_complaint.trim() !== '';
+    if (isIPD) {
+      return baseReady && !!admission.wardId && !!admission.bedId;
+    }
+    return baseReady;
+  }, [patientData, details, isIPD, admission]);
 
   // Check if encounter type requires immediate attention (skip triage prompt)
   const isUrgentEncounterType =
@@ -133,8 +141,12 @@ export default function NewEncounterReviewPage() {
 
   // Navigate to previous step
   const handlePrevious = useCallback(() => {
-    router.push('/encounters/new/diagnosis');
-  }, [router]);
+    if (isIPD) {
+      router.push('/encounters/new/admission');
+    } else {
+      router.push('/encounters/new/diagnosis');
+    }
+  }, [router, isIPD]);
 
   // Save as draft
   const handleSaveDraft = useCallback(async () => {
@@ -190,10 +202,41 @@ export default function NewEncounterReviewPage() {
 
       // For EMERGENCY or IPD encounters, skip triage modal
       if (isUrgentEncounterType) {
-        toast({
-          title: 'Encounter Created',
-          description: `${details.encounter_type} encounter created. Vitals can be recorded later.`,
-        });
+        // For IPD, also create the admission record with ward/bed
+        if (isIPD && admission.wardId && admission.bedId && user) {
+          try {
+            // Extract primary diagnosis for admission record
+            const primaryDx = diagnoses.find((d) => d.diagnosis_type === 'PRIMARY') ?? diagnoses[0];
+            await createAdmission.mutateAsync({
+              patient: patientData!.id,
+              ward: admission.wardId,
+              bed: admission.bedId,
+              payer_type: admission.payerType,
+              admission_date: new Date().toISOString(),
+              admitting_diagnosis: primaryDx?.icd10_display?.split(' - ')[0] || primaryDx?.free_text_diagnosis || 'Pending',
+              admitting_diagnosis_text: primaryDx?.icd10_display?.split(' - ').slice(1).join(' - ') || primaryDx?.free_text_diagnosis || 'Pending assessment',
+              admitting_officer: user.id,
+              source_encounter: result.id,
+              ...(admission.requiresIsolation ? { requires_isolation: true } : {}),
+            });
+            toast({
+              title: 'IPD Encounter & Admission Created',
+              description: `Patient admitted to ${admission.wardName || 'ward'}, bed ${admission.bedNumber || admission.bedId}.`,
+            });
+          } catch {
+            // Encounter created but admission failed — still redirect
+            toast({
+              title: 'Encounter Created',
+              description: 'Encounter created but admission failed. Please create admission separately.',
+              variant: 'destructive',
+            });
+          }
+        } else {
+          toast({
+            title: 'Encounter Created',
+            description: `${details.encounter_type} encounter created. Vitals can be recorded later.`,
+          });
+        }
         clearSession();
         router.push(`/encounters/${result.id}`);
         return;
@@ -550,6 +593,41 @@ export default function NewEncounterReviewPage() {
                 <span className="italic">No diagnoses added</span>
               )}
             </SummarySection>
+
+            {/* Admission Section (IPD only) */}
+            {isIPD && (
+              <SummarySection
+                icon={<Activity className="h-4 w-4" />}
+                title="Admission"
+                isComplete={!!completion?.admission}
+              >
+                {admission.wardId ? (
+                  <div className="space-y-1">
+                    <div>
+                      <span className="font-medium text-foreground">Ward:</span>{' '}
+                      {admission.wardName || `Ward #${admission.wardId}`}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Bed:</span>{' '}
+                      {admission.bedNumber || (admission.bedId ? `Bed #${admission.bedId}` : 'Not selected')}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Payer:</span>{' '}
+                      {admission.payerType}
+                    </div>
+                    {(admission.requiresIsolation || admission.requiresOxygen || admission.requiresVentilator) && (
+                      <div className="flex gap-1 mt-1">
+                        {admission.requiresIsolation && <Badge variant="outline" className="text-xs">Isolation</Badge>}
+                        {admission.requiresOxygen && <Badge variant="outline" className="text-xs">O₂</Badge>}
+                        {admission.requiresVentilator && <Badge variant="outline" className="text-xs">Ventilator</Badge>}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-destructive">Ward and bed not selected</span>
+                )}
+              </SummarySection>
+            )}
           </CardContent>
         </Card>
 

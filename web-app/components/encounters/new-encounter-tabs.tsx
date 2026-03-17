@@ -24,6 +24,7 @@ import {
   CheckSquare,
   Check,
   ClipboardPlus,
+  BedDouble,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { useNewEncounterStore } from '@/lib/stores/new-encounter-store';
@@ -42,6 +43,8 @@ interface TabConfig {
   description: string;
   sectionKey?: keyof NonNullable<ReturnType<typeof useNewEncounterStore.getState>['session']>['completedSections'];
   required?: boolean;
+  /** Only show this tab when the predicate returns true */
+  showWhen?: (encounterType: string) => boolean;
 }
 
 const TABS: TabConfig[] = [
@@ -93,6 +96,17 @@ const TABS: TabConfig[] = [
     sectionKey: 'diagnosis',
   },
   {
+    id: 'admission',
+    label: 'Admission',
+    shortLabel: 'Adm',
+    icon: <BedDouble className="h-4 w-4" />,
+    path: '/admission',
+    description: 'Ward & bed assignment',
+    sectionKey: 'admission',
+    required: true,
+    showWhen: (encounterType) => encounterType === 'IPD',
+  },
+  {
     id: 'review',
     label: 'Review',
     shortLabel: 'Rev',
@@ -108,17 +122,21 @@ const TABS: TabConfig[] = [
 
 export function NewEncounterTabs() {
   const pathname = usePathname();
-  const { getSectionCompletion, isDirtyState } = useNewEncounterStore();
+  const { getSectionCompletion, isDirtyState, getDetails } = useNewEncounterStore();
 
   const completion = getSectionCompletion();
   const isDirty = isDirtyState();
+  const encounterType = getDetails().encounter_type;
+
+  // Filter tabs based on encounter type
+  const visibleTabs = TABS.filter((tab) => !tab.showWhen || tab.showWhen(encounterType));
 
   // Base path for tab links
   const basePath = '/encounters/new';
 
   // Determine active tab from pathname
   const getActiveTab = () => {
-    for (const tab of TABS) {
+    for (const tab of visibleTabs) {
       if (pathname.endsWith(tab.path)) {
         return tab.id;
       }
@@ -135,7 +153,7 @@ export function NewEncounterTabs() {
         className="flex items-center gap-0.5 sm:gap-1 px-2 sm:px-4 overflow-x-auto scrollbar-thin"
         aria-label="New encounter steps"
       >
-        {TABS.map((tab, index) => {
+        {visibleTabs.map((tab, index) => {
           const isActive = activeTab === tab.id;
           const href = tab.id === 'patient' ? basePath : `${basePath}${tab.path}`;
           const isComplete = tab.sectionKey && completion?.[tab.sectionKey];
