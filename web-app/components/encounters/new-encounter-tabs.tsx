@@ -5,8 +5,8 @@
  * Uses URL-based tab navigation for proper browser history support.
  *
  * Tabs:
- * - Patient: Select patient
- * - Details: Encounter type, date, chief complaint
+ * - Patient: Encounter type + select patient
+ * - Complaint: Chief complaint
  * - History: Allergies, medications, medical history (optional)
  * - Notes: HPI, PE, Assessment (optional)
  * - Diagnosis: ICD-10/11 diagnoses (optional)
@@ -57,11 +57,11 @@ const TABS: TabConfig[] = [
   },
   {
     id: 'details',
-    label: 'Details',
-    shortLabel: 'Det',
+    label: 'Complaint',
+    shortLabel: 'CC',
     icon: <ClipboardPlus className="h-4 w-4" />,
     path: '/details',
-    description: 'Encounter details',
+    description: 'Chief complaint',
     sectionKey: 'details',
     required: true,
   },

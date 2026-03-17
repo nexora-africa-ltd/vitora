@@ -1,8 +1,8 @@
 /**
- * New Encounter - Details Step
+ * New Encounter - Complaint Step
  *
  * Second step in the new encounter workflow.
- * Captures encounter type, date, and chief complaint.
+ * Captures the chief complaint (encounter type is selected in step 1).
  *
  * Route: /encounters/new/details
  */
@@ -10,10 +10,9 @@
 
 import { useCallback, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, AlertTriangle, Stethoscope } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Stethoscope } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,16 +23,13 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  SelectGroup,
-  SelectLabel,
-  SelectSeparator,
 } from '@/components/ui/select';
 import { useNewEncounterStore } from '@/lib/stores/new-encounter-store';
+import { ENCOUNTER_TYPES } from '@/lib/utils/constants';
 import {
-  ENCOUNTER_TYPE_GROUPS,
-  getEncounterTypesByGroup,
-} from '@/lib/utils/constants';
-import type { EncounterType } from '@/lib/types/encounter';
+  CHIEF_COMPLAINT_CONFIG,
+  type ChiefComplaintCategory,
+} from '@/lib/types/triage';
 
 export default function NewEncounterDetailsPage() {
   const router = useRouter();
@@ -43,11 +39,15 @@ export default function NewEncounterDetailsPage() {
   const { data: patientData } = getPatient();
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Resolve encounter type label for display
+  const encounterTypeLabel =
+    ENCOUNTER_TYPES.find((t) => t.value === details.encounter_type)?.label ?? details.encounter_type;
+
   // Handle field changes
   const handleFieldChange = useCallback(
-    (field: 'encounter_type' | 'encounter_date' | 'chief_complaint', value: string) => {
-      if (field === 'encounter_type') {
-        setDetails({ encounter_type: value as EncounterType });
+    (field: 'encounter_date' | 'chief_complaint' | 'chief_complaint_category', value: string) => {
+      if (field === 'chief_complaint_category') {
+        setDetails({ chief_complaint_category: value as ChiefComplaintCategory });
       } else {
         setDetails({ [field]: value });
       }
@@ -88,10 +88,6 @@ export default function NewEncounterDetailsPage() {
     }
   }, [validateForm, markSectionComplete, router]);
 
-  // Check if encounter type requires immediate attention (skip triage prompt)
-  const isUrgentEncounterType =
-    details.encounter_type === 'EMERGENCY' || details.encounter_type === 'IPD';
-
   // Redirect to patient step if no patient selected
   useEffect(() => {
     if (!patientData) {
@@ -110,60 +106,21 @@ export default function NewEncounterDetailsPage() {
           <CardHeader className="px-3 sm:px-6 py-3 sm:py-4">
             <CardTitle className="text-base sm:text-lg flex items-center gap-2">
               <Stethoscope className="h-4 w-4 sm:h-5 sm:w-5" />
-              Encounter Details
+              Chief Complaint
             </CardTitle>
             <CardDescription>
-              Specify the type of encounter and the chief complaint.
+              Describe what brings the patient in today.
             </CardDescription>
           </CardHeader>
           <CardContent className="px-3 sm:px-6 space-y-4">
+            {/* Encounter context (read-only summary from step 1) */}
             <div className="grid gap-4 sm:grid-cols-3">
-              {/* Encounter Type */}
+              {/* Encounter Type (read-only) */}
               <div className="space-y-2">
-                <Label htmlFor="encounter_type">
-                  Encounter Type <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={details.encounter_type}
-                  onValueChange={(value) =>
-                    handleFieldChange('encounter_type', value)
-                  }
-                >
-                  <SelectTrigger id="encounter_type">
-                    <SelectValue placeholder="Select type..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {/* Walk-in / Mandatory triage */}
-                    <SelectGroup>
-                      <SelectLabel>{ENCOUNTER_TYPE_GROUPS['walk-in'].label}</SelectLabel>
-                      {getEncounterTypesByGroup('walk-in').map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                    <SelectSeparator />
-                    {/* Scheduled / Optional triage */}
-                    <SelectGroup>
-                      <SelectLabel>{ENCOUNTER_TYPE_GROUPS['scheduled'].label}</SelectLabel>
-                      {getEncounterTypesByGroup('scheduled').map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                    <SelectSeparator />
-                    {/* Pre-assessed / No triage */}
-                    <SelectGroup>
-                      <SelectLabel>{ENCOUNTER_TYPE_GROUPS['pre-assessed'].label}</SelectLabel>
-                      {getEncounterTypesByGroup('pre-assessed').map((type) => (
-                        <SelectItem key={type.value} value={type.value}>
-                          {type.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                <Label>Encounter Type</Label>
+                <div className="h-10 flex items-center">
+                  <Badge variant="outline">{encounterTypeLabel}</Badge>
+                </div>
               </div>
 
               {/* Encounter Date */}
@@ -190,6 +147,35 @@ export default function NewEncounterDetailsPage() {
               </div>
             </div>
 
+            {/* Chief Complaint Category */}
+            <div className="space-y-2">
+              <Label htmlFor="chief_complaint_category">
+                Complaint Category
+              </Label>
+              <Select
+                value={details.chief_complaint_category || undefined}
+                onValueChange={(value) =>
+                  handleFieldChange('chief_complaint_category', value)
+                }
+              >
+                <SelectTrigger id="chief_complaint_category">
+                  <SelectValue placeholder="Select category..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(
+                    Object.entries(CHIEF_COMPLAINT_CONFIG) as [
+                      ChiefComplaintCategory,
+                      { label: string },
+                    ][]
+                  ).map(([value, config]) => (
+                    <SelectItem key={value} value={value}>
+                      {config.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Chief Complaint */}
             <div className="space-y-2">
               <Label htmlFor="chief_complaint">
@@ -208,21 +194,6 @@ export default function NewEncounterDetailsPage() {
               )}
             </div>
 
-            {/* Urgent Encounter Info */}
-            {isUrgentEncounterType && (
-              <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <AlertTitle className="text-amber-800 dark:text-amber-200">
-                  {details.encounter_type === 'EMERGENCY'
-                    ? 'Emergency Encounter'
-                    : 'Inpatient Encounter'}
-                </AlertTitle>
-                <AlertDescription className="text-amber-700 dark:text-amber-300">
-                  Triage will be skipped for this encounter type. Vital signs can be recorded
-                  later once the patient is stabilized.
-                </AlertDescription>
-              </Alert>
-            )}
           </CardContent>
         </Card>
 
