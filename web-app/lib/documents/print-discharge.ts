@@ -15,6 +15,7 @@ import {
   formatDate,
   openPrintWindow,
 } from './renderer';
+import { generateQRDataUri } from '@/lib/utils/qr';
 
 // =============================================================================
 // Markdown → HTML (lightweight, no external dependency)
@@ -41,22 +42,64 @@ function contentToHtml(text: string): string {
  * Strip AI advisory content that should not appear on the printed document.
  * Removes:
  *  - Fully italic paragraphs (advisory notes wrapped in *...* or _..._ )
- *  - "Not documented (...)" placeholder lines
+ *  - "Not documented (...)" placeholder lines and table cell values
  *  - Standalone parenthetical instructions "(If ... )"
+ *  - Table rows where every data cell is a "not documented" placeholder
  */
 function stripAdvisoryContent(md: string): string {
   return md
     .split(/\n{2,}/)
-    .filter((block) => {
+    .map((block) => {
       const trimmed = block.trim();
       // Remove blocks that are entirely italic: *text* or _text_ (possibly multi-line)
-      if (/^\*[^*]+\*$/.test(trimmed) || /^_[^_]+_$/.test(trimmed)) return false;
-      // Remove "Not documented (reason)" lines
-      if (/^not documented\b/i.test(trimmed)) return false;
+      if (/^\*[^*]+\*$/.test(trimmed) || /^_[^_]+_$/.test(trimmed)) return null;
+      // Remove "Not documented (reason)" standalone lines
+      if (/^not documented\b/i.test(trimmed)) return null;
       // Remove standalone parenthetical instruction blocks
-      if (/^\([^)]{20,}\)$/.test(trimmed)) return false;
-      return true;
+      if (/^\([^)]{20,}\)$/.test(trimmed)) return null;
+
+      // Handle tables: clean "Not documented" from cells and drop empty rows
+      if (/^\|.+\|/m.test(trimmed)) {
+        const lines = trimmed.split('\n');
+        const cleaned = lines.filter((line) => {
+          // Always keep non-table lines, header rows, and separator rows
+          if (!/^\|/.test(line)) return true;
+          if (/^\|(\s*:?-{2,}:?\s*\|)+/.test(line)) return true;
+
+          // Clean "Not documented ..." from cell values
+          const scrubbed = line.replace(
+            /not documented\s*(\([^)]*\))?/gi,
+            '\u2014',
+          );
+
+          // Drop the row if every data cell is now just a dash/empty
+          const cells = scrubbed
+            .replace(/^\|\s*/, '')
+            .replace(/\s*\|$/, '')
+            .split('|')
+            .map((c) => c.trim());
+
+          // Keep header-like rows (first data row before separator)
+          const allEmpty = cells.every((c) => /^(\u2014|-|)$/.test(c));
+          if (allEmpty) return false;
+
+          // Replace the original line with scrubbed version
+          lines[lines.indexOf(line)] = scrubbed;
+          return true;
+        });
+
+        // If only header + separator remain (no data rows), drop the whole table
+        const dataRows = cleaned.filter(
+          (l) => /^\|/.test(l) && !/^\|(\s*:?-{2,}:?\s*\|)+/.test(l),
+        );
+        if (dataRows.length <= 1) return null; // only header row left
+
+        return cleaned.join('\n');
+      }
+
+      return block;
     })
+    .filter((b): b is string => b !== null)
     .join('\n\n');
 }
 
@@ -137,6 +180,17 @@ function markdownToHtml(md: string): string {
   // Single newlines within paragraphs → <br>
   html = html.replace(/(<p>[\s\S]*?<\/p>)/g, (p) => p.replace(/\n/g, '<br/>'));
 
+  // Wrap heading + following content into <section> blocks so page-break
+  // logic can keep a heading with its body and avoid breaks in headless sections.
+  html = html.replace(
+    /(<h[1-3][^>]*>)/g,
+    '</section>\n<section class="has-heading">$1',
+  );
+  // Open a wrapper for the leading (headless) content and close the last section
+  html = '<section>' + html + '</section>';
+  // Remove the empty first </section> artifact
+  html = html.replace('<section></section>', '');
+
   return html;
 }
 
@@ -165,6 +219,14 @@ export interface DischargeDocumentData {
   admittingDiagnosis?: string;
   /** Facility name for the header */
   facilityName?: string;
+  /** Facility MFL code (Master Facility List) */
+  facilityMflCode?: string;
+  /** Facility location (e.g. "Westlands, Nairobi") */
+  facilityLocation?: string;
+  /** Facility phone number */
+  facilityPhone?: string;
+  /** Facility email */
+  facilityEmail?: string;
 }
 
 // =============================================================================
@@ -195,6 +257,14 @@ const DISCHARGE_CSS = `
     font-size: 14pt;
     font-weight: 700;
     color: #111;
+  }
+
+  .header .facility-detail {
+    font-size: 9pt;
+    font-weight: 400;
+    color: #555;
+    margin-top: 2px;
+    line-height: 1.4;
   }
 
   .header .doc-title {
@@ -275,6 +345,19 @@ const DISCHARGE_CSS = `
   }
   .content hr { border: none; border-top: 1px solid #ccc; margin: 12px 0; }
 
+  .qr-block {
+    text-align: center;
+    margin-top: 24px;
+  }
+  .qr-block img {
+    display: inline-block;
+  }
+  .qr-block .qr-label {
+    font-size: 8pt;
+    color: #777;
+    margin-top: 4px;
+  }
+
   .footer {
     margin-top: 40px;
     padding-top: 12px;
@@ -319,6 +402,17 @@ const DISCHARGE_CSS = `
       widows: 3;
     }
 
+    /* Sections without a heading: never start a new page */
+    .content section {
+      page-break-before: avoid;
+    }
+
+    /* Sections WITH a heading: allow (but don't force) a page break before */
+    .content section.has-heading {
+      page-break-before: auto;
+      page-break-inside: auto;
+    }
+
     /* Don't strand headings at the bottom of a page */
     .content h1, .content h2, .content h3 {
       page-break-after: avoid;
@@ -356,7 +450,7 @@ const DISCHARGE_CSS = `
 // TEMPLATE BUILDER
 // =============================================================================
 
-function buildDischargeHtml(data: DischargeDocumentData): string {
+function buildDischargeHtml(data: DischargeDocumentData, qrDataUri?: string): string {
   const now = new Date();
   const dischargeDate = data.dischargeDate
     ? formatDate(data.dischargeDate)
@@ -365,9 +459,19 @@ function buildDischargeHtml(data: DischargeDocumentData): string {
     ? formatDate(data.admissionDate)
     : '';
 
+  // Build facility detail line(s) under the name
+  const facilityDetails: string[] = [];
+  if (data.facilityMflCode) facilityDetails.push(`MFL: ${escapeHtml(data.facilityMflCode)}`);
+  if (data.facilityLocation) facilityDetails.push(escapeHtml(data.facilityLocation));
+  if (data.facilityPhone) facilityDetails.push(`Tel: ${escapeHtml(data.facilityPhone)}`);
+  if (data.facilityEmail) facilityDetails.push(escapeHtml(data.facilityEmail));
+
   return `
 <div class="header">
-  <div class="facility">${escapeHtml(data.facilityName || 'Health Facility')}</div>
+  <div>
+    <div class="facility">${escapeHtml(data.facilityName || 'Health Facility')}</div>
+    ${facilityDetails.length ? `<div class="facility-detail">${facilityDetails.join(' &bull; ')}</div>` : ''}
+  </div>
   <div class="doc-title">${escapeHtml(data.documentTitle)}</div>
 </div>
 
@@ -390,6 +494,12 @@ function buildDischargeHtml(data: DischargeDocumentData): string {
   <div class="sig">
     <div class="line">Discharging Officer</div>
   </div>
+  ${qrDataUri ? `
+  <div class="qr-block">
+    <img src="${qrDataUri}" alt="QR Code" width="80" height="80" />
+    <div class="qr-label">${escapeHtml(data.admissionNumber || '')}</div>
+  </div>
+  ` : ''}
   <div class="sig">
     <div class="line">Patient / Guardian Signature</div>
   </div>
@@ -409,9 +519,20 @@ function buildDischargeHtml(data: DischargeDocumentData): string {
 /**
  * Print a discharge document (summary or patient instructions).
  * Opens a new browser tab with the formatted document and triggers print.
+ * Generates a QR code encoding the admission number for quick record lookup.
  */
-export function printDischargeDocument(data: DischargeDocumentData): Window | null {
-  const bodyHtml = buildDischargeHtml(data);
+export async function printDischargeDocument(data: DischargeDocumentData): Promise<Window | null> {
+  // Generate QR code encoding admission number
+  let qrDataUri: string | undefined;
+  if (data.admissionNumber) {
+    try {
+      qrDataUri = await generateQRDataUri(`VITORA:ADM:${data.admissionNumber}`, { size: 80 });
+    } catch {
+      // QR generation is best-effort — print without it
+    }
+  }
+
+  const bodyHtml = buildDischargeHtml(data, qrDataUri);
   const title = `${data.documentTitle} - ${data.patientName}`;
   const html = buildPrintDocument(bodyHtml, title, 'a4', 'default', DISCHARGE_CSS);
   return openPrintWindow(html);
