@@ -392,7 +392,12 @@ export default function DischargePage() {
           chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
         },
         output_format: 'markdown',
-        additional_instructions: clinicalHistoryText || undefined,
+        additional_instructions: [
+          'For the Hospital Course section, write a flowing clinical narrative that synthesizes the ward round findings into a coherent story of the admission.',
+          'Mention key dates and clinical inflection points (e.g. when symptoms improved, when antibiotics were changed, when a complication arose) but do NOT list each ward round as separate S/O/A/P entries.',
+          'Omit advisory notes, placeholder text like "Not documented", and parenthetical instructions — only include documented clinical facts.',
+          clinicalHistoryText || '',
+        ].filter(Boolean).join(' '),
       });
       if (result.full_text) {
         setDischargeSummary(result.full_text);
