@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
-import { Save, Plus, Trash2, Clock, CheckCircle2, BrainCircuit, Loader2, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Save, Plus, Trash2, Clock, CheckCircle2, BrainCircuit, Loader2, AlertTriangle, ShieldAlert, Printer } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { MultiDiagnosisInput, type DiagnosisEntry } from '@/components/shared';
@@ -44,6 +44,7 @@ import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-inpu
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
+import { printDischargeDocument } from '@/lib/documents';
 import type { DischargeType, DischargeMedication, MaternityContinuityAction } from '@/lib/types/inpatient';
 import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocAdmissionContext, ClinicalDocPatientContext } from '@/lib/types/ai';
 
@@ -788,6 +789,27 @@ export default function DischargePage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="discharge-summary">Discharge Summary *</Label>
+              <div className="flex items-center gap-1">
+                {dischargeSummary && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => printDischargeDocument({
+                      documentTitle: 'Discharge Summary',
+                      content: dischargeSummary,
+                      patientName: admission.patient_name || '',
+                      admissionNumber: admission.admission_number,
+                      wardName: admission.ward_name || '',
+                      admissionDate: admission.admission_date,
+                      admittingDiagnosis: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
+                    })}
+                    className="gap-1.5 text-xs"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    Print
+                  </Button>
+                )}
               {isAIEnabled && !summaryGenerated && (
                 <Button
                   type="button"
@@ -822,6 +844,7 @@ export default function DischargePage() {
                   Regenerate
                 </Button>
               )}
+              </div>
             </div>
             {clinicalDocument.isPending && !dischargeSummary ? (
               <div className="rounded-md border bg-muted/30 p-4 space-y-2 animate-pulse">
@@ -852,6 +875,27 @@ export default function DischargePage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="patient-instructions">Patient Instructions *</Label>
+              <div className="flex items-center gap-1">
+                {patientInstructions && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => printDischargeDocument({
+                      documentTitle: 'Patient Discharge Instructions',
+                      content: patientInstructions,
+                      patientName: admission.patient_name || '',
+                      admissionNumber: admission.admission_number,
+                      wardName: admission.ward_name || '',
+                      admissionDate: admission.admission_date,
+                      admittingDiagnosis: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
+                    })}
+                    className="gap-1.5 text-xs"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    Print
+                  </Button>
+                )}
               {isAIEnabled && !instructionsGenerated && (
                 <Button
                   type="button"
@@ -886,6 +930,7 @@ export default function DischargePage() {
                   Regenerate
                 </Button>
               )}
+              </div>
             </div>
             {clinicalDocument.isPending && !patientInstructions ? (
               <div className="rounded-md border bg-muted/30 p-4 space-y-2 animate-pulse">

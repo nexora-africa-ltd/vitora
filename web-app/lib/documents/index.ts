@@ -163,3 +163,8 @@ export {
   printPartographReport,
   type PrintPartographReportData,
 } from './print-partograph-report';
+
+export {
+  printDischargeDocument,
+  type DischargeDocumentData,
+} from './print-discharge';
