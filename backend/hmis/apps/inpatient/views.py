@@ -1840,7 +1840,7 @@ class DischargeViewSet(viewsets.ModelViewSet):
     serializer_class = DischargeSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["discharge_type", "pharmacy_cleared", "billing_cleared", "discharged_by"]
+    filterset_fields = ["admission", "discharge_type", "pharmacy_cleared", "billing_cleared", "discharged_by"]
     search_fields = [
         "admission__admission_number",
         "admission__patient__first_name",

@@ -689,6 +689,7 @@ export interface BedListParams {
 }
 
 export interface DischargeListParams {
+  admission?: number;
   discharge_type?: DischargeType;
   pharmacy_cleared?: boolean;
   billing_cleared?: boolean;
