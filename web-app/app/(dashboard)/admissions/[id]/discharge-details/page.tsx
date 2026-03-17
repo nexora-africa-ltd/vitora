@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useAdmission, useDischargeByAdmission } from '@/lib/hooks/use-inpatient';
+import { useFacility } from '@/lib/context/facility-context';
 import { printDischargeDocument } from '@/lib/documents';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import type { Discharge, DischargeType } from '@/lib/types/inpatient';
@@ -79,6 +80,7 @@ export default function DischargeDetailPage() {
 
   const { data: admission, isLoading: admissionLoading } = useAdmission(admissionId);
   const { data: discharge, isLoading: dischargeLoading } = useDischargeByAdmission(admissionId);
+  const { facility } = useFacility();
 
   const isLoading = admissionLoading || dischargeLoading;
 
@@ -262,6 +264,8 @@ export default function DischargeDetailPage() {
                   admissionDate: admission.admission_date,
                   dischargeDate: discharge.discharge_date,
                   admittingDiagnosis: discharge.admission_diagnosis,
+                  facilityName: facility?.name,
+                  facilityMflCode: facility?.mfl_code,
                 })
               }
               className="gap-1.5 text-xs"
@@ -303,6 +307,8 @@ export default function DischargeDetailPage() {
                   admissionDate: admission.admission_date,
                   dischargeDate: discharge.discharge_date,
                   admittingDiagnosis: discharge.admission_diagnosis,
+                  facilityName: facility?.name,
+                  facilityMflCode: facility?.mfl_code,
                 })
               }
               className="gap-1.5 text-xs"

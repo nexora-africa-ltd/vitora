@@ -42,6 +42,7 @@ import { useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { useAIEnabled, useAIClinicalDocument, useAICDSEvaluate, useStoredCarePlans } from '@/lib/hooks/use-ai';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
+import { useFacility } from '@/lib/context/facility-context';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { printDischargeDocument } from '@/lib/documents';
@@ -80,6 +81,7 @@ export default function DischargePage() {
   const { data: admission, isLoading } = useAdmission(admissionId);
   const { data: wardRounds } = useAdmissionWardRounds(admissionId);
   const { data: orders } = useAdmissionOrders(admissionId);
+  const { facility } = useFacility();
   const createDischarge = useCreateDischarge();
   const isAIEnabled = useAIEnabled();
   const clinicalDocument = useAIClinicalDocument();
@@ -803,6 +805,8 @@ export default function DischargePage() {
                       wardName: admission.ward_name || '',
                       admissionDate: admission.admission_date,
                       admittingDiagnosis: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
+                      facilityName: facility?.name,
+                      facilityMflCode: facility?.mfl_code,
                     })}
                     className="gap-1.5 text-xs"
                   >
@@ -889,6 +893,8 @@ export default function DischargePage() {
                       wardName: admission.ward_name || '',
                       admissionDate: admission.admission_date,
                       admittingDiagnosis: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
+                      facilityName: facility?.name,
+                      facilityMflCode: facility?.mfl_code,
                     })}
                     className="gap-1.5 text-xs"
                   >
