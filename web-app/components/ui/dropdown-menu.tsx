@@ -1,3 +1,5 @@
+// React 19 workaround: same DismissableLayer outside-click issue as popover.
+// See popover.tsx for full explanation.
 "use client"
 
 import * as React from "react"
@@ -6,10 +8,39 @@ import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+const DropdownMenuCloseContext = React.createContext<(() => void) | null>(null)
+
 function DropdownMenu({
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(
+    props.defaultOpen ?? false
+  )
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : uncontrolledOpen
+
+  const onOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!isControlled) setUncontrolledOpen(nextOpen)
+      controlledOnOpenChange?.(nextOpen)
+    },
+    [isControlled, controlledOnOpenChange]
+  )
+
+  const close = React.useCallback(() => onOpenChange(false), [onOpenChange])
+
+  return (
+    <DropdownMenuCloseContext.Provider value={open ? close : null}>
+      <DropdownMenuPrimitive.Root
+        data-slot="dropdown-menu"
+        open={open}
+        onOpenChange={onOpenChange}
+        {...props}
+      />
+    </DropdownMenuCloseContext.Provider>
+  )
 }
 
 function DropdownMenuPortal({
@@ -36,9 +67,41 @@ function DropdownMenuContent({
   sideOffset = 4,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+  const contentRef = React.useRef<HTMLDivElement>(null)
+  const close = React.useContext(DropdownMenuCloseContext)
+
+  React.useEffect(() => {
+    if (!close) return
+
+    const onPointerDown = (e: PointerEvent) => {
+      const content = contentRef.current
+      if (!content) return
+      const target = e.target as Node | null
+      if (!target) return
+      if (content.contains(target)) return
+
+      const trigger = document.querySelector(
+        '[data-slot="dropdown-menu-trigger"][data-state="open"]'
+      )
+      if (trigger?.contains(target)) return
+
+      close()
+    }
+
+    const raf = requestAnimationFrame(() => {
+      document.addEventListener("pointerdown", onPointerDown, true)
+    })
+
+    return () => {
+      cancelAnimationFrame(raf)
+      document.removeEventListener("pointerdown", onPointerDown, true)
+    }
+  }, [close])
+
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
+        ref={contentRef}
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         className={cn(
