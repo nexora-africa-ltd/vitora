@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, memo } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,83 @@ const ROLE_COLORS: Record<DiagnosisRole, string> = {
   COMPLICATION: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
 };
 
+/** Memoised row so that sibling edits don't re-render unrelated rows */
+const DiagnosisRow = memo(function DiagnosisRow({
+  entry,
+  index,
+  hasPrimary,
+  disabled,
+  onCodeChange,
+  onRoleChange,
+  onRemove,
+}: {
+  entry: DiagnosisEntry;
+  index: number;
+  hasPrimary: boolean;
+  disabled: boolean;
+  onCodeChange: (index: number, code: DiagnosisCodeValue) => void;
+  onRoleChange: (index: number, role: DiagnosisRole) => void;
+  onRemove: (index: number) => void;
+}) {
+  const handleCode = useCallback(
+    (code: DiagnosisCodeValue) => onCodeChange(index, code),
+    [onCodeChange, index],
+  );
+  const handleRole = useCallback(
+    (v: string) => onRoleChange(index, v as DiagnosisRole),
+    [onRoleChange, index],
+  );
+  const handleRemove = useCallback(() => onRemove(index), [onRemove, index]);
+
+  return (
+    <div className="rounded-lg border p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Badge className={`shrink-0 text-xs ${ROLE_COLORS[entry.role]}`}>
+            {entry.role}
+          </Badge>
+          {entry.role === 'PRIMARY' ? (
+            <span className="text-xs text-muted-foreground">Principal diagnosis</span>
+          ) : (
+            <Select
+              value={entry.role}
+              onValueChange={handleRole}
+              disabled={disabled}
+            >
+              <SelectTrigger className="h-7 w-[130px] text-xs border-0 bg-transparent p-0">
+                <span className="text-xs text-muted-foreground">Change role</span>
+              </SelectTrigger>
+              <SelectContent>
+                {ROLE_OPTIONS.filter((r) => r.value !== 'PRIMARY' || !hasPrimary || entry.role === 'PRIMARY').map((r) => (
+                  <SelectItem key={r.value} value={r.value} className="text-xs">
+                    {r.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={handleRemove}
+          disabled={disabled}
+          className="h-7 w-7 text-destructive hover:text-destructive"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      <DiagnosisCodeInput
+        value={entry.code}
+        onChange={handleCode}
+        disabled={disabled}
+        showVersionToggle
+      />
+    </div>
+  );
+});
+
 interface MultiDiagnosisInputProps {
   value: DiagnosisEntry[];
   onChange: (entries: DiagnosisEntry[]) => void;
@@ -56,7 +133,6 @@ export function MultiDiagnosisInput({
   const handleAdd = useCallback(() => {
     const role = !hasPrimary ? 'PRIMARY' : addingRole;
     onChange([...value, { role, code: emptyDiagnosisCodeValue() }]);
-    // Default next add to SECONDARY
     setAddingRole('SECONDARY');
   }, [value, onChange, hasPrimary, addingRole]);
 
@@ -115,51 +191,16 @@ export function MultiDiagnosisInput({
 
       <div className="space-y-3">
         {value.map((entry, index) => (
-          <div key={index} className="rounded-lg border p-3 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Badge className={`shrink-0 text-xs ${ROLE_COLORS[entry.role]}`}>
-                  {entry.role}
-                </Badge>
-                {entry.role === 'PRIMARY' ? (
-                  <span className="text-xs text-muted-foreground">Principal diagnosis</span>
-                ) : (
-                  <Select
-                    value={entry.role}
-                    onValueChange={(v) => handleRoleChange(index, v as DiagnosisRole)}
-                    disabled={disabled}
-                  >
-                    <SelectTrigger className="h-7 w-[130px] text-xs border-0 bg-transparent p-0">
-                      <span className="text-xs text-muted-foreground">Change role</span>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROLE_OPTIONS.filter((r) => r.value !== 'PRIMARY' || !hasPrimary || entry.role === 'PRIMARY').map((r) => (
-                        <SelectItem key={r.value} value={r.value} className="text-xs">
-                          {r.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => handleRemove(index)}
-                disabled={disabled}
-                className="h-7 w-7 text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-            <DiagnosisCodeInput
-              value={entry.code}
-              onChange={(code) => handleCodeChange(index, code)}
-              disabled={disabled}
-              showVersionToggle
-            />
-          </div>
+          <DiagnosisRow
+            key={index}
+            entry={entry}
+            index={index}
+            hasPrimary={hasPrimary}
+            disabled={disabled}
+            onCodeChange={handleCodeChange}
+            onRoleChange={handleRoleChange}
+            onRemove={handleRemove}
+          />
         ))}
       </div>
     </div>

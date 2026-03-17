@@ -263,7 +263,10 @@ export function DiagnosisCodeInput({
                           <li key={code.id}>
                             <button
                               type="button"
-                              onClick={() => handleSelectICD10(code)}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleSelectICD10(code);
+                              }}
                               className="w-full flex items-start gap-2 p-2 rounded-md hover:bg-accent transition-colors text-left"
                             >
                               <Badge variant="outline" className="font-mono shrink-0">
@@ -335,7 +338,10 @@ export function DiagnosisCodeInput({
                           <li key={result.concept_id}>
                             <button
                               type="button"
-                              onClick={() => handleSelectSNOMED(result)}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleSelectSNOMED(result);
+                              }}
                               className="w-full flex items-start gap-2 p-2 rounded-md hover:bg-accent transition-colors text-left"
                             >
                               <Badge variant="outline" className="font-mono shrink-0 bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-400">

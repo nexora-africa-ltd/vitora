@@ -6,7 +6,9 @@ import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { Save, Plus, Trash2, Clock, CheckCircle2, BrainCircuit, Loader2, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
+import { HelpPopover } from '@/components/shared/help-popover';
 import { MultiDiagnosisInput, type DiagnosisEntry } from '@/components/shared';
+import { MarkdownPreview } from '@/components/shared/markdown-preview';
 import { emptyDiagnosisCodeValue } from '@/components/shared';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,7 +38,9 @@ import {
 } from '@/components/ui/select';
 import { DischargeReadinessPanel } from '@/components/inpatient/discharge-readiness-panel';
 import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders } from '@/lib/hooks/use-inpatient';
-import { useAIEnabled, useAIClinicalDocument, useAICDSEvaluate } from '@/lib/hooks/use-ai';
+import { useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
+import { useAIEnabled, useAIClinicalDocument, useAICDSEvaluate, useStoredCarePlans } from '@/lib/hooks/use-ai';
+import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -79,6 +83,11 @@ export default function DischargePage() {
   const isAIEnabled = useAIEnabled();
   const clinicalDocument = useAIClinicalDocument();
   const cdsEvaluate = useAICDSEvaluate();
+
+  // Fetch encounter diagnoses for pre-population suggestions
+  const sourceEncounterId = admission?.source_encounter || admission?.opd_encounter || 0;
+  const { data: encounterDiagnoses } = useEncounterDiagnoses(sourceEncounterId);
+  const { data: storedCarePlans } = useStoredCarePlans({ encounter_id: sourceEncounterId || undefined, admission_id: admissionId });
   const chatCtx = useOptionalAIChatContext();
   const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
 
@@ -98,6 +107,10 @@ export default function DischargePage() {
 
   // CDS safety check dialog state
   const [cdsAlerts, setCdsAlerts] = useState<AICDSAlertItem[]>([]);
+
+  // Track whether TibaBot has generated content (to show preview vs textarea)
+  const [summaryGenerated, setSummaryGenerated] = useState(false);
+  const [instructionsGenerated, setInstructionsGenerated] = useState(false);
   const [showCdsDialog, setShowCdsDialog] = useState(false);
 
   // Calculate length of stay
@@ -219,6 +232,89 @@ export default function DischargePage() {
     return parts.join(' \n');
   }, [wardRounds, orders]);
 
+  // Build suggested diagnoses from admission data + encounter + AI care plans
+  const suggestedDiagnoses = useMemo(() => {
+    const suggestions: { label: string; source: string; entry: DiagnosisEntry }[] = [];
+    const seenCodes = new Set<string>();
+
+    // 1. Admitting diagnosis
+    if (admission?.admitting_diagnosis || admission?.admitting_diagnosis_text) {
+      const code = admission.admitting_diagnosis || '';
+      const text = admission.admitting_diagnosis_text || '';
+      const key = code || text;
+      if (key && !seenCodes.has(key)) {
+        seenCodes.add(key);
+        const codeVal: DiagnosisCodeValue = {
+          ...emptyDiagnosisCodeValue(),
+          icd10Display: code ? `${code} - ${text}` : text,
+        };
+        suggestions.push({
+          label: code ? `${code} — ${text}` : text,
+          source: 'Admitting',
+          entry: { role: suggestions.length === 0 ? 'PRIMARY' : 'SECONDARY', code: codeVal },
+        });
+      }
+    }
+
+    // 2. Encounter diagnoses (from the source OPD encounter)
+    if (encounterDiagnoses && Array.isArray(encounterDiagnoses)) {
+      for (const d of encounterDiagnoses as any[]) {
+        let key = '';
+        let codeVal: DiagnosisCodeValue = emptyDiagnosisCodeValue();
+
+        if (d.icd11_code) {
+          key = d.icd11_code;
+          codeVal = { ...codeVal, icd11Code: d.icd11_code, icd11Display: `${d.icd11_code} - ${d.icd11_display || d.free_text_diagnosis || ''}` };
+        } else if (d.icd10_code || d.icd10_display) {
+          const display = d.icd10_display || '';
+          const codeStr = display.split(' - ')[0] || String(d.icd10_code || '');
+          key = codeStr;
+          const text = display.split(' - ').slice(1).join(' - ') || d.free_text_diagnosis || '';
+          codeVal = { ...codeVal, icd10Code: d.icd10_code || null, icd10Display: `${codeStr} - ${text}` };
+        } else if (d.free_text_diagnosis) {
+          key = d.free_text_diagnosis;
+          codeVal = { ...codeVal, icd10Display: d.free_text_diagnosis };
+        }
+
+        if (key && !seenCodes.has(key)) {
+          seenCodes.add(key);
+          const label = codeVal.icd11Display || codeVal.icd10Display || key;
+          suggestions.push({
+            label: label.replace(' - ', ' — '),
+            source: d.diagnosis_type === 'PRIMARY' ? 'Primary Dx' : 'Encounter',
+            entry: { role: suggestions.length === 0 ? 'PRIMARY' : 'SECONDARY', code: codeVal },
+          });
+        }
+      }
+    }
+
+    // 3. AI Care Plan conditions (if stored)
+    if (storedCarePlans && Array.isArray(storedCarePlans)) {
+      for (const cp of storedCarePlans as any[]) {
+        const condition = cp.condition || cp.primary_diagnosis || '';
+        if (condition && !seenCodes.has(condition)) {
+          seenCodes.add(condition);
+          suggestions.push({
+            label: condition,
+            source: 'TibaBot',
+            entry: { role: 'SECONDARY', code: { ...emptyDiagnosisCodeValue(), icd10Display: condition } },
+          });
+        }
+      }
+    }
+
+    return suggestions;
+  }, [admission, encounterDiagnoses, storedCarePlans]);
+
+  const handleAddSuggestion = useCallback((entry: DiagnosisEntry) => {
+    setDiagnoses((prev) => {
+      // If adding a PRIMARY and one already exists, add as SECONDARY instead
+      const hasPrimary = prev.some((d) => d.role === 'PRIMARY');
+      const role = entry.role === 'PRIMARY' && hasPrimary ? 'SECONDARY' : entry.role;
+      return [...prev, { ...entry, role }];
+    });
+  }, []);
+
   // Wire TibaBot context so the AI chat widget is admission-aware
   useEffect(() => {
     if (!setEncounterAwareContext || !admission) return;
@@ -297,6 +393,7 @@ export default function DischargePage() {
       });
       if (result.full_text) {
         setDischargeSummary(result.full_text);
+        setSummaryGenerated(true);
         toast({ title: 'Draft Generated', description: 'TibaBot drafted a discharge summary. Please review and edit.' });
       }
     } catch {
@@ -340,6 +437,7 @@ export default function DischargePage() {
       });
       if (result.full_text) {
         setPatientInstructions(result.full_text);
+        setInstructionsGenerated(true);
         toast({ title: 'Draft Generated', description: 'TibaBot drafted patient instructions. Please review and edit.' });
       }
     } catch {
@@ -633,18 +731,64 @@ export default function DischargePage() {
             </Select>
           </div>
 
-          {/* Discharge Diagnoses (multi) */}
-          <MultiDiagnosisInput
-            value={diagnoses}
-            onChange={setDiagnoses}
-            label="Discharge Diagnoses"
-          />
+          {/* Discharge Diagnoses — Suggestions + Manual Add */}
+          <div className="space-y-3">
+            {/* Suggested diagnoses from admission / encounter / AI */}
+            {suggestedDiagnoses.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <Label>Suggested Diagnoses</Label>
+                  <HelpPopover content="Quick-add diagnoses from the admitting diagnosis, encounter record, or TibaBot care plans. Click + to add them to the discharge diagnoses below." />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {suggestedDiagnoses.map((suggestion, idx) => {
+                    // Check if already added
+                    const alreadyAdded = diagnoses.some((d) => {
+                      const existingKey = d.code.icd11Code || d.code.icd10Display || d.code.snomedCode || '';
+                      const suggestionKey = suggestion.entry.code.icd11Code || suggestion.entry.code.icd10Display || suggestion.entry.code.snomedCode || '';
+                      return existingKey === suggestionKey;
+                    });
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        disabled={alreadyAdded}
+                        onClick={() => handleAddSuggestion(suggestion.entry)}
+                        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors ${
+                          alreadyAdded
+                            ? 'border-muted bg-muted/50 text-muted-foreground cursor-not-allowed'
+                            : 'border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40'
+                        }`}
+                      >
+                        {!alreadyAdded && (
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shrink-0">
+                            <Plus className="h-3.5 w-3.5" />
+                          </span>
+                        )}
+                        {alreadyAdded && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-600" />}
+                        <span className="truncate max-w-[240px]">{suggestion.label}</span>
+                        <Badge variant="secondary" className="text-[10px] shrink-0">
+                          {suggestion.source}
+                        </Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <MultiDiagnosisInput
+              value={diagnoses}
+              onChange={setDiagnoses}
+              label="Discharge Diagnoses"
+            />
+          </div>
 
           {/* Discharge Summary (Treatment Summary) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="discharge-summary">Discharge Summary *</Label>
-              {isAIEnabled && (
+              {isAIEnabled && !summaryGenerated && (
                 <Button
                   type="button"
                   variant="ghost"
@@ -661,21 +805,54 @@ export default function DischargePage() {
                   Generate with TibaBot
                 </Button>
               )}
+              {isAIEnabled && summaryGenerated && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleGenerateSummary}
+                  disabled={clinicalDocument.isPending}
+                  className="gap-1.5 text-xs text-muted-foreground"
+                >
+                  {clinicalDocument.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <BrainCircuit className="h-3.5 w-3.5" />
+                  )}
+                  Regenerate
+                </Button>
+              )}
             </div>
-            <Textarea
-              id="discharge-summary"
-              value={dischargeSummary}
-              onChange={(e) => setDischargeSummary(e.target.value)}
-              placeholder="Provide a comprehensive summary of the patient's hospital stay, treatment given, and outcomes..."
-              rows={6}
-            />
+            {clinicalDocument.isPending && !dischargeSummary ? (
+              <div className="rounded-md border bg-muted/30 p-4 space-y-2 animate-pulse">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-4 w-2/3" />
+              </div>
+            ) : summaryGenerated ? (
+              <MarkdownPreview
+                value={dischargeSummary}
+                onChange={setDischargeSummary}
+                placeholder="Provide a comprehensive summary of the patient's hospital stay, treatment given, and outcomes..."
+                rows={6}
+              />
+            ) : (
+              <Textarea
+                id="discharge-summary"
+                value={dischargeSummary}
+                onChange={(e) => setDischargeSummary(e.target.value)}
+                placeholder="Provide a comprehensive summary of the patient's hospital stay, treatment given, and outcomes..."
+                rows={6}
+              />
+            )}
           </div>
 
           {/* Patient Instructions */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="patient-instructions">Patient Instructions *</Label>
-              {isAIEnabled && (
+              {isAIEnabled && !instructionsGenerated && (
                 <Button
                   type="button"
                   variant="ghost"
@@ -692,14 +869,46 @@ export default function DischargePage() {
                   Generate with TibaBot
                 </Button>
               )}
+              {isAIEnabled && instructionsGenerated && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleGenerateInstructions}
+                  disabled={clinicalDocument.isPending}
+                  className="gap-1.5 text-xs text-muted-foreground"
+                >
+                  {clinicalDocument.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <BrainCircuit className="h-3.5 w-3.5" />
+                  )}
+                  Regenerate
+                </Button>
+              )}
             </div>
-            <Textarea
-              id="patient-instructions"
-              value={patientInstructions}
-              onChange={(e) => setPatientInstructions(e.target.value)}
-              placeholder="Discharge instructions for patient..."
-              rows={3}
-            />
+            {clinicalDocument.isPending && !patientInstructions ? (
+              <div className="rounded-md border bg-muted/30 p-4 space-y-2 animate-pulse">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ) : instructionsGenerated ? (
+              <MarkdownPreview
+                value={patientInstructions}
+                onChange={setPatientInstructions}
+                placeholder="Discharge instructions for patient..."
+                rows={3}
+              />
+            ) : (
+              <Textarea
+                id="patient-instructions"
+                value={patientInstructions}
+                onChange={(e) => setPatientInstructions(e.target.value)}
+                placeholder="Discharge instructions for patient..."
+                rows={3}
+              />
+            )}
           </div>
 
           {admission.mch_registration && (
