@@ -231,6 +231,17 @@ export default function NewEncounterReviewPage() {
               variant: 'destructive',
             });
           }
+        } else if (isIPD) {
+          // IPD without admission details — redirect to admission recommendations
+          toast({
+            title: 'IPD Encounter Created',
+            description: 'Encounter created. Redirecting to create admission record.',
+          });
+          const encId = result.id;
+          const ptId = patientData!.id;
+          clearSession();
+          router.push(`/admissions/new?patient=${ptId}&encounter=${encId}`);
+          return;
         } else {
           toast({
             title: 'Encounter Created',

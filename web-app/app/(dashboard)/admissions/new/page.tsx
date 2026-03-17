@@ -78,16 +78,6 @@ export default function NewAdmissionPage() {
   const patientId = patientIdParam ? Number(patientIdParam) : null;
   const encounterId = encounterIdParam ? Number(encounterIdParam) : null;
 
-  // Patient selection dialog state
-  const [showPatientDialog, setShowPatientDialog] = useState(false);
-
-  // Show dialog on mount if no patient selected
-  useEffect(() => {
-    if (!patientId) {
-      setShowPatientDialog(true);
-    }
-  }, [patientId]);
-
   // Fetch patient details if patient ID is provided
   const { data: patientData } = usePatient(patientId || 0);
 
@@ -1211,40 +1201,6 @@ export default function NewAdmissionPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Patient Selection Required Dialog */}
-      <Dialog open={showPatientDialog} onOpenChange={setShowPatientDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Patient Required</DialogTitle>
-            <DialogDescription>
-              You need to select a patient before creating an admission. Would you like to select a patient now?
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              variant="outline"
-              onClick={() => setShowPatientDialog(false)}
-              data-testid="continue-without-patient"
-              className="w-full sm:w-auto"
-            >
-              <span className="sm:hidden">Continue</span>
-              <span className="hidden sm:inline">Continue Without Patient</span>
-            </Button>
-            <Button
-              onClick={() => {
-                setShowPatientDialog(false);
-                router.push('/patients?select=true&returnTo=/admissions/new');
-              }}
-              data-testid="select-patient-dialog-button"
-              className="w-full sm:w-auto"
-            >
-              <User className="h-4 w-4 mr-2" />
-              Select Patient
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Admission Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
