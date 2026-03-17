@@ -43,8 +43,10 @@ import {
   useCheckWardCompatibility,
   useGenerateWardBeds,
   useRecommendWard,
+  useAdmissionRecommendations,
 } from '@/lib/hooks/use-inpatient';
 import { useEncounter, useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
+import { useEncounters } from '@/lib/hooks/use-encounters';
 import { usePatient } from '@/lib/hooks/use-patients';
 import { emptyDiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
@@ -56,7 +58,9 @@ import type {
   CompatibilityViolation,
   CompatibilityCheckResult,
   SmartAdmissionType,
+  AdmissionRecommendation,
 } from '@/lib/types/inpatient';
+import type { Encounter } from '@/lib/types/encounter';
 import { useMCHRegistrations } from '@/lib/hooks/use-mch';
 import type { MCHRegistrationListItem } from '@/lib/types/mch';
 
@@ -108,6 +112,19 @@ export default function NewAdmissionPage() {
   // Fetch encounter data if encounterId provided (for prefilling diagnosis)
   const { data: encounter } = useEncounter(encounterId || 0);
   const { data: encounterDiagnoses } = useEncounterDiagnoses(encounterId || 0);
+
+  // Pending admissions: recommendations + IPD encounters without admissions
+  const { data: pendingRecsResponse } = useAdmissionRecommendations({ status: 'PENDING', page_size: 10 });
+  const { data: ipdEncountersResponse } = useEncounters({ encounter_type: 'IPD', status: 'IN_PROGRESS', page_size: 10 });
+  const pendingRecs: AdmissionRecommendation[] = useMemo(
+    () => (pendingRecsResponse as any)?.results ?? [],
+    [pendingRecsResponse]
+  );
+  const ipdEncounters: Encounter[] = useMemo(
+    () => (ipdEncountersResponse as any)?.results ?? [],
+    [ipdEncountersResponse]
+  );
+  const hasPendingItems = pendingRecs.length > 0 || ipdEncounters.length > 0;
 
   // Fetch wards and beds
   const { data: wards } = useInpatientWards();
@@ -517,6 +534,85 @@ export default function NewAdmissionPage() {
             {encounter.chief_complaint && ` Chief complaint: ${encounter.chief_complaint}`}
           </AlertDescription>
         </Alert>
+      )}
+
+      {/* Pending Recommendations / IPD Encounters Panel */}
+      {!encounterId && hasPendingItems && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-500" />
+              Pending Admissions
+            </CardTitle>
+            <CardDescription>
+              Select a recommendation or IPD encounter to prefill the admission form.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2 max-h-[280px] overflow-y-auto">
+            {pendingRecs.map((rec) => (
+              <button
+                key={`rec-${rec.id}`}
+                type="button"
+                className="w-full flex items-center justify-between gap-3 rounded-md border p-3 text-left text-sm transition-colors hover:bg-accent"
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  if (rec.patient_id) params.set('patient', String(rec.patient_id));
+                  if (rec.encounter) params.set('encounter', String(rec.encounter));
+                  router.push(`/admissions/new?${params.toString()}`);
+                }}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium truncate">{rec.patient_name || `Patient #${rec.patient_id}`}</span>
+                    {rec.patient_mrn && <Badge variant="outline" className="text-xs shrink-0">{rec.patient_mrn}</Badge>}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {rec.provisional_diagnosis_text || rec.provisional_diagnosis} — {rec.reason}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge
+                    variant="secondary"
+                    className={`text-xs ${
+                      rec.urgency === 'EMERGENCY'
+                        ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+                        : rec.urgency === 'URGENT'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                          : 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+                    }`}
+                  >
+                    {rec.urgency}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">Recommendation</Badge>
+                </div>
+              </button>
+            ))}
+            {ipdEncounters.map((enc) => (
+              <button
+                key={`enc-${enc.id}`}
+                type="button"
+                className="w-full flex items-center justify-between gap-3 rounded-md border p-3 text-left text-sm transition-colors hover:bg-accent"
+                onClick={() => {
+                  const params = new URLSearchParams();
+                  params.set('patient', String(enc.patient));
+                  params.set('encounter', String(enc.id));
+                  router.push(`/admissions/new?${params.toString()}`);
+                }}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium truncate">{enc.patient_name || `Patient #${enc.patient}`}</span>
+                    {enc.patient_mrn && <Badge variant="outline" className="text-xs shrink-0">{enc.patient_mrn}</Badge>}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    IPD Encounter — {enc.chief_complaint || 'No complaint recorded'}
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-xs shrink-0">IPD Encounter</Badge>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
       )}
 
       <Card>
