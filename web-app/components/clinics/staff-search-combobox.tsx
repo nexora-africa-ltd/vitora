@@ -117,7 +117,7 @@ export function StaffSearchCombobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[400px] p-0"
+        className="w-[--radix-popover-trigger-width] p-0"
         align="start"
         style={{ pointerEvents: 'auto' }}
         onWheel={(e) => e.stopPropagation()}

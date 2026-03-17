@@ -77,6 +77,7 @@ Rate limit headers returned on `429`:
 | `/clinical/chat/stats` | GET | **Yes** | Clinical chat statistics |
 | `/clinical/profile` | GET | **Yes** | Get provider profile |
 | `/clinical/profile` | PUT | **Yes** | Update provider profile |
+| `/clinical/document` | POST | **Yes** | Generate clinical documents (discharge summaries, SOAP notes, etc.) |
 | `/clinical/health` | GET | No | Clinical service health |
 
 ### ICD-10 Auto-Coder
@@ -581,6 +582,172 @@ GET /clinical/chat/session/{session_id}
 GET /clinical/chat/session/{session_id}/history
 DELETE /clinical/chat/session/{session_id}
 GET /clinical/chat/stats
+```
+
+#### Clinical Document Generation
+
+Generate structured clinical documents from admission data using LLM with Kenya clinical guidelines.
+
+```http
+POST /clinical/document
+Content-Type: application/json
+X-API-Key: your-api-key
+```
+
+**Document Types:**
+
+| Type | Description |
+|------|-------------|
+| `discharge_summary` | Full discharge summary with hospital course, medications, follow-up |
+| `soap` | SOAP-format clinical note |
+| `progress_note` | Inpatient progress note |
+| `referral_letter` | Referral letter to another facility/specialist |
+| `clerking_note` | Initial clerking/admission note |
+
+**Request:**
+```json
+{
+  "document_type": "discharge_summary",
+  "patient_context": {
+    "patient_age": 32,
+    "patient_sex": "male",
+    "allergies": ["Sulfonamides"],
+    "comorbidities": ["HIV"],
+    "current_medications": ["TDF/3TC/DTG"],
+    "facility_level": 4
+  },
+  "admission_context": {
+    "primary_diagnosis": "Gonococcal urethritis",
+    "icd10_code": "A54.0",
+    "secondary_diagnoses": ["HIV infection"],
+    "admission_date": "2025-06-01",
+    "discharge_date": "2025-06-04",
+    "length_of_stay_days": 3,
+    "ward": "Medical Ward",
+    "discharge_type": "NORMAL",
+    "procedures_performed": ["Urethral swab culture"],
+    "medications_given": ["Ceftriaxone 500mg IM stat", "Azithromycin 1g PO stat"],
+    "discharge_medications": ["Doxycycline 100mg BD x 7 days"],
+    "key_investigations": ["GC culture: positive", "RPR: non-reactive"],
+    "complications": [],
+    "condition_at_discharge": "Stable, afebrile, symptoms resolving"
+  },
+  "encounter_context": {
+    "chief_complaint": "Urethral discharge and dysuria for 5 days"
+  },
+  "facility_context": {
+    "level": 4,
+    "county": "Nairobi"
+  },
+  "output_format": "structured",
+  "include_icd10_codes": true,
+  "additional_instructions": "Emphasise partner notification and STI follow-up per MOH guidelines"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `document_type` | string | Yes | One of: `discharge_summary`, `soap`, `progress_note`, `referral_letter`, `clerking_note` |
+| `patient_context` | PatientContext | Yes | Patient demographics and clinical context. `patient_sex` accepts `"M"`, `"F"`, `"male"`, or `"female"` |
+| `admission_context` | AdmissionContext | Yes | Structured admission / encounter data (see below) |
+| `encounter_context` | EncounterContext | No | Chief complaint, vitals, HPI, examination findings |
+| `facility_context` | FacilityContext | No | Facility level (1-6) and county |
+| `output_format` | string | No | `"markdown"` (default) or `"structured"` (JSON sections) |
+| `additional_instructions` | string (max 2000) | No | Extra guidance for the LLM |
+| `include_icd10_codes` | bool | No | Include ICD-10 code suggestions (default: `true`) |
+| `system_instruction` | string (max 2000) | No | Host application instruction injected into the system prompt |
+
+**AdmissionContext Fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `primary_diagnosis` | string (2-500) | Yes | Primary diagnosis (free text or ICD-10 description) |
+| `icd10_code` | string | No | ICD-10 code e.g. `"A54.0"` |
+| `secondary_diagnoses` | string[] | No | Secondary / comorbid diagnoses |
+| `admission_date` | string | No | Admission date (ISO 8601) |
+| `discharge_date` | string | No | Discharge date (ISO 8601) |
+| `length_of_stay_days` | int (0-3650) | No | Length of stay in days |
+| `ward` | string | No | Ward name e.g. `"ICU"`, `"Medical Ward"` |
+| `discharge_type` | string | No | One of: `NORMAL`, `AMA`, `TRANSFER`, `DEATH`, `DAMA` |
+| `procedures_performed` | string[] | No | Procedures performed during admission |
+| `medications_given` | string[] | No | Medications administered during stay |
+| `discharge_medications` | string[] | No | Medications prescribed at discharge |
+| `key_investigations` | string[] | No | Notable lab / imaging results |
+| `complications` | string[] | No | Complications during admission |
+| `condition_at_discharge` | string | No | Patient condition at discharge |
+
+**Response (`output_format: "structured"`):**
+```json
+{
+  "document_type": "discharge_summary",
+  "sections": [
+    {
+      "section_id": "patient_information",
+      "title": "Patient Information",
+      "content": "32-year-old male, HIV-positive on TDF/3TC/DTG..."
+    },
+    {
+      "section_id": "hospital_course",
+      "title": "Hospital Course",
+      "content": "Patient admitted with 5-day history of urethral discharge..."
+    },
+    {
+      "section_id": "discharge_medications",
+      "title": "Discharge Medications",
+      "content": "1. Doxycycline 100mg BD × 7 days\n2. Continue TDF/3TC/DTG..."
+    },
+    {
+      "section_id": "condition_at_discharge",
+      "title": "Condition at Discharge",
+      "content": "Stable, afebrile, symptoms resolving..."
+    },
+    {
+      "section_id": "follow_up",
+      "title": "Follow-Up and Instructions",
+      "content": "1. STI clinic review in 7 days\n2. Partner notification counselling..."
+    }
+  ],
+  "full_text": "## Patient Information\n32-year-old male...\n\n## Hospital Course\n...",
+  "suggested_icd10_codes": [
+    {"code": "A54.0", "description": "Gonococcal infection of lower genitourinary tract", "confidence": 0.95}
+  ],
+  "safety_alerts": [],
+  "has_safety_concerns": false,
+  "citations": [
+    {"source": "Kenya STI Treatment Guidelines 2024", "section": "Chapter 3"}
+  ],
+  "processing_time_ms": 3200,
+  "model_used": "llama-3.3-70b-versatile",
+  "disclaimer": "AI-generated clinical document. Must be reviewed and approved by the responsible clinician before use."
+}
+```
+
+**Response (`output_format: "markdown"`):**
+
+Returns the same schema, but `full_text` contains the complete rendered Markdown document and `sections` are parsed from the Markdown headings.
+
+**SOAP Note Example:**
+```json
+{
+  "document_type": "soap",
+  "patient_context": {
+    "patient_age": 45,
+    "patient_sex": "F",
+    "facility_level": 3
+  },
+  "admission_context": {
+    "primary_diagnosis": "Hypertension, uncontrolled"
+  },
+  "encounter_context": {
+    "chief_complaint": "Headache and dizziness for 2 days",
+    "vitals": {
+      "blood_pressure_systolic": 180,
+      "blood_pressure_diastolic": 110,
+      "heart_rate": 92
+    }
+  },
+  "output_format": "markdown"
+}
 ```
 
 ---
@@ -2148,6 +2315,8 @@ Several clinical features work together when available:
 | **Lab Assist → Discharge** | Lab results from Lab Assist inform discharge criteria evaluation |
 | **CDS Rules → Lab Assist** | Critical lab value rules mirror Lab Assist critical alerts |
 | **Clerking → ICD-10** | Structured notes include auto-coded diagnoses via the ICD-10 service |
+| **Clinical Document → Guidelines** | Document generation retrieves Kenya clinical guidelines via RAG for context-aware content |
+| **Clinical Document → ICD-10** | Generated documents include auto-coded ICD-10 suggestions |
 | **Feedback → All Services** | Unified feedback endpoint accepts `service_type` to tag ratings per service |
 
 ---

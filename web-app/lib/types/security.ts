@@ -35,12 +35,14 @@ export interface CertificateAuthority {
   name: string;
   serial_number: string;
   subject_dn: string;
-  certificate_pem: string;
   valid_from: string;
   valid_to: string;
   is_root: boolean;
+  parent_ca: number | null;
   is_active: boolean;
+  is_expired: boolean;
   key_size: number;
+  ca_type: 'root' | 'intermediate';
   created_at: string;
 }
 
@@ -52,7 +54,7 @@ export interface UserCertificate {
   id: number;
   user: number;
   username: string;
-  user_full_name: string;
+  user_name: string;
   certificate_authority: number;
   ca_name: string;
   serial_number: string;
@@ -74,6 +76,15 @@ export interface IssueCertificateData {
 
 export interface RevokeCertificateData {
   reason: string;
+}
+
+export interface CreateIntermediateCAData {
+  name: string;
+  org?: string;
+  country?: string;
+  key_size?: number;
+  validity_years?: number;
+  parent_ca_id?: number;
 }
 
 // =============================================================================
