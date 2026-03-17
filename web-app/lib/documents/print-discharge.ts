@@ -57,6 +57,8 @@ function stripAdvisoryContent(md: string): string {
       if (/^not documented\b/i.test(trimmed)) return null;
       // Remove standalone parenthetical instruction blocks
       if (/^\([^)]{20,}\)$/.test(trimmed)) return null;
+      // Remove AI attribution lines (e.g. "Prepared by: Clinical Documentation Assistant")
+      if (/^(prepared|generated|drafted)\s+by\s*:/i.test(trimmed)) return null;
 
       // Handle tables: clean "Not documented" from cells and drop empty rows
       if (/^\|.+\|/m.test(trimmed)) {
@@ -387,8 +389,13 @@ const DISCHARGE_CSS = `
     color: #555;
   }
 
+  @page {
+    size: A4;
+    margin: 0;  /* Suppress browser-injected headers and footers */
+  }
+
   @media print {
-    body { padding: 10mm 15mm; }
+    body { padding: 15mm 20mm; }
     .no-print { display: none !important; }
 
     /* Keep header + patient info together on first page */
