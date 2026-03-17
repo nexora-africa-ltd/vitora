@@ -277,8 +277,8 @@ export const laboratoryApi = {
    * Get results for a patient.
    */
   async getPatientResults(patientId: number): Promise<LabResult[]> {
-    const response = await apiClient.get<LabResult[]>(`/api/patients/${patientId}/lab-results/`);
-    return parseResponse(z.array(LabResultSchema), response.data, {
+    const response = await apiClient.get<{ results: LabResult[] }>(`/api/patients/${patientId}/lab-results/`);
+    return parseResponse(z.array(LabResultSchema), response.data.results || [], {
       context: 'laboratoryApi.getPatientResults',
     });
   },
