@@ -435,11 +435,31 @@ export default function NewEncounterReviewPage() {
                 <div>
                   <span className="font-medium text-foreground">Type:</span>{' '}
                   {details.encounter_type}
+                  {details.encounter_type === 'IPD' && details.admission_urgency && (
+                    <Badge
+                      variant="secondary"
+                      className={`ml-2 text-xs ${
+                        details.admission_urgency === 'EMERGENCY'
+                          ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
+                          : details.admission_urgency === 'URGENT'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                            : 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
+                      }`}
+                    >
+                      {details.admission_urgency === 'ROUTINE' ? 'Elective' : details.admission_urgency}
+                    </Badge>
+                  )}
                 </div>
                 <div>
                   <span className="font-medium text-foreground">Date:</span>{' '}
                   {details.encounter_date}
                 </div>
+                {details.chief_complaint_category && (
+                  <div>
+                    <span className="font-medium text-foreground">Category:</span>{' '}
+                    {details.chief_complaint_category}
+                  </div>
+                )}
                 <div>
                   <span className="font-medium text-foreground">Chief Complaint:</span>{' '}
                   {details.chief_complaint || (

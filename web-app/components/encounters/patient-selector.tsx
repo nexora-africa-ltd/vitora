@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePatientSearch, useRecentPatients } from '@/lib/hooks/use-encounter-form';
 import { cn } from '@/lib/utils/cn';
 import type { Patient } from '@/lib/types/patient';
@@ -127,7 +126,7 @@ export function PatientSelector({
 
       {/* Dropdown results */}
       {isOpen && (
-        <Card className="absolute z-50 mt-1 w-full shadow-lg">
+        <Card className="absolute z-50 mt-1 w-full shadow-lg max-h-[320px] overflow-y-auto">
           <CardContent className="p-2">
             {/* Section header */}
             {searchQuery.length < 2 && (
@@ -150,7 +149,6 @@ export function PatientSelector({
                 ))}
               </div>
             ) : patients && patients.length > 0 ? (
-              <ScrollArea className="max-h-[300px]">
                 <ul className="space-y-1">
                   {patients.map((patient) => (
                     <li key={patient.id}>
@@ -175,7 +173,6 @@ export function PatientSelector({
                     </li>
                   ))}
                 </ul>
-              </ScrollArea>
             ) : searchQuery.length >= 2 ? (
               <p className="text-center text-muted-foreground py-4">
                 No patients found for &quot;{searchQuery}&quot;

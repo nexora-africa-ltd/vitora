@@ -873,8 +873,8 @@ export interface AIClinicalDocumentResponse {
   document_type: string;
   sections: ClinicalDocSection[];
   full_text: string;
-  suggested_icd10_codes?: ClinicalDocICD10Suggestion[];
-  safety_alerts?: string[];
+  suggested_icd10_codes?: ClinicalDocICD10Suggestion[] | null;
+  safety_alerts?: string[] | null;
   has_safety_concerns?: boolean;
   citations?: ClinicalDocCitation[];
   fhir_resource?: Record<string, unknown> | null;

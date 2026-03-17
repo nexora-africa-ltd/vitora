@@ -19,6 +19,9 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { EncounterFormData, DiagnosisFormData } from '@/lib/types/encounter-form';
 import type { EncounterType } from '@/lib/types/encounter';
 import type { Patient } from '@/lib/types/patient';
+import type { ChiefComplaintCategory } from '@/lib/types/triage';
+
+export type AdmissionUrgency = 'ROUTINE' | 'URGENT' | 'EMERGENCY' | '';
 
 // =============================================================================
 // Types
@@ -65,6 +68,10 @@ export interface NewEncounterSession {
   encounter_type: EncounterType;
   encounter_date: string;
   chief_complaint: string;
+  chief_complaint_category: ChiefComplaintCategory | '';
+
+  // IPD-specific: admission urgency (ROUTINE/URGENT/EMERGENCY)
+  admission_urgency: AdmissionUrgency;
 
   // Section data
   vitals: NewEncounterVitals;
@@ -117,11 +124,15 @@ interface NewEncounterState {
     encounter_type?: EncounterType;
     encounter_date?: string;
     chief_complaint?: string;
+    chief_complaint_category?: ChiefComplaintCategory | '';
+    admission_urgency?: AdmissionUrgency;
   }) => void;
   getDetails: () => {
     encounter_type: EncounterType;
     encounter_date: string;
     chief_complaint: string;
+    chief_complaint_category: ChiefComplaintCategory | '';
+    admission_urgency: AdmissionUrgency;
   };
 
   // Actions - History
@@ -172,6 +183,8 @@ function createInitialSession(): NewEncounterSession {
     encounter_type: 'OPD',
     encounter_date: new Date().toISOString().split('T')[0] || '',
     chief_complaint: '',
+    chief_complaint_category: '',
+    admission_urgency: '',
     vitals: {},
     history: {},
     notes: {},
@@ -339,6 +352,8 @@ export const useNewEncounterStore = create<NewEncounterState>()(
               ...(details.encounter_type !== undefined && { encounter_type: details.encounter_type }),
               ...(details.encounter_date !== undefined && { encounter_date: details.encounter_date }),
               ...(details.chief_complaint !== undefined && { chief_complaint: details.chief_complaint }),
+              ...(details.chief_complaint_category !== undefined && { chief_complaint_category: details.chief_complaint_category }),
+              ...(details.admission_urgency !== undefined && { admission_urgency: details.admission_urgency }),
               lastUpdatedAt: new Date(),
               isDirty: true,
             },
@@ -352,6 +367,8 @@ export const useNewEncounterStore = create<NewEncounterState>()(
           encounter_type: session?.encounter_type ?? 'OPD',
           encounter_date: (session?.encounter_date ?? new Date().toISOString().split('T')[0]) || '',
           chief_complaint: session?.chief_complaint ?? '',
+          chief_complaint_category: session?.chief_complaint_category ?? '',
+          admission_urgency: session?.admission_urgency ?? '',
         };
       },
 
