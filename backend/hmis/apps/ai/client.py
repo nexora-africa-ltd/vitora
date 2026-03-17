@@ -126,13 +126,22 @@ class TibaBotClient:
 
         except requests.exceptions.HTTPError as e:
             status = e.response.status_code if e.response is not None else None
+            response_body = ""
+            if e.response is not None:
+                try:
+                    response_body = e.response.text[:500]
+                except Exception:
+                    pass
             if status and status >= 500:
                 logger.warning("TibaBot server error: %s", status)
                 raise TibaBotUnavailableError(
                     "TibaBot AI service returned a server error.",
                     status_code=status,
                 ) from e
-            logger.error("TibaBot API error: %s %s", status, e)
+            logger.error(
+                "TibaBot API error: %s %s — response: %s",
+                status, e, response_body,
+            )
             raise TibaBotError(
                 f"TibaBot API error: {e}",
                 status_code=status,
@@ -515,6 +524,35 @@ class TibaBotClient:
         return self._request(
             method="POST",
             endpoint="/clerking/structure",
+            data=payload,
+        )
+
+    # -----------------------------------------------------------------
+    # Phase 6 — Clinical Document Generation
+    # -----------------------------------------------------------------
+
+    def generate_clinical_document(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """
+        Generate a structured clinical document via TibaBot.
+
+        Sends patient, admission, encounter, and facility context to
+        TibaBot's ``POST /clinical/document`` endpoint for LLM-powered
+        document generation (discharge summaries, SOAP notes, progress
+        notes, referral letters, clerking notes).
+
+        Args:
+            payload: Dict with document_type, patient_context,
+                     admission_context, optional encounter_context,
+                     facility_context, output_format, etc.
+
+        Returns:
+            Dict with document_type, sections[], full_text,
+            suggested_icd10_codes[], safety_alerts[], citations[],
+            processing_time_ms, model_used, disclaimer.
+        """
+        return self._request(
+            method="POST",
+            endpoint="/clinical/document",
             data=payload,
         )
 

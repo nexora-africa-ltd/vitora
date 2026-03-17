@@ -36,12 +36,12 @@ import {
 } from '@/components/ui/select';
 import { DischargeReadinessPanel } from '@/components/inpatient/discharge-readiness-panel';
 import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders } from '@/lib/hooks/use-inpatient';
-import { useAIEnabled, useAIClinicalAssist, useAICDSEvaluate } from '@/lib/hooks/use-ai';
+import { useAIEnabled, useAIClinicalDocument, useAICDSEvaluate } from '@/lib/hooks/use-ai';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { DischargeType, DischargeMedication, MaternityContinuityAction } from '@/lib/types/inpatient';
-import type { AICDSAlertItem, AIPatientContext, AIEncounterContext } from '@/lib/types/ai';
+import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocAdmissionContext, ClinicalDocPatientContext } from '@/lib/types/ai';
 
 const DISCHARGE_TYPES: { value: DischargeType; label: string }[] = [
   { value: 'NORMAL', label: 'Normal Discharge' },
@@ -77,7 +77,7 @@ export default function DischargePage() {
   const { data: orders } = useAdmissionOrders(admissionId);
   const createDischarge = useCreateDischarge();
   const isAIEnabled = useAIEnabled();
-  const clinicalAssist = useAIClinicalAssist();
+  const clinicalDocument = useAIClinicalDocument();
   const cdsEvaluate = useAICDSEvaluate();
   const chatCtx = useOptionalAIChatContext();
   const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
@@ -264,30 +264,45 @@ export default function DischargePage() {
     const primaryEntry = diagnoses.find((d) => d.role === 'PRIMARY');
     const primaryDisplay = primaryEntry?.code.icd11Display || primaryEntry?.code.icd10Display || '';
     const diagnosis = primaryDisplay || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
-    const medsText = medications.filter((m) => m.drug_name).map((m) => `${m.drug_name} ${m.dosage} ${m.frequency}`).join(', ');
-    const queryParts = [
-      `Generate a concise discharge summary for a ${admission.patient_age ?? 'unknown age'}-year-old ${admission.patient_gender === 'M' ? 'male' : 'female'} patient.`,
-      `Admitting diagnosis: ${diagnosis}.`,
-      `Length of stay: ${lengthOfStay} days. Ward: ${admission.ward_name || 'N/A'}. Discharge type: ${dischargeType}.`,
-    ];
-    if (medsText) queryParts.push(`Discharge medications: ${medsText}.`);
-    if (clinicalHistoryText) queryParts.push(clinicalHistoryText);
-    queryParts.push('Include: hospital course, treatment given, condition at discharge, and follow-up plan.');
+    const medsText = medications.filter((m) => m.drug_name).map((m) => `${m.drug_name} ${m.dosage} ${m.frequency}`);
+
+    const docPatientCtx: ClinicalDocPatientContext = {
+      patient_age: admission.patient_age ?? 0,
+      patient_sex: admission.patient_gender === 'M' ? 'male' : 'female',
+      allergies: patientCtx.allergies || [],
+      comorbidities: patientCtx.comorbidities || [],
+      current_medications: patientCtx.current_medications || [],
+    };
+
+    const admissionCtx: ClinicalDocAdmissionContext = {
+      primary_diagnosis: diagnosis,
+      admission_date: admission.admission_date || '',
+      length_of_stay_days: lengthOfStay,
+      ward: admission.ward_name || '',
+      discharge_type: dischargeType === 'ROUTINE' || dischargeType === 'ABSCONDED' ? 'NORMAL' : dischargeType as ClinicalDocAdmissionContext['discharge_type'],
+      discharge_medications: medsText,
+      condition_at_discharge: '',
+    };
 
     try {
-      const result = await clinicalAssist.mutateAsync({
-        query: queryParts.join(' '),
-        patient_context: patientCtx,
-        encounter_context: encounterCtx,
+      const result = await clinicalDocument.mutateAsync({
+        document_type: 'discharge_summary',
+        patient_context: docPatientCtx,
+        admission_context: admissionCtx,
+        encounter_context: {
+          chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
+        },
+        output_format: 'markdown',
+        additional_instructions: clinicalHistoryText || undefined,
       });
-      if (result.response) {
-        setDischargeSummary(result.response);
+      if (result.full_text) {
+        setDischargeSummary(result.full_text);
         toast({ title: 'Draft Generated', description: 'TibaBot drafted a discharge summary. Please review and edit.' });
       }
     } catch {
       toast({ title: 'Generation Failed', description: 'Could not generate discharge summary. Please write it manually.', variant: 'destructive' });
     }
-  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, clinicalAssist, toast, patientCtx, encounterCtx, clinicalHistoryText]);
+  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, clinicalDocument, toast, patientCtx, clinicalHistoryText]);
 
   // AI-generate patient instructions
   const handleGenerateInstructions = useCallback(async () => {
@@ -295,28 +310,42 @@ export default function DischargePage() {
     const primaryEntry = diagnoses.find((d) => d.role === 'PRIMARY');
     const primaryDisplay = primaryEntry?.code.icd11Display || primaryEntry?.code.icd10Display || '';
     const diagnosis = primaryDisplay || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
-    const medsText = medications.filter((m) => m.drug_name).map((m) => `${m.drug_name} ${m.dosage} ${m.frequency} for ${m.duration || 'as directed'}${m.instructions ? ` (${m.instructions})` : ''}`).join('; ');
-    const queryParts = [
-      `Generate clear, patient-friendly discharge instructions for a patient diagnosed with ${diagnosis}.`,
-    ];
-    if (medsText) queryParts.push(`Medications to take at home: ${medsText}.`);
-    if (clinicalHistoryText) queryParts.push(`Clinical context: ${clinicalHistoryText}`);
-    queryParts.push('Include: medication schedule, dietary advice, activity restrictions, red-flag symptoms to watch for, and when to return to hospital. Use simple language.');
+    const medsText = medications.filter((m) => m.drug_name).map((m) => `${m.drug_name} ${m.dosage} ${m.frequency} for ${m.duration || 'as directed'}${m.instructions ? ` (${m.instructions})` : ''}`);
+
+    const docPatientCtx: ClinicalDocPatientContext = {
+      patient_age: admission.patient_age ?? 0,
+      patient_sex: admission.patient_gender === 'M' ? 'male' : 'female',
+      allergies: patientCtx.allergies || [],
+      comorbidities: patientCtx.comorbidities || [],
+      current_medications: patientCtx.current_medications || [],
+    };
+
+    const admissionCtx: ClinicalDocAdmissionContext = {
+      primary_diagnosis: diagnosis,
+      discharge_medications: medsText,
+    };
 
     try {
-      const result = await clinicalAssist.mutateAsync({
-        query: queryParts.join(' '),
-        patient_context: patientCtx,
-        encounter_context: encounterCtx,
+      const result = await clinicalDocument.mutateAsync({
+        document_type: 'discharge_summary',
+        patient_context: docPatientCtx,
+        admission_context: admissionCtx,
+        output_format: 'markdown',
+        additional_instructions: [
+          'Focus on patient-friendly discharge instructions.',
+          'Include: medication schedule, dietary advice, activity restrictions, red-flag symptoms to watch for, and when to return to hospital.',
+          'Use simple language.',
+          clinicalHistoryText || '',
+        ].filter(Boolean).join(' '),
       });
-      if (result.response) {
-        setPatientInstructions(result.response);
+      if (result.full_text) {
+        setPatientInstructions(result.full_text);
         toast({ title: 'Draft Generated', description: 'TibaBot drafted patient instructions. Please review and edit.' });
       }
     } catch {
       toast({ title: 'Generation Failed', description: 'Could not generate patient instructions. Please write them manually.', variant: 'destructive' });
     }
-  }, [admission, diagnoses, medications, clinicalAssist, toast, patientCtx, encounterCtx, clinicalHistoryText]);
+  }, [admission, diagnoses, medications, clinicalDocument, toast, patientCtx, clinicalHistoryText]);
 
   // Helper to extract code string from DiagnosisEntry
   const getDiagCode = (entry: DiagnosisEntry) =>
@@ -621,10 +650,10 @@ export default function DischargePage() {
                   variant="ghost"
                   size="sm"
                   onClick={handleGenerateSummary}
-                  disabled={clinicalAssist.isPending}
+                  disabled={clinicalDocument.isPending}
                   className="gap-1.5 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400"
                 >
-                  {clinicalAssist.isPending ? (
+                  {clinicalDocument.isPending ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
                     <BrainCircuit className="h-3.5 w-3.5" />
@@ -652,10 +681,10 @@ export default function DischargePage() {
                   variant="ghost"
                   size="sm"
                   onClick={handleGenerateInstructions}
-                  disabled={clinicalAssist.isPending}
+                  disabled={clinicalDocument.isPending}
                   className="gap-1.5 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400"
                 >
-                  {clinicalAssist.isPending ? (
+                  {clinicalDocument.isPending ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
                     <BrainCircuit className="h-3.5 w-3.5" />

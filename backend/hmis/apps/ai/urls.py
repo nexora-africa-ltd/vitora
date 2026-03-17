@@ -20,6 +20,7 @@ from .views import (
     ClinicalChatSessionDetailView,
     ClinicalChatSessionListView,
     ClinicalChatView,
+    ClinicalDocumentGenerateView,
     ConditionPredictView,
     DischargeAssessView,
     DischargeConditionsListView,
@@ -41,6 +42,12 @@ urlpatterns = [
     # Phase 2 — Clinical Chat & Assist
     path("clinical/chat/", ClinicalChatView.as_view(), name="clinical-chat"),
     path("clinical/assist/", ClinicalAssistView.as_view(), name="clinical-assist"),
+    # Phase 6 — Clinical Document Generation
+    path(
+        "clinical/document/",
+        ClinicalDocumentGenerateView.as_view(),
+        name="clinical-document",
+    ),
     # Phase 2 — Session Management
     path(
         "clinical/chat/sessions/",

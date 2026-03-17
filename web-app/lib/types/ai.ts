@@ -784,6 +784,110 @@ export interface AIClerkingStructureResponse {
 // =============================================================================
 // Phase 5 — Enhanced CDS Evaluation
 // =============================================================================
+// Phase 6 — Clinical Document Generation
+// =============================================================================
+
+export type ClinicalDocumentType = 'discharge_summary' | 'soap' | 'progress_note' | 'referral_letter' | 'clerking_note';
+export type ClinicalDocOutputFormat = 'markdown' | 'structured' | 'fhir';
+export type ClinicalDocDischargeType = 'NORMAL' | 'AMA' | 'TRANSFER' | 'DEATH' | 'DAMA';
+
+export interface ClinicalDocPatientContext {
+  patient_age: number;
+  patient_sex: string;
+  allergies?: string[];
+  comorbidities?: string[];
+  current_medications?: string[];
+  facility_level?: number | null;
+}
+
+export interface ClinicalDocAdmissionContext {
+  primary_diagnosis: string;
+  icd10_code?: string;
+  secondary_diagnoses?: string[];
+  admission_date?: string;
+  discharge_date?: string;
+  length_of_stay_days?: number | null;
+  ward?: string;
+  discharge_type?: ClinicalDocDischargeType;
+  procedures_performed?: string[];
+  medications_given?: string[];
+  discharge_medications?: string[];
+  key_investigations?: string[];
+  complications?: string[];
+  condition_at_discharge?: string;
+}
+
+export interface ClinicalDocVitals {
+  blood_pressure_systolic?: number | null;
+  blood_pressure_diastolic?: number | null;
+  heart_rate?: number | null;
+  temperature?: number | null;
+  respiratory_rate?: number | null;
+  spo2?: number | null;
+}
+
+export interface ClinicalDocEncounterContext {
+  chief_complaint?: string;
+  vitals?: ClinicalDocVitals;
+  hpi?: string;
+  examination_findings?: string;
+}
+
+export interface ClinicalDocFacilityContext {
+  level?: number | null;
+  county?: string;
+}
+
+/** Request body for POST /api/ai/clinical/document/ */
+export interface AIClinicalDocumentRequest {
+  document_type: ClinicalDocumentType;
+  patient_context: ClinicalDocPatientContext;
+  admission_context: ClinicalDocAdmissionContext;
+  encounter_context?: ClinicalDocEncounterContext;
+  facility_context?: ClinicalDocFacilityContext;
+  output_format?: ClinicalDocOutputFormat;
+  include_icd10_codes?: boolean;
+  additional_instructions?: string;
+  system_instruction?: string;
+}
+
+export interface ClinicalDocSection {
+  section_id: string;
+  title: string;
+  content: string;
+}
+
+export interface ClinicalDocICD10Suggestion {
+  code: string;
+  description: string;
+  confidence: number;
+}
+
+export interface ClinicalDocCitation {
+  source: string;
+  section?: string;
+}
+
+/** Response from POST /api/ai/clinical/document/ */
+export interface AIClinicalDocumentResponse {
+  document_type: string;
+  sections: ClinicalDocSection[];
+  full_text: string;
+  suggested_icd10_codes?: ClinicalDocICD10Suggestion[];
+  safety_alerts?: string[];
+  has_safety_concerns?: boolean;
+  citations?: ClinicalDocCitation[];
+  fhir_resource?: Record<string, unknown> | null;
+  processing_time_ms?: number;
+  model_used?: string;
+  disclaimer?: string;
+  mode?: string;
+  error?: string | null;
+}
+
+// =============================================================================
+// Phase 5 — Enhanced CDS Evaluation
+// =============================================================================
 
 /** Request body for POST /api/ai/cds/evaluate/ */
 export interface AICDSEvaluateRequest {
