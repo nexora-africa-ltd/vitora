@@ -1,6 +1,6 @@
 # Vitora HMIS - Comprehensive Development Roadmap
 
-**Version**: 2.0
+**Version**: 2.1
 **Last Updated**: March 21, 2026
 **Target Completion**: Q4 2027
 **Methodology**: Test-Driven Development (TDD) with Agile Sprints
@@ -45,7 +45,47 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 - ✅ Check-in module
 - ✅ HL7 interoperability
 - ✅ KenHDD (Kenya Health Data Dictionary)
-- ✅ Scheduling (appointments)
+- ✅ Scheduling (appointments, resources, assignment rules)
+
+**🤖 AI / TibaBot Integration** (external AI service):
+- ✅ Clinical chat (multi-turn conversational AI for clinicians)
+- ✅ ICD-10 code suggestion from clinical text
+- ✅ Care plan generation (plain + FHIR R4 CarePlan)
+- ✅ CDS rule evaluation via AI
+- ✅ Lab result interpretation
+- ✅ Discharge assessment
+- ✅ ICU risk prediction
+- ✅ Condition prediction from vitals/history
+- ✅ Clerking autocomplete & structure
+- ✅ Clinical document generation
+- ✅ AI feedback collection & stats
+- ✅ Stored AI results (care plans, CDS, lab, discharge, ICU risk)
+- ✅ Fallback services when TibaBot is unavailable
+
+**🔐 Security & Compliance Infrastructure** (undocumented until now):
+- ✅ MFA / Two-Factor Authentication (TOTP devices, backup codes, MFA tokens)
+- ✅ Emergency Access Override (break-glass with audit trail and review tasks)
+- ✅ PKI & Digital Signatures (Certificate Authority, user certs, RSA-2048 document signing)
+- ✅ Tamper-Resistant Audit Log (SHA-256 hash chain verification)
+- ✅ SHR Document Sharing (push/pull FHIR bundles to Kenya Shared Health Record)
+- ✅ FHIR R4 API endpoints (resource serving with profiles)
+- ✅ SNOMED CT integration (concept model + seed data)
+- ✅ Feature Flags (runtime feature toggling)
+- ✅ Idempotency Keys (safe request retries)
+
+**📊 Additional Billing & Platform Features** (undocumented until now):
+- ✅ Credit Notes (billing adjustments)
+- ✅ Payment Points (multiple collection points per facility)
+- ✅ SHA Tariff, ClaimItem, ClaimAttachment, EligibilityCheck models
+- ✅ Lab critical result email notifications (HTML/text templates)
+- ✅ Activity Feed (system-wide event stream, 1,700+ events)
+- ✅ Frontend Event tracking (client-side analytics)
+- ✅ Code System & External Code Mapping (terminology infrastructure)
+- ✅ 6 WebSocket consumers (surveillance, triage, lab, inpatient, MCH, clinics)
+- ✅ 18 signal modules (automated cross-app workflows)
+- ✅ 9 Celery task modules (background processing)
+- ✅ Emergency department module (zones, bed board, real-time queue)
+- ✅ Theatre/surgery module - frontend (schedule, cases, checklists, reports)
 
 ### Key Metrics
 - **Total Effort**: 15-20 person-years
@@ -1018,18 +1058,70 @@ def test_wait_time_exceeded_flag():
 
 ### Phase 2 Modules Already Implemented ✅
 The following modules were built during Phase 2 development:
-- **Surveillance** (`hmis/apps/surveillance/`): IDSR weekly reporting, IHR notifications, DHIS2 mapping
-- **MCH** (`hmis/apps/mch/`): Maternal & Child Health — ANC, delivery, PNC
-- **Imaging** (`hmis/apps/imaging/`): DICOM/PACS radiology orders and viewing
-- **Allied Health** modules: Physiotherapy, Occupational Therapy, Nutrition, Social Work, Counselling
-- **Quality** (`hmis/apps/quality/`): Quality improvement tracking
-- **Referrals** (`hmis/apps/referrals/`): Inter-facility referral management
-- **CDS** (`hmis/apps/cds/`): Clinical Decision Support rules engine
+
+**Clinical Modules:**
+- **Surveillance** (`hmis/apps/surveillance/`): IDSR weekly reporting, IHR notifications, DHIS2 mapping, outbreak threshold alerts, WebSocket consumers for real-time alerts
+- **MCH** (`hmis/apps/mch/`): Maternal & Child Health — ANC visits, delivery, PNC, labour partograph, growth monitoring, immunization (KEPI schedule), HEI follow-up, WebSocket consumer
+- **Imaging** (`hmis/apps/imaging/`): DICOM instances/series/studies, imaging orders & items, procedure catalog, signals for order workflows
+- **Allied Health**: Physiotherapy, Occupational Therapy, Nutrition, Social Work, Counselling — each with orders, sessions, treatment types, signals, and historical tracking
+- **Quality** (`hmis/apps/quality/`): Quality measures with Celery background tasks
+- **Referrals** (`hmis/apps/referrals/`): Inter-facility referral management with signals
+- **CDS** (`hmis/apps/cds/`): Clinical Decision Support rules engine with signals for automated evaluation
 - **Check-in** (`hmis/apps/checkin/`): Patient check-in workflow
-- **HL7** (`hmis/apps/hl7/`): HL7v2 interoperability layer
-- **KenHDD** (`hmis/apps/kenhdd/`): Kenya Health Data Dictionary
-- **Scheduling** (`hmis/apps/scheduling/`): Appointment scheduling
-- **AI** (`hmis/apps/ai/`): TibaBot AI integration (care plans, CDS, lab interpretation)
+- **HL7** (`hmis/apps/hl7/`): HL7v2 message model, ADT service, queue service, ingestion command, Celery tasks
+- **KenHDD** (`hmis/apps/kenhdd/`): Kenya Health Data Dictionary elements, validation runs, failed record tracking
+- **Scheduling** (`hmis/apps/scheduling/`): Resources, time slots, schedules, breaks, appointments, assignment rules/decisions/overrides, availability & assignment services
+
+**AI / TibaBot Integration** (`hmis/apps/ai/`):
+- External TibaBot AI service integration with feature-gated access
+- **Chat**: Multi-turn clinical chat sessions with message history
+- **ICD-10 Suggest**: AI-powered diagnosis code suggestions from clinical text
+- **Care Plans**: Generate care plans (plain text + FHIR R4 CarePlan resource), stored results
+- **CDS Evaluate**: AI-assisted clinical decision support, stored evaluations
+- **Lab Interpret**: AI lab result interpretation with stored results
+- **Discharge Assess**: AI discharge readiness assessment, stored results
+- **ICU Risk**: ICU admission risk prediction, stored results
+- **Condition Predict**: Condition prediction from vitals and history
+- **Clerking**: Autocomplete and clinical note structuring
+- **Clinical Documents**: AI-assisted document generation
+- **Auto-populate**: Smart form pre-fill from patient context
+- **Feedback**: Clinician feedback collection on AI suggestions with stats dashboard
+- **Fallback Services**: Offline/degraded mode when TibaBot unavailable (care_plan_fallback, clerking_fallback, discharge_fallback, lab_fallback)
+- **Stored Results**: Persistent AI outputs — `AICarePlanResult`, `AICDSResult`, `AILabInterpretResult`, `AIDischargeResult`, `AIICURiskResult`
+
+**Security & Compliance Infrastructure:**
+- **MFA** (`core/mfa/`): TOTP device enrollment, backup codes, MFA token lifecycle — full API with views, serializers, URLs
+- **Emergency Access** (`core/emergency_access/`): Break-glass override for locked patient records — model with reason/status workflow, Celery review tasks, full audit trail
+- **PKI & Digital Signatures** (`core/services/pki_service.py`, `signing_service.py`): Certificate Authority management, user certificate issuance/revocation, RSA-2048 document signing for clinical documents (lab results, prescriptions, discharge summaries)
+- **Audit Integrity** (`core/services/audit_integrity.py`): SHA-256 hash chain verification for tamper-resistant audit logs (DHA Compliance Gap #31)
+- **SHR Service** (`core/services/shr_service.py`): Push/pull FHIR bundles (IPS, discharge summaries, lab reports) to/from Kenya's Shared Health Record
+- **FHIR R4 Endpoints** (`core/fhir/`): FHIR resource serving with profiles directory, views, and URLs
+- **FHIR Client** (`core/services/fhir_client.py`): Outbound FHIR API client for external system integration
+- **FHIR Validator** (`core/services/fhir_validator.py`): Resource validation against FHIR R4 profiles
+- **SNOMED CT** (`core/models.py` + `core/services/snomed_service.py`): SNOMEDConcept model with 108 common concepts seeded
+- **SHA Profile Validator** (`core/services/sha_profile_validator.py`): Validates patient profiles against SHA requirements
+- **Constraint Evaluator** (`core/services/constraint_evaluator.py`): Generic constraint evaluation engine for CDS rules
+
+**Platform Infrastructure:**
+- **Feature Flags** (`core/models.py`): `FeatureFlag` model for runtime feature toggling
+- **Idempotency Keys** (`core/models.py`): `IdempotencyKey` model for safe request retries
+- **Activity Feed** (`core/models.py`): System-wide event stream (`ActivityFeed` model)
+- **Frontend Events** (`core/models.py`): Client-side analytics tracking (`FrontendEvent`)
+- **Code Systems** (`core/models.py`): `CodeSystem` + `ExternalCodeMapping` for terminology infrastructure
+- **Credit Notes** (`billing/models.py`): Billing adjustments and credit note workflow
+- **Payment Points** (`billing/models.py`): Multi-point payment collection per facility
+- **Lab Email Notifications** (`laboratory/services/notifications.py`): HTML/text email templates for critical lab results
+- **6 WebSocket Consumers**: Real-time updates for surveillance alerts, triage/emergency queue, lab orders, inpatient, MCH, clinics
+- **18 Signal Modules**: Automated cross-app workflows (billing auto-invoice, lab queue updates, surveillance alerts on diagnosis, etc.)
+- **9 Celery Task Modules**: Background processing for clinics, core, emergency access, HL7, inpatient, patients, quality, surveillance, triage
+- **45+ Management Commands**: Data seeding, imports, PKI setup, validation, backfill operations
+
+**Frontend Pages (239 total routes):**
+- Emergency department: zones, bed board, real-time queue
+- Theatre/surgery: schedule, cases, checklists, reports
+- Clinical workflow page
+- Settings & profile management
+- Transaction reports with daily closure
 
 ### Sprint Breakdown (12 sprints × 2 weeks)
 
@@ -1361,18 +1453,36 @@ def test_opd_attendance_calculation():
 #### Sprint 4.1-4.2: AI Foundation (Weeks 1-4)
 **TDD Focus**: Test ML model predictions and edge cases
 
-**Tasks**:
+> **Note**: Core AI integration with external TibaBot service was completed ahead of schedule during Phase 2.
+> Phase 4 focuses on **on-device ML models** for offline prediction and advanced analytics.
+
+**Already Completed (Phase 2)** ✅:
+- [x] AI clinical chat (multi-turn conversational AI) ✅
+- [x] ICD-10 code suggestion from clinical text ✅
+- [x] Care plan generation (plain + FHIR R4) ✅
+- [x] Lab result interpretation ✅
+- [x] Discharge readiness assessment ✅
+- [x] ICU risk prediction ✅
+- [x] Condition prediction from vitals/history ✅
+- [x] Clerking autocomplete & clinical note structuring ✅
+- [x] Clinical document generation ✅
+- [x] CDS evaluation via AI ✅
+- [x] AI feedback collection & stats ✅
+- [x] Fallback services for offline/degraded mode ✅
+- [x] Stored AI results persistence ✅
+
+**Remaining for Phase 4**:
 - [ ] **Write tests first**: Sepsis prediction model tests
-- [ ] Train and deploy sepsis early warning model
+- [ ] Train and deploy on-device sepsis early warning model (ONNX)
 - [ ] **Write tests first**: No-show prediction tests
 - [ ] Implement appointment adherence model
 - [ ] **Write tests first**: Drug interaction tests
-- [ ] Implement pharmacy safety checks with AI
+- [ ] Implement AI-powered pharmacy safety checks
 - [ ] **Write tests first**: Model monitoring tests
 - [ ] Implement model drift detection
 
 **Deliverables**:
-- Sepsis early warning system
+- On-device sepsis early warning (ONNX for offline)
 - No-show prediction
 - AI-powered drug safety
 - ML monitoring dashboard
@@ -1394,20 +1504,32 @@ def test_sepsis_prediction_on_high_risk_patient():
 #### Sprint 4.3-4.4: Advanced Interoperability (Weeks 5-8)
 **TDD Focus**: Test FHIR compliance and data exchange
 
-**Tasks**:
-- [ ] **Write tests first**: FHIR R4 resource tests (all profiles)
-- [ ] Implement full FHIR R4 API
-- [ ] **Write tests first**: FHIR validation tests
-- [ ] Add FHIR validation layer
-- [ ] **Write tests first**: External system integration tests
-- [ ] Implement HL7v2 ↔ FHIR bridge
-- [ ] **Write tests first**: Terminology service tests
-- [ ] Integrate SNOMED CT, LOINC, ICD-10
+> **Note**: Significant interoperability work was completed ahead of schedule during Phase 2.
+> Phase 4 focuses on **conformance testing**, **HL7v2↔FHIR bridging**, and **full SNOMED CT** expansion.
+
+**Already Completed (Phase 2)** ✅:
+- [x] FHIR R4 API endpoints with profiles (`core/fhir/`) ✅
+- [x] FHIR validator (`core/services/fhir_validator.py`) ✅
+- [x] FHIR client for outbound calls (`core/services/fhir_client.py`) ✅
+- [x] SHR document sharing service (IPS, discharge, lab bundles) ✅
+- [x] HL7v2 message model, ADT service, queue service, ingestion command ✅
+- [x] SNOMED CT concept model with 108 common concepts ✅
+- [x] LOINC codes integrated (via DHA Terminology API + local import) ✅
+- [x] ICD-10 (104,814 codes) + ICD-11 (via DHA API) ✅
+- [x] Code System & External Code Mapping infrastructure ✅
+
+**Remaining for Phase 4**:
+- [ ] **Write tests first**: FHIR R4 conformance tests (all profiles)
+- [ ] Run Inferno FHIR conformance test suite
+- [ ] **Write tests first**: HL7v2 ↔ FHIR bridge tests
+- [ ] Implement bidirectional HL7v2 ↔ FHIR translation
+- [ ] Expand SNOMED CT to full terminology (350K+ concepts)
+- [ ] FHIR Subscription for real-time interop
 
 **Deliverables**:
-- Full FHIR R4 compliance
-- HL7v2 integration
-- Terminology services
+- FHIR R4 conformance certification
+- HL7v2 ↔ FHIR bidirectional bridge
+- Full SNOMED CT terminology
 - Interoperability test suite
 
 #### Sprint 4.5-4.6: Global Scaling & Open Source (Weeks 9-12)
@@ -1843,5 +1965,6 @@ Before starting any feature:
 - **Next Review**: April 15, 2026
 
 **Changelog**
-- 2026-03-21: Major update — Phase 1 complete, Phase 2 in progress, 27 backend apps, 6,465+ tests
+- 2026-03-21: v2.1 — Added 20+ undocumented features (AI/TibaBot, MFA, PKI, emergency access, FHIR endpoints, SNOMED, WebSockets, signals, credit notes, etc.)
+- 2026-03-21: v2.0 — Phase 1 complete, Phase 2 in progress, 27 backend apps, 6,465+ tests
 - 2025-12-27: Initial roadmap created with TDD integration
