@@ -111,6 +111,21 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.triage.tasks.auto_resolve_breaches",
         "schedule": 300.0,  # Every 5 minutes
     },
+    # Billing agent: Daily bed charges for active IPD admissions at midnight
+    "billing-apply-daily-bed-charges": {
+        "task": "hmis.apps.billing.tasks.apply_daily_bed_charges",
+        "schedule": crontab(minute=0, hour=0),
+    },
+    # Billing agent: Flag overdue invoices daily at 6 AM
+    "billing-flag-overdue-invoices": {
+        "task": "hmis.apps.billing.tasks.flag_overdue_invoices",
+        "schedule": crontab(minute=0, hour=6),
+    },
+    # Billing agent: Submit pending SHA claims hourly
+    "billing-submit-pending-sha-claims": {
+        "task": "hmis.apps.billing.tasks.submit_pending_sha_claims",
+        "schedule": crontab(minute=30, hour="*/1"),
+    },
 }
 
 # Timezone configuration

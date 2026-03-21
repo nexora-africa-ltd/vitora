@@ -258,3 +258,25 @@ def notify_on_result_verification(sender, instance, created, **kwargs):
 
     except Exception as e:
         logger.error(f"Failed to send verification notification for result {instance.id}: {e}")
+
+
+@receiver(post_save, sender=LabOrder)
+def handle_lab_order_billing(sender, instance, **kwargs):
+    """Auto-bill lab tests when order status transitions to ORDERED.
+
+    Delegates to BillingAgentService to add lab test line items
+    to the patient's draft invoice.
+    """
+    if instance.status != "ORDERED":
+        return
+
+    try:
+        from hmis.apps.billing.agent import BillingAgentService
+
+        BillingAgentService.handle_lab_order_confirmed(instance)
+    except Exception as e:
+        logger.error(
+            "Billing agent: failed to bill lab order %s: %s",
+            instance.order_number,
+            e,
+        )
