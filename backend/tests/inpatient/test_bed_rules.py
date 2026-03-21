@@ -430,7 +430,7 @@ class TestBedAssignmentRuleEvaluator:
         # Should fail because ward lacks oxygen
         assert result.success is False
         assert any(
-            "oxygen_required" in e.failed_constraints
+            any(v.get("code") == "OXYGEN_REQUIRED" for v in e.compatibility_violations)
             for e in result.candidates_evaluated
         )
 

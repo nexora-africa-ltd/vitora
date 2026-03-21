@@ -27,7 +27,7 @@ class LabResultAttachmentSerializer(serializers.ModelSerializer):
     """Serializer for lab result attachments (read)."""
 
     uploaded_by_name = serializers.SerializerMethodField()
-    file_name = serializers.CharField(source="filename", read_only=True)
+    filename = serializers.CharField(read_only=True)
 
     class Meta:
         model = LabResultAttachment
@@ -35,7 +35,7 @@ class LabResultAttachmentSerializer(serializers.ModelSerializer):
             "id",
             "lab_order",
             "file",
-            "file_name",
+            "filename",
             "file_type",
             "file_size",
             "attachment_type",
@@ -1036,7 +1036,7 @@ class SpecimenSerializer(serializers.ModelSerializer):
     received_by_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     specimen_type_display = serializers.CharField(source="get_specimen_type_display", read_only=True)
-    order_items = serializers.SerializerMethodField()
+    order_item_ids = serializers.SerializerMethodField()
 
     class Meta:
         model = Specimen
@@ -1050,7 +1050,7 @@ class SpecimenSerializer(serializers.ModelSerializer):
             "order_number",
             "patient_name",
             "patient_mrn",
-            "order_items",
+            "order_item_ids",
             "collected_by",
             "collected_by_name",
             "collected_at",
@@ -1076,7 +1076,7 @@ class SpecimenSerializer(serializers.ModelSerializer):
             "specimen_type_display",
             "collected_by_name",
             "received_by_name",
-            "order_items",
+            "order_item_ids",
             "created_at",
             "updated_at",
         ]
@@ -1098,7 +1098,7 @@ class SpecimenSerializer(serializers.ModelSerializer):
             return obj.received_by.get_full_name() or obj.received_by.username
         return None
 
-    def get_order_items(self, obj) -> list[int]:
+    def get_order_item_ids(self, obj) -> list[int]:
         """Get list of linked order item IDs."""
         return list(obj.order_items.values_list("id", flat=True))
 
