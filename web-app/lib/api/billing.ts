@@ -349,6 +349,14 @@ async function getPaymentReceipt(paymentId: number): Promise<Receipt> {
   return parseResponse(ReceiptSchema, response.data, { context: 'billingApi.getPaymentReceipt' });
 }
 
+async function downloadReceiptPdf(paymentId: number): Promise<Blob> {
+  const response = await apiClient.get(
+    `/api/billing/payments/${paymentId}/receipt/pdf/`,
+    { responseType: 'blob' }
+  );
+  return response.data as Blob;
+}
+
 // ============================================================================
 // Payment Points API
 // ============================================================================
@@ -446,7 +454,7 @@ async function processRefund(
   data: CreditNoteRefundData
 ): Promise<CreditNote> {
   const response = await apiClient.post(
-    `/api/billing/credit-notes/${id}/process-refund/`,
+    `/api/billing/credit-notes/${id}/refund/`,
     data
   );
   return parseResponse(CreditNoteSchema, response.data, { context: 'billingApi.processRefund' });
@@ -595,6 +603,7 @@ export const billingApi = {
   getPayment,
   createPayment,
   getPaymentReceipt,
+  downloadReceiptPdf,
 
   // Payment points
   getPaymentPoints,

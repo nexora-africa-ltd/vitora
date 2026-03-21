@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.types import OpenApiTypes
@@ -350,6 +351,26 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
         serializer = ReceiptSerializer(receipt)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["get"], url_path="receipt/pdf")
+    def receipt_pdf(self, request, pk=None):
+        """Download receipt as PDF for a payment."""
+        payment = self.get_object()
+
+        try:
+            receipt = Receipt.objects.get(payment=payment)
+        except Receipt.DoesNotExist:
+            return Response(
+                {"detail": "No receipt found for this payment."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        pdf_bytes = receipt.generate_pdf()
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = (
+            f'attachment; filename="receipt-{receipt.receipt_number}.pdf"'
+        )
+        return response
 
 
 class PaymentPointViewSet(viewsets.ModelViewSet):

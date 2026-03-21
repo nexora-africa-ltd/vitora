@@ -289,6 +289,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Proformas', href: '/transactions/proformas', icon: Clock, actionKey: 'billing.view_proformas' },
       { label: 'Payments', href: '/transactions/payments', icon: CreditCard, actionKey: 'billing.record_payment' },
       { label: 'Receipts', href: '/transactions/receipts', icon: Receipt, actionKey: 'billing.view_receipts' },
+      { label: 'Credit Notes', href: '/transactions/credit-notes', icon: ScrollText, actionKey: 'billing.view_credit_notes' },
       { label: 'SHA Claims', href: '/transactions/sha-claims', icon: SHAIcon, actionKey: 'billing.submit_sha_claim' },
       { label: 'Insurance', href: '/insurance', icon: Shield, actionKey: 'billing.view_insurance' },
       { label: 'Reports', href: '/transactions/reports', icon: BarChart3, actionKey: 'billing.view_reports' },

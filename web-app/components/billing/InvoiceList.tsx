@@ -1,20 +1,13 @@
 /**
  * Invoice List Component
- * Displays a paginated, filterable list of invoices
+ * Displays a paginated, filterable list of invoices using ResponsiveTable
  */
 'use client';
 
 import React from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -23,9 +16,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Search, FileText, Clock, ArrowRightCircle } from 'lucide-react';
+import { Search, FileText, Clock, ArrowRightCircle } from 'lucide-react';
 import { EmptyState } from '@/components/shared/empty-state';
+import { ResponsiveTable } from '@/components/ui/responsive-table';
 import type { Invoice, InvoiceStatus } from '@/lib/types/billing';
 import { formatCurrency, formatDate } from '@/lib/utils/format';
 
@@ -66,7 +59,6 @@ function ProformaExpiryBadge({ invoice }: { invoice: Invoice }) {
 
   const days = invoice.days_until_expiry;
 
-  // Determine color based on days remaining
   let colorClass: string;
   let label: string;
 
@@ -89,29 +81,6 @@ function ProformaExpiryBadge({ invoice }: { invoice: Invoice }) {
       <Clock className="h-3 w-3 mr-1" />
       {label}
     </Badge>
-  );
-}
-
-// ============================================================================
-// Loading Skeleton
-// ============================================================================
-
-function InvoiceListSkeleton() {
-  return (
-    <div role="status" aria-label="Loading invoices">
-      <div className="space-y-3">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="flex items-center space-x-4">
-            <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-40" />
-            <Skeleton className="h-10 w-24" />
-            <Skeleton className="h-10 w-20" />
-            <Skeleton className="h-10 w-28" />
-          </div>
-        ))}
-      </div>
-      <span className="sr-only">Loading invoices...</span>
-    </div>
   );
 }
 
@@ -147,56 +116,39 @@ export function InvoiceList({
     });
   };
 
-  if (isLoading) {
-    return <InvoiceListSkeleton />;
-  }
-
   return (
     <div className="space-y-4">
-      {/* Header with filters */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search invoices..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-              className="pl-9 w-full sm:w-64"
-            />
-          </div>
-
-          {/* Status filter */}
-          <Select
-            value={statusFilter}
-            onValueChange={handleStatusChange}
-          >
-            <SelectTrigger className="w-full sm:w-40" aria-label="Status">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="PROFORMA">Proforma</SelectItem>
-              <SelectItem value="DRAFT">Draft</SelectItem>
-              <SelectItem value="PENDING">Pending</SelectItem>
-              <SelectItem value="PARTIAL">Partial</SelectItem>
-              <SelectItem value="PAID">Paid</SelectItem>
-              <SelectItem value="OVERDUE">Overdue</SelectItem>
-              <SelectItem value="CANCELLED">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-2 w-full">
+        <div className="relative flex-1 sm:flex-initial">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search invoices..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            className="pl-9 w-full sm:w-64"
+          />
         </div>
 
-        {/* Create button */}
-        <Button onClick={onCreateNew}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Invoice
-        </Button>
+        <Select value={statusFilter} onValueChange={handleStatusChange}>
+          <SelectTrigger className="w-full sm:w-40" aria-label="Status">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="PROFORMA">Proforma</SelectItem>
+            <SelectItem value="DRAFT">Draft</SelectItem>
+            <SelectItem value="PENDING">Pending</SelectItem>
+            <SelectItem value="PARTIAL">Partial</SelectItem>
+            <SelectItem value="PAID">Paid</SelectItem>
+            <SelectItem value="OVERDUE">Overdue</SelectItem>
+            <SelectItem value="CANCELLED">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Empty state or table */}
-      {invoices.length === 0 ? (
+      {/* Table */}
+      {invoices.length === 0 && !isLoading ? (
         <EmptyState
           icon={FileText}
           title="No invoices found"
@@ -204,73 +156,127 @@ export function InvoiceList({
           action={{ label: 'Create Invoice', onClick: onCreateNew }}
         />
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Invoice #</TableHead>
-                <TableHead>Patient</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead className="w-[100px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invoices.map((invoice) => (
-                <TableRow
-                  key={invoice.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => onSelect(invoice)}
-                >
-                  <TableCell className="font-medium">
-                    {invoice.invoice_number}
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{invoice.patient_name}</div>
-                      {invoice.patient_mrn && (
-                        <div className="text-sm text-muted-foreground">
-                          {invoice.patient_mrn}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>{formatDate(invoice.invoice_date)}</TableCell>
-                  <TableCell className="font-medium">
-                    {formatCurrency(parseFloat(invoice.total_amount))}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Badge className={statusColors[invoice.status]}>
-                        {invoice.status}
-                      </Badge>
-                      <ProformaExpiryBadge invoice={invoice} />
-                    </div>
-                  </TableCell>
-                  <TableCell>{formatDate(invoice.due_date)}</TableCell>
-                  <TableCell>
-                    {invoice.status === 'PROFORMA' && invoice.can_convert && onConvertProforma && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onConvertProforma(invoice);
-                        }}
-                        title="Convert to Invoice"
-                      >
-                        <ArrowRightCircle className="h-4 w-4 mr-1" />
-                        Convert
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <ResponsiveTable
+          data={invoices}
+          keyExtractor={(invoice) => invoice.id}
+          isLoading={isLoading}
+          emptyMessage="No invoices match your filters"
+          defaultSortColumn="invoice_date"
+          defaultSortDirection="desc"
+          onRowClick={onSelect}
+          columns={[
+            {
+              key: 'invoice_number',
+              header: 'Invoice #',
+              sortable: true,
+              cell: (invoice) => (
+                <span className="font-medium font-mono text-sm">{invoice.invoice_number}</span>
+              ),
+            },
+            {
+              key: 'patient_name',
+              header: 'Patient',
+              sortable: true,
+              sortFn: (a, b) => (a.patient_name || '').localeCompare(b.patient_name || ''),
+              cell: (invoice) => (
+                <div>
+                  <div className="font-medium">{invoice.patient_name}</div>
+                  {invoice.patient_mrn && (
+                    <div className="text-xs text-muted-foreground">{invoice.patient_mrn}</div>
+                  )}
+                </div>
+              ),
+            },
+            {
+              key: 'invoice_date',
+              header: 'Date',
+              sortable: true,
+              sortType: 'date',
+              cell: (invoice) => (
+                <span className="text-sm text-muted-foreground">{formatDate(invoice.invoice_date)}</span>
+              ),
+              hideOnMobile: true,
+            },
+            {
+              key: 'total_amount',
+              header: 'Amount',
+              sortable: true,
+              sortType: 'number',
+              sortFn: (a, b) => parseFloat(a.total_amount) - parseFloat(b.total_amount),
+              cell: (invoice) => (
+                <span className="font-medium">{formatCurrency(parseFloat(invoice.total_amount))}</span>
+              ),
+            },
+            {
+              key: 'status',
+              header: 'Status',
+              sortable: true,
+              cell: (invoice) => (
+                <div className="flex items-center gap-1">
+                  <Badge className={`${statusColors[invoice.status]} shrink-0 w-fit`}>
+                    {invoice.status}
+                  </Badge>
+                  <ProformaExpiryBadge invoice={invoice} />
+                </div>
+              ),
+            },
+            {
+              key: 'due_date',
+              header: 'Due Date',
+              sortable: true,
+              sortType: 'date',
+              cell: (invoice) => (
+                <span className="text-sm text-muted-foreground">{formatDate(invoice.due_date)}</span>
+              ),
+              hideOnMobile: true,
+            },
+            {
+              key: 'actions',
+              header: '',
+              cell: (invoice) =>
+                invoice.status === 'PROFORMA' && invoice.can_convert && onConvertProforma ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onConvertProforma(invoice);
+                    }}
+                    title="Convert to Invoice"
+                  >
+                    <ArrowRightCircle className="h-4 w-4 mr-1" />
+                    <span className="hidden sm:inline">Convert</span>
+                  </Button>
+                ) : null,
+              className: 'w-20',
+            },
+          ]}
+          mobileCard={(invoice) => (
+            <Card className="p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-mono text-sm font-medium truncate">
+                      {invoice.invoice_number}
+                    </span>
+                    <Badge className={`${statusColors[invoice.status]} text-xs shrink-0 w-fit`}>
+                      {invoice.status}
+                    </Badge>
+                    <ProformaExpiryBadge invoice={invoice} />
+                  </div>
+                  <p className="text-sm truncate">{invoice.patient_name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {formatDate(invoice.invoice_date)}
+                    {invoice.due_date && ` • Due ${formatDate(invoice.due_date)}`}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-semibold">{formatCurrency(parseFloat(invoice.total_amount))}</p>
+                </div>
+              </div>
+            </Card>
+          )}
+        />
       )}
     </div>
   );

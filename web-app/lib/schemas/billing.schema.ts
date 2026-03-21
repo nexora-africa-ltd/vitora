@@ -373,7 +373,7 @@ export const CreditNoteSchema = z.object({
 
   refunded_at: z.string().optional().nullable(),
   refund_reference: z.string().optional().nullable(),
-  refund_method: PaymentMethodSchema.optional().nullable(),
+  refund_method: z.union([PaymentMethodSchema, z.literal('')]).optional().nullable(),
   updated_at: z.string().optional().nullable(),
 });
 

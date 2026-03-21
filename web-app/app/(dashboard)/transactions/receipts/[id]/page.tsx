@@ -11,12 +11,28 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { PageHeader } from '@/components/shared/page-header';
 import { ReceiptView } from '@/components/billing/ReceiptView';
 import { usePaymentReceipt } from '@/lib/hooks/billing';
+import { billingApi } from '@/lib/api/billing';
+import { toast } from 'sonner';
 
 export default function ReceiptPage() {
   const params = useParams();
   const receiptId = Number(params.id);
 
   const { data: receipt, isLoading } = usePaymentReceipt(receiptId);
+
+  const handleDownloadPdf = async () => {
+    try {
+      const blob = await billingApi.downloadReceiptPdf(receiptId);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `receipt-${receipt?.receipt_number || receiptId}.pdf`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Failed to download receipt PDF');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -52,7 +68,7 @@ export default function ReceiptPage() {
         />
       </div>
 
-      <ReceiptView receipt={receipt} isLoading={false} />
+      <ReceiptView receipt={receipt} isLoading={false} onDownload={handleDownloadPdf} />
     </div>
   );
 }
