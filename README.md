@@ -5,7 +5,7 @@
 
 # Kenya HMIS (Hospital Management Information System)
 _Comprehensive Technical Blueprint & Implementation Guide (Kenya-Tailored)_
-_Last Updated: January 31, 2026_
+_Last Updated: March 21, 2026_
 
 ---
 
@@ -58,7 +58,7 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 | DB | SQLite (standalone/offline) or PostgreSQL 16 (cloud) | ✅ Complete |
 | Object Storage | Local file system (standalone) or S3-compatible | ✅ Complete |
 | Messaging | Celery + Redis for background tasks | ✅ Complete |
-| CI/CD | GitHub Actions (3 workflows) | ✅ Complete |
+| CI/CD | GitHub Actions (4 workflows) | ✅ Complete |
 | Container | Docker / Docker Compose | ✅ Complete |
 
 ### 1.3 Kenya-Specific Considerations
@@ -115,21 +115,26 @@ A modular-monolith Hospital Management Information System tailored for Kenya, co
 ### 2.2 Test Coverage
 | Component | Tests | Coverage |
 |-----------|-------|----------|
-| Backend (Django) | 3,624+ | 87.08% |
-| Web App (Jest + Playwright) | 142+ files | E2E + Unit |
+| Backend (Django) | 6,465+ functions (285 files) | 30.21% overall* |
+| Web App (Jest + Playwright) | 679 test files (27 E2E) | Unit + E2E |
 | Desktop (Jest) | 66+ | 70%+ |
-| Mobile (Jest) | 388+ | - |
-| **Total** | **4,200+** | **80%+ enforced** |
+| Mobile (Jest) | 348 test files | - |
+| **Total** | **7,500+** | **Core modules 80%+** |
+
+> *Overall backend coverage dropped to 30.21% as the codebase expanded rapidly from ~10K to 44K lines across 27 apps. Core modules (patients, encounters, billing, triage, pharmacy, laboratory) retain higher coverage. Improving coverage for newer modules is an ongoing priority.
 
 ### 2.3 Key Metrics Achieved
-- ✅ 87%+ backend test coverage (3,624+ tests)
+- ✅ 6,465+ backend test functions across 285 test files
 - ✅ Zero critical security vulnerabilities (Bandit + Trivy scan)
 - ✅ 100% Kenya Data Protection Act compliance
 - ✅ All 15 SHA/DHA APIs integrated
 - ✅ Offline-first architecture validated
 - ✅ Full RBAC with department-scoped permissions
-- ✅ 21 route groups in web dashboard
-- ✅ 18 API client modules with Zod validation
+- ✅ 30 route groups in web dashboard
+- ✅ 39 API client modules with Zod validation
+- ✅ 34 Zod schema files for runtime response validation
+- ✅ 27 Django backend apps with 211 migrations
+- ✅ 4 CI/CD workflows (CI, CodeQL, FHIR, Security)
 
 ---
 
@@ -151,7 +156,7 @@ vitora/
 │   │   │   └── test.py             # Test configuration
 │   │   ├── urls.py                 # API routes
 │   │   ├── celery.py               # Celery configuration
-│   │   └── apps/                   # 10 Django apps
+│   │   └── apps/                   # 27 Django apps
 │   │       ├── core/               # AuditLog, Sync, Locations, RBAC, Permissions
 │   │       ├── patients/           # Patient, EmergencyContact
 │   │       ├── encounters/         # Encounter, Diagnosis, TreatmentPlan
@@ -161,8 +166,25 @@ vitora/
 │   │       ├── billing/            # Invoice, Payment, SHA Claims, M-Pesa
 │   │       ├── inpatient/          # Ward, Bed, Admission, Discharge, NursingKardex
 │   │       ├── triage/             # TriageAssessment, WaitingQueue, KETA scale
-│   │       └── clinical_templates/ # ClinicalTemplate, TemplateSection
-│   ├── tests/                      # Pytest test suites (3,624+ tests)
+│   │       ├── clinical_templates/ # ClinicalTemplate, TemplateSection
+│   │       ├── ai/                 # TibaBot AI (care plans, CDS, labs)
+│   │       ├── surveillance/       # IDSR/IHR disease reporting
+│   │       ├── mch/                # Maternal & Child Health
+│   │       ├── imaging/            # DICOM/PACS radiology
+│   │       ├── allied_health/      # Allied health umbrella
+│   │       ├── physiotherapy/      # Physiotherapy assessments
+│   │       ├── occupational_therapy/ # OT assessments
+│   │       ├── nutrition/          # Nutrition screening
+│   │       ├── social_work/        # Social work assessments
+│   │       ├── counselling/        # Counselling sessions
+│   │       ├── quality/            # Quality improvement
+│   │       ├── referrals/          # Inter-facility referrals
+│   │       ├── cds/                # Clinical Decision Support
+│   │       ├── checkin/            # Patient check-in
+│   │       ├── hl7/                # HL7v2 interoperability
+│   │       ├── kenhdd/             # Kenya Health Data Dictionary
+│   │       └── scheduling/         # Appointment scheduling
+│   ├── tests/                      # Pytest test suites (285 files, 6,465+ tests)
 │   └── data/                       # CSV imports, clinical templates
 │
 ├── desktop-app/                    # Electron desktop application
@@ -179,7 +201,7 @@ vitora/
 │   ├── package.json
 │   ├── next.config.js
 │   ├── tailwind.config.js
-│   ├── app/                        # 21 route groups
+│   ├── app/                        # 30 route groups
 │   │   ├── (dashboard)/            # Protected routes
 │   │   │   ├── patients/
 │   │   │   ├── encounters/
@@ -190,6 +212,12 @@ vitora/
 │   │   │   ├── triage/
 │   │   │   ├── wards/
 │   │   │   ├── admissions/
+│   │   │   ├── imaging/
+│   │   │   ├── mch/
+│   │   │   ├── surveillance/
+│   │   │   ├── allied-health/
+│   │   │   ├── referrals/
+│   │   │   ├── quality/
 │   │   │   ├── reports/
 │   │   │   ├── admin/
 │   │   │   ├── finance/
@@ -198,30 +226,32 @@ vitora/
 │   │   └── login/
 │   ├── components/
 │   ├── lib/
-│   │   ├── api/                    # 18 API client modules
-│   │   ├── schemas/                # Zod validation schemas
+│   │   ├── api/                    # 39 API client modules
+│   │   ├── schemas/                # 34 Zod validation schemas
 │   │   └── hooks/
-│   ├── features/                   # BDD feature files (~750 scenarios)
-│   └── e2e/                        # Playwright E2E tests
+│   └── e2e/                        # Playwright E2E tests (27 specs)
 │
-├── mobile-app/                     # React Native (Expo 54)
+├── mobile/                         # React Native (Expo 54, RN 0.81)
 │   ├── package.json
 │   ├── app.config.js
 │   ├── app/
-│   │   ├── (auth)/                 # Authentication screens
-│   │   └── (main)/                 # Main app screens
-│   ├── components/
-│   ├── lib/
-│   │   ├── db/                     # WatermelonDB offline storage
-│   │   └── sync/                   # Background sync
-│   └── __tests__/                  # Jest tests (388+)
+│   │   ├── (tabs)/                 # Tab navigation
+│   │   ├── patients/
+│   │   ├── encounters/
+│   │   ├── pharmacy/
+│   │   ├── laboratory/
+│   │   ├── billing/
+│   │   ├── inpatient/
+│   │   ├── mch/
+│   │   └── sync/
+│   └── __tests__/                  # Jest tests (348 files)
 │
-├── docs/                           # Documentation
+├── docs/                           # Documentation (115 files)
 ├── scripts/                        # Utility scripts
 ├── docker/                         # Docker configurations
 ├── .github/
 │   ├── copilot-instructions.md     # AI agent onboarding
-│   └── workflows/                  # CI/CD pipelines (3 workflows)
+│   └── workflows/                  # CI/CD pipelines (4 workflows)
 ├── ROADMAP.md                      # Development roadmap
 └── README.md                       # This document
 \`\`\`
@@ -303,7 +333,7 @@ npm run test:coverage
 
 ### 4.5 Mobile App Setup
 \`\`\`bash
-cd mobile-app
+cd mobile
 npm install
 npx expo start              # Opens Expo developer tools
 \`\`\`
@@ -818,28 +848,40 @@ GET    /api/locations/wards/?sub_county={id}     # Cascading
 | **Imaging** | `/imaging` | 📋 Planned |
 | **Theatre** | `/theatre` | 📋 Planned |
 
-### 6.3 API Client Modules (18 modules)
+### 6.3 API Client Modules (39 modules)
 All API clients include Zod validation schemas:
-- `billing.ts`, `clinical-templates.ts`, `clinics.ts`, `consultation-queue.ts`
-- `core.ts`, `encounters.ts`, `events.ts`, `inpatient.ts`
-- `laboratory.ts`, `locations.ts`, `notifications.ts`, `patients.ts`
-- `pharmacy.ts`, `rbac.ts`, `sha.ts`, `triage.ts`
+- `ai.ts`, `allergies.ts`, `allied-health.ts`, `audit-integrity.ts`, `billing.ts`
+- `cds.ts`, `certificates.ts`, `checkin.ts`, `clinical-templates.ts`, `clinics.ts`
+- `consultation-queue.ts`, `core.ts`, `counselling.ts`, `encounters.ts`, `events.ts`
+- `facilities.ts`, `history.ts`, `hl7.ts`, `imaging.ts`, `inpatient.ts`
+- `kenhdd.ts`, `laboratory.ts`, `locations.ts`, `mch.ts`, `mfa.ts`
+- `notifications.ts`, `nutrition.ts`, `occupational-therapy.ts`, `patients.ts`
+- `pharmacy.ts`, `physiotherapy.ts`, `quality.ts`, `rbac.ts`, `referrals.ts`
+- `sha.ts`, `social-work.ts`, `surveillance.ts`, `triage.ts`
 
 ### 6.4 Project Structure
 \`\`\`
 web-app/
 ├── app/
-│   ├── (dashboard)/           # Protected routes with auth
+│   ├── (dashboard)/           # Protected routes with auth (30 route groups)
 │   │   ├── layout.tsx         # Sidebar + Header layout
 │   │   ├── page.tsx           # Dashboard with stats
 │   │   ├── patients/          # Patient management
 │   │   ├── encounters/        # Encounter management
 │   │   ├── pharmacy/          # Pharmacy module
 │   │   ├── laboratory/        # Laboratory module
-│   │   ├── billing/           # Billing module
+│   │   ├── billing/           # Billing & finance
 │   │   ├── triage/            # Triage queue
-│   │   ├── inpatient/         # Inpatient module
-│   │   └── reports/           # Reporting dashboard
+│   │   ├── inpatient/         # Inpatient/wards module
+│   │   ├── imaging/           # Radiology/DICOM
+│   │   ├── mch/               # Maternal & Child Health
+│   │   ├── surveillance/      # IDSR/IHR disease reporting
+│   │   ├── allied-health/     # Allied health services
+│   │   ├── referrals/         # Inter-facility referrals
+│   │   ├── quality/           # Quality improvement
+│   │   ├── reports/           # Reporting dashboard
+│   │   ├── admin/             # Administration
+│   │   └── ...                # + finance, insurance, notifications, etc.
 │   └── login/                 # Authentication
 ├── components/
 │   ├── layout/
@@ -849,19 +891,23 @@ web-app/
 │   ├── ui/                    # shadcn/ui components
 │   └── shared/                # LoadingSpinner, EmptyState, PageHeader
 └── lib/
-    ├── api/                   # Axios client with interceptors
+    ├── api/                   # 39 API client modules with interceptors
+    ├── schemas/               # 34 Zod validation schemas
+    ├── types/                 # 37 TypeScript type definitions
     ├── auth/                  # AuthProvider, AuthGuard, useAuth
     └── hooks/                 # Custom hooks
 \`\`\`
 
-### 6.3 Key Features
+### 6.5 Key Features
 - **Responsive Design**: Mobile-first with overlay sidebar on mobile
 - **Dark Mode**: System preference detection + manual toggle
 - **Real-time Updates**: WebSocket notifications for critical alerts
 - **Offline Support**: Service Worker caching for static assets
 - **Role-based UI**: Components render based on user permissions
+- **Pull-to-Refresh**: Mobile/tablet pull-to-refresh on list pages
+- **API Validation**: All API responses validated with Zod schemas
 
-### 6.4 Brand Colors (Vitora HMIS)
+### 6.6 Brand Colors (Vitora HMIS)
 \`\`\`css
 :root {
   --primary: #3D000F;      /* Deep Burgundy */
@@ -925,10 +971,10 @@ ipcMain.handle('sync:forceSync', async () => { ... });
 ## 8. Mobile App (React Native) Implementation
 
 ### 8.1 Architecture
-- **Framework**: React Native with Expo
+- **Framework**: React Native 0.81 with Expo 54
 - **Database**: SQLite (expo-sqlite) for offline storage
 - **Sync**: Background sync with queue management
-- **Navigation**: React Navigation
+- **Navigation**: Expo Router (file-based routing)
 
 ### 8.2 Key Features
 - Patient lookup and registration
@@ -993,6 +1039,11 @@ See Section 5 for detailed model definitions. Core tables:
 - \`inpatient_bed\`: Bed tracking
 - \`inpatient_admission\`: Admission records
 - \`triage_triageassessment\`: Triage assessments
+- \`surveillance_idsrweeklyreport\`: IDSR disease reporting
+- \`mch_*\`: Maternal & Child Health records
+- \`imaging_imagingorder\`: Radiology/DICOM orders
+- \`referrals_referral\`: Inter-facility referrals
+- \`quality_*\`: Quality improvement records
 - \`core_auditlog\`: Audit trail (7-year retention)
 
 ---
@@ -1212,9 +1263,10 @@ make quality  # ruff + mypy + bandit
 \`\`\`
 
 ### 12.4 Coverage Requirements
-- **Backend**: ≥80% coverage enforced (currently 82%+)
+- **Backend**: ≥80% coverage for core modules (patients, encounters, billing, triage, pharmacy, lab)
 - **Desktop**: ≥70% coverage target (currently 70%+)
 - **CI/CD**: All tests must pass before merge
+- **Overall**: 30.21% backend coverage (expanding rapidly; core modules higher)
 
 ### 12.5 Quality Gates
 Before merge:
@@ -1362,7 +1414,7 @@ npm run dev            # Development
 npm test               # Tests
 
 # Mobile
-cd mobile-app
+cd mobile
 npx expo start         # Development
 \`\`\`
 
