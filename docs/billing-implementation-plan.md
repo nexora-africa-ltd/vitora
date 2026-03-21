@@ -80,7 +80,8 @@ All phases are complete. Below is the final state of each phase.
 - `Invoice.save()` runs `full_clean()` for data integrity
 - `SHAClaim.save()` auto-generates `claim_number` and runs validation
 - Self-approval prevention on `CreditNote`
-- 21 database migrations
+- Receipt PDF generation via ReportLab (A5, facility header, line items, KES amount in words)
+- 22 database migrations (migration 0022 is a no-op — seed data moved to management command)
 
 ---
 
@@ -353,16 +354,20 @@ backend/hmis/apps/billing/
 │   ├── dha_search.py           # 908 lines — DHA facility/practitioner search
 │   ├── icd11_local.py          # 236 lines — Offline ICD-11 fallback
 │   ├── mpesa.py                # 327 lines — M-Pesa Daraja API integration
-│   ├── sha.py                  # 161 lines — SHA base service
+│   ├── sha.py                  # 161 lines — SHA stub (offline fallback, tested by test_sha_stub.py)
 │   ├── sha_auth.py             # 352 lines — SHA OAuth2 authentication
 │   ├── sha_claims.py           # 1,531 lines — SHA claims lifecycle
 │   ├── sha_eligibility.py      # 584 lines — Eligibility verification
 │   ├── sha_pii.py              # 122 lines — PII protection
 │   └── terminology.py          # 1,421 lines — ICD-11/LOINC/ICHI terminology
+├── management/
+│   └── commands/
+│       └── seed_service_catalog.py  # Seed standard Kenya service categories & services
 └── migrations/
     ├── 0001_initial.py
     ├── ...
-    └── 0021_change_imaging_order_on_delete.py   # 21 migrations total
+    ├── 0021_change_imaging_order_on_delete.py
+    └── 0022_sample_service_catalog.py  # No-op (seed data moved to management command)
 ```
 
 ```
@@ -453,6 +458,23 @@ backend/tests/billing/
 1. **Signal-driven billing**: Encounter → invoice, Admission → fee + bed, Lab order → line items, Discharge → finalize + SHA claim
 2. **Celery beat tasks**: Daily bed charges (midnight), overdue flagging (6 AM), SHA claim submission (hourly)
 3. **Idempotent operations**: Safe to re-run, uses `get_or_create` patterns
+
+### Service Catalog Seed Data
+
+Seed data for 14 service categories and 34 billable services is provided via a management command (not a migration) to avoid polluting the test database:
+
+```bash
+python manage.py seed_service_catalog            # create missing only
+python manage.py seed_service_catalog --force     # overwrite existing
+python manage.py seed_service_catalog --dry-run   # preview, no writes
+```
+
+### SHA Stub Architecture
+
+`services/sha.py` is an intentional **offline fallback stub**, not dead code. The real implementations live in `sha_claims.py` and `sha_eligibility.py`. The stub is retained for:
+- `test_sha_stub.py` (7 tests verifying offline-safe behavior)
+- Lightweight fallback when SHA API configuration is unavailable
+- No production code imports it directly — real services are used via `sha_claims.py` and `sha_eligibility.py`
 
 ---
 

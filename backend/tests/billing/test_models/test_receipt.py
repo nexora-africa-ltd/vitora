@@ -393,7 +393,8 @@ class TestReceipt:
         pdf_data = receipt.generate_pdf()
 
         assert pdf_data is not None
-        # In real implementation, check PDF validity
+        assert len(pdf_data) > 100  # Real PDF, not a stub
+        assert pdf_data[:5] == b"%PDF-"  # Valid PDF header
 
     def test_receipt_audit_trail(self, sample_invoice, billing_user, consultation_service):
         """Test issued_by recorded."""
