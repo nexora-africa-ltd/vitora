@@ -1286,10 +1286,131 @@ class Receipt(models.Model):
         self.save()
 
     def generate_pdf(self):
-        """Generate printable PDF receipt."""
-        # Placeholder for PDF generation
-        # In full implementation, use reportlab to generate PDF
-        return b"PDF_DATA_HERE"
+        """Generate printable PDF receipt using ReportLab."""
+        import io
+
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A5
+        from reportlab.lib.units import mm
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A5,
+            leftMargin=15 * mm,
+            rightMargin=15 * mm,
+            topMargin=15 * mm,
+            bottomMargin=15 * mm,
+        )
+
+        styles = getSampleStyleSheet()
+        elements = []
+
+        # --- Facility Header ---
+        header_style = ParagraphStyle(
+            "ReceiptHeader", parent=styles["Title"], fontSize=14, alignment=1
+        )
+        sub_header = ParagraphStyle(
+            "SubHeader", parent=styles["Normal"], fontSize=9, alignment=1
+        )
+        elements.append(Paragraph(self.facility_name, header_style))
+        if self.facility_address:
+            elements.append(Paragraph(self.facility_address, sub_header))
+        if self.facility_phone:
+            elements.append(Paragraph(f"Tel: {self.facility_phone}", sub_header))
+        if self.facility_kra_pin:
+            elements.append(Paragraph(f"KRA PIN: {self.facility_kra_pin}", sub_header))
+        elements.append(Spacer(1, 6 * mm))
+
+        # --- Receipt Title ---
+        title_style = ParagraphStyle(
+            "ReceiptTitle", parent=styles["Heading2"], fontSize=12, alignment=1
+        )
+        voided_label = " (VOIDED)" if self.is_voided else ""
+        elements.append(Paragraph(f"OFFICIAL RECEIPT{voided_label}", title_style))
+        elements.append(Spacer(1, 4 * mm))
+
+        # --- Receipt Details ---
+        detail_data = [
+            ["Receipt No:", self.receipt_number],
+            ["Date:", self.receipt_date.strftime("%d/%m/%Y %H:%M")],
+            ["Patient:", f"{self.patient_name} ({self.patient_mrn})"],
+            ["Invoice:", self.invoice.invoice_number],
+            ["Payment Method:", self.payment_method.replace("_", " ").title()],
+        ]
+        detail_table = Table(detail_data, colWidths=[35 * mm, 75 * mm])
+        detail_table.setStyle(
+            TableStyle(
+                [
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ]
+            )
+        )
+        elements.append(detail_table)
+        elements.append(Spacer(1, 4 * mm))
+
+        # --- Line Items ---
+        items = self.invoice.items.all().order_by("id")
+        if items.exists():
+            item_data = [["#", "Description", "Qty", "Amount"]]
+            for idx, item in enumerate(items, 1):
+                item_data.append(
+                    [
+                        str(idx),
+                        item.description[:40],
+                        str(item.quantity),
+                        f"{item.line_total:,.2f}",
+                    ]
+                )
+            item_table = Table(item_data, colWidths=[8 * mm, 55 * mm, 15 * mm, 32 * mm])
+            item_table.setStyle(
+                TableStyle(
+                    [
+                        ("FONTSIZE", (0, 0), (-1, -1), 8),
+                        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                        ("LINEBELOW", (0, 0), (-1, 0), 0.5, colors.black),
+                        ("ALIGN", (2, 0), (-1, -1), "RIGHT"),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                    ]
+                )
+            )
+            elements.append(item_table)
+            elements.append(Spacer(1, 3 * mm))
+
+        # --- Amount ---
+        amount_style = ParagraphStyle(
+            "Amount", parent=styles["Normal"], fontSize=11, alignment=2
+        )
+        bold_amount = ParagraphStyle(
+            "BoldAmount", parent=amount_style, fontName="Helvetica-Bold"
+        )
+        elements.append(Paragraph(f"Amount Paid: KES {self.amount:,.2f}", bold_amount))
+        elements.append(Spacer(1, 2 * mm))
+
+        # --- Amount in Words ---
+        words_style = ParagraphStyle(
+            "Words", parent=styles["Normal"], fontSize=8, fontName="Helvetica-Oblique"
+        )
+        elements.append(Paragraph(f"({self.amount_in_words})", words_style))
+        elements.append(Spacer(1, 6 * mm))
+
+        # --- Footer ---
+        footer_style = ParagraphStyle(
+            "Footer", parent=styles["Normal"], fontSize=8, alignment=1, textColor=colors.grey
+        )
+        issued_by_name = ""
+        if self.issued_by:
+            issued_by_name = self.issued_by.get_full_name() or self.issued_by.username
+        elements.append(Paragraph(f"Issued by: {issued_by_name}", footer_style))
+        elements.append(Paragraph("Thank you for choosing our facility.", footer_style))
+
+        doc.build(elements)
+        return buffer.getvalue()
 
 
 class CreditNote(models.Model):
