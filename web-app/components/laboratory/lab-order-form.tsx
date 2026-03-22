@@ -21,10 +21,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { toast as sonnerToast } from 'sonner';
 import { Plus, Trash2, FlaskConical, Search, User, AlertTriangle } from 'lucide-react';
 import { TestSelector } from './test-selector';
 import { LabOrderCreateData, OrderType, LabPriority, TestCatalogListItem } from '@/lib/types/laboratory';
-import { useCreateLabOrder } from '@/lib/hooks/use-laboratory';
+import { useCreateLabOrder, useSubmitLabOrder } from '@/lib/hooks/use-laboratory';
+import { useRouter } from 'next/navigation';
 import { useToast } from '@/lib/hooks';
 import { formatCurrency } from '@/lib/utils/format';
 import { useAuth } from '@/lib/auth';
@@ -98,7 +100,9 @@ export function LabOrderForm({
 }: LabOrderFormProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const router = useRouter();
   const createOrder = useCreateLabOrder();
+  const submitOrder = useSubmitLabOrder();
   const [showTestSelector, setShowTestSelector] = useState(false);
 
   // Try to get data from context (optional - may not be in context)
@@ -246,9 +250,18 @@ export function LabOrderForm({
 
       const order = await createOrder.mutateAsync(orderData);
 
-      toast({
-        title: 'Lab order created',
-        description: `Order ${order.order_number} created successfully.`,
+      // Auto-submit so it goes straight to ORDERED status
+      try {
+        await submitOrder.mutateAsync(order.order_number);
+      } catch {
+        // If submit fails, order is still in DRAFT — user can submit manually
+      }
+
+      sonnerToast.success(`Order ${order.order_number} has been submitted`, {
+        action: {
+          label: 'View Order',
+          onClick: () => router.push(`/laboratory/orders/${order.order_number}`),
+        },
       });
 
       onSuccess?.(order.order_number);

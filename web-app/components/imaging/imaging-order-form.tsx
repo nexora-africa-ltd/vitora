@@ -39,6 +39,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from '@/lib/hooks';
+import { toast as sonnerToast } from 'sonner';
 import { useCreateImagingOrder, useSubmitImagingOrder } from '@/lib/hooks/use-imaging';
 import {
   ImagingProcedure,
@@ -174,9 +175,11 @@ export function ImagingOrderForm({
       // Auto-submit the order
       await submitOrder.mutateAsync(order.order_number);
 
-      toast({
-        title: 'Imaging order created',
-        description: `Order ${order.order_number} has been submitted.`,
+      sonnerToast.success(`Order ${order.order_number} has been submitted`, {
+        action: {
+          label: 'View Order',
+          onClick: () => router.push(`/imaging/orders/${order.order_number}`),
+        },
       });
 
       onSuccess?.(order.order_number);

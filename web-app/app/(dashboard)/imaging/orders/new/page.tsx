@@ -18,9 +18,17 @@ export default function NewImagingOrderPage() {
   const patientId = searchParams.get('patient');
   const patientName = searchParams.get('patientName');
   const encounterId = searchParams.get('encounter');
+  const admissionId = searchParams.get('admission');
 
   const handleSuccess = (orderNumber: string) => {
-    router.push(`/imaging/orders/${orderNumber}`);
+    // Redirect back to the source context, not the order detail
+    if (admissionId) {
+      router.push(`/admissions/${admissionId}?tab=orders`);
+    } else if (encounterId) {
+      router.push(`/encounters/${encounterId}`);
+    } else {
+      router.push(`/imaging/orders/${orderNumber}`);
+    }
   };
 
   const handleCancel = () => {

@@ -281,6 +281,8 @@ export interface DepartmentClearance {
   invoice_count?: number;
   pending_count?: number;
   pending_tests?: string[];
+  first_pending_id?: number | null;
+  first_pending_order_number?: string | null;
 }
 
 export interface ClearanceStatus {

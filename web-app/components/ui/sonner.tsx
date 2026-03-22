@@ -39,7 +39,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         } as React.CSSProperties
       }
       toastOptions={{
-        duration: 4000,
+        duration: 6000,
         classNames: {
           toast: "group toast !shadow-lg",
           title: "!font-medium",
