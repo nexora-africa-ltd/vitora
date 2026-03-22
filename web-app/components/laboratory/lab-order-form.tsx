@@ -58,6 +58,8 @@ interface LabOrderFormProps {
   patientId?: number;
   /** Encounter ID - optional if using EncounterContext */
   encounterId?: number;
+  /** Admission ID - for inpatient lab orders */
+  admissionId?: number;
   patientName?: string;
   patientMrn?: string;
   patientGender?: string;
@@ -83,6 +85,7 @@ const ORDER_TYPE_OPTIONS = [
 export function LabOrderForm({
   patientId: propPatientId,
   encounterId: propEncounterId,
+  admissionId,
   patientName: propPatientName,
   patientMrn: propPatientMrn,
   patientGender: propPatientGender,
@@ -230,6 +233,7 @@ export function LabOrderForm({
       const orderData: LabOrderCreateData = {
         patient: data.patient,
         encounter: data.encounter,
+        ...(admissionId ? { admission: admissionId } : {}),
         order_type: data.order_type as OrderType,
         external_lab: data.external_lab,
         priority: data.priority as LabPriority,

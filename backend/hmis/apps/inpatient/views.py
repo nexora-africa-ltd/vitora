@@ -3,6 +3,7 @@ Views for the inpatient app.
 """
 
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import filters, serializers, status, viewsets
@@ -1437,6 +1438,18 @@ class AdmissionViewSet(viewsets.ModelViewSet):
                 ip_address=get_client_ip(self.request),
             )
 
+    @staticmethod
+    def _admission_order_q(admission) -> Q:
+        """Build a Q filter that captures all orders for an admission.
+
+        Includes orders linked directly to the admission, orders linked to the
+        IPD encounter, and orders from the originating OPD encounter (if any).
+        """
+        q = Q(admission=admission) | Q(encounter=admission.ipd_encounter)
+        if admission.opd_encounter_id:
+            q |= Q(encounter=admission.opd_encounter)
+        return q
+
     @extend_schema(
         tags=["Inpatient - Admissions"],
         summary="Get lab orders for admission",
@@ -1450,9 +1463,10 @@ class AdmissionViewSet(viewsets.ModelViewSet):
 
         admission = self.get_object()
         orders = (
-            LabOrder.objects.filter(admission=admission)
+            LabOrder.objects.filter(self._admission_order_q(admission))
             .select_related("patient", "encounter", "ordered_by")
             .prefetch_related("items__test", "items__result")
+            .distinct()
         )
         serializer = LabOrderSerializer(orders, many=True)
         return Response(serializer.data)
@@ -1470,9 +1484,10 @@ class AdmissionViewSet(viewsets.ModelViewSet):
 
         admission = self.get_object()
         orders = (
-            ImagingOrder.objects.filter(admission=admission)
+            ImagingOrder.objects.filter(self._admission_order_q(admission))
             .select_related("patient", "encounter", "ordered_by")
             .prefetch_related("items__procedure")
+            .distinct()
         )
         serializer = ImagingOrderSerializer(orders, many=True)
         return Response(serializer.data)
@@ -1490,9 +1505,10 @@ class AdmissionViewSet(viewsets.ModelViewSet):
 
         admission = self.get_object()
         prescriptions = (
-            Prescription.objects.filter(admission=admission)
+            Prescription.objects.filter(self._admission_order_q(admission))
             .select_related("patient", "encounter", "prescribed_by")
             .prefetch_related("items__drug")
+            .distinct()
         )
         serializer = PrescriptionSerializer(prescriptions, many=True)
         return Response(serializer.data)
@@ -1513,23 +1529,27 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         from hmis.apps.pharmacy.serializers import PrescriptionSerializer
 
         admission = self.get_object()
+        q = self._admission_order_q(admission)
 
         lab_orders = (
-            LabOrder.objects.filter(admission=admission)
+            LabOrder.objects.filter(q)
             .select_related("patient", "encounter", "ordered_by")
             .prefetch_related("items__test", "items__result")
+            .distinct()
         )
 
         imaging_orders = (
-            ImagingOrder.objects.filter(admission=admission)
+            ImagingOrder.objects.filter(q)
             .select_related("patient", "encounter", "ordered_by")
             .prefetch_related("items__procedure")
+            .distinct()
         )
 
         prescriptions = (
-            Prescription.objects.filter(admission=admission)
+            Prescription.objects.filter(q)
             .select_related("patient", "encounter", "prescribed_by")
             .prefetch_related("items__drug")
+            .distinct()
         )
 
         return Response(
@@ -1849,9 +1869,11 @@ class AdmissionViewSet(viewsets.ModelViewSet):
 
         admission = self.get_object()
 
-        # ----- Billing: check invoices linked to the IPD encounter -----
-        billing_filter = {"encounter": admission.ipd_encounter}
-        unpaid_invoices = Invoice.objects.filter(**billing_filter).exclude(
+        # ----- Billing: check invoices linked to admission encounters -----
+        billing_q = Q(encounter=admission.ipd_encounter)
+        if admission.opd_encounter_id:
+            billing_q |= Q(encounter=admission.opd_encounter)
+        unpaid_invoices = Invoice.objects.filter(billing_q).exclude(
             status__in=[
                 Invoice.Status.PAID,
                 Invoice.Status.CANCELLED,
@@ -1874,9 +1896,10 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         }
 
         # ----- Pharmacy: all prescriptions dispensed or cancelled -----
-        pending_rx = Prescription.objects.filter(admission=admission).exclude(
+        q = self._admission_order_q(admission)
+        pending_rx = Prescription.objects.filter(q).exclude(
             status__in=["DISPENSED", "CANCELLED"]
-        )
+        ).distinct()
         pharmacy_cleared = not pending_rx.exists()
         pharmacy_info = {
             "cleared": pharmacy_cleared,
@@ -1889,9 +1912,9 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         }
 
         # ----- Laboratory: all lab orders completed or cancelled -----
-        pending_labs = LabOrder.objects.filter(admission=admission).exclude(
+        pending_labs = LabOrder.objects.filter(q).exclude(
             status__in=["COMPLETED", "CANCELLED"]
-        )
+        ).distinct()
         pending_test_names = list(
             pending_labs.values_list("items__test__name", flat=True).distinct()[:10]
         )

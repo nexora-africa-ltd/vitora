@@ -17,6 +17,7 @@ export default function NewLabOrderPage() {
 
   const encounterId = searchParams.get('encounter');
   const patientId = searchParams.get('patient');
+  const admissionId = searchParams.get('admission');
 
   // Try to get from context first (if within patient/encounter shell)
   let contextPatient: { id?: number; first_name?: string; last_name?: string; mrn?: string; gender?: string; date_of_birth?: string } | null = null;
@@ -143,6 +144,7 @@ export default function NewLabOrderPage() {
       <LabOrderForm
         patientId={resolvedPatientId}
         encounterId={resolvedEncounterId}
+        admissionId={admissionId ? parseInt(admissionId) : undefined}
         patientName={effectivePatient ? `${effectivePatient.first_name} ${effectivePatient.last_name}` : (encounter?.patient_name ?? undefined)}
         patientMrn={(effectivePatient?.mrn || encounter?.patient_mrn) ?? undefined}
         patientGender={(effectivePatient?.gender || encounter?.patient_gender) ?? undefined}

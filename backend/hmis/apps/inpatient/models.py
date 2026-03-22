@@ -25,6 +25,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import Q
 from django.utils import timezone
 
 from hmis.apps.core.models import TimeStampedModel
@@ -1178,18 +1179,24 @@ class Discharge(TimeStampedModel):
                 )
 
             # Pharmacy
-            pending_rx = Prescription.objects.filter(
-                admission=self.admission,
-            ).exclude(status__in=["DISPENSED", "CANCELLED"])
+            rx_q = Q(admission=self.admission) | Q(encounter=self.admission.ipd_encounter)
+            if self.admission.opd_encounter_id:
+                rx_q |= Q(encounter=self.admission.opd_encounter)
+            pending_rx = Prescription.objects.filter(rx_q).exclude(
+                status__in=["DISPENSED", "CANCELLED"]
+            ).distinct()
             if pending_rx.exists():
                 errors["pharmacy_cleared"] = (
                     f"Cannot discharge: {pending_rx.count()} prescription(s) not yet dispensed"
                 )
 
             # Laboratory
-            pending_labs = LabOrder.objects.filter(
-                admission=self.admission,
-            ).exclude(status__in=["COMPLETED", "CANCELLED"])
+            lab_q = Q(admission=self.admission) | Q(encounter=self.admission.ipd_encounter)
+            if self.admission.opd_encounter_id:
+                lab_q |= Q(encounter=self.admission.opd_encounter)
+            pending_labs = LabOrder.objects.filter(lab_q).exclude(
+                status__in=["COMPLETED", "CANCELLED"]
+            ).distinct()
             if pending_labs.exists():
                 errors["lab_results_acknowledged"] = (
                     f"Cannot discharge: {pending_labs.count()} lab order(s) with pending results"

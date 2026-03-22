@@ -121,6 +121,14 @@ export function useCreateLabOrder() {
       queryClient.invalidateQueries({
         queryKey: ['encounters', newOrder.encounter, 'lab-orders'],
       });
+      if (newOrder.admission) {
+        queryClient.invalidateQueries({
+          queryKey: ['inpatient', 'admissions', newOrder.admission, 'orders'],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ['inpatient', 'admissions', newOrder.admission, 'lab-orders'],
+        });
+      }
     },
   });
 }
