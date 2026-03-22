@@ -264,6 +264,10 @@ class Patient(models.Model):
     emergency_contact_name = models.CharField(blank=True)
     emergency_contact_phone = models.CharField(blank=True)
     emergency_contact_relationship = models.CharField(blank=True)
+
+    # --- API-only computed fields (not on model, read-only on serializer) ---
+    # allergy_summary: list[str]           # Active allergy substances (from Allergy model)
+    # chronic_conditions_summary: str      # From latest Encounter.chronic_conditions
 ```
 
 ### Encounter Model (`hmis/apps/encounters/models.py`)
@@ -1075,7 +1079,7 @@ export const patientsApi = {
 | Module | Schema File | Status |
 |--------|-------------|--------|
 | Clinics | `lib/schemas/clinic.schema.ts` | ✅ Implemented |
-| Patients | `lib/schemas/patient.schema.ts` | 📋 Placeholder |
+| Patients | `lib/schemas/patient.schema.ts` | ✅ Implemented |
 | Encounters | `lib/schemas/encounter.schema.ts` | 📋 Placeholder |
 | Pharmacy | `lib/schemas/pharmacy.schema.ts` | 📋 Placeholder |
 | Laboratory | `lib/schemas/laboratory.schema.ts` | 📋 Placeholder |

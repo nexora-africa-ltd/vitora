@@ -45,6 +45,10 @@ class PatientSerializer(serializers.ModelSerializer):
     emergency_contact_phone = serializers.SerializerMethodField()
     emergency_contact_relationship = serializers.SerializerMethodField()
 
+    # Clinical summary fields (read-only, aggregated from related models)
+    allergy_summary = serializers.SerializerMethodField()
+    chronic_conditions_summary = serializers.SerializerMethodField()
+
     class Meta:
         model = Patient
         fields = [
@@ -93,6 +97,9 @@ class PatientSerializer(serializers.ModelSerializer):
             "emergency_contact_name",
             "emergency_contact_phone",
             "emergency_contact_relationship",
+            # Clinical summary (read-only, computed)
+            "allergy_summary",
+            "chronic_conditions_summary",
             # Other fields
             "referral_source",
             "referred_from_facility",
@@ -117,6 +124,8 @@ class PatientSerializer(serializers.ModelSerializer):
             "emergency_contact_name",
             "emergency_contact_phone",
             "emergency_contact_relationship",
+            "allergy_summary",
+            "chronic_conditions_summary",
         ]
 
     def get_emergency_contact_name(self, obj) -> str:
@@ -133,6 +142,19 @@ class PatientSerializer(serializers.ModelSerializer):
         """Get the primary emergency contact's relationship."""
         contact = obj.emergency_contacts.first()
         return contact.relationship if contact else None
+
+    def get_allergy_summary(self, obj) -> list[str]:
+        """Return list of active allergy substance names from the structured Allergy model."""
+        return list(
+            obj.allergies.filter(status="active").values_list("substance", flat=True)
+        )
+
+    def get_chronic_conditions_summary(self, obj) -> str:
+        """Return chronic conditions text from the patient's most recent encounter."""
+        latest = (
+            obj.encounters.order_by("-created_at").values_list("chronic_conditions", flat=True).first()
+        )
+        return latest if latest is not None else ""
 
     def validate_date_of_birth(self, value):
         """Validate date of birth is not in the future."""
