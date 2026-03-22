@@ -47,7 +47,6 @@ import {
   RefreshCw,
   Link2,
   Receipt,
-  Banknote,
 } from 'lucide-react';
 import { printInvoice } from '@/lib/documents';
 import { SHALogo } from '@/components/ui/sha-logo';
@@ -74,7 +73,6 @@ interface InvoiceDetailProps {
   invoice: Invoice | null;
   isLoading: boolean;
   onRecordPayment: (invoice: Invoice) => void;
-  onReceiveCash?: (invoice: Invoice) => void;
   onFinalize: (invoice: Invoice) => void;
   onCancel: (invoice: Invoice) => void;
   onPrint?: (invoice: Invoice) => void;
@@ -150,7 +148,6 @@ export function InvoiceDetail({
   invoice,
   isLoading,
   onRecordPayment,
-  onReceiveCash,
   onFinalize,
   onCancel,
   onPrint,
@@ -619,18 +616,6 @@ export function InvoiceDetail({
             <CreditCard className="h-4 w-4 mr-2" />
             Record Payment
           </ActionButton>
-        )}
-
-        {/* Receive Cash (quick action) */}
-        {canRecordPayment && onReceiveCash && (
-          <Button
-            variant="outline"
-            className="border-green-500 text-green-600 hover:bg-green-50"
-            onClick={() => onReceiveCash(invoice)}
-          >
-            <Banknote className="h-4 w-4 mr-2" />
-            Receive Cash
-          </Button>
         )}
 
         {/* Paid Badge */}
