@@ -385,6 +385,7 @@ class StockAlert(models.Model):
         ("EXPIRING_SOON", "Expiring Soon"),
         ("EXPIRED", "Expired"),
         ("RECALLED", "Product Recalled"),
+        ("RX_EXPIRING", "Prescription Expiring"),
     ]
 
     ALERT_SEVERITY = [
@@ -636,6 +637,30 @@ class Prescription(HistoryMixin, models.Model):
     def is_valid(self) -> bool:
         """Check if prescription has not expired."""
         return self.valid_until >= date.today() and self.status != "EXPIRED"
+
+    @property
+    def effective_status(self) -> str:
+        """Return the real-time status accounting for expiry.
+
+        If the DB status is still PENDING or PARTIAL but valid_until has
+        passed, this returns EXPIRED so the frontend always shows the
+        truthful state — even between Celery beat runs.
+        """
+        if self.status in ("PENDING", "PARTIAL") and self.valid_until < date.today():
+            return "EXPIRED"
+        return self.status
+
+    @property
+    def days_until_expiry(self) -> int | None:
+        """Days remaining until the prescription expires.
+
+        Returns a positive number for valid prescriptions, 0 on the
+        expiry day, negative after expiry, or None for final-state
+        prescriptions (DISPENSED, CANCELLED, EXPIRED).
+        """
+        if self.status in ("DISPENSED", "CANCELLED", "EXPIRED"):
+            return None
+        return (self.valid_until - date.today()).days
 
     def is_fully_dispensed(self) -> bool:
         """Check if all items have been fully dispensed."""

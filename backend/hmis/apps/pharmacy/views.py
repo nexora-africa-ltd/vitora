@@ -395,6 +395,31 @@ class DispensingViewSet(viewsets.ModelViewSet):
         except Drug.DoesNotExist:
             return Response({"error": "Drug not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        # Guard: reject dispensing against an expired prescription
+        if prescription_item_id:
+            try:
+                from hmis.apps.pharmacy.models import PrescriptionItem
+
+                rx_item = PrescriptionItem.objects.select_related("prescription").get(
+                    id=prescription_item_id
+                )
+                if not rx_item.prescription.is_valid():
+                    return Response(
+                        {
+                            "error": (
+                                f"Prescription {rx_item.prescription.prescription_number} "
+                                f"expired on {rx_item.prescription.valid_until}. "
+                                "Dispensing is not allowed."
+                            )
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            except PrescriptionItem.DoesNotExist:
+                return Response(
+                    {"error": "Prescription item not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
         try:
             # Use FEFO service to dispense
             kwargs = {"patient_id": patient_id}
