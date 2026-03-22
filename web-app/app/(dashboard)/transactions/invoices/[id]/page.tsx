@@ -37,7 +37,6 @@ import { useClaims } from '@/lib/hooks/use-sha';
 import { useToast } from '@/lib/hooks/use-toast';
 import type { Invoice, PaymentCreateData, InvoiceItemCreateData, ApplyDiscountData } from '@/lib/types/billing';
 import type { Claim } from '@/lib/types/sha';
-import { formatCurrency } from '@/lib/utils/format';
 
 export default function InvoiceDetailPage() {
   const router = useRouter();
@@ -46,8 +45,6 @@ export default function InvoiceDetailPage() {
   const invoiceId = Number(params.id);
 
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  const [showCashDialog, setShowCashDialog] = useState(false);
-  const [cashAmount, setCashAmount] = useState('');
   const [showPaymentSuccessDialog, setShowPaymentSuccessDialog] = useState(false);
   const [lastPaymentId, setLastPaymentId] = useState<number | null>(null);
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
@@ -109,40 +106,6 @@ export default function InvoiceDetailPage() {
 
   const handleRecordPayment = () => {
     setShowPaymentDialog(true);
-  };
-
-  const handleReceiveCash = () => {
-    if (!invoice) return;
-    const balance = parseFloat(invoice.total_amount) - parseFloat(invoice.amount_paid || '0');
-    setCashAmount(balance.toFixed(2));
-    setShowCashDialog(true);
-  };
-
-  const handleCashSubmit = async () => {
-    if (!invoice) return;
-    const amount = parseFloat(cashAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast({ title: 'Invalid amount', variant: 'destructive' });
-      return;
-    }
-    try {
-      const payment = await createPayment.mutateAsync({
-        invoice: invoice.id,
-        amount: amount.toFixed(2),
-        method: 'CASH',
-      });
-      setShowCashDialog(false);
-      setCashAmount('');
-      setLastPaymentId(payment.id);
-      setShowPaymentSuccessDialog(true);
-      refetchInvoice();
-    } catch {
-      toast({
-        title: 'Error',
-        description: 'Failed to record cash payment.',
-        variant: 'destructive',
-      });
-    }
   };
 
   const handleClaimSubmitted = (claim: Claim) => {
@@ -328,7 +291,6 @@ export default function InvoiceDetailPage() {
         invoice={invoice || null}
         isLoading={isLoading}
         onRecordPayment={handleRecordPayment}
-        onReceiveCash={handleReceiveCash}
         onFinalize={handleFinalize}
         onCancel={handleCancel}
         onAddItem={handleAddItem}
@@ -369,60 +331,6 @@ export default function InvoiceDetailPage() {
               isLoading={createPayment.isPending}
               onMpesaPayment={handleMpesaPayment}
             />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Quick Cash Payment Dialog */}
-      <Dialog open={showCashDialog} onOpenChange={setShowCashDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Receive Cash Payment</DialogTitle>
-          </DialogHeader>
-          {invoice && (
-            <div className="space-y-4 py-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Invoice</span>
-                <span className="font-mono font-medium">{invoice.invoice_number}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Balance Due</span>
-                <span className="font-semibold">
-                  {formatCurrency(parseFloat(invoice.total_amount) - parseFloat(invoice.amount_paid || '0'))}
-                </span>
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="cash-amount" className="text-sm font-medium">
-                  Amount Received (KES)
-                </label>
-                <input
-                  id="cash-amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={cashAmount}
-                  onChange={(e) => setCashAmount(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  autoFocus
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowCashDialog(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="flex-1"
-                  onClick={handleCashSubmit}
-                  disabled={createPayment.isPending || !cashAmount || parseFloat(cashAmount) <= 0}
-                >
-                  {createPayment.isPending ? 'Processing...' : 'Confirm'}
-                </Button>
-              </div>
-            </div>
           )}
         </DialogContent>
       </Dialog>

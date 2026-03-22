@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Search, FileText, Clock, ArrowRightCircle, MoreHorizontal, Banknote, CreditCard, FileCheck, FileX, Eye } from 'lucide-react';
+import { Search, FileText, Clock, ArrowRightCircle, MoreHorizontal, CreditCard, FileCheck, FileX, Eye } from 'lucide-react';
 import { EmptyState } from '@/components/shared/empty-state';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import type { Invoice, InvoiceStatus } from '@/lib/types/billing';
@@ -280,7 +280,7 @@ export function InvoiceList({
                       </DropdownMenuItem>
                       {canPay && onReceivePayment && (
                         <DropdownMenuItem onClick={() => onReceivePayment(invoice)}>
-                          <Banknote className="h-4 w-4 mr-2" />
+                          <CreditCard className="h-4 w-4 mr-2" />
                           Receive Payment
                         </DropdownMenuItem>
                       )}
