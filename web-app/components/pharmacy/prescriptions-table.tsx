@@ -467,16 +467,10 @@ export function PrescriptionsTable({
             toggleExpanded(rx.id);
           }
         }}
-      />
-
-      {/* Desktop: Expanded items inline (rendered after each row) */}
-      <div className="hidden md:block">
-        {prescriptions.map((rx) => {
-          const isExpanded = expandedRows.has(rx.id);
-          if (!isExpanded) return null;
-
+        renderExpandedRow={(rx) => {
+          if (!expandedRows.has(rx.id)) return null;
           return (
-            <div key={`expanded-${rx.id}`} className="border rounded-md bg-muted/30 p-4 mt-2 mb-4 space-y-3">
+            <div className="bg-muted/30 p-4 space-y-3">
               <h4 className="font-semibold text-sm flex items-center gap-2">
                 <Package className="h-4 w-4" />
                 Prescription Items - {rx.prescription_number}
@@ -528,8 +522,8 @@ export function PrescriptionsTable({
               </div>
             </div>
           );
-        })}
-      </div>
+        }}
+      />
 
       {/* Dispense Dialog */}
       {dispenseDialog.isOpen && dispenseDialog.prescription && dispenseDialog.prescriptionItem && (
