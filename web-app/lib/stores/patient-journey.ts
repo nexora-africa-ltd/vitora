@@ -443,6 +443,21 @@ interface PatientJourneyState {
   ) => void;
 
   /**
+   * Sync patient journey state from backend admission data.
+   * Derives and updates the stage based on admission_status.
+   */
+  syncFromAdmission: (
+    patientId: number,
+    admissionData: {
+      admission_status: string;
+      has_discharge_started?: boolean;
+      ward_name?: string;
+      bed_number?: string | null;
+      admission_id?: number;
+    }
+  ) => void;
+
+  /**
    * Get derived stage from patient's current triage_status and consultation_status.
    * Returns null if patient doesn't exist or stage cannot be derived.
    */
@@ -776,6 +791,30 @@ export function deriveStageFromStatuses(
       return 'AWAITING_CONSULTATION';
     default:
       return null;
+  }
+}
+
+/**
+ * Derive the patient journey stage from the backend admission status.
+ * Used by syncFromAdmission to keep the sidebar dot in sync.
+ */
+export function deriveStageFromAdmission(
+  admissionStatus: string,
+  hasDischargeStarted?: boolean,
+): PatientStage {
+  switch (admissionStatus) {
+    case 'ACTIVE':
+      return hasDischargeStarted ? 'DISCHARGE_PLANNING' : 'INPATIENT_CARE';
+    case 'DISCHARGED':
+      return 'DISCHARGED';
+    case 'TRANSFERRED_OUT':
+      return 'REFERRED_OUT';
+    case 'DECEASED':
+      return 'DECEASED';
+    case 'ABSCONDED':
+      return 'LEFT_WITHOUT_BEING_SEEN';
+    default:
+      return 'ADMITTED';
   }
 }
 
@@ -1138,6 +1177,43 @@ export const usePatientJourneyStore = create<PatientJourneyState>()(
         const patient = get().activePatients[patientId];
         if (!patient) return null;
         return deriveStageFromStatuses(patient.triage_status, patient.consultation_status);
+      },
+
+      syncFromAdmission: (patientId, admissionData) => {
+        const now = new Date().toISOString();
+        set((state) => {
+          const patient = state.activePatients[patientId];
+          if (!patient) return state;
+
+          const derivedStage = deriveStageFromAdmission(
+            admissionData.admission_status,
+            admissionData.has_discharge_started,
+          );
+
+          return {
+            activePatients: {
+              ...state.activePatients,
+              [patientId]: {
+                ...patient,
+                previous_stage: patient.stage,
+                stage: derivedStage,
+                admission: {
+                  ...patient.admission,
+                  recommendation_id: patient.admission?.recommendation_id ?? 0,
+                  recommended_at: patient.admission?.recommended_at ?? now,
+                  recommended_by: patient.admission?.recommended_by ?? '',
+                  reason: patient.admission?.reason ?? '',
+                  bed_assigned: admissionData.bed_number ?? patient.admission?.bed_assigned ?? null,
+                  ward: admissionData.ward_name ?? patient.admission?.ward ?? null,
+                  admitted_at: patient.admission?.admitted_at ?? now,
+                  expected_discharge: patient.admission?.expected_discharge ?? null,
+                  admission_id: admissionData.admission_id ?? patient.admission?.admission_id ?? null,
+                },
+                last_updated: now,
+              },
+            },
+          };
+        });
       },
 
       callPatient: (patientId) => {
