@@ -125,17 +125,29 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
               <ClearanceRow
                 label="Billing"
                 department={clearance?.billing}
-                resolveHref={`/billing/invoices?admission=${admissionId}`}
+                resolveHref={
+                  clearance?.billing?.first_pending_id
+                    ? `/billing/invoices/${clearance.billing.first_pending_id}`
+                    : `/billing/invoices?admission=${admissionId}`
+                }
               />
               <ClearanceRow
                 label="Pharmacy"
                 department={clearance?.pharmacy}
-                resolveHref={`/pharmacy/prescriptions?admission=${admissionId}`}
+                resolveHref={
+                  clearance?.pharmacy?.first_pending_id
+                    ? `/pharmacy/prescriptions/${clearance.pharmacy.first_pending_id}`
+                    : `/pharmacy/prescriptions?admission=${admissionId}`
+                }
               />
               <ClearanceRow
                 label="Laboratory"
                 department={clearance?.laboratory}
-                resolveHref={`/laboratory/orders?admission=${admissionId}`}
+                resolveHref={
+                  clearance?.laboratory?.first_pending_order_number
+                    ? `/laboratory/orders/${clearance.laboratory.first_pending_order_number}`
+                    : `/laboratory/orders?admission=${admissionId}`
+                }
               />
               <ClearanceRow
                 label="Nursing"

@@ -53,7 +53,14 @@ export default function NewLabOrderPage() {
   const resolvedEncounterId = contextEncounter?.id || (encounterId ? parseInt(encounterId) : null);
 
   const handleSuccess = (orderNumber: string) => {
-    router.push(`/laboratory/orders/${orderNumber}`);
+    // Redirect back to the source context, not the order detail
+    if (admissionId) {
+      router.push(`/admissions/${admissionId}?tab=orders`);
+    } else if (encounterId) {
+      router.push(`/encounters/${encounterId}`);
+    } else {
+      router.push(`/laboratory/orders/${orderNumber}`);
+    }
   };
 
   const patientDisplayName = effectivePatient

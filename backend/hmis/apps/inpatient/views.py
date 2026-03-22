@@ -1884,6 +1884,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
             (inv.balance_due for inv in unpaid_invoices), Decimal("0.00")
         )
         billing_cleared = outstanding <= 0
+        first_unpaid_id = unpaid_invoices.values_list("id", flat=True).first()
         billing_info = {
             "cleared": billing_cleared,
             "reason": (
@@ -1893,6 +1894,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
             ),
             "outstanding_amount": float(outstanding),
             "invoice_count": unpaid_invoices.count(),
+            "first_pending_id": first_unpaid_id,
         }
 
         # ----- Pharmacy: all prescriptions dispensed or cancelled -----
@@ -1901,6 +1903,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
             status__in=["DISPENSED", "CANCELLED"]
         ).distinct()
         pharmacy_cleared = not pending_rx.exists()
+        first_rx_id = pending_rx.values_list("id", flat=True).first()
         pharmacy_info = {
             "cleared": pharmacy_cleared,
             "reason": (
@@ -1909,6 +1912,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
                 else f"{pending_rx.count()} prescription(s) not yet dispensed"
             ),
             "pending_count": pending_rx.count(),
+            "first_pending_id": first_rx_id,
         }
 
         # ----- Laboratory: all lab orders completed or cancelled -----
@@ -1919,6 +1923,9 @@ class AdmissionViewSet(viewsets.ModelViewSet):
             pending_labs.values_list("items__test__name", flat=True).distinct()[:10]
         )
         lab_cleared = not pending_labs.exists()
+        first_lab_order_number = pending_labs.values_list(
+            "order_number", flat=True
+        ).first()
         lab_info = {
             "cleared": lab_cleared,
             "reason": (
@@ -1928,6 +1935,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
             ),
             "pending_count": pending_labs.count(),
             "pending_tests": [t for t in pending_test_names if t],
+            "first_pending_order_number": first_lab_order_number,
         }
 
         # ----- Nursing: all care plan entries resolved or no active entries -----
