@@ -1814,6 +1814,134 @@ class AdmissionViewSet(viewsets.ModelViewSet):
             }
         )
 
+    # ------------------------------------------------------------------ #
+    # Automated Discharge Clearance
+    # ------------------------------------------------------------------ #
+
+    @extend_schema(
+        tags=["Inpatient - Admissions"],
+        summary="Get automated clearance status for discharge",
+        description=(
+            "Query each department (Billing, Pharmacy, Laboratory, Nursing) "
+            "in real-time and return whether the admission is cleared for discharge."
+        ),
+        responses={
+            200: inline_serializer(
+                name="ClearanceStatusResponse",
+                fields={
+                    "billing": serializers.DictField(),
+                    "pharmacy": serializers.DictField(),
+                    "laboratory": serializers.DictField(),
+                    "nursing": serializers.DictField(),
+                    "all_cleared": serializers.BooleanField(),
+                },
+            )
+        },
+    )
+    @action(detail=True, methods=["get"], url_path="clearance-status")
+    def clearance_status(self, request, pk=None):
+        """Get automated clearance status for this admission."""
+        from decimal import Decimal
+
+        from hmis.apps.billing.models import Invoice
+        from hmis.apps.laboratory.models import LabOrder
+        from hmis.apps.pharmacy.models import Prescription
+
+        admission = self.get_object()
+
+        # ----- Billing: check invoices linked to the IPD encounter -----
+        billing_filter = {"encounter": admission.ipd_encounter}
+        unpaid_invoices = Invoice.objects.filter(**billing_filter).exclude(
+            status__in=[
+                Invoice.Status.PAID,
+                Invoice.Status.CANCELLED,
+                Invoice.Status.WRITTEN_OFF,
+            ]
+        )
+        outstanding = sum(
+            (inv.balance_due for inv in unpaid_invoices), Decimal("0.00")
+        )
+        billing_cleared = outstanding <= 0
+        billing_info = {
+            "cleared": billing_cleared,
+            "reason": (
+                "All bills settled"
+                if billing_cleared
+                else f"Outstanding balance: KES {outstanding:,.2f}"
+            ),
+            "outstanding_amount": float(outstanding),
+            "invoice_count": unpaid_invoices.count(),
+        }
+
+        # ----- Pharmacy: all prescriptions dispensed or cancelled -----
+        pending_rx = Prescription.objects.filter(admission=admission).exclude(
+            status__in=["DISPENSED", "CANCELLED"]
+        )
+        pharmacy_cleared = not pending_rx.exists()
+        pharmacy_info = {
+            "cleared": pharmacy_cleared,
+            "reason": (
+                "All prescriptions dispensed"
+                if pharmacy_cleared
+                else f"{pending_rx.count()} prescription(s) not yet dispensed"
+            ),
+            "pending_count": pending_rx.count(),
+        }
+
+        # ----- Laboratory: all lab orders completed or cancelled -----
+        pending_labs = LabOrder.objects.filter(admission=admission).exclude(
+            status__in=["COMPLETED", "CANCELLED"]
+        )
+        pending_test_names = list(
+            pending_labs.values_list("items__test__name", flat=True).distinct()[:10]
+        )
+        lab_cleared = not pending_labs.exists()
+        lab_info = {
+            "cleared": lab_cleared,
+            "reason": (
+                "All lab results available"
+                if lab_cleared
+                else f"{pending_labs.count()} lab order(s) with pending results"
+            ),
+            "pending_count": pending_labs.count(),
+            "pending_tests": [t for t in pending_test_names if t],
+        }
+
+        # ----- Nursing: all care plan entries resolved or no active entries -----
+        nursing_cleared = True
+        active_entries_count = 0
+        try:
+            kardex = admission.kardex
+            active_entries = kardex.care_plan_entries.filter(status="ACTIVE")
+            active_entries_count = active_entries.count()
+            nursing_cleared = active_entries_count == 0
+        except NursingKardex.DoesNotExist:
+            pass  # No kardex = nothing to clear
+
+        nursing_info = {
+            "cleared": nursing_cleared,
+            "reason": (
+                "No active nursing care plans"
+                if nursing_cleared
+                else f"{active_entries_count} active nursing care plan(s)"
+            ),
+            "pending_count": active_entries_count,
+        }
+
+        all_cleared = (
+            billing_cleared and pharmacy_cleared and lab_cleared and nursing_cleared
+        )
+
+        return Response(
+            {
+                "billing": billing_info,
+                "pharmacy": pharmacy_info,
+                "laboratory": lab_info,
+                "nursing": nursing_info,
+                "all_cleared": all_cleared,
+            }
+        )
+
 
 class DischargeViewSet(viewsets.ModelViewSet):
     """

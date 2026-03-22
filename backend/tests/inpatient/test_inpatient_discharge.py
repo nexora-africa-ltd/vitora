@@ -426,7 +426,25 @@ class TestDischargeValidation:
             discharge.clean()
 
     def test_clearance_requirements(self, active_admission, test_user):
-        """Should validate clearances for normal discharge."""
+        """Should validate clearances for normal discharge via live data checks.
+
+        The clean() method now queries live department data instead of relying
+        on manual boolean fields. Here we create a pending prescription so the
+        pharmacy clearance check fails.
+        """
+        from datetime import date, timedelta
+
+        from hmis.apps.pharmacy.models import Prescription
+
+        Prescription.objects.create(
+            patient=active_admission.patient,
+            encounter=active_admission.ipd_encounter,
+            admission=active_admission,
+            prescribed_by=test_user,
+            status="PENDING",
+            valid_until=date.today() + timedelta(days=30),
+        )
+
         discharge = Discharge(
             admission=active_admission,
             discharge_type="NORMAL",
@@ -437,12 +455,9 @@ class TestDischargeValidation:
             final_diagnosis_text="Resolved",
             treatment_summary="Treatment completed",
             patient_instructions="Rest at home",
-            pharmacy_cleared=False,  # Missing clearance
-            billing_cleared=True,
-            lab_results_acknowledged=True,
         )
 
-        with pytest.raises(ValidationError, match="All clearances required for normal discharge"):
+        with pytest.raises(ValidationError, match="Cannot discharge.*prescription"):
             discharge.clean()
 
 

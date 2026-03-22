@@ -95,6 +95,8 @@ export const inpatientQueryKeys = {
   kardexById: (id: number) => [...inpatientQueryKeys.all, 'kardex', id] as const,
   kardexByAdmission: (admissionId: number) =>
     [...inpatientQueryKeys.all, 'kardex', 'admission', admissionId] as const,
+  admissionClearanceStatus: (admissionId: number) =>
+    [...inpatientQueryKeys.admission(admissionId), 'clearance-status'] as const,
   admissionConsumableUsage: (admissionId: number) =>
     [...inpatientQueryKeys.admission(admissionId), 'consumable-usage'] as const,
   shiftHandovers: (params?: ShiftHandoverListParams) =>
@@ -440,6 +442,15 @@ export function useSetExpectedDischarge() {
 // ============================================================================
 // Discharge Hooks
 // ============================================================================
+
+export function useClearanceStatus(admissionId: number | undefined) {
+  return useQuery({
+    queryKey: inpatientQueryKeys.admissionClearanceStatus(admissionId!),
+    queryFn: () => inpatientApi.getClearanceStatus(admissionId!),
+    enabled: typeof admissionId === 'number' && admissionId > 0,
+    refetchInterval: 30_000,
+  });
+}
 
 export function useDischarges(params?: DischargeListParams) {
   return useQuery({

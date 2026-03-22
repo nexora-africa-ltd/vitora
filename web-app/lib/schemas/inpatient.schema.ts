@@ -307,6 +307,27 @@ export const DischargeSchema = z.object({
 export type DischargeSchemaType = z.infer<typeof DischargeSchema>;
 
 // =============================================================================
+// CLEARANCE STATUS SCHEMAS (Automated Discharge Clearance)
+// =============================================================================
+
+export const DepartmentClearanceSchema = z.object({
+  cleared: z.boolean(),
+  reason: z.string(),
+  outstanding_amount: z.number().optional(),
+  invoice_count: z.number().optional(),
+  pending_count: z.number().optional(),
+  pending_tests: z.array(z.string()).optional(),
+});
+
+export const ClearanceStatusSchema = z.object({
+  billing: DepartmentClearanceSchema,
+  pharmacy: DepartmentClearanceSchema,
+  laboratory: DepartmentClearanceSchema,
+  nursing: DepartmentClearanceSchema,
+  all_cleared: z.boolean(),
+});
+
+// =============================================================================
 // TRANSFER SCHEMAS
 // =============================================================================
 

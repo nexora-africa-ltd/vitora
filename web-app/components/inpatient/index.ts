@@ -13,3 +13,4 @@ export { DischargeReadinessPanel } from './discharge-readiness-panel';
 export type { DischargeReadinessPanelProps } from './discharge-readiness-panel';
 export { FluidBalanceSheet } from './fluid-balance-sheet';
 export { ConsumableUsagePanel } from './consumable-usage-panel';
+export { ClearanceStatusPanel } from './clearance-status-panel';

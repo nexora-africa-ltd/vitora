@@ -424,6 +424,63 @@ class DischargeSerializer(serializers.ModelSerializer):
             else getattr(self.instance, "follow_up_date", None)
         )
 
+        # ----- Automated clearance validation for normal discharges -----
+        if admission and discharge_type in {"NORMAL", "ROUTINE", "TRANSFERRED"}:
+            from decimal import Decimal
+
+            from hmis.apps.billing.models import Invoice
+            from hmis.apps.laboratory.models import LabOrder
+            from hmis.apps.pharmacy.models import Prescription
+
+            clearance_errors = {}
+
+            # Billing: check invoices linked to the IPD encounter
+            unpaid_invoices = Invoice.objects.filter(
+                encounter=admission.ipd_encounter,
+            ).exclude(
+                status__in=[
+                    Invoice.Status.PAID,
+                    Invoice.Status.CANCELLED,
+                    Invoice.Status.WRITTEN_OFF,
+                ]
+            )
+            outstanding = sum(
+                (inv.balance_due for inv in unpaid_invoices), Decimal("0.00")
+            )
+            billing_cleared = outstanding <= 0
+            if not billing_cleared:
+                clearance_errors["billing_cleared"] = (
+                    f"Cannot discharge: KES {outstanding:,.2f} outstanding balance"
+                )
+
+            # Pharmacy: all prescriptions dispensed or cancelled
+            pending_rx = Prescription.objects.filter(
+                admission=admission,
+            ).exclude(status__in=["DISPENSED", "CANCELLED"])
+            pharmacy_cleared = not pending_rx.exists()
+            if not pharmacy_cleared:
+                clearance_errors["pharmacy_cleared"] = (
+                    f"Cannot discharge: {pending_rx.count()} prescription(s) not yet dispensed"
+                )
+
+            # Lab: all lab orders completed or cancelled
+            pending_labs = LabOrder.objects.filter(
+                admission=admission,
+            ).exclude(status__in=["COMPLETED", "CANCELLED"])
+            lab_cleared = not pending_labs.exists()
+            if not lab_cleared:
+                clearance_errors["lab_results_acknowledged"] = (
+                    f"Cannot discharge: {pending_labs.count()} lab order(s) with pending results"
+                )
+
+            if clearance_errors:
+                raise serializers.ValidationError(clearance_errors)
+
+            # Auto-populate clearance booleans from live data
+            attrs["billing_cleared"] = True
+            attrs["pharmacy_cleared"] = True
+            attrs["lab_results_acknowledged"] = True
+
         if (
             admission
             and admission.mch_registration_id
