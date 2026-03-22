@@ -193,7 +193,7 @@ export interface MpesaCallbackData {
 export interface CreditNoteCreateData {
   invoice: number;
   amount: string;
-  reason: 'OVERCHARGE' | 'SERVICE_NOT_RENDERED' | 'DUPLICATE_BILLING' | 'DUPLICATE' | 'PRICING_ERROR' | 'OTHER' | 'INSURANCE' | 'GOODWILL';
+  reason: 'OVERCHARGE' | 'SERVICE_NOT_RENDERED' | 'DUPLICATE_BILLING' | 'DUPLICATE' | 'DUPLICATE_CHARGE' | 'PRICING_ERROR' | 'OTHER' | 'INSURANCE' | 'INSURANCE_ADJUSTMENT' | 'GOODWILL';
   reason_detail: string;
 }
 

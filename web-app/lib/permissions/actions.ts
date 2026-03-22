@@ -137,6 +137,7 @@ export const ACTION_PERMISSIONS = {
   'billing.apply_discount': ['BILLING_SUPERVISOR', 'ADMIN'],
   'billing.void_invoice': ['BILLING_SUPERVISOR', 'ADMIN'],
   'billing.void_payment': ['BILLING_SUPERVISOR', 'ADMIN'],
+  'billing.view_credit_notes': ['BILLING_CLERK', 'BILLING_SUPERVISOR', 'CASHIER', 'ADMIN'],
   'billing.submit_sha_claim': ['BILLING_CLERK', 'BILLING_SUPERVISOR'],
   'billing.view_insurance': ['BILLING_CLERK', 'BILLING_SUPERVISOR', 'ADMIN'],
   'billing.view_reports': ['BILLING_CLERK', 'BILLING_SUPERVISOR', 'ADMIN'],

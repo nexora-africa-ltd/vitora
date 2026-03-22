@@ -45,7 +45,7 @@ const statusConfig: Record<string, { color: string; icon: React.ElementType }> =
 };
 
 function CreditNoteStatusBadge({ status }: { status: string }) {
-  const config = statusConfig[status] || statusConfig.DRAFT;
+  const config = statusConfig[status] ?? { color: 'bg-slate-100 text-slate-700', icon: ScrollText };
   const Icon = config.icon;
   return (
     <Badge className={`${config.color} text-xs shrink-0 w-fit gap-1`}>

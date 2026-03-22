@@ -15,8 +15,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Search, FileText, Clock, ArrowRightCircle } from 'lucide-react';
+import { Search, FileText, Clock, ArrowRightCircle, MoreHorizontal, Banknote, CreditCard, FileCheck, FileX, Eye } from 'lucide-react';
 import { EmptyState } from '@/components/shared/empty-state';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import type { Invoice, InvoiceStatus } from '@/lib/types/billing';
@@ -33,6 +40,9 @@ interface InvoiceListProps {
   onCreateNew: () => void;
   onFilter?: (filters: { status?: InvoiceStatus; search?: string }) => void;
   onConvertProforma?: (invoice: Invoice) => void;
+  onReceivePayment?: (invoice: Invoice) => void;
+  onFinalize?: (invoice: Invoice) => void;
+  onCancel?: (invoice: Invoice) => void;
 }
 
 // ============================================================================
@@ -95,6 +105,9 @@ export function InvoiceList({
   onCreateNew,
   onFilter,
   onConvertProforma,
+  onReceivePayment,
+  onFinalize,
+  onCancel,
 }: InvoiceListProps) {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
@@ -233,22 +246,73 @@ export function InvoiceList({
             {
               key: 'actions',
               header: '',
-              cell: (invoice) =>
-                invoice.status === 'PROFORMA' && invoice.can_convert && onConvertProforma ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onConvertProforma(invoice);
-                    }}
-                    title="Convert to Invoice"
-                  >
-                    <ArrowRightCircle className="h-4 w-4 mr-1" />
-                    <span className="hidden sm:inline">Convert</span>
-                  </Button>
-                ) : null,
-              className: 'w-20',
+              cell: (invoice) => {
+                const canPay = ['PENDING', 'PARTIAL', 'OVERDUE'].includes(invoice.status);
+                const canFinalizeInv = invoice.status === 'DRAFT' && (invoice.items?.length ?? 0) > 0;
+                const canCancelInv = ['DRAFT', 'PENDING'].includes(invoice.status);
+                const canConvert = invoice.status === 'PROFORMA' && invoice.can_convert;
+                const hasActions = canPay || canFinalizeInv || canCancelInv || canConvert;
+
+                if (!hasActions) {
+                  return (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); onSelect(invoice); }}
+                      title="View invoice"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  );
+                }
+
+                return (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => onSelect(invoice)}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        View
+                      </DropdownMenuItem>
+                      {canPay && onReceivePayment && (
+                        <DropdownMenuItem onClick={() => onReceivePayment(invoice)}>
+                          <Banknote className="h-4 w-4 mr-2" />
+                          Receive Payment
+                        </DropdownMenuItem>
+                      )}
+                      {canFinalizeInv && onFinalize && (
+                        <DropdownMenuItem onClick={() => onFinalize(invoice)}>
+                          <FileCheck className="h-4 w-4 mr-2" />
+                          Finalize
+                        </DropdownMenuItem>
+                      )}
+                      {canConvert && onConvertProforma && (
+                        <DropdownMenuItem onClick={() => onConvertProforma(invoice)}>
+                          <ArrowRightCircle className="h-4 w-4 mr-2" />
+                          Convert to Invoice
+                        </DropdownMenuItem>
+                      )}
+                      {canCancelInv && onCancel && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => onCancel(invoice)}
+                          >
+                            <FileX className="h-4 w-4 mr-2" />
+                            Cancel
+                          </DropdownMenuItem>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                );
+              },
+              className: 'w-12',
             },
           ]}
           mobileCard={(invoice) => (

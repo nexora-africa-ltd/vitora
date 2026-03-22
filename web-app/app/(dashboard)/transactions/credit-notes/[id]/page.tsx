@@ -48,6 +48,7 @@ import {
   useProcessRefund,
 } from '@/lib/hooks/billing';
 import { formatCurrency } from '@/lib/utils/format';
+import type { CreditNoteRefundData } from '@/lib/types/billing';
 import { toast } from 'sonner';
 
 // ============================================================================
@@ -91,7 +92,7 @@ export default function CreditNoteDetailPage() {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRefundDialog, setShowRefundDialog] = useState(false);
-  const [refundMethod, setRefundMethod] = useState('CASH');
+  const [refundMethod, setRefundMethod] = useState<CreditNoteRefundData['refund_method']>('CASH');
   const [refundReference, setRefundReference] = useState('');
 
   // --- Handlers ---
@@ -161,7 +162,7 @@ export default function CreditNoteDetailPage() {
     );
   }
 
-  const config = statusConfig[creditNote.status] || statusConfig.DRAFT;
+  const config = statusConfig[creditNote.status] ?? { color: 'bg-slate-100 text-slate-700', icon: ScrollText, label: creditNote.status };
   const StatusIcon = config.icon;
 
   return (
@@ -381,14 +382,14 @@ export default function CreditNoteDetailPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="refund-method">Refund Method</Label>
-              <Select value={refundMethod} onValueChange={setRefundMethod}>
+              <Select value={refundMethod} onValueChange={(v) => setRefundMethod(v as CreditNoteRefundData['refund_method'])}>
                 <SelectTrigger id="refund-method">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="CASH">Cash</SelectItem>
                   <SelectItem value="MPESA">M-Pesa</SelectItem>
-                  <SelectItem value="BANK">Bank Transfer</SelectItem>
+                  <SelectItem value="BANK_TRANSFER">Bank Transfer</SelectItem>
                 </SelectContent>
               </Select>
             </div>

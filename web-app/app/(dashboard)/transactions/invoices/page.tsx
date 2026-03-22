@@ -11,12 +11,16 @@ import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { InvoiceList } from '@/components/billing/InvoiceList';
-import { useInvoices } from '@/lib/hooks/billing';
+import { useInvoices, useFinalizeInvoice, useCancelInvoice } from '@/lib/hooks/billing';
+import { useToast } from '@/lib/hooks/use-toast';
 import type { Invoice } from '@/lib/types/billing';
 
 export default function TransactionsInvoicesPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const { data, isLoading, refetch, isFetching } = useInvoices();
+  const finalizeInvoice = useFinalizeInvoice();
+  const cancelInvoice = useCancelInvoice();
 
   const handleCreateInvoice = () => {
     router.push('/transactions/invoices/new');
@@ -24,6 +28,30 @@ export default function TransactionsInvoicesPage() {
 
   const handleSelectInvoice = (invoice: Invoice) => {
     router.push(`/transactions/invoices/${invoice.id}`);
+  };
+
+  const handleReceivePayment = (invoice: Invoice) => {
+    router.push(`/transactions/invoices/${invoice.id}`);
+  };
+
+  const handleFinalize = async (invoice: Invoice) => {
+    try {
+      await finalizeInvoice.mutateAsync(invoice.id);
+      toast({ title: 'Invoice finalized', description: `${invoice.invoice_number} has been finalized.` });
+      refetch();
+    } catch {
+      toast({ title: 'Error', description: 'Failed to finalize invoice.', variant: 'destructive' });
+    }
+  };
+
+  const handleCancel = async (invoice: Invoice) => {
+    try {
+      await cancelInvoice.mutateAsync({ invoiceId: invoice.id, reason: 'Cancelled from list' });
+      toast({ title: 'Invoice cancelled', description: `${invoice.invoice_number} has been cancelled.` });
+      refetch();
+    } catch {
+      toast({ title: 'Error', description: 'Failed to cancel invoice.', variant: 'destructive' });
+    }
   };
 
   const handleRefresh = async () => {
@@ -49,6 +77,9 @@ export default function TransactionsInvoicesPage() {
           isLoading={isLoading}
           onSelect={handleSelectInvoice}
           onCreateNew={handleCreateInvoice}
+          onReceivePayment={handleReceivePayment}
+          onFinalize={handleFinalize}
+          onCancel={handleCancel}
         />
       </div>
     </PullToRefresh>
