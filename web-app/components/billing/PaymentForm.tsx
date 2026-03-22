@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Tooltip,
   TooltipContent,
@@ -256,8 +257,9 @@ export function PaymentForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col">
-        <div className="space-y-6 pb-4">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="flex flex-col max-h-[calc(80vh-8rem)]">
+        <ScrollArea className="flex-1 overflow-y-auto pr-1">
+        <div className="space-y-6 pb-4 px-1">
         {/* Invoice Summary */}
         <TooltipProvider>
           <Tooltip>
@@ -576,6 +578,7 @@ export function PaymentForm({
           )}
         />
         </div>
+        </ScrollArea>
 
         {/* Form Actions - Outside scroll area so always visible */}
         <div className="flex justify-end gap-2 pt-4 border-t mt-4">
