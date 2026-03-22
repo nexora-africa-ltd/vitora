@@ -4,7 +4,7 @@
  */
 'use client';
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, FileText, CreditCard, Receipt } from 'lucide-react';
 
@@ -15,15 +15,31 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useDailyCollectionReport, useInvoices, usePayments } from '@/lib/hooks/billing';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useBillingStore } from '@/lib/stores/billing';
-import type { Invoice, Payment } from '@/lib/types/billing';
+import type { Invoice, Payment, InvoiceStatus, PaymentMethod, PaymentStatus } from '@/lib/types/billing';
 
 export default function TransactionsPage() {
   const router = useRouter();
   const { activeTab, setActiveTab } = useBillingStore();
 
-  const { data: invoicesData, isLoading: invoicesLoading } = useInvoices();
-  const { data: paymentsData, isLoading: paymentsLoading } = usePayments();
+  // Invoice filter state
+  const [invoiceSearch, setInvoiceSearch] = useState('');
+  const [invoiceStatus, setInvoiceStatus] = useState<InvoiceStatus | undefined>();
+  const debouncedInvoiceSearch = useDebounce(invoiceSearch, 300);
+
+  // Payment filter state
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | undefined>();
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | undefined>();
+
+  const { data: invoicesData, isLoading: invoicesLoading } = useInvoices({
+    search: debouncedInvoiceSearch || undefined,
+    status: invoiceStatus,
+  });
+  const { data: paymentsData, isLoading: paymentsLoading } = usePayments({
+    method: paymentMethod,
+    status: paymentStatus,
+  });
 
   const today = new Date().toISOString().split('T')[0] as string;
   const { data: dailyReport, isLoading: reportLoading } = useDailyCollectionReport(today);
@@ -39,6 +55,16 @@ export default function TransactionsPage() {
   const handleViewReceipt = (payment: Payment) => {
     router.push(`/transactions/receipts/${payment.id}`);
   };
+
+  const handleInvoiceFilter = useCallback((filters: { status?: InvoiceStatus; search?: string }) => {
+    setInvoiceSearch(filters.search ?? '');
+    setInvoiceStatus(filters.status);
+  }, []);
+
+  const handlePaymentFilter = useCallback((filters: { method?: PaymentMethod; status?: PaymentStatus }) => {
+    setPaymentMethod(filters.method);
+    setPaymentStatus(filters.status);
+  }, []);
 
   const handleDateChange = (date: string) => {
     console.log('Date changed:', date);
@@ -101,6 +127,7 @@ export default function TransactionsPage() {
             isLoading={invoicesLoading}
             onSelect={handleSelectInvoice}
             onCreateNew={handleCreateInvoice}
+            onFilter={handleInvoiceFilter}
           />
         </TabsContent>
 
@@ -109,6 +136,7 @@ export default function TransactionsPage() {
             payments={paymentsData?.results || []}
             isLoading={paymentsLoading}
             onViewReceipt={handleViewReceipt}
+            onFilter={handlePaymentFilter}
           />
         </TabsContent>
 

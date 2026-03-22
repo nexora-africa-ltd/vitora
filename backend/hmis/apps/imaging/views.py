@@ -15,6 +15,7 @@ from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema, inline_serializer
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.filters import SearchFilter
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -347,8 +348,15 @@ class ImagingOrderViewSet(viewsets.ModelViewSet):
 
     queryset = ImagingOrder.objects.all().select_related("patient", "encounter", "ordered_by")
     permission_classes = [IsAuthenticated]
-    filter_backends = [filters.DjangoFilterBackend]
+    filter_backends = [filters.DjangoFilterBackend, SearchFilter]
     filterset_fields = ["patient", "encounter", "status", "priority"]
+    search_fields = [
+        "patient__first_name",
+        "patient__last_name",
+        "patient__mrn",
+        "order_number",
+        "clinical_indication",
+    ]
     lookup_field = "order_number"
 
     def get_serializer_class(self):

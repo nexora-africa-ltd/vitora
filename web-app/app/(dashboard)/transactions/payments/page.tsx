@@ -3,7 +3,7 @@
  */
 'use client';
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Banknote } from 'lucide-react';
 
@@ -13,11 +13,18 @@ import { ReceivePaymentModal } from '@/components/billing';
 import { usePayments } from '@/lib/hooks/billing';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
-import type { Payment } from '@/lib/types/billing';
+import type { Payment, PaymentMethod, PaymentStatus } from '@/lib/types/billing';
 
 export default function TransactionsPaymentsPage() {
   const router = useRouter();
-  const { data, isLoading, refetch, isFetching } = usePayments();
+
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | undefined>();
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | undefined>();
+
+  const { data, isLoading, refetch, isFetching } = usePayments({
+    method: paymentMethod,
+    status: paymentStatus,
+  });
 
   const handleViewReceipt = (payment: Payment) => {
     router.push(`/transactions/receipts/${payment.id}`);
@@ -26,6 +33,11 @@ export default function TransactionsPaymentsPage() {
   const handleRefresh = async () => {
     await refetch();
   };
+
+  const handleFilter = useCallback((filters: { method?: PaymentMethod; status?: PaymentStatus }) => {
+    setPaymentMethod(filters.method);
+    setPaymentStatus(filters.status);
+  }, []);
 
   return (
     <PullToRefresh onRefresh={handleRefresh} isRefreshing={isFetching}>
@@ -49,6 +61,7 @@ export default function TransactionsPaymentsPage() {
           payments={data?.results || []}
           isLoading={isLoading}
           onViewReceipt={handleViewReceipt}
+          onFilter={handleFilter}
         />
       </div>
     </PullToRefresh>

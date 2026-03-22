@@ -376,6 +376,7 @@ export interface PrescriptionListParams {
   patient?: number;
   encounter?: number;
   status?: PrescriptionStatus;
+  search?: string;
   prescriber?: number;
   date_from?: string;
   date_to?: string;

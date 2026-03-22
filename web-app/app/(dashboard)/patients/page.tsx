@@ -31,7 +31,7 @@ export default function PatientsPage() {
   const selectMode = searchParams.get('select') === 'true';
   const returnTo = searchParams.get('returnTo');
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') ?? '');
   const [gender, setGender] = useState<string>('');
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<ViewMode>('list');

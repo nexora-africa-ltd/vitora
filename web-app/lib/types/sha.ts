@@ -496,6 +496,7 @@ export interface ClaimListParams {
   page?: number;
   page_size?: number;
   status?: ClaimStatus;
+  search?: string;
   patient?: number;
   encounter?: number;
   invoice?: number;

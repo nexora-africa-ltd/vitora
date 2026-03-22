@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PrescriptionsTable } from '@/components/pharmacy';
 import { usePrescriptions, usePendingPrescriptions } from '@/lib/hooks/use-pharmacy';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import { PrescriptionStatus } from '@/lib/types/pharmacy';
 
 export default function PrescriptionsPage() {
@@ -25,6 +26,7 @@ export default function PrescriptionsPage() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<PrescriptionStatus | ''>('');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const pageSize = 20;
 
   // Data fetching
@@ -36,6 +38,7 @@ export default function PrescriptionsPage() {
     page,
     page_size: pageSize,
     status: status || undefined,
+    search: debouncedSearch || undefined,
   });
 
   // Pending count for badge

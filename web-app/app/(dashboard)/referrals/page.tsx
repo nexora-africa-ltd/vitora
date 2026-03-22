@@ -26,6 +26,7 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useReferrals } from '@/lib/hooks/use-referrals';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import type {
   ClinicalReferralListItem,
@@ -57,13 +58,14 @@ export default function ReferralsPage() {
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState<ReferralStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<ReferralPriority | ''>('');
   const [typeFilter, setTypeFilter] = useState<ReferralType | ''>('');
 
   const { data, isLoading } = useReferrals({
     page,
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     status: statusFilter || undefined,
     priority: priorityFilter || undefined,
     referral_type: typeFilter || undefined,
