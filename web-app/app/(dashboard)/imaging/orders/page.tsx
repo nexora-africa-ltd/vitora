@@ -6,7 +6,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { ImagingOrderTable } from '@/components/imaging';
 import { useImagingOrders } from '@/lib/hooks/use-imaging';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -14,6 +17,7 @@ import { ImagingOrderStatus, ImagingPriority } from '@/lib/types/imaging';
 
 export default function ImagingOrdersPage() {
   const router = useRouter();
+  const { refresh, isRefreshing } = usePageRefresh();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<ImagingOrderStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<ImagingPriority | ''>('');
@@ -32,39 +36,32 @@ export default function ImagingOrdersPage() {
   const totalPages = Math.ceil((data?.count || 0) / 20);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push('/imaging')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Imaging Orders</h1>
-            <p className="text-muted-foreground">
-              View and manage all imaging orders
-            </p>
-          </div>
-        </div>
-        <Button onClick={() => router.push('/imaging/orders/new')}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Order
-        </Button>
-      </div>
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title="Imaging Orders"
+          helpContent="View and manage all imaging orders. Search by patient name, MRN, order number, or clinical indication. Filter by status and priority."
+          actions={
+            <Button onClick={() => router.push('/imaging/orders/new')} className="gap-2 w-full sm:w-auto">
+              <Plus className="h-4 w-4" />
+              New Order
+            </Button>
+          }
+        />
 
-      {/* Orders Table */}
-      <ImagingOrderTable
-        orders={orders}
-        isLoading={isLoading}
-        error={error as Error | null}
-        page={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        onStatusFilter={setStatusFilter}
-        onPriorityFilter={setPriorityFilter}
-        onSearch={setSearchQuery}
-        onRefresh={() => refetch()}
-      />
-    </div>
+        <ImagingOrderTable
+          orders={orders}
+          isLoading={isLoading}
+          error={error as Error | null}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          onStatusFilter={(s) => { setStatusFilter(s); setPage(1); }}
+          onPriorityFilter={(p) => { setPriorityFilter(p); setPage(1); }}
+          onSearch={(q) => { setSearchQuery(q); setPage(1); }}
+          onRefresh={() => refetch()}
+        />
+      </div>
+    </PullToRefresh>
   );
 }

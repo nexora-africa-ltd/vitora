@@ -32,6 +32,8 @@ interface ResponsiveTableProps<T> {
   isLoading?: boolean;
   emptyMessage?: string;
   rowClassName?: (item: T) => string;
+  /** Render expanded content below a row. Return null/undefined to skip. */
+  renderExpandedRow?: (item: T) => React.ReactNode;
   /** Column key to sort by initially. */
   defaultSortColumn?: string;
   /** Initial sort direction. Defaults to `'asc'`. */
@@ -54,6 +56,7 @@ export function ResponsiveTable<T>({
   isLoading = false,
   emptyMessage = 'No data available',
   rowClassName,
+  renderExpandedRow,
   defaultSortColumn,
   defaultSortDirection = 'asc',
 }: ResponsiveTableProps<T>) {
@@ -167,28 +170,39 @@ export function ResponsiveTable<T>({
             </tr>
           </thead>
           <tbody>
-            {sortedData.map((item) => (
-              <tr
-                key={keyExtractor(item)}
-                className={cn(
-                  'border-b transition-colors hover:bg-muted/50',
-                  onRowClick && 'cursor-pointer',
-                  rowClassName?.(item)
-                )}
-                onClick={() => onRowClick?.(item)}
-              >
-                {columns.map((column) => (
-                  <td
-                    key={String(column.key)}
-                    className={cn('p-4', column.className)}
+            {sortedData.map((item) => {
+              const expandedContent = renderExpandedRow?.(item);
+              return (
+                <React.Fragment key={keyExtractor(item)}>
+                  <tr
+                    className={cn(
+                      'border-b transition-colors hover:bg-muted/50',
+                      onRowClick && 'cursor-pointer',
+                      rowClassName?.(item)
+                    )}
+                    onClick={() => onRowClick?.(item)}
                   >
-                    {column.cell
-                      ? column.cell(item)
-                      : String(getValue(item, String(column.key)) ?? '—')}
-                  </td>
-                ))}
-              </tr>
-            ))}
+                    {columns.map((column) => (
+                      <td
+                        key={String(column.key)}
+                        className={cn('p-4', column.className)}
+                      >
+                        {column.cell
+                          ? column.cell(item)
+                          : String(getValue(item, String(column.key)) ?? '—')}
+                      </td>
+                    ))}
+                  </tr>
+                  {expandedContent && (
+                    <tr className="border-b">
+                      <td colSpan={columns.length} className="p-0">
+                        {expandedContent}
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>

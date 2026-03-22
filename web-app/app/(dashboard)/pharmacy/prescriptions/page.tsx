@@ -9,18 +9,20 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, ArrowLeft, FileText } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { PageHeader } from '@/components/shared/page-header';
+import { PullToRefresh } from '@/components/shared/pull-to-refresh';
+import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { PrescriptionsTable } from '@/components/pharmacy';
 import { usePrescriptions, usePendingPrescriptions } from '@/lib/hooks/use-pharmacy';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { PrescriptionStatus } from '@/lib/types/pharmacy';
 
 export default function PrescriptionsPage() {
-  const router = useRouter();
+  const { refresh, isRefreshing } = usePageRefresh();
 
   // Prescriptions state
   const [page, setPage] = useState(1);
@@ -50,58 +52,39 @@ export default function PrescriptionsPage() {
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
-    <div className="space-y-6" data-testid="prescriptions-page">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.push('/pharmacy')}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <FileText className="h-6 w-6" />
-              Prescriptions
+    <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>
+      <div className="space-y-4 sm:space-y-6" data-testid="prescriptions-page">
+        <PageHeader
+          title="Prescriptions"
+          helpContent="View and manage patient prescriptions. Search by patient name, MRN, or prescriber. Filter by status to find specific prescriptions."
+          actions={
+            <div className="flex items-center gap-3">
               {pendingCount > 0 && (
-                <span className="ml-2 bg-yellow-100 text-yellow-800 text-sm px-2 py-0.5 rounded-full">
+                <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400">
                   {pendingCount} pending
-                </span>
+                </Badge>
               )}
-            </h1>
-            <p className="text-muted-foreground">
-              View and manage patient prescriptions
-            </p>
-          </div>
-        </div>
-        <Button asChild>
-          <Link href="/pharmacy/prescriptions/new">
-            <Plus className="h-4 w-4 mr-2" />
-            New Prescription
-          </Link>
-        </Button>
-      </div>
+              <Button asChild className="w-full sm:w-auto">
+                <Link href="/pharmacy/prescriptions/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Prescription
+                </Link>
+              </Button>
+            </div>
+          }
+        />
 
-      {/* Prescriptions Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Prescriptions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <PrescriptionsTable
-            prescriptions={prescriptionsData?.results || []}
-            isLoading={isLoading}
-            error={error}
-            page={page}
-            totalPages={totalPages}
-            onPageChange={setPage}
-            onStatusFilter={setStatus}
-            onSearch={setSearch}
-          />
-        </CardContent>
-      </Card>
-    </div>
+        <PrescriptionsTable
+          prescriptions={prescriptionsData?.results || []}
+          isLoading={isLoading}
+          error={error}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          onStatusFilter={(s) => { setStatus(s); setPage(1); }}
+          onSearch={(q) => { setSearch(q); setPage(1); }}
+        />
+      </div>
+    </PullToRefresh>
   );
 }
