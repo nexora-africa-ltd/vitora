@@ -25,6 +25,7 @@ import { EntityCard, EntityGrid } from '@/components/shared/entity-card';
 import { useAdmissionRecommendations, useAdmissions } from '@/lib/hooks/use-inpatient';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { formatDate } from '@/lib/utils/format';
 import type { Admission, AdmissionRecommendation, AdmissionRecommendationUrgency } from '@/lib/types/inpatient';
 
@@ -373,6 +374,8 @@ function AdmissionsTableView({
  * Admissions Grid View Component
  */
 function AdmissionsGridView({ admissions }: { admissions: Admission[] }) {
+  const { canPerformAction } = usePermissions();
+
   if (admissions.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -427,8 +430,8 @@ function AdmissionsGridView({ admissions }: { admissions: Admission[] }) {
           ]}
           actions={[
             { label: 'View Details', href: `/admissions/${adm.id}` },
-            { label: 'Ward Round', href: `/admissions/${adm.id}/ward-round/new` },
-            { label: 'Discharge', href: `/admissions/${adm.id}/discharge` },
+            ...(canPerformAction('inpatient.make_rounds') ? [{ label: 'Ward Round', href: `/admissions/${adm.id}/ward-round/new` }] : []),
+            ...(canPerformAction('inpatient.discharge') ? [{ label: 'Discharge', href: `/admissions/${adm.id}/discharge` }] : []),
           ]}
         />
       ))}

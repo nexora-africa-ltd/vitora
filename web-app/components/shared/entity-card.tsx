@@ -155,10 +155,10 @@ export function EntityCard({
                   <DropdownMenuItem
                     key={index}
                     className={action.variant === 'destructive' ? 'text-destructive' : ''}
-                    onClick={(e) => {
+                    onClick={action.onClick ? (e) => {
                       e.preventDefault();
                       action.onClick?.();
-                    }}
+                    } : undefined}
                     asChild={!!action.href}
                   >
                     {action.href ? (
