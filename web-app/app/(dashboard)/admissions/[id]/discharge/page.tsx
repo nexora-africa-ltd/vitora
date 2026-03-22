@@ -42,6 +42,7 @@ import { useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { useAIEnabled, useAIClinicalDocument, useAICDSEvaluate, useStoredCarePlans } from '@/lib/hooks/use-ai';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
+import { useOptionalPatientContext } from '@/lib/context/patient-context';
 import { useFacility } from '@/lib/context/facility-context';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
@@ -82,6 +83,7 @@ export default function DischargePage() {
   const { data: wardRounds } = useAdmissionWardRounds(admissionId);
   const { data: orders } = useAdmissionOrders(admissionId);
   const { facility } = useFacility();
+  const patientContext = useOptionalPatientContext();
   const createDischarge = useCreateDischarge();
   const isAIEnabled = useAIEnabled();
   const clinicalDocument = useAIClinicalDocument();
@@ -135,10 +137,8 @@ export default function DischargePage() {
     }
   }, [admission?.mch_registration, maternityContinuityAction]);
 
-  // Build rich clinical context from admission data for AI calls
+  // Build rich clinical context from admission data + full patient record for AI calls
   const patientCtx = useMemo((): AIPatientContext => {
-    // Extract allergies & comorbidities from latest ward round or admission notes
-    const latestRound = wardRounds?.results?.[0];
     const allergies: string[] = [];
     const comorbidities: string[] = [];
     const currentMeds: string[] = [];
@@ -161,7 +161,7 @@ export default function DischargePage() {
       comorbidities,
       current_medications: currentMeds,
     };
-  }, [admission, wardRounds, orders]);
+  }, [admission, orders]);
 
   const encounterCtx = useMemo((): AIEncounterContext => {
     const latestRound = wardRounds?.results?.[0];
@@ -603,7 +603,20 @@ export default function DischargePage() {
       {/* Patient Summary with LOS */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Admission Summary</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Admission Summary</CardTitle>
+            <div className="flex items-center gap-2">
+              {patientContext?.hasSHA && (
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">SHA</Badge>
+              )}
+              {patientContext?.isVerified && (
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">CR Verified</Badge>
+              )}
+              {patientContext?.isSensitive && (
+                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800">Sensitive</Badge>
+              )}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-5">
@@ -614,6 +627,9 @@ export default function DischargePage() {
             <div>
               <p className="text-sm text-muted-foreground">Patient</p>
               <p className="font-medium">{admission.patient_name}</p>
+              {patientContext?.patient?.mrn && (
+                <p className="text-xs text-muted-foreground">{patientContext.patient.mrn}</p>
+              )}
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Ward / Bed</p>
