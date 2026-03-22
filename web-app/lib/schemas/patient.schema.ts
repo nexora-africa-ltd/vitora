@@ -125,6 +125,10 @@ export const PatientSchema = z.object({
   emergency_contact_phone: z.string().optional().nullable(),
   emergency_contact_relationship: z.string().optional().nullable(),
 
+  // Clinical summary (read-only, computed)
+  allergy_summary: z.array(z.string()).optional(),
+  chronic_conditions_summary: z.string().optional().nullable(),
+
   // Metadata
   registered_by: z.number().nullable(),
   registered_by_username: z.string().optional(),

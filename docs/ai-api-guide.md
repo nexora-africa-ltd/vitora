@@ -236,6 +236,10 @@ GET /build-info
 
 The `/chat` endpoint supports multiple modes: general health Q&A, guided symptom checking, or auto-routing based on intent detection.
 
+> **Persistence:** All chat turns are persisted to a local SQLite database (`data/conversations.db`)
+> for analytics and conversation continuity across server restarts. Set `TIBABOT_CONVERSATIONS_DB`
+> to override the database path.
+
 ```http
 POST /chat
 Content-Type: application/json
@@ -349,6 +353,10 @@ Content-Type: application/json
 ### 5. Conversational Symptom Checker
 
 Guided multi-turn symptom assessment with progressive triage.
+
+> **Session Persistence:** Symptom checker sessions are stored in Redis (when `REDIS_URL` is set)
+> so sessions survive server restarts and work across multiple replicas. Falls back to in-memory
+> storage when Redis is unavailable.
 
 #### Start Conversation
 
@@ -640,6 +648,7 @@ X-API-Key: your-api-key
     "county": "Nairobi"
   },
   "output_format": "structured",
+  "generation_mode": "suggest",
   "include_icd10_codes": true,
   "additional_instructions": "Emphasise partner notification and STI follow-up per MOH guidelines"
 }
@@ -653,6 +662,7 @@ X-API-Key: your-api-key
 | `encounter_context` | EncounterContext | No | Chief complaint, vitals, HPI, examination findings |
 | `facility_context` | FacilityContext | No | Facility level (1-6) and county |
 | `output_format` | string | No | `"markdown"` (default), `"structured"` (JSON sections), or `"fhir"` (FHIR R4 Composition) |
+| `generation_mode` | string | No | `"suggest"` (default): rich draft with AI-synthesised narratives and clearly-tagged suggestions for clinician review. `"generate"`: strict, facts-only output safe for audit trails and legal records (temperature 0, skeleton gating) |
 | `additional_instructions` | string (max 2000) | No | Extra guidance for the LLM |
 | `include_icd10_codes` | bool | No | Include ICD-10 code suggestions (default: `true`) |
 | `system_instruction` | string (max 2000) | No | Host application instruction injected into the system prompt |
@@ -716,11 +726,21 @@ X-API-Key: your-api-key
   "citations": [
     {"source": "Kenya STI Treatment Guidelines 2024", "section": "Chapter 3"}
   ],
+  "generation_mode": "suggest",
   "processing_time_ms": 3200,
   "model_used": "llama-3.3-70b-versatile",
   "disclaimer": "AI-generated clinical document. Must be reviewed and approved by the responsible clinician before use."
 }
 ```
+
+**Generation Modes:**
+
+| Mode | Purpose | Temperature | LLM Scope | Grounding | Skeleton Threshold |
+|------|---------|-------------|-----------|-----------|--------------------|
+| `suggest` (default) | Draft for clinician review. AI synthesises narratives, fills gaps, proposes follow-up — all clearly tagged as AI-suggested. | 0.3 | All sections | Warnings only (permissive) | Disabled — always attempts generation |
+| `generate` | Strict, audit-safe output. Only facts present in the input appear in the document. | 0 | Narrative sections only | Strict — flags anything not verbatim in input | 12.5% completeness required |
+
+In `suggest` mode, the `section_provenance` map in the response tags each section as `from_input`, `llm_generated`, `llm_suggested`, `guideline_rag`, `not_documented`, or `skeleton` so clinicians know exactly what to verify.
 
 **Response (`output_format: "markdown"`):**
 
@@ -2368,6 +2388,13 @@ GET /webhooks/whatsapp/stats
 | `WHATSAPP_ENABLED` | `false` | Enable WhatsApp webhook integration |
 | `TIBABOT_ENABLE_DOCS` | `false` | Enable OpenAPI docs (`/docs`, `/redoc`) |
 | `TIBABOT_REQUIRE_AUTH` | `false` | Require auth for all endpoints |
+
+### Storage Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `REDIS_URL` | *(none)* | Redis connection URL for session storage (e.g. `redis://localhost:6379`). When set, symptom checker sessions are persisted to Redis with automatic TTL expiry. Falls back to in-memory when unavailable. |
+| `TIBABOT_CONVERSATIONS_DB` | `data/conversations.db` | Path to SQLite database for chat conversation history. All `/chat` turns are durably persisted here for analytics and continuity. |
 
 ---
 

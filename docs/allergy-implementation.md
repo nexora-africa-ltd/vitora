@@ -915,6 +915,8 @@ export function useCheckDrugInteractions() {
 |----------|-------------|
 | Patient Detail Page | Add "Allergies" tab after "History" |
 | Patient Summary Card | Show high-risk allergy badge |
+| Patient API Response | `allergy_summary` field — list of active allergy substances (read-only, computed) |
+| Discharge Form | PatientContext enriches AI clinical context with `allergy_summary` + `chronic_conditions_summary` |
 | Encounter Form | Display active allergies in sidebar |
 | Prescription Form | Call `check-interactions` before submit |
 | Dispensing View | Show allergy warnings |
@@ -948,7 +950,7 @@ All allergy operations are logged to `AuditLog`:
 
 ### Backend
 - `hmis/apps/patients/models.py` — Added `Allergy` model
-- `hmis/apps/patients/serializers.py` — Added `AllergySerializer`, `AllergyListSerializer`
+- `hmis/apps/patients/serializers.py` — Added `AllergySerializer`, `AllergyListSerializer`, `allergy_summary` + `chronic_conditions_summary` computed fields on `PatientSerializer`
 - `hmis/apps/patients/views.py` — Added `AllergyViewSet`
 - `hmis/apps/patients/admin.py` — Added `AllergyAdmin`, `AllergyInline`
 - `hmis/urls.py` — Registered allergy routes

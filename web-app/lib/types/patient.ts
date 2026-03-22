@@ -88,6 +88,9 @@ export interface Patient {
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
   emergency_contact_relationship?: string;
+  // Clinical summary (read-only, computed from Allergy model + latest encounter)
+  allergy_summary?: string[];
+  chronic_conditions_summary?: string;
   registered_by: number;
   registered_by_username?: string;
   created_at: string;

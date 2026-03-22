@@ -160,6 +160,8 @@ Gaps are categorized into four tiers:
 - **Owner**: Backend + Frontend Team
 - **Completed**: February 23, 2026 (backend)
 - **Deliverables**: `patients/models.py::Allergy`, `AllergyViewSet`, `test_allergy.py`, `docs/allergy-implementation.md`
+  - [x] Patient API exposes `allergy_summary` (active substances) and `chronic_conditions_summary` (latest encounter) as read-only computed fields
+  - [x] Frontend `Patient` type and Zod schema updated; discharge form enriches AI context from PatientContext
 
 #### 8. Birth Certificate Identification Type `P1` ✅ COMPLETE
 - **Gap**: ~~Not in `IDENTIFICATION_TYPE_CHOICES`~~ **RESOLVED**

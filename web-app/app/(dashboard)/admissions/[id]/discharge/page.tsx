@@ -143,6 +143,17 @@ export default function DischargePage() {
     const comorbidities: string[] = [];
     const currentMeds: string[] = [];
 
+    // Enrich from PatientContext clinical summary fields
+    const fullPatient = patientContext?.patient;
+    if (fullPatient?.allergy_summary?.length) {
+      allergies.push(...fullPatient.allergy_summary);
+    }
+    if (fullPatient?.chronic_conditions_summary) {
+      comorbidities.push(
+        ...fullPatient.chronic_conditions_summary.split(',').map((c: string) => c.trim()).filter(Boolean)
+      );
+    }
+
     // Gather current medications from prescriptions
     if (orders?.prescriptions) {
       for (const rx of orders.prescriptions) {
@@ -161,7 +172,7 @@ export default function DischargePage() {
       comorbidities,
       current_medications: currentMeds,
     };
-  }, [admission, orders]);
+  }, [admission, orders, patientContext?.patient]);
 
   const encounterCtx = useMemo((): AIEncounterContext => {
     const latestRound = wardRounds?.results?.[0];
