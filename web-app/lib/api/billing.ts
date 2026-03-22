@@ -220,7 +220,7 @@ async function addInvoiceItem(
   data: InvoiceItemCreateData
 ): Promise<InvoiceItem> {
   const response = await apiClient.post(
-    `/api/billing/invoices/${invoiceId}/add_item/`,
+    `/api/billing/invoices/${invoiceId}/items/`,
     data
   );
   return parseResponse(InvoiceItemSchema, response.data, { context: 'billingApi.addInvoiceItem' });
@@ -231,7 +231,7 @@ async function removeInvoiceItem(
   itemId: number
 ): Promise<void> {
   await apiClient.delete(
-    `/api/billing/invoices/${invoiceId}/remove_item/${itemId}/`
+    `/api/billing/invoices/${invoiceId}/items/${itemId}/`
   );
 }
 
@@ -432,8 +432,7 @@ async function createCreditNote(data: CreditNoteCreateData): Promise<CreditNote>
 
 async function approveCreditNote(id: number): Promise<CreditNote> {
   const response = await apiClient.post(
-    `/api/billing/credit-notes/${id}/approve/`,
-    { approved: true }
+    `/api/billing/credit-notes/${id}/approve/`
   );
   return parseResponse(CreditNoteSchema, response.data, { context: 'billingApi.approveCreditNote' });
 }
@@ -443,8 +442,8 @@ async function rejectCreditNote(
   rejectionReason: string
 ): Promise<CreditNote> {
   const response = await apiClient.post(
-    `/api/billing/credit-notes/${id}/approve/`,
-    { approved: false, rejection_reason: rejectionReason }
+    `/api/billing/credit-notes/${id}/reject/`,
+    { reason: rejectionReason }
   );
   return parseResponse(CreditNoteSchema, response.data, { context: 'billingApi.rejectCreditNote' });
 }

@@ -55,7 +55,6 @@ import { toast } from 'sonner';
 // ============================================================================
 
 const statusConfig: Record<string, { color: string; icon: React.ElementType; label: string }> = {
-  PENDING: { color: 'bg-amber-100 text-amber-700', icon: Clock, label: 'Pending Approval' },
   DRAFT: { color: 'bg-slate-100 text-slate-700', icon: ScrollText, label: 'Draft' },
   APPROVED: { color: 'bg-green-100 text-green-700', icon: CheckCircle, label: 'Approved' },
   REJECTED: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Rejected' },
@@ -66,10 +65,12 @@ const reasonLabels: Record<string, string> = {
   OVERCHARGE: 'Overcharge',
   SERVICE_NOT_RENDERED: 'Service Not Rendered',
   DUPLICATE_BILLING: 'Duplicate Billing',
-  DUPLICATE: 'Duplicate',
+  DUPLICATE: 'Duplicate Charge',
+  DUPLICATE_CHARGE: 'Duplicate Charge',
   PRICING_ERROR: 'Pricing Error',
   OTHER: 'Other',
-  INSURANCE: 'Insurance',
+  INSURANCE: 'Insurance Adjustment',
+  INSURANCE_ADJUSTMENT: 'Insurance Adjustment',
   GOODWILL: 'Goodwill',
 };
 
@@ -160,7 +161,7 @@ export default function CreditNoteDetailPage() {
     );
   }
 
-  const config = statusConfig[creditNote.status] || statusConfig.PENDING;
+  const config = statusConfig[creditNote.status] || statusConfig.DRAFT;
   const StatusIcon = config.icon;
 
   return (
@@ -170,7 +171,7 @@ export default function CreditNoteDetailPage() {
         helpContent="View credit note details. Approve, reject, or process refunds for pending credit notes."
         actions={
           <div className="flex flex-col gap-2 sm:flex-row">
-            {creditNote.status === 'PENDING' && (
+            {creditNote.status === 'DRAFT' && (
               <>
                 <Button
                   variant="outline"
