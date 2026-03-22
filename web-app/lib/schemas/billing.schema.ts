@@ -14,8 +14,8 @@ import { z } from 'zod';
 export const INVOICE_STATUSES = ['PROFORMA', 'DRAFT', 'PENDING', 'PARTIAL', 'PAID', 'CANCELLED', 'OVERDUE', 'WRITTEN_OFF'] as const;
 export const PAYMENT_METHODS = ['CASH', 'MPESA', 'CARD', 'INSURANCE', 'BANK_TRANSFER', 'CORPORATE', 'CHEQUE'] as const;
 export const PAYMENT_STATUSES = ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED', 'REVERSED'] as const;
-export const CREDIT_NOTE_REASONS = ['OVERCHARGE', 'SERVICE_NOT_RENDERED', 'DUPLICATE_BILLING', 'DUPLICATE', 'PRICING_ERROR', 'OTHER', 'INSURANCE', 'GOODWILL'] as const;
-export const CREDIT_NOTE_STATUSES = ['PENDING', 'DRAFT', 'APPROVED', 'REJECTED', 'REFUNDED'] as const;
+export const CREDIT_NOTE_REASONS = ['OVERCHARGE', 'SERVICE_NOT_RENDERED', 'DUPLICATE_BILLING', 'DUPLICATE', 'DUPLICATE_CHARGE', 'PRICING_ERROR', 'OTHER', 'INSURANCE', 'INSURANCE_ADJUSTMENT', 'GOODWILL'] as const;
+export const CREDIT_NOTE_STATUSES = ['DRAFT', 'APPROVED', 'REJECTED', 'REFUNDED'] as const;
 export const DISCOUNT_TYPES = ['PERCENTAGE', 'FIXED'] as const;
 
 // =============================================================================

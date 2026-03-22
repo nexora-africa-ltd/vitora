@@ -413,7 +413,24 @@ class CreditNoteViewSet(viewsets.ModelViewSet):
             credit_note.approve(request.user)
             serializer = self.get_serializer(credit_note)
             return Response(serializer.data)
-        except ValueError as e:
+        except (ValueError, ValidationError) as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=["post"])
+    def reject(self, request, pk=None):
+        """Reject credit note."""
+        credit_note = self.get_object()
+        reason = request.data.get("reason", "")
+        if not reason:
+            return Response(
+                {"error": "Rejection reason is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            credit_note.reject(request.user, reason)
+            serializer = self.get_serializer(credit_note)
+            return Response(serializer.data)
+        except (ValueError, ValidationError) as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=["post"])

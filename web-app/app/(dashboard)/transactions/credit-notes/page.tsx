@@ -13,7 +13,6 @@ import {
   AlertCircle,
   CheckCircle,
   XCircle,
-  Clock,
   Undo2,
 } from 'lucide-react';
 
@@ -39,7 +38,6 @@ import type { CreditNote } from '@/lib/types/billing';
 // ============================================================================
 
 const statusConfig: Record<string, { color: string; icon: React.ElementType }> = {
-  PENDING: { color: 'bg-amber-100 text-amber-700', icon: Clock },
   DRAFT: { color: 'bg-slate-100 text-slate-700', icon: ScrollText },
   APPROVED: { color: 'bg-green-100 text-green-700', icon: CheckCircle },
   REJECTED: { color: 'bg-red-100 text-red-700', icon: XCircle },
@@ -47,7 +45,7 @@ const statusConfig: Record<string, { color: string; icon: React.ElementType }> =
 };
 
 function CreditNoteStatusBadge({ status }: { status: string }) {
-  const config = statusConfig[status] || statusConfig.PENDING;
+  const config = statusConfig[status] || statusConfig.DRAFT;
   const Icon = config.icon;
   return (
     <Badge className={`${config.color} text-xs shrink-0 w-fit gap-1`}>
@@ -61,10 +59,12 @@ const reasonLabels: Record<string, string> = {
   OVERCHARGE: 'Overcharge',
   SERVICE_NOT_RENDERED: 'Service Not Rendered',
   DUPLICATE_BILLING: 'Duplicate Billing',
-  DUPLICATE: 'Duplicate',
+  DUPLICATE: 'Duplicate Charge',
+  DUPLICATE_CHARGE: 'Duplicate Charge',
   PRICING_ERROR: 'Pricing Error',
   OTHER: 'Other',
-  INSURANCE: 'Insurance',
+  INSURANCE: 'Insurance Adjustment',
+  INSURANCE_ADJUSTMENT: 'Insurance Adjustment',
   GOODWILL: 'Goodwill',
 };
 
@@ -78,7 +78,7 @@ export default function CreditNotesPage() {
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
 
   const { data, isLoading, error, refetch, isFetching } = useCreditNotes({
-    status: statusFilter === 'all' ? undefined : (statusFilter as 'PENDING' | 'DRAFT' | 'APPROVED' | 'REJECTED' | 'REFUNDED'),
+    status: statusFilter === 'all' ? undefined : (statusFilter as 'DRAFT' | 'APPROVED' | 'REJECTED' | 'REFUNDED'),
     ordering: '-created_at',
   });
 
@@ -137,7 +137,7 @@ export default function CreditNotesPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="DRAFT">Draft</SelectItem>
               <SelectItem value="APPROVED">Approved</SelectItem>
               <SelectItem value="REJECTED">Rejected</SelectItem>
               <SelectItem value="REFUNDED">Refunded</SelectItem>
