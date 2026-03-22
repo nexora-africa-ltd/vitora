@@ -124,13 +124,9 @@ export const AVPU_CONFIG: Record<AVPUStatus, AVPUConfig> = {
 // PATIENT JOURNEY STAGES
 // =============================================================================
 
-export type PatientStage =
-  | 'REGISTERED'
-  | 'AWAITING_TRIAGE'
-  | 'IN_TRIAGE'
-  | 'AWAITING_CONSULTATION'
-  | 'IN_CONSULTATION'
-  | 'COMPLETED';
+// Re-export from the canonical patient journey store
+export type { PatientStage } from '@/lib/stores/patient-journey';
+import type { PatientStage } from '@/lib/stores/patient-journey';
 
 export interface PatientStageConfig {
   stage: PatientStage;
@@ -147,6 +143,13 @@ export const PATIENT_STAGE_CONFIG: Record<PatientStage, PatientStageConfig> = {
     description: 'Patient has been registered in the system',
     badgeVariant: 'outline',
     color: 'gray',
+  },
+  CHECKED_IN: {
+    stage: 'CHECKED_IN',
+    label: 'Checked In',
+    description: 'Patient has arrived and completed check-in',
+    badgeVariant: 'secondary',
+    color: 'cyan',
   },
   AWAITING_TRIAGE: {
     stage: 'AWAITING_TRIAGE',
@@ -176,11 +179,158 @@ export const PATIENT_STAGE_CONFIG: Record<PatientStage, PatientStageConfig> = {
     badgeVariant: 'default',
     color: 'green',
   },
-  COMPLETED: {
-    stage: 'COMPLETED',
-    label: 'Completed',
+  AWAITING_LAB: {
+    stage: 'AWAITING_LAB',
+    label: 'Awaiting Lab',
+    description: 'Lab work has been ordered and is pending',
+    badgeVariant: 'secondary',
+    color: 'fuchsia',
+  },
+  LAB_IN_PROGRESS: {
+    stage: 'LAB_IN_PROGRESS',
+    label: 'Lab In Progress',
+    description: 'Lab processing is underway',
+    badgeVariant: 'default',
+    color: 'fuchsia',
+  },
+  LAB_RESULTS_READY: {
+    stage: 'LAB_RESULTS_READY',
+    label: 'Lab Results Ready',
+    description: 'Lab results are available for review',
+    badgeVariant: 'secondary',
+    color: 'lime',
+  },
+  AWAITING_IMAGING: {
+    stage: 'AWAITING_IMAGING',
+    label: 'Awaiting Imaging',
+    description: 'Imaging has been requested and is pending',
+    badgeVariant: 'secondary',
+    color: 'sky',
+  },
+  IMAGING_IN_PROGRESS: {
+    stage: 'IMAGING_IN_PROGRESS',
+    label: 'Imaging In Progress',
+    description: 'Imaging study is currently being performed',
+    badgeVariant: 'default',
+    color: 'sky',
+  },
+  IMAGING_RESULTS_READY: {
+    stage: 'IMAGING_RESULTS_READY',
+    label: 'Imaging Results Ready',
+    description: 'Imaging results are ready for review',
+    badgeVariant: 'secondary',
+    color: 'teal',
+  },
+  AWAITING_PHARMACY: {
+    stage: 'AWAITING_PHARMACY',
+    label: 'Awaiting Pharmacy',
+    description: 'Medication order is waiting for dispensing',
+    badgeVariant: 'secondary',
+    color: 'orange',
+  },
+  PHARMACY_DISPENSING: {
+    stage: 'PHARMACY_DISPENSING',
+    label: 'Pharmacy Dispensing',
+    description: 'Medication is currently being prepared or dispensed',
+    badgeVariant: 'default',
+    color: 'orange',
+  },
+  PHARMACY_READY: {
+    stage: 'PHARMACY_READY',
+    label: 'Pharmacy Ready',
+    description: 'Medication is ready for collection',
+    badgeVariant: 'secondary',
+    color: 'yellow',
+  },
+  AWAITING_BILLING: {
+    stage: 'AWAITING_BILLING',
+    label: 'Awaiting Billing',
+    description: 'Patient is waiting for billing review or payment',
+    badgeVariant: 'secondary',
+    color: 'rose',
+  },
+  BILLING_IN_PROGRESS: {
+    stage: 'BILLING_IN_PROGRESS',
+    label: 'Billing In Progress',
+    description: 'Invoice is being processed or payment is underway',
+    badgeVariant: 'default',
+    color: 'rose',
+  },
+  BILLING_COMPLETE: {
+    stage: 'BILLING_COMPLETE',
+    label: 'Billing Complete',
+    description: 'Payment received and billing is settled',
+    badgeVariant: 'secondary',
+    color: 'rose',
+  },
+  ADMISSION_RECOMMENDED: {
+    stage: 'ADMISSION_RECOMMENDED',
+    label: 'Admission Recommended',
+    description: 'Clinician has recommended inpatient admission',
+    badgeVariant: 'destructive',
+    color: 'red',
+  },
+  AWAITING_BED: {
+    stage: 'AWAITING_BED',
+    label: 'Awaiting Bed',
+    description: 'Patient is waiting for a bed to be assigned',
+    badgeVariant: 'destructive',
+    color: 'red',
+  },
+  ADMITTED: {
+    stage: 'ADMITTED',
+    label: 'Admitted',
+    description: 'Patient has been admitted to inpatient care',
+    badgeVariant: 'destructive',
+    color: 'red',
+  },
+  INPATIENT_CARE: {
+    stage: 'INPATIENT_CARE',
+    label: 'Inpatient Care',
+    description: 'Patient is receiving inpatient care on the ward',
+    badgeVariant: 'destructive',
+    color: 'red',
+  },
+  AWAITING_DISCHARGE: {
+    stage: 'AWAITING_DISCHARGE',
+    label: 'Awaiting Discharge',
+    description: 'Patient is medically ready and awaiting clearances',
+    badgeVariant: 'secondary',
+    color: 'amber',
+  },
+  DISCHARGE_PLANNING: {
+    stage: 'DISCHARGE_PLANNING',
+    label: 'Discharge Planning',
+    description: 'Discharge summary and instructions being prepared',
+    badgeVariant: 'secondary',
+    color: 'amber',
+  },
+  DISCHARGED: {
+    stage: 'DISCHARGED',
+    label: 'Discharged',
     description: 'Patient visit has been completed',
     badgeVariant: 'outline',
+    color: 'gray',
+  },
+  REFERRED_OUT: {
+    stage: 'REFERRED_OUT',
+    label: 'Referred Out',
+    description: 'Patient has been referred to another facility',
+    badgeVariant: 'outline',
+    color: 'indigo',
+  },
+  LEFT_WITHOUT_BEING_SEEN: {
+    stage: 'LEFT_WITHOUT_BEING_SEEN',
+    label: 'Left Without Being Seen',
+    description: 'Patient left before being attended to',
+    badgeVariant: 'outline',
+    color: 'gray',
+  },
+  DECEASED: {
+    stage: 'DECEASED',
+    label: 'Deceased',
+    description: 'Patient has been pronounced deceased',
+    badgeVariant: 'destructive',
     color: 'gray',
   },
 };
