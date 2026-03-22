@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useClearanceStatus } from '@/lib/hooks/use-inpatient';
+import { useOptionalPatientContext } from '@/lib/context/patient-context';
 import type { DepartmentClearance } from '@/lib/types/inpatient';
 
 interface ClearanceStatusPanelProps {
@@ -78,6 +79,7 @@ function ClearanceRow({
 
 export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps) {
   const { data: clearance, isLoading, refetch, isFetching } = useClearanceStatus(admissionId);
+  const patientContext = useOptionalPatientContext();
 
   return (
     <Card>
@@ -155,6 +157,11 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
                 resolveHref={`/admissions/${admissionId}?tab=nursing`}
               />
             </div>
+            {patientContext?.hasSHA && clearance?.billing && !clearance.billing.cleared && (
+              <p className="text-sm text-blue-600 dark:text-blue-400 mt-3">
+                This patient has SHA coverage. Ensure SHA claims are filed before clearing billing.
+              </p>
+            )}
             {clearance && !clearance.all_cleared && (
               <p className="text-sm text-amber-600 dark:text-amber-400 mt-4">
                 ⚠️ All departments must be cleared before a normal discharge can be processed. Use the &ldquo;Resolve&rdquo; links to address pending items.
