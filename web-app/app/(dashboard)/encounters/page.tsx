@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus, Filter, Calendar, Users, ClipboardList, Activity, Clock, Play, UserX } from 'lucide-react';
+import { Plus, Filter, Calendar, Users, ClipboardList, Activity, Clock, Play, UserX, Search } from 'lucide-react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -31,6 +32,7 @@ import { ConsultationQueueContainer } from '@/components/encounters/consultation
 import { useEncounters } from '@/lib/hooks/use-encounters';
 import { useMyClaimedEncounters, useAllClaimedEncounters, useReleaseEncounter } from '@/lib/hooks/use-consultation-queue';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { formatRelativeTime } from '@/lib/utils/format';
 import { ENCOUNTER_TYPES, ENCOUNTER_STATUS } from '@/lib/utils/constants';
@@ -142,6 +144,8 @@ export default function EncountersPage() {
   const [status, setStatus] = useState<string>(initialStatus);
   const [workflowDate, setWorkflowDate] = useState<string>(initialWorkflowDate);
   const [encounterType, setEncounterType] = useState<string>('');
+  const [encounterSearch, setEncounterSearch] = useState('');
+  const debouncedSearch = useDebounce(encounterSearch, 300);
   const [page, setPage] = useState(1);
   const [showOnlyMine, setShowOnlyMine] = useState(true);
   const pageSize = 10;
@@ -171,6 +175,7 @@ export default function EncountersPage() {
     status: status || undefined,
     encounter_date: encounterDateFilter,
     encounter_type: encounterType || undefined,
+    search: debouncedSearch || undefined,
     ordering: '-encounter_date',
   });
 
@@ -405,6 +410,19 @@ export default function EncountersPage() {
         <TabsContent value="all" className="space-y-4">
           {/* Filters */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1 sm:flex-initial">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search by patient, complaint..."
+                value={encounterSearch}
+                onChange={(e) => {
+                  setEncounterSearch(e.target.value);
+                  setPage(1);
+                }}
+                className="pl-9 w-full sm:w-64"
+              />
+            </div>
             <Select
               value={status}
               onValueChange={(value) => {

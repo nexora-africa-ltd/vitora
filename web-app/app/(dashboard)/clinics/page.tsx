@@ -36,6 +36,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useClinics } from '@/lib/hooks/use-clinics';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import type { ClinicListParams, ClinicStatus, ClinicType } from '@/lib/types/clinic';
 import { cn } from '@/lib/utils/cn';
 
@@ -89,6 +90,7 @@ export default function ClinicsPage() {
   const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [clinicType, setClinicType] = useState<ClinicType | 'ALL'>('ALL');
   const [status, setStatus] = useState<ClinicStatus | 'ALL'>('ALL');
 
@@ -96,11 +98,11 @@ export default function ClinicsPage() {
     const p: ClinicListParams = {
       page_size: 100, // Fetch all clinics (facilities typically have <50)
     };
-    if (search) p.search = search;
+    if (debouncedSearch) p.search = debouncedSearch;
     if (clinicType !== 'ALL') p.clinic_type = clinicType;
     if (status !== 'ALL') p.status = status;
     return p;
-  }, [search, clinicType, status]);
+  }, [debouncedSearch, clinicType, status]);
 
   const { data, isLoading, refetch } = useClinics(params);
 

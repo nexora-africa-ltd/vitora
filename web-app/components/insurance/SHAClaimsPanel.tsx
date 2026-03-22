@@ -48,6 +48,7 @@ import {
 
 import { ClaimsStatusChart } from '@/components/widgets';
 import { useClaims } from '@/lib/hooks/use-sha';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import type { Claim, ClaimStatus } from '@/lib/types/sha';
 import { formatCurrency } from '@/lib/utils/format';
 import { format, parseISO } from 'date-fns';
@@ -256,9 +257,11 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
 
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
   const { data: claimsData, isLoading, refetch, isRefetching } = useClaims({
     status: statusFilter !== 'all' ? (statusFilter as ClaimStatus) : undefined,
+    search: debouncedSearch || undefined,
   });
 
   const claims = claimsData?.results ?? EMPTY_CLAIMS;
@@ -291,16 +294,7 @@ export function SHAClaimsPanel({ basePath = '/transactions/sha-claims', showHead
     }));
   }, [claims]);
 
-  const filteredClaims = claims.filter((claim) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      claim.claim_number?.toLowerCase().includes(query) ||
-      claim.sha_reference?.toLowerCase().includes(query) ||
-      claim.patient_name?.toLowerCase().includes(query) ||
-      claim.patient_mrn?.toLowerCase().includes(query)
-    );
-  });
+  const filteredClaims = claims;
 
   const handleClaimClick = (claim: Claim) => {
     router.push(`${basePath}/${claim.id}`);

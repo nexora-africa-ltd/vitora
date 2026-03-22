@@ -38,6 +38,7 @@ import {
   usePendingPrescriptions,
   useDispensings,
 } from '@/lib/hooks/use-pharmacy';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import { StockStatus, PrescriptionStatus, DrugCategory, DrugForm, DrugSchedule } from '@/lib/types/pharmacy';
 
 export default function PharmacyPage() {
@@ -49,6 +50,7 @@ export default function PharmacyPage() {
   // Drugs state
   const [drugsPage, setDrugsPage] = useState(1);
   const [drugsSearch, setDrugsSearch] = useState('');
+  const debouncedDrugsSearch = useDebounce(drugsSearch, 300);
   const [drugsFilters, setDrugsFilters] = useState<{
     category?: DrugCategory;
     form?: DrugForm;
@@ -67,6 +69,7 @@ export default function PharmacyPage() {
   const [rxPage, setRxPage] = useState(1);
   const [rxStatus, setRxStatus] = useState<PrescriptionStatus | ''>('');
   const [rxSearch, setRxSearch] = useState('');
+  const debouncedRxSearch = useDebounce(rxSearch, 300);
   const [rxDateFrom, setRxDateFrom] = useState('');
   const [rxDateTo, setRxDateTo] = useState('');
   const rxPageSize = 20;
@@ -90,7 +93,7 @@ export default function PharmacyPage() {
   } = useDrugs({
     page: drugsPage,
     page_size: drugsPageSize,
-    search: drugsSearch || undefined,
+    search: debouncedDrugsSearch || undefined,
     ...drugsFilters,
   });
 
@@ -121,6 +124,7 @@ export default function PharmacyPage() {
     page: rxPage,
     page_size: rxPageSize,
     status: rxStatus || undefined,
+    search: debouncedRxSearch || undefined,
     date_from: rxDateFrom || undefined,
     date_to: rxDateTo || undefined,
   });

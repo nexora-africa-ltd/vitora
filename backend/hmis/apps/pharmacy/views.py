@@ -282,8 +282,15 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     )
     serializer_class = PrescriptionSerializer
     permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["patient", "status", "encounter"]
+    search_fields = [
+        "patient__first_name",
+        "patient__last_name",
+        "patient__mrn",
+        "prescribed_by__first_name",
+        "prescribed_by__last_name",
+    ]
     ordering_fields = ["prescribed_at", "created_at"]
     ordering = ["-prescribed_at"]
 

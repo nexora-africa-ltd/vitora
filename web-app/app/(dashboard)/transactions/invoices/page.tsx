@@ -3,7 +3,7 @@
  */
 'use client';
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus } from 'lucide-react';
 
@@ -12,13 +12,22 @@ import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { InvoiceList } from '@/components/billing/InvoiceList';
 import { useInvoices, useFinalizeInvoice, useCancelInvoice } from '@/lib/hooks/billing';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import { useToast } from '@/lib/hooks/use-toast';
-import type { Invoice } from '@/lib/types/billing';
+import type { Invoice, InvoiceStatus } from '@/lib/types/billing';
 
 export default function TransactionsInvoicesPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { data, isLoading, refetch, isFetching } = useInvoices();
+
+  const [invoiceSearch, setInvoiceSearch] = useState('');
+  const [invoiceStatus, setInvoiceStatus] = useState<InvoiceStatus | undefined>();
+  const debouncedSearch = useDebounce(invoiceSearch, 300);
+
+  const { data, isLoading, refetch, isFetching } = useInvoices({
+    search: debouncedSearch || undefined,
+    status: invoiceStatus,
+  });
   const finalizeInvoice = useFinalizeInvoice();
   const cancelInvoice = useCancelInvoice();
 
@@ -58,6 +67,11 @@ export default function TransactionsInvoicesPage() {
     await refetch();
   };
 
+  const handleFilter = useCallback((filters: { status?: InvoiceStatus; search?: string }) => {
+    setInvoiceSearch(filters.search ?? '');
+    setInvoiceStatus(filters.status);
+  }, []);
+
   return (
     <PullToRefresh onRefresh={handleRefresh} isRefreshing={isFetching}>
       <div className="space-y-4 sm:space-y-6">
@@ -77,6 +91,7 @@ export default function TransactionsInvoicesPage() {
           isLoading={isLoading}
           onSelect={handleSelectInvoice}
           onCreateNew={handleCreateInvoice}
+          onFilter={handleFilter}
           onReceivePayment={handleReceivePayment}
           onFinalize={handleFinalize}
           onCancel={handleCancel}

@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { ImagingOrderTable } from '@/components/imaging';
 import { useImagingOrders } from '@/lib/hooks/use-imaging';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import { ImagingOrderStatus, ImagingPriority } from '@/lib/types/imaging';
 
 export default function ImagingOrdersPage() {
@@ -17,12 +18,14 @@ export default function ImagingOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<ImagingOrderStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<ImagingPriority | ''>('');
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
   const { data, isLoading, error, refetch } = useImagingOrders({
     page,
     page_size: 20,
     status: statusFilter || undefined,
     priority: priorityFilter || undefined,
+    search: debouncedSearch || undefined,
   });
 
   const orders = data?.results || [];

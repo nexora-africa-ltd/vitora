@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useLabOrders } from '@/lib/hooks/use-laboratory';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import { LabOrderStatus, LabPriority } from '@/lib/types/laboratory';
 
 export default function LaboratoryPage() {
@@ -20,13 +21,14 @@ export default function LaboratoryPage() {
   const [statusFilter, setStatusFilter] = useState<LabOrderStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<LabPriority | ''>('');
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
 
   const { data, isLoading, error } = useLabOrders({
     page,
     page_size: 20,
     status: statusFilter || undefined,
     priority: priorityFilter || undefined,
-    search: searchQuery || undefined,
+    search: debouncedSearch || undefined,
   });
 
   const orders = data?.results || [];
