@@ -272,15 +272,65 @@ const STAGE_STATUS_CONFIG: Partial<Record<string, { label: string; description: 
     description: 'Patient is waiting for billing review or payment.',
     dotClassName: 'bg-rose-400',
   },
+  BILLING_IN_PROGRESS: {
+    label: 'Billing In Progress',
+    description: 'Invoice is being processed or payment is underway.',
+    dotClassName: 'bg-rose-500',
+  },
+  BILLING_COMPLETE: {
+    label: 'Billing Complete',
+    description: 'Payment has been received and billing is settled.',
+    dotClassName: 'bg-rose-300',
+  },
+  ADMISSION_RECOMMENDED: {
+    label: 'Admission Recommended',
+    description: 'Clinician has recommended inpatient admission.',
+    dotClassName: 'bg-red-400',
+  },
+  AWAITING_BED: {
+    label: 'Awaiting Bed',
+    description: 'Patient is waiting for a bed to be assigned.',
+    dotClassName: 'bg-red-300',
+  },
   ADMITTED: {
     label: 'Admitted',
     description: 'Patient has been admitted to inpatient care.',
     dotClassName: 'bg-red-500',
   },
+  INPATIENT_CARE: {
+    label: 'Inpatient Care',
+    description: 'Patient is receiving inpatient care on the ward.',
+    dotClassName: 'bg-red-600',
+  },
+  AWAITING_DISCHARGE: {
+    label: 'Awaiting Discharge',
+    description: 'Patient is medically ready and awaiting discharge clearances.',
+    dotClassName: 'bg-amber-600',
+  },
+  DISCHARGE_PLANNING: {
+    label: 'Discharge Planning',
+    description: 'Discharge summary and instructions are being prepared.',
+    dotClassName: 'bg-amber-500',
+  },
   DISCHARGED: {
     label: 'Discharged',
     description: 'Patient visit has been completed and discharge finalized.',
     dotClassName: 'bg-slate-500',
+  },
+  REFERRED_OUT: {
+    label: 'Referred Out',
+    description: 'Patient has been referred to another facility.',
+    dotClassName: 'bg-indigo-500',
+  },
+  LEFT_WITHOUT_BEING_SEEN: {
+    label: 'Left Without Being Seen',
+    description: 'Patient left the facility before being attended to.',
+    dotClassName: 'bg-gray-400',
+  },
+  DECEASED: {
+    label: 'Deceased',
+    description: 'Patient has been pronounced deceased.',
+    dotClassName: 'bg-gray-600',
   },
 };
 
