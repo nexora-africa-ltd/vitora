@@ -460,6 +460,7 @@ export interface LabTechnician {
 export interface LabOrderCreateData {
   patient: number;
   encounter: number;
+  admission?: number;
   order_type?: OrderType;
   external_lab?: string;
   priority?: LabPriority;
