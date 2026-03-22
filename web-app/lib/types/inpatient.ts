@@ -271,6 +271,27 @@ export interface DischargeCreateData {
 }
 
 // ============================================================================
+// Clearance Status Types (Automated Discharge Clearance)
+// ============================================================================
+
+export interface DepartmentClearance {
+  cleared: boolean;
+  reason: string;
+  outstanding_amount?: number;
+  invoice_count?: number;
+  pending_count?: number;
+  pending_tests?: string[];
+}
+
+export interface ClearanceStatus {
+  billing: DepartmentClearance;
+  pharmacy: DepartmentClearance;
+  laboratory: DepartmentClearance;
+  nursing: DepartmentClearance;
+  all_cleared: boolean;
+}
+
+// ============================================================================
 // Transfer Types
 // ============================================================================
 

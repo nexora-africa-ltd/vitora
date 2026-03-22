@@ -9,6 +9,7 @@ import {
   BedSchema,
   AdmissionRecommendationSchema,
   AdmissionSchema,
+  ClearanceStatusSchema,
   DischargeSchema,
   TransferSchema,
   WardRoundSchema,
@@ -67,6 +68,7 @@ import type {
   BulkCompatibilityResult,
   CompatibilityCheckResult,
   ConstraintOverrideMetrics,
+  ClearanceStatus,
   Discharge,
   DischargeCreateData,
   DischargeListParams,
@@ -283,6 +285,11 @@ export const inpatientApi = {
   async updateAdmission(admissionId: number, data: Partial<Admission>): Promise<Admission> {
     const response = await apiClient.patch<Admission>(`/api/inpatient/admissions/${admissionId}/`, data);
     return parseResponse(AdmissionSchema, response.data, { context: 'inpatientApi.updateAdmission' });
+  },
+
+  async getClearanceStatus(admissionId: number): Promise<ClearanceStatus> {
+    const response = await apiClient.get<ClearanceStatus>(`/api/inpatient/admissions/${admissionId}/clearance-status/`);
+    return parseResponse(ClearanceStatusSchema, response.data, { context: 'inpatientApi.getClearanceStatus' });
   },
 
   // ============================================================================

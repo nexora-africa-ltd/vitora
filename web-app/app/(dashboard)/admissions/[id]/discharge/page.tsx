@@ -17,7 +17,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Checkbox } from '@/components/ui/checkbox';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
   AlertDialog,
@@ -37,7 +36,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DischargeReadinessPanel } from '@/components/inpatient/discharge-readiness-panel';
-import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders } from '@/lib/hooks/use-inpatient';
+import { ClearanceStatusPanel } from '@/components/inpatient/clearance-status-panel';
+import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders, useClearanceStatus } from '@/lib/hooks/use-inpatient';
 import { useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { useAIEnabled, useAIClinicalDocument, useAICDSEvaluate, useStoredCarePlans } from '@/lib/hooks/use-ai';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
@@ -103,10 +103,8 @@ export default function DischargePage() {
   const [medications, setMedications] = useState<DischargeMedication[]>([]);
   const [maternityContinuityAction, setMaternityContinuityAction] = useState<MaternityContinuityAction>('NONE');
 
-  // Clearance states
-  const [billingClearance, setBillingClearance] = useState(false);
-  const [pharmacyClearance, setPharmacyClearance] = useState(false);
-  const [nursingClearance, setNursingClearance] = useState(false);
+  // Automated clearance status (live from backend)
+  const { data: clearanceStatus } = useClearanceStatus(admissionId);
 
   // CDS safety check dialog state
   const [cdsAlerts, setCdsAlerts] = useState<AICDSAlertItem[]>([]);
@@ -126,8 +124,8 @@ export default function DischargePage() {
     return diffDays;
   }, [admission?.admission_date]);
 
-  // Check if all clearances are complete
-  const allClearancesComplete = billingClearance && pharmacyClearance && nursingClearance;
+  // Check if all clearances are complete (automated from live department data)
+  const allClearancesComplete = clearanceStatus?.all_cleared ?? false;
   const requiresMaternityContinuityAction = !!admission?.mch_registration && ['NORMAL', 'TRANSFERRED'].includes(dischargeType);
   const requiresScheduledFollowUpDate = requiresMaternityContinuityAction && maternityContinuityAction === 'SCHEDULE_EARLY_PNC';
 
@@ -488,9 +486,6 @@ export default function DischargePage() {
         follow_up_date: requiresScheduledFollowUpDate ? followUpDate || undefined : undefined,
         follow_up_instructions: followUpInstructions || undefined,
         discharge_medications: medications.filter((m) => m.drug_name),
-        billing_clearance: billingClearance,
-        pharmacy_clearance: pharmacyClearance,
-        nursing_clearance: nursingClearance,
       });
       toast({ title: 'Success', description: 'Patient discharged successfully' });
       router.push('/admissions');
@@ -661,57 +656,8 @@ export default function DischargePage() {
         />
       )}
 
-      {/* Department Clearances */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5" />
-            Department Clearances
-          </CardTitle>
-          <CardDescription>
-            All clearances must be completed before discharge
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="billing-clearance"
-                checked={billingClearance}
-                onCheckedChange={(checked) => setBillingClearance(checked === true)}
-              />
-              <Label htmlFor="billing-clearance" className="cursor-pointer">
-                Billing Clearance
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="pharmacy-clearance"
-                checked={pharmacyClearance}
-                onCheckedChange={(checked) => setPharmacyClearance(checked === true)}
-              />
-              <Label htmlFor="pharmacy-clearance" className="cursor-pointer">
-                Pharmacy Clearance
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="nursing-clearance"
-                checked={nursingClearance}
-                onCheckedChange={(checked) => setNursingClearance(checked === true)}
-              />
-              <Label htmlFor="nursing-clearance" className="cursor-pointer">
-                Nursing Clearance
-              </Label>
-            </div>
-          </div>
-          {!allClearancesComplete && (
-            <p className="text-sm text-amber-600 mt-4">
-              ⚠️ All clearances must be checked before you can discharge the patient.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      {/* Automated Department Clearances */}
+      <ClearanceStatusPanel admissionId={admissionId} />
 
       {/* Discharge Form */}
       <Card>

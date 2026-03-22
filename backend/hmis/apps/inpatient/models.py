@@ -1147,12 +1147,56 @@ class Discharge(TimeStampedModel):
         if self.discharge_date < self.admission.admission_date:
             raise ValidationError("Discharge date cannot be before admission date")
 
-        # For normal discharge, require all clearances
+        # Automated clearance validation for normal discharges.
+        # The DischargeSerializer also performs this check at the API layer;
+        # keeping it here ensures model-level integrity for non-API callers.
         if self.discharge_type == "NORMAL":
-            if not (
-                self.pharmacy_cleared and self.billing_cleared and self.lab_results_acknowledged
-            ):
-                raise ValidationError("All clearances required for normal discharge")
+            from decimal import Decimal
+
+            from hmis.apps.billing.models import Invoice
+            from hmis.apps.laboratory.models import LabOrder
+            from hmis.apps.pharmacy.models import Prescription
+
+            errors = {}
+
+            # Billing
+            unpaid = Invoice.objects.filter(
+                encounter=self.admission.ipd_encounter,
+            ).exclude(
+                status__in=[
+                    Invoice.Status.PAID,
+                    Invoice.Status.CANCELLED,
+                    Invoice.Status.WRITTEN_OFF,
+                ]
+            )
+            outstanding = sum(
+                (inv.balance_due for inv in unpaid), Decimal("0.00")
+            )
+            if outstanding > 0:
+                errors["billing_cleared"] = (
+                    f"Cannot discharge: KES {outstanding:,.2f} outstanding balance"
+                )
+
+            # Pharmacy
+            pending_rx = Prescription.objects.filter(
+                admission=self.admission,
+            ).exclude(status__in=["DISPENSED", "CANCELLED"])
+            if pending_rx.exists():
+                errors["pharmacy_cleared"] = (
+                    f"Cannot discharge: {pending_rx.count()} prescription(s) not yet dispensed"
+                )
+
+            # Laboratory
+            pending_labs = LabOrder.objects.filter(
+                admission=self.admission,
+            ).exclude(status__in=["COMPLETED", "CANCELLED"])
+            if pending_labs.exists():
+                errors["lab_results_acknowledged"] = (
+                    f"Cannot discharge: {pending_labs.count()} lab order(s) with pending results"
+                )
+
+            if errors:
+                raise ValidationError(errors)
 
     @property
     def length_of_stay(self) -> int:
