@@ -58,7 +58,8 @@ export type AlertType =
   | 'EXPIRING_SOON'
   | 'EXPIRING_CRITICAL'
   | 'EXPIRED'
-  | 'RECALLED';
+  | 'RECALLED'
+  | 'RX_EXPIRING';
 
 // Alert severity
 export type AlertSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -228,8 +229,10 @@ export interface Prescription {
   prescriber: number;
   prescriber_name?: string | null;
   status: PrescriptionStatus;
+  effective_status: PrescriptionStatus;
   prescribed_date: string;
   valid_until: string;
+  days_until_expiry?: number | null;
   clinical_notes?: string | null;
   cancelled_reason?: string | null;
   cancelled_by?: number | null;

@@ -23,12 +23,14 @@ import {
   ChevronUp,
   Package,
   Filter,
+  AlertTriangle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Select,
   SelectContent,
@@ -147,8 +149,9 @@ export function PrescriptionsTable({
 
   // Mobile card renderer for prescriptions
   const renderMobileCard = (rx: Prescription) => {
-    const StatusIcon = STATUS_ICONS[rx.status];
-    const canDispense = ['PENDING', 'PARTIAL'].includes(rx.status);
+    const displayStatus = rx.effective_status ?? rx.status;
+    const StatusIcon = STATUS_ICONS[displayStatus];
+    const canDispense = ['PENDING', 'PARTIAL'].includes(displayStatus);
     const isExpanded = expandedRows.has(rx.id);
 
     return (
@@ -165,9 +168,9 @@ export function PrescriptionsTable({
                   <span className="font-mono text-sm text-muted-foreground">
                     {rx.prescription_number}
                   </span>
-                  <Badge className={`${STATUS_COLORS[rx.status]} shrink-0`}>
+                  <Badge className={`${STATUS_COLORS[displayStatus]} shrink-0`}>
                     <StatusIcon className="h-3 w-3 mr-1" />
-                    {rx.status}
+                    {displayStatus}
                   </Badge>
                 </div>
                 <p className="font-medium truncate">{rx.patient_name}</p>
@@ -292,7 +295,8 @@ export function PrescriptionsTable({
       key: 'expand',
       header: '',
       cell: (rx: Prescription) => {
-        const canDispense = ['PENDING', 'PARTIAL'].includes(rx.status);
+        const displayStatus = rx.effective_status ?? rx.status;
+        const canDispense = ['PENDING', 'PARTIAL'].includes(displayStatus);
         const isExpanded = expandedRows.has(rx.id);
         return canDispense ? (
           <Button
@@ -356,12 +360,29 @@ export function PrescriptionsTable({
       header: 'Status',
       sortable: true,
       cell: (rx: Prescription) => {
-        const StatusIcon = STATUS_ICONS[rx.status];
+        const displayStatus = rx.effective_status ?? rx.status;
+        const StatusIcon = STATUS_ICONS[displayStatus];
+        const daysLeft = rx.days_until_expiry;
+        const isExpiringSoon = daysLeft != null && daysLeft >= 0 && daysLeft <= 7;
         return (
-          <Badge className={STATUS_COLORS[rx.status]}>
-            <StatusIcon className="h-3 w-3 mr-1" />
-            {rx.status}
-          </Badge>
+          <div className="flex items-center gap-1.5">
+            <Badge className={STATUS_COLORS[displayStatus]}>
+              <StatusIcon className="h-3 w-3 mr-1" />
+              {displayStatus}
+            </Badge>
+            {isExpiringSoon && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {daysLeft === 0 ? 'Expires today' : `Expires in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
         );
       },
     },
@@ -462,7 +483,8 @@ export function PrescriptionsTable({
         mobileCard={(rx) => renderMobileCard(rx)}
         emptyMessage="No prescriptions found"
         onRowClick={(rx) => {
-          const canDispense = ['PENDING', 'PARTIAL'].includes(rx.status);
+          const displayStatus = rx.effective_status ?? rx.status;
+          const canDispense = ['PENDING', 'PARTIAL'].includes(displayStatus);
           if (canDispense) {
             toggleExpanded(rx.id);
           }

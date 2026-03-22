@@ -327,8 +327,10 @@ Prescribed by: ${prescriberName}
         prescriber: user?.id || 0,
         prescriber_name: prescriberName,
         status: 'PENDING',
+        effective_status: 'PENDING',
         prescribed_date: prescriptionData.prescribed_date,
         valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+        days_until_expiry: 30,
         clinical_notes: clinicalNotes || undefined,
         items: prescriptionData.items.map((item, index) => ({
           id: index,

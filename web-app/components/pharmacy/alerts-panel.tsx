@@ -65,6 +65,7 @@ const ALERT_TYPE_ICONS: Record<AlertType, typeof AlertTriangle> = {
   EXPIRING_CRITICAL: Clock,
   EXPIRED: XCircle,
   RECALLED: Bell,
+  RX_EXPIRING: Clock,
 };
 
 // Severity badge colors
@@ -83,6 +84,7 @@ const ALERT_TYPE_TEST_IDS: Record<AlertType, string> = {
   EXPIRING_CRITICAL: 'alert-icon-expiring-critical',
   EXPIRED: 'alert-icon-expired',
   RECALLED: 'alert-icon-recalled',
+  RX_EXPIRING: 'alert-icon-rx-expiring',
 };
 
 export function AlertsPanel({

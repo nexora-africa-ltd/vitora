@@ -62,6 +62,7 @@ export const AlertTypeSchema = z.enum([
   'EXPIRING_CRITICAL',
   'EXPIRED',
   'RECALLED',
+  'RX_EXPIRING',
 ]);
 
 export const AlertSeveritySchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
@@ -276,9 +277,11 @@ export const PrescriptionSchema = z.object({
   prescriber_name: z.string().optional().nullable(),
   prescribed_by: z.number().optional().nullable(),
   status: PrescriptionStatusSchema,
+  effective_status: PrescriptionStatusSchema,
   prescribed_date: z.string(),
   prescribed_at: z.string().optional().nullable(),
   valid_until: z.string(),
+  days_until_expiry: z.number().nullable(),
   clinical_notes: z.string().optional().nullable(),
   cancelled_reason: z.string().optional().nullable(),
   cancelled_by: z.number().optional().nullable(),

@@ -344,6 +344,8 @@ class PrescriptionSerializer(serializers.ModelSerializer):
     is_valid = serializers.SerializerMethodField()
     is_fully_dispensed = serializers.SerializerMethodField()
     is_fully_dispensed_status = serializers.SerializerMethodField()
+    effective_status = serializers.CharField(read_only=True)
+    days_until_expiry = serializers.IntegerField(read_only=True)
     # QR verification URL
     verification_url = serializers.SerializerMethodField()
 
@@ -369,6 +371,8 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             "is_valid_prescription",
             "is_fully_dispensed",
             "is_fully_dispensed_status",
+            "effective_status",
+            "days_until_expiry",
             "items",
             "verification_url",
             "created_at",
@@ -390,6 +394,8 @@ class PrescriptionSerializer(serializers.ModelSerializer):
             "is_valid_prescription",
             "is_fully_dispensed",
             "is_fully_dispensed_status",
+            "effective_status",
+            "days_until_expiry",
         ]
 
     def get_patient_name(self, obj) -> str:

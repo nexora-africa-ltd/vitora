@@ -126,6 +126,16 @@ app.conf.beat_schedule = {
         "task": "hmis.apps.billing.tasks.submit_pending_sha_claims",
         "schedule": crontab(minute=30, hour="*/1"),
     },
+    # Pharmacy: Expire overdue prescriptions daily at 1 AM
+    "pharmacy-expire-prescriptions": {
+        "task": "hmis.apps.pharmacy.tasks.expire_prescriptions",
+        "schedule": crontab(minute=0, hour=1),
+    },
+    # Pharmacy: Generate expiring-soon Rx alerts daily at 6 AM
+    "pharmacy-prescription-expiry-alerts": {
+        "task": "hmis.apps.pharmacy.tasks.generate_prescription_expiry_alerts",
+        "schedule": crontab(minute=0, hour=6),
+    },
 }
 
 # Timezone configuration
