@@ -16,25 +16,24 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  ArrowLeft,
   Plus,
   Trash2,
   Pill,
   Loader2,
   AlertTriangle,
   Search,
-  User,
-  FileText,
-  Info,
   Printer,
   Copy,
   Check,
+  RefreshCcw,
+  PenLine,
+  Shuffle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -58,6 +57,12 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Switch } from '@/components/ui/switch';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { DrugProductSelect as DrugSelect } from '@/components/terminology';
 import { useToast } from '@/lib/hooks/use-toast';
 import { usePatient } from '@/lib/hooks/use-patients';
@@ -76,8 +81,10 @@ import {
   getRouteOptions,
   getFrequencyOptions,
   getDurationOptions,
+  calculateQuantity,
   type DosageSuggestion,
 } from '@/lib/utils/dosage';
+import { PageHeader } from '@/components/shared/page-header';
 import type { Drug, PrescriptionItemCreateData } from '@/lib/types/pharmacy';
 
 // SHA Drug type for selected drug
@@ -179,6 +186,12 @@ export default function NewPrescriptionPage() {
   const [customDosage, setCustomDosage] = useState('');
   const [showCustomDosage, setShowCustomDosage] = useState(false);
 
+  // Track units per dose from dosage selection (for auto-quantity calculation)
+  const [unitsPerDose, setUnitsPerDose] = useState<number | null>(null);
+
+  // Whether user has manually overridden the auto-calculated quantity
+  const [quantityManualOverride, setQuantityManualOverride] = useState(false);
+
   // Copy to clipboard state
   const [copied, setCopied] = useState(false);
 
@@ -187,6 +200,17 @@ export default function NewPrescriptionPage() {
     if (!selectedDrug) return [];
     return generateDosageSuggestions(selectedDrug);
   }, [selectedDrug]);
+
+  // Auto-calculate quantity when dosage, frequency, or duration changes
+  const autoQuantity = useMemo(() => {
+    return calculateQuantity(unitsPerDose, currentItem.frequency, currentItem.duration);
+  }, [unitsPerDose, currentItem.frequency, currentItem.duration]);
+
+  useEffect(() => {
+    if (autoQuantity !== null && !quantityManualOverride) {
+      setCurrentItem((prev) => ({ ...prev, quantity_prescribed: autoQuantity }));
+    }
+  }, [autoQuantity, quantityManualOverride]);
 
   // Create prescription mutation
   const createPrescription = useCreatePrescription();
@@ -436,6 +460,8 @@ Prescribed by: ${prescriberName}
     setShowDrugSearch(false);
     setCustomDosage('');
     setShowCustomDosage(false);
+    setUnitsPerDose(null);
+    setQuantityManualOverride(false);
     setErrors({});
   }, [currentItem, selectedDrug, validateItem]);
 
@@ -453,7 +479,12 @@ Prescribed by: ${prescriberName}
     // Get smart defaults based on drug form
     const suggestedRoute = getSuggestedRoute(drug.form);
     const suggestions = generateDosageSuggestions(drug);
-    const defaultDosage = suggestions.find((s) => s.isDefault)?.value || '';
+    const defaultSuggestion = suggestions.find((s) => s.isDefault);
+    const defaultDosage = defaultSuggestion?.value || '';
+
+    // Set units per dose from default dosage suggestion
+    setUnitsPerDose(defaultSuggestion?.quantity ?? null);
+    setQuantityManualOverride(false);
 
     setCurrentItem((prev) => ({
       ...prev,
@@ -624,46 +655,41 @@ Prescribed by: ${prescriberName}
 
   if (!patientId || !patient) {
     return (
-      <div className="container mx-auto py-12 text-center">
-        <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
         <h2 className="text-xl font-semibold">Patient Not Found</h2>
         <p className="text-muted-foreground mt-2">
           A valid patient ID is required to create a prescription.
         </p>
-        <Button onClick={() => router.back()} className="mt-4">
-          Go Back
-        </Button>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-6 max-w-4xl">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-5 w-5" />
-          <span className="sr-only">Back</span>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">New Prescription</h1>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <User className="h-4 w-4" />
-            <span>
-              {patient.first_name} {patient.last_name} ({patient.mrn})
-            </span>
+    <div className="max-w-4xl mx-auto">
+      <div className="space-y-4 sm:space-y-6">
+        <PageHeader
+          title="New Prescription"
+          helpContent="Create a new prescription for this patient. Search for drugs, set dosage with smart suggestions, and add items to the prescription."
+        />
+
+        {/* Patient & Encounter Summary Bar */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center p-3 sm:p-4 rounded-lg bg-muted/50">
+          <div className="flex flex-col gap-1 min-w-0">
+            <p className="text-sm font-medium truncate">
+              {patient.first_name} {patient.last_name}
+              <span className="text-muted-foreground"> • {patient.mrn}</span>
+            </p>
             {encounter && (
-              <>
-                <span>•</span>
-                <FileText className="h-4 w-4" />
-                <span>Encounter #{encounterId}</span>
-              </>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Encounter #{encounterId}
+              </p>
             )}
           </div>
+          <p className="text-xs sm:text-sm text-muted-foreground shrink-0">
+            Prescriber: {prescriberName}
+          </p>
         </div>
-      </div>
-
-      <div className="space-y-6">
         {/* Add Medication Card */}
         <Card>
           <CardHeader>
@@ -671,9 +697,6 @@ Prescribed by: ${prescriberName}
               <Pill className="h-5 w-5" />
               Add Medication
             </CardTitle>
-            <CardDescription>
-              Search for a drug and specify the prescription details
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Drug Search with Local/SHA Tabs */}
@@ -717,7 +740,7 @@ Prescribed by: ${prescriberName}
                         </div>
                       )}
                     </div>
-                    <div className="flex gap-1 items-start">
+                    <div className="flex gap-1 items-center">
                       {selectedDrug?.requires_prescription && (
                         <Badge variant="outline" className="text-xs">Rx</Badge>
                       )}
@@ -726,7 +749,7 @@ Prescribed by: ${prescriberName}
                       )}
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           setSelectedDrug(null);
@@ -748,14 +771,24 @@ Prescribed by: ${prescriberName}
               ) : (
                 <div className="space-y-3">
                   {/* Drug Source Toggle */}
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm ${!useSHADrug ? 'font-medium' : ''}`}>Local Inventory</span>
-                    <Switch
-                      checked={useSHADrug}
-                      onCheckedChange={setUseSHADrug}
-                    />
-                    <span className={`text-sm ${useSHADrug ? 'font-medium' : ''}`}>DHIS2 Formulary</span>
-                  </div>
+                  <TooltipProvider delayDuration={300}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2 w-fit cursor-default">
+                          <Switch
+                            checked={useSHADrug}
+                            onCheckedChange={setUseSHADrug}
+                          />
+                          <span className="text-sm font-medium">
+                            {useSHADrug ? 'DHIS2 Formulary' : 'Local Inventory'}
+                          </span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Switch to {useSHADrug ? 'Local Inventory' : 'DHIS2 Formulary'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
 
                   {/* Local Drug Search */}
                   {!useSHADrug && (
@@ -827,16 +860,17 @@ Prescribed by: ${prescriberName}
             {/* Dosage and Quantity - Smart dosage based on selected drug */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between h-5">
                   <Label htmlFor="dosage">
                     Dosage <span className="text-destructive">*</span>
                   </Label>
                   {selectedDrug && (
                     <button
                       type="button"
-                      className="text-xs text-muted-foreground hover:text-foreground"
+                      className="flex items-center gap-1 text-xs text-primary hover:text-foreground"
                       onClick={() => setShowCustomDosage(!showCustomDosage)}
                     >
+                      <Shuffle className="h-3 w-3" />
                       {showCustomDosage ? 'Show suggestions' : 'Custom dosage'}
                     </button>
                   )}
@@ -850,6 +884,7 @@ Prescribed by: ${prescriberName}
                     value={customDosage}
                     onChange={(e) => {
                       setCustomDosage(e.target.value);
+                      setUnitsPerDose(null);
                       setCurrentItem((prev) => ({ ...prev, dosage: e.target.value }));
                     }}
                     className={errors.dosage ? 'border-destructive' : ''}
@@ -858,20 +893,23 @@ Prescribed by: ${prescriberName}
                   // Smart dosage suggestions based on drug
                   <Select
                     value={currentItem.dosage}
-                    onValueChange={(value) =>
-                      setCurrentItem((prev) => ({ ...prev, dosage: value }))
-                    }
+                    onValueChange={(value) => {
+                      const suggestion = dosageSuggestions.find((s) => s.value === value);
+                      setUnitsPerDose(suggestion?.quantity ?? null);
+                      setQuantityManualOverride(false);
+                      setCurrentItem((prev) => ({ ...prev, dosage: value }));
+                    }}
                   >
                     <SelectTrigger className={errors.dosage ? 'border-destructive' : ''}>
                       <SelectValue placeholder="Select dosage..." />
                     </SelectTrigger>
                     <SelectContent>
                       {dosageSuggestions.map((suggestion) => (
-                        <SelectItem key={suggestion.value} value={suggestion.value}>
-                          <div className="flex items-center gap-2">
+                        <SelectItem key={suggestion.value} value={suggestion.value} textValue={suggestion.label}>
+                          <div className="flex items-center justify-between w-full gap-2">
                             <span>{suggestion.label}</span>
                             {suggestion.isDefault && (
-                              <Badge variant="secondary" className="text-xs">Suggested</Badge>
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">Suggested</Badge>
                             )}
                           </div>
                         </SelectItem>
@@ -895,21 +933,48 @@ Prescribed by: ${prescriberName}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="quantity">
-                  Quantity <span className="text-destructive">*</span>
-                </Label>
+                <div className="flex items-center justify-between h-5">
+                  <Label htmlFor="quantity">
+                    Quantity to Dispense <span className="text-destructive">*</span>
+                  </Label>
+                  {autoQuantity !== null && !quantityManualOverride && (
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-xs text-primary hover:text-foreground"
+                      onClick={() => setQuantityManualOverride(true)}
+                    >
+                      <PenLine className="h-3 w-3" />
+                      Override
+                    </button>
+                  )}
+                  {autoQuantity !== null && quantityManualOverride && (
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-xs text-primary hover:text-foreground"
+                      onClick={() => {
+                        setQuantityManualOverride(false);
+                        setCurrentItem((prev) => ({ ...prev, quantity_prescribed: autoQuantity }));
+                      }}
+                    >
+                      <RefreshCcw className="h-3 w-3" />
+                      Reset to {autoQuantity}
+                    </button>
+                  )}
+                </div>
                 <Input
                   id="quantity"
                   type="number"
                   min={1}
+                  readOnly={!quantityManualOverride}
                   value={currentItem.quantity_prescribed || ''}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    setQuantityManualOverride(true);
                     setCurrentItem((prev) => ({
                       ...prev,
                       quantity_prescribed: parseInt(e.target.value) || 0,
-                    }))
-                  }
-                  className={errors.quantity ? 'border-destructive' : ''}
+                    }));
+                  }}
+                  className={`${errors.quantity ? 'border-destructive' : ''} ${!quantityManualOverride ? 'bg-muted/50' : ''}`}
                 />
                 {errors.quantity && <p className="text-sm text-destructive">{errors.quantity}</p>}
               </div>
@@ -1109,9 +1174,6 @@ Prescribed by: ${prescriberName}
         <Card>
           <CardHeader>
             <CardTitle>Clinical Notes</CardTitle>
-            <CardDescription>
-              Optional notes for the pharmacist
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <Textarea
@@ -1124,11 +1186,12 @@ Prescribed by: ${prescriberName}
         </Card>
 
         {/* Actions */}
-        <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={() => router.back()}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button variant="outline" className="w-full sm:w-auto" onClick={() => router.back()}>
             Cancel
           </Button>
           <Button
+            className="w-full sm:w-auto"
             onClick={handleSubmit}
             disabled={items.length === 0 || createPrescription.isPending || checkInteractions.isPending}
           >
@@ -1140,18 +1203,18 @@ Prescribed by: ${prescriberName}
             Create Prescription ({items.length} item{items.length !== 1 ? 's' : ''})
           </Button>
         </div>
-      </div>
 
-      {/* Drug-Allergy Interaction Warning Dialog */}
-      {pendingInteractions && (
-        <PrescriptionAllergyWarning
-          open={allergyWarningOpen}
-          onOpenChange={setAllergyWarningOpen}
-          interactions={pendingInteractions}
-          onAcknowledge={handleAllergyAcknowledge}
-          onCancel={handleAllergyCancel}
-        />
-      )}
+        {/* Drug-Allergy Interaction Warning Dialog */}
+        {pendingInteractions && (
+          <PrescriptionAllergyWarning
+            open={allergyWarningOpen}
+            onOpenChange={setAllergyWarningOpen}
+            interactions={pendingInteractions}
+            onAcknowledge={handleAllergyAcknowledge}
+            onCancel={handleAllergyCancel}
+          />
+        )}
+      </div>
     </div>
   );
 }

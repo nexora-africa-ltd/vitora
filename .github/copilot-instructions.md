@@ -1493,6 +1493,38 @@ Apply a dual radial gradient to **data-display / highlight cards** (stat cards, 
 
 ---
 
+### Switch/Toggle Label Pattern
+
+When using a `Switch` to toggle between two modes, show **only the active label** next to the switch — not both labels side by side. Add a **hover tooltip** that shows the alternative option so users know what toggling will do. This keeps the UI clean and avoids confusion about which state is active:
+
+```tsx
+// ❌ AVOID: Both labels shown side by side
+<div className="flex items-center gap-2">
+  <span className={`text-sm ${!checked ? 'font-medium' : ''}`}>Option A</span>
+  <Switch checked={checked} onCheckedChange={setChecked} />
+  <span className={`text-sm ${checked ? 'font-medium' : ''}`}>Option B</span>
+</div>
+
+// ✅ PREFERRED: Single dynamic label with tooltip for alternative
+<TooltipProvider delayDuration={300}>
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <div className="flex items-center gap-2 w-fit cursor-default">
+        <Switch checked={checked} onCheckedChange={setChecked} />
+        <span className="text-sm font-medium">
+          {checked ? 'Option B' : 'Option A'}
+        </span>
+      </div>
+    </TooltipTrigger>
+    <TooltipContent>
+      <p>Switch to {checked ? 'Option A' : 'Option B'}</p>
+    </TooltipContent>
+  </Tooltip>
+</TooltipProvider>
+```
+
+---
+
 ## ✅ Commit Discipline (Required)
 
 Every commit must follow these rules:

@@ -370,3 +370,71 @@ export function getDurationOptions() {
     { value: 'Ongoing', label: 'Ongoing/Chronic' },
   ];
 }
+
+/**
+ * Map a frequency abbreviation to doses per day.
+ * Returns null for PRN (as-needed) since quantity can't be calculated.
+ */
+export function getFrequencyDosesPerDay(frequency: string): number | null {
+  const map: Record<string, number | null> = {
+    OD: 1,
+    BD: 2,
+    TDS: 3,
+    QID: 4,
+    STAT: 1,
+    PRN: null,
+    Q4H: 6,
+    Q6H: 4,
+    Q8H: 3,
+    Q12H: 2,
+    NOCTE: 1,
+    MANE: 1,
+    WEEKLY: 1 / 7,
+    BIWEEKLY: 2 / 7,
+    MONTHLY: 1 / 30,
+  };
+  return map[frequency] ?? null;
+}
+
+/**
+ * Parse a duration string (e.g., "7 days", "3 months") into total days.
+ * Returns null for "Ongoing" since quantity can't be calculated.
+ */
+export function parseDurationDays(duration: string): number | null {
+  if (!duration || duration === 'Ongoing') return null;
+
+  const daysMatch = duration.match(/^(\d+)\s*days?$/i);
+  if (daysMatch?.[1]) return parseInt(daysMatch[1]);
+
+  const monthsMatch = duration.match(/^(\d+)\s*months?$/i);
+  if (monthsMatch?.[1]) return parseInt(monthsMatch[1]) * 30;
+
+  const weeksMatch = duration.match(/^(\d+)\s*weeks?$/i);
+  if (weeksMatch?.[1]) return parseInt(weeksMatch[1]) * 7;
+
+  return null;
+}
+
+/**
+ * Calculate total quantity to dispense based on dosage, frequency, and duration.
+ *
+ * @param unitsPerDose - Number of units per dose (from DosageSuggestion.quantity)
+ * @param frequency - Frequency abbreviation (e.g., "TDS")
+ * @param duration - Duration string (e.g., "7 days")
+ * @returns Calculated quantity (rounded up) or null if calculation is not possible
+ */
+export function calculateQuantity(
+  unitsPerDose: number | null | undefined,
+  frequency: string | undefined,
+  duration: string | undefined,
+): number | null {
+  if (!unitsPerDose || !frequency || !duration) return null;
+
+  const dosesPerDay = getFrequencyDosesPerDay(frequency);
+  if (dosesPerDay === null) return null;
+
+  const days = parseDurationDays(duration);
+  if (days === null) return null;
+
+  return Math.ceil(unitsPerDose * dosesPerDay * days);
+}
