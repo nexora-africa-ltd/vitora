@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { Save, Plus, Trash2, Clock, CheckCircle2, BrainCircuit, Loader2, AlertTriangle, ShieldAlert, Printer, ShieldCheck, Pencil, Eye } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/shared/page-header';
@@ -53,7 +52,7 @@ import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { printDischargeDocument } from '@/lib/documents';
 import type { DischargeType, DischargeMedication, MaternityContinuityAction } from '@/lib/types/inpatient';
-import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode, ClinicalDocSection } from '@/lib/types/ai';
+import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode } from '@/lib/types/ai';
 
 // ---------------------------------------------------------------------------
 // Advisory extraction — strips AI advisory/meta text from section content
@@ -124,6 +123,74 @@ const HIDDEN_SECTION_IDS = new Set([
   'patient_information', 'reason_for_admission', 'discharge_diagnosis',
 ]);
 
+// ---------------------------------------------------------------------------
+// Customizable discharge summary sections
+// ---------------------------------------------------------------------------
+
+interface DischargeSummarySection {
+  id: string;
+  title: string;
+  content: string;
+  source: 'template' | 'manual' | 'ai';
+  provenance?: string;
+  advisories?: ParsedSection['advisories'];
+}
+
+const DEFAULT_SECTION_TEMPLATES: Omit<DischargeSummarySection, 'id'>[] = [
+  { title: 'Hospital Course', content: '', source: 'template' },
+  { title: 'Significant Findings', content: '', source: 'template' },
+  { title: 'Condition at Discharge', content: '', source: 'template' },
+  { title: 'Patient Education', content: '', source: 'template' },
+];
+
+function createSectionId(): string {
+  return crypto.randomUUID();
+}
+
+/** Assemble sections into flat markdown text for submission and printing. */
+function assembleSectionsText(secs: DischargeSummarySection[]): string {
+  return secs
+    .filter((s) => s.content.trim())
+    .map((s) => `## ${s.title}\n${s.content}`)
+    .join('\n\n');
+}
+
+/** Parse flat AI text (with ## headings) into sections. */
+function parseFullTextIntoSections(text: string): DischargeSummarySection[] {
+  const lines = text.split('\n');
+  const result: DischargeSummarySection[] = [];
+  let currentTitle = '';
+  let currentLines: string[] = [];
+
+  for (const line of lines) {
+    const headingMatch = line.match(/^##\s+(.+)/);
+    if (headingMatch) {
+      if (currentTitle) {
+        result.push({ id: createSectionId(), title: currentTitle, content: currentLines.join('\n').trim(), source: 'ai' });
+      }
+      currentTitle = headingMatch[1]!.trim();
+      currentLines = [];
+    } else {
+      currentLines.push(line);
+    }
+  }
+  if (currentTitle) {
+    result.push({ id: createSectionId(), title: currentTitle, content: currentLines.join('\n').trim(), source: 'ai' });
+  }
+  if (result.length === 0 && text.trim()) {
+    result.push({ id: createSectionId(), title: 'Discharge Summary', content: text.trim(), source: 'ai' });
+  }
+  return result;
+}
+
+/** Case-insensitive fuzzy title match. */
+function fuzzyTitleMatch(a: string, b: string): boolean {
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const na = normalize(a);
+  const nb = normalize(b);
+  return na === nb || na.includes(nb) || nb.includes(na);
+}
+
 /** Render advisory text with bracket tags converted to italics. */
 function formatAdvisoryText(text: string): React.ReactNode {
   const match = text.match(/^\[([^\]]+)\]\s*(.*)/);
@@ -133,27 +200,6 @@ function formatAdvisoryText(text: string): React.ReactNode {
       <em className="font-medium">{match[1]}</em>{match[2] ? ` ${match[2]}` : ''}
     </>
   );
-}
-
-/** Assemble only summary sections into flat text, stripping advisory lines, routed, and hidden sections. */
-function assembleSections(sections: ClinicalDocSection[]): string {
-  return sections
-    .filter((s) => !ROUTED_SECTION_IDS.has(s.section_id) && !HIDDEN_SECTION_IDS.has(s.section_id))
-    .map((s) => {
-      const { cleanContent } = parseAdvisories(s.content);
-      return `## ${s.title}\n${cleanContent}`;
-    })
-    .join('\n\n');
-}
-
-/** Assemble ALL sections for full-document printing. */
-function assembleFullDocument(sections: ClinicalDocSection[]): string {
-  return sections
-    .map((s) => {
-      const { cleanContent } = parseAdvisories(s.content);
-      return `## ${s.title}\n${cleanContent}`;
-    })
-    .join('\n\n');
 }
 
 /**
@@ -241,7 +287,6 @@ export default function DischargePage() {
   const setEncounterAwareContext = chatCtx?.setEncounterAwareContext;
 
   const [dischargeType, setDischargeType] = useState<DischargeType>('NORMAL');
-  const [dischargeSummary, setDischargeSummary] = useState('');
   const [followUpInstructions, setFollowUpInstructions] = useState('');
   const [diagnoses, setDiagnoses] = useState<DiagnosisEntry[]>([]);
   const [patientInstructions, setPatientInstructions] = useState('');
@@ -255,19 +300,21 @@ export default function DischargePage() {
   // CDS safety check dialog state
   const [cdsAlerts, setCdsAlerts] = useState<AICDSAlertItem[]>([]);
 
-  // Track whether TibaBot has generated content (to show preview vs textarea)
-  const [summaryGenerated, setSummaryGenerated] = useState(false);
   const [instructionsGenerated, setInstructionsGenerated] = useState(false);
   const [showCdsDialog, setShowCdsDialog] = useState(false);
 
   // AI generation mode: 'suggest' = rich draft, 'generate' = strict facts-only
   const [generationMode, setGenerationMode] = useState<ClinicalDocGenerationMode>('suggest');
 
-  // Section-based editing state for discharge summary
-  const [summarySections, setSummarySections] = useState<ClinicalDocSection[]>([]);
-  const [sectionProvenance, setSectionProvenance] = useState<Record<string, string>>({});
+  // Customizable discharge summary sections
+  const [sections, setSections] = useState<DischargeSummarySection[]>(() =>
+    DEFAULT_SECTION_TEMPLATES.map((s) => ({ ...s, id: createSectionId() }))
+  );
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
-  const [printFullDocument, setPrintFullDocument] = useState(true);
+  const [generatingSectionId, setGeneratingSectionId] = useState<string | null>(null);
+
+  // Computed discharge summary from sections (for form submission and validation)
+  const dischargeSummary = useMemo(() => assembleSectionsText(sections), [sections]);
 
   // Calculate length of stay
   const lengthOfStay = useMemo(() => {
@@ -519,9 +566,9 @@ export default function DischargePage() {
     setMedications(medications.filter((_, i) => i !== index));
   };
 
-  // AI-generate discharge summary
-  const handleGenerateSummary = useCallback(async () => {
-    if (!admission) return;
+  // Build shared AI request context (used by both generateAll and generateSection)
+  const buildAIContext = useCallback(() => {
+    if (!admission) return null;
     const primaryEntry = diagnoses.find((d) => d.role === 'PRIMARY');
     const primaryDisplay = primaryEntry?.code.icd11Display || primaryEntry?.code.icd10Display || '';
     const diagnosis = primaryDisplay || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
@@ -545,11 +592,19 @@ export default function DischargePage() {
       condition_at_discharge: '',
     };
 
+    return { docPatientCtx, admissionCtx };
+  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, patientCtx]);
+
+  // Generate ALL sections with TibaBot (merges AI sections into existing user sections)
+  const handleGenerateAll = useCallback(async () => {
+    const ctx = buildAIContext();
+    if (!ctx || !admission) return;
+
     try {
       const result = await clinicalDocument.mutateAsync({
         document_type: 'discharge_summary',
-        patient_context: docPatientCtx,
-        admission_context: admissionCtx,
+        patient_context: ctx.docPatientCtx,
+        admission_context: ctx.admissionCtx,
         encounter_context: {
           chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
         },
@@ -562,26 +617,19 @@ export default function DischargePage() {
           clinicalHistoryText || '',
         ].filter(Boolean).join(' '),
       });
-      if (result.sections?.length) {
-        setSummarySections(result.sections);
-        setSectionProvenance(result.section_provenance || {});
 
-        // Route specific sections to dedicated form fields
+      if (result.sections?.length) {
+        // Route form-field sections (patient instructions, follow-up)
         const instructionParts: string[] = [];
         for (const section of result.sections) {
           const { cleanContent } = parseAdvisories(section.content);
           const sid = section.section_id;
 
-          // Collect patient instruction content from multiple sections
           if (['condition_at_discharge', 'patient_education'].includes(sid) && cleanContent) {
             instructionParts.push(cleanContent);
           }
-
-          // Follow-up fields: from follow_up or follow_up_plan
           if ((sid === 'follow_up' || sid === 'follow_up_plan') && cleanContent) {
-            // Also add to patient instructions
             instructionParts.push(cleanContent);
-
             if (!followUpInstructions) {
               const firstLine = cleanContent.split('\n').find((l) => l.trim());
               if (firstLine) setFollowUpInstructions(firstLine.replace(/^[-*\d.]+\s*/, '').replace(/\*\*/g, '').trim());
@@ -592,47 +640,185 @@ export default function DischargePage() {
             }
           }
         }
-
-        // Combine all instruction parts into Patient Instructions
         if (instructionParts.length > 0 && !patientInstructions) {
           setPatientInstructions(instructionParts.join('\n\n'));
           setInstructionsGenerated(true);
         }
 
-        // Assemble only summary sections (routed ones excluded)
-        setDischargeSummary(assembleSections(result.sections));
-        setSummaryGenerated(true);
+        // Merge narrative sections into user's section list
+        const aiNarrativeSections = result.sections.filter(
+          (s) => !ROUTED_SECTION_IDS.has(s.section_id) && !HIDDEN_SECTION_IDS.has(s.section_id)
+        );
+
+        setSections((prev) => {
+          let updated = [...prev];
+          const matchedIds = new Set<string>();
+
+          for (const aiSection of aiNarrativeSections) {
+            const { cleanContent, advisories } = parseAdvisories(aiSection.content);
+            const provenance = result.section_provenance?.[aiSection.section_id];
+
+            const match = updated.find((s) =>
+              !matchedIds.has(s.id) && fuzzyTitleMatch(s.title, aiSection.title)
+            );
+
+            if (match) {
+              matchedIds.add(match.id);
+              updated = updated.map((s) =>
+                s.id === match.id
+                  ? { ...s, content: cleanContent, source: 'ai' as const, provenance, advisories }
+                  : s
+              );
+            } else {
+              updated.push({
+                id: createSectionId(),
+                title: aiSection.title,
+                content: cleanContent,
+                source: 'ai',
+                provenance,
+                advisories,
+              });
+            }
+          }
+          return updated;
+        });
+
         setEditingSectionId(null);
         toast({
           title: generationMode === 'generate' ? 'Strict Draft Generated' : 'Draft Generated',
           description: generationMode === 'generate'
             ? 'Facts-only discharge summary generated. Audit-safe — review before filing.'
-            : 'TibaBot drafted a discharge summary. Edit individual sections below.',
+            : 'TibaBot drafted all sections. Edit individually as needed.',
         });
       } else if (result.full_text) {
-        setSummarySections([]);
-        setDischargeSummary(result.full_text);
-        setSummaryGenerated(true);
+        // Parse markdown headings into sections and merge
+        const parsedSections = parseFullTextIntoSections(result.full_text);
+        setSections((prev) => {
+          let updated = [...prev];
+          const matchedIds = new Set<string>();
+
+          for (const parsed of parsedSections) {
+            const match = updated.find((s) =>
+              !matchedIds.has(s.id) && fuzzyTitleMatch(s.title, parsed.title)
+            );
+            if (match) {
+              matchedIds.add(match.id);
+              updated = updated.map((s) =>
+                s.id === match.id ? { ...s, content: parsed.content, source: 'ai' as const } : s
+              );
+            } else {
+              updated.push(parsed);
+            }
+          }
+          return updated;
+        });
         toast({
           title: generationMode === 'generate' ? 'Strict Draft Generated' : 'Draft Generated',
-          description: generationMode === 'generate'
-            ? 'Facts-only discharge summary generated. Audit-safe — review before filing.'
-            : 'TibaBot drafted a discharge summary. Please review and edit.',
+          description: 'TibaBot generated a discharge summary. Review and edit sections as needed.',
         });
       }
     } catch {
-      toast({ title: 'Generation Failed', description: 'Could not generate discharge summary. Please write it manually.', variant: 'destructive' });
+      toast({ title: 'Generation Failed', description: 'Could not generate discharge summary. Please write sections manually.', variant: 'destructive' });
     }
-  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, clinicalDocument, toast, patientCtx, clinicalHistoryText, generationMode, patientInstructions, followUpInstructions, followUpDate]);
+  }, [admission, buildAIContext, clinicalDocument, toast, clinicalHistoryText, generationMode, patientInstructions, followUpInstructions, followUpDate]);
 
-  // Update a single section's content and sync the flat dischargeSummary
+  // Generate a single section with TibaBot
+  const handleGenerateSection = useCallback(async (sectionId: string) => {
+    const ctx = buildAIContext();
+    if (!ctx || !admission) return;
+    const section = sections.find((s) => s.id === sectionId);
+    if (!section) return;
+
+    setGeneratingSectionId(sectionId);
+    try {
+      const result = await clinicalDocument.mutateAsync({
+        document_type: 'discharge_summary',
+        patient_context: ctx.docPatientCtx,
+        admission_context: ctx.admissionCtx,
+        encounter_context: {
+          chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
+        },
+        output_format: 'structured',
+        generation_mode: generationMode,
+        additional_instructions: [
+          `Generate ONLY the "${section.title}" section of a discharge summary. Return focused, detailed content for this section only.`,
+          section.title.toLowerCase().includes('hospital course')
+            ? 'Write a flowing clinical narrative that synthesizes ward round findings into a coherent story of the admission. Mention key dates and clinical inflection points.'
+            : '',
+          clinicalHistoryText || '',
+        ].filter(Boolean).join(' '),
+      });
+
+      let content = '';
+      let advisories: ParsedSection['advisories'] = [];
+      let provenance: string | undefined;
+
+      if (result.sections?.length) {
+        const match = result.sections.find((s) =>
+          fuzzyTitleMatch(s.title, section.title)
+        ) ?? result.sections[0];
+        if (match) {
+          const parsed = parseAdvisories(match.content);
+          content = parsed.cleanContent;
+          advisories = parsed.advisories;
+          provenance = result.section_provenance?.[match.section_id] || 'llm_generated';
+        }
+      } else if (result.full_text) {
+        const parsed = parseAdvisories(result.full_text);
+        content = parsed.cleanContent;
+        advisories = parsed.advisories;
+        provenance = 'llm_generated';
+      }
+
+      setSections((prev) =>
+        prev.map((s) =>
+          s.id === sectionId
+            ? { ...s, content, source: 'ai' as const, provenance, advisories }
+            : s
+        )
+      );
+      toast({
+        title: 'Section Generated',
+        description: `"${section.title}" generated by TibaBot. Review and edit as needed.`,
+      });
+    } catch {
+      toast({
+        title: 'Generation Failed',
+        description: `Could not generate "${section.title}". Please write it manually.`,
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingSectionId(null);
+    }
+  }, [admission, sections, buildAIContext, clinicalDocument, toast, clinicalHistoryText, generationMode]);
+
+  // Section management handlers
   const updateSection = useCallback((sectionId: string, newContent: string) => {
-    setSummarySections((prev) => {
-      const updated = prev.map((s) => s.section_id === sectionId ? { ...s, content: newContent } : s);
-      // Keep dischargeSummary in sync (advisories stripped)
-      setDischargeSummary(assembleSections(updated));
-      return updated;
-    });
+    setSections((prev) =>
+      prev.map((s) => s.id === sectionId ? { ...s, content: newContent, advisories: undefined } : s)
+    );
+  }, []);
+
+  const handleAddSection = useCallback(() => {
+    const newSection: DischargeSummarySection = {
+      id: createSectionId(),
+      title: 'New Section',
+      content: '',
+      source: 'manual',
+    };
+    setSections((prev) => [...prev, newSection]);
+    setEditingSectionId(newSection.id);
+  }, []);
+
+  const handleRemoveSection = useCallback((sectionId: string) => {
+    setSections((prev) => prev.filter((s) => s.id !== sectionId));
+    if (editingSectionId === sectionId) setEditingSectionId(null);
+  }, [editingSectionId]);
+
+  const handleRenameSection = useCallback((sectionId: string, newTitle: string) => {
+    setSections((prev) =>
+      prev.map((s) => s.id === sectionId ? { ...s, title: newTitle } : s)
+    );
   }, []);
 
   // Helper to extract code string from DiagnosisEntry
@@ -938,230 +1124,240 @@ export default function DischargePage() {
             />
           </div>
 
-          {/* AI Generation Mode Toggle */}
-          {isAIEnabled && (
-            <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3">
-              <div className="flex items-center gap-2">
-                <BrainCircuit className="h-4 w-4 text-purple-500" />
-                <span className="text-sm font-medium">TibaBot Generation</span>
-              </div>
-              <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center gap-2 w-fit cursor-default">
-                      <Switch
-                        checked={generationMode === 'suggest'}
-                        onCheckedChange={(checked) => setGenerationMode(checked ? 'suggest' : 'generate')}
-                      />
-                      <span className="text-sm font-medium">
-                        {generationMode === 'suggest' ? (
-                          'Suggest Mode'
-                        ) : (
-                          <span className="flex items-center gap-1.5">
-                            <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
-                            Strict Mode
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-xs">
-                    {generationMode === 'suggest'
-                      ? 'Switch to Strict mode — facts-only output safe for audit trails and legal records'
-                      : 'Switch to Suggest mode — rich drafts with AI-synthesised narratives for clinician review'}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          )}
-
-          {/* Discharge Summary (Treatment Summary) */}
-          <div className="space-y-2">
+          {/* Summary Sections */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label htmlFor="discharge-summary">Discharge Summary *</Label>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
+                <Label>Summary Sections *</Label>
+                <HelpPopover content="Add, remove, and customize sections. Use 'Generate with TibaBot' per section or 'Generate All' to draft the entire summary at once." />
+              </div>
+              <div className="flex items-center gap-2">
                 {dischargeSummary && (
-                  <div className="flex items-center gap-2">
-                    {summarySections.length > 0 && (
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <Checkbox
-                          checked={printFullDocument}
-                          onCheckedChange={(checked) => setPrintFullDocument(!!checked)}
-                        />
-                        <span className="text-[11px] text-muted-foreground">Include all sections</span>
-                      </label>
-                    )}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => printDischargeDocument({
-                        documentTitle: 'Discharge Summary',
-                        content: printFullDocument && summarySections.length > 0
-                          ? assembleFullDocument(summarySections)
-                          : dischargeSummary,
-                        patientName: admission.patient_name || '',
-                        admissionNumber: admission.admission_number,
-                        wardName: admission.ward_name || '',
-                        admissionDate: admission.admission_date,
-                        admittingDiagnosis: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
-                        facilityName: facility?.name,
-                        facilityMflCode: facility?.mfl_code,
-                      })}
-                      className="gap-1.5 text-xs"
-                    >
-                      <Printer className="h-3.5 w-3.5" />
-                      Print
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => printDischargeDocument({
+                      documentTitle: 'Discharge Summary',
+                      content: dischargeSummary,
+                      patientName: admission.patient_name || '',
+                      admissionNumber: admission.admission_number,
+                      wardName: admission.ward_name || '',
+                      admissionDate: admission.admission_date,
+                      admittingDiagnosis: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
+                      facilityName: facility?.name,
+                      facilityMflCode: facility?.mfl_code,
+                    })}
+                    className="gap-1.5 text-xs"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    Print
+                  </Button>
                 )}
-              {isAIEnabled && !summaryGenerated && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleGenerateSummary}
-                  disabled={clinicalDocument.isPending}
-                  className="gap-1.5 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400"
-                >
-                  {clinicalDocument.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <BrainCircuit className="h-3.5 w-3.5" />
-                  )}
-                  Generate with TibaBot
-                </Button>
-              )}
-              {isAIEnabled && summaryGenerated && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleGenerateSummary}
-                  disabled={clinicalDocument.isPending}
-                  className="gap-1.5 text-xs text-green-400"
-                >
-                  {clinicalDocument.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <BrainCircuit className="h-3.5 w-3.5" />
-                  )}
-                  Regenerate
-                </Button>
-              )}
+                {isAIEnabled && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleGenerateAll}
+                    disabled={clinicalDocument.isPending}
+                    className="gap-1.5 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400"
+                  >
+                    {clinicalDocument.isPending && !generatingSectionId ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <BrainCircuit className="h-3.5 w-3.5" />
+                    )}
+                    Generate All
+                  </Button>
+                )}
               </div>
             </div>
-            {clinicalDocument.isPending && !dischargeSummary ? (
-              <div className="rounded-md border bg-muted/30 p-4 space-y-2 animate-pulse">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-5/6" />
-                <Skeleton className="h-4 w-2/3" />
+
+            {/* AI Mode Toggle */}
+            {isAIEnabled && (
+              <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <BrainCircuit className="h-4 w-4 text-purple-500" />
+                  <span className="text-sm font-medium">TibaBot Mode</span>
+                </div>
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2 w-fit cursor-default">
+                        <Switch
+                          checked={generationMode === 'suggest'}
+                          onCheckedChange={(checked) => setGenerationMode(checked ? 'suggest' : 'generate')}
+                        />
+                        <span className="text-sm font-medium">
+                          {generationMode === 'suggest' ? (
+                            'Suggest Mode'
+                          ) : (
+                            <span className="flex items-center gap-1.5">
+                              <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
+                              Strict Mode
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      {generationMode === 'suggest'
+                        ? 'Switch to Strict mode — facts-only output safe for audit trails and legal records'
+                        : 'Switch to Suggest mode — rich drafts with AI-synthesised narratives for clinician review'}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
-            ) : summaryGenerated && summarySections.length > 0 ? (
-              <div className="space-y-3">
-                {summarySections.filter((s) => !ROUTED_SECTION_IDS.has(s.section_id) && !HIDDEN_SECTION_IDS.has(s.section_id)).map((section) => {
-                  const provenance = sectionProvenance[section.section_id];
-                  const isEditing = editingSectionId === section.section_id;
-                  const { cleanContent, advisories } = parseAdvisories(section.content);
-                  const hasCritical = advisories.some((a) => a.severity === 'critical');
-                  const hasAdvisories = advisories.length > 0;
-                  const borderColor = hasCritical
-                    ? 'border-red-400 dark:border-red-500'
-                    : hasAdvisories
-                      ? 'border-amber-400 dark:border-amber-500'
-                      : '';
-                  return (
-                    <div key={section.section_id} className={`rounded-lg border bg-card ${borderColor}`}>
-                      <div className="flex items-center justify-between border-b px-3 py-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-sm font-medium truncate">{section.title}</span>
-                          {provenance && (
-                            <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0">
-                              {provenance === 'from_input' ? 'From input'
-                                : provenance === 'llm_generated' ? 'AI generated'
-                                : provenance === 'llm_suggested' ? 'AI suggested'
-                                : provenance === 'guideline_rag' ? 'Guideline'
-                                : provenance === 'not_documented' ? 'Not documented'
-                                : provenance === 'skeleton' ? 'Template'
-                                : provenance}
-                            </Badge>
-                          )}
-                          {hasAdvisories && (
-                            <Badge variant="outline" className={`shrink-0 text-[10px] px-1.5 py-0 ${
-                              hasCritical ? 'border-red-400 text-red-700 dark:text-red-400' : 'border-amber-400 text-amber-700 dark:text-amber-400'
-                            }`}>
-                              <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
-                              {advisories.length} {advisories.length === 1 ? 'advisory' : 'advisories'}
-                            </Badge>
-                          )}
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditingSectionId(isEditing ? null : section.section_id)}
-                          className="h-7 w-7 p-0 shrink-0"
-                        >
-                          {isEditing ? <Eye className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
-                        </Button>
-                      </div>
-                      <div className="p-3">
-                        {isEditing ? (
-                          <Textarea
-                            value={section.content}
-                            onChange={(e) => updateSection(section.section_id, e.target.value)}
-                            rows={4}
-                            className="text-sm"
-                          />
-                        ) : cleanContent ? (
-                          <div className="tibabot-markdown prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden">
-                            <Markdown remarkPlugins={[remarkGfm]}>{cleanContent}</Markdown>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground italic">No content — click edit to add.</p>
-                        )}
-                      </div>
-                      {/* Advisory banners rendered outside section content */}
-                      {advisories.length > 0 && !isEditing && (
-                        <div className="border-t px-3 pb-3 pt-2 space-y-1.5">
-                          {advisories.map((adv, i) => (
-                            <div
-                              key={i}
-                              className={`flex items-start gap-2 rounded-md px-2.5 py-1.5 text-xs ${
-                                adv.severity === 'critical'
-                                  ? 'bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-300'
-                                  : 'bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300'
-                              }`}
-                            >
-                              <AlertTriangle className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${
-                                adv.severity === 'critical' ? 'text-red-500' : 'text-amber-500'
-                              }`} />
-                              <span>{formatAdvisoryText(adv.text)}</span>
-                            </div>
-                          ))}
-                        </div>
+            )}
+
+            {/* Section Cards */}
+            {sections.map((section) => {
+              const isEditing = editingSectionId === section.id;
+              const isGenerating = generatingSectionId === section.id;
+              const hasContent = !!section.content.trim();
+              const hasCritical = section.advisories?.some((a) => a.severity === 'critical');
+              const hasAdvisories = (section.advisories?.length ?? 0) > 0;
+              const borderColor = hasCritical
+                ? 'border-red-400 dark:border-red-500'
+                : hasAdvisories
+                  ? 'border-amber-400 dark:border-amber-500'
+                  : '';
+
+              return (
+                <div key={section.id} className={`rounded-lg border bg-card ${borderColor}`}>
+                  <div className="flex items-center justify-between border-b px-3 py-2 gap-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <input
+                        value={section.title}
+                        onChange={(e) => handleRenameSection(section.id, e.target.value)}
+                        className="text-sm font-medium bg-transparent border-none outline-none focus:ring-1 focus:ring-primary rounded px-1 -mx-1 w-full min-w-0"
+                        placeholder="Section title"
+                      />
+                      {section.source === 'ai' && section.provenance && (
+                        <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0">
+                          {section.provenance === 'from_input' ? 'From input'
+                            : section.provenance === 'llm_generated' ? 'AI generated'
+                            : section.provenance === 'llm_suggested' ? 'AI suggested'
+                            : section.provenance === 'guideline_rag' ? 'Guideline'
+                            : section.provenance === 'not_documented' ? 'Not documented'
+                            : section.provenance === 'skeleton' ? 'Template'
+                            : section.provenance}
+                        </Badge>
+                      )}
+                      {hasAdvisories && (
+                        <Badge variant="outline" className={`shrink-0 text-[10px] px-1.5 py-0 ${
+                          hasCritical ? 'border-red-400 text-red-700 dark:text-red-400' : 'border-amber-400 text-amber-700 dark:text-amber-400'
+                        }`}>
+                          <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
+                          {section.advisories!.length}
+                        </Badge>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            ) : summaryGenerated ? (
-              <MarkdownPreview
-                value={dischargeSummary}
-                onChange={setDischargeSummary}
-                placeholder="Provide a comprehensive summary of the patient's hospital stay, treatment given, and outcomes..."
-                rows={6}
-              />
-            ) : (
-              <Textarea
-                id="discharge-summary"
-                value={dischargeSummary}
-                onChange={(e) => setDischargeSummary(e.target.value)}
-                placeholder="Provide a comprehensive summary of the patient's hospital stay, treatment given, and outcomes..."
-                rows={6}
-              />
-            )}
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {isAIEnabled && (
+                        <TooltipProvider delayDuration={300}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleGenerateSection(section.id)}
+                                disabled={isGenerating || (clinicalDocument.isPending && !generatingSectionId)}
+                                className="h-7 w-7 p-0 text-purple-500 hover:text-purple-600"
+                              >
+                                {isGenerating ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <BrainCircuit className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Generate this section with TibaBot</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingSectionId(isEditing ? null : section.id)}
+                        className="h-7 w-7 p-0 shrink-0"
+                      >
+                        {isEditing ? <Eye className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveSection(section.id)}
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="p-3">
+                    {isGenerating ? (
+                      <div className="space-y-2 animate-pulse">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-5/6" />
+                      </div>
+                    ) : isEditing ? (
+                      <Textarea
+                        value={section.content}
+                        onChange={(e) => updateSection(section.id, e.target.value)}
+                        rows={4}
+                        className="text-sm"
+                        placeholder={`Write ${section.title.toLowerCase()} content...`}
+                      />
+                    ) : hasContent ? (
+                      <div className="tibabot-markdown prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden">
+                        <Markdown remarkPlugins={[remarkGfm]}>{section.content}</Markdown>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic">
+                        No content — click edit to write or generate with TibaBot.
+                      </p>
+                    )}
+                  </div>
+                  {/* Advisory banners */}
+                  {section.advisories && section.advisories.length > 0 && !isEditing && (
+                    <div className="border-t px-3 pb-3 pt-2 space-y-1.5">
+                      {section.advisories.map((adv, i) => (
+                        <div
+                          key={i}
+                          className={`flex items-start gap-2 rounded-md px-2.5 py-1.5 text-xs ${
+                            adv.severity === 'critical'
+                              ? 'bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-300'
+                              : 'bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300'
+                          }`}
+                        >
+                          <AlertTriangle className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${
+                            adv.severity === 'critical' ? 'text-red-500' : 'text-amber-500'
+                          }`} />
+                          <span>{formatAdvisoryText(adv.text)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Add Section */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddSection}
+              className="w-full border-dashed"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Section
+            </Button>
           </div>
 
           {/* Patient Instructions */}
