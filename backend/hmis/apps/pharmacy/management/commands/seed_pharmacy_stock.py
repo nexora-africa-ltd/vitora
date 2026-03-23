@@ -99,7 +99,30 @@ class Command(BaseCommand):
                         quantity = randint(100, 500)
 
                     # Reference price calculation
-                    base_price = drug.reference_price or Decimal(str(uniform(50, 500)))
+                    # Per-unit prices (KES) based on drug form
+                    # These are realistic Kenyan pharmacy prices per individual unit
+                    if drug.reference_price:
+                        base_price = drug.reference_price
+                    else:
+                        form = getattr(drug, "form", "")
+                        if form in ("TABLET", "CAPSULE"):
+                            base_price = Decimal(str(round(uniform(2, 25), 2)))
+                        elif form in ("SYRUP", "SUSPENSION", "SOLUTION"):
+                            # Per-ml price (bottles are typically 100-200ml)
+                            base_price = Decimal(str(round(uniform(1, 5), 2)))
+                        elif form == "INJECTION":
+                            base_price = Decimal(str(round(uniform(20, 150), 2)))
+                        elif form in ("CREAM", "OINTMENT", "GEL"):
+                            # Per-tube unit price
+                            base_price = Decimal(str(round(uniform(50, 300), 2)))
+                        elif form == "INHALER":
+                            base_price = Decimal(str(round(uniform(200, 800), 2)))
+                        elif form in ("DROPS", "SPRAY"):
+                            base_price = Decimal(str(round(uniform(100, 400), 2)))
+                        elif form == "PATCH":
+                            base_price = Decimal(str(round(uniform(50, 200), 2)))
+                        else:
+                            base_price = Decimal(str(round(uniform(5, 50), 2)))
                     cost_price = base_price * Decimal("0.7")  # 30% margin
                     selling_price = base_price
 
