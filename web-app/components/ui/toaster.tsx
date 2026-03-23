@@ -107,7 +107,7 @@ export function Toaster() {
         hotkey={['Escape']}
         closeButton
         toastOptions={{
-          duration: 4000,
+          duration: 6000,
           // Use custom class for base styling if needed
           classNames: {
             toast: 'bg-popover p-0 shadow-lg',
