@@ -232,6 +232,16 @@ export const AdmissionSchema = z.object({
   constraint_override_reason: z.string().nullable().optional(),
   constraint_violations: z.array(z.string()).optional(),
   expected_discharge_date: z.string().nullable().optional(),
+  clinical_context: z.object({
+    comorbidities: z.array(z.string()),
+    current_medications: z.array(z.string()),
+    allergies_structured: z.array(z.string()),
+    lab_results_summary: z.array(z.object({
+      test_name: z.string(),
+      value: z.number(),
+      unit: z.string(),
+    })),
+  }).nullable().optional(),
   clinical_notes: z.string().optional(),
   diet: z.string().optional(),
   special_instructions: z.string().optional(),
