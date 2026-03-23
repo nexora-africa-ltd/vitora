@@ -2454,7 +2454,7 @@ class Facility(TimeStampedModel):
             },
         }
 
-        overrides = level_overrides.get(level, {"outpatient": True, "pharmacy": True})
+        overrides = level_overrides.get(level, {"outpatient": True})
         return {**all_modules, **overrides}
 
 
