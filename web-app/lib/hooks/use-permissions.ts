@@ -33,6 +33,21 @@ import { useAuth } from '@/lib/auth/context';
 import { MODULE_PERMISSIONS, type ModuleKey } from '@/lib/permissions/constants';
 import { ACTION_PERMISSIONS, type ActionKey } from '@/lib/permissions/actions';
 
+/**
+ * Pre-compute which roles have access to each module based on ACTION_PERMISSIONS.
+ * Used as a fallback when Django group permissions are not assigned.
+ */
+const MODULE_ROLE_ACCESS: Record<string, Set<string>> = {};
+for (const [actionKey, roles] of Object.entries(ACTION_PERMISSIONS)) {
+  const modulePrefix = actionKey.split('.')[0];
+  if (!MODULE_ROLE_ACCESS[modulePrefix]) {
+    MODULE_ROLE_ACCESS[modulePrefix] = new Set();
+  }
+  for (const role of roles) {
+    MODULE_ROLE_ACCESS[modulePrefix].add(role);
+  }
+}
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -168,12 +183,23 @@ export function usePermissions(): PermissionsResult {
     const requiredPerm = MODULE_PERMISSIONS[module];
     if (requiredPerm === null) return true; // null = no permission required (e.g. dashboard)
 
+    // Layer 1a: Check Django group/user permissions
     if (typeof requiredPerm === 'string') {
-      return hasPermission(requiredPerm);
+      if (hasPermission(requiredPerm)) return true;
+    } else if (requiredPerm.some((permission) => hasPermission(permission))) {
+      return true;
     }
 
-    return requiredPerm.some((permission) => hasPermission(permission));
-  }, [isAuthenticated, isSuperuser, hasPermission]);
+    // Layer 1b: Fallback — check if the user's role has any action
+    // permissions for this module. Covers roles whose Django group
+    // permissions haven't been synced yet.
+    const userRole = user?.role || '';
+    if (userRole && MODULE_ROLE_ACCESS[module]?.has(userRole)) {
+      return true;
+    }
+
+    return false;
+  }, [isAuthenticated, isSuperuser, hasPermission, user]);
 
   const canPerformAction = useCallback((action: ActionKey): boolean => {
     if (!isAuthenticated || !user) return false;
