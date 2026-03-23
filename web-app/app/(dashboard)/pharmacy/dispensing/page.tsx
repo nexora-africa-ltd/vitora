@@ -218,7 +218,7 @@ export default function DispensingPage() {
                   className="w-full sm:w-auto border-destructive/30 hover:bg-destructive/10"
                   asChild
                 >
-                  <Link href="/pharmacy/prescriptions/new">
+                  <Link href={`/pharmacy/prescriptions/new?patient=${prescription.patient}${prescription.encounter ? `&encounter=${prescription.encounter}` : ''}`}>
                     <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
                     Create New Prescription
                   </Link>
