@@ -104,7 +104,7 @@ export const ShiftEndingTypeSchema = z.enum(['DAY', 'EVENING', 'NIGHT']);
 
 export const GenderRestrictionSchema = z.enum(['ANY', 'MALE_ONLY', 'FEMALE_ONLY']);
 
-export const CarePlanEntryStatusSchema = z.enum(['ACTIVE', 'RESOLVED', 'ONGOING']);
+export const CarePlanEntryStatusSchema = z.enum(['ACTIVE', 'ONGOING', 'RESOLVED', 'DISCONTINUED']);
 
 // =============================================================================
 // WARD SCHEMAS

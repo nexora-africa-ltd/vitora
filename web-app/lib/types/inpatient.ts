@@ -603,7 +603,7 @@ export interface KardexHandoverNoteCreateData {
 // Nursing Care Plan Entry Types (ADPIE structure)
 // ============================================================================
 
-export type CarePlanEntryStatus = 'ACTIVE' | 'RESOLVED' | 'ONGOING';
+export type CarePlanEntryStatus = 'ACTIVE' | 'ONGOING' | 'RESOLVED' | 'DISCONTINUED';
 
 export interface NursingCarePlanEntry {
   id: number;

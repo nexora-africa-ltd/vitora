@@ -749,6 +749,28 @@ export function useUpdateCarePlanEntry() {
   });
 }
 
+export function useResolveAllCarePlans() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ kardexId, evaluation }: { kardexId: number; evaluation?: string }) =>
+      inpatientApi.resolveAllCarePlans(kardexId, evaluation),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+    },
+  });
+}
+
+export function useDiscontinueCarePlanEntry() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ kardexId, entryId, reason }: { kardexId: number; entryId: number; reason: string }) =>
+      inpatientApi.discontinueCarePlanEntry(kardexId, entryId, reason),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: inpatientQueryKeys.kardexById(variables.kardexId) });
+    },
+  });
+}
+
 // ============================================================================
 // Shift Handover Hooks
 // ============================================================================

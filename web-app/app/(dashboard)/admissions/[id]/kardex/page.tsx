@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { ClipboardList, Plus, AlertTriangle, FileText } from 'lucide-react';
+import { ClipboardList, Plus, AlertTriangle, FileText, CheckCircle2, XCircle, Ban } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,8 @@ import {
   useAddKardexHandoverNote,
   useAddCarePlanEntry,
   useUpdateCarePlanEntry,
+  useResolveAllCarePlans,
+  useDiscontinueCarePlanEntry,
 } from '@/lib/hooks/use-inpatient';
 import { useAIEnabled, useAIStatus } from '@/lib/hooks/use-ai';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
@@ -117,6 +119,8 @@ export default function KardexPage() {
   const addHandoverNote = useAddKardexHandoverNote();
   const addCarePlanEntry = useAddCarePlanEntry();
   const updateCarePlanEntry = useUpdateCarePlanEntry();
+  const resolveAllCarePlans = useResolveAllCarePlans();
+  const discontinueCarePlanEntry = useDiscontinueCarePlanEntry();
 
   // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -148,6 +152,15 @@ export default function KardexPage() {
   const [updateCpImplementation, setUpdateCpImplementation] = useState('');
   const [updateCpEvaluation, setUpdateCpEvaluation] = useState('');
   const [updateCpStatus, setUpdateCpStatus] = useState<CarePlanEntryStatus>('ACTIVE');
+
+  // Discontinue care plan entry dialog state
+  const [discontinueCpDialogOpen, setDiscontinueCpDialogOpen] = useState(false);
+  const [discontinueCpEntryId, setDiscontinueCpEntryId] = useState<number | null>(null);
+  const [discontinueCpReason, setDiscontinueCpReason] = useState('');
+
+  // Bulk resolve dialog state
+  const [resolveAllDialogOpen, setResolveAllDialogOpen] = useState(false);
+  const [resolveAllEvaluation, setResolveAllEvaluation] = useState('');
 
   // New note dialogs
   const [shiftNoteOpen, setShiftNoteOpen] = useState(false);
@@ -440,6 +453,52 @@ export default function KardexPage() {
       console.error(error);
     }
   };
+
+  const handleDiscontinueCarePlanEntry = async () => {
+    if (!kardex || !discontinueCpEntryId || !discontinueCpReason.trim()) return;
+    try {
+      await discontinueCarePlanEntry.mutateAsync({
+        kardexId: kardex.id,
+        entryId: discontinueCpEntryId,
+        reason: discontinueCpReason.trim(),
+      });
+      toast({ title: 'Success', description: 'Care plan entry discontinued' });
+      setDiscontinueCpDialogOpen(false);
+      setDiscontinueCpEntryId(null);
+      setDiscontinueCpReason('');
+      refetch();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to discontinue care plan entry', variant: 'destructive' });
+      console.error(error);
+    }
+  };
+
+  const handleResolveAllCarePlans = async () => {
+    if (!kardex) return;
+    try {
+      const result = await resolveAllCarePlans.mutateAsync({
+        kardexId: kardex.id,
+        evaluation: resolveAllEvaluation.trim() || undefined,
+      });
+      toast({ title: 'Success', description: result.message });
+      setResolveAllDialogOpen(false);
+      setResolveAllEvaluation('');
+      refetch();
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to resolve care plan entries', variant: 'destructive' });
+      console.error(error);
+    }
+  };
+
+  const openDiscontinueEntry = (entryId: number) => {
+    setDiscontinueCpEntryId(entryId);
+    setDiscontinueCpReason('');
+    setDiscontinueCpDialogOpen(true);
+  };
+
+  const pendingCarePlanCount = kardex?.care_plan_entries?.filter(
+    (e) => e.status === 'ACTIVE' || e.status === 'ONGOING'
+  ).length ?? 0;
 
   if (isLoading) {
     return <KardexSkeleton />;
@@ -768,14 +827,31 @@ export default function KardexPage() {
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-semibold">Nursing Care Plan (24 Hours)</h3>
               <HelpPopover content="Structured nursing care plan following the ADPIE process: Assessment, Diagnosis, Planning, Implementation, Evaluation. Each row represents one nursing problem and its care plan." />
+              {pendingCarePlanCount > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  {pendingCarePlanCount} pending
+                </Badge>
+              )}
             </div>
-            <Dialog open={carePlanDialogOpen} onOpenChange={setCarePlanDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto" size="sm">
-                  <Plus className="h-4 w-4 sm:mr-1.5" />
-                  <span className="hidden sm:inline">Add Entry</span>
+            <div className="flex items-center gap-2">
+              {pendingCarePlanCount > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  onClick={() => setResolveAllDialogOpen(true)}
+                >
+                  <CheckCircle2 className="h-4 w-4 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Resolve All</span>
                 </Button>
-              </DialogTrigger>
+              )}
+              <Dialog open={carePlanDialogOpen} onOpenChange={setCarePlanDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="w-full sm:w-auto" size="sm">
+                    <Plus className="h-4 w-4 sm:mr-1.5" />
+                    <span className="hidden sm:inline">Add Entry</span>
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <div className="flex items-center gap-2">
@@ -862,6 +938,7 @@ export default function KardexPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
 
           {shouldShowAICarePlanPanel && (
@@ -884,7 +961,7 @@ export default function KardexPage() {
               <DialogHeader>
                 <div className="flex items-center gap-2">
                   <DialogTitle>Update Care Plan Entry</DialogTitle>
-                  <HelpPopover content="Add implementation details and evaluation. Update the status to Resolved when goals are met." />
+                  <HelpPopover content="Add implementation details and evaluation. Change status to Resolved when goals are met, or use Discontinue for abandoned plans." />
                 </div>
               </DialogHeader>
               <div className="space-y-4 py-2">
@@ -931,6 +1008,76 @@ export default function KardexPage() {
             </DialogContent>
           </Dialog>
 
+          {/* Discontinue Care Plan Entry Dialog */}
+          <Dialog open={discontinueCpDialogOpen} onOpenChange={setDiscontinueCpDialogOpen}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <div className="flex items-center gap-2">
+                  <DialogTitle>Discontinue Care Plan Entry</DialogTitle>
+                  <HelpPopover content="Discontinue a care plan that is no longer applicable — e.g., patient refused, condition changed, or plan superseded." />
+                </div>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Reason for Discontinuation <span className="text-destructive">*</span></Label>
+                  <Textarea
+                    value={discontinueCpReason}
+                    onChange={(e) => setDiscontinueCpReason(e.target.value)}
+                    placeholder="e.g., Patient refused intervention, condition resolved spontaneously, plan superseded by new diagnosis..."
+                    className="min-h-[80px] resize-none"
+                  />
+                </div>
+              </div>
+              <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
+                <Button variant="outline" onClick={() => setDiscontinueCpDialogOpen(false)} className="w-full sm:w-auto">
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDiscontinueCarePlanEntry}
+                  disabled={!discontinueCpReason.trim() || discontinueCarePlanEntry.isPending}
+                  className="w-full sm:w-auto"
+                >
+                  {discontinueCarePlanEntry.isPending ? 'Discontinuing...' : 'Discontinue'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Resolve All Care Plans Dialog */}
+          <Dialog open={resolveAllDialogOpen} onOpenChange={setResolveAllDialogOpen}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <div className="flex items-center gap-2">
+                  <DialogTitle>Resolve All Care Plans</DialogTitle>
+                  <HelpPopover content="Bulk-resolve all active and ongoing care plan entries. Typically used during discharge clearance when all nursing goals have been met." />
+                </div>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <p className="text-sm text-muted-foreground">
+                  This will resolve <span className="font-medium text-foreground">{pendingCarePlanCount}</span> active/ongoing care plan {pendingCarePlanCount === 1 ? 'entry' : 'entries'}.
+                </p>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Evaluation Note (optional)</Label>
+                  <Textarea
+                    value={resolveAllEvaluation}
+                    onChange={(e) => setResolveAllEvaluation(e.target.value)}
+                    placeholder="Brief note on overall care plan outcomes..."
+                    className="min-h-[60px] resize-none"
+                  />
+                </div>
+              </div>
+              <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
+                <Button variant="outline" onClick={() => setResolveAllDialogOpen(false)} className="w-full sm:w-auto">
+                  Cancel
+                </Button>
+                <Button onClick={handleResolveAllCarePlans} disabled={resolveAllCarePlans.isPending} className="w-full sm:w-auto">
+                  {resolveAllCarePlans.isPending ? 'Resolving...' : `Resolve ${pendingCarePlanCount} ${pendingCarePlanCount === 1 ? 'Entry' : 'Entries'}`}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           {(kardex.care_plan_entries?.length ?? 0) === 0 ? (
             <Card>
               <CardContent className="py-8 text-center">
@@ -943,13 +1090,20 @@ export default function KardexPage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {kardex.care_plan_entries?.map((entry) => (
-                <Card key={entry.id} className={entry.status === 'RESOLVED' ? 'opacity-75' : ''}>
+              {kardex.care_plan_entries?.map((entry) => {
+                const isTerminal = entry.status === 'RESOLVED' || entry.status === 'DISCONTINUED';
+                return (
+                <Card key={entry.id} className={isTerminal ? 'opacity-75' : ''}>
                   <CardHeader className="pb-2">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-center gap-2 flex-wrap">
                         <Badge
-                          variant={entry.status === 'ACTIVE' ? 'default' : entry.status === 'RESOLVED' ? 'success' : 'warning'}
+                          variant={
+                            entry.status === 'ACTIVE' ? 'default'
+                            : entry.status === 'RESOLVED' ? 'success'
+                            : entry.status === 'DISCONTINUED' ? 'destructive'
+                            : 'warning'
+                          }
                           className="shrink-0 w-fit"
                         >
                           {entry.status_display || entry.status}
@@ -962,10 +1116,21 @@ export default function KardexPage() {
                         <span className="text-sm text-muted-foreground">
                           By {entry.recorded_by_username}
                         </span>
-                        {entry.status !== 'RESOLVED' && (
-                          <Button variant="outline" size="sm" onClick={() => openUpdateCarePlanEntry(entry)}>
-                            Update
-                          </Button>
+                        {!isTerminal && (
+                          <>
+                            <Button variant="outline" size="sm" onClick={() => openUpdateCarePlanEntry(entry)}>
+                              Update
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => openDiscontinueEntry(entry.id)}
+                            >
+                              <Ban className="h-3.5 w-3.5 sm:mr-1" />
+                              <span className="hidden sm:inline">Discontinue</span>
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -1007,7 +1172,8 @@ export default function KardexPage() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                );
+              })}
             </div>
           )}
         </TabsContent>
