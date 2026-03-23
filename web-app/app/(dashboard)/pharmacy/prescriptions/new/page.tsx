@@ -556,9 +556,9 @@ Prescribed by: ${prescriberName}
         description: `Prescription with ${items.length} item(s) has been created successfully`,
       });
 
-      // Navigate back to encounter if we came from one
+      // Navigate back to encounter orders tab if we came from one
       if (encounterId) {
-        router.push(`/encounters/${encounterId}/edit`);
+        router.push(`/encounters/${encounterId}/edit/orders`);
       } else {
         router.push('/pharmacy');
       }
