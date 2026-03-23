@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
+  ClipboardCheck,
   ClipboardList,
   Download,
   Info,
@@ -45,6 +46,7 @@ import type {
   AICarePlanFollowUp,
   AILabResultItem,
 } from '@/lib/types/ai';
+import type { NursingCarePlanEntryCreateData } from '@/lib/types/inpatient';
 
 // =============================================================================
 // TYPES
@@ -87,6 +89,10 @@ export interface CarePlanPanelProps {
   autoTrigger?: boolean;
   /** Called after auto-trigger is consumed */
   onAutoTriggerConsumed?: () => void;
+  /** Callback to apply AI care plan as ADPIE nursing entries. When provided, shows "Apply to Kardex" button. */
+  onApplyToKardex?: (entries: NursingCarePlanEntryCreateData[]) => void;
+  /** Whether Apply to Kardex is currently pending */
+  isApplyingToKardex?: boolean;
 }
 
 // =============================================================================
@@ -229,6 +235,71 @@ function FollowUpSection({ followUp }: { followUp: AICarePlanFollowUp }) {
 }
 
 // =============================================================================
+// AI → ADPIE MAPPING
+// =============================================================================
+
+const CATEGORY_LABELS_MAP: Record<string, string> = {
+  medications: 'Medications',
+  investigations: 'Investigations',
+  nursing: 'Nursing Care',
+  nutrition: 'Nutrition',
+  patient_education: 'Patient Education',
+  rehabilitation: 'Rehabilitation',
+  referrals: 'Referrals',
+};
+
+/**
+ * Maps an AI CarePlanResponse into NursingCarePlanEntry ADPIE records.
+ * Creates one entry per goal. Interventions and rationale are shared across all entries.
+ */
+function mapAIToADPIE(plan: AICarePlanResponse): NursingCarePlanEntryCreateData[] {
+  const now = new Date().toISOString();
+
+  // Format all interventions into a plan-of-action text block
+  const planOfAction = plan.interventions
+    .map((cat) => {
+      const label = CATEGORY_LABELS_MAP[cat.category] ?? cat.category;
+      const items = cat.items
+        .map((item) => {
+          let line = `- ${item.action}`;
+          if (item.frequency) line += ` (${item.frequency})`;
+          return line;
+        })
+        .join('\n');
+      return `${label}:\n${items}`;
+    })
+    .join('\n\n');
+
+  // Collect all rationales
+  const rationales = plan.interventions
+    .flatMap((cat) => cat.items.filter((i) => i.rationale).map((i) => `- ${i.rationale}`));
+  const evidenceLine = plan.evidence_sources?.length
+    ? `\n\nEvidence: ${plan.evidence_sources.join(', ')}`
+    : '';
+  const scientificRationale = (rationales.length > 0 ? rationales.join('\n') : 'See AI-generated care plan for rationale.') + evidenceLine;
+
+  // One entry per goal
+  return plan.goals.map((goal) => {
+    const goalText = [
+      goal.description,
+      goal.measurable_target ? `Target: ${goal.measurable_target}` : null,
+      goal.timeframe ? `Timeframe: ${goal.timeframe}` : null,
+    ]
+      .filter(Boolean)
+      .join('. ');
+
+    return {
+      recorded_at: now,
+      assessment: `AI-generated care plan for ${plan.primary_diagnosis}${plan.severity ? ` (${plan.severity})` : ''}. Priority: ${goal.priority}.`,
+      nursing_diagnosis: plan.primary_diagnosis,
+      goal_and_outcome_criteria: goalText,
+      plan_of_action: planOfAction,
+      scientific_rationale: scientificRationale,
+    };
+  });
+}
+
+// =============================================================================
 // MAIN COMPONENT
 // =============================================================================
 
@@ -251,6 +322,8 @@ export function CarePlanPanel({
   disabled,
   autoTrigger,
   onAutoTriggerConsumed,
+  onApplyToKardex,
+  isApplyingToKardex,
 }: CarePlanPanelProps) {
   const isAIEnabled = useAIEnabled();
   const queryClient = useQueryClient();
@@ -575,6 +648,26 @@ export function CarePlanPanel({
                   <Trash2 className="h-3.5 w-3.5" />
                   Clear
                 </Button>
+                {onApplyToKardex && (
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    disabled={isApplyingToKardex}
+                    onClick={() => {
+                      const entries = mapAIToADPIE(displayResult);
+                      onApplyToKardex(entries);
+                    }}
+                    className="gap-1.5 text-xs"
+                  >
+                    {isApplyingToKardex ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ClipboardCheck className="h-3.5 w-3.5" />
+                    )}
+                    Apply to Kardex ({displayResult.goals.length})
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="outline"
