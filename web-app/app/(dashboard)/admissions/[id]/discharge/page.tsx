@@ -963,7 +963,7 @@ export default function DischargePage() {
           )}
 
           {/* Follow-up */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 md:items-end">
             <div className="space-y-2">
               <Label htmlFor="follow-up-date">
                 {requiresScheduledFollowUpDate ? 'Early PNC Date *' : 'Follow-up Date'}
