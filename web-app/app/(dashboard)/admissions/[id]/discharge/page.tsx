@@ -56,12 +56,15 @@ import type { DischargeType, DischargeMedication, MaternityContinuityAction } fr
 import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode, ClinicalDocSection } from '@/lib/types/ai';
 
 // ---------------------------------------------------------------------------
-// Advisory extraction — strips AI advisory/meta lines from section content
-// Catches: "> [AI suggested ...]", "[Not documented]", "[AI suggested — ...]"
+// Advisory extraction — strips AI advisory/meta text from section content
+// Catches full lines: "> [AI suggested ...]", "[Not documented]"
+// Catches inline: "... [AI suggested — clinician to verify] ..."
 // ---------------------------------------------------------------------------
 
-/** Matches lines that are blockquoted advisories OR standalone bracket-tagged lines. */
+/** Matches a standalone bracket-tagged line (with optional blockquote prefix). */
 const BRACKET_LINE_PATTERN = /^\[.*?\].*$|^>\s*\[.*?\].*$/;
+/** Matches inline bracket tags anywhere within a line. */
+const INLINE_BRACKET_PATTERN = /\[([^\]]*(?:AI|suggested|clinician|verify|review|edit|sign|not documented)[^\]]*)\]/gi;
 
 interface ParsedSection {
   cleanContent: string;
@@ -76,11 +79,29 @@ function parseAdvisories(content: string): ParsedSection {
   for (const line of lines) {
     const trimmed = line.trim();
     if (BRACKET_LINE_PATTERN.test(trimmed)) {
+      // Entire line is an advisory
       const text = trimmed.replace(/^>\s*/, '');
       const isCritical = /critical|urgent|immediate|danger/i.test(text);
       advisories.push({ text, severity: isCritical ? 'critical' : 'warning' });
     } else {
-      cleanLines.push(line);
+      // Strip inline bracket tags and collect them as advisories
+      let cleaned = line;
+      let inlineMatch: RegExpExecArray | null;
+      INLINE_BRACKET_PATTERN.lastIndex = 0;
+      while ((inlineMatch = INLINE_BRACKET_PATTERN.exec(line)) !== null) {
+        const tag = inlineMatch[0];
+        const inner = inlineMatch[1];
+        if (inner) {
+          const isCritical = /critical|urgent|immediate|danger/i.test(inner);
+          advisories.push({ text: tag, severity: isCritical ? 'critical' : 'warning' });
+        }
+        cleaned = cleaned.replace(tag, '');
+      }
+      // Clean up any resulting double-spaces or leading/trailing whitespace on the line
+      cleaned = cleaned.replace(/  +/g, ' ').trimEnd();
+      if (cleaned.trim() || line.trim() === '') {
+        cleanLines.push(cleaned);
+      }
     }
   }
 
@@ -90,7 +111,18 @@ function parseAdvisories(content: string): ParsedSection {
 }
 
 // Section IDs that get routed to dedicated form fields instead of summary cards
-const ROUTED_SECTION_IDS = new Set(['discharge_medications', 'condition_at_discharge', 'follow_up']);
+// Covers both backend fallback IDs and TibaBot's actual IDs
+const ROUTED_SECTION_IDS = new Set([
+  // Backend fallback IDs
+  'discharge_medications', 'condition_at_discharge', 'follow_up',
+  // TibaBot actual IDs
+  'follow_up_plan', 'patient_education',
+]);
+
+// Sections that duplicate existing page UI and should be hidden from cards entirely
+const HIDDEN_SECTION_IDS = new Set([
+  'patient_information', 'reason_for_admission', 'discharge_diagnosis',
+]);
 
 /** Render advisory text with bracket tags converted to italics. */
 function formatAdvisoryText(text: string): React.ReactNode {
@@ -103,10 +135,10 @@ function formatAdvisoryText(text: string): React.ReactNode {
   );
 }
 
-/** Assemble only summary sections into flat text, stripping advisory lines and routed sections. */
+/** Assemble only summary sections into flat text, stripping advisory lines, routed, and hidden sections. */
 function assembleSections(sections: ClinicalDocSection[]): string {
   return sections
-    .filter((s) => !ROUTED_SECTION_IDS.has(s.section_id))
+    .filter((s) => !ROUTED_SECTION_IDS.has(s.section_id) && !HIDDEN_SECTION_IDS.has(s.section_id))
     .map((s) => {
       const { cleanContent } = parseAdvisories(s.content);
       return `## ${s.title}\n${cleanContent}`;
@@ -536,20 +568,23 @@ export default function DischargePage() {
         // Route specific sections to dedicated form fields
         for (const section of result.sections) {
           const { cleanContent } = parseAdvisories(section.content);
-          if (section.section_id === 'follow_up' || section.section_id === 'condition_at_discharge') {
+          const sid = section.section_id;
+
+          // Patient instructions: from follow_up, follow_up_plan, condition_at_discharge, patient_education
+          if (['follow_up', 'follow_up_plan', 'condition_at_discharge', 'patient_education'].includes(sid)) {
             if (cleanContent && !patientInstructions) {
               setPatientInstructions(cleanContent);
               setInstructionsGenerated(true);
             }
           }
-          if (section.section_id === 'follow_up' && cleanContent) {
+
+          // Follow-up instructions + date: from follow_up or follow_up_plan
+          if ((sid === 'follow_up' || sid === 'follow_up_plan') && cleanContent) {
             if (!followUpInstructions) {
-              // Extract a one-line summary for the follow-up instructions field
               const firstLine = cleanContent.split('\n').find((l) => l.trim());
               if (firstLine) setFollowUpInstructions(firstLine.replace(/^[-\d.]+\s*/, '').trim());
             }
             if (!followUpDate) {
-              // Try to extract a follow-up date from the content
               const extractedDate = extractFollowUpDate(cleanContent);
               if (extractedDate) setFollowUpDate(extractedDate);
             }
@@ -1017,7 +1052,7 @@ export default function DischargePage() {
               </div>
             ) : summaryGenerated && summarySections.length > 0 ? (
               <div className="space-y-3">
-                {summarySections.filter((s) => !ROUTED_SECTION_IDS.has(s.section_id)).map((section) => {
+                {summarySections.filter((s) => !ROUTED_SECTION_IDS.has(s.section_id) && !HIDDEN_SECTION_IDS.has(s.section_id)).map((section) => {
                   const provenance = sectionProvenance[section.section_id];
                   const isEditing = editingSectionId === section.section_id;
                   const { cleanContent, advisories } = parseAdvisories(section.content);
