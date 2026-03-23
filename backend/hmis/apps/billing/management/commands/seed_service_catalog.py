@@ -42,17 +42,23 @@ SERVICES = [
     {"category_code": "CONSULT", "name": "General Consultation", "code": "CONSULT-001", "price": Decimal("500.00"), "sha_code": "SHA-CONSULT-001"},
     {"category_code": "CONSULT", "name": "Specialist Consultation", "code": "CONSULT-002", "price": Decimal("1500.00"), "sha_code": "SHA-CONSULT-002"},
     {"category_code": "CONSULT", "name": "Follow-up Consultation", "code": "CONSULT-003", "price": Decimal("300.00"), "sha_code": "SHA-CONSULT-003"},
-    # --- Laboratory ---
-    {"category_code": "LAB", "name": "Complete Blood Count (CBC)", "code": "LAB-001", "price": Decimal("500.00"), "sha_code": "SHA-LAB-001"},
-    {"category_code": "LAB", "name": "Blood Glucose (Random)", "code": "LAB-002", "price": Decimal("300.00"), "sha_code": "SHA-LAB-002"},
-    {"category_code": "LAB", "name": "Urinalysis", "code": "LAB-003", "price": Decimal("250.00"), "sha_code": "SHA-LAB-003"},
-    {"category_code": "LAB", "name": "Malaria (RDT)", "code": "LAB-004", "price": Decimal("200.00"), "sha_code": "SHA-LAB-004"},
-    {"category_code": "LAB", "name": "HIV Rapid Test", "code": "LAB-005", "price": Decimal("300.00"), "sha_code": "SHA-LAB-005"},
-    {"category_code": "LAB", "name": "Liver Function Tests (LFTs)", "code": "LAB-006", "price": Decimal("800.00"), "sha_code": "SHA-LAB-006"},
-    {"category_code": "LAB", "name": "Renal Function Tests (RFTs)", "code": "LAB-007", "price": Decimal("800.00"), "sha_code": "SHA-LAB-007"},
-    {"category_code": "LAB", "name": "Lipid Profile", "code": "LAB-008", "price": Decimal("900.00"), "sha_code": "SHA-LAB-008"},
-    {"category_code": "LAB", "name": "Widal Test", "code": "LAB-009", "price": Decimal("400.00"), "sha_code": "SHA-LAB-009"},
-    {"category_code": "LAB", "name": "Pregnancy Test (HCG)", "code": "LAB-010", "price": Decimal("300.00"), "sha_code": "SHA-LAB-010"},
+    # --- Laboratory (codes MUST match TestCatalog codes for auto-billing) ---
+    {"category_code": "LAB", "name": "Complete Blood Count", "code": "CBC", "price": Decimal("800.00"), "sha_code": "SHA-LAB-001"},
+    {"category_code": "LAB", "name": "Hemoglobin", "code": "HB", "price": Decimal("200.00"), "sha_code": "SHA-LAB-002"},
+    {"category_code": "LAB", "name": "Erythrocyte Sedimentation Rate", "code": "ESR", "price": Decimal("300.00"), "sha_code": "SHA-LAB-003"},
+    {"category_code": "LAB", "name": "Blood Grouping & Rh", "code": "BG", "price": Decimal("500.00"), "sha_code": "SHA-LAB-004"},
+    {"category_code": "LAB", "name": "Random Blood Sugar", "code": "RBS", "price": Decimal("150.00"), "sha_code": "SHA-LAB-005"},
+    {"category_code": "LAB", "name": "Fasting Blood Sugar", "code": "FBS", "price": Decimal("200.00"), "sha_code": "SHA-LAB-006"},
+    {"category_code": "LAB", "name": "Creatinine", "code": "CREA", "price": Decimal("400.00"), "sha_code": "SHA-LAB-007"},
+    {"category_code": "LAB", "name": "HIV 1&2 Antibody", "code": "HIV", "price": Decimal("500.00"), "sha_code": "SHA-LAB-008"},
+    {"category_code": "LAB", "name": "Hepatitis B Surface Antigen", "code": "HBSAG", "price": Decimal("600.00"), "sha_code": "SHA-LAB-009"},
+    {"category_code": "LAB", "name": "Malaria Parasites (Microscopy)", "code": "MPS", "price": Decimal("300.00"), "sha_code": "SHA-LAB-010"},
+    {"category_code": "LAB", "name": "Malaria RDT", "code": "MRDT", "price": Decimal("200.00"), "sha_code": "SHA-LAB-011"},
+    {"category_code": "LAB", "name": "Stool Examination", "code": "STOOL", "price": Decimal("350.00"), "sha_code": "SHA-LAB-012"},
+    {"category_code": "LAB", "name": "Urinalysis", "code": "UA", "price": Decimal("250.00"), "sha_code": "SHA-LAB-013"},
+    {"category_code": "LAB", "name": "Urine Culture", "code": "UC", "price": Decimal("800.00"), "sha_code": "SHA-LAB-014"},
+    {"category_code": "LAB", "name": "CD4 Count", "code": "CD4", "price": Decimal("1500.00"), "sha_code": "SHA-LAB-015"},
+    {"category_code": "LAB", "name": "Viral Load", "code": "VL", "price": Decimal("2000.00"), "sha_code": "SHA-LAB-016"},
     # --- Radiology ---
     {"category_code": "RAD", "name": "Chest X-Ray", "code": "RAD-001", "price": Decimal("1000.00"), "sha_code": "SHA-RAD-001"},
     {"category_code": "RAD", "name": "Abdominal Ultrasound", "code": "RAD-002", "price": Decimal("1500.00"), "sha_code": "SHA-RAD-002"},
@@ -122,14 +128,18 @@ class Command(BaseCommand):
         cat_map: dict[str, ServiceCategory] = {}
 
         for cat_data in CATEGORIES:
+            # Check by code first, then fall back to name (both are unique)
             existing = ServiceCategory.objects.filter(code=cat_data["code"]).first()
+            if not existing:
+                existing = ServiceCategory.objects.filter(name=cat_data["name"]).first()
             if existing:
                 cat_map[cat_data["code"]] = existing
                 cat_skipped += 1
                 if not dry_run and force:
+                    existing.code = cat_data["code"]
                     existing.name = cat_data["name"]
                     existing.description = cat_data["description"]
-                    existing.save(update_fields=["name", "description"])
+                    existing.save(update_fields=["code", "name", "description"])
             else:
                 if dry_run:
                     cat_map[cat_data["code"]] = None  # placeholder so services aren't skipped
@@ -156,14 +166,17 @@ class Command(BaseCommand):
             category = cat_map[cat_code]
 
             existing = Service.objects.filter(code=svc_data["code"]).first()
+            if not existing:
+                existing = Service.objects.filter(name=svc_data["name"]).first()
             if existing:
                 if force:
                     if not dry_run:
+                        existing.code = svc_data["code"]
                         existing.name = svc_data["name"]
                         existing.unit_price = svc_data["price"]
                         existing.sha_code = svc_data.get("sha_code", "")
                         existing.category = category
-                        existing.save(update_fields=["name", "unit_price", "sha_code", "category"])
+                        existing.save(update_fields=["code", "name", "unit_price", "sha_code", "category"])
                     svc_updated += 1
                     self.stdout.write(f"  Updated: {svc_data['code']}")
                 else:

@@ -142,10 +142,19 @@ class BillingAgentService:
         invoice = cls.get_or_create_draft_invoice(encounter.patient, encounter)
 
         for item in lab_order.items.select_related("test"):
+            # Primary lookup: exact code match (TestCatalog.code == Service.code)
             service = Service.objects.filter(
                 code=item.test.code,
                 is_active=True,
             ).first()
+
+            # Fallback: match by name within the LAB category
+            if not service:
+                service = Service.objects.filter(
+                    category__code="LAB",
+                    name__iexact=item.test.name,
+                    is_active=True,
+                ).first()
 
             if service:
                 cls.add_line_item(
@@ -160,6 +169,13 @@ class BillingAgentService:
                     "Billing agent: added lab item %s to invoice %s",
                     item.test.name,
                     invoice.invoice_number,
+                )
+            else:
+                logger.warning(
+                    "Billing agent: no billing Service found for test %s (code=%s). "
+                    "Run 'manage.py seed_service_catalog --force' to sync.",
+                    item.test.name,
+                    item.test.code,
                 )
 
     @classmethod
