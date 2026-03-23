@@ -178,8 +178,9 @@ function extractFollowUpDate(text: string): string | null {
     }
   }
 
-  // 3. Try relative: "in X day(s)/week(s)/month(s)"
-  const relMatch = text.match(/\b(?:in|after)\s+(\d+)\s*(day|week|month)s?\b/i);
+  // 3. Try relative: "in/after/within X day(s)/week(s)/month(s)" or bare "X weeks/months"
+  const relMatch = text.match(/\b(?:in|after|within)\s+(\d+)\s*(day|week|month)s?\b/i)
+    || text.match(/\b(\d+)\s*(day|week|month)s?\b/i);
   if (relMatch?.[1] && relMatch[2]) {
     const n = parseInt(relMatch[1], 10);
     const unit = relMatch[2].toLowerCase();
@@ -566,29 +567,36 @@ export default function DischargePage() {
         setSectionProvenance(result.section_provenance || {});
 
         // Route specific sections to dedicated form fields
+        const instructionParts: string[] = [];
         for (const section of result.sections) {
           const { cleanContent } = parseAdvisories(section.content);
           const sid = section.section_id;
 
-          // Patient instructions: from follow_up, follow_up_plan, condition_at_discharge, patient_education
-          if (['follow_up', 'follow_up_plan', 'condition_at_discharge', 'patient_education'].includes(sid)) {
-            if (cleanContent && !patientInstructions) {
-              setPatientInstructions(cleanContent);
-              setInstructionsGenerated(true);
-            }
+          // Collect patient instruction content from multiple sections
+          if (['condition_at_discharge', 'patient_education'].includes(sid) && cleanContent) {
+            instructionParts.push(cleanContent);
           }
 
-          // Follow-up instructions + date: from follow_up or follow_up_plan
+          // Follow-up fields: from follow_up or follow_up_plan
           if ((sid === 'follow_up' || sid === 'follow_up_plan') && cleanContent) {
+            // Also add to patient instructions
+            instructionParts.push(cleanContent);
+
             if (!followUpInstructions) {
               const firstLine = cleanContent.split('\n').find((l) => l.trim());
-              if (firstLine) setFollowUpInstructions(firstLine.replace(/^[-\d.]+\s*/, '').trim());
+              if (firstLine) setFollowUpInstructions(firstLine.replace(/^[-*\d.]+\s*/, '').replace(/\*\*/g, '').trim());
             }
             if (!followUpDate) {
               const extractedDate = extractFollowUpDate(cleanContent);
               if (extractedDate) setFollowUpDate(extractedDate);
             }
           }
+        }
+
+        // Combine all instruction parts into Patient Instructions
+        if (instructionParts.length > 0 && !patientInstructions) {
+          setPatientInstructions(instructionParts.join('\n\n'));
+          setInstructionsGenerated(true);
         }
 
         // Assemble only summary sections (routed ones excluded)
