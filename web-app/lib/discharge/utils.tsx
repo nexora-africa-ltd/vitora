@@ -148,11 +148,51 @@ export function extractFollowUpDate(text: string): string | null {
 
 /**
  * Parse medication text lines into structured medication entries.
- * Handles pipe-delimited format and bullet fallback.
+ * Handles markdown tables, pipe-delimited format, and bullet fallback.
  */
 export function parseMedicationLines(lines: string[]): { drug_name: string; dosage: string; frequency: string; duration: string }[] {
   const result: { drug_name: string; dosage: string; frequency: string; duration: string }[] = [];
+
+  // Skip table header/separator lines and non-medication notes
+  const isSkippable = (line: string) => {
+    const t = line.trim();
+    // Separator row: |---|---|
+    if (/^\|[\s-]+\|/.test(t)) return true;
+    // Header row containing keywords like "Medication", "Drug", "Dose", "Frequency"
+    if (/^\|.*\b(medication|drug\s*name|dose|frequency|duration)\b/i.test(t)) return true;
+    // Footer notes: "All doses are...", "Note:", etc.
+    if (/^(\|?\s*)?(all\s+doses|note\s*:|n\.b\.|disclaimer)/i.test(t)) return true;
+    return false;
+  };
+
   for (const line of lines) {
+    if (isSkippable(line)) continue;
+
+    // Markdown table row: | Drug | Dose | Frequency | Duration? |
+    const tableMatch = line.match(/^\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*(?:\|\s*(.*?)\s*)?\|?\s*$/);
+    if (tableMatch && tableMatch[1]!.trim().length > 2) {
+      result.push({
+        drug_name: tableMatch[1]!.replace(/\*\*/g, '').trim(),
+        dosage: tableMatch[2]!.trim(),
+        frequency: tableMatch[3]!.trim(),
+        duration: tableMatch[4]?.trim() || '',
+      });
+      continue;
+    }
+
+    // Markdown table row with only 2 columns: | Drug | Dose & Frequency |
+    const table2Match = line.match(/^\|\s*(.+?)\s*\|\s*(.+?)\s*\|?\s*$/);
+    if (table2Match && table2Match[1]!.trim().length > 2) {
+      result.push({
+        drug_name: table2Match[1]!.replace(/\*\*/g, '').trim(),
+        dosage: table2Match[2]!.trim(),
+        frequency: '',
+        duration: '',
+      });
+      continue;
+    }
+
+    // Non-table pipe format: Drug | Dose | Frequency | Duration
     const pipeMatch = line.match(/^[-*\d.]*\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*(?:\|\s*(.+?))?\s*$/);
     if (pipeMatch) {
       result.push({
@@ -161,19 +201,20 @@ export function parseMedicationLines(lines: string[]): { drug_name: string; dosa
         frequency: pipeMatch[3]!.trim(),
         duration: pipeMatch[4]?.trim() || '',
       });
-    } else {
-      // Use RegExp constructor to prevent Tailwind CSS scanner from misinterpreting char class
-      const sepChars = '\\-:,';
-      const bulletRe = new RegExp('^[-*\\d.]*\\s*\\**(.+?)\\**(?:\\s*[' + sepChars + ']|\\s+\\d|$)');
-      const bulletMatch = line.match(bulletRe);
-      if (bulletMatch && bulletMatch[1]!.trim().length > 2) {
-        result.push({
-          drug_name: bulletMatch[1]!.replace(/\*\*/g, '').trim(),
-          dosage: '',
-          frequency: '',
-          duration: '',
-        });
-      }
+      continue;
+    }
+
+    // Bullet fallback: extract drug name
+    const sepChars = '\\-:,';
+    const bulletRe = new RegExp('^[-*\\d.]*\\s*\\**(.+?)\\**(?:\\s*[' + sepChars + ']|\\s+\\d|$)');
+    const bulletMatch = line.match(bulletRe);
+    if (bulletMatch && bulletMatch[1]!.trim().length > 2) {
+      result.push({
+        drug_name: bulletMatch[1]!.replace(/\*\*/g, '').trim(),
+        dosage: '',
+        frequency: '',
+        duration: '',
+      });
     }
   }
   return result;
