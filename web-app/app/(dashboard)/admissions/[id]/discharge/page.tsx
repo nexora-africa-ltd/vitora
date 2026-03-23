@@ -628,7 +628,8 @@ export default function DischargePage() {
       });
 
       if (result.sections?.length) {
-        // Route follow-up sections to dedicated form fields
+        // Route specific sections to dedicated form fields
+        const instructionParts: string[] = [];
         for (const section of result.sections) {
           const { cleanContent } = parseAdvisories(section.content);
           const sid = section.section_id;
@@ -642,6 +643,11 @@ export default function DischargePage() {
               const extractedDate = extractFollowUpDate(cleanContent);
               if (extractedDate) setFollowUpDate(extractedDate);
             }
+          }
+
+          // Collect patient-facing content for Patient Instructions
+          if ((sid === 'patient_education' || sid === 'condition_at_discharge') && cleanContent) {
+            instructionParts.push(cleanContent);
           }
 
           // Route discharge_medications to suggested meds chips
@@ -675,6 +681,12 @@ export default function DischargePage() {
             }
             if (medParsed.length > 0) setSuggestedMeds(medParsed);
           }
+        }
+
+        // Auto-populate Patient Instructions from patient-facing sections
+        if (instructionParts.length > 0 && !patientInstructions) {
+          setPatientInstructions(instructionParts.join('\n\n'));
+          setInstructionsGenerated(true);
         }
 
         // Merge narrative sections into user's section list
