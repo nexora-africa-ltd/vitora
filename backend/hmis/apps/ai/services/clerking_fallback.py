@@ -21,6 +21,8 @@ _DOCUMENT_SECTIONS: dict[str, list[dict[str, str]]] = {
     "discharge_summary": [
         {"section_id": "patient_information", "title": "Patient Information", "content": ""},
         {"section_id": "hospital_course", "title": "Hospital Course", "content": ""},
+        {"section_id": "significant_findings", "title": "Significant Findings", "content": ""},
+        {"section_id": "patient_education", "title": "Patient Education", "content": ""},
         {"section_id": "discharge_medications", "title": "Discharge Medications", "content": ""},
         {"section_id": "condition_at_discharge", "title": "Condition at Discharge", "content": ""},
         {"section_id": "follow_up", "title": "Follow-Up and Instructions", "content": ""},
