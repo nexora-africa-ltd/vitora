@@ -116,6 +116,8 @@ export default function DischargePage() {
 
   // Computed discharge summary from sections (for form submission and validation)
   const dischargeSummary = useMemo(() => assembleSectionsText(sections), [sections]);
+  // Print-only version: respects the per-section printable toggle
+  const printableSummary = useMemo(() => assembleSectionsText(sections, true), [sections]);
 
   // Calculate length of stay
   const lengthOfStay = useMemo(() => {
@@ -664,14 +666,14 @@ export default function DischargePage() {
                 Complete the discharge summary and follow-up instructions
               </CardDescription>
             </div>
-            {dischargeSummary && (
+            {printableSummary && (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => printDischargeDocument({
                   documentTitle: 'Discharge Summary',
-                  content: dischargeSummary,
+                  content: printableSummary,
                   patientName: admission.patient_name || '',
                   admissionNumber: admission.admission_number,
                   wardName: admission.ward_name || '',
@@ -845,6 +847,9 @@ export default function DischargePage() {
                 onRemove={() => handleRemoveSection(section.id)}
                 onClear={() => updateSection(section.id, '')}
                 onGenerate={() => handleGenerateSection(section.id)}
+                onTogglePrintable={() => setSections((prev) =>
+                  prev.map((s) => s.id === section.id ? { ...s, printable: s.printable === false ? true : false } : s)
+                )}
               />
             ))}
 

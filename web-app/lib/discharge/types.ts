@@ -16,6 +16,8 @@ export interface DischargeSummarySection {
   source: 'template' | 'manual' | 'ai';
   provenance?: string;
   advisories?: ParsedSection['advisories'];
+  /** Whether this section is included in the printed document. Defaults to true. */
+  printable?: boolean;
 }
 
 // ---------------------------------------------------------------------------

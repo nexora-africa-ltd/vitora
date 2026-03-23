@@ -53,10 +53,11 @@ export function createSectionId(): string {
   return crypto.randomUUID();
 }
 
-/** Assemble sections into flat markdown text for submission and printing. */
-export function assembleSectionsText(secs: DischargeSummarySection[]): string {
+/** Assemble sections into flat markdown text for submission and printing.
+ *  When `printOnly` is true, excludes sections marked as non-printable. */
+export function assembleSectionsText(secs: DischargeSummarySection[], printOnly = false): string {
   return secs
-    .filter((s) => s.content.trim())
+    .filter((s) => s.content.trim() && (!printOnly || s.printable !== false))
     .map((s) => `## ${s.title}\n${s.content}`)
     .join('\n\n');
 }

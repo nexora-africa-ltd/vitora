@@ -1,6 +1,6 @@
 'use client';
 
-import { BrainCircuit, Loader2, AlertTriangle, Pencil, Eye, Trash2, Eraser } from 'lucide-react';
+import { BrainCircuit, Loader2, AlertTriangle, Pencil, Eye, Trash2, Eraser, Printer } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ interface SectionCardProps {
   onRemove: () => void;
   onClear: () => void;
   onGenerate: () => void;
+  onTogglePrintable: () => void;
 }
 
 export function SectionCard({
@@ -39,8 +40,10 @@ export function SectionCard({
   onRemove,
   onClear,
   onGenerate,
+  onTogglePrintable,
 }: SectionCardProps) {
   const hasContent = !!section.content.trim();
+  const isPrintable = section.printable !== false;
   const hasCritical = section.advisories?.some((a) => a.severity === 'critical');
   const hasAdvisories = (section.advisories?.length ?? 0) > 0;
   const borderColor = hasCritical
@@ -50,7 +53,7 @@ export function SectionCard({
       : '';
 
   return (
-    <div className={`rounded-lg border bg-card ${borderColor}`}>
+    <div className={`rounded-lg border bg-card ${borderColor} ${!isPrintable ? 'opacity-60' : ''}`}>
       <div className="flex items-center justify-between border-b px-3 py-2 gap-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <input
@@ -112,6 +115,31 @@ export function SectionCard({
               </Tooltip>
             </TooltipProvider>
           )}
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={onTogglePrintable}
+                  className={`h-7 w-7 p-0 shrink-0 transition-transform active:scale-135 ${isPrintable ? 'text-green-600 dark:text-green-500' : 'text-muted-foreground'}`}
+                >
+                  {isPrintable ? (
+                    <Printer className="h-4 w-4" />
+                  ) : (
+                    <span className="relative inline-flex items-center justify-center h-3.5 w-3.5">
+                      <Printer className="h-3.5 w-3.5 opacity-50" />
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <span className="block w-[1px] h-5 bg-current rotate-45" />
+                      </span>
+                    </span>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isPrintable ? 'Exclude from print' : 'Include in print'}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <TooltipProvider delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>
