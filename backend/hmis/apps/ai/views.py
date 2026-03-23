@@ -1992,6 +1992,32 @@ class StoredCarePlanListView(APIView):
         return Response(StoredCarePlanSerializer(results, many=True).data)
 
 
+class StoredCarePlanDeleteView(APIView):
+    """
+    DELETE /api/ai/results/care-plans/<uuid:pk>/
+
+    Delete a stored care plan result. Only the creator can delete.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request: Request, pk=None) -> Response:
+        try:
+            result = AICarePlanResult.objects.get(pk=pk)
+        except AICarePlanResult.DoesNotExist:
+            return Response(
+                {"error": "Care plan result not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if result.created_by_id and result.created_by_id != request.user.id:
+            return Response(
+                {"error": "You can only delete your own care plan results"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        result.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class StoredCDSResultListView(APIView):
     """
     GET /api/ai/results/cds/?encounter_id=X

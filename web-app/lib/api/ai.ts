@@ -385,6 +385,13 @@ export const aiApi = {
   },
 
   /**
+   * Delete a stored care plan result.
+   */
+  deleteStoredCarePlan: async (id: string | number): Promise<void> => {
+    await apiClient.delete(`/api/ai/results/care-plans/${id}/`);
+  },
+
+  /**
    * List conditions with care plan templates available.
    *
    * Returns condition keys and names for the care plan generator dropdown.

@@ -27,6 +27,7 @@ from .views import (
     ICD10SuggestView,
     ICUPredictView,
     LabInterpretView,
+    StoredCarePlanDeleteView,
     StoredCarePlanListView,
     StoredCDSResultListView,
     StoredDischargeResultListView,
@@ -117,6 +118,7 @@ urlpatterns = [
     path("cds/evaluate/", CDSEvaluateView.as_view(), name="cds-evaluate"),
     # Stored AI result retrieval
     path("results/care-plans/", StoredCarePlanListView.as_view(), name="results-care-plans"),
+    path("results/care-plans/<uuid:pk>/", StoredCarePlanDeleteView.as_view(), name="results-care-plans-delete"),
     path("results/cds/", StoredCDSResultListView.as_view(), name="results-cds"),
     path("results/lab-interpretations/", StoredLabInterpretListView.as_view(), name="results-lab-interpretations"),
     path("results/discharge/", StoredDischargeResultListView.as_view(), name="results-discharge"),

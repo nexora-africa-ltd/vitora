@@ -532,13 +532,21 @@ export default function KardexPage() {
 
   return (
     <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
-      <PageHeader
-        title="Nursing Kardex"
-        helpContent={`${kardex.patient_name} - ${kardex.ward_name} - Bed ${kardex.bed_number}. Manage nursing care information, shift notes, and handover documentation.`}
-        actions={
-          <Button variant="outline" onClick={initEditForm}>Edit Kardex</Button>
-        }
-      />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3 flex-wrap">
+          <PageHeader
+            title="Nursing Kardex"
+            helpContent={`${kardex.patient_name} - ${kardex.ward_name} - Bed ${kardex.bed_number}. Manage nursing care information, shift notes, and handover documentation.`}
+          />
+          <Badge
+            variant={admission.admission_status === 'ACTIVE' ? 'default' : admission.admission_status === 'DISCHARGED' ? 'success' : 'secondary'}
+            className="shrink-0"
+          >
+            {admission.admission_status_display || admission.admission_status}
+          </Badge>
+        </div>
+        <Button variant="outline" onClick={initEditForm}>Edit Kardex</Button>
+      </div>
 
       {/* Quick Summary Cards - Always Visible */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">

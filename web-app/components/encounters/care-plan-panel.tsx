@@ -16,19 +16,21 @@ import * as React from 'react';
 import {
   AlertTriangle,
   ChevronDown,
-  ChevronUp,
+  ChevronRight,
   ClipboardList,
   Download,
   Info,
   Loader2,
   BrainCircuit,
   Target,
+  Trash2,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useAICarePlanGenerate, useAIEnabled, useStoredCarePlans, aiKeys } from '@/lib/hooks/use-ai';
 import { aiApi } from '@/lib/api/ai';
@@ -110,6 +112,47 @@ const CATEGORY_LABELS: Record<string, string> = {
 // =============================================================================
 // SUB-COMPONENTS
 // =============================================================================
+
+function CollapsibleSection({
+  title,
+  count,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  count?: number;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm font-medium hover:bg-muted/50 transition-colors text-left"
+        >
+          <span className="flex items-center gap-2">
+            {title}
+            {count != null && (
+              <Badge variant="secondary" className="h-5 min-w-5 px-1 text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                {count}
+              </Badge>
+            )}
+          </span>
+          {open ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="px-3 pb-3 pt-1">
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 function GoalItem({ goal }: { goal: AICarePlanGoal }) {
   return (
@@ -323,6 +366,21 @@ export function CarePlanPanel({
     }
   };
 
+  const handleClear = () => {
+    reset();
+    // Delete the latest stored result if available
+    if (latestStored?.id) {
+      aiApi.deleteStoredCarePlan(latestStored.id).then(() => {
+        queryClient.invalidateQueries({ queryKey: aiKeys.storedCarePlans(storedParams) });
+        toast.success('Care plan cleared');
+      }).catch(() => {
+        toast.error('Failed to clear stored care plan');
+      });
+    } else {
+      toast.success('Care plan cleared');
+    }
+  };
+
   const hasResult = displayResult && displayResult.goals && displayResult.goals.length > 0;
   const isFallback = displayResult?.mode === 'fallback';
 
@@ -405,81 +463,66 @@ export function CarePlanPanel({
               </div>
             )}
 
-            {/* Tabbed Content */}
-            <Tabs defaultValue="goals" className="space-y-3">
-              <TabsList className="w-full grid grid-cols-3 h-auto p-1">
-                <TabsTrigger
-                  value="goals"
-                  className="text-xs data-[state=active]:text-sm data-[state=active]:font-semibold transition-all gap-1.5"
-                >
-                  Goals
-                  <Badge variant="secondary" className="h-5 min-w-5 px-1 text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                    {displayResult.goals.length}
-                  </Badge>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="interventions"
-                  className="text-xs data-[state=active]:text-sm data-[state=active]:font-semibold transition-all gap-1.5"
-                >
-                  <span className="sm:hidden">Rx</span>
-                  <span className="hidden sm:inline">Interventions</span>
-                  <Badge variant="secondary" className="h-5 min-w-5 px-1 text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                    {displayResult.interventions.reduce((sum, cat) => sum + cat.items.length, 0)}
-                  </Badge>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="discharge"
-                  className="text-xs data-[state=active]:text-sm data-[state=active]:font-semibold transition-all gap-1.5"
-                >
-                  <span className="sm:hidden">D/C</span>
-                  <span className="hidden sm:inline">Discharge</span>
-                  <Badge variant="secondary" className="h-5 min-w-5 px-1 text-[10px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-                    {(displayResult.discharge_criteria?.length || 0) + (displayResult.follow_up ? 1 : 0)}
-                  </Badge>
-                </TabsTrigger>
-              </TabsList>
+            {/* Collapsible Sections */}
+            <div className="divide-y rounded-md border">
+              {/* Goals */}
+              <CollapsibleSection
+                title="Goals"
+                count={displayResult.goals.length}
+                defaultOpen
+              >
+                <div className="space-y-1">
+                  {displayResult.goals.map((goal, i) => (
+                    <GoalItem key={i} goal={goal} />
+                  ))}
+                </div>
+              </CollapsibleSection>
 
-              {/* Goals Tab */}
-              <TabsContent value="goals" className="space-y-1 pt-1">
-                {displayResult.goals.map((goal, i) => (
-                  <GoalItem key={i} goal={goal} />
-                ))}
-              </TabsContent>
-
-              {/* Interventions Tab */}
-              <TabsContent value="interventions" className="space-y-4 pt-1">
-                {displayResult.interventions.map((cat, i) => (
-                  <InterventionCategorySection key={i} category={cat} />
-                ))}
-                {displayResult.facility_level_notes && displayResult.facility_level_notes.length > 0 && (
-                  <div className="space-y-1 rounded-md p-2.5 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                    <p className="text-xs font-medium text-blue-700 dark:text-blue-400">Facility Level Notes</p>
-                    {displayResult.facility_level_notes.map((note, i) => (
-                      <p key={i} className="text-xs text-blue-600 dark:text-blue-300">{note}</p>
-                    ))}
-                  </div>
-                )}
-              </TabsContent>
-
-              {/* Discharge Tab */}
-              <TabsContent value="discharge" className="space-y-3 pt-1">
-                {displayResult.discharge_criteria && displayResult.discharge_criteria.length > 0 ? (
-                  <div className="space-y-1">
-                    <h5 className="text-sm font-medium">Discharge Criteria</h5>
-                    <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 pl-1">
-                      {displayResult.discharge_criteria.map((c, i) => (
-                        <li key={i}>{c}</li>
+              {/* Interventions */}
+              <CollapsibleSection
+                title="Interventions"
+                count={displayResult.interventions.reduce((sum, cat) => sum + cat.items.length, 0)}
+                defaultOpen
+              >
+                <div className="space-y-4">
+                  {displayResult.interventions.map((cat, i) => (
+                    <InterventionCategorySection key={i} category={cat} />
+                  ))}
+                  {displayResult.facility_level_notes && displayResult.facility_level_notes.length > 0 && (
+                    <div className="space-y-1 rounded-md p-2.5 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                      <p className="text-xs font-medium text-blue-700 dark:text-blue-400">Facility Level Notes</p>
+                      {displayResult.facility_level_notes.map((note, i) => (
+                        <p key={i} className="text-xs text-blue-600 dark:text-blue-300">{note}</p>
                       ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-2">
-                    No specific discharge criteria generated.
-                  </p>
-                )}
-                {displayResult.follow_up && <FollowUpSection followUp={displayResult.follow_up} />}
-              </TabsContent>
-            </Tabs>
+                    </div>
+                  )}
+                </div>
+              </CollapsibleSection>
+
+              {/* Discharge & Follow-up */}
+              <CollapsibleSection
+                title="Discharge & Follow-up"
+                count={(displayResult.discharge_criteria?.length || 0) + (displayResult.follow_up ? 1 : 0)}
+              >
+                <div className="space-y-3">
+                  {displayResult.discharge_criteria && displayResult.discharge_criteria.length > 0 ? (
+                    <div className="space-y-1">
+                      <h5 className="text-sm font-medium">Discharge Criteria</h5>
+                      <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 pl-1">
+                        {displayResult.discharge_criteria.map((c, i) => (
+                          <li key={i}>{c}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      No specific discharge criteria generated.
+                    </p>
+                  )}
+                  {displayResult.follow_up && <FollowUpSection followUp={displayResult.follow_up} />}
+                </div>
+              </CollapsibleSection>
+            </div>
 
             {/* Evidence Sources */}
             {displayResult.evidence_sources && displayResult.evidence_sources.length > 0 && (
@@ -511,20 +554,30 @@ export function CarePlanPanel({
                 }}
               />
               <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={disabled || isPending}
-                onClick={() => { reset(); handleGenerate(); }}
-                className="gap-1.5 text-xs"
-              >
-                <ClipboardList className="h-3.5 w-3.5" />
-                Regenerate
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={disabled || isPending}
+                  onClick={() => { reset(); handleGenerate(); }}
+                  className="gap-1.5 text-xs"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Regenerate
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClear}
+                  className="gap-1.5 text-xs text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Clear
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
                 size="sm"
                 disabled={isExporting}
                 onClick={handleExportFHIR}
