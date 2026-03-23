@@ -154,12 +154,12 @@ class TestFacilityModel:
         assert "blood_bank" not in names
 
     def test_default_modules_level_1(self):
-        """Level 1 defaults: outpatient + pharmacy only."""
+        """Level 1 defaults: outpatient only (community unit)."""
         from hmis.apps.core.models import Facility
 
         defaults = Facility.default_modules_for_level("1")
         assert defaults["outpatient"] is True
-        assert defaults["pharmacy"] is True
+        assert defaults["pharmacy"] is False
         assert defaults["inpatient"] is False
         assert defaults["laboratory"] is False
 
@@ -183,12 +183,12 @@ class TestFacilityModel:
         assert all(defaults.values())
 
     def test_default_modules_unknown_level(self):
-        """Unknown levels fall back to outpatient + pharmacy."""
+        """Unknown levels fall back to outpatient only."""
         from hmis.apps.core.models import Facility
 
         defaults = Facility.default_modules_for_level("9")
         assert defaults["outpatient"] is True
-        assert defaults["pharmacy"] is True
+        assert defaults["pharmacy"] is False
         assert defaults["inpatient"] is False
 
     def test_unique_mfl_code(self, sample_facility, facility_county, facility_sub_county):
