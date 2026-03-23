@@ -1270,7 +1270,15 @@ class AdmissionViewSet(viewsets.ModelViewSet):
     - PATCH /api/inpatient/admissions/{id}/ - Update admission
     """
 
-    queryset = Admission.objects.all()
+    queryset = Admission.objects.select_related(
+        "patient",
+        "ipd_encounter",
+        "ward",
+        "bed",
+        "admitting_officer",
+        "attending_doctor",
+        "mch_registration",
+    ).all()
     serializer_class = AdmissionSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

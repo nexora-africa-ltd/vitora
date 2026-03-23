@@ -188,6 +188,9 @@ class AdmissionSerializer(serializers.ModelSerializer):
     patient_name = serializers.SerializerMethodField()
     patient_age = serializers.SerializerMethodField()
     patient_gender = serializers.SerializerMethodField()
+    clinical_context = serializers.SerializerMethodField(
+        help_text="AI-ready clinical context: comorbidities, medications, allergies, recent lab results.",
+    )
     mch_registration_number = serializers.CharField(
         source="mch_registration.mch_number", read_only=True
     )
@@ -222,6 +225,7 @@ class AdmissionSerializer(serializers.ModelSerializer):
             "patient_name",
             "patient_age",
             "patient_gender",
+            "clinical_context",
             "opd_encounter",
             "mch_registration",
             "mch_registration_number",
@@ -300,6 +304,72 @@ class AdmissionSerializer(serializers.ModelSerializer):
     def get_patient_gender(self, obj) -> str | None:
         """Get patient gender (M, F, O)."""
         return getattr(obj.patient, "gender", None)
+
+    def get_clinical_context(self, obj) -> dict:
+        """Return AI-ready clinical context derived from linked encounter, allergies, and labs.
+
+        Only populated on retrieve (detail) — returns ``None`` on list to avoid N+1 queries.
+        """
+        # Skip on list actions to avoid N+1 (list view seldom needs this)
+        view = self.context.get("view")
+        if view and getattr(view, "action", None) == "list":
+            return None  # type: ignore[return-value]
+
+        result: dict = {
+            "comorbidities": [],
+            "current_medications": [],
+            "allergies_structured": [],
+            "lab_results_summary": [],
+        }
+
+        # --- From IPD encounter ---
+        encounter = getattr(obj, "ipd_encounter", None)
+        if encounter:
+            if encounter.chronic_conditions:
+                result["comorbidities"] = [
+                    c.strip()
+                    for c in encounter.chronic_conditions.replace("\n", ",").split(",")
+                    if c.strip()
+                ]
+            if encounter.current_medications:
+                result["current_medications"] = [
+                    m.strip()
+                    for m in encounter.current_medications.replace("\n", ",").split(",")
+                    if m.strip()
+                ]
+
+        # --- Structured allergies from Patient ---
+        try:
+            allergies_qs = obj.patient.patient_allergies.filter(status="active")
+            result["allergies_structured"] = [a.substance for a in allergies_qs]
+        except Exception:
+            pass
+
+        # --- Recent verified lab results for this admission ---
+        try:
+            from hmis.apps.laboratory.models import LabResult
+
+            lab_results = (
+                LabResult.objects.filter(
+                    order_item__lab_order__admission=obj,
+                    verification_status="VERIFIED",
+                    numeric_value__isnull=False,
+                )
+                .select_related("order_item__test")
+                .order_by("-entered_at")[:20]
+            )
+            result["lab_results_summary"] = [
+                {
+                    "test_name": lr.order_item.test.name,
+                    "value": float(lr.numeric_value),
+                    "unit": lr.result_unit,
+                }
+                for lr in lab_results
+            ]
+        except Exception:
+            pass
+
+        return result
 
     def create(self, validated_data):
         """Create an admission and auto-create the linked IPD encounter."""

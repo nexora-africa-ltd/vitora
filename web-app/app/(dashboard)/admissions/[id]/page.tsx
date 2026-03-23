@@ -879,6 +879,9 @@ export default function AdmissionDetailPage() {
               patientSex={
                 admission.patient_gender === 'F' ? 'female' : 'male'
               }
+              comorbidities={admission.clinical_context?.comorbidities}
+              currentMedications={admission.clinical_context?.current_medications}
+              labResults={admission.clinical_context?.lab_results_summary}
               vitals={(() => {
                 const vs = latestWardRound?.vital_signs ?? latestWardRound;
                 if (!vs) return undefined;
@@ -889,8 +892,11 @@ export default function AdmissionDetailPage() {
                   ...(vs.spo2 != null && { spo2: Number(vs.spo2) }),
                 };
               })()}
-              allergies={kardex?.allergies
-                ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
+              allergies={
+                admission.clinical_context?.allergies_structured?.length
+                  ? admission.clinical_context.allergies_structured
+                  : kardex?.allergies?.split(',').map((s: string) => s.trim()).filter(Boolean)
+              }
               autoTrigger={autoTriggerCarePlan}
               onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
               onApplyToKardex={kardex ? handleApplyAIToKardex : undefined}

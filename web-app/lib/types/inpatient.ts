@@ -126,6 +126,13 @@ export interface Admission {
   constraint_violations?: string[];
   // Phase C: Smart allocation
   expected_discharge_date?: string | null;
+  // AI-ready clinical context (detail-only, null on list)
+  clinical_context?: {
+    comorbidities: string[];
+    current_medications: string[];
+    allergies_structured: string[];
+    lab_results_summary: { test_name: string; value: number; unit: string }[];
+  } | null;
   // Additional fields for detail view
   clinical_notes?: string;
   diet?: string;

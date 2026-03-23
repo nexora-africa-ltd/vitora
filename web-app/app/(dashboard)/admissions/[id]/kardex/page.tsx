@@ -976,7 +976,14 @@ export default function KardexPage() {
               }
               patientAge={admission.patient_age ?? 0}
               patientSex={admission.patient_gender === 'F' ? 'female' : 'male'}
-              allergies={patientAllergies}
+              comorbidities={admission.clinical_context?.comorbidities}
+              currentMedications={admission.clinical_context?.current_medications}
+              labResults={admission.clinical_context?.lab_results_summary}
+              allergies={
+                admission.clinical_context?.allergies_structured?.length
+                  ? admission.clinical_context.allergies_structured
+                  : patientAllergies
+              }
               autoTrigger={autoTriggerCarePlan}
               onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
               onApplyToKardex={handleApplyAIToKardex}
