@@ -363,9 +363,11 @@ export function useDischargeAI(params: UseDischargeAIParams) {
         output_format: 'structured',
         generation_mode: generationMode,
         additional_instructions: [
-          'Generate ONLY the Patient Education / Discharge Instructions section.',
-          'Include: condition explained in lay terms, warning signs to watch for, activity restrictions, dietary advice, wound care if applicable, and when to seek emergency care.',
-          'Write in simple language suitable for patients and caregivers.',
+          'Generate concise, actionable patient discharge instructions — NOT patient education.',
+          'Format as a short numbered list of 4-8 practical instructions the patient must follow at home.',
+          'Each item should be one sentence. Examples: "Take Paracetamol 1g every 8 hours for 3 days.", "Return to clinic if fever exceeds 38.5°C or wound becomes red/swollen.", "Avoid heavy lifting for 2 weeks."',
+          'Do NOT explain what the condition is, how vaccines work, or why treatment was given — that belongs in Patient Education, not here.',
+          'Focus on: medications to take, activity restrictions, warning signs requiring return, follow-up appointments, and wound/site care.',
           clinicalHistoryText || '',
         ].filter(Boolean).join(' '),
       });
