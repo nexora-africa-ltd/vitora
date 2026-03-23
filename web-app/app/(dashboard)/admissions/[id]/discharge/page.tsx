@@ -4,12 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
-import { Save, Plus, Trash2, Clock, CheckCircle2, BrainCircuit, Loader2, AlertTriangle, ShieldAlert, Printer, ShieldCheck, Pencil, Eye } from 'lucide-react';
+import { Save, Plus, Trash2, Clock, CheckCircle2, BrainCircuit, Loader2, AlertTriangle, ShieldAlert, Printer, ShieldCheck } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/shared/page-header';
-import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { MultiDiagnosisInput, type DiagnosisEntry } from '@/components/shared';
 import { MarkdownPreview } from '@/components/shared/markdown-preview';
@@ -41,9 +39,11 @@ import {
 } from '@/components/ui/select';
 import { DischargeReadinessPanel } from '@/components/inpatient/discharge-readiness-panel';
 import { ClearanceStatusPanel } from '@/components/inpatient/clearance-status-panel';
+import { SectionCard } from '@/components/discharge/section-card';
+import { MedicationSuggestions } from '@/components/discharge/medication-suggestions';
 import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders, useClearanceStatus } from '@/lib/hooks/use-inpatient';
 import { useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
-import { useAIEnabled, useAIClinicalDocument, useAICDSEvaluate, useStoredCarePlans } from '@/lib/hooks/use-ai';
+import { useAIEnabled, useAICDSEvaluate, useStoredCarePlans } from '@/lib/hooks/use-ai';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { useOptionalPatientContext } from '@/lib/context/patient-context';
@@ -52,218 +52,11 @@ import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { printDischargeDocument } from '@/lib/documents';
 import type { DischargeType, DischargeMedication, MaternityContinuityAction } from '@/lib/types/inpatient';
-import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode } from '@/lib/types/ai';
-
-// ---------------------------------------------------------------------------
-// Advisory extraction — strips AI advisory/meta text from section content
-// Catches full lines: "> [AI suggested ...]", "[Not documented]"
-// Catches inline: "... [AI suggested — clinician to verify] ..."
-// ---------------------------------------------------------------------------
-
-/** Matches a standalone bracket-tagged line (with optional blockquote prefix). */
-const BRACKET_LINE_PATTERN = /^\[.*?\].*$|^>\s*\[.*?\].*$/;
-/** Matches inline bracket tags anywhere within a line. */
-const INLINE_BRACKET_PATTERN = /\[([^\]]*(?:AI|suggested|clinician|verify|review|edit|sign|not documented)[^\]]*)\]/gi;
-
-interface ParsedSection {
-  cleanContent: string;
-  advisories: { text: string; severity: 'warning' | 'critical' }[];
-}
-
-function parseAdvisories(content: string): ParsedSection {
-  const advisories: ParsedSection['advisories'] = [];
-  const lines = content.split('\n');
-  const cleanLines: string[] = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (BRACKET_LINE_PATTERN.test(trimmed)) {
-      // Entire line is an advisory
-      const text = trimmed.replace(/^>\s*/, '');
-      const isCritical = /critical|urgent|immediate|danger/i.test(text);
-      advisories.push({ text, severity: isCritical ? 'critical' : 'warning' });
-    } else {
-      // Strip inline bracket tags and collect them as advisories
-      let cleaned = line;
-      let inlineMatch: RegExpExecArray | null;
-      INLINE_BRACKET_PATTERN.lastIndex = 0;
-      while ((inlineMatch = INLINE_BRACKET_PATTERN.exec(line)) !== null) {
-        const tag = inlineMatch[0];
-        const inner = inlineMatch[1];
-        if (inner) {
-          const isCritical = /critical|urgent|immediate|danger/i.test(inner);
-          advisories.push({ text: tag, severity: isCritical ? 'critical' : 'warning' });
-        }
-        cleaned = cleaned.replace(tag, '');
-      }
-      // Clean up any resulting double-spaces or leading/trailing whitespace on the line
-      cleaned = cleaned.replace(/  +/g, ' ').trimEnd();
-      if (cleaned.trim() || line.trim() === '') {
-        cleanLines.push(cleaned);
-      }
-    }
-  }
-
-  // Trim leading/trailing blank lines from the clean content
-  const cleanContent = cleanLines.join('\n').replace(/^\n+|\n+$/g, '');
-  return { cleanContent, advisories };
-}
-
-// Section IDs that get routed to dedicated form fields instead of summary cards
-const ROUTED_SECTION_IDS = new Set([
-  'discharge_medications', 'follow_up', 'follow_up_plan',
-]);
-
-// Sections that duplicate existing page UI and should be hidden from cards entirely
-const HIDDEN_SECTION_IDS = new Set([
-  'patient_information', 'reason_for_admission', 'discharge_diagnosis',
-]);
-
-// ---------------------------------------------------------------------------
-// Customizable discharge summary sections
-// ---------------------------------------------------------------------------
-
-interface DischargeSummarySection {
-  id: string;
-  title: string;
-  content: string;
-  source: 'template' | 'manual' | 'ai';
-  provenance?: string;
-  advisories?: ParsedSection['advisories'];
-}
-
-const DEFAULT_SECTION_TEMPLATES: Omit<DischargeSummarySection, 'id'>[] = [
-  { title: 'Hospital Course', content: '', source: 'template' },
-  { title: 'Significant Findings', content: '', source: 'template' },
-  { title: 'Condition at Discharge', content: '', source: 'template' },
-  { title: 'Patient Education', content: '', source: 'template' },
-];
-
-function createSectionId(): string {
-  return crypto.randomUUID();
-}
-
-/** Assemble sections into flat markdown text for submission and printing. */
-function assembleSectionsText(secs: DischargeSummarySection[]): string {
-  return secs
-    .filter((s) => s.content.trim())
-    .map((s) => `## ${s.title}\n${s.content}`)
-    .join('\n\n');
-}
-
-/** Parse flat AI text (with ## headings) into sections. */
-function parseFullTextIntoSections(text: string): DischargeSummarySection[] {
-  const lines = text.split('\n');
-  const result: DischargeSummarySection[] = [];
-  let currentTitle = '';
-  let currentLines: string[] = [];
-
-  for (const line of lines) {
-    const headingMatch = line.match(/^##\s+(.+)/);
-    if (headingMatch) {
-      if (currentTitle) {
-        result.push({ id: createSectionId(), title: currentTitle, content: currentLines.join('\n').trim(), source: 'ai' });
-      }
-      currentTitle = headingMatch[1]!.trim();
-      currentLines = [];
-    } else {
-      currentLines.push(line);
-    }
-  }
-  if (currentTitle) {
-    result.push({ id: createSectionId(), title: currentTitle, content: currentLines.join('\n').trim(), source: 'ai' });
-  }
-  if (result.length === 0 && text.trim()) {
-    result.push({ id: createSectionId(), title: 'Discharge Summary', content: text.trim(), source: 'ai' });
-  }
-  return result;
-}
-
-/** Case-insensitive fuzzy title match with keyword awareness. */
-function fuzzyTitleMatch(a: string, b: string): boolean {
-  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const na = normalize(a);
-  const nb = normalize(b);
-  if (na === nb || na.includes(nb) || nb.includes(na)) return true;
-
-  // Keyword-based matching for common clinical section titles
-  const keywords = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter((w) => w.length > 2);
-  const ka = keywords(a);
-  const kb = keywords(b);
-  // If any keyword from one appears in any keyword of the other
-  return ka.some((w) => kb.some((k) => w.includes(k) || k.includes(w)));
-}
-
-/** Render advisory text with bracket tags converted to italics. */
-function formatAdvisoryText(text: string): React.ReactNode {
-  const match = text.match(/^\[([^\]]+)\]\s*(.*)/);
-  if (!match) return text;
-  return (
-    <>
-      <em className="font-medium">{match[1]}</em>{match[2] ? ` ${match[2]}` : ''}
-    </>
-  );
-}
-
-/**
- * Extract a follow-up date from AI-generated text.
- * Handles relative expressions ("in 2 weeks", "after 14 days", "in 1 month")
- * and explicit dates ("2026-04-06", "April 6, 2026", "6th April 2026").
- * Returns yyyy-MM-dd string or null.
- */
-function extractFollowUpDate(text: string): string | null {
-  // 1. Try explicit ISO date (yyyy-MM-dd)
-  const isoMatch = text.match(/\b(\d{4}-\d{2}-\d{2})\b/);
-  if (isoMatch?.[1]) return isoMatch[1];
-
-  // 2. Try "Month Day, Year" or "Day Month Year"
-  const months = 'January|February|March|April|May|June|July|August|September|October|November|December';
-  const namedMatch = text.match(new RegExp(`\\b(${months})\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})\\b`, 'i'))
-    || text.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${months}),?\\s+(\\d{4})\\b`, 'i'));
-  if (namedMatch?.[0]) {
-    const parsed = new Date(namedMatch[0].replace(/(\d+)(st|nd|rd|th)/i, '$1'));
-    if (!isNaN(parsed.getTime())) {
-      return format(parsed, 'yyyy-MM-dd');
-    }
-  }
-
-  // 3. Try relative: "in/after/within X day(s)/week(s)/month(s)" or bare "X weeks/months"
-  const relMatch = text.match(/\b(?:in|after|within)\s+(\d+)\s*(day|week|month)s?\b/i)
-    || text.match(/\b(\d+)\s*(day|week|month)s?\b/i);
-  if (relMatch?.[1] && relMatch[2]) {
-    const n = parseInt(relMatch[1], 10);
-    const unit = relMatch[2].toLowerCase();
-    const d = new Date();
-    if (unit === 'day') d.setDate(d.getDate() + n);
-    else if (unit === 'week') d.setDate(d.getDate() + n * 7);
-    else if (unit === 'month') d.setMonth(d.getMonth() + n);
-    return format(d, 'yyyy-MM-dd');
-  }
-
-  return null;
-}
-
-const DISCHARGE_TYPES: { value: DischargeType; label: string }[] = [
-  { value: 'NORMAL', label: 'Normal Discharge' },
-  { value: 'ROUTINE', label: 'Routine Discharge' },
-  { value: 'AGAINST_ADVICE', label: 'Against Medical Advice' },
-  { value: 'TRANSFERRED', label: 'Transfer to Another Facility' },
-  { value: 'DECEASED', label: 'Deceased' },
-  { value: 'ABSCONDED', label: 'Absconded/Left Without Notice' },
-];
-
-const MATERNITY_CONTINUITY_ACTIONS: { value: MaternityContinuityAction; label: string; description: string }[] = [
-  {
-    value: 'SCHEDULE_EARLY_PNC',
-    label: 'Schedule Early PNC',
-    description: 'Book the early postnatal follow-up date before discharge.',
-  },
-  {
-    value: 'ROUTE_TO_PNC_QUEUE',
-    label: 'Route Directly To PNC Queue',
-    description: 'Send the mother straight to the PNC queue from discharge.',
-  },
-];
+import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocGenerationMode } from '@/lib/types/ai';
+import type { DischargeSummarySection, SuggestedMedication } from '@/lib/discharge/types';
+import { DEFAULT_SECTION_TEMPLATES, DISCHARGE_TYPES, MATERNITY_CONTINUITY_ACTIONS } from '@/lib/discharge/types';
+import { createSectionId, assembleSectionsText } from '@/lib/discharge/utils';
+import { useDischargeAI } from '@/lib/discharge/use-discharge-ai';
 
 export default function DischargePage() {
   const params = useParams();
@@ -279,7 +72,6 @@ export default function DischargePage() {
   const patientContext = useOptionalPatientContext();
   const createDischarge = useCreateDischarge();
   const isAIEnabled = useAIEnabled();
-  const clinicalDocument = useAIClinicalDocument();
   const cdsEvaluate = useAICDSEvaluate();
 
   // Fetch encounter diagnoses for pre-population suggestions
@@ -575,266 +367,39 @@ export default function DischargePage() {
     setMedications(medications.filter((_, i) => i !== index));
   };
 
-  // Build shared AI request context (used by both generateAll and generateSection)
-  const buildAIContext = useCallback(() => {
-    if (!admission) return null;
-    const primaryEntry = diagnoses.find((d) => d.role === 'PRIMARY');
-    const primaryDisplay = primaryEntry?.code.icd11Display || primaryEntry?.code.icd10Display || '';
-    const diagnosis = primaryDisplay || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
-    const medsText = medications.filter((m) => m.drug_name).map((m) => `${m.drug_name} ${m.dosage} ${m.frequency}`);
-
-    const docPatientCtx: ClinicalDocPatientContext = {
-      patient_age: admission.patient_age ?? 0,
-      patient_sex: admission.patient_gender === 'M' ? 'male' : 'female',
-      allergies: patientCtx.allergies || [],
-      comorbidities: patientCtx.comorbidities || [],
-      current_medications: patientCtx.current_medications || [],
-    };
-
-    const admissionCtx: ClinicalDocAdmissionContext = {
-      primary_diagnosis: diagnosis,
-      admission_date: admission.admission_date || '',
-      length_of_stay_days: lengthOfStay,
-      ward: admission.ward_name || '',
-      discharge_type: dischargeType === 'ROUTINE' || dischargeType === 'ABSCONDED' ? 'NORMAL' : dischargeType as ClinicalDocAdmissionContext['discharge_type'],
-      discharge_medications: medsText,
-      condition_at_discharge: '',
-    };
-
-    return { docPatientCtx, admissionCtx };
-  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, patientCtx]);
-
-  // Generate ALL sections with TibaBot (merges AI sections into existing user sections)
-  const handleGenerateAll = useCallback(async () => {
-    const ctx = buildAIContext();
-    if (!ctx || !admission) return;
-
-    try {
-      const result = await clinicalDocument.mutateAsync({
-        document_type: 'discharge_summary',
-        patient_context: ctx.docPatientCtx,
-        admission_context: ctx.admissionCtx,
-        encounter_context: {
-          chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
-        },
-        output_format: 'structured',
-        generation_mode: generationMode,
-        additional_instructions: [
-          'For the Hospital Course section, write a flowing clinical narrative that synthesizes the ward round findings into a coherent story of the admission.',
-          'Mention key dates and clinical inflection points (e.g. when symptoms improved, when antibiotics were changed, when a complication arose) but do NOT list each ward round as separate S/O/A/P entries.',
-          'Omit advisory notes, placeholder text like "Not documented", and parenthetical instructions — only include documented clinical facts.',
-          clinicalHistoryText || '',
-        ].filter(Boolean).join(' '),
-      });
-
-      if (result.sections?.length) {
-        // Route specific sections to dedicated form fields
-        const instructionParts: string[] = [];
-        for (const section of result.sections) {
-          const { cleanContent } = parseAdvisories(section.content);
-          const sid = section.section_id;
-
-          if ((sid === 'follow_up' || sid === 'follow_up_plan') && cleanContent) {
-            if (!followUpInstructions) {
-              const firstLine = cleanContent.split('\n').find((l) => l.trim());
-              if (firstLine) setFollowUpInstructions(firstLine.replace(/^[-*\d.]+\s*/, '').replace(/\*\*/g, '').trim());
-            }
-            if (!followUpDate) {
-              const extractedDate = extractFollowUpDate(cleanContent);
-              if (extractedDate) setFollowUpDate(extractedDate);
-            }
-          }
-
-          // Collect patient-facing content for Patient Instructions
-          if ((sid === 'patient_education' || sid === 'condition_at_discharge') && cleanContent) {
-            instructionParts.push(cleanContent);
-          }
-
-          // Route discharge_medications to suggested meds chips
-          if (sid === 'discharge_medications' && cleanContent) {
-            const medParsed: typeof suggestedMeds = [];
-            const medLines = cleanContent.split('\n').filter((l) => l.trim());
-            for (const line of medLines) {
-              const pipeMatch = line.match(/^[-*\d.]*\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*(?:\|\s*(.+?))?\s*$/);
-              if (pipeMatch) {
-                medParsed.push({
-                  drug_name: pipeMatch[1]!.replace(/\*\*/g, '').trim(),
-                  dosage: pipeMatch[2]!.trim(),
-                  frequency: pipeMatch[3]!.trim(),
-                  duration: pipeMatch[4]?.trim() || '',
-                });
-              } else {
-                // Construct regex at runtime to prevent Tailwind CSS scanner from
-                // misinterpreting the character class as an arbitrary-value utility
-                const sepChars = '\\-:,';
-                const bulletRe = new RegExp('^[-*\\d.]*\\s*\\**(.+?)\\**(?:\\s*[' + sepChars + ']|\\s+\\d|$)');
-                const bulletMatch = line.match(bulletRe);
-                if (bulletMatch && bulletMatch[1]!.trim().length > 2) {
-                  medParsed.push({
-                    drug_name: bulletMatch[1]!.replace(/\*\*/g, '').trim(),
-                    dosage: '',
-                    frequency: '',
-                    duration: '',
-                  });
-                }
-              }
-            }
-            if (medParsed.length > 0) setSuggestedMeds(medParsed);
-          }
-        }
-
-        // Auto-populate Patient Instructions from patient-facing sections
-        if (instructionParts.length > 0 && !patientInstructions) {
-          setPatientInstructions(instructionParts.join('\n\n'));
-          setInstructionsGenerated(true);
-        }
-
-        // Merge narrative sections into user's section list
-        const aiNarrativeSections = result.sections.filter(
-          (s) => !ROUTED_SECTION_IDS.has(s.section_id) && !HIDDEN_SECTION_IDS.has(s.section_id)
-        );
-
-        setSections((prev) => {
-          let updated = [...prev];
-          const matchedIds = new Set<string>();
-
-          for (const aiSection of aiNarrativeSections) {
-            const { cleanContent, advisories } = parseAdvisories(aiSection.content);
-            const provenance = result.section_provenance?.[aiSection.section_id];
-
-            const match = updated.find((s) =>
-              !matchedIds.has(s.id) && fuzzyTitleMatch(s.title, aiSection.title)
-            );
-
-            if (match) {
-              matchedIds.add(match.id);
-              updated = updated.map((s) =>
-                s.id === match.id
-                  ? { ...s, content: cleanContent, source: 'ai' as const, provenance, advisories }
-                  : s
-              );
-            } else {
-              updated.push({
-                id: createSectionId(),
-                title: aiSection.title,
-                content: cleanContent,
-                source: 'ai',
-                provenance,
-                advisories,
-              });
-            }
-          }
-          return updated;
-        });
-
-        setEditingSectionId(null);
-        toast({
-          title: generationMode === 'generate' ? 'Strict Draft Generated' : 'Draft Generated',
-          description: generationMode === 'generate'
-            ? 'Facts-only discharge summary generated. Audit-safe — review before filing.'
-            : 'TibaBot drafted all sections. Edit individually as needed.',
-        });
-      } else if (result.full_text) {
-        // Parse markdown headings into sections and merge
-        const parsedSections = parseFullTextIntoSections(result.full_text);
-        setSections((prev) => {
-          let updated = [...prev];
-          const matchedIds = new Set<string>();
-
-          for (const parsed of parsedSections) {
-            const match = updated.find((s) =>
-              !matchedIds.has(s.id) && fuzzyTitleMatch(s.title, parsed.title)
-            );
-            if (match) {
-              matchedIds.add(match.id);
-              updated = updated.map((s) =>
-                s.id === match.id ? { ...s, content: parsed.content, source: 'ai' as const } : s
-              );
-            } else {
-              updated.push(parsed);
-            }
-          }
-          return updated;
-        });
-        toast({
-          title: generationMode === 'generate' ? 'Strict Draft Generated' : 'Draft Generated',
-          description: 'TibaBot generated a discharge summary. Review and edit sections as needed.',
-        });
-      }
-    } catch {
-      toast({ title: 'Generation Failed', description: 'Could not generate discharge summary. Please write sections manually.', variant: 'destructive' });
-    }
-  }, [admission, buildAIContext, clinicalDocument, toast, clinicalHistoryText, generationMode, patientInstructions, followUpInstructions, followUpDate]);
-
-  // Generate a single section with TibaBot
-  const handleGenerateSection = useCallback(async (sectionId: string) => {
-    const ctx = buildAIContext();
-    if (!ctx || !admission) return;
-    const section = sections.find((s) => s.id === sectionId);
-    if (!section) return;
-
-    setGeneratingSectionId(sectionId);
-    try {
-      const result = await clinicalDocument.mutateAsync({
-        document_type: 'discharge_summary',
-        patient_context: ctx.docPatientCtx,
-        admission_context: ctx.admissionCtx,
-        encounter_context: {
-          chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
-        },
-        output_format: 'structured',
-        generation_mode: generationMode,
-        additional_instructions: [
-          `Generate ONLY the "${section.title}" section of a discharge summary. Return focused, detailed content for this section only.`,
-          section.title.toLowerCase().includes('hospital course')
-            ? 'Write a flowing clinical narrative that synthesizes ward round findings into a coherent story of the admission. Mention key dates and clinical inflection points.'
-            : '',
-          clinicalHistoryText || '',
-        ].filter(Boolean).join(' '),
-      });
-
-      let content = '';
-      let advisories: ParsedSection['advisories'] = [];
-      let provenance: string | undefined;
-
-      if (result.sections?.length) {
-        const match = result.sections.find((s) =>
-          fuzzyTitleMatch(s.title, section.title)
-        ) ?? result.sections[0];
-        if (match) {
-          const parsed = parseAdvisories(match.content);
-          content = parsed.cleanContent;
-          advisories = parsed.advisories;
-          provenance = result.section_provenance?.[match.section_id] || 'llm_generated';
-        }
-      } else if (result.full_text) {
-        const parsed = parseAdvisories(result.full_text);
-        content = parsed.cleanContent;
-        advisories = parsed.advisories;
-        provenance = 'llm_generated';
-      }
-
-      setSections((prev) =>
-        prev.map((s) =>
-          s.id === sectionId
-            ? { ...s, content, source: 'ai' as const, provenance, advisories }
-            : s
-        )
-      );
-      toast({
-        title: 'Section Generated',
-        description: `"${section.title}" generated by TibaBot. Review and edit as needed.`,
-      });
-    } catch {
-      toast({
-        title: 'Generation Failed',
-        description: `Could not generate "${section.title}". Please write it manually.`,
-        variant: 'destructive',
-      });
-    } finally {
-      setGeneratingSectionId(null);
-    }
-  }, [admission, sections, buildAIContext, clinicalDocument, toast, clinicalHistoryText, generationMode]);
+  // AI generation (delegated to hook)
+  const {
+    clinicalDocument,
+    handleGenerateAll,
+    handleGenerateSection,
+    handleGenerateFollowUp,
+    handleGeneratePatientInstructions,
+    handleGenerateMedSuggestions,
+  } = useDischargeAI({
+    admission,
+    diagnoses,
+    medications,
+    lengthOfStay,
+    dischargeType,
+    patientCtx,
+    clinicalHistoryText,
+    generationMode,
+    followUpInstructions,
+    followUpDate,
+    patientInstructions,
+    setSections,
+    setEditingSectionId,
+    setGeneratingSectionId,
+    setSuggestedMeds,
+    setGeneratingMeds,
+    setGeneratingFollowUp,
+    setGeneratingPatientInstructions,
+    setFollowUpInstructions,
+    setFollowUpDate,
+    setPatientInstructions,
+    setInstructionsGenerated,
+    sections,
+  });
 
   // Section management handlers
   const updateSection = useCallback((sectionId: string, newContent: string) => {
@@ -864,185 +429,6 @@ export default function DischargePage() {
       prev.map((s) => s.id === sectionId ? { ...s, title: newTitle } : s)
     );
   }, []);
-
-  // Generate follow-up instructions with TibaBot
-  const handleGenerateFollowUp = useCallback(async () => {
-    const ctx = buildAIContext();
-    if (!ctx || !admission) return;
-    setGeneratingFollowUp(true);
-    try {
-      const result = await clinicalDocument.mutateAsync({
-        document_type: 'discharge_summary',
-        patient_context: ctx.docPatientCtx,
-        admission_context: ctx.admissionCtx,
-        encounter_context: {
-          chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
-        },
-        output_format: 'structured',
-        generation_mode: generationMode,
-        additional_instructions: [
-          'Generate ONLY the Follow-up Plan section. Include specific follow-up appointments, timeline, warning signs to watch for, and when to return to hospital.',
-          'Be specific with timing (e.g., "Return in 2 weeks" or "Follow-up on 2026-04-06").',
-          clinicalHistoryText || '',
-        ].filter(Boolean).join(' '),
-      });
-
-      let content = '';
-      if (result.sections?.length) {
-        const match = result.sections.find((s) =>
-          /follow.?up|plan/i.test(s.title)
-        ) || result.sections[0];
-        if (match) {
-          const parsed = parseAdvisories(match.content);
-          content = parsed.cleanContent;
-        }
-      } else if (result.full_text) {
-        const parsed = parseAdvisories(result.full_text);
-        content = parsed.cleanContent;
-      }
-
-      if (content) {
-        const firstLine = content.split('\n').find((l) => l.trim());
-        if (firstLine) setFollowUpInstructions(firstLine.replace(/^[-*\d.]+\s*/, '').replace(/\*\*/g, '').trim());
-        const extractedDate = extractFollowUpDate(content);
-        if (extractedDate && !followUpDate) setFollowUpDate(extractedDate);
-        toast({ title: 'Follow-up Generated', description: 'Follow-up instructions generated. Review and adjust as needed.' });
-      }
-    } catch {
-      toast({ title: 'Generation Failed', description: 'Could not generate follow-up instructions.', variant: 'destructive' });
-    } finally {
-      setGeneratingFollowUp(false);
-    }
-  }, [admission, buildAIContext, clinicalDocument, toast, clinicalHistoryText, generationMode, followUpDate]);
-
-  // Generate patient instructions with TibaBot
-  const handleGeneratePatientInstructions = useCallback(async () => {
-    const ctx = buildAIContext();
-    if (!ctx || !admission) return;
-    setGeneratingPatientInstructions(true);
-    try {
-      const result = await clinicalDocument.mutateAsync({
-        document_type: 'discharge_summary',
-        patient_context: ctx.docPatientCtx,
-        admission_context: ctx.admissionCtx,
-        encounter_context: {
-          chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
-        },
-        output_format: 'structured',
-        generation_mode: generationMode,
-        additional_instructions: [
-          'Generate ONLY the Patient Education / Discharge Instructions section.',
-          'Include: condition explained in lay terms, warning signs to watch for, activity restrictions, dietary advice, wound care if applicable, and when to seek emergency care.',
-          'Write in simple language suitable for patients and caregivers.',
-          clinicalHistoryText || '',
-        ].filter(Boolean).join(' '),
-      });
-
-      let content = '';
-      if (result.sections?.length) {
-        const match = result.sections.find((s) =>
-          /patient|education|instruction|discharge/i.test(s.title)
-        ) || result.sections[0];
-        if (match) {
-          const parsed = parseAdvisories(match.content);
-          content = parsed.cleanContent;
-        }
-      } else if (result.full_text) {
-        const parsed = parseAdvisories(result.full_text);
-        content = parsed.cleanContent;
-      }
-
-      if (content) {
-        setPatientInstructions(content);
-        setInstructionsGenerated(true);
-        toast({ title: 'Instructions Generated', description: 'Patient instructions generated. Review and edit as needed.' });
-      }
-    } catch {
-      toast({ title: 'Generation Failed', description: 'Could not generate patient instructions.', variant: 'destructive' });
-    } finally {
-      setGeneratingPatientInstructions(false);
-    }
-  }, [admission, buildAIContext, clinicalDocument, toast, clinicalHistoryText, generationMode]);
-
-  // Generate medication suggestions with TibaBot
-  const handleGenerateMedSuggestions = useCallback(async () => {
-    const ctx = buildAIContext();
-    if (!ctx || !admission) return;
-    setGeneratingMeds(true);
-    try {
-      const result = await clinicalDocument.mutateAsync({
-        document_type: 'discharge_summary',
-        patient_context: ctx.docPatientCtx,
-        admission_context: ctx.admissionCtx,
-        encounter_context: {
-          chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
-        },
-        output_format: 'structured',
-        generation_mode: 'generate',
-        additional_instructions: [
-          'Generate ONLY the Discharge Medications section.',
-          'For each medication, provide the drug name, suggested dosage, frequency, and duration on separate lines.',
-          'Format each medication as: "- Drug Name | Dosage | Frequency | Duration".',
-          'Only include medications that are clinically appropriate for discharge continuity.',
-          clinicalHistoryText || '',
-        ].filter(Boolean).join(' '),
-      });
-
-      let medText = '';
-      if (result.sections?.length) {
-        const match = result.sections.find((s) =>
-          /medication/i.test(s.title)
-        ) || result.sections[0];
-        if (match) {
-          const parsed = parseAdvisories(match.content);
-          medText = parsed.cleanContent;
-        }
-      } else if (result.full_text) {
-        const parsed = parseAdvisories(result.full_text);
-        medText = parsed.cleanContent;
-      }
-
-      if (medText) {
-        const parsed: typeof suggestedMeds = [];
-        const lines = medText.split('\n').filter((l) => l.trim());
-        for (const line of lines) {
-          // Try structured format: "- Drug Name | Dosage | Frequency | Duration"
-          const pipeMatch = line.match(/^[-*\d.]*\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*(?:\|\s*(.+?))?\s*$/);
-          if (pipeMatch) {
-            parsed.push({
-              drug_name: pipeMatch[1]!.replace(/\*\*/g, '').trim(),
-              dosage: pipeMatch[2]!.trim(),
-              frequency: pipeMatch[3]!.trim(),
-              duration: pipeMatch[4]?.trim() || '',
-            });
-          } else {
-            // Fallback: extract drug name from bullet line
-            // Use RegExp constructor to prevent Tailwind CSS scanner from misinterpreting char class
-            const medBulletRe = new RegExp('^[-*\\d.]*\\s*\\**(.+?)\\**(?:\\s*[' + '\\-:' + ']|$)');
-            const bulletMatch = line.match(medBulletRe);
-            if (bulletMatch && bulletMatch[1]!.trim().length > 2) {
-              parsed.push({
-                drug_name: bulletMatch[1]!.replace(/\*\*/g, '').trim(),
-                dosage: '',
-                frequency: '',
-                duration: '',
-              });
-            }
-          }
-        }
-        if (parsed.length > 0) {
-          setSuggestedMeds(parsed);
-          toast({ title: 'Medications Suggested', description: `TibaBot suggested ${parsed.length} medication(s). Click + to add them.` });
-        } else {
-          toast({ title: 'No Suggestions', description: 'TibaBot could not extract specific medications. Add them manually.', variant: 'destructive' });
-        }
-      }
-    } catch {
-      toast({ title: 'Generation Failed', description: 'Could not generate medication suggestions.', variant: 'destructive' });
-    } finally {
-      setGeneratingMeds(false);
-    }
-  }, [admission, buildAIContext, clinicalDocument, toast, clinicalHistoryText]);
 
   // Helper to extract code string from DiagnosisEntry
   const getDiagCode = (entry: DiagnosisEntry) =>
@@ -1440,163 +826,22 @@ export default function DischargePage() {
             </p>
 
             {/* Section Cards */}
-            {sections.map((section) => {
-              const isEditing = editingSectionId === section.id;
-              const isGenerating = generatingSectionId === section.id;
-              const hasContent = !!section.content.trim();
-              const hasCritical = section.advisories?.some((a) => a.severity === 'critical');
-              const hasAdvisories = (section.advisories?.length ?? 0) > 0;
-              const borderColor = hasCritical
-                ? 'border-red-400 dark:border-red-500'
-                : hasAdvisories
-                  ? 'border-amber-400 dark:border-amber-500'
-                  : '';
-
-              return (
-                <div key={section.id} className={`rounded-lg border bg-card ${borderColor}`}>
-                  <div className="flex items-center justify-between border-b px-3 py-2 gap-2">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <input
-                        value={section.title}
-                        onChange={(e) => handleRenameSection(section.id, e.target.value)}
-                        className="text-sm font-medium bg-transparent border-none outline-none focus:ring-1 focus:ring-primary rounded px-1 -mx-1 w-full min-w-0"
-                        placeholder="Section title"
-                      />
-                      {section.source === 'ai' && section.provenance && (
-                        <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0">
-                          {section.provenance === 'from_input' ? 'From input'
-                            : section.provenance === 'llm_generated' ? 'AI generated'
-                            : section.provenance === 'llm_suggested' ? 'AI suggested'
-                            : section.provenance === 'guideline_rag' ? 'Guideline'
-                            : section.provenance === 'not_documented' ? 'Not documented'
-                            : section.provenance === 'skeleton' ? 'Template'
-                            : section.provenance}
-                        </Badge>
-                      )}
-                      {hasAdvisories && (
-                        <TooltipProvider delayDuration={300}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant="outline" className={`shrink-0 text-[10px] px-1.5 py-0 cursor-default ${
-                                hasCritical ? 'border-red-400 text-red-700 dark:text-red-400' : 'border-amber-400 text-amber-700 dark:text-amber-400'
-                              }`}>
-                                <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
-                                {section.advisories!.length}
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {section.advisories!.length} AI {section.advisories!.length === 1 ? 'advisory' : 'advisories'} — review flagged items below
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      {isAIEnabled && (
-                        <TooltipProvider delayDuration={300}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleGenerateSection(section.id)}
-                                disabled={isGenerating || (clinicalDocument.isPending && !generatingSectionId)}
-                                className="h-7 w-7 p-0 text-purple-500 hover:text-purple-600"
-                              >
-                                {isGenerating ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <BrainCircuit className="h-3.5 w-3.5" />
-                                )}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Generate this section with TibaBot</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                      <TooltipProvider delayDuration={300}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditingSectionId(isEditing ? null : section.id)}
-                              className="h-7 w-7 p-0 shrink-0"
-                            >
-                              {isEditing ? <Eye className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{isEditing ? 'Preview' : 'Edit'}</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <TooltipProvider delayDuration={300}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveSection(section.id)}
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Remove section</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    {isGenerating ? (
-                      <div className="space-y-2 animate-pulse">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-4 w-full" />
-                        <Skeleton className="h-4 w-5/6" />
-                      </div>
-                    ) : isEditing ? (
-                      <Textarea
-                        value={section.content}
-                        onChange={(e) => updateSection(section.id, e.target.value)}
-                        rows={4}
-                        className="text-sm"
-                        placeholder={`Write ${section.title.toLowerCase()} content...`}
-                      />
-                    ) : hasContent ? (
-                      <div className="tibabot-markdown prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden">
-                        <Markdown remarkPlugins={[remarkGfm]}>{section.content}</Markdown>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic">
-                        No content — click edit to write or generate with TibaBot.
-                      </p>
-                    )}
-                  </div>
-                  {/* Advisory banners */}
-                  {section.advisories && section.advisories.length > 0 && !isEditing && (
-                    <div className="border-t px-3 pb-3 pt-2 space-y-1.5">
-                      {section.advisories.map((adv, i) => (
-                        <div
-                          key={i}
-                          className={`flex items-start gap-2 rounded-md px-2.5 py-1.5 text-xs ${
-                            adv.severity === 'critical'
-                              ? 'bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-300'
-                              : 'bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300'
-                          }`}
-                        >
-                          <AlertTriangle className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${
-                            adv.severity === 'critical' ? 'text-red-500' : 'text-amber-500'
-                          }`} />
-                          <span>{formatAdvisoryText(adv.text)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {sections.map((section) => (
+              <SectionCard
+                key={section.id}
+                section={section}
+                isEditing={editingSectionId === section.id}
+                isGenerating={generatingSectionId === section.id}
+                isAIEnabled={isAIEnabled}
+                isAIPending={clinicalDocument.isPending}
+                hasActiveGeneration={!!generatingSectionId}
+                onContentChange={(content) => updateSection(section.id, content)}
+                onRename={(title) => handleRenameSection(section.id, title)}
+                onToggleEdit={() => setEditingSectionId(editingSectionId === section.id ? null : section.id)}
+                onRemove={() => handleRemoveSection(section.id)}
+                onGenerate={() => handleGenerateSection(section.id)}
+              />
+            ))}
 
             {/* Add Section */}
             <Button
@@ -1795,55 +1040,19 @@ export default function DischargePage() {
           </div>
         </CardHeader>
         <CardContent>
-          {/* AI-suggested medications */}
-          {suggestedMeds.length > 0 && (
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center gap-1.5">
-                <Label className="text-sm">Suggested Medications</Label>
-                <HelpPopover content="TibaBot suggested these based on the patient's stay. Click + to add, then review and adjust dosages." />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {suggestedMeds.map((med, idx) => {
-                  const alreadyAdded = medications.some((m) =>
-                    m.drug_name.toLowerCase().trim() === med.drug_name.toLowerCase().trim()
-                  );
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      disabled={alreadyAdded}
-                      onClick={() => {
-                        setMedications((prev) => [...prev, {
-                          drug_name: med.drug_name,
-                          dosage: med.dosage,
-                          frequency: med.frequency,
-                          duration: med.duration,
-                          instructions: '',
-                        }]);
-                      }}
-                      className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors ${
-                        alreadyAdded
-                          ? 'border-muted bg-muted/50 text-muted-foreground cursor-not-allowed'
-                          : 'border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40'
-                      }`}
-                    >
-                      {!alreadyAdded && (
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shrink-0">
-                          <Plus className="h-3.5 w-3.5" />
-                        </span>
-                      )}
-                      {alreadyAdded && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-600" />}
-                      <span className="truncate max-w-[200px]">{med.drug_name}</span>
-                      {med.dosage && (
-                        <span className="text-muted-foreground text-xs">{med.dosage}</span>
-                      )}
-                      <Badge variant="secondary" className="text-[10px] shrink-0">TibaBot</Badge>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <MedicationSuggestions
+            suggestedMeds={suggestedMeds}
+            medications={medications}
+            onAddMedication={(med) => {
+              setMedications((prev) => [...prev, {
+                drug_name: med.drug_name,
+                dosage: med.dosage,
+                frequency: med.frequency,
+                duration: med.duration,
+                instructions: '',
+              }]);
+            }}
+          />
           {medications.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
               No discharge medications added. Click &quot;Add Medication&quot; to add.

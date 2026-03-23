@@ -1,0 +1,180 @@
+import { format } from 'date-fns';
+import type { DischargeSummarySection, ParsedSection } from './types';
+
+// ---------------------------------------------------------------------------
+// Advisory extraction — strips AI advisory/meta text from section content
+// ---------------------------------------------------------------------------
+
+/** Matches a standalone bracket-tagged line (with optional blockquote prefix). */
+const BRACKET_LINE_PATTERN = /^\[.*?\].*$|^>\s*\[.*?\].*$/;
+/** Matches inline bracket tags anywhere within a line. */
+const INLINE_BRACKET_PATTERN = /\[([^\]]*(?:AI|suggested|clinician|verify|review|edit|sign|not documented)[^\]]*)\]/gi;
+
+export function parseAdvisories(content: string): ParsedSection {
+  const advisories: ParsedSection['advisories'] = [];
+  const lines = content.split('\n');
+  const cleanLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (BRACKET_LINE_PATTERN.test(trimmed)) {
+      const text = trimmed.replace(/^>\s*/, '');
+      const isCritical = /critical|urgent|immediate|danger/i.test(text);
+      advisories.push({ text, severity: isCritical ? 'critical' : 'warning' });
+    } else {
+      let cleaned = line;
+      let inlineMatch: RegExpExecArray | null;
+      INLINE_BRACKET_PATTERN.lastIndex = 0;
+      while ((inlineMatch = INLINE_BRACKET_PATTERN.exec(line)) !== null) {
+        const tag = inlineMatch[0];
+        const inner = inlineMatch[1];
+        if (inner) {
+          const isCritical = /critical|urgent|immediate|danger/i.test(inner);
+          advisories.push({ text: tag, severity: isCritical ? 'critical' : 'warning' });
+        }
+        cleaned = cleaned.replace(tag, '');
+      }
+      cleaned = cleaned.replace(/  +/g, ' ').trimEnd();
+      if (cleaned.trim() || line.trim() === '') {
+        cleanLines.push(cleaned);
+      }
+    }
+  }
+
+  const cleanContent = cleanLines.join('\n').replace(/^\n+|\n+$/g, '');
+  return { cleanContent, advisories };
+}
+
+// ---------------------------------------------------------------------------
+// Section helpers
+// ---------------------------------------------------------------------------
+
+export function createSectionId(): string {
+  return crypto.randomUUID();
+}
+
+/** Assemble sections into flat markdown text for submission and printing. */
+export function assembleSectionsText(secs: DischargeSummarySection[]): string {
+  return secs
+    .filter((s) => s.content.trim())
+    .map((s) => `## ${s.title}\n${s.content}`)
+    .join('\n\n');
+}
+
+/** Parse flat AI text (with ## headings) into sections. */
+export function parseFullTextIntoSections(text: string): DischargeSummarySection[] {
+  const lines = text.split('\n');
+  const result: DischargeSummarySection[] = [];
+  let currentTitle = '';
+  let currentLines: string[] = [];
+
+  for (const line of lines) {
+    const headingMatch = line.match(/^##\s+(.+)/);
+    if (headingMatch) {
+      if (currentTitle) {
+        result.push({ id: createSectionId(), title: currentTitle, content: currentLines.join('\n').trim(), source: 'ai' });
+      }
+      currentTitle = headingMatch[1]!.trim();
+      currentLines = [];
+    } else {
+      currentLines.push(line);
+    }
+  }
+  if (currentTitle) {
+    result.push({ id: createSectionId(), title: currentTitle, content: currentLines.join('\n').trim(), source: 'ai' });
+  }
+  if (result.length === 0 && text.trim()) {
+    result.push({ id: createSectionId(), title: 'Discharge Summary', content: text.trim(), source: 'ai' });
+  }
+  return result;
+}
+
+/** Case-insensitive fuzzy title match with keyword awareness. */
+export function fuzzyTitleMatch(a: string, b: string): boolean {
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const na = normalize(a);
+  const nb = normalize(b);
+  if (na === nb || na.includes(nb) || nb.includes(na)) return true;
+
+  const keywords = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter((w) => w.length > 2);
+  const ka = keywords(a);
+  const kb = keywords(b);
+  return ka.some((w) => kb.some((k) => w.includes(k) || k.includes(w)));
+}
+
+/** Render advisory text with bracket tags converted to italics. */
+export function formatAdvisoryText(text: string): React.ReactNode {
+  const match = text.match(/^\[([^\]]+)\]\s*(.*)/);
+  if (!match) return text;
+  return (
+    <>
+      <em className="font-medium">{match[1]}</em>{match[2] ? ` ${match[2]}` : ''}
+    </>
+  );
+}
+
+/**
+ * Extract a follow-up date from AI-generated text.
+ * Returns yyyy-MM-dd string or null.
+ */
+export function extractFollowUpDate(text: string): string | null {
+  const isoMatch = text.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+  if (isoMatch?.[1]) return isoMatch[1];
+
+  const months = 'January|February|March|April|May|June|July|August|September|October|November|December';
+  const namedMatch = text.match(new RegExp(`\\b(${months})\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})\\b`, 'i'))
+    || text.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${months}),?\\s+(\\d{4})\\b`, 'i'));
+  if (namedMatch?.[0]) {
+    const parsed = new Date(namedMatch[0].replace(/(\d+)(st|nd|rd|th)/i, '$1'));
+    if (!isNaN(parsed.getTime())) {
+      return format(parsed, 'yyyy-MM-dd');
+    }
+  }
+
+  const relMatch = text.match(/\b(?:in|after|within)\s+(\d+)\s*(day|week|month)s?\b/i)
+    || text.match(/\b(\d+)\s*(day|week|month)s?\b/i);
+  if (relMatch?.[1] && relMatch[2]) {
+    const n = parseInt(relMatch[1], 10);
+    const unit = relMatch[2].toLowerCase();
+    const d = new Date();
+    if (unit === 'day') d.setDate(d.getDate() + n);
+    else if (unit === 'week') d.setDate(d.getDate() + n * 7);
+    else if (unit === 'month') d.setMonth(d.getMonth() + n);
+    return format(d, 'yyyy-MM-dd');
+  }
+
+  return null;
+}
+
+/**
+ * Parse medication text lines into structured medication entries.
+ * Handles pipe-delimited format and bullet fallback.
+ */
+export function parseMedicationLines(lines: string[]): { drug_name: string; dosage: string; frequency: string; duration: string }[] {
+  const result: { drug_name: string; dosage: string; frequency: string; duration: string }[] = [];
+  for (const line of lines) {
+    const pipeMatch = line.match(/^[-*\d.]*\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*(?:\|\s*(.+?))?\s*$/);
+    if (pipeMatch) {
+      result.push({
+        drug_name: pipeMatch[1]!.replace(/\*\*/g, '').trim(),
+        dosage: pipeMatch[2]!.trim(),
+        frequency: pipeMatch[3]!.trim(),
+        duration: pipeMatch[4]?.trim() || '',
+      });
+    } else {
+      // Use RegExp constructor to prevent Tailwind CSS scanner from misinterpreting char class
+      const sepChars = '\\-:,';
+      const bulletRe = new RegExp('^[-*\\d.]*\\s*\\**(.+?)\\**(?:\\s*[' + sepChars + ']|\\s+\\d|$)');
+      const bulletMatch = line.match(bulletRe);
+      if (bulletMatch && bulletMatch[1]!.trim().length > 2) {
+        result.push({
+          drug_name: bulletMatch[1]!.replace(/\*\*/g, '').trim(),
+          dosage: '',
+          frequency: '',
+          duration: '',
+        });
+      }
+    }
+  }
+  return result;
+}
