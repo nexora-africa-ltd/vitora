@@ -65,6 +65,7 @@ export const ACTION_PERMISSIONS = {
   // === Pharmacy Module ===
   'pharmacy.view_dashboard': ['PHARMACIST', 'PHARMACY_TECH', 'ADMIN'],
   'pharmacy.view_prescriptions': ['PHARMACIST', 'PHARMACY_TECH', 'NURSE', 'DOCTOR'],
+  'pharmacy.create_prescription': ['PHARMACIST', 'DOCTOR', 'CLINICAL_OFFICER'],
   'pharmacy.dispense': ['PHARMACIST', 'PHARMACY_TECH'],
   'pharmacy.verify_prescription': ['PHARMACIST'],
   'pharmacy.view_drugs': ['PHARMACIST', 'PHARMACY_TECH', 'DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],

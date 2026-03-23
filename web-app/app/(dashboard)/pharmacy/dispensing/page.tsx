@@ -39,6 +39,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import {
   usePrescription,
   usePendingPrescriptions,
@@ -60,6 +61,7 @@ export default function DispensingPage() {
   const searchParams = useSearchParams();
   const prescriptionId = searchParams.get('prescription');
   const { refresh, isRefreshing } = usePageRefresh();
+  const { canPerformAction } = usePermissions();
 
   // If prescription ID is provided, show that prescription
   // Otherwise show the pending prescriptions queue
@@ -212,17 +214,19 @@ export default function DispensingPage() {
                 . Expired prescriptions cannot be dispensed for patient safety.
               </p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full sm:w-auto border-destructive/30 hover:bg-destructive/10"
-                  asChild
-                >
-                  <Link href={`/pharmacy/prescriptions/new?patient=${prescription.patient}${prescription.encounter ? `&encounter=${prescription.encounter}` : ''}`}>
-                    <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                    Create New Prescription
-                  </Link>
-                </Button>
+                {canPerformAction('pharmacy.create_prescription') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full sm:w-auto border-destructive/30 hover:bg-destructive/10"
+                    asChild
+                  >
+                    <Link href={`/pharmacy/prescriptions/new?patient=${prescription.patient}${prescription.encounter ? `&encounter=${prescription.encounter}` : ''}`}>
+                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                      Create New Prescription
+                    </Link>
+                  </Button>
+                )}
                 <span className="text-xs text-muted-foreground">
                   Contact the prescriber to issue a renewal if the medication is still needed.
                 </span>
