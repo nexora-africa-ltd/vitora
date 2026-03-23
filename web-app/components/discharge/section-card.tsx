@@ -1,6 +1,6 @@
 'use client';
 
-import { BrainCircuit, Loader2, AlertTriangle, Pencil, Eye, Trash2 } from 'lucide-react';
+import { BrainCircuit, Loader2, AlertTriangle, Pencil, Eye, Trash2, Eraser } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ interface SectionCardProps {
   onRename: (title: string) => void;
   onToggleEdit: () => void;
   onRemove: () => void;
+  onClear: () => void;
   onGenerate: () => void;
 }
 
@@ -36,6 +37,7 @@ export function SectionCard({
   onRename,
   onToggleEdit,
   onRemove,
+  onClear,
   onGenerate,
 }: SectionCardProps) {
   const hasContent = !!section.content.trim();
@@ -126,6 +128,24 @@ export function SectionCard({
               <TooltipContent>{isEditing ? 'Preview' : 'Edit'}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          {hasContent && (
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={onClear}
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-amber-600 shrink-0"
+                  >
+                    <Eraser className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Clear content</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <TooltipProvider delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>

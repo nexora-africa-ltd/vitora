@@ -130,7 +130,6 @@ export function useDischargeAI(params: UseDischargeAIParams) {
       });
 
       if (result.sections?.length) {
-        const instructionParts: string[] = [];
         for (const section of result.sections) {
           const { cleanContent } = parseAdvisories(section.content);
           const sid = section.section_id;
@@ -146,20 +145,11 @@ export function useDischargeAI(params: UseDischargeAIParams) {
             }
           }
 
-          if ((sid === 'patient_education' || sid === 'condition_at_discharge') && cleanContent) {
-            instructionParts.push(cleanContent);
-          }
-
           if (sid === 'discharge_medications' && cleanContent) {
             const medLines = cleanContent.split('\n').filter((l) => l.trim());
             const medParsed = parseMedicationLines(medLines);
             if (medParsed.length > 0) setSuggestedMeds(medParsed);
           }
-        }
-
-        if (instructionParts.length > 0 && !patientInstructions) {
-          setPatientInstructions(instructionParts.join('\n\n'));
-          setInstructionsGenerated(true);
         }
 
         const aiNarrativeSections = result.sections.filter(

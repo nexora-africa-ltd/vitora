@@ -839,6 +839,7 @@ export default function DischargePage() {
                 onRename={(title) => handleRenameSection(section.id, title)}
                 onToggleEdit={() => setEditingSectionId(editingSectionId === section.id ? null : section.id)}
                 onRemove={() => handleRemoveSection(section.id)}
+                onClear={() => updateSection(section.id, '')}
                 onGenerate={() => handleGenerateSection(section.id)}
               />
             ))}
