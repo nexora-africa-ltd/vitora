@@ -54,6 +54,48 @@ import { printDischargeDocument } from '@/lib/documents';
 import type { DischargeType, DischargeMedication, MaternityContinuityAction } from '@/lib/types/inpatient';
 import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode, ClinicalDocSection } from '@/lib/types/ai';
 
+// ---------------------------------------------------------------------------
+// Advisory extraction — strips AI advisory blockquotes from section content
+// ---------------------------------------------------------------------------
+const ADVISORY_PATTERN = /^>\s*\[.*?\].*$/gm;
+
+interface ParsedSection {
+  cleanContent: string;
+  advisories: { text: string; severity: 'warning' | 'critical' }[];
+}
+
+function parseAdvisories(content: string): ParsedSection {
+  const advisories: ParsedSection['advisories'] = [];
+  const lines = content.split('\n');
+  const cleanLines: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (ADVISORY_PATTERN.test(trimmed)) {
+      ADVISORY_PATTERN.lastIndex = 0; // reset regex
+      const text = trimmed.replace(/^>\s*/, '');
+      const isCritical = /critical|urgent|immediate|danger/i.test(text);
+      advisories.push({ text, severity: isCritical ? 'critical' : 'warning' });
+    } else {
+      cleanLines.push(line);
+    }
+  }
+
+  // Trim leading/trailing blank lines from the clean content
+  const cleanContent = cleanLines.join('\n').replace(/^\n+|\n+$/g, '');
+  return { cleanContent, advisories };
+}
+
+/** Assemble sections into flat text, stripping advisory lines. */
+function assembleSections(sections: ClinicalDocSection[]): string {
+  return sections
+    .map((s) => {
+      const { cleanContent } = parseAdvisories(s.content);
+      return `## ${s.title}\n${cleanContent}`;
+    })
+    .join('\n\n');
+}
+
 const DISCHARGE_TYPES: { value: DischargeType; label: string }[] = [
   { value: 'NORMAL', label: 'Normal Discharge' },
   { value: 'ROUTINE', label: 'Routine Discharge' },
@@ -424,9 +466,8 @@ export default function DischargePage() {
       if (result.sections?.length) {
         setSummarySections(result.sections);
         setSectionProvenance(result.section_provenance || {});
-        // Assemble sections into flat text for the save handler
-        const assembled = result.sections.map((s) => `## ${s.title}\n${s.content}`).join('\n\n');
-        setDischargeSummary(assembled);
+        // Assemble sections into flat text for the save handler (advisories stripped)
+        setDischargeSummary(assembleSections(result.sections));
         setSummaryGenerated(true);
         setEditingSectionId(null);
         toast({
@@ -505,9 +546,8 @@ export default function DischargePage() {
   const updateSection = useCallback((sectionId: string, newContent: string) => {
     setSummarySections((prev) => {
       const updated = prev.map((s) => s.section_id === sectionId ? { ...s, content: newContent } : s);
-      // Keep dischargeSummary in sync for the save handler
-      const assembled = updated.map((s) => `## ${s.title}\n${s.content}`).join('\n\n');
-      setDischargeSummary(assembled);
+      // Keep dischargeSummary in sync (advisories stripped)
+      setDischargeSummary(assembleSections(updated));
       return updated;
     });
   }, []);
@@ -860,7 +900,7 @@ export default function DischargePage() {
                 {dischargeSummary && (
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => printDischargeDocument({
                       documentTitle: 'Discharge Summary',
@@ -903,7 +943,7 @@ export default function DischargePage() {
                   size="sm"
                   onClick={handleGenerateSummary}
                   disabled={clinicalDocument.isPending}
-                  className="gap-1.5 text-xs text-muted-foreground"
+                  className="gap-1.5 text-xs text-green-400"
                 >
                   {clinicalDocument.isPending ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -927,8 +967,16 @@ export default function DischargePage() {
                 {summarySections.map((section) => {
                   const provenance = sectionProvenance[section.section_id];
                   const isEditing = editingSectionId === section.section_id;
+                  const { cleanContent, advisories } = parseAdvisories(section.content);
+                  const hasCritical = advisories.some((a) => a.severity === 'critical');
+                  const hasAdvisories = advisories.length > 0;
+                  const borderColor = hasCritical
+                    ? 'border-red-400 dark:border-red-500'
+                    : hasAdvisories
+                      ? 'border-amber-400 dark:border-amber-500'
+                      : '';
                   return (
-                    <div key={section.section_id} className="rounded-lg border bg-card">
+                    <div key={section.section_id} className={`rounded-lg border bg-card ${borderColor}`}>
                       <div className="flex items-center justify-between border-b px-3 py-2">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-sm font-medium truncate">{section.title}</span>
@@ -941,6 +989,14 @@ export default function DischargePage() {
                                 : provenance === 'not_documented' ? 'Not documented'
                                 : provenance === 'skeleton' ? 'Template'
                                 : provenance}
+                            </Badge>
+                          )}
+                          {hasAdvisories && (
+                            <Badge variant="outline" className={`shrink-0 text-[10px] px-1.5 py-0 ${
+                              hasCritical ? 'border-red-400 text-red-700 dark:text-red-400' : 'border-amber-400 text-amber-700 dark:text-amber-400'
+                            }`}>
+                              <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
+                              {advisories.length} {advisories.length === 1 ? 'advisory' : 'advisories'}
                             </Badge>
                           )}
                         </div>
@@ -962,14 +1018,34 @@ export default function DischargePage() {
                             rows={4}
                             className="text-sm"
                           />
-                        ) : section.content ? (
+                        ) : cleanContent ? (
                           <div className="tibabot-markdown prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden">
-                            <Markdown remarkPlugins={[remarkGfm]}>{section.content}</Markdown>
+                            <Markdown remarkPlugins={[remarkGfm]}>{cleanContent}</Markdown>
                           </div>
                         ) : (
                           <p className="text-sm text-muted-foreground italic">No content — click edit to add.</p>
                         )}
                       </div>
+                      {/* Advisory banners rendered outside section content */}
+                      {advisories.length > 0 && !isEditing && (
+                        <div className="border-t px-3 pb-3 pt-2 space-y-1.5">
+                          {advisories.map((adv, i) => (
+                            <div
+                              key={i}
+                              className={`flex items-start gap-2 rounded-md px-2.5 py-1.5 text-xs ${
+                                adv.severity === 'critical'
+                                  ? 'bg-red-50 text-red-800 dark:bg-red-950/30 dark:text-red-300'
+                                  : 'bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300'
+                              }`}
+                            >
+                              <AlertTriangle className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${
+                                adv.severity === 'critical' ? 'text-red-500' : 'text-amber-500'
+                              }`} />
+                              <span>{adv.text}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1022,7 +1098,7 @@ export default function DischargePage() {
               {isAIEnabled && !instructionsGenerated && (
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={handleGenerateInstructions}
                   disabled={clinicalDocument.isPending}
@@ -1043,7 +1119,7 @@ export default function DischargePage() {
                   size="sm"
                   onClick={handleGenerateInstructions}
                   disabled={clinicalDocument.isPending}
-                  className="gap-1.5 text-xs text-muted-foreground"
+                  className="gap-1.5 text-xs text-green-400"
                 >
                   {clinicalDocument.isPending ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
