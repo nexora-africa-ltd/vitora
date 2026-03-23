@@ -404,6 +404,8 @@ export const AIClinicalDocumentResponseSchema = z.object({
   processing_time_ms: z.number().optional(),
   model_used: z.string().optional(),
   disclaimer: z.string().optional(),
+  generation_mode: z.string().optional(),
+  section_provenance: z.record(z.string()).optional(),
   mode: z.string().optional(),
   error: z.string().nullable().optional(),
 }).passthrough();

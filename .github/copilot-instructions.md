@@ -1523,6 +1523,8 @@ When using a `Switch` to toggle between two modes, show **only the active label*
 </TooltipProvider>
 ```
 
+**Default state:** Switches should default to the **on (checked)** position. Map the primary/recommended mode to `checked={true}` so the toggle appears active on first render. The "off" state should be the less common alternative.
+
 ---
 
 ## ✅ Commit Discipline (Required)
