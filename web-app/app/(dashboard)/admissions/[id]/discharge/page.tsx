@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
 import { Save, Plus, Trash2, Clock, CheckCircle2, BrainCircuit, Loader2, AlertTriangle, ShieldAlert, Printer, ShieldCheck, Pencil, Eye } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/shared/page-header';
@@ -55,9 +56,12 @@ import type { DischargeType, DischargeMedication, MaternityContinuityAction } fr
 import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode, ClinicalDocSection } from '@/lib/types/ai';
 
 // ---------------------------------------------------------------------------
-// Advisory extraction — strips AI advisory blockquotes from section content
+// Advisory extraction — strips AI advisory/meta lines from section content
+// Catches: "> [AI suggested ...]", "[Not documented]", "[AI suggested — ...]"
 // ---------------------------------------------------------------------------
-const ADVISORY_PATTERN = /^>\s*\[.*?\].*$/gm;
+
+/** Matches lines that are blockquoted advisories OR standalone bracket-tagged lines. */
+const BRACKET_LINE_PATTERN = /^\[.*?\].*$|^>\s*\[.*?\].*$/;
 
 interface ParsedSection {
   cleanContent: string;
@@ -71,8 +75,7 @@ function parseAdvisories(content: string): ParsedSection {
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (ADVISORY_PATTERN.test(trimmed)) {
-      ADVISORY_PATTERN.lastIndex = 0; // reset regex
+    if (BRACKET_LINE_PATTERN.test(trimmed)) {
       const text = trimmed.replace(/^>\s*/, '');
       const isCritical = /critical|urgent|immediate|danger/i.test(text);
       advisories.push({ text, severity: isCritical ? 'critical' : 'warning' });
@@ -86,14 +89,76 @@ function parseAdvisories(content: string): ParsedSection {
   return { cleanContent, advisories };
 }
 
-/** Assemble sections into flat text, stripping advisory lines. */
+// Section IDs that get routed to dedicated form fields instead of summary cards
+const ROUTED_SECTION_IDS = new Set(['discharge_medications', 'condition_at_discharge', 'follow_up']);
+
+/** Render advisory text with bracket tags converted to italics. */
+function formatAdvisoryText(text: string): React.ReactNode {
+  const match = text.match(/^\[([^\]]+)\]\s*(.*)/);
+  if (!match) return text;
+  return (
+    <>
+      <em className="font-medium">{match[1]}</em>{match[2] ? ` ${match[2]}` : ''}
+    </>
+  );
+}
+
+/** Assemble only summary sections into flat text, stripping advisory lines and routed sections. */
 function assembleSections(sections: ClinicalDocSection[]): string {
+  return sections
+    .filter((s) => !ROUTED_SECTION_IDS.has(s.section_id))
+    .map((s) => {
+      const { cleanContent } = parseAdvisories(s.content);
+      return `## ${s.title}\n${cleanContent}`;
+    })
+    .join('\n\n');
+}
+
+/** Assemble ALL sections for full-document printing. */
+function assembleFullDocument(sections: ClinicalDocSection[]): string {
   return sections
     .map((s) => {
       const { cleanContent } = parseAdvisories(s.content);
       return `## ${s.title}\n${cleanContent}`;
     })
     .join('\n\n');
+}
+
+/**
+ * Extract a follow-up date from AI-generated text.
+ * Handles relative expressions ("in 2 weeks", "after 14 days", "in 1 month")
+ * and explicit dates ("2026-04-06", "April 6, 2026", "6th April 2026").
+ * Returns yyyy-MM-dd string or null.
+ */
+function extractFollowUpDate(text: string): string | null {
+  // 1. Try explicit ISO date (yyyy-MM-dd)
+  const isoMatch = text.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+  if (isoMatch?.[1]) return isoMatch[1];
+
+  // 2. Try "Month Day, Year" or "Day Month Year"
+  const months = 'January|February|March|April|May|June|July|August|September|October|November|December';
+  const namedMatch = text.match(new RegExp(`\\b(${months})\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{4})\\b`, 'i'))
+    || text.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${months}),?\\s+(\\d{4})\\b`, 'i'));
+  if (namedMatch?.[0]) {
+    const parsed = new Date(namedMatch[0].replace(/(\d+)(st|nd|rd|th)/i, '$1'));
+    if (!isNaN(parsed.getTime())) {
+      return format(parsed, 'yyyy-MM-dd');
+    }
+  }
+
+  // 3. Try relative: "in X day(s)/week(s)/month(s)"
+  const relMatch = text.match(/\b(?:in|after)\s+(\d+)\s*(day|week|month)s?\b/i);
+  if (relMatch?.[1] && relMatch[2]) {
+    const n = parseInt(relMatch[1], 10);
+    const unit = relMatch[2].toLowerCase();
+    const d = new Date();
+    if (unit === 'day') d.setDate(d.getDate() + n);
+    else if (unit === 'week') d.setDate(d.getDate() + n * 7);
+    else if (unit === 'month') d.setMonth(d.getMonth() + n);
+    return format(d, 'yyyy-MM-dd');
+  }
+
+  return null;
 }
 
 const DISCHARGE_TYPES: { value: DischargeType; label: string }[] = [
@@ -169,6 +234,7 @@ export default function DischargePage() {
   const [summarySections, setSummarySections] = useState<ClinicalDocSection[]>([]);
   const [sectionProvenance, setSectionProvenance] = useState<Record<string, string>>({});
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [printFullDocument, setPrintFullDocument] = useState(true);
 
   // Calculate length of stay
   const lengthOfStay = useMemo(() => {
@@ -466,7 +532,31 @@ export default function DischargePage() {
       if (result.sections?.length) {
         setSummarySections(result.sections);
         setSectionProvenance(result.section_provenance || {});
-        // Assemble sections into flat text for the save handler (advisories stripped)
+
+        // Route specific sections to dedicated form fields
+        for (const section of result.sections) {
+          const { cleanContent } = parseAdvisories(section.content);
+          if (section.section_id === 'follow_up' || section.section_id === 'condition_at_discharge') {
+            if (cleanContent && !patientInstructions) {
+              setPatientInstructions(cleanContent);
+              setInstructionsGenerated(true);
+            }
+          }
+          if (section.section_id === 'follow_up' && cleanContent) {
+            if (!followUpInstructions) {
+              // Extract a one-line summary for the follow-up instructions field
+              const firstLine = cleanContent.split('\n').find((l) => l.trim());
+              if (firstLine) setFollowUpInstructions(firstLine.replace(/^[-\d.]+\s*/, '').trim());
+            }
+            if (!followUpDate) {
+              // Try to extract a follow-up date from the content
+              const extractedDate = extractFollowUpDate(cleanContent);
+              if (extractedDate) setFollowUpDate(extractedDate);
+            }
+          }
+        }
+
+        // Assemble only summary sections (routed ones excluded)
         setDischargeSummary(assembleSections(result.sections));
         setSummaryGenerated(true);
         setEditingSectionId(null);
@@ -490,57 +580,7 @@ export default function DischargePage() {
     } catch {
       toast({ title: 'Generation Failed', description: 'Could not generate discharge summary. Please write it manually.', variant: 'destructive' });
     }
-  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, clinicalDocument, toast, patientCtx, clinicalHistoryText, generationMode]);
-
-  // AI-generate patient instructions
-  const handleGenerateInstructions = useCallback(async () => {
-    if (!admission) return;
-    const primaryEntry = diagnoses.find((d) => d.role === 'PRIMARY');
-    const primaryDisplay = primaryEntry?.code.icd11Display || primaryEntry?.code.icd10Display || '';
-    const diagnosis = primaryDisplay || admission.admitting_diagnosis_text || admission.admitting_diagnosis || '';
-    const medsText = medications.filter((m) => m.drug_name).map((m) => `${m.drug_name} ${m.dosage} ${m.frequency} for ${m.duration || 'as directed'}${m.instructions ? ` (${m.instructions})` : ''}`);
-
-    const docPatientCtx: ClinicalDocPatientContext = {
-      patient_age: admission.patient_age ?? 0,
-      patient_sex: admission.patient_gender === 'M' ? 'male' : 'female',
-      allergies: patientCtx.allergies || [],
-      comorbidities: patientCtx.comorbidities || [],
-      current_medications: patientCtx.current_medications || [],
-    };
-
-    const admissionCtx: ClinicalDocAdmissionContext = {
-      primary_diagnosis: diagnosis,
-      discharge_medications: medsText,
-    };
-
-    try {
-      const result = await clinicalDocument.mutateAsync({
-        document_type: 'discharge_summary',
-        patient_context: docPatientCtx,
-        admission_context: admissionCtx,
-        output_format: 'markdown',
-        generation_mode: generationMode,
-        additional_instructions: [
-          'Focus on patient-friendly discharge instructions.',
-          'Include: medication schedule, dietary advice, activity restrictions, red-flag symptoms to watch for, and when to return to hospital.',
-          'Use simple language.',
-          clinicalHistoryText || '',
-        ].filter(Boolean).join(' '),
-      });
-      if (result.full_text) {
-        setPatientInstructions(result.full_text);
-        setInstructionsGenerated(true);
-        toast({
-          title: generationMode === 'generate' ? 'Strict Draft Generated' : 'Draft Generated',
-          description: generationMode === 'generate'
-            ? 'Facts-only patient instructions generated. Audit-safe — review before filing.'
-            : 'TibaBot drafted patient instructions. Please review and edit.',
-        });
-      }
-    } catch {
-      toast({ title: 'Generation Failed', description: 'Could not generate patient instructions. Please write them manually.', variant: 'destructive' });
-    }
-  }, [admission, diagnoses, medications, clinicalDocument, toast, patientCtx, clinicalHistoryText, generationMode]);
+  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, clinicalDocument, toast, patientCtx, clinicalHistoryText, generationMode, patientInstructions, followUpInstructions, followUpDate]);
 
   // Update a single section's content and sync the flat dischargeSummary
   const updateSection = useCallback((sectionId: string, newContent: string) => {
@@ -898,26 +938,39 @@ export default function DischargePage() {
               <Label htmlFor="discharge-summary">Discharge Summary *</Label>
               <div className="flex items-center gap-1">
                 {dischargeSummary && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => printDischargeDocument({
-                      documentTitle: 'Discharge Summary',
-                      content: dischargeSummary,
-                      patientName: admission.patient_name || '',
-                      admissionNumber: admission.admission_number,
-                      wardName: admission.ward_name || '',
-                      admissionDate: admission.admission_date,
-                      admittingDiagnosis: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
-                      facilityName: facility?.name,
-                      facilityMflCode: facility?.mfl_code,
-                    })}
-                    className="gap-1.5 text-xs"
-                  >
-                    <Printer className="h-3.5 w-3.5" />
-                    Print
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {summarySections.length > 0 && (
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <Checkbox
+                          checked={printFullDocument}
+                          onCheckedChange={(checked) => setPrintFullDocument(!!checked)}
+                        />
+                        <span className="text-[11px] text-muted-foreground">Include all sections</span>
+                      </label>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => printDischargeDocument({
+                        documentTitle: 'Discharge Summary',
+                        content: printFullDocument && summarySections.length > 0
+                          ? assembleFullDocument(summarySections)
+                          : dischargeSummary,
+                        patientName: admission.patient_name || '',
+                        admissionNumber: admission.admission_number,
+                        wardName: admission.ward_name || '',
+                        admissionDate: admission.admission_date,
+                        admittingDiagnosis: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
+                        facilityName: facility?.name,
+                        facilityMflCode: facility?.mfl_code,
+                      })}
+                      className="gap-1.5 text-xs"
+                    >
+                      <Printer className="h-3.5 w-3.5" />
+                      Print
+                    </Button>
+                  </div>
                 )}
               {isAIEnabled && !summaryGenerated && (
                 <Button
@@ -964,7 +1017,7 @@ export default function DischargePage() {
               </div>
             ) : summaryGenerated && summarySections.length > 0 ? (
               <div className="space-y-3">
-                {summarySections.map((section) => {
+                {summarySections.filter((s) => !ROUTED_SECTION_IDS.has(s.section_id)).map((section) => {
                   const provenance = sectionProvenance[section.section_id];
                   const isEditing = editingSectionId === section.section_id;
                   const { cleanContent, advisories } = parseAdvisories(section.content);
@@ -1041,7 +1094,7 @@ export default function DischargePage() {
                               <AlertTriangle className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${
                                 adv.severity === 'critical' ? 'text-red-500' : 'text-amber-500'
                               }`} />
-                              <span>{adv.text}</span>
+                              <span>{formatAdvisoryText(adv.text)}</span>
                             </div>
                           ))}
                         </div>
@@ -1095,42 +1148,14 @@ export default function DischargePage() {
                     Print
                   </Button>
                 )}
-              {isAIEnabled && !instructionsGenerated && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleGenerateInstructions}
-                  disabled={clinicalDocument.isPending}
-                  className="gap-1.5 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400"
-                >
-                  {clinicalDocument.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <BrainCircuit className="h-3.5 w-3.5" />
-                  )}
-                  Generate with TibaBot
-                </Button>
-              )}
-              {isAIEnabled && instructionsGenerated && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleGenerateInstructions}
-                  disabled={clinicalDocument.isPending}
-                  className="gap-1.5 text-xs text-green-400"
-                >
-                  {clinicalDocument.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <BrainCircuit className="h-3.5 w-3.5" />
-                  )}
-                  Regenerate
-                </Button>
-              )}
               </div>
             </div>
+            {instructionsGenerated && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <BrainCircuit className="h-3 w-3 text-purple-400" />
+                Auto-populated from TibaBot discharge summary. Edit below.
+              </p>
+            )}
             {clinicalDocument.isPending && !patientInstructions ? (
               <div className="rounded-md border bg-muted/30 p-4 space-y-2 animate-pulse">
                 <Skeleton className="h-4 w-2/3" />
