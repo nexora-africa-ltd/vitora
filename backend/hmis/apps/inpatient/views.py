@@ -1938,12 +1938,14 @@ class AdmissionViewSet(viewsets.ModelViewSet):
             "first_pending_order_number": first_lab_order_number,
         }
 
-        # ----- Nursing: all care plan entries resolved or no active entries -----
+        # ----- Nursing: all care plan entries resolved/discontinued -----
         nursing_cleared = True
         active_entries_count = 0
         try:
             kardex = admission.kardex
-            active_entries = kardex.care_plan_entries.filter(status="ACTIVE")
+            active_entries = kardex.care_plan_entries.filter(
+                status__in=["ACTIVE", "ONGOING"]
+            )
             active_entries_count = active_entries.count()
             nursing_cleared = active_entries_count == 0
         except NursingKardex.DoesNotExist:
@@ -1954,7 +1956,7 @@ class AdmissionViewSet(viewsets.ModelViewSet):
             "reason": (
                 "No active nursing care plans"
                 if nursing_cleared
-                else f"{active_entries_count} active nursing care plan(s)"
+                else f"{active_entries_count} active/ongoing nursing care plan(s)"
             ),
             "pending_count": active_entries_count,
         }
@@ -2490,6 +2492,8 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
 
         Only the following fields can be updated:
         - implementation, evaluation, status
+
+        Entries in terminal statuses (RESOLVED, DISCONTINUED) cannot be updated.
         """
         kardex = self.get_object()
         try:
@@ -2499,12 +2503,26 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
                 {"error": "Care plan entry not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
+        if entry.status in NursingCarePlanEntry.TERMINAL_STATUSES:
+            return Response(
+                {"error": f"Cannot update a {entry.get_status_display().lower()} care plan entry"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         allowed_fields = {"implementation", "evaluation", "status"}
         update_data = {k: v for k, v in request.data.items() if k in allowed_fields}
 
         if not update_data:
             return Response(
                 {"error": "No valid fields to update. Allowed: implementation, evaluation, status"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate status transition
+        new_status = update_data.get("status")
+        if new_status and new_status not in dict(NursingCarePlanEntry.STATUS_CHOICES):
+            return Response(
+                {"error": f"Invalid status: {new_status}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -2522,6 +2540,99 @@ class NursingKardexViewSet(viewsets.ModelViewSet):
                 "kardex_id": kardex.id,
                 "admission_number": kardex.admission.admission_number,
                 "updated_fields": list(update_data.keys()),
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        result_serializer = NursingCarePlanEntrySerializer(entry)
+        return Response(result_serializer.data)
+
+    @action(detail=True, methods=["post"], url_path="resolve-all-care-plans")
+    def resolve_all_care_plans(self, request, pk=None):
+        """
+        Bulk-resolve all active/ongoing care plan entries for discharge clearance.
+
+        Sets all non-terminal entries to RESOLVED. Optionally accepts:
+        - evaluation: str — evaluation note applied to all resolved entries
+        """
+        kardex = self.get_object()
+        evaluation = request.data.get("evaluation", "")
+
+        pending_entries = kardex.care_plan_entries.filter(
+            status__in=["ACTIVE", "ONGOING"]
+        )
+        count = pending_entries.count()
+
+        if count == 0:
+            return Response(
+                {"message": "No active care plan entries to resolve", "resolved_count": 0}
+            )
+
+        update_fields = {"status": "RESOLVED"}
+        if evaluation:
+            update_fields["evaluation"] = evaluation
+
+        pending_entries.update(**update_fields)
+
+        AuditLog.log(
+            action="kardex_care_plan_bulk_resolve",
+            user=request.user,
+            resource_type="NursingKardex",
+            resource_id=kardex.id,
+            details={
+                "admission_number": kardex.admission.admission_number,
+                "resolved_count": count,
+                "evaluation": evaluation[:200] if evaluation else "",
+            },
+            ip_address=get_client_ip(request),
+        )
+
+        return Response(
+            {"message": f"{count} care plan entry(ies) resolved", "resolved_count": count}
+        )
+
+    @action(detail=True, methods=["post"], url_path=r"discontinue-care-plan-entry/(?P<entry_id>\d+)")
+    def discontinue_care_plan_entry(self, request, pk=None, entry_id=None):
+        """
+        Discontinue a care plan entry (e.g., plan abandoned, patient refused).
+
+        Requires:
+        - reason: str — reason for discontinuation (stored in evaluation field)
+        """
+        kardex = self.get_object()
+        try:
+            entry = kardex.care_plan_entries.get(id=entry_id)
+        except NursingCarePlanEntry.DoesNotExist:
+            return Response(
+                {"error": "Care plan entry not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        if entry.status in NursingCarePlanEntry.TERMINAL_STATUSES:
+            return Response(
+                {"error": f"Cannot discontinue a {entry.get_status_display().lower()} care plan entry"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        reason = request.data.get("reason", "").strip()
+        if not reason:
+            return Response(
+                {"error": "A reason is required to discontinue a care plan entry"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        entry.status = "DISCONTINUED"
+        entry.evaluation = f"[Discontinued] {reason}" if not entry.evaluation else f"{entry.evaluation}\n[Discontinued] {reason}"
+        entry.save(update_fields=["status", "evaluation", "updated_at"])
+
+        AuditLog.log(
+            action="kardex_care_plan_entry_discontinue",
+            user=request.user,
+            resource_type="NursingCarePlanEntry",
+            resource_id=entry.id,
+            details={
+                "kardex_id": kardex.id,
+                "admission_number": kardex.admission.admission_number,
+                "reason": reason[:200],
             },
             ip_address=get_client_ip(request),
         )

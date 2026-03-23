@@ -1765,9 +1765,13 @@ class NursingCarePlanEntry(models.Model):
 
     STATUS_CHOICES = [
         ("ACTIVE", "Active"),
-        ("RESOLVED", "Resolved"),
         ("ONGOING", "Ongoing"),
+        ("RESOLVED", "Resolved"),
+        ("DISCONTINUED", "Discontinued"),
     ]
+
+    # Terminal statuses — entries in these states cannot be further updated
+    TERMINAL_STATUSES = {"RESOLVED", "DISCONTINUED"}
 
     kardex = models.ForeignKey(
         NursingKardex,

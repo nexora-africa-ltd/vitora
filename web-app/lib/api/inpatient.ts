@@ -461,6 +461,22 @@ export const inpatientApi = {
     return parseResponse(NursingCarePlanEntrySchema, response.data, { context: 'inpatientApi.updateCarePlanEntry' });
   },
 
+  async resolveAllCarePlans(kardexId: number, evaluation?: string): Promise<{ message: string; resolved_count: number }> {
+    const response = await apiClient.post<{ message: string; resolved_count: number }>(
+      `/api/inpatient/kardex/${kardexId}/resolve-all-care-plans/`,
+      evaluation ? { evaluation } : {}
+    );
+    return response.data;
+  },
+
+  async discontinueCarePlanEntry(kardexId: number, entryId: number, reason: string): Promise<NursingCarePlanEntry> {
+    const response = await apiClient.post<NursingCarePlanEntry>(
+      `/api/inpatient/kardex/${kardexId}/discontinue-care-plan-entry/${entryId}/`,
+      { reason }
+    );
+    return parseResponse(NursingCarePlanEntrySchema, response.data, { context: 'inpatientApi.discontinueCarePlanEntry' });
+  },
+
   // ============================================================================
   // Shift Handovers
   // ============================================================================
