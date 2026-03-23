@@ -12,7 +12,7 @@
  */
 export const ACTION_PERMISSIONS = {
   // === Patients Module ===
-  'patients.view': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'RECORDS_CLERK', 'ADMIN', 'LAB_TECH', 'LAB_SCIENTIST', 'PHARMACIST', 'PHARMACY_TECH', 'RADIOGRAPHER', 'RADIOLOGIST'],
+  'patients.view': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'RECORDS_CLERK', 'ADMIN', 'LAB_TECH', 'LAB_SCIENTIST', 'PHARMACIST', 'RADIOGRAPHER', 'RADIOLOGIST', 'BILLING_CLERK', 'CASHIER', 'BILLING_SUPERVISOR', 'HR_OFFICER'],
   'patients.create': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'RECORDS_CLERK', 'ADMIN'],
   'patients.edit': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'RECORDS_CLERK', 'ADMIN'],
   'patients.edit_identity': ['ADMIN', 'RECEPTIONIST', 'RECORDS_CLERK'],
@@ -21,46 +21,46 @@ export const ACTION_PERMISSIONS = {
 
   // === Check-in Module ===
   'checkin.checkin': ['RECEPTIONIST', 'NURSE', 'RECORDS_CLERK', 'ADMIN'],
-  'checkin.view_queue': ['RECEPTIONIST', 'NURSE', 'RECORDS_CLERK', 'DOCTOR', 'CLINICAL_OFFICER', 'ADMIN'],
+  'checkin.view_queue': ['RECEPTIONIST', 'NURSE', 'RECORDS_CLERK', 'ADMIN'],
   'checkin.checkout': ['RECEPTIONIST', 'NURSE', 'RECORDS_CLERK', 'ADMIN'],
 
   // === Triage Module ===
   'triage.assess': ['NURSE', 'CLINICAL_OFFICER'],
-  'triage.view_queue': ['NURSE', 'CLINICAL_OFFICER', 'DOCTOR', 'RECEPTIONIST', 'ADMIN'],
+  'triage.view_queue': ['NURSE', 'CLINICAL_OFFICER', 'DOCTOR', 'ADMIN'],
   'triage.reassess': ['NURSE', 'CLINICAL_OFFICER', 'DOCTOR'],
   'triage.view_reports': ['NURSE', 'CLINICAL_OFFICER', 'DOCTOR', 'ADMIN'],
   'triage.manage_settings': ['ADMIN'],
 
   // === Encounters Module ===
-  'encounters.create': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
-  'encounters.edit': ['DOCTOR', 'CLINICAL_OFFICER', 'ADMIN'],
+  'encounters.create': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE'],
+  'encounters.edit': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'ADMIN'],
   'encounters.view_sensitive': ['DOCTOR', 'CLINICAL_OFFICER', 'COUNSELOR', 'ADMIN'],
-  'encounters.prescribe': ['DOCTOR', 'CLINICAL_OFFICER'],
-  'encounters.order_lab': ['DOCTOR', 'CLINICAL_OFFICER'],
-  'encounters.order_imaging': ['DOCTOR', 'CLINICAL_OFFICER'],
-  'encounters.diagnose': ['DOCTOR', 'CLINICAL_OFFICER'],
-  'encounters.refer': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
+  'encounters.prescribe': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
+  'encounters.order_lab': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
+  'encounters.order_imaging': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
+  'encounters.diagnose': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
+  'encounters.refer': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE'],
 
   // === Emergency Module ===
-  'emergency.view_dashboard': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
-  'emergency.view_bed_board': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'emergency.view_dashboard': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'emergency.view_bed_board': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
 
   // === Inpatient Module ===
-  'inpatient.view_ward': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'inpatient.view_ward': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
   'inpatient.manage_ward': ['ADMIN'],
-  'inpatient.create_admission': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
-  'inpatient.view_admissions': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'inpatient.create_admission': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'inpatient.view_admissions': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
   'inpatient.record_vitals': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
-  'inpatient.make_rounds': ['DOCTOR', 'CLINICAL_OFFICER'],
-  'inpatient.view_reviews': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
-  'inpatient.view_kardex': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
-  'inpatient.prescribe': ['DOCTOR', 'CLINICAL_OFFICER'],
+  'inpatient.make_rounds': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
+  'inpatient.view_reviews': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'inpatient.view_kardex': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE'],
+  'inpatient.prescribe': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
   'inpatient.administer_medication': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
-  'inpatient.order_lab': ['DOCTOR', 'CLINICAL_OFFICER'],
-  'inpatient.order_imaging': ['DOCTOR', 'CLINICAL_OFFICER'],
-  'inpatient.discharge': ['DOCTOR', 'CLINICAL_OFFICER'],
+  'inpatient.order_lab': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
+  'inpatient.order_imaging': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
+  'inpatient.discharge': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
   'inpatient.transfer': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
-  'inpatient.view_alerts': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'inpatient.view_alerts': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
 
   // === Pharmacy Module ===
   'pharmacy.view_dashboard': ['PHARMACIST', 'PHARMACY_TECH', 'ADMIN'],
@@ -84,16 +84,16 @@ export const ACTION_PERMISSIONS = {
   'laboratory.view_analytics': ['LAB_SCIENTIST', 'PATHOLOGIST', 'ADMIN'],
 
   // === Imaging Module ===
-  'imaging.view_dashboard': ['RADIOGRAPHER', 'RADIOLOGIST', 'ADMIN'],
-  'imaging.view_orders': ['RADIOGRAPHER', 'RADIOLOGIST', 'DOCTOR', 'NURSE'],
-  'imaging.perform_scan': ['RADIOGRAPHER'],
-  'imaging.upload_images': ['RADIOGRAPHER'],
-  'imaging.view_studies': ['RADIOGRAPHER', 'RADIOLOGIST', 'DOCTOR'],
+  'imaging.view_dashboard': ['RADIOGRAPHER', 'SONOGRAPHER', 'RADIOLOGIST', 'ADMIN'],
+  'imaging.view_orders': ['RADIOGRAPHER', 'SONOGRAPHER', 'RADIOLOGIST', 'DOCTOR', 'NURSE'],
+  'imaging.perform_scan': ['RADIOGRAPHER', 'SONOGRAPHER', 'MRI_TECHNOLOGIST', 'CT_TECHNOLOGIST', 'NUCLEAR_MED_TECH'],
+  'imaging.upload_images': ['RADIOGRAPHER', 'SONOGRAPHER', 'MRI_TECHNOLOGIST', 'CT_TECHNOLOGIST', 'NUCLEAR_MED_TECH'],
+  'imaging.view_studies': ['RADIOGRAPHER', 'SONOGRAPHER', 'RADIOLOGIST', 'DOCTOR'],
   'imaging.write_report': ['RADIOLOGIST'],
   'imaging.verify_report': ['RADIOLOGIST'],
 
   // === Clinics Module ===
-  'clinics.view': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE', 'RECEPTIONIST', 'ADMIN'],
+  'clinics.view': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
   'clinics.manage_queue': ['RECEPTIONIST', 'NURSE', 'ADMIN'],
   'clinics.manage_appointments': ['RECEPTIONIST', 'NURSE', 'DOCTOR', 'CLINICAL_OFFICER', 'ADMIN'],
 
@@ -130,7 +130,7 @@ export const ACTION_PERMISSIONS = {
 
   // === Billing / Finance Module ===
   'billing.view_dashboard': ['BILLING_CLERK', 'CASHIER', 'BILLING_SUPERVISOR', 'ADMIN'],
-  'billing.view_invoices': ['BILLING_CLERK', 'CASHIER', 'BILLING_SUPERVISOR', 'RECEPTIONIST'],
+  'billing.view_invoices': ['BILLING_CLERK', 'CASHIER', 'BILLING_SUPERVISOR'],
   'billing.create_invoice': ['BILLING_CLERK', 'CASHIER'],
   'billing.view_proformas': ['BILLING_CLERK', 'CASHIER', 'BILLING_SUPERVISOR', 'RECEPTIONIST'],
   'billing.record_payment': ['CASHIER', 'BILLING_CLERK'],
