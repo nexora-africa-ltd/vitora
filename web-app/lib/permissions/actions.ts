@@ -157,7 +157,7 @@ export const ACTION_PERMISSIONS = {
   'cds.override_alert': ['DOCTOR', 'CLINICAL_OFFICER'],
 
   // === AI Module ===
-  'ai.use_chat': ['DOCTOR', 'CLINICAL_OFFICER', 'PHARMACIST', 'LAB_SCIENTIST', 'ADMIN'],
+  'ai.use_chat': ['DOCTOR', 'CLINICAL_OFFICER', 'PHARMACIST', 'LAB_TECH', 'LAB_SCIENTIST', 'ADMIN'],
   'ai.view_insights': ['DOCTOR', 'CLINICAL_OFFICER', 'ADMIN'],
 
   // === Admin Module ===
