@@ -1211,6 +1211,11 @@ export default function DischargePage() {
               </div>
             )}
 
+            {/* Info: patient details are auto-included */}
+            <p className="text-xs text-muted-foreground">
+              Patient details, admission info, and diagnoses are included automatically — no need to add those as sections.
+            </p>
+
             {/* Section Cards */}
             {sections.map((section) => {
               const isEditing = editingSectionId === section.id;
@@ -1246,12 +1251,21 @@ export default function DischargePage() {
                         </Badge>
                       )}
                       {hasAdvisories && (
-                        <Badge variant="outline" className={`shrink-0 text-[10px] px-1.5 py-0 ${
-                          hasCritical ? 'border-red-400 text-red-700 dark:text-red-400' : 'border-amber-400 text-amber-700 dark:text-amber-400'
-                        }`}>
-                          <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
-                          {section.advisories!.length}
-                        </Badge>
+                        <TooltipProvider delayDuration={300}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge variant="outline" className={`shrink-0 text-[10px] px-1.5 py-0 cursor-default ${
+                                hasCritical ? 'border-red-400 text-red-700 dark:text-red-400' : 'border-amber-400 text-amber-700 dark:text-amber-400'
+                              }`}>
+                                <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
+                                {section.advisories!.length}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {section.advisories!.length} AI {section.advisories!.length === 1 ? 'advisory' : 'advisories'} — review flagged items below
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                     </div>
                     <div className="flex items-center gap-0.5 shrink-0">
@@ -1278,24 +1292,38 @@ export default function DischargePage() {
                           </Tooltip>
                         </TooltipProvider>
                       )}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingSectionId(isEditing ? null : section.id)}
-                        className="h-7 w-7 p-0 shrink-0"
-                      >
-                        {isEditing ? <Eye className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveSection(section.id)}
-                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      <TooltipProvider delayDuration={300}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingSectionId(isEditing ? null : section.id)}
+                              className="h-7 w-7 p-0 shrink-0"
+                            >
+                              {isEditing ? <Eye className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>{isEditing ? 'Preview' : 'Edit'}</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider delayDuration={300}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveSection(section.id)}
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Remove section</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </div>
                   <div className="p-3">
