@@ -42,10 +42,25 @@ import { useCheckInPatient } from '@/lib/hooks/use-triage';
 import { useCreateAdmission } from '@/lib/hooks/use-inpatient';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import { useAISuggestionAudit } from '@/lib/hooks/use-ai';
 import { useSmartSuggestions } from '@/lib/hooks/use-smart-suggestions';
 import { SmartSuggestionBatch } from '@/components/shared/smart-suggestion-batch';
 import { LEGACY_TRIAGE_FLOW } from '@/lib/utils/constants';
+import { encountersApi } from '@/lib/api/encounters';
+import type { DiagnosisFormData } from '@/lib/types/encounter-form';
+import type { CreateDiagnosisData } from '@/lib/api/encounters';
+
+/**
+ * Map form certainty values to the API-accepted values.
+ * The form allows 'probable' but the API only accepts
+ * 'suspected' | 'provisional' | 'confirmed' | 'ruled_out'.
+ */
+function toApiCertainty(
+  certainty: DiagnosisFormData['certainty'],
+): CreateDiagnosisData['certainty'] {
+  return certainty === 'probable' ? 'provisional' : certainty;
+}
 
 // =============================================================================
 // Summary Section Component
@@ -161,17 +176,36 @@ export default function NewEncounterReviewPage() {
     }
 
     try {
-      await createEncounter.mutateAsync({
+      const draft = await createEncounter.mutateAsync({
         ...formData,
         status: 'CREATED',
       });
 
-      toast({
-        title: 'Draft Saved',
-        description: 'Encounter has been saved as draft',
-      });
+      // Save diagnoses collected during the wizard
+      if (diagnoses.length > 0) {
+        await Promise.all(
+          diagnoses.map((dx: DiagnosisFormData) =>
+            encountersApi.createDiagnosis(draft.id, {
+              icd10_code: dx.icd10_code,
+              diagnosis_type: dx.diagnosis_type,
+              free_text_diagnosis: dx.free_text_diagnosis,
+              notes: dx.notes,
+              is_confirmed: dx.is_confirmed,
+              certainty: toApiCertainty(dx.certainty),
+            }).catch((err) => {
+              console.error('Failed to save diagnosis:', err);
+            })
+          )
+        );
+      }
 
       clearSession();
+      toast({
+        title: 'Draft Saved',
+        description: 'Encounter has been saved as draft.',
+        action: <ToastAction altText="View encounter" onClick={() => router.push(`/encounters/${draft.id}`)}>View</ToastAction>,
+      });
+
       router.push('/encounters');
     } catch (error) {
       toast({
@@ -180,7 +214,7 @@ export default function NewEncounterReviewPage() {
         variant: 'destructive',
       });
     }
-  }, [getFormData, createEncounter, toast, clearSession, router]);
+  }, [getFormData, createEncounter, diagnoses, toast, clearSession, router]);
 
   // Create encounter
   const handleCreate = useCallback(async () => {
@@ -199,6 +233,24 @@ export default function NewEncounterReviewPage() {
         ...formData,
         status: 'IN_PROGRESS',
       });
+
+      // Save diagnoses collected during the wizard
+      if (diagnoses.length > 0) {
+        await Promise.all(
+          diagnoses.map((dx: DiagnosisFormData) =>
+            encountersApi.createDiagnosis(result.id, {
+              icd10_code: dx.icd10_code,
+              diagnosis_type: dx.diagnosis_type,
+              free_text_diagnosis: dx.free_text_diagnosis,
+              notes: dx.notes,
+              is_confirmed: dx.is_confirmed,
+              certainty: toApiCertainty(dx.certainty),
+            }).catch((err) => {
+              console.error('Failed to save diagnosis:', err);
+            })
+          )
+        );
+      }
 
       // For EMERGENCY or IPD encounters, skip triage modal
       if (isUrgentEncounterType) {
@@ -222,6 +274,7 @@ export default function NewEncounterReviewPage() {
             toast({
               title: 'IPD Encounter & Admission Created',
               description: `Patient admitted to ${admission.wardName || 'ward'}, bed ${admission.bedNumber || admission.bedId}.`,
+              action: <ToastAction altText="View encounter" onClick={() => router.push(`/encounters/${result.id}`)}>View</ToastAction>,
             });
           } catch {
             // Encounter created but admission failed — still redirect
@@ -246,6 +299,7 @@ export default function NewEncounterReviewPage() {
           toast({
             title: 'Encounter Created',
             description: `${details.encounter_type} encounter created. Vitals can be recorded later.`,
+            action: <ToastAction altText="View encounter" onClick={() => router.push(`/encounters/${result.id}`)}>View</ToastAction>,
           });
         }
         clearSession();
@@ -258,6 +312,7 @@ export default function NewEncounterReviewPage() {
         toast({
           title: 'Encounter Created',
           description: 'Encounter created successfully with vital signs.',
+          action: <ToastAction altText="View encounter" onClick={() => router.push(`/encounters/${result.id}`)}>View</ToastAction>,
         });
         clearSession();
         router.push(`/encounters/${result.id}`);
@@ -308,9 +363,12 @@ export default function NewEncounterReviewPage() {
     toast({
       title: 'Encounter Created',
       description: 'Encounter has been created. You can record vitals later in Triage.',
+      action: createdEncounterId
+        ? <ToastAction altText="View encounter" onClick={() => router.push(`/encounters/${createdEncounterId}`)}>View</ToastAction>
+        : undefined,
     });
     router.push('/encounters');
-  }, [clearSession, toast, router]);
+  }, [clearSession, createdEncounterId, toast, router]);
 
   // Handle AI autopopulate
   const handleAutopopulate = useCallback(() => {
