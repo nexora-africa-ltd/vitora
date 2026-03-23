@@ -54,6 +54,7 @@ import {
   useAdmissionReviewRequests,
   useOverrideBed,
   useSetExpectedDischarge,
+  useAddCarePlanEntry,
 } from '@/lib/hooks/use-inpatient';
 import { AdmissionOrdersTab, ICURiskAssessmentPanel, DischargeReadinessPanel, ConsumableUsagePanel } from '@/components/inpatient';
 import { CarePlanPanel } from '@/components/encounters/care-plan-panel';
@@ -65,7 +66,7 @@ import { BPMonitoringChart } from '@/components/inpatient/bp-monitoring-chart';
 import { useOptionalAIChatContext } from '@/lib/context/ai-chat-context';
 import { formatDate, formatDateTime } from '@/lib/utils/format';
 import { useToast } from '@/lib/hooks/use-toast';
-import type { BedOverrideRequest, OverrideReason, ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
+import type { BedOverrideRequest, NursingCarePlanEntryCreateData, OverrideReason, ReviewType, ReviewUrgency } from '@/lib/types/inpatient';
 import type { AIQuickAction } from '@/lib/types/ai';
 
 const OVERRIDE_REASON_OPTIONS: { value: OverrideReason; label: string }[] = [
@@ -168,6 +169,8 @@ export default function AdmissionDetailPage() {
   // Track which panel was triggered by the AI widget
   const [autoTriggerDischarge, setAutoTriggerDischarge] = useState(false);
   const [autoTriggerCarePlan, setAutoTriggerCarePlan] = useState(false);
+  const [isApplyingAIToKardex, setIsApplyingAIToKardex] = useState(false);
+  const addCarePlanEntry = useAddCarePlanEntry();
   const [expectedDischargeDialogOpen, setExpectedDischargeDialogOpen] = useState(false);
   const [bedOverrideDialogOpen, setBedOverrideDialogOpen] = useState(false);
   const [expectedDischargeValue, setExpectedDischargeValue] = useState('');
@@ -195,6 +198,21 @@ export default function AdmissionDetailPage() {
       (a, b) => new Date(b.round_date).getTime() - new Date(a.round_date).getTime()
     )[0] ?? null;
   }, [wardRounds]);
+
+  const handleApplyAIToKardex = async (entries: NursingCarePlanEntryCreateData[]) => {
+    if (!kardex) return;
+    setIsApplyingAIToKardex(true);
+    try {
+      for (const entry of entries) {
+        await addCarePlanEntry.mutateAsync({ kardexId: kardex.id, data: entry });
+      }
+      toast({ title: 'Care plan applied', description: `${entries.length} ADPIE entr${entries.length === 1 ? 'y' : 'ies'} created from AI care plan.` });
+    } catch {
+      toast({ title: 'Failed to apply', description: 'Some entries may not have been created.', variant: 'destructive' });
+    } finally {
+      setIsApplyingAIToKardex(false);
+    }
+  };
 
   // Wire admission + patient data into the AI chat context so TibaBot
   // can provide inpatient-aware clinical assistance.
@@ -851,6 +869,7 @@ export default function AdmissionDetailPage() {
           {/* AI Care Plan (Phase 5) */}
           {admission.admission_status === 'ACTIVE' && (
             <CarePlanPanel
+              admissionId={admission.id}
               primaryDiagnosis={
                 admission.admitting_diagnosis_text || admission.admitting_diagnosis || undefined
               }
@@ -872,6 +891,8 @@ export default function AdmissionDetailPage() {
                 ?.split(',').map((s: string) => s.trim()).filter(Boolean)}
               autoTrigger={autoTriggerCarePlan}
               onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
+              onApplyToKardex={kardex ? handleApplyAIToKardex : undefined}
+              isApplyingToKardex={isApplyingAIToKardex}
             />
           )}
         </TabsContent>
@@ -1041,7 +1062,7 @@ export default function AdmissionDetailPage() {
                             <Badge variant="success">All resolved</Badge>
                           );
                         })()}
-                        <Button variant="ghost" size="sm" asChild>
+                        <Button variant="outline" size="sm" asChild>
                           <Link href={`/admissions/${admission.id}/kardex`}>
                             Manage
                           </Link>

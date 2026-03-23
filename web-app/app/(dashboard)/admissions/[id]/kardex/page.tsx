@@ -48,7 +48,7 @@ import { ConsumableUsagePanel } from '@/components/inpatient';
 import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { formatDateTime } from '@/lib/utils/format';
-import type { CarePlanEntryStatus, MaternityContinuityAction, RiskLevel, ShiftType } from '@/lib/types/inpatient';
+import type { CarePlanEntryStatus, MaternityContinuityAction, NursingCarePlanEntryCreateData, RiskLevel, ShiftType } from '@/lib/types/inpatient';
 import type { AIQuickAction } from '@/lib/types/ai';
 
 const RISK_LEVELS: { value: RiskLevel; label: string }[] = [
@@ -494,6 +494,23 @@ export default function KardexPage() {
     setDiscontinueCpEntryId(entryId);
     setDiscontinueCpReason('');
     setDiscontinueCpDialogOpen(true);
+  };
+
+  const [isApplyingAIToKardex, setIsApplyingAIToKardex] = useState(false);
+
+  const handleApplyAIToKardex = async (entries: NursingCarePlanEntryCreateData[]) => {
+    if (!kardex) return;
+    setIsApplyingAIToKardex(true);
+    try {
+      for (const entry of entries) {
+        await addCarePlanEntry.mutateAsync({ kardexId: kardex.id, data: entry });
+      }
+      toast({ title: 'Care plan applied', description: `${entries.length} ADPIE entr${entries.length === 1 ? 'y' : 'ies'} created from AI care plan.` });
+    } catch {
+      toast({ title: 'Failed to apply', description: 'Some entries may not have been created.', variant: 'destructive' });
+    } finally {
+      setIsApplyingAIToKardex(false);
+    }
   };
 
   const pendingCarePlanCount = kardex?.care_plan_entries?.filter(
@@ -960,6 +977,8 @@ export default function KardexPage() {
               allergies={patientAllergies}
               autoTrigger={autoTriggerCarePlan}
               onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
+              onApplyToKardex={handleApplyAIToKardex}
+              isApplyingToKardex={isApplyingAIToKardex}
             />
           )}
 
