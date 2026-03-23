@@ -657,10 +657,36 @@ export default function DischargePage() {
       {/* Discharge Form */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Discharge Summary</CardTitle>
-          <CardDescription>
-            Complete the discharge summary and follow-up instructions
-          </CardDescription>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <CardTitle className="text-lg">Discharge Summary</CardTitle>
+              <CardDescription>
+                Complete the discharge summary and follow-up instructions
+              </CardDescription>
+            </div>
+            {dischargeSummary && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => printDischargeDocument({
+                  documentTitle: 'Discharge Summary',
+                  content: dischargeSummary,
+                  patientName: admission.patient_name || '',
+                  admissionNumber: admission.admission_number,
+                  wardName: admission.ward_name || '',
+                  admissionDate: admission.admission_date,
+                  admittingDiagnosis: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
+                  facilityName: facility?.name,
+                  facilityMflCode: facility?.mfl_code,
+                })}
+                className="gap-1.5 text-xs shrink-0"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                Print
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Discharge Type */}
@@ -741,28 +767,6 @@ export default function DischargePage() {
                 <HelpPopover content="Add, remove, and customize sections. Use 'Generate with TibaBot' per section or 'Generate All' to draft the entire summary at once." />
               </div>
               <div className="flex items-center gap-2">
-                {dischargeSummary && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => printDischargeDocument({
-                      documentTitle: 'Discharge Summary',
-                      content: dischargeSummary,
-                      patientName: admission.patient_name || '',
-                      admissionNumber: admission.admission_number,
-                      wardName: admission.ward_name || '',
-                      admissionDate: admission.admission_date,
-                      admittingDiagnosis: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
-                      facilityName: facility?.name,
-                      facilityMflCode: facility?.mfl_code,
-                    })}
-                    className="gap-1.5 text-xs"
-                  >
-                    <Printer className="h-3.5 w-3.5" />
-                    Print
-                  </Button>
-                )}
                 {isAIEnabled && (
                   <Button
                     type="button"
