@@ -4,10 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
-import { Save, Plus, Trash2, Clock, CheckCircle2, BrainCircuit, Loader2, AlertTriangle, ShieldAlert, Printer, ShieldCheck } from 'lucide-react';
+import { Save, Plus, Trash2, Clock, CheckCircle2, BrainCircuit, Loader2, AlertTriangle, ShieldAlert, Printer, ShieldCheck, Pencil, Eye } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/shared/page-header';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { MultiDiagnosisInput, type DiagnosisEntry } from '@/components/shared';
 import { MarkdownPreview } from '@/components/shared/markdown-preview';
@@ -50,7 +52,7 @@ import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { printDischargeDocument } from '@/lib/documents';
 import type { DischargeType, DischargeMedication, MaternityContinuityAction } from '@/lib/types/inpatient';
-import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode } from '@/lib/types/ai';
+import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode, ClinicalDocSection } from '@/lib/types/ai';
 
 const DISCHARGE_TYPES: { value: DischargeType; label: string }[] = [
   { value: 'NORMAL', label: 'Normal Discharge' },
@@ -120,6 +122,11 @@ export default function DischargePage() {
 
   // AI generation mode: 'suggest' = rich draft, 'generate' = strict facts-only
   const [generationMode, setGenerationMode] = useState<ClinicalDocGenerationMode>('suggest');
+
+  // Section-based editing state for discharge summary
+  const [summarySections, setSummarySections] = useState<ClinicalDocSection[]>([]);
+  const [sectionProvenance, setSectionProvenance] = useState<Record<string, string>>({});
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
 
   // Calculate length of stay
   const lengthOfStay = useMemo(() => {
@@ -405,7 +412,7 @@ export default function DischargePage() {
         encounter_context: {
           chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
         },
-        output_format: 'markdown',
+        output_format: 'structured',
         generation_mode: generationMode,
         additional_instructions: [
           'For the Hospital Course section, write a flowing clinical narrative that synthesizes the ward round findings into a coherent story of the admission.',
@@ -414,7 +421,22 @@ export default function DischargePage() {
           clinicalHistoryText || '',
         ].filter(Boolean).join(' '),
       });
-      if (result.full_text) {
+      if (result.sections?.length) {
+        setSummarySections(result.sections);
+        setSectionProvenance(result.section_provenance || {});
+        // Assemble sections into flat text for the save handler
+        const assembled = result.sections.map((s) => `## ${s.title}\n${s.content}`).join('\n\n');
+        setDischargeSummary(assembled);
+        setSummaryGenerated(true);
+        setEditingSectionId(null);
+        toast({
+          title: generationMode === 'generate' ? 'Strict Draft Generated' : 'Draft Generated',
+          description: generationMode === 'generate'
+            ? 'Facts-only discharge summary generated. Audit-safe — review before filing.'
+            : 'TibaBot drafted a discharge summary. Edit individual sections below.',
+        });
+      } else if (result.full_text) {
+        setSummarySections([]);
         setDischargeSummary(result.full_text);
         setSummaryGenerated(true);
         toast({
@@ -478,6 +500,17 @@ export default function DischargePage() {
       toast({ title: 'Generation Failed', description: 'Could not generate patient instructions. Please write them manually.', variant: 'destructive' });
     }
   }, [admission, diagnoses, medications, clinicalDocument, toast, patientCtx, clinicalHistoryText, generationMode]);
+
+  // Update a single section's content and sync the flat dischargeSummary
+  const updateSection = useCallback((sectionId: string, newContent: string) => {
+    setSummarySections((prev) => {
+      const updated = prev.map((s) => s.section_id === sectionId ? { ...s, content: newContent } : s);
+      // Keep dischargeSummary in sync for the save handler
+      const assembled = updated.map((s) => `## ${s.title}\n${s.content}`).join('\n\n');
+      setDischargeSummary(assembled);
+      return updated;
+    });
+  }, []);
 
   // Helper to extract code string from DiagnosisEntry
   const getDiagCode = (entry: DiagnosisEntry) =>
@@ -888,6 +921,58 @@ export default function DischargePage() {
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-5/6" />
                 <Skeleton className="h-4 w-2/3" />
+              </div>
+            ) : summaryGenerated && summarySections.length > 0 ? (
+              <div className="space-y-3">
+                {summarySections.map((section) => {
+                  const provenance = sectionProvenance[section.section_id];
+                  const isEditing = editingSectionId === section.section_id;
+                  return (
+                    <div key={section.section_id} className="rounded-lg border bg-card">
+                      <div className="flex items-center justify-between border-b px-3 py-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-sm font-medium truncate">{section.title}</span>
+                          {provenance && (
+                            <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0">
+                              {provenance === 'from_input' ? 'From input'
+                                : provenance === 'llm_generated' ? 'AI generated'
+                                : provenance === 'llm_suggested' ? 'AI suggested'
+                                : provenance === 'guideline_rag' ? 'Guideline'
+                                : provenance === 'not_documented' ? 'Not documented'
+                                : provenance === 'skeleton' ? 'Template'
+                                : provenance}
+                            </Badge>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingSectionId(isEditing ? null : section.section_id)}
+                          className="h-7 w-7 p-0 shrink-0"
+                        >
+                          {isEditing ? <Eye className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+                        </Button>
+                      </div>
+                      <div className="p-3">
+                        {isEditing ? (
+                          <Textarea
+                            value={section.content}
+                            onChange={(e) => updateSection(section.section_id, e.target.value)}
+                            rows={4}
+                            className="text-sm"
+                          />
+                        ) : section.content ? (
+                          <div className="tibabot-markdown prose prose-sm dark:prose-invert max-w-none break-words overflow-hidden">
+                            <Markdown remarkPlugins={[remarkGfm]}>{section.content}</Markdown>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic">No content — click edit to add.</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : summaryGenerated ? (
               <MarkdownPreview
