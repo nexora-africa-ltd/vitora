@@ -944,7 +944,7 @@ export default function AdmissionDetailPage() {
 
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
             <h3 className="text-lg font-semibold">Nursing Kardex</h3>
-            {kardex && admission.admission_status === 'ACTIVE' && (
+            {kardex && (
               <Button variant="outline" size="sm" asChild className="w-full sm:w-auto">
                 <Link href={`/admissions/${admission.id}/kardex`}>
                   <ClipboardList className="h-4 w-4 mr-2" />
@@ -968,9 +968,9 @@ export default function AdmissionDetailPage() {
               </CardContent>
             </Card>
           ) : (
-            <Link href={`/admissions/${admission.id}/kardex`}>
-              <div className="grid gap-4 md:grid-cols-2 cursor-pointer">
-                <Card className="hover:bg-muted/50 transition-colors">
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Care Information</CardTitle>
                   </CardHeader>
@@ -987,23 +987,31 @@ export default function AdmissionDetailPage() {
                       <p className="text-sm font-medium">Allergies</p>
                       <p className="text-sm text-accent-foreground">{kardex.allergies || 'None known'}</p>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">Fall Risk</p>
-                      <Badge variant={kardex.fall_risk ? 'destructive' : 'secondary'}>
-                        {kardex.fall_risk ? 'Yes' : 'No'}
-                      </Badge>
+                    <div className="flex gap-4">
+                      <div>
+                        <p className="text-sm font-medium">Fall Risk</p>
+                        <Badge variant={kardex.fall_risk ? 'destructive' : 'secondary'}>
+                          {kardex.fall_risk ? 'Yes' : 'No'}
+                        </Badge>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Pressure Sore Risk</p>
+                        <Badge variant={kardex.pressure_sore_risk && kardex.pressure_sore_risk !== 'LOW' ? 'warning' : 'secondary'}>
+                          {kardex.pressure_sore_risk || 'Low'}
+                        </Badge>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="hover:bg-muted/50 transition-colors">
+                <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Latest Shift Notes</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {kardex.shift_notes && kardex.shift_notes.length > 0 ? (
                       <div className="space-y-2">
-                        {kardex.shift_notes.slice(0, 2).map((note) => (
+                        {kardex.shift_notes.slice(0, 3).map((note) => (
                           <p key={note.id} className="text-sm text-accent-foreground line-clamp-2">
                             <span className="font-medium">{note.nurse_username}:</span> {note.content || note.notes}
                           </p>
@@ -1015,7 +1023,66 @@ export default function AdmissionDetailPage() {
                   </CardContent>
                 </Card>
               </div>
-            </Link>
+
+              {/* Care Plan Entries Summary */}
+              {kardex.care_plan_entries && kardex.care_plan_entries.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">Care Plan Entries</CardTitle>
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const activeCount = kardex.care_plan_entries.filter(
+                            (e: { status: string }) => e.status === 'ACTIVE' || e.status === 'ONGOING'
+                          ).length;
+                          return activeCount > 0 ? (
+                            <Badge variant="default">{activeCount} active</Badge>
+                          ) : (
+                            <Badge variant="success">All resolved</Badge>
+                          );
+                        })()}
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/admissions/${admission.id}/kardex`}>
+                            Manage
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {kardex.care_plan_entries.slice(0, 4).map((entry: { id: number; status: string; status_display?: string; nursing_diagnosis: string; recorded_at: string }) => (
+                        <div key={entry.id} className={`flex items-start justify-between gap-2 py-1.5 ${entry.status === 'RESOLVED' || entry.status === 'DISCONTINUED' ? 'opacity-60' : ''}`}>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{entry.nursing_diagnosis}</p>
+                            <p className="text-xs text-muted-foreground">{formatDateTime(entry.recorded_at)}</p>
+                          </div>
+                          <Badge
+                            variant={
+                              entry.status === 'ACTIVE' ? 'default'
+                              : entry.status === 'RESOLVED' ? 'success'
+                              : entry.status === 'DISCONTINUED' ? 'destructive'
+                              : 'warning'
+                            }
+                            className="shrink-0 text-xs"
+                          >
+                            {entry.status_display || entry.status}
+                          </Badge>
+                        </div>
+                      ))}
+                      {kardex.care_plan_entries.length > 4 && (
+                        <p className="text-xs text-muted-foreground text-center pt-1">
+                          +{kardex.care_plan_entries.length - 4} more entries —{' '}
+                          <Link href={`/admissions/${admission.id}/kardex`} className="underline">
+                            View all
+                          </Link>
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
         </TabsContent>
 
