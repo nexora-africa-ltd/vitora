@@ -497,6 +497,7 @@ export default function KardexPage() {
   };
 
   const [isApplyingAIToKardex, setIsApplyingAIToKardex] = useState(false);
+  const [appliedAIToKardex, setAppliedAIToKardex] = useState(false);
 
   const handleApplyAIToKardex = async (entries: NursingCarePlanEntryCreateData[]) => {
     if (!kardex) return;
@@ -505,6 +506,7 @@ export default function KardexPage() {
       for (const entry of entries) {
         await addCarePlanEntry.mutateAsync({ kardexId: kardex.id, data: entry });
       }
+      setAppliedAIToKardex(true);
       toast({ title: 'Care plan applied', description: `${entries.length} ADPIE entr${entries.length === 1 ? 'y' : 'ies'} created from AI care plan.` });
     } catch {
       toast({ title: 'Failed to apply', description: 'Some entries may not have been created.', variant: 'destructive' });
@@ -979,6 +981,7 @@ export default function KardexPage() {
               onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
               onApplyToKardex={handleApplyAIToKardex}
               isApplyingToKardex={isApplyingAIToKardex}
+              appliedToKardex={appliedAIToKardex}
             />
           )}
 

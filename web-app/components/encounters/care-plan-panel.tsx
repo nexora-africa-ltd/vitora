@@ -26,6 +26,7 @@ import {
   Target,
   Trash2,
   RefreshCw,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAICarePlanGenerate, useAIEnabled, useStoredCarePlans, aiKeys } from '@/lib/hooks/use-ai';
 import { aiApi } from '@/lib/api/ai';
 import { toast } from 'sonner';
@@ -93,6 +95,8 @@ export interface CarePlanPanelProps {
   onApplyToKardex?: (entries: NursingCarePlanEntryCreateData[]) => void;
   /** Whether Apply to Kardex is currently pending */
   isApplyingToKardex?: boolean;
+  /** Whether this care plan was already applied to the Kardex (idempotency guard). */
+  appliedToKardex?: boolean;
 }
 
 // =============================================================================
@@ -324,12 +328,17 @@ export function CarePlanPanel({
   onAutoTriggerConsumed,
   onApplyToKardex,
   isApplyingToKardex,
+  appliedToKardex: appliedToKardexProp,
 }: CarePlanPanelProps) {
   const isAIEnabled = useAIEnabled();
   const queryClient = useQueryClient();
   const { mutate, data: result, isPending, isError, reset } = useAICarePlanGenerate();
   const [isExporting, setIsExporting] = React.useState(false);
+  const [appliedThisSession, setAppliedThisSession] = React.useState(false);
   const panelId = React.useId();
+
+  // Idempotency: treat as applied if the prop says so OR we applied it this session
+  const isAppliedToKardex = appliedToKardexProp || appliedThisSession;
 
   // Load stored care plan
   const storedParams = React.useMemo(
@@ -467,7 +476,10 @@ export function CarePlanPanel({
           <div className="flex items-center gap-2">
             <ClipboardList className="h-4 w-4 text-muted-foreground" />
             <CardTitle className="text-base">Care Plan</CardTitle>
-            <BrainCircuit className="h-3.5 w-3.5 text-purple-500" />
+            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-400">
+              AI
+            </Badge>
             <HelpPopover content="AI-generated care plan with goals, interventions, and discharge criteria. Validated against KEML formulary and CDS safety rules. Advisory only." />
           </div>
           {isFallback && (
@@ -627,47 +639,108 @@ export function CarePlanPanel({
                 }}
               />
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={disabled || isPending}
-                  onClick={() => { reset(); handleGenerate(); }}
-                  className="gap-1.5 text-xs"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Regenerate
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClear}
-                  className="gap-1.5 text-xs text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Clear
-                </Button>
-                {onApplyToKardex && (
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="sm"
-                    disabled={isApplyingToKardex}
-                    onClick={() => {
-                      const entries = mapAIToADPIE(displayResult);
-                      onApplyToKardex(entries);
-                    }}
-                    className="gap-1.5 text-xs"
-                  >
-                    {isApplyingToKardex ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <TooltipProvider delayDuration={300}>
+                  {isAppliedToKardex ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={disabled || isPending}
+                      onClick={() => { reset(); setAppliedThisSession(false); handleGenerate(); }}
+                      className="gap-1.5 text-xs"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Generate New
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={disabled || isPending}
+                      onClick={() => { reset(); handleGenerate(); }}
+                      className="gap-1.5 text-xs"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Regenerate
+                    </Button>
+                  )}
+                  {isAppliedToKardex ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled
+                            className="gap-1.5 text-xs text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Clear
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>This care plan has been applied to the Kardex. Generate a new one to make changes.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClear}
+                      className="gap-1.5 text-xs text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Clear
+                    </Button>
+                  )}
+                  {onApplyToKardex && (
+                    isAppliedToKardex ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex">
+                            <Button
+                              type="button"
+                              variant="default"
+                              size="sm"
+                              disabled
+                              className="gap-1.5 text-xs"
+                            >
+                              <ClipboardCheck className="h-3.5 w-3.5" />
+                              Applied to Kardex
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Already applied to the Kardex. Use &ldquo;Generate New&rdquo; to create a different plan.</p>
+                        </TooltipContent>
+                      </Tooltip>
                     ) : (
-                      <ClipboardCheck className="h-3.5 w-3.5" />
-                    )}
-                    Apply to Kardex ({displayResult.goals.length})
-                  </Button>
-                )}
+                      <Button
+                        type="button"
+                        variant="default"
+                        size="sm"
+                        disabled={isApplyingToKardex}
+                        onClick={() => {
+                          const entries = mapAIToADPIE(displayResult);
+                          onApplyToKardex(entries);
+                          setAppliedThisSession(true);
+                        }}
+                        className="gap-1.5 text-xs"
+                      >
+                        {isApplyingToKardex ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <ClipboardCheck className="h-3.5 w-3.5" />
+                        )}
+                        Apply to Kardex ({displayResult.goals.length})
+                      </Button>
+                    )
+                  )}
+                </TooltipProvider>
                 <Button
                   type="button"
                   variant="outline"

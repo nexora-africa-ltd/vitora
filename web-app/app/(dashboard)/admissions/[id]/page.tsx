@@ -170,6 +170,7 @@ export default function AdmissionDetailPage() {
   const [autoTriggerDischarge, setAutoTriggerDischarge] = useState(false);
   const [autoTriggerCarePlan, setAutoTriggerCarePlan] = useState(false);
   const [isApplyingAIToKardex, setIsApplyingAIToKardex] = useState(false);
+  const [appliedAIToKardex, setAppliedAIToKardex] = useState(false);
   const addCarePlanEntry = useAddCarePlanEntry();
   const [expectedDischargeDialogOpen, setExpectedDischargeDialogOpen] = useState(false);
   const [bedOverrideDialogOpen, setBedOverrideDialogOpen] = useState(false);
@@ -206,6 +207,7 @@ export default function AdmissionDetailPage() {
       for (const entry of entries) {
         await addCarePlanEntry.mutateAsync({ kardexId: kardex.id, data: entry });
       }
+      setAppliedAIToKardex(true);
       toast({ title: 'Care plan applied', description: `${entries.length} ADPIE entr${entries.length === 1 ? 'y' : 'ies'} created from AI care plan.` });
     } catch {
       toast({ title: 'Failed to apply', description: 'Some entries may not have been created.', variant: 'destructive' });
@@ -893,6 +895,7 @@ export default function AdmissionDetailPage() {
               onAutoTriggerConsumed={() => setAutoTriggerCarePlan(false)}
               onApplyToKardex={kardex ? handleApplyAIToKardex : undefined}
               isApplyingToKardex={isApplyingAIToKardex}
+              appliedToKardex={appliedAIToKardex}
             />
           )}
         </TabsContent>
