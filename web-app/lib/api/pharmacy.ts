@@ -282,13 +282,14 @@ export const pharmacyApi = {
 
   /**
    * Get pending prescriptions (for dispensing queue).
+   * Filters out prescriptions whose effective_status is EXPIRED even if DB status is PENDING.
    */
   async getPendingPrescriptions(): Promise<Prescription[]> {
     const response = await apiClient.get<PaginatedResponse<Prescription>>('/api/pharmacy/prescriptions/', {
       params: { status: 'PENDING', page_size: 100 },
     });
     const parsed = parseResponse(PaginatedPrescriptionSchema, response.data, { context: 'pharmacyApi.getPendingPrescriptions' });
-    return parsed.results;
+    return parsed.results.filter((rx) => rx.effective_status !== 'EXPIRED');
   },
 
   /**

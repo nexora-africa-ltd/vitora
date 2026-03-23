@@ -105,7 +105,7 @@ const Select: React.FC<SelectProps> = ({ value, defaultValue = '', onValueChange
       if (nodeType?.displayName === 'SelectItem' && typeof node.props.value === 'string') {
         items.push({
           value: node.props.value,
-          text: extractText(node.props.children),
+          text: node.props.textValue || extractText(node.props.children),
         })
       }
       if (node.props?.children) {
@@ -204,7 +204,7 @@ const SelectContent = React.forwardRef<
       id={context.listboxId}
       hidden={!context.open}
       className={cn(
-        "absolute top-full left-0 z-50 mt-1 w-full min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95",
+        "absolute top-full left-0 z-50 mt-1 w-full min-w-[8rem] max-h-60 overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95",
         !context.open && "hidden",
         className
       )}
@@ -220,10 +220,12 @@ SelectContent.displayName = "SelectContent"
 
 interface SelectItemProps extends React.HTMLAttributes<HTMLDivElement> {
   value: string
+  /** Explicit display text for the trigger. If omitted, extracted from children. */
+  textValue?: string
 }
 
 const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
-  ({ className, value, children, ...props }, ref) => {
+  ({ className, value, textValue, children, ...props }, ref) => {
     const context = React.useContext(SelectContext)
     if (!context) throw new Error('SelectItem must be used within Select')
 
@@ -240,7 +242,7 @@ const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
       return ''
     }
 
-    const textContent = getTextContent(children)
+    const textContent = textValue || getTextContent(children)
 
     // Register this item's value -> displayText mapping on mount
     React.useEffect(() => {
