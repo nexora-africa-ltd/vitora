@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { format, parseISO } from 'date-fns';
-import { Save, Plus, Trash2, Clock, CheckCircle2, BrainCircuit, Loader2, AlertTriangle, ShieldAlert, Printer } from 'lucide-react';
+import { Save, Plus, Trash2, Clock, CheckCircle2, BrainCircuit, Loader2, AlertTriangle, ShieldAlert, Printer, ShieldCheck } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { PageHeader } from '@/components/shared/page-header';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { MultiDiagnosisInput, type DiagnosisEntry } from '@/components/shared';
@@ -48,7 +50,7 @@ import { useUser } from '@/lib/auth';
 import { useToast } from '@/lib/hooks/use-toast';
 import { printDischargeDocument } from '@/lib/documents';
 import type { DischargeType, DischargeMedication, MaternityContinuityAction } from '@/lib/types/inpatient';
-import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocAdmissionContext, ClinicalDocPatientContext } from '@/lib/types/ai';
+import type { AICDSAlertItem, AIPatientContext, AIEncounterContext, ClinicalDocAdmissionContext, ClinicalDocPatientContext, ClinicalDocGenerationMode } from '@/lib/types/ai';
 
 const DISCHARGE_TYPES: { value: DischargeType; label: string }[] = [
   { value: 'NORMAL', label: 'Normal Discharge' },
@@ -115,6 +117,9 @@ export default function DischargePage() {
   const [summaryGenerated, setSummaryGenerated] = useState(false);
   const [instructionsGenerated, setInstructionsGenerated] = useState(false);
   const [showCdsDialog, setShowCdsDialog] = useState(false);
+
+  // AI generation mode: 'suggest' = rich draft, 'generate' = strict facts-only
+  const [generationMode, setGenerationMode] = useState<ClinicalDocGenerationMode>('suggest');
 
   // Calculate length of stay
   const lengthOfStay = useMemo(() => {
@@ -401,6 +406,7 @@ export default function DischargePage() {
           chief_complaint: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
         },
         output_format: 'markdown',
+        generation_mode: generationMode,
         additional_instructions: [
           'For the Hospital Course section, write a flowing clinical narrative that synthesizes the ward round findings into a coherent story of the admission.',
           'Mention key dates and clinical inflection points (e.g. when symptoms improved, when antibiotics were changed, when a complication arose) but do NOT list each ward round as separate S/O/A/P entries.',
@@ -411,12 +417,17 @@ export default function DischargePage() {
       if (result.full_text) {
         setDischargeSummary(result.full_text);
         setSummaryGenerated(true);
-        toast({ title: 'Draft Generated', description: 'TibaBot drafted a discharge summary. Please review and edit.' });
+        toast({
+          title: generationMode === 'generate' ? 'Strict Draft Generated' : 'Draft Generated',
+          description: generationMode === 'generate'
+            ? 'Facts-only discharge summary generated. Audit-safe — review before filing.'
+            : 'TibaBot drafted a discharge summary. Please review and edit.',
+        });
       }
     } catch {
       toast({ title: 'Generation Failed', description: 'Could not generate discharge summary. Please write it manually.', variant: 'destructive' });
     }
-  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, clinicalDocument, toast, patientCtx, clinicalHistoryText]);
+  }, [admission, diagnoses, medications, lengthOfStay, dischargeType, clinicalDocument, toast, patientCtx, clinicalHistoryText, generationMode]);
 
   // AI-generate patient instructions
   const handleGenerateInstructions = useCallback(async () => {
@@ -445,6 +456,7 @@ export default function DischargePage() {
         patient_context: docPatientCtx,
         admission_context: admissionCtx,
         output_format: 'markdown',
+        generation_mode: generationMode,
         additional_instructions: [
           'Focus on patient-friendly discharge instructions.',
           'Include: medication schedule, dietary advice, activity restrictions, red-flag symptoms to watch for, and when to return to hospital.',
@@ -455,12 +467,17 @@ export default function DischargePage() {
       if (result.full_text) {
         setPatientInstructions(result.full_text);
         setInstructionsGenerated(true);
-        toast({ title: 'Draft Generated', description: 'TibaBot drafted patient instructions. Please review and edit.' });
+        toast({
+          title: generationMode === 'generate' ? 'Strict Draft Generated' : 'Draft Generated',
+          description: generationMode === 'generate'
+            ? 'Facts-only patient instructions generated. Audit-safe — review before filing.'
+            : 'TibaBot drafted patient instructions. Please review and edit.',
+        });
       }
     } catch {
       toast({ title: 'Generation Failed', description: 'Could not generate patient instructions. Please write them manually.', variant: 'destructive' });
     }
-  }, [admission, diagnoses, medications, clinicalDocument, toast, patientCtx, clinicalHistoryText]);
+  }, [admission, diagnoses, medications, clinicalDocument, toast, patientCtx, clinicalHistoryText, generationMode]);
 
   // Helper to extract code string from DiagnosisEntry
   const getDiagCode = (entry: DiagnosisEntry) =>
@@ -764,6 +781,43 @@ export default function DischargePage() {
               label="Discharge Diagnoses"
             />
           </div>
+
+          {/* AI Generation Mode Toggle */}
+          {isAIEnabled && (
+            <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <BrainCircuit className="h-4 w-4 text-purple-500" />
+                <span className="text-sm font-medium">TibaBot Generation</span>
+              </div>
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center gap-2 w-fit cursor-default">
+                      <Switch
+                        checked={generationMode === 'suggest'}
+                        onCheckedChange={(checked) => setGenerationMode(checked ? 'suggest' : 'generate')}
+                      />
+                      <span className="text-sm font-medium">
+                        {generationMode === 'suggest' ? (
+                          'Suggest Mode'
+                        ) : (
+                          <span className="flex items-center gap-1.5">
+                            <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
+                            Strict Mode
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-xs">
+                    {generationMode === 'suggest'
+                      ? 'Switch to Strict mode — facts-only output safe for audit trails and legal records'
+                      : 'Switch to Suggest mode — rich drafts with AI-synthesised narratives for clinician review'}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+          )}
 
           {/* Discharge Summary (Treatment Summary) */}
           <div className="space-y-2">

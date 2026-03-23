@@ -1858,6 +1858,7 @@ class ClinicalDocumentGenerateView(AIFeatureGatedMixin, APIView):
             details={
                 "document_type": data["document_type"],
                 "output_format": data.get("output_format", "markdown"),
+                "generation_mode": data.get("generation_mode", "suggest"),
             },
         )
 

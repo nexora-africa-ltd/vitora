@@ -1542,6 +1542,11 @@ OUTPUT_FORMAT_CHOICES = [
     ("fhir", "FHIR R4 Composition"),
 ]
 
+GENERATION_MODE_CHOICES = [
+    ("suggest", "Suggest — rich draft with AI-synthesised narratives"),
+    ("generate", "Generate — strict facts-only output for audit trails"),
+]
+
 
 class ClinicalDocPatientContextSerializer(serializers.Serializer):
     """Patient demographics and clinical context for clinical document generation."""
@@ -1700,6 +1705,12 @@ class ClinicalDocGenerateRequestSerializer(serializers.Serializer):
     additional_instructions = serializers.CharField(
         required=False, allow_blank=True, max_length=2000,
     )
+    generation_mode = serializers.ChoiceField(
+        choices=GENERATION_MODE_CHOICES,
+        default="suggest",
+        required=False,
+        help_text='"suggest" (default): rich draft for clinician review. "generate": strict facts-only output.',
+    )
     system_instruction = serializers.CharField(
         required=False, allow_blank=True, max_length=2000,
     )
@@ -1747,6 +1758,10 @@ class ClinicalDocGenerateResponseSerializer(serializers.Serializer):
     processing_time_ms = serializers.FloatField(required=False)
     model_used = serializers.CharField(required=False, allow_blank=True)
     disclaimer = serializers.CharField(required=False)
+    generation_mode = serializers.CharField(required=False)
+    section_provenance = serializers.DictField(
+        child=serializers.CharField(), required=False,
+    )
     mode = serializers.CharField(required=False)
     error = serializers.CharField(required=False, allow_null=True)
 

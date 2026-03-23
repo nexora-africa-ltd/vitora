@@ -789,6 +789,7 @@ export interface AIClerkingStructureResponse {
 
 export type ClinicalDocumentType = 'discharge_summary' | 'soap' | 'progress_note' | 'referral_letter' | 'clerking_note';
 export type ClinicalDocOutputFormat = 'markdown' | 'structured' | 'fhir';
+export type ClinicalDocGenerationMode = 'suggest' | 'generate';
 export type ClinicalDocDischargeType = 'NORMAL' | 'AMA' | 'TRANSFER' | 'DEATH' | 'DAMA';
 
 export interface ClinicalDocPatientContext {
@@ -847,6 +848,7 @@ export interface AIClinicalDocumentRequest {
   facility_context?: ClinicalDocFacilityContext;
   output_format?: ClinicalDocOutputFormat;
   include_icd10_codes?: boolean;
+  generation_mode?: ClinicalDocGenerationMode;
   additional_instructions?: string;
   system_instruction?: string;
 }
@@ -881,6 +883,8 @@ export interface AIClinicalDocumentResponse {
   processing_time_ms?: number;
   model_used?: string;
   disclaimer?: string;
+  generation_mode?: string;
+  section_provenance?: Record<string, string>;
   mode?: string;
   error?: string | null;
 }
@@ -890,6 +894,7 @@ export interface AIClinicalDocumentResponse {
 // =============================================================================
 
 /** Request body for POST /api/ai/cds/evaluate/ */
+
 export interface AICDSEvaluateRequest {
   encounter_id?: number | null;
   medications?: string[];
