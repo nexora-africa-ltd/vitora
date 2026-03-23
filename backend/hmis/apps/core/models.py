@@ -2408,7 +2408,7 @@ class Facility(TimeStampedModel):
         }
 
         level_overrides: dict[str, dict[str, bool]] = {
-            "1": {"outpatient": True, "pharmacy": True},
+            "1": {"outpatient": True},
             "2": {"outpatient": True, "pharmacy": True},
             "3": {
                 "outpatient": True,
