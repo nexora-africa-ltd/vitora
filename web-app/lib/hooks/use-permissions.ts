@@ -39,7 +39,7 @@ import { ACTION_PERMISSIONS, type ActionKey } from '@/lib/permissions/actions';
  */
 const MODULE_ROLE_ACCESS: Record<string, Set<string>> = {};
 for (const [actionKey, roles] of Object.entries(ACTION_PERMISSIONS)) {
-  const modulePrefix = actionKey.split('.')[0];
+  const modulePrefix = actionKey.split('.')[0] ?? actionKey;
   if (!MODULE_ROLE_ACCESS[modulePrefix]) {
     MODULE_ROLE_ACCESS[modulePrefix] = new Set();
   }
