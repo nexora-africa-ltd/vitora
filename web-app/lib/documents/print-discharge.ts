@@ -182,16 +182,31 @@ function markdownToHtml(md: string): string {
   // Single newlines within paragraphs → <br>
   html = html.replace(/(<p>[\s\S]*?<\/p>)/g, (p) => p.replace(/\n/g, '<br/>'));
 
-  // Wrap heading + following content into <section> blocks so page-break
-  // logic can keep a heading with its body and avoid breaks in headless sections.
-  html = html.replace(
-    /(<h[1-3][^>]*>)/g,
-    '</section>\n<section class="has-heading">$1',
-  );
-  // Open a wrapper for the leading (headless) content and close the last section
-  html = '<section>' + html + '</section>';
-  // Remove the empty first </section> artifact
-  html = html.replace('<section></section>', '');
+  // Wrap each heading + its following content into a <table> so that the
+  // heading appears in a <thead> which browsers repeat on every printed page
+  // when the section spills across a page break.
+  //
+  // Structure:
+  //   <table class="section-table">
+  //     <thead><tr><td><h2>Title</h2></td></tr></thead>
+  //     <tbody><tr><td>…body content…</td></tr></tbody>
+  //   </table>
+  const parts = html.split(/(?=<h[1-3][^>]*>)/);
+  html = parts
+    .map((part) => {
+      const headingMatch = part.match(/^(<h[1-3][^>]*>[\s\S]*?<\/h[1-3]>)/);
+      if (headingMatch) {
+        const heading = headingMatch[1];
+        const body = part.slice(heading!.length).trim();
+        return (
+          `<table class="section-table"><thead><tr><td>${heading}</td></tr></thead>` +
+          `<tbody><tr><td>${body}</td></tr></tbody></table>`
+        );
+      }
+      // Headless content — wrap in a plain section
+      return part.trim() ? `<div class="section-headless">${part}</div>` : '';
+    })
+    .join('\n');
 
   return html;
 }
@@ -327,22 +342,37 @@ const DISCHARGE_CSS = `
   .content strong { font-weight: 700; }
   .content em { font-style: italic; }
 
-  .content table {
+  /* Section-table: invisible layout table for heading repetition */
+  .content .section-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+    border: none;
+  }
+  .content .section-table td {
+    padding: 0;
+    border: none;
+    background: none;
+  }
+
+  /* Data tables (not section-tables) */
+  .content table:not(.section-table) {
     width: 100%;
     border-collapse: collapse;
     margin: 10px 0;
     font-size: 10.5pt;
   }
-  .content th, .content td {
+  .content table:not(.section-table) th,
+  .content table:not(.section-table) td {
     border: 1px solid #999;
     padding: 6px 10px;
     text-align: left;
   }
-  .content th {
+  .content table:not(.section-table) th {
     background: #f2f2f2;
     font-weight: 600;
   }
-  .content tr:nth-child(even) td {
+  .content table:not(.section-table) tr:nth-child(even) td {
     background: #fafafa;
   }
   .content hr { border: none; border-top: 1px solid #ccc; margin: 12px 0; }
@@ -409,15 +439,27 @@ const DISCHARGE_CSS = `
       widows: 3;
     }
 
-    /* Sections without a heading: never start a new page */
-    .content section {
-      page-break-before: avoid;
+    /* Section tables: heading repeats on every page via thead */
+    .content .section-table {
+      width: 100%;
+      border-collapse: collapse;
+      page-break-before: auto;
+    }
+    .content .section-table thead {
+      display: table-header-group;
+    }
+    .content .section-table thead td,
+    .content .section-table tbody td {
+      padding: 0;
+      border: none;
+    }
+    .content .section-table tbody tr {
+      page-break-inside: auto;
     }
 
-    /* Sections WITH a heading: allow (but don't force) a page break before */
-    .content section.has-heading {
-      page-break-before: auto;
-      page-break-inside: auto;
+    /* Headless content sections */
+    .content .section-headless {
+      page-break-before: avoid;
     }
 
     /* Don't strand headings at the bottom of a page */
@@ -430,14 +472,14 @@ const DISCHARGE_CSS = `
       page-break-inside: avoid;
     }
 
-    /* Tables: allow page breaks between rows but never inside a row */
-    .content table {
+    /* Data tables: allow page breaks between rows but never inside a row */
+    .content table:not(.section-table) {
       page-break-inside: auto;
     }
-    .content thead {
-      display: table-header-group;  /* Repeat header on every page */
+    .content table:not(.section-table) thead {
+      display: table-header-group;
     }
-    .content tr {
+    .content table:not(.section-table) tr {
       page-break-inside: avoid;
     }
 
