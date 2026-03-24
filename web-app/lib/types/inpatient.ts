@@ -500,16 +500,12 @@ export interface KardexShiftNote {
 export interface KardexHandoverNote {
   id: number;
   kardex: number;
-  from_shift: ShiftType;
-  to_shift: ShiftType;
   outgoing_nurse: number;
   outgoing_nurse_username?: string;
-  nurse_username?: string; // Alias for outgoing nurse
   incoming_nurse: number;
   incoming_nurse_username?: string;
   shift_ending: ShiftType;
   pending_tasks: string;
-  content: string;
   escalations?: string;
   acknowledged_at?: string | null;
   created_at: string;
