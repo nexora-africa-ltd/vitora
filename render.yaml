@@ -59,9 +59,7 @@ services:
       - key: ICD11_USE_LOCAL
         value: "false"
       - key: DATABASE_URL
-        fromDatabase:
-          name: vitora-db
-          property: connectionString
+        sync: false  # Set manually in Render Dashboard — points to Neon PostgreSQL
 
   # ===========================================================================
   # Frontend (Next.js) - vitora.onrender.com
@@ -160,13 +158,14 @@ services:
 # =============================================================================
 # Databases
 # =============================================================================
-databases:
-  # Primary Database (demo/staging)
-  - name: vitora-db
-    plan: free
-    region: frankfurt
-    databaseName: vitora_hmis
-    user: vitora_user
+# NOTE: Using Neon PostgreSQL — DATABASE_URL is set manually in Render Dashboard
+# databases:
+#   # Primary Database (demo/staging) — REPLACED BY NEON
+#   - name: vitora-db
+#     plan: free
+#     region: frankfurt
+#     databaseName: vitora_hmis
+#     user: vitora_user
 
   # ===========================================================================
   # PRODUCTION DATABASE (COMMENTED OUT - Not using Render for production)
