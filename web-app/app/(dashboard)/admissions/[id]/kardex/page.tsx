@@ -176,9 +176,8 @@ export default function KardexPage() {
   const [autoTriggerCarePlan, setAutoTriggerCarePlan] = useState(false);
 
   const isLoading = admissionLoading || kardexLoading;
-  const hasNursingCarePlanEntries = (kardex?.care_plan_entries?.length ?? 0) > 0;
   const isTibaBotOnline = Boolean(aiStatus?.enabled && aiStatus?.service_available);
-  const shouldShowAICarePlanPanel = !hasNursingCarePlanEntries && aiEnabled && isTibaBotOnline;
+  const shouldShowAICarePlanPanel = aiEnabled && isTibaBotOnline;
   const patientAllergies = useMemo(
     () => kardex?.allergies?.split(',').map((allergy) => allergy.trim()).filter(Boolean) ?? [],
     [kardex?.allergies]
