@@ -30,6 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { HelpPopover } from '@/components/shared/help-popover';
+import { useFacility } from '@/lib/context/facility-context';
 import { useAIDischargeAssess, useAIEnabled, useStoredDischargeResults, aiKeys } from '@/lib/hooks/use-ai';
 import { toast } from 'sonner';
 import { AIFeedbackButtons } from '@/components/shared/ai-feedback-buttons';
@@ -165,6 +166,7 @@ export function DischargeReadinessPanel({
   onAutoTriggerConsumed,
 }: DischargeReadinessPanelProps) {
   const isAIEnabled = useAIEnabled();
+  const { hasModule } = useFacility();
   const queryClient = useQueryClient();
   const { mutate, data: result, isPending, isError, reset } = useAIDischargeAssess();
   const [showDetails, setShowDetails] = React.useState(false);
@@ -215,16 +217,24 @@ export function DischargeReadinessPanel({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoTrigger]);
 
-  // Group criteria by category
+  // Map criteria categories to facility modules — hide criteria for disabled modules
+  const CATEGORY_MODULE_MAP: Record<string, keyof import('@/lib/auth/context').FacilityModules> = {
+    labs: 'laboratory',
+    medication: 'pharmacy',
+  };
+
+  // Group criteria by category, filtering out categories for disabled facility modules
   const groupedCriteria = React.useMemo(() => {
     if (!displayResult?.criteria) return {};
     return displayResult.criteria.reduce<Record<string, AIDischargeCriterion[]>>((acc, c) => {
       const cat = c.category || 'other';
+      const requiredModule = CATEGORY_MODULE_MAP[cat];
+      if (requiredModule && !hasModule(requiredModule)) return acc;
       if (!acc[cat]) acc[cat] = [];
       acc[cat].push(c);
       return acc;
     }, {});
-  }, [displayResult?.criteria]);
+  }, [displayResult?.criteria, hasModule]);
 
   if (!isAIEnabled) return null;
 

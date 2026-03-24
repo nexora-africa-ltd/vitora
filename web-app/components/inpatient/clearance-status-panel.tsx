@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useClearanceStatus } from '@/lib/hooks/use-inpatient';
 import { useOptionalPatientContext } from '@/lib/context/patient-context';
+import { useFacility } from '@/lib/context/facility-context';
 import type { DepartmentClearance } from '@/lib/types/inpatient';
 
 interface ClearanceStatusPanelProps {
@@ -80,6 +81,7 @@ function ClearanceRow({
 export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps) {
   const { data: clearance, isLoading, refetch, isFetching } = useClearanceStatus(admissionId);
   const patientContext = useOptionalPatientContext();
+  const { hasModule } = useFacility();
 
   return (
     <Card>
@@ -133,24 +135,28 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
                     : `/billing/invoices?admission=${admissionId}`
                 }
               />
-              <ClearanceRow
-                label="Pharmacy"
-                department={clearance?.pharmacy}
-                resolveHref={
-                  clearance?.pharmacy?.first_pending_id
-                    ? `/pharmacy/prescriptions/${clearance.pharmacy.first_pending_id}`
-                    : `/pharmacy/prescriptions?admission=${admissionId}`
-                }
-              />
-              <ClearanceRow
-                label="Laboratory"
-                department={clearance?.laboratory}
-                resolveHref={
-                  clearance?.laboratory?.first_pending_order_number
-                    ? `/laboratory/orders/${clearance.laboratory.first_pending_order_number}`
-                    : `/laboratory/orders?admission=${admissionId}`
-                }
-              />
+              {hasModule('pharmacy') && (
+                <ClearanceRow
+                  label="Pharmacy"
+                  department={clearance?.pharmacy}
+                  resolveHref={
+                    clearance?.pharmacy?.first_pending_id
+                      ? `/pharmacy/prescriptions/${clearance.pharmacy.first_pending_id}`
+                      : `/pharmacy/prescriptions?admission=${admissionId}`
+                  }
+                />
+              )}
+              {hasModule('laboratory') && (
+                <ClearanceRow
+                  label="Laboratory"
+                  department={clearance?.laboratory}
+                  resolveHref={
+                    clearance?.laboratory?.first_pending_order_number
+                      ? `/laboratory/orders/${clearance.laboratory.first_pending_order_number}`
+                      : `/laboratory/orders?admission=${admissionId}`
+                  }
+                />
+              )}
               <ClearanceRow
                 label="Nursing"
                 department={clearance?.nursing}
