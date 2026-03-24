@@ -35,10 +35,26 @@ export interface ClerkingAssistTextareaProps
   noteFormat?: 'soap' | 'sbar';
   /** Optional patient context for better suggestions */
   patientContext?: AIPatientContext;
-  /** Debounce delay in ms (default: 500) */
+  /** Debounce delay in ms (default: 600) */
   debounceMs?: number;
-  /** Minimum text length before triggering autocomplete (default: 10) */
+  /** Minimum text length before triggering autocomplete (default: 3) */
   minLength?: number;
+}
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Extract the trailing fragment after the last sentence boundary.
+ * TibaBot autocomplete works on partial words/phrases, not full paragraphs.
+ * e.g. "Patient has fever. Risk for inf" → "Risk for inf"
+ */
+function extractTrailingFragment(text: string): string {
+  // Split on sentence-ending punctuation or newlines
+  const parts = text.split(/[.\n]+/);
+  const last = parts[parts.length - 1]?.trim() ?? '';
+  return last;
 }
 
 // =============================================================================
@@ -51,8 +67,8 @@ export function ClerkingAssistTextarea({
   onChange,
   noteFormat = 'soap',
   patientContext,
-  debounceMs = 500,
-  minLength = 10,
+  debounceMs = 600,
+  minLength = 3,
   className,
   disabled,
   ...textareaProps
@@ -65,36 +81,68 @@ export function ClerkingAssistTextarea({
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
+  // Store latest props in refs so the debounce callback always reads fresh values
+  // without needing them in any dependency array.
+  const fieldNameRef = React.useRef(fieldName);
+  fieldNameRef.current = fieldName;
+  const noteFormatRef = React.useRef(noteFormat);
+  noteFormatRef.current = noteFormat;
+  const patientContextRef = React.useRef(patientContext);
+  patientContextRef.current = patientContext;
+
   const suggestions = React.useMemo(() => result?.suggestions ?? [], [result]);
 
-  // Debounced autocomplete trigger
+  // Cleanup debounce timer on unmount
   React.useEffect(() => {
-    if (!isAIEnabled || disabled) return;
-    if (value.length < minLength) {
-      setShowSuggestions(false);
-      return;
-    }
-
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      mutate({
-        text: value,
-        field_name: fieldName,
-        note_format: noteFormat,
-        patient_context: patientContext,
-      });
-      setShowSuggestions(true);
-      setSelectedIndex(0);
-    }, debounceMs);
-
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [value, isAIEnabled, disabled, minLength, debounceMs, fieldName, noteFormat, patientContext, mutate]);
+  }, []);
+
+  // Debounced autocomplete — triggered from onChange, NOT from a useEffect on value.
+  // This avoids React effect cleanup/setup overhead on every keystroke.
+  const scheduleAutocomplete = React.useCallback(
+    (text: string) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+
+      const fragment = extractTrailingFragment(text);
+      if (!isAIEnabled || disabled || fragment.length < minLength) {
+        setShowSuggestions(false);
+        return;
+      }
+
+      debounceRef.current = setTimeout(() => {
+        mutate({
+          text: fragment,
+          field_name: fieldNameRef.current,
+          note_format: noteFormatRef.current,
+          patient_context: patientContextRef.current,
+        });
+        setShowSuggestions(true);
+        setSelectedIndex(0);
+      }, debounceMs);
+    },
+    [isAIEnabled, disabled, minLength, debounceMs, mutate],
+  );
+
+  const handleChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newValue = e.target.value;
+      onChange(newValue);
+      scheduleAutocomplete(newValue);
+    },
+    [onChange, scheduleAutocomplete],
+  );
 
   const acceptSuggestion = React.useCallback(
     (suggestion: AIClerkingAutocompleteSuggestion) => {
-      onChange(suggestion.text);
+      // Replace only the trailing fragment with the accepted suggestion
+      const fragment = extractTrailingFragment(value);
+      const prefix = fragment.length < value.length
+        ? value.slice(0, value.length - fragment.length)
+        : '';
+      const newValue = prefix + suggestion.text;
+      onChange(newValue);
       auditSuggestionAction({
         suggestion_type: 'clerking_autocomplete',
         event_type: 'accepted',
@@ -112,7 +160,7 @@ export function ClerkingAssistTextarea({
       reset();
       textareaRef.current?.focus();
     },
-    [auditSuggestionAction, fieldName, noteFormat, onChange, reset]
+    [auditSuggestionAction, fieldName, noteFormat, onChange, reset, value]
   );
 
   const handleKeyDown = React.useCallback(
@@ -142,7 +190,7 @@ export function ClerkingAssistTextarea({
       <Textarea
         ref={textareaRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleChange}
         onKeyDown={handleKeyDown}
         onBlur={() => {
           // Delay to allow click on suggestion

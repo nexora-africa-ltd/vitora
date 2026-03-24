@@ -9,7 +9,7 @@ Handles communication with the TibaBot AI service, including:
 """
 
 import logging
-from typing import Any
+from typing import Any, ClassVar
 
 import requests
 from django.conf import settings
@@ -484,12 +484,39 @@ class TibaBotClient:
     # Phase 5 — Clerking Assist
     # -----------------------------------------------------------------
 
+    # Map proxy field_name values to TibaBot cursor_section names.
+    # TibaBot only accepts a fixed set of section names; nursing-specific
+    # fields are mapped to the closest clinical equivalent.
+    _SECTION_MAP: ClassVar[dict[str, str]] = {
+        # Standard clerking fields (1:1)
+        "chief_complaint": "presenting_complaint",
+        "presenting_complaint": "presenting_complaint",
+        "hpi": "hpi",
+        "history": "hpi",
+        "pmh": "pmh",
+        "drug_history": "drug_history",
+        "allergies": "allergies",
+        "family_history": "family_history",
+        "social_history": "social_history",
+        "review_of_systems": "review_of_systems",
+        "examination": "examination",
+        "investigations": "investigations",
+        "assessment": "assessment",
+        "plan": "plan",
+        # Nursing ADPIE → closest TibaBot section
+        "nursing_assessment": "assessment",
+        "nursing_diagnosis": "assessment",
+        "nursing_goal": "plan",
+        "nursing_plan_of_action": "plan",
+        "scientific_rationale": "plan",
+    }
+
     def clerking_autocomplete(self, payload: dict[str, Any]) -> dict[str, Any]:
         """
         Context-aware medical autocomplete for clinical notes.
 
-        Sends partial text and field context to TibaBot's
-        ``POST /clerking/autocomplete`` endpoint.
+        Translates the proxy API fields (``text``, ``field_name``) to
+        TibaBot's expected fields (``current_text``, ``cursor_section``).
 
         Args:
             payload: Dict containing text, field_name,
@@ -498,12 +525,27 @@ class TibaBotClient:
         Returns:
             Dict with suggestions[] (text, confidence, category).
         """
-        if "text" in payload:
-            payload["text"] = sanitize_clinical_text(payload["text"])
+        # Build TibaBot-native payload
+        raw_text = payload.get("text", "")
+        field_name = payload.get("field_name", "assessment")
+
+        tibabot_payload: dict[str, Any] = {
+            "current_text": sanitize_clinical_text(raw_text),
+            "cursor_section": self._SECTION_MAP.get(field_name, "assessment"),
+        }
+
+        # Forward optional fields that TibaBot accepts
+        if payload.get("patient_context"):
+            tibabot_payload["patient_context"] = payload["patient_context"]
+        if payload.get("note_format"):
+            tibabot_payload["specialty"] = (
+                "internal_medicine"  # default specialty; note_format is a proxy concept
+            )
+
         return self._request(
             method="POST",
             endpoint="/clerking/autocomplete",
-            data=payload,
+            data=tibabot_payload,
         )
 
     def clerking_structure(self, payload: dict[str, Any]) -> dict[str, Any]:
