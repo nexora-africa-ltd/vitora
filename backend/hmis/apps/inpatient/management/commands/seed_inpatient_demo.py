@@ -3,7 +3,19 @@ Management command to seed comprehensive inpatient demo data.
 
 Creates realistic admissions, ward rounds, transfers, and discharges
 covering all ward types, payer types, admission statuses, and clinical
-workflows. Uses authentic Kenyan names (no "Demo" suffixes).
+workflows.  Includes deep clinical data:
+
+- Allergies & comorbidities per patient
+- Encounter vitals + SOAP notes
+- Lab orders, items, and results (with verification)
+- Imaging orders, items, and radiology reports
+- Prescriptions and prescription items
+- Nursing Kardex handover notes (shift-to-shift)
+- Ward-level shift handovers
+- CDS rules and alerts (drug-allergy, critical vitals, critical lab)
+- Supervisor alert acknowledgments
+
+Uses authentic Kenyan names (no "Demo" suffixes).
 
 Usage:
     python manage.py seed_inpatient_demo
@@ -20,21 +32,38 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
+from hmis.apps.cds.models import CDSAlert, CDSRule
 from hmis.apps.core.models import County, SubCounty
 from hmis.apps.encounters.models import Encounter
+from hmis.apps.imaging.models import (
+    ImagingOrder,
+    ImagingOrderItem,
+    ImagingProcedure,
+    RadiologyReport,
+)
 from hmis.apps.inpatient.models import (
     Admission,
     Bed,
     Discharge,
+    KardexHandoverNote,
     KardexShiftNote,
     NursingCarePlanEntry,
     NursingKardex,
+    ShiftHandover,
+    SupervisorAlertAcknowledgment,
     TemperatureReading,
     Transfer,
     Ward,
     WardRound,
 )
-from hmis.apps.patients.models import Patient
+from hmis.apps.laboratory.models import (
+    LabOrder,
+    LabOrderItem,
+    LabResult,
+    TestCatalog,
+)
+from hmis.apps.patients.models import Allergy, Patient
+from hmis.apps.pharmacy.models import Drug, Prescription, PrescriptionItem
 
 User = get_user_model()
 
@@ -55,10 +84,71 @@ LAST_NAMES = [
 ]
 
 # ---------------------------------------------------------------------------
+# Test-catalog / Drug / Imaging-procedure seed pools
+# These are created lazily by _ensure_test_catalog / _ensure_drugs / etc.
+# ---------------------------------------------------------------------------
+TEST_CATALOG_DEFS = [
+    # (code, name, category, specimen_type, result_type, unit, male_range, female_range, cost)
+    ("FBC", "Full Blood Count", "HEMATOLOGY", "BLOOD", "PANEL", "", "", "", Decimal("800")),
+    ("HB", "Haemoglobin", "HEMATOLOGY", "BLOOD", "NUMERIC", "g/dL", "13.0-17.0", "12.0-16.0", Decimal("300")),
+    ("WBC", "White Blood Cell Count", "HEMATOLOGY", "BLOOD", "NUMERIC", "x10^9/L", "4.0-11.0", "4.0-11.0", Decimal("300")),
+    ("PLT", "Platelet Count", "HEMATOLOGY", "BLOOD", "NUMERIC", "x10^9/L", "150-400", "150-400", Decimal("300")),
+    ("CR", "Serum Creatinine", "CHEMISTRY", "BLOOD", "NUMERIC", "µmol/L", "62-106", "44-80", Decimal("500")),
+    ("BUN", "Blood Urea Nitrogen", "CHEMISTRY", "BLOOD", "NUMERIC", "mmol/L", "2.5-7.1", "2.5-7.1", Decimal("400")),
+    ("K", "Serum Potassium", "CHEMISTRY", "BLOOD", "NUMERIC", "mmol/L", "3.5-5.0", "3.5-5.0", Decimal("400")),
+    ("NA", "Serum Sodium", "CHEMISTRY", "BLOOD", "NUMERIC", "mmol/L", "136-145", "136-145", Decimal("400")),
+    ("RBS", "Random Blood Sugar", "CHEMISTRY", "BLOOD", "NUMERIC", "mmol/L", "3.9-7.8", "3.9-7.8", Decimal("300")),
+    ("HBA1C", "Glycated Haemoglobin", "CHEMISTRY", "BLOOD", "NUMERIC", "%", "4.0-5.6", "4.0-5.6", Decimal("1500")),
+    ("TROPI", "Troponin I", "CHEMISTRY", "BLOOD", "NUMERIC", "ng/mL", "0-0.04", "0-0.04", Decimal("2000")),
+    ("CRP", "C-Reactive Protein", "CHEMISTRY", "BLOOD", "NUMERIC", "mg/L", "0-5", "0-5", Decimal("600")),
+    ("BCULTURE", "Blood Culture", "MICROBIOLOGY", "BLOOD", "TEXT", "", "", "", Decimal("1200")),
+    ("WIDAL", "Widal Test", "SEROLOGY", "BLOOD", "TEXT", "", "", "", Decimal("500")),
+    ("UA", "Urinalysis", "URINALYSIS", "URINE", "TEXT", "", "", "", Decimal("300")),
+    ("EGFR", "Estimated GFR", "CHEMISTRY", "BLOOD", "NUMERIC", "mL/min", ">90", ">90", Decimal("500")),
+]
+
+DRUG_DEFS = [
+    # (code, generic_name, form, strength, unit, categories, schedule, is_essential, cost)
+    ("AMX500", "Amoxicillin", "CAPSULE", "500mg", "capsules", ["ANTIBIOTIC"], "POM", True, Decimal("5")),
+    ("AUGM625", "Amoxicillin-Clavulanate", "TABLET", "625mg", "tablets", ["ANTIBIOTIC"], "POM", True, Decimal("15")),
+    ("CEFT1G", "Ceftriaxone", "INJECTION", "1g", "vials", ["ANTIBIOTIC"], "POM", True, Decimal("120")),
+    ("METRO400", "Metronidazole", "TABLET", "400mg", "tablets", ["ANTIBIOTIC"], "POM", True, Decimal("3")),
+    ("PCM1G", "Paracetamol", "TABLET", "1g", "tablets", ["ANALGESIC"], "OTC", True, Decimal("2")),
+    ("PCMIV", "Paracetamol IV", "INJECTION", "1g/100mL", "vials", ["ANALGESIC"], "POM", True, Decimal("250")),
+    ("TRAM50", "Tramadol", "CAPSULE", "50mg", "capsules", ["ANALGESIC"], "POM", False, Decimal("8")),
+    ("OMEP20", "Omeprazole", "CAPSULE", "20mg", "capsules", ["OTHER"], "POM", True, Decimal("5")),
+    ("METO500", "Metformin", "TABLET", "500mg", "tablets", ["ANTIDIABETIC"], "POM", True, Decimal("3")),
+    ("MIXT3070", "Insulin Mixtard 30/70", "INJECTION", "100 IU/mL", "pens", ["ANTIDIABETIC"], "POM", True, Decimal("750")),
+    ("HEPARIN", "Heparin Sodium", "INJECTION", "5000 IU/mL", "vials", ["OTHER"], "POM", True, Decimal("350")),
+    ("ASPIRIN", "Aspirin", "TABLET", "75mg", "tablets", ["ANALGESIC"], "OTC", True, Decimal("2")),
+    ("CLOPI75", "Clopidogrel", "TABLET", "75mg", "tablets", ["OTHER"], "POM", False, Decimal("15")),
+    ("ATORV20", "Atorvastatin", "TABLET", "20mg", "tablets", ["OTHER"], "POM", True, Decimal("8")),
+    ("ORS", "Oral Rehydration Salts", "POWDER", "20.5g sachet", "sachets", ["OTHER"], "OTC", True, Decimal("10")),
+    ("ZINC20", "Zinc Sulphate", "TABLET", "20mg", "tablets", ["VITAMIN"], "OTC", True, Decimal("5")),
+    ("AZITH500", "Azithromycin", "TABLET", "500mg", "tablets", ["ANTIBIOTIC"], "POM", True, Decimal("20")),
+    ("NORAD", "Noradrenaline", "INJECTION", "4mg/4mL", "ampoules", ["OTHER"], "POM", False, Decimal("450")),
+    ("OXYTOCIN", "Oxytocin", "INJECTION", "10 IU/mL", "ampoules", ["OTHER"], "POM", True, Decimal("80")),
+    ("ENALAPRIL", "Enalapril", "TABLET", "5mg", "tablets", ["ANTIHYPERTENSIVE"], "POM", True, Decimal("4")),
+]
+
+IMAGING_PROCEDURE_DEFS = [
+    # (code, name, modality, body_region, cost, requires_contrast)
+    ("CXR", "Chest X-Ray PA", "XR", "CHEST", Decimal("1500"), False),
+    ("AXR", "Abdominal X-Ray", "XR", "ABDOMEN", Decimal("1500"), False),
+    ("USS-ABD", "Abdomen Ultrasound", "US", "ABDOMEN", Decimal("3000"), False),
+    ("USS-PELV", "Pelvic Ultrasound", "US", "PELVIS", Decimal("3000"), False),
+    ("CT-HEAD", "CT Head Plain", "CT", "HEAD", Decimal("12000"), False),
+    ("CT-CHEST", "CT Chest with Contrast", "CT", "CHEST", Decimal("15000"), True),
+    ("ECG", "Electrocardiogram", "OTHER", "CHEST", Decimal("500"), False),
+    ("ECHO", "Echocardiogram", "US", "CHEST", Decimal("5000"), False),
+]
+
+# ---------------------------------------------------------------------------
 # Clinical scenario definitions
 # Distribution: 7 ACTIVE, 2 DISCHARGED, 1 DECEASED
 # Transfers: 2 of the ACTIVE patients have transfer history
-# Nursing: all ACTIVE patients get Kardex updates, care plans, shift notes, TPR
+# Each scenario now includes: allergies, comorbidities, encounter_vitals,
+# lab_orders, imaging_orders, prescriptions, handover_notes
 # ---------------------------------------------------------------------------
 SCENARIOS = [
     # ========== ACTIVE admissions (7) ==========
@@ -72,6 +162,38 @@ SCENARIOS = [
         "days_ago": 3,
         "gender": "M",
         "age_range": (45, 70),
+        "allergies": [
+            {"substance": "Penicillin", "substance_type": "medication", "reaction_type": "rash", "severity": "moderate", "verification_status": "confirmed", "criticality": "high", "notes": "Developed maculopapular rash after amoxicillin in 2018"},
+        ],
+        "comorbidities": {"chronic_conditions": "Hypertension (controlled on enalapril 5mg OD), Type 2 DM (diet controlled)", "current_medications": "Enalapril 5mg OD", "past_surgeries": "None", "family_history": "Father — MI at age 58, Mother — T2DM", "social_history": "Former smoker (quit 2019), no alcohol, retired teacher"},
+        "encounter_vitals": {"temperature": Decimal("38.2"), "pulse": 98, "blood_pressure": "138/82", "respiratory_rate": 22, "spo2": Decimal("96"), "weight": Decimal("78.5"), "height": Decimal("172"), "history_of_present_illness": "65-year-old male presents with 5-day history of productive cough with yellowish sputum, fever up to 38.5°C, and progressive dyspnoea on exertion. Associated pleuritic right-sided chest pain. No haemoptysis. Has been self-medicating with OTC cough syrup without improvement.", "physical_examination": "Alert, febrile (38.2°C). Tachypnoeic, RR 22. Reduced air entry and crackles right lower zone. Dull to percussion right base. No wheeze. CVS: S1S2, no murmurs. Abdomen soft. No pedal oedema.", "assessment": "Community-acquired pneumonia, right lower lobe. Likely bacterial. Rule out TB given Kenya endemicity."},
+        "lab_orders": [
+            {"priority": "URGENT", "clinical_notes": "CAP day 5, febrile. Assess WBC, CRP for infection severity", "status": "COMPLETED", "items": [
+                {"test_code": "FBC", "result": None},
+                {"test_code": "HB", "result": {"numeric_value": Decimal("13.8"), "result_unit": "g/dL", "result_flag": "NORMAL", "reference_range_text": "13.0-17.0 g/dL"}},
+                {"test_code": "WBC", "result": {"numeric_value": Decimal("14.2"), "result_unit": "x10^9/L", "result_flag": "HIGH", "reference_range_text": "4.0-11.0", "interpretation": "Leucocytosis consistent with bacterial infection"}},
+                {"test_code": "CRP", "result": {"numeric_value": Decimal("86.0"), "result_unit": "mg/L", "result_flag": "HIGH", "reference_range_text": "0-5 mg/L", "interpretation": "Markedly elevated, consistent with acute bacterial infection"}},
+            ]},
+            {"priority": "ROUTINE", "clinical_notes": "Renal baseline — known hypertensive", "status": "COMPLETED", "items": [
+                {"test_code": "CR", "result": {"numeric_value": Decimal("92"), "result_unit": "µmol/L", "result_flag": "NORMAL", "reference_range_text": "62-106 µmol/L"}},
+                {"test_code": "K", "result": {"numeric_value": Decimal("4.2"), "result_unit": "mmol/L", "result_flag": "NORMAL", "reference_range_text": "3.5-5.0 mmol/L"}},
+            ]},
+        ],
+        "imaging_orders": [
+            {"procedure_code": "CXR", "priority": "URGENT", "clinical_indication": "Productive cough, fever 5 days, reduced air entry R base. R/O pneumonia vs TB", "status": "REPORTED", "report": {"findings": "Right lower lobe consolidation with air bronchograms. No pleural effusion. No cavitation or lymphadenopathy. Cardiac silhouette normal.", "impression": "Right lower lobe pneumonia. No features to suggest TB or malignancy.", "is_critical": False}},
+        ],
+        "prescriptions": [
+            {"clinical_notes": "CAP — penicillin allergy, use cephalosporin", "items": [
+                {"drug_code": "CEFT1G", "quantity": 6, "dosage": "1g IV", "frequency": "Once daily", "duration": "3 days", "route": "Intravenous", "instructions": "Administer over 30 min"},
+                {"drug_code": "AUGM625", "quantity": 14, "dosage": "625mg", "frequency": "Three times daily", "duration": "7 days", "route": "Oral", "instructions": "Step-down from IV. Take with food."},
+                {"drug_code": "PCM1G", "quantity": 12, "dosage": "1g", "frequency": "Three times daily", "duration": "As needed", "route": "Oral", "instructions": "For fever >37.5°C or pain"},
+            ]},
+        ],
+        "handover_notes": [
+            {"shift_ending": "DAY", "day_offset": 1, "pending_tasks": "Due ceftriaxone at 2000h. Repeat CRP tomorrow morning. Step-down to oral if afebrile overnight.", "escalations": "Penicillin allergy documented — ensure allergy band on wrist."},
+            {"shift_ending": "NIGHT", "day_offset": 1, "pending_tasks": "Morning bloods: FBC, CRP. Review by consultant on ward round. If afebrile and CRP <40, switch to oral augmentin.", "escalations": ""},
+            {"shift_ending": "DAY", "day_offset": 2, "pending_tasks": "Switched to oral augmentin. DC IV cannula. Plan discharge if stable overnight. Arrange follow-up CXR in 6 weeks.", "escalations": ""},
+        ],
         "rounds": [
             {"day_offset": 1, "condition": "IMPROVING", "subj": "Less febrile, cough productive but decreasing", "obj": "T 37.4°C, RR 20, SpO2 96% on room air", "assess": "Improving community-acquired pneumonia, responding to IV antibiotics", "plan": "Step down to oral amoxicillin-clavulanate, monitor sputum culture results"},
             {"day_offset": 2, "condition": "IMPROVING", "subj": "Afebrile, appetite improving", "obj": "T 36.8°C, RR 18, SpO2 98%. CRP trending down", "assess": "Resolving pneumonia", "plan": "Switch to oral antibiotics, plan discharge if stable overnight"},
@@ -115,6 +237,33 @@ SCENARIOS = [
         "days_ago": 1,
         "gender": "F",
         "age_range": (18, 35),
+        "allergies": [
+            {"substance": "Ibuprofen", "substance_type": "medication", "reaction_type": "nausea", "severity": "mild", "verification_status": "presumed", "criticality": "low", "notes": "GI upset with NSAIDs"},
+        ],
+        "comorbidities": {"chronic_conditions": "None", "current_medications": "Combined oral contraceptive pill", "past_surgeries": "None", "family_history": "Non-contributory", "social_history": "University student, non-smoker, social alcohol, no drug use"},
+        "encounter_vitals": {"temperature": Decimal("37.8"), "pulse": 92, "blood_pressure": "118/72", "respiratory_rate": 18, "spo2": Decimal("99"), "weight": Decimal("62.0"), "height": Decimal("165"), "history_of_present_illness": "24-year-old female presents with 12-hour history of periumbilical pain that migrated to the RIF. Associated nausea and 1 episode of vomiting. Low-grade fever. No urinary symptoms. LMP 2 weeks ago, regular.", "physical_examination": "Tender RIF with localised guarding and rebound. Rovsing sign positive. McBurney point tenderness. No mass palpable. Bowel sounds reduced. PR: tender high on right.", "assessment": "Acute appendicitis — surgical candidate. Alvarado score 8/10."},
+        "lab_orders": [
+            {"priority": "URGENT", "clinical_notes": "Acute abdomen — pre-op workup", "status": "COMPLETED", "items": [
+                {"test_code": "FBC", "result": None},
+                {"test_code": "WBC", "result": {"numeric_value": Decimal("15.6"), "result_unit": "x10^9/L", "result_flag": "HIGH", "reference_range_text": "4.0-11.0", "interpretation": "Neutrophilic leucocytosis supporting acute appendicitis"}},
+                {"test_code": "CRP", "result": {"numeric_value": Decimal("42.0"), "result_unit": "mg/L", "result_flag": "HIGH", "reference_range_text": "0-5 mg/L"}},
+                {"test_code": "CR", "result": {"numeric_value": Decimal("64"), "result_unit": "µmol/L", "result_flag": "NORMAL", "reference_range_text": "44-80 µmol/L"}},
+            ]},
+        ],
+        "imaging_orders": [
+            {"procedure_code": "USS-ABD", "priority": "URGENT", "clinical_indication": "RIF pain, query appendicitis. Alvarado 8.", "status": "REPORTED", "report": {"findings": "Non-compressible tubular structure in RIF measuring 11mm diameter with surrounding fat stranding. No free fluid. No ovarian pathology.", "impression": "Findings consistent with acute appendicitis. No complication.", "is_critical": False}},
+        ],
+        "prescriptions": [
+            {"clinical_notes": "Peri-operative antibiotics and analgesia", "items": [
+                {"drug_code": "CEFT1G", "quantity": 2, "dosage": "1g IV", "frequency": "Pre-op then post-op", "duration": "2 doses", "route": "Intravenous", "instructions": "First dose 30 min before incision"},
+                {"drug_code": "METRO400", "quantity": 6, "dosage": "400mg IV", "frequency": "Three times daily", "duration": "48 hours", "route": "Intravenous", "instructions": "Administer over 20 min"},
+                {"drug_code": "PCMIV", "quantity": 3, "dosage": "1g IV", "frequency": "Every 8 hours", "duration": "24 hours", "route": "Intravenous", "instructions": "Post-op analgesia"},
+                {"drug_code": "PCM1G", "quantity": 15, "dosage": "1g", "frequency": "Three times daily", "duration": "5 days", "route": "Oral", "instructions": "Step-down analgesia after tolerating oral intake"},
+            ]},
+        ],
+        "handover_notes": [
+            {"shift_ending": "NIGHT", "day_offset": 0, "pending_tasks": "Post-op monitoring: vitals Q1H ×4 then Q4H. Check wound and drain. Advance diet when bowel sounds return. Due IV metronidazole at 0200h.", "escalations": "NSAID allergy documented — use paracetamol only for analgesia."},
+        ],
         "rounds": [
             {"day_offset": 1, "condition": "STABLE", "subj": "Post-op day 1, tolerating oral fluids, mild incisional pain", "obj": "T 37.0°C, wound dry, bowel sounds present", "assess": "Uncomplicated post-appendicectomy recovery", "plan": "Advance diet, ambulate, continue IV antibiotics for 24h then switch oral"},
         ],
@@ -154,6 +303,27 @@ SCENARIOS = [
         "days_ago": 2,
         "gender": "M",
         "age_range": (2, 8),
+        "allergies": [],
+        "comorbidities": {"chronic_conditions": "None", "current_medications": "None", "past_surgeries": "None", "family_history": "No significant family history", "social_history": "Attends daycare centre, vaccinations up to date"},
+        "encounter_vitals": {"temperature": Decimal("37.8"), "pulse": 120, "blood_pressure": "90/55", "respiratory_rate": 28, "spo2": Decimal("98"), "weight": Decimal("14.5"), "height": Decimal("96"), "history_of_present_illness": "3-year-old male, 2-day history of profuse watery diarrhoea (6-8 episodes/day) with vomiting (4 episodes). Reduced oral intake. Reduced urine output. No blood in stool. Several children at daycare have similar illness.", "physical_examination": "Irritable but consolable. Sunken eyes. Dry mucous membranes. Reduced skin turgor. Tachycardic (120). Capillary refill 3 seconds. Abdomen soft, hyperactive bowel sounds. No hepatosplenomegaly.", "assessment": "Moderate dehydration secondary to acute gastroenteritis. Likely rotavirus. WHO Plan B rehydration indicated."},
+        "lab_orders": [
+            {"priority": "URGENT", "clinical_notes": "AGE with moderate dehydration in 3-year-old", "status": "COMPLETED", "items": [
+                {"test_code": "K", "result": {"numeric_value": Decimal("3.2"), "result_unit": "mmol/L", "result_flag": "LOW", "reference_range_text": "3.5-5.0 mmol/L", "interpretation": "Mild hypokalaemia — supplement via ORS and diet"}},
+                {"test_code": "NA", "result": {"numeric_value": Decimal("138"), "result_unit": "mmol/L", "result_flag": "NORMAL", "reference_range_text": "136-145 mmol/L"}},
+                {"test_code": "RBS", "result": {"numeric_value": Decimal("5.2"), "result_unit": "mmol/L", "result_flag": "NORMAL", "reference_range_text": "3.9-7.8 mmol/L"}},
+            ]},
+        ],
+        "imaging_orders": [],
+        "prescriptions": [
+            {"clinical_notes": "AGE — oral rehydration and zinc supplementation per WHO guidelines", "items": [
+                {"drug_code": "ORS", "quantity": 10, "dosage": "5ml spoons every 5 min", "frequency": "Continuous", "duration": "Until rehydrated", "route": "Oral", "instructions": "Small frequent sips. Mother to administer."},
+                {"drug_code": "ZINC20", "quantity": 10, "dosage": "20mg", "frequency": "Once daily", "duration": "10 days", "route": "Oral", "instructions": "Dissolve in ORS if child unable to chew. Continue full 10 days even after diarrhoea resolves."},
+                {"drug_code": "PCM1G", "quantity": 5, "dosage": "250mg", "frequency": "Every 6 hours PRN", "duration": "As needed", "route": "Oral", "instructions": "For temperature >38°C. Use 15mg/kg dose."},
+            ]},
+        ],
+        "handover_notes": [
+            {"shift_ending": "DAY", "day_offset": 1, "pending_tasks": "Continue strict I/O chart. Weigh nappies. ORS ad lib. Monitor for dehydration signs. Repeat K+ tomorrow if still loose stools.", "escalations": "Potassium 3.2 — low. Ensure adequate ORS intake. Escalate if <3.0 or child becomes lethargic."},
+        ],
         "rounds": [
             {"day_offset": 1, "condition": "IMPROVING", "subj": "Vomiting stopped, taking ORS well, still 3 loose stools", "obj": "No sunken eyes, skin turgor normal, capillary refill <2s", "assess": "Moderate dehydration improving on IV fluids", "plan": "Switch to oral rehydration if tolerating, monitor stool frequency"},
         ],
@@ -195,6 +365,43 @@ SCENARIOS = [
         "days_ago": 4,
         "gender": "M",
         "age_range": (50, 68),
+        "allergies": [
+            {"substance": "Morphine", "substance_type": "medication", "reaction_type": "nausea", "severity": "mild", "verification_status": "confirmed", "criticality": "low", "notes": "Severe nausea and vomiting with morphine — use tramadol or fentanyl instead"},
+        ],
+        "comorbidities": {"chronic_conditions": "Hypertension (poorly controlled), Dyslipidaemia, Type 2 DM on metformin", "current_medications": "Metformin 500mg BD, Atorvastatin 20mg ON, Amlodipine 10mg OD (not taking regularly)", "past_surgeries": "Right inguinal hernia repair (2015)", "family_history": "Father — MI at 58, died. Brother — CABG at 52. Strong family history of IHD.", "social_history": "Active smoker 20 pack-years, social alcohol, bank manager, sedentary lifestyle"},
+        "encounter_vitals": {"temperature": Decimal("37.0"), "pulse": 88, "blood_pressure": "90/60", "respiratory_rate": 22, "spo2": Decimal("93"), "weight": Decimal("92.0"), "height": Decimal("175"), "history_of_present_illness": "58-year-old male presents with sudden onset severe central crushing chest pain radiating to left arm and jaw, associated with diaphoresis and dyspnoea. Onset 2 hours ago while at rest. No relief with GTN spray from ambulance. Known hypertensive but poorly compliant.", "physical_examination": "Diaphoretic, distressed. BP 90/60, HR 88 regular. JVP not elevated. S4 gallop, no murmurs. Chest: bilateral fine basal crepitations. ECG: ST elevation V1-V4, reciprocal depression in inferior leads. Troponin I markedly elevated.", "assessment": "Anterior STEMI. Killip Class II. For emergent PCI."},
+        "lab_orders": [
+            {"priority": "STAT", "clinical_notes": "Anterior STEMI — serial troponin, baseline bloods", "status": "COMPLETED", "items": [
+                {"test_code": "TROPI", "result": {"numeric_value": Decimal("12.4"), "result_unit": "ng/mL", "result_flag": "CRITICAL_HIGH", "reference_range_text": "0-0.04 ng/mL", "interpretation": "Markedly elevated troponin I confirming acute myocardial injury", "is_critical_result": True}},
+                {"test_code": "HB", "result": {"numeric_value": Decimal("14.8"), "result_unit": "g/dL", "result_flag": "NORMAL", "reference_range_text": "13.0-17.0 g/dL"}},
+                {"test_code": "CR", "result": {"numeric_value": Decimal("98"), "result_unit": "µmol/L", "result_flag": "NORMAL", "reference_range_text": "62-106 µmol/L"}},
+                {"test_code": "K", "result": {"numeric_value": Decimal("4.4"), "result_unit": "mmol/L", "result_flag": "NORMAL", "reference_range_text": "3.5-5.0 mmol/L"}},
+                {"test_code": "RBS", "result": {"numeric_value": Decimal("11.2"), "result_unit": "mmol/L", "result_flag": "HIGH", "reference_range_text": "3.9-7.8 mmol/L", "interpretation": "Stress hyperglycaemia in setting of acute MI. Known diabetic."}},
+            ]},
+            {"priority": "URGENT", "clinical_notes": "Post-PCI day 1 — repeat troponin peak", "status": "COMPLETED", "day_offset": 1, "items": [
+                {"test_code": "TROPI", "result": {"numeric_value": Decimal("48.6"), "result_unit": "ng/mL", "result_flag": "CRITICAL_HIGH", "reference_range_text": "0-0.04 ng/mL", "interpretation": "Peak troponin. Expected rise post-STEMI. Trending.", "is_critical_result": True}},
+            ]},
+        ],
+        "imaging_orders": [
+            {"procedure_code": "ECG", "priority": "STAT", "clinical_indication": "Acute chest pain with diaphoresis, query STEMI", "status": "COMPLETED"},
+            {"procedure_code": "CXR", "priority": "URGENT", "clinical_indication": "Post-STEMI day 1, basal creps, assess for pulmonary congestion", "status": "REPORTED", "report": {"findings": "Upper lobe venous distension. Bilateral perihilar haziness and Kerley B lines. Mild bilateral pleural effusions. Heart size upper limit of normal. No pneumothorax.", "impression": "Pulmonary oedema consistent with acute heart failure (Killip II). Mild cardiomegaly.", "is_critical": False}},
+            {"procedure_code": "ECHO", "priority": "URGENT", "clinical_indication": "Post-anterior STEMI — assess LV function", "status": "REPORTED", "report": {"findings": "LV mildly dilated. Anteroseptal and apical akinesis. Estimated LVEF 42% by Simpson biplane. Mild mitral regurgitation. RV function normal. No pericardial effusion.", "impression": "LV systolic dysfunction (EF 42%) with regional wall motion abnormality consistent with anterior STEMI territory. Mild functional MR.", "is_critical": False}},
+        ],
+        "prescriptions": [
+            {"clinical_notes": "Post-STEMI acute management — dual antiplatelet, anticoagulation, statin", "items": [
+                {"drug_code": "ASPIRIN", "quantity": 30, "dosage": "75mg", "frequency": "Once daily", "duration": "Lifelong", "route": "Oral", "instructions": "Take with food. Do not stop without cardiology advice."},
+                {"drug_code": "CLOPI75", "quantity": 30, "dosage": "75mg", "frequency": "Once daily", "duration": "12 months", "route": "Oral", "instructions": "Dual antiplatelet therapy post-PCI. Take with aspirin."},
+                {"drug_code": "HEPARIN", "quantity": 6, "dosage": "5000 IU SC", "frequency": "Every 12 hours", "duration": "48 hours", "route": "Subcutaneous", "instructions": "DVT prophylaxis while on bed rest"},
+                {"drug_code": "ATORV20", "quantity": 30, "dosage": "40mg", "frequency": "Once daily at night", "duration": "Ongoing", "route": "Oral", "instructions": "High-intensity statin. Take at bedtime."},
+                {"drug_code": "ENALAPRIL", "quantity": 30, "dosage": "2.5mg", "frequency": "Twice daily", "duration": "Ongoing", "route": "Oral", "instructions": "ACE inhibitor for post-MI LV protection. Titrate up as tolerated."},
+                {"drug_code": "METO500", "quantity": 60, "dosage": "500mg", "frequency": "Twice daily", "duration": "Ongoing", "route": "Oral", "instructions": "Continue home metformin for DM"},
+            ]},
+        ],
+        "handover_notes": [
+            {"shift_ending": "DAY", "day_offset": 1, "pending_tasks": "Serial troponin at 2000h. Hourly vitals including BP on arterial line. Heparin infusion running — check aPTT at 0600h. Cardiology review at 0800h.", "escalations": "CRITICAL: Troponin 48.6 — peak expected. Report any chest pain immediately. Morphine allergy — use tramadol for pain."},
+            {"shift_ending": "NIGHT", "day_offset": 1, "pending_tasks": "Morning bloods: FBC, U&E, troponin trough. Echo arranged for 1000h. Dietician referral for cardiac/diabetic diet pending.", "escalations": ""},
+            {"shift_ending": "DAY", "day_offset": 2, "pending_tasks": "Transfer to medical ward step-down when ICU consult confirms stability. Ensure telemetry available on receiving ward.", "escalations": ""},
+        ],
         "transfer": {
             "day_offset": 3,
             "dest_ward_type": "MEDICAL",
@@ -245,6 +452,26 @@ SCENARIOS = [
         "days_ago": 1,
         "gender": "F",
         "age_range": (22, 35),
+        "allergies": [],
+        "comorbidities": {"chronic_conditions": "None", "current_medications": "Ferrous sulphate 200mg OD, Folic acid 5mg OD (antenatal)", "past_surgeries": "None", "family_history": "Mother — gestational DM in her pregnancies", "social_history": "Married, housewife, non-smoker, no alcohol. Gravida 2 Para 1+0."},
+        "encounter_vitals": {"temperature": Decimal("37.0"), "pulse": 82, "blood_pressure": "118/72", "respiratory_rate": 18, "spo2": Decimal("99"), "weight": Decimal("72.0"), "height": Decimal("162"), "history_of_present_illness": "28-year-old G2P1+0 at 39+2 weeks gestation. Regular painful contractions every 5 minutes for 6 hours. SROM 2 hours ago — clear liquor. Good fetal movements. ANC attended ×6 — all normal. HIV negative.", "physical_examination": "Well-nourished. Abdomen: fundal height 38cm, longitudinal lie, cephalic ROA, 3/5 palpable. FHR 142 regular. PV: 6cm dilated, fully effaced, station -1, membranes absent, clear liquor. Pelvis adequate.", "assessment": "Active first stage of labour. G2P1 at term. Normal progress."},
+        "lab_orders": [
+            {"priority": "ROUTINE", "clinical_notes": "Admission bloods — labour ward", "status": "COMPLETED", "items": [
+                {"test_code": "HB", "result": {"numeric_value": Decimal("11.8"), "result_unit": "g/dL", "result_flag": "NORMAL", "reference_range_text": "11.0-14.0 g/dL (pregnancy)"}},
+                {"test_code": "RBS", "result": {"numeric_value": Decimal("5.4"), "result_unit": "mmol/L", "result_flag": "NORMAL", "reference_range_text": "3.9-7.8 mmol/L"}},
+            ]},
+        ],
+        "imaging_orders": [],
+        "prescriptions": [
+            {"clinical_notes": "Postpartum — iron supplementation, analgesia", "items": [
+                {"drug_code": "PCM1G", "quantity": 9, "dosage": "1g", "frequency": "Three times daily", "duration": "3 days", "route": "Oral", "instructions": "For afterpains"},
+                {"drug_code": "OXYTOCIN", "quantity": 1, "dosage": "10 IU IM", "frequency": "Stat", "duration": "Single dose", "route": "Intramuscular", "instructions": "Active management of third stage of labour"},
+            ]},
+        ],
+        "handover_notes": [
+            {"shift_ending": "NIGHT", "day_offset": 0, "pending_tasks": "Baby weight 3.2kg, Apgar 9/10. BCG and OPV-0 due in morning. Ensure breastfeeding established. Fundal checks Q15min × 1hr, then Q1H × 4hrs.", "escalations": ""},
+            {"shift_ending": "DAY", "day_offset": 1, "pending_tasks": "Baby immunised. PNC counselling done. Discharge if observations normal. Schedule 48-hour PNC visit.", "escalations": ""},
+        ],
         "rounds": [
             {"day_offset": 1, "condition": "STABLE", "subj": "Delivered healthy baby 3.2 kg, breastfeeding well", "obj": "Uterus well contracted, lochia normal, perineum intact", "assess": "Uncomplicated SVD, mother and baby well", "plan": "Observe 24h, immunise baby, PNC counselling"},
         ],
@@ -287,6 +514,38 @@ SCENARIOS = [
         "days_ago": 5,
         "gender": "F",
         "age_range": (20, 40),
+        "allergies": [
+            {"substance": "Sulfonamides", "substance_type": "medication", "reaction_type": "rash", "severity": "moderate", "verification_status": "confirmed", "criticality": "high", "notes": "Stevens-Johnson syndrome risk — documented in 2020"},
+            {"substance": "Peanuts", "substance_type": "food", "reaction_type": "hives", "severity": "mild", "verification_status": "confirmed", "criticality": "low", "notes": "Urticaria after peanut exposure. Avoids peanut products."},
+        ],
+        "comorbidities": {"chronic_conditions": "None", "current_medications": "None", "past_surgeries": "Tonsillectomy (childhood)", "family_history": "Non-contributory", "social_history": "Agricultural worker in rural Kisumu. Uses borehole water. Non-smoker, no alcohol."},
+        "encounter_vitals": {"temperature": Decimal("39.2"), "pulse": 102, "blood_pressure": "110/68", "respiratory_rate": 22, "spo2": Decimal("97"), "weight": Decimal("58.0"), "height": Decimal("160"), "history_of_present_illness": "26-year-old female presents with 10-day history of high-grade fever (up to 39.5°C) with stepladder pattern. Associated headache, abdominal pain, constipation, and anorexia. Myalgia and malaise. No rash noted. Uses untreated borehole water.", "physical_examination": "Febrile (39.2°C), toxic-looking. Coated tongue. Relative bradycardia. Abdomen: tender hepatosplenomegaly, no guarding. Rose spots on trunk (faint). No lymphadenopathy.", "assessment": "Clinical typhoid fever — Salmonella typhi suspected. Blood culture sent. Start empirical ceftriaxone. Contact isolation."},
+        "lab_orders": [
+            {"priority": "URGENT", "clinical_notes": "Suspected typhoid — blood culture urgent", "status": "COMPLETED", "items": [
+                {"test_code": "BCULTURE", "result": {"text_value": "Salmonella typhi isolated. Sensitive to: Ceftriaxone, Azithromycin, Ciprofloxacin. Resistant to: Ampicillin, Chloramphenicol, Cotrimoxazole.", "result_flag": "POSITIVE", "interpretation": "Confirmed typhoid fever. MDR pattern noted — sensitive to ceftriaxone and azithromycin."}},
+                {"test_code": "WIDAL", "result": {"text_value": "O antigen titre 1:320, H antigen titre 1:640", "result_flag": "POSITIVE", "interpretation": "Titres consistent with active Salmonella typhi infection"}},
+            ]},
+            {"priority": "ROUTINE", "clinical_notes": "Baseline bloods — monitor hepatic/renal function", "status": "COMPLETED", "items": [
+                {"test_code": "HB", "result": {"numeric_value": Decimal("11.2"), "result_unit": "g/dL", "result_flag": "LOW", "reference_range_text": "12.0-16.0 g/dL", "interpretation": "Mild anaemia of chronic disease"}},
+                {"test_code": "WBC", "result": {"numeric_value": Decimal("3.8"), "result_unit": "x10^9/L", "result_flag": "LOW", "reference_range_text": "4.0-11.0", "interpretation": "Leukopenia — typical of typhoid fever"}},
+                {"test_code": "PLT", "result": {"numeric_value": Decimal("142"), "result_unit": "x10^9/L", "result_flag": "LOW", "reference_range_text": "150-400", "interpretation": "Mild thrombocytopenia, monitor for DIC"}},
+            ]},
+        ],
+        "imaging_orders": [
+            {"procedure_code": "USS-ABD", "priority": "ROUTINE", "clinical_indication": "Typhoid fever with hepatosplenomegaly — assess for complications", "status": "REPORTED", "report": {"findings": "Liver mildly enlarged (16cm span) with homogeneous echotexture. Spleen enlarged (14cm). No focal lesions. No abscess. No free fluid. Gallbladder normal, no cholelithiasis.", "impression": "Hepatosplenomegaly consistent with typhoid fever. No complications (abscess, perforation).", "is_critical": False}},
+        ],
+        "prescriptions": [
+            {"clinical_notes": "Confirmed typhoid — culture-directed therapy", "items": [
+                {"drug_code": "CEFT1G", "quantity": 14, "dosage": "2g IV", "frequency": "Once daily", "duration": "14 days", "route": "Intravenous", "instructions": "Infuse over 30 min. Complete full 14-day course."},
+                {"drug_code": "AZITH500", "quantity": 7, "dosage": "500mg", "frequency": "Once daily", "duration": "7 days", "route": "Oral", "instructions": "Step-down from IV ceftriaxone when afebrile ×48h. Take on empty stomach."},
+                {"drug_code": "PCM1G", "quantity": 15, "dosage": "1g", "frequency": "Every 6 hours PRN", "duration": "As needed", "route": "Oral", "instructions": "For temperature >38°C. Tepid sponge first."},
+            ]},
+        ],
+        "handover_notes": [
+            {"shift_ending": "DAY", "day_offset": 1, "pending_tasks": "Temperature chart 4-hourly. Blood culture result pending. Ensure isolation precautions: gown, gloves, hand hygiene for all contacts. Stool specimen for culture tomorrow.", "escalations": "ALLERGY: Sulfonamides — SJS risk documented. Do NOT prescribe cotrimoxazole."},
+            {"shift_ending": "NIGHT", "day_offset": 2, "pending_tasks": "Blood culture result confirmed Salmonella typhi. Ceftriaxone sensitive. Continue current regimen. Watch for complications: perforation (sudden abd pain), GI bleed.", "escalations": ""},
+            {"shift_ending": "DAY", "day_offset": 4, "pending_tasks": "Afebrile ×48h. Plan transfer to medical ward. DC isolation precautions. Switch to oral azithromycin. Repeat stool culture before discharge.", "escalations": ""},
+        ],
         "transfer": {
             "day_offset": 4,
             "dest_ward_type": "MEDICAL",
@@ -340,6 +599,41 @@ SCENARIOS = [
         "days_ago": 2,
         "gender": "M",
         "age_range": (55, 75),
+        "allergies": [
+            {"substance": "Diclofenac", "substance_type": "medication", "reaction_type": "other", "severity": "moderate", "verification_status": "confirmed", "criticality": "high", "notes": "Precipitated AKI — all NSAIDs contraindicated in this patient"},
+        ],
+        "comorbidities": {"chronic_conditions": "Hypertension (enalapril 5mg BD), BPH (tamsulosin), Osteoarthritis knees", "current_medications": "Enalapril 5mg BD, Tamsulosin 0.4mg ON, Diclofenac 50mg BD (self-prescribed — cause of AKI)", "past_surgeries": "Right knee arthroscopy (2018)", "family_history": "Father — CKD on dialysis, died age 72", "social_history": "Retired mechanic, non-smoker, occasional alcohol. Widow."},
+        "encounter_vitals": {"temperature": Decimal("36.8"), "pulse": 88, "blood_pressure": "158/92", "respiratory_rate": 18, "spo2": Decimal("97"), "weight": Decimal("84.0"), "height": Decimal("170"), "history_of_present_illness": "68-year-old male referred from OPD after routine bloods showed Cr 380 µmol/L (baseline 100 2 months ago). Reports 3 days of reduced urine output, nausea, and mild leg swelling. Has been taking diclofenac 50mg BD for 2 weeks for knee pain (self-prescribed, not on his regular medications).", "physical_examination": "BP 158/92. Mild periorbital puffiness. No JVP elevation. Lungs clear. Abdomen soft, palpable bladder — post-void residual 50ml. Mild bilateral pitting ankle oedema. Flank tenderness bilateral.", "assessment": "Pre-renal AKI likely precipitated by NSAID use (diclofenac) in setting of ACE inhibitor and poor oral intake. Cr 380, K+ 5.4. Stop nephrotoxins, IV fluids."},
+        "lab_orders": [
+            {"priority": "STAT", "clinical_notes": "AKI — urgent renal function and potassium", "status": "COMPLETED", "items": [
+                {"test_code": "CR", "result": {"numeric_value": Decimal("380"), "result_unit": "µmol/L", "result_flag": "CRITICAL_HIGH", "reference_range_text": "62-106 µmol/L", "interpretation": "Severe AKI (KDIGO Stage 3). Baseline Cr 100. >3× rise.", "is_critical_result": True}},
+                {"test_code": "K", "result": {"numeric_value": Decimal("5.4"), "result_unit": "mmol/L", "result_flag": "HIGH", "reference_range_text": "3.5-5.0 mmol/L", "interpretation": "Hyperkalaemia in AKI — monitor ECG, consider calcium gluconate if >6.0"}},
+                {"test_code": "BUN", "result": {"numeric_value": Decimal("18.2"), "result_unit": "mmol/L", "result_flag": "HIGH", "reference_range_text": "2.5-7.1 mmol/L", "interpretation": "Markedly elevated urea supporting AKI"}},
+                {"test_code": "NA", "result": {"numeric_value": Decimal("134"), "result_unit": "mmol/L", "result_flag": "LOW", "reference_range_text": "136-145 mmol/L", "interpretation": "Mild dilutional hyponatraemia"}},
+            ]},
+            {"priority": "URGENT", "clinical_notes": "Day 1 repeat renal function", "status": "COMPLETED", "day_offset": 1, "items": [
+                {"test_code": "CR", "result": {"numeric_value": Decimal("320"), "result_unit": "µmol/L", "result_flag": "HIGH", "reference_range_text": "62-106 µmol/L", "interpretation": "Improving from 380. AKI responding to IV fluids."}},
+                {"test_code": "K", "result": {"numeric_value": Decimal("5.1"), "result_unit": "mmol/L", "result_flag": "HIGH", "reference_range_text": "3.5-5.0 mmol/L"}},
+                {"test_code": "EGFR", "result": {"numeric_value": Decimal("14"), "result_unit": "mL/min", "result_flag": "LOW", "reference_range_text": ">90 mL/min", "interpretation": "Severely reduced but improving with hydration"}},
+            ]},
+            {"priority": "ROUTINE", "clinical_notes": "Day 2 — trend creatinine", "status": "COMPLETED", "day_offset": 2, "items": [
+                {"test_code": "CR", "result": {"numeric_value": Decimal("280"), "result_unit": "µmol/L", "result_flag": "HIGH", "reference_range_text": "62-106 µmol/L", "interpretation": "Continuing improvement. 380→320→280."}},
+                {"test_code": "K", "result": {"numeric_value": Decimal("4.6"), "result_unit": "mmol/L", "result_flag": "NORMAL", "reference_range_text": "3.5-5.0 mmol/L"}},
+            ]},
+        ],
+        "imaging_orders": [
+            {"procedure_code": "USS-ABD", "priority": "URGENT", "clinical_indication": "AKI — rule out obstruction, assess kidney size", "status": "REPORTED", "report": {"findings": "Right kidney 11.2cm, left 10.8cm. Normal cortical thickness. No hydronephrosis bilaterally. No calculi. Bladder post-void residual minimal. Prostate mildly enlarged (estimated 45g).", "impression": "Normal-sized kidneys without obstruction. Findings support pre-renal AKI. Mild prostatomegaly.", "is_critical": False}},
+        ],
+        "prescriptions": [
+            {"clinical_notes": "AKI management — stop nephrotoxins, IV fluids, renal-dose adjustments", "items": [
+                {"drug_code": "PCM1G", "quantity": 12, "dosage": "1g", "frequency": "Three times daily", "duration": "As needed", "route": "Oral", "instructions": "For pain — no NSAIDs. Safe in renal impairment at this dose."},
+                {"drug_code": "OMEP20", "quantity": 14, "dosage": "20mg", "frequency": "Once daily", "duration": "While inpatient", "route": "Oral", "instructions": "Stress ulcer prophylaxis"},
+            ]},
+        ],
+        "handover_notes": [
+            {"shift_ending": "DAY", "day_offset": 1, "pending_tasks": "Strict hourly I/O chart. Daily weight. IV NS at 125ml/hr — review rate in morning based on fluid balance. Morning bloods: U&E, Cr, eGFR.", "escalations": "CRITICAL: Cr 380, K+ 5.4. NSAID allergy added — ensure NO NSAIDs prescribed anywhere. Enalapril held until Cr <200."},
+            {"shift_ending": "NIGHT", "day_offset": 1, "pending_tasks": "Urine output stable at 50ml/hr. Cr improving 380→320. Continue IV fluids overnight. Remove catheter if output >0.5ml/kg/hr sustained.", "escalations": ""},
+        ],
         "rounds": [
             {"day_offset": 1, "condition": "STABLE", "subj": "Urine output improving, still nauseated", "obj": "Cr 380→320 µmol/L, K+ 5.1, urine output 40ml/hr", "assess": "Pre-renal AKI responding to IV fluid resuscitation", "plan": "Continue IV NS at 125ml/hr, strict I/O, recheck U&E in 12h"},
             {"day_offset": 2, "condition": "IMPROVING", "subj": "Nauseated less, voiding well", "obj": "Cr 280, K+ 4.6, urine output 60ml/hr", "assess": "AKI resolving", "plan": "Liberalise fluids, renal diet, recheck tomorrow. If Cr <200 consider discharge."},
@@ -382,6 +676,31 @@ SCENARIOS = [
         "los": 5,
         "gender": "F",
         "age_range": (40, 60),
+        "allergies": [
+            {"substance": "Metformin", "substance_type": "medication", "reaction_type": "diarrhea", "severity": "mild", "verification_status": "confirmed", "criticality": "low", "notes": "GI intolerance at higher doses (>1g/day). Tolerate 500mg BD."},
+        ],
+        "comorbidities": {"chronic_conditions": "Type 2 DM (newly diagnosed this admission), Obesity (BMI 34)", "current_medications": "None prior to admission", "past_surgeries": "Caesarean section ×2 (2012, 2016)", "family_history": "Mother — T2DM on insulin. Sister — gestational DM", "social_history": "Businesswoman, sedentary. No smoking/alcohol. Eats chapati and ugali predominantly."},
+        "encounter_vitals": {"temperature": Decimal("36.8"), "pulse": 86, "blood_pressure": "132/84", "respiratory_rate": 18, "spo2": Decimal("98"), "weight": Decimal("88.0"), "height": Decimal("161"), "history_of_present_illness": "52-year-old female presents with 3-week history of polyuria, polydipsia, and blurred vision. Significant weight loss (~5kg). OPD RBS 28 mmol/L. No DKA symptoms (no Kussmaul breathing, no acetone breath). No prior DM diagnosis.", "physical_examination": "Obese (BMI 34). BP 132/84. Dry mucous membranes. Fundi: no diabetic retinopathy. Feet: intact sensation, pedal pulses present. Acanthosis nigricans on neck.", "assessment": "New diagnosis T2DM with hyperglycaemia (RBS 28). No DKA. Start insulin sliding scale, plan transition to premixed insulin."},
+        "lab_orders": [
+            {"priority": "URGENT", "clinical_notes": "New T2DM — full metabolic panel and HbA1c", "status": "COMPLETED", "items": [
+                {"test_code": "RBS", "result": {"numeric_value": Decimal("28.4"), "result_unit": "mmol/L", "result_flag": "CRITICAL_HIGH", "reference_range_text": "3.9-7.8 mmol/L", "interpretation": "Severely elevated random blood sugar. Consistent with uncontrolled T2DM.", "is_critical_result": True}},
+                {"test_code": "HBA1C", "result": {"numeric_value": Decimal("11.2"), "result_unit": "%", "result_flag": "HIGH", "reference_range_text": "4.0-5.6%", "interpretation": "HbA1c 11.2% — poor glycaemic control over preceding 3 months. Target <7%."}},
+                {"test_code": "CR", "result": {"numeric_value": Decimal("68"), "result_unit": "µmol/L", "result_flag": "NORMAL", "reference_range_text": "44-80 µmol/L"}},
+                {"test_code": "K", "result": {"numeric_value": Decimal("4.1"), "result_unit": "mmol/L", "result_flag": "NORMAL", "reference_range_text": "3.5-5.0 mmol/L"}},
+            ]},
+            {"priority": "ROUTINE", "clinical_notes": "Day 3 — glucose stabilisation check", "status": "COMPLETED", "day_offset": 3, "items": [
+                {"test_code": "RBS", "result": {"numeric_value": Decimal("8.4"), "result_unit": "mmol/L", "result_flag": "HIGH", "reference_range_text": "3.9-7.8 mmol/L", "interpretation": "Markedly improved from 28.4 to 8.4 on insulin. Near target."}},
+                {"test_code": "EGFR", "result": {"numeric_value": Decimal("92"), "result_unit": "mL/min", "result_flag": "NORMAL", "reference_range_text": ">90 mL/min"}},
+            ]},
+        ],
+        "imaging_orders": [],
+        "prescriptions": [
+            {"clinical_notes": "Discharge medications for T2DM — insulin + oral", "items": [
+                {"drug_code": "MIXT3070", "quantity": 2, "dosage": "30 IU AM / 20 IU PM", "frequency": "Twice daily", "duration": "Ongoing", "route": "Subcutaneous", "instructions": "Inject into abdomen or thigh. Rotate injection sites. Measure before meals."},
+                {"drug_code": "METO500", "quantity": 60, "dosage": "500mg", "frequency": "Twice daily", "duration": "Ongoing", "route": "Oral", "instructions": "Take with meals to reduce GI side effects. Maximum tolerated dose for this patient."},
+            ]},
+        ],
+        "handover_notes": [],
         "rounds": [
             {"day_offset": 1, "condition": "STABLE", "subj": "Feeling better, blood sugars 12-15 mmol/L on insulin sliding scale", "obj": "RBS 13.2 mmol/L, no ketones, HbA1c 11.2%", "assess": "Uncontrolled T2DM admitted for stabilisation", "plan": "Initiate basal-bolus insulin, diabetic education, renal screen"},
             {"day_offset": 3, "condition": "IMPROVING", "subj": "Sugars 7-10 mmol/L, appetite good", "obj": "RBS 8.4 mmol/L, eGFR 72", "assess": "Glycaemia stabilising on insulin", "plan": "Switch to premixed insulin, plan discharge tomorrow"},
@@ -409,6 +728,26 @@ SCENARIOS = [
         "los": 3,
         "gender": "F",
         "age_range": (30, 50),
+        "allergies": [],
+        "comorbidities": {"chronic_conditions": "None", "current_medications": "None", "past_surgeries": "None", "family_history": "Mother — gallstones, cholecystectomy", "social_history": "Nurse, non-smoker, no alcohol. Multiparous (3 children)."},
+        "encounter_vitals": {"temperature": Decimal("36.9"), "pulse": 76, "blood_pressure": "120/74", "respiratory_rate": 16, "spo2": Decimal("99"), "weight": Decimal("74.0"), "height": Decimal("164"), "history_of_present_illness": "38-year-old female with 6-month history of recurrent RUQ pain after fatty meals. Pain radiates to right shoulder. Associated nausea. Previous USS confirmed multiple gallstones. Elective laparoscopic cholecystectomy scheduled.", "physical_examination": "Well-nourished, comfortable. Abdomen soft. Mild RUQ tenderness, no guarding. Murphy sign equivocal. No jaundice. No palpable mass.", "assessment": "Symptomatic cholelithiasis for elective laparoscopic cholecystectomy."},
+        "lab_orders": [
+            {"priority": "ROUTINE", "clinical_notes": "Pre-operative workup", "status": "COMPLETED", "items": [
+                {"test_code": "FBC", "result": None},
+                {"test_code": "HB", "result": {"numeric_value": Decimal("13.2"), "result_unit": "g/dL", "result_flag": "NORMAL", "reference_range_text": "12.0-16.0 g/dL"}},
+                {"test_code": "CR", "result": {"numeric_value": Decimal("58"), "result_unit": "µmol/L", "result_flag": "NORMAL", "reference_range_text": "44-80 µmol/L"}},
+            ]},
+        ],
+        "imaging_orders": [
+            {"procedure_code": "USS-ABD", "priority": "ROUTINE", "clinical_indication": "Pre-operative confirmation — cholelithiasis", "status": "REPORTED", "report": {"findings": "Multiple hyperechoic foci in gallbladder with posterior acoustic shadowing. No gallbladder wall thickening. CBD 4mm (normal). No intrahepatic duct dilatation. Liver normal.", "impression": "Cholelithiasis confirmed. No features of cholecystitis. CBD normal calibre.", "is_critical": False}},
+        ],
+        "prescriptions": [
+            {"clinical_notes": "Post-op analgesia and antibiotic prophylaxis", "items": [
+                {"drug_code": "CEFT1G", "quantity": 1, "dosage": "1g IV", "frequency": "Stat pre-op", "duration": "Single dose", "route": "Intravenous", "instructions": "Surgical antibiotic prophylaxis — 30 min before incision"},
+                {"drug_code": "PCM1G", "quantity": 15, "dosage": "1g", "frequency": "Three times daily", "duration": "5 days", "route": "Oral", "instructions": "Discharge analgesia. Take regularly for first 3 days, then as needed."},
+            ]},
+        ],
+        "handover_notes": [],
         "rounds": [
             {"day_offset": 1, "condition": "STABLE", "subj": "Post-op day 1, mild wound pain, passed flatus", "obj": "T 36.9°C, abdomen soft, laparoscopy ports clean", "assess": "Uncomplicated post-laparoscopic cholecystectomy", "plan": "Start sips, advance diet, early ambulation"},
         ],
@@ -435,6 +774,31 @@ SCENARIOS = [
         "los": 2,
         "gender": "M",
         "age_range": (62, 78),
+        "allergies": [],
+        "comorbidities": {"chronic_conditions": "Hypertension, Ischaemic heart disease, Chronic kidney disease Stage 3, Atrial fibrillation", "current_medications": "Aspirin 75mg OD, Atorvastatin 40mg ON, Lisinopril 10mg OD, Warfarin (INR target 2-3)", "past_surgeries": "CABG ×3 (2019)", "family_history": "Father — sudden cardiac death age 55", "social_history": "Retired military officer. Ex-smoker (quit after CABG). No alcohol."},
+        "encounter_vitals": {"temperature": Decimal("35.2"), "pulse": 0, "blood_pressure": "0/0", "respiratory_rate": 0, "spo2": Decimal("62"), "weight": Decimal("82.0"), "height": Decimal("174"), "history_of_present_illness": "72-year-old male brought by ambulance after witnessed collapse at home. Wife reports sudden unresponsiveness while watching TV. CPR started by first responders. PEA arrest on ED arrival. ROSC achieved after 20 min of CPR and 3 rounds of adrenaline.", "physical_examination": "Post-ROSC: GCS 3 (E1V1M1). Intubated and mechanically ventilated. Pupils fixed and dilated. BP 90/60 on noradrenaline 0.2 mcg/kg/min. Peripheral mottling. Cold extremities.", "assessment": "Cardiac arrest with ROSC. PEA rhythm — likely acute MI on background of IHD. Post-cardiac arrest syndrome. Multi-organ dysfunction. Prognosis very poor."},
+        "lab_orders": [
+            {"priority": "STAT", "clinical_notes": "Post-cardiac arrest — full workup", "status": "COMPLETED", "items": [
+                {"test_code": "TROPI", "result": {"numeric_value": Decimal("85.2"), "result_unit": "ng/mL", "result_flag": "CRITICAL_HIGH", "reference_range_text": "0-0.04 ng/mL", "interpretation": "Massively elevated — extensive myocardial necrosis post arrest", "is_critical_result": True}},
+                {"test_code": "K", "result": {"numeric_value": Decimal("6.8"), "result_unit": "mmol/L", "result_flag": "CRITICAL_HIGH", "reference_range_text": "3.5-5.0 mmol/L", "interpretation": "Life-threatening hyperkalaemia. Treat urgently with calcium gluconate, insulin-dextrose.", "is_critical_result": True}},
+                {"test_code": "CR", "result": {"numeric_value": Decimal("420"), "result_unit": "µmol/L", "result_flag": "CRITICAL_HIGH", "reference_range_text": "62-106 µmol/L", "interpretation": "AKI on CKD. No urine output.", "is_critical_result": True}},
+                {"test_code": "HB", "result": {"numeric_value": Decimal("9.8"), "result_unit": "g/dL", "result_flag": "LOW", "reference_range_text": "13.0-17.0 g/dL", "interpretation": "Anaemia of chronic disease"}},
+            ]},
+        ],
+        "imaging_orders": [
+            {"procedure_code": "CXR", "priority": "STAT", "clinical_indication": "Post-intubation CXR — verify ETT position, assess for pulmonary oedema", "status": "REPORTED", "report": {"findings": "ETT tip 3cm above carina — satisfactory position. Bilateral diffuse airspace opacification. Cardiomegaly. Sternotomy wires and CABG clips noted. No pneumothorax.", "impression": "Satisfactory ETT position. Bilateral pulmonary oedema/ARDS. Known cardiomegaly post-CABG.", "is_critical": True}},
+            {"procedure_code": "ECG", "priority": "STAT", "clinical_indication": "Post-ROSC — assess rhythm and ST changes", "status": "COMPLETED"},
+        ],
+        "prescriptions": [
+            {"clinical_notes": "ICU critical care — vasopressor support, organ protection", "items": [
+                {"drug_code": "NORAD", "quantity": 10, "dosage": "4mg in 50mL NS", "frequency": "Continuous infusion", "duration": "As needed", "route": "Intravenous", "instructions": "Titrate to MAP >65. Via CVC only."},
+                {"drug_code": "HEPARIN", "quantity": 4, "dosage": "5000 IU SC", "frequency": "Every 12 hours", "duration": "While immobile", "route": "Subcutaneous", "instructions": "DVT prophylaxis. Hold if active bleeding."},
+                {"drug_code": "OMEP20", "quantity": 4, "dosage": "40mg IV", "frequency": "Once daily", "duration": "While intubated", "route": "Intravenous", "instructions": "Stress ulcer prophylaxis"},
+            ]},
+        ],
+        "handover_notes": [
+            {"shift_ending": "DAY", "day_offset": 1, "pending_tasks": "Hourly neuro obs. Noradrenaline at 0.3 mcg/kg/min. Ventilator FiO2 60%, PEEP 10. Recheck ABG at 1800h. Repeat U&E for K+ trend. Family meeting at 1600h — goals of care discussion.", "escalations": "CRITICAL: K+ 6.8 — treated with calcium gluconate and insulin-dextrose. Repeat in 4h. GCS remains 3. Fixed dilated pupils. Poor prognosis communicated to family by ICU consultant."},
+        ],
         "rounds": [
             {"day_offset": 1, "condition": "CRITICAL", "subj": "Intubated, sedated, on vasopressor support", "obj": "GCS 3T, BP 90/60 on noradrenaline 0.3mcg/kg/min, mech ventilated FiO2 60%, pH 7.18, lactate 8.2", "assess": "Post-cardiac arrest, multi-organ dysfunction. Poor neurological prognosis.", "plan": "Continue organ support, family meeting for goals of care discussion"},
         ],
@@ -451,7 +815,7 @@ SCENARIOS = [
 
 
 class Command(BaseCommand):
-    help = "Seed comprehensive inpatient demo data (admissions, rounds, transfers, discharges)"
+    help = "Seed comprehensive inpatient demo data with deep clinical records"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -481,10 +845,36 @@ class Command(BaseCommand):
 
             user = self._get_or_create_user()
             doctor = self._get_or_create_doctor()
+            incoming_nurse = self._get_or_create_incoming_nurse()
             county, sub_county = self._get_or_create_location()
             wards = self._ensure_wards()
+            test_catalog = self._ensure_test_catalog()
+            drugs = self._ensure_drugs()
+            imaging_procs = self._ensure_imaging_procedures()
+            cds_rules = self._ensure_cds_rules(user)
 
-            created = {"patients": 0, "admissions": 0, "rounds": 0, "transfers": 0, "discharges": 0, "kardex_updates": 0, "care_plans": 0, "shift_notes": 0, "tpr_readings": 0}
+            created = {
+                "patients": 0,
+                "allergies": 0,
+                "admissions": 0,
+                "rounds": 0,
+                "transfers": 0,
+                "discharges": 0,
+                "kardex_updates": 0,
+                "care_plans": 0,
+                "shift_notes": 0,
+                "tpr_readings": 0,
+                "lab_orders": 0,
+                "lab_results": 0,
+                "imaging_orders": 0,
+                "radiology_reports": 0,
+                "prescriptions": 0,
+                "prescription_items": 0,
+                "handover_notes": 0,
+                "shift_handovers": 0,
+                "cds_alerts": 0,
+                "supervisor_alerts": 0,
+            }
 
             for i, scenario in enumerate(SCENARIOS):
                 self.stdout.write(f"  Scenario {i + 1}/{len(SCENARIOS)}: {scenario['dx_text'][:50]}...")
@@ -505,29 +895,31 @@ class Command(BaseCommand):
 
                 # Dry run: just tally what would be created
                 if dry_run:
-                    created["patients"] += 1
-                    created["admissions"] += 1
-                    created["rounds"] += len([
-                        rd for rd in scenario.get("rounds", [])
-                        if (timezone.now() - timedelta(days=scenario["days_ago"]) + timedelta(days=rd["day_offset"])).date() <= date.today()
-                    ])
-                    if scenario.get("discharge"):
-                        created["discharges"] += 1
-                    if scenario.get("transfer"):
-                        created["transfers"] += 1
-                    if scenario.get("kardex"):
-                        created["kardex_updates"] += 1
-                    if scenario.get("care_plan"):
-                        created["care_plans"] += 1
-                    created["shift_notes"] += len(scenario.get("shift_notes", []))
-                    created["tpr_readings"] += len(scenario.get("tpr", []))
+                    self._tally_dry_run(scenario, created)
                     continue
 
                 patient = self._create_patient(scenario, county, sub_county)
                 created["patients"] += 1
 
-                # Create IPD encounter
+                # --- Allergies ---
+                for allergy_def in scenario.get("allergies", []):
+                    Allergy.objects.create(
+                        patient=patient,
+                        substance=allergy_def["substance"],
+                        substance_type=allergy_def["substance_type"],
+                        reaction_type=allergy_def["reaction_type"],
+                        severity=allergy_def["severity"],
+                        verification_status=allergy_def["verification_status"],
+                        criticality=allergy_def.get("criticality", "unable_to_assess"),
+                        notes=allergy_def.get("notes", ""),
+                        status="active",
+                        recorded_by=user,
+                    )
+                    created["allergies"] += 1
+
+                # --- IPD Encounter with vitals & SOAP ---
                 admission_date = timezone.now() - timedelta(days=scenario["days_ago"])
+                ev = scenario.get("encounter_vitals", {})
                 ipd_encounter = Encounter.objects.create(
                     patient=patient,
                     encounter_type="IPD",
@@ -535,9 +927,34 @@ class Command(BaseCommand):
                     chief_complaint=scenario["complaint"],
                     status="IN_PROGRESS" if scenario["status"] == "ACTIVE" else "CLOSED",
                     created_by=user,
+                    # Vitals
+                    temperature=ev.get("temperature"),
+                    pulse=ev.get("pulse"),
+                    blood_pressure=ev.get("blood_pressure", ""),
+                    respiratory_rate=ev.get("respiratory_rate"),
+                    spo2=ev.get("spo2"),
+                    weight=ev.get("weight"),
+                    height=ev.get("height"),
+                    # SOAP
+                    history_of_present_illness=ev.get("history_of_present_illness", ""),
+                    physical_examination=ev.get("physical_examination", ""),
+                    assessment=ev.get("assessment", ""),
                 )
 
-                # Create admission
+                # --- Comorbidities on encounter ---
+                comorbid = scenario.get("comorbidities", {})
+                if comorbid:
+                    ipd_encounter.chronic_conditions = comorbid.get("chronic_conditions", "")
+                    ipd_encounter.current_medications = comorbid.get("current_medications", "")
+                    ipd_encounter.past_surgeries = comorbid.get("past_surgeries", "")
+                    ipd_encounter.family_history = comorbid.get("family_history", "")
+                    ipd_encounter.social_history = comorbid.get("social_history", "")
+                    ipd_encounter.save(update_fields=[
+                        "chronic_conditions", "current_medications",
+                        "past_surgeries", "family_history", "social_history",
+                    ])
+
+                # --- Admission ---
                 admission = Admission(
                     patient=patient,
                     ipd_encounter=ipd_encounter,
@@ -554,7 +971,114 @@ class Command(BaseCommand):
                 admission.save()
                 created["admissions"] += 1
 
-                # Ward rounds
+                # --- Lab orders with items & results ---
+                for lab_def in scenario.get("lab_orders", []):
+                    day_offset = lab_def.get("day_offset", 0)
+                    order_date = admission_date + timedelta(days=day_offset)
+                    lab_order = LabOrder.objects.create(
+                        patient=patient,
+                        encounter=ipd_encounter,
+                        admission=admission,
+                        ordered_by=doctor,
+                        priority=lab_def["priority"],
+                        clinical_notes=lab_def.get("clinical_notes", ""),
+                        status=lab_def["status"],
+                    )
+                    created["lab_orders"] += 1
+                    for item_def in lab_def.get("items", []):
+                        test = test_catalog.get(item_def["test_code"])
+                        if not test:
+                            continue
+                        lab_item = LabOrderItem.objects.create(
+                            lab_order=lab_order,
+                            test=test,
+                            status="COMPLETED" if item_def.get("result") else "PENDING",
+                            unit_cost=test.cost,
+                        )
+                        result_def = item_def.get("result")
+                        if result_def:
+                            LabResult.objects.create(
+                                order_item=lab_item,
+                                numeric_value=result_def.get("numeric_value"),
+                                text_value=result_def.get("text_value", ""),
+                                result_unit=result_def.get("result_unit", ""),
+                                result_flag=result_def.get("result_flag", ""),
+                                reference_range_text=result_def.get("reference_range_text", ""),
+                                interpretation=result_def.get("interpretation", ""),
+                                is_critical_result=result_def.get("is_critical_result", False),
+                                entered_by=user,
+                                verification_status="VERIFIED",
+                                verified_by=doctor,
+                                verified_at=order_date + timedelta(hours=4),
+                            )
+                            created["lab_results"] += 1
+
+                # --- Imaging orders with reports ---
+                for img_def in scenario.get("imaging_orders", []):
+                    proc = imaging_procs.get(img_def["procedure_code"])
+                    if not proc:
+                        continue
+                    img_order = ImagingOrder.objects.create(
+                        patient=patient,
+                        encounter=ipd_encounter,
+                        admission=admission,
+                        ordered_by=doctor,
+                        priority=img_def["priority"],
+                        clinical_indication=img_def["clinical_indication"],
+                        status=img_def["status"],
+                        total_cost=proc.cost,
+                    )
+                    ImagingOrderItem.objects.create(
+                        order=img_order,
+                        procedure=proc,
+                        unit_cost=proc.cost,
+                        is_completed=img_def["status"] in ("COMPLETED", "REPORTED"),
+                        completed_at=admission_date + timedelta(hours=3) if img_def["status"] in ("COMPLETED", "REPORTED") else None,
+                    )
+                    created["imaging_orders"] += 1
+
+                    report_def = img_def.get("report")
+                    if report_def and img_def["status"] == "REPORTED":
+                        RadiologyReport.objects.create(
+                            imaging_order=img_order,
+                            findings=report_def["findings"],
+                            impression=report_def["impression"],
+                            status="FINAL",
+                            is_critical=report_def.get("is_critical", False),
+                            reported_by=doctor,
+                            signed_at=admission_date + timedelta(hours=5),
+                        )
+                        created["radiology_reports"] += 1
+
+                # --- Prescriptions ---
+                for rx_def in scenario.get("prescriptions", []):
+                    prescription = Prescription.objects.create(
+                        patient=patient,
+                        encounter=ipd_encounter,
+                        admission=admission,
+                        prescribed_by=doctor,
+                        valid_until=(admission_date + timedelta(days=30)).date(),
+                        clinical_notes=rx_def.get("clinical_notes", ""),
+                        status="PENDING",
+                    )
+                    created["prescriptions"] += 1
+                    for item_def in rx_def.get("items", []):
+                        drug = drugs.get(item_def["drug_code"])
+                        if not drug:
+                            continue
+                        PrescriptionItem.objects.create(
+                            prescription=prescription,
+                            drug=drug,
+                            quantity=item_def["quantity"],
+                            dosage=item_def["dosage"],
+                            frequency=item_def["frequency"],
+                            duration=item_def.get("duration", ""),
+                            route=item_def.get("route", ""),
+                            instructions=item_def.get("instructions", ""),
+                        )
+                        created["prescription_items"] += 1
+
+                # --- Ward rounds ---
                 for rd in scenario.get("rounds", []):
                     round_date = (admission_date + timedelta(days=rd["day_offset"])).date()
                     if round_date > date.today():
@@ -620,6 +1144,22 @@ class Command(BaseCommand):
                         )
                         created["shift_notes"] += 1
 
+                    # --- Kardex handover notes (bed-level, nurse-to-nurse) ---
+                    for ho in scenario.get("handover_notes", []):
+                        ho_time = admission_date + timedelta(days=ho["day_offset"])
+                        if ho_time.date() > date.today():
+                            continue
+                        KardexHandoverNote.objects.create(
+                            kardex=kardex,
+                            outgoing_nurse=user,
+                            incoming_nurse=incoming_nurse,
+                            shift_ending=ho["shift_ending"],
+                            pending_tasks=ho["pending_tasks"],
+                            escalations=ho.get("escalations", ""),
+                            acknowledged_at=ho_time + timedelta(minutes=15),
+                        )
+                        created["handover_notes"] += 1
+
                 # --- TPR readings ---
                 for tpr in scenario.get("tpr", []):
                     reading_time = admission_date + timedelta(days=tpr["day_offset"], hours=tpr["hour"])
@@ -655,13 +1195,12 @@ class Command(BaseCommand):
                                 transfer_date=transfer_dt,
                                 clinical_handover_notes=transfer_data["handover"],
                             )
-                            # Update admission to reflect current ward/bed
                             admission.ward = dest_ward
                             admission.bed = dest_bed
                             admission.save(update_fields=["ward", "bed"])
                             created["transfers"] += 1
 
-                # Discharge
+                # --- Discharge ---
                 discharge_data = scenario.get("discharge")
                 if discharge_data:
                     discharge_dt = admission_date + timedelta(days=scenario.get("los", 3))
@@ -684,25 +1223,317 @@ class Command(BaseCommand):
                     )
                     created["discharges"] += 1
 
+                # --- CDS alerts for critical results ---
+                created["cds_alerts"] += self._create_cds_alerts(
+                    scenario, patient, ipd_encounter, doctor, cds_rules,
+                )
+
+            # --- Ward-level shift handovers (one per active ward) ---
+            if not dry_run:
+                created["shift_handovers"] += self._create_ward_shift_handovers(
+                    wards, user, incoming_nurse,
+                )
+
+            # --- Supervisor alert acknowledgments (ICU patients) ---
+            if not dry_run:
+                created["supervisor_alerts"] += self._create_supervisor_alerts(doctor)
+
             self.stdout.write("")
             label = "Would create (dry run):" if dry_run else "Inpatient demo data seeded:"
             self.stdout.write(self.style.SUCCESS(label))
             for key, count in created.items():
-                self.stdout.write(f"  {key}: {count}")
+                if count > 0:
+                    self.stdout.write(f"  {key}: {count}")
 
     # -----------------------------------------------------------------------
-    # Helpers
+    # Dry-run tally
+    # -----------------------------------------------------------------------
+
+    def _tally_dry_run(self, scenario, created):
+        """Estimate what would be created without writing to DB."""
+        created["patients"] += 1
+        created["admissions"] += 1
+        created["allergies"] += len(scenario.get("allergies", []))
+        created["rounds"] += len([
+            rd for rd in scenario.get("rounds", [])
+            if (timezone.now() - timedelta(days=scenario["days_ago"]) + timedelta(days=rd["day_offset"])).date() <= date.today()
+        ])
+        if scenario.get("discharge"):
+            created["discharges"] += 1
+        if scenario.get("transfer"):
+            created["transfers"] += 1
+        if scenario.get("kardex"):
+            created["kardex_updates"] += 1
+        if scenario.get("care_plan"):
+            created["care_plans"] += 1
+        created["shift_notes"] += len(scenario.get("shift_notes", []))
+        created["tpr_readings"] += len(scenario.get("tpr", []))
+        for lab_def in scenario.get("lab_orders", []):
+            created["lab_orders"] += 1
+            for item_def in lab_def.get("items", []):
+                if item_def.get("result"):
+                    created["lab_results"] += 1
+        for img_def in scenario.get("imaging_orders", []):
+            created["imaging_orders"] += 1
+            if img_def.get("report"):
+                created["radiology_reports"] += 1
+        for rx_def in scenario.get("prescriptions", []):
+            created["prescriptions"] += 1
+            created["prescription_items"] += len(rx_def.get("items", []))
+        created["handover_notes"] += len(scenario.get("handover_notes", []))
+
+    # -----------------------------------------------------------------------
+    # CDS alerts
+    # -----------------------------------------------------------------------
+
+    def _create_cds_alerts(self, scenario, patient, encounter, doctor, cds_rules):
+        """Create CDS alerts for critical lab values and drug-allergy interactions."""
+        count = 0
+        # Critical lab alerts
+        critical_lab_rule = cds_rules.get("CRITICAL_LAB")
+        if critical_lab_rule:
+            for lab_def in scenario.get("lab_orders", []):
+                for item_def in lab_def.get("items", []):
+                    result = item_def.get("result")
+                    if result and result.get("is_critical_result"):
+                        CDSAlert.objects.create(
+                            rule=critical_lab_rule,
+                            patient=patient,
+                            encounter=encounter,
+                            priority="CRITICAL",
+                            status="ACKNOWLEDGED",
+                            message=f"Critical lab result: {item_def['test_code']} — {result.get('interpretation', 'Critical value detected')}",
+                            suggestion="Notify attending physician immediately. Document communication.",
+                            details={"test_code": item_def["test_code"], "value": str(result.get("numeric_value", result.get("text_value", "")))},
+                            resolved_by=doctor,
+                            resolved_at=timezone.now() - timedelta(hours=1),
+                            triggered_by=doctor,
+                        )
+                        count += 1
+
+        # Drug-allergy alerts
+        drug_allergy_rule = cds_rules.get("DRUG_ALLERGY")
+        if drug_allergy_rule and scenario.get("allergies"):
+            for allergy in scenario["allergies"]:
+                if allergy["substance_type"] == "medication" and allergy["severity"] in ("moderate", "severe", "life_threatening"):
+                    CDSAlert.objects.create(
+                        rule=drug_allergy_rule,
+                        patient=patient,
+                        encounter=encounter,
+                        priority="HIGH",
+                        status="ACKNOWLEDGED",
+                        message=f"Drug allergy alert: Patient has {allergy['severity']} allergy to {allergy['substance']} ({allergy['reaction_type']}). {allergy.get('notes', '')}",
+                        suggestion=f"Avoid {allergy['substance']} and related compounds. Check cross-reactivity.",
+                        details={"substance": allergy["substance"], "severity": allergy["severity"], "reaction": allergy["reaction_type"]},
+                        resolved_by=doctor,
+                        resolved_at=timezone.now() - timedelta(hours=2),
+                        triggered_by=doctor,
+                    )
+                    count += 1
+        return count
+
+    # -----------------------------------------------------------------------
+    # Ward-level shift handovers
+    # -----------------------------------------------------------------------
+
+    def _create_ward_shift_handovers(self, wards, outgoing_nurse, incoming_nurse):
+        """Create recent shift handovers for each active ward."""
+        count = 0
+        ward_notes = {
+            "MEDICAL": "2 new admissions (pneumonia, AKI). 1 pending discharge (DM stabilised). 14 total patients. Dr Wanjala to review AKI patient Cr trend in morning.",
+            "SURGICAL": "1 post-appendicectomy day 1 — progressing well. 1 pending discharge (cholecystectomy). 10 total patients. Theatre list tomorrow: 2 cases.",
+            "PEDIATRIC": "1 AGE with dehydration — improving on ORS. 8 total patients. Ensure strict I/O for bed 3. No critical cases.",
+            "ICU": "1 post-STEMI transferring to medical ward tomorrow. 1 cardiac arrest — poor prognosis, family meeting done. 4 total patients. 2 ventilated.",
+            "MATERNITY": "1 SVD overnight — mother and baby well. Baby BCG/OPV-0 given. 12 total patients. 2 in early labour being monitored.",
+            "ISOLATION": "1 typhoid (confirmed Salmonella typhi) — afebrile 48h, transferring out tomorrow. Contact precautions in effect. 3 total patients.",
+        }
+        handover_date = date.today() - timedelta(days=1)
+        for wtype, ward in wards.items():
+            notes = ward_notes.get(wtype, "No significant events this shift.")
+            # Idempotency: skip if handover already exists
+            if ShiftHandover.objects.filter(ward=ward, shift_date=handover_date, shift_ending="DAY").exists():
+                continue
+            ShiftHandover.objects.create(
+                ward=ward,
+                shift_date=handover_date,
+                shift_ending="DAY",
+                outgoing_nurse=outgoing_nurse,
+                incoming_nurse=incoming_nurse,
+                total_patients=random.randint(4, 16),
+                critical_patients=1 if wtype == "ICU" else 0,
+                new_admissions=random.randint(0, 2),
+                discharges_pending=random.randint(0, 2),
+                general_notes=notes,
+                acknowledged_at=timezone.now() - timedelta(hours=12),
+            )
+            count += 1
+        return count
+
+    # -----------------------------------------------------------------------
+    # Supervisor alert acknowledgments
+    # -----------------------------------------------------------------------
+
+    def _create_supervisor_alerts(self, doctor):
+        """Create supervisor alert acknowledgments for ICU admissions."""
+        count = 0
+        icu_admissions = Admission.objects.filter(
+            patient__phone_number__startswith="demo-ipd-",
+            ward__ward_type="ICU",
+        ).exclude(alert_acknowledgment__isnull=False)
+        for admission in icu_admissions:
+            try:
+                SupervisorAlertAcknowledgment.objects.create(
+                    admission=admission,
+                    acknowledged_by=doctor,
+                    notes="ICU admission reviewed. Critical care plan approved. Continue current management.",
+                )
+                count += 1
+            except Exception:
+                pass  # Skip if already acknowledged
+        return count
+
+    # -----------------------------------------------------------------------
+    # Reference data helpers
+    # -----------------------------------------------------------------------
+
+    def _ensure_test_catalog(self) -> dict:
+        """Ensure lab test catalog entries exist; return code→instance mapping."""
+        catalog = {}
+        for code, name, category, specimen, result_type, unit, male_range, female_range, cost in TEST_CATALOG_DEFS:
+            test = TestCatalog.objects.filter(code=code).first()
+            if not test:
+                test = TestCatalog.objects.create(
+                    code=code,
+                    name=name,
+                    short_name=code,
+                    category=category,
+                    specimen_type=specimen,
+                    result_type=result_type,
+                    result_unit=unit,
+                    normal_range_male=male_range,
+                    normal_range_female=female_range,
+                    cost=cost,
+                    is_active=True,
+                )
+            catalog[code] = test
+        return catalog
+
+    def _ensure_drugs(self) -> dict:
+        """Ensure drug catalog entries exist; return code→instance mapping."""
+        drug_map = {}
+        for code, generic_name, form, strength, unit, categories, schedule, is_essential, cost in DRUG_DEFS:
+            drug = Drug.objects.filter(code=code).first()
+            if not drug:
+                drug = Drug.objects.create(
+                    code=code,
+                    generic_name=generic_name,
+                    form=form,
+                    strength=strength,
+                    unit=unit,
+                    categories=categories,
+                    schedule=schedule,
+                    is_essential=is_essential,
+                    reference_price=cost,
+                )
+            drug_map[code] = drug
+        return drug_map
+
+    def _ensure_imaging_procedures(self) -> dict:
+        """Ensure imaging procedure catalog entries exist; return code→instance mapping."""
+        proc_map = {}
+        for code, name, modality, body_region, cost, requires_contrast in IMAGING_PROCEDURE_DEFS:
+            proc = ImagingProcedure.objects.filter(code=code).first()
+            if not proc:
+                proc = ImagingProcedure.objects.create(
+                    code=code,
+                    name=name,
+                    modality=modality,
+                    body_region=body_region,
+                    cost=cost,
+                    requires_contrast=requires_contrast,
+                    is_active=True,
+                )
+            proc_map[code] = proc
+        return proc_map
+
+    def _ensure_cds_rules(self, user) -> dict:
+        """Ensure CDS rules exist for demo alerts; return category→rule mapping."""
+        rules = {}
+        rule_defs = [
+            ("CRITICAL_LAB", "CDS-CRIT-LAB-001", "Critical Lab Value Alert",
+             "Alerts when lab results fall in critical ranges requiring immediate intervention",
+             "CRITICAL_LAB", "CRITICAL", "ALERT",
+             "Critical lab result detected: {test_code}. Immediate physician notification required.",
+             "Notify attending physician immediately. Document time of notification and recipient.",
+             {"type": "lab_range", "trigger": "critical_flag"}),
+            ("DRUG_ALLERGY", "CDS-DRUG-ALLRG-001", "Drug-Allergy Interaction Alert",
+             "Alerts when a drug is prescribed to a patient with a documented allergy to that drug or class",
+             "DRUG_ALLERGY", "HIGH", "CONTRAINDICATE",
+             "Drug-allergy interaction: Patient has documented allergy to {substance}.",
+             "Discontinue or substitute the offending drug. Verify allergy history with patient.",
+             {"type": "drug_allergy", "check": "substance_match"}),
+        ]
+        for key, code, name, description, category, priority, action_type, action_message, suggestion, condition in rule_defs:
+            rule = CDSRule.objects.filter(code=code).first()
+            if not rule:
+                rule = CDSRule.objects.create(
+                    code=code,
+                    name=name,
+                    description=description,
+                    category=category,
+                    priority=priority,
+                    status="ACTIVE",
+                    condition=condition,
+                    action_type=action_type,
+                    action_message=action_message,
+                    suggestion=suggestion,
+                    created_by=user,
+                    approved_by=user,
+                    approved_at=timezone.now() - timedelta(days=30),
+                )
+            rules[key] = rule
+        return rules
+
+    # -----------------------------------------------------------------------
+    # Core data helpers
     # -----------------------------------------------------------------------
 
     def _clear_demo_data(self):
         """Remove demo inpatient records created by previous runs."""
-        # Patients created by this command have phone_number starting with "demo-ipd-"
+        from django.db import connection
+
         demo_patients = Patient.objects.filter(phone_number__startswith="demo-ipd-")
         count = demo_patients.count()
         if count:
-            # Cascade deletes admissions, encounters, etc.
-            Encounter.objects.filter(patient__in=demo_patients).delete()
-            Admission.objects.filter(patient__in=demo_patients).delete()
+            patient_ids = list(demo_patients.values_list("id", flat=True))
+
+            # Collect all models that reference Patient via PROTECT.
+            # Delete in reverse-dependency order to avoid ProtectedError.
+            # We import lazily so the command works even if some apps
+            # aren't installed yet.
+            protect_deletions: list[tuple[str, object]] = []
+            models_to_try = [
+                ("billing.Invoice", lambda pids: __import__("hmis.apps.billing.models", fromlist=["Invoice"]).Invoice.objects.filter(encounter__patient_id__in=pids)),
+                ("billing.Receipt", lambda pids: __import__("hmis.apps.billing.models", fromlist=["Receipt"]).Receipt.objects.filter(patient_id__in=pids)),
+                ("billing.CreditNote", lambda pids: __import__("hmis.apps.billing.models", fromlist=["CreditNote"]).CreditNote.objects.filter(patient_id__in=pids)),
+                ("billing.SHAClaim", lambda pids: __import__("hmis.apps.billing.models", fromlist=["SHAClaim"]).SHAClaim.objects.filter(patient_id__in=pids)),
+                ("mch.ImmunizationRecord", lambda pids: __import__("hmis.apps.mch.models", fromlist=["ImmunizationRecord"]).ImmunizationRecord.objects.filter(patient_id__in=pids)),
+                ("pharmacy.Dispensing", lambda pids: __import__("hmis.apps.pharmacy.models", fromlist=["Dispensing"]).Dispensing.objects.filter(patient_id__in=pids)),
+            ]
+            for label, qs_fn in models_to_try:
+                try:
+                    qs_fn(patient_ids).delete()
+                except Exception:
+                    pass  # Model may not exist or table missing
+
+            # Standard direct-FK deletions
+            CDSAlert.objects.filter(patient_id__in=patient_ids).delete()
+            Prescription.objects.filter(patient_id__in=patient_ids).delete()
+            LabOrder.objects.filter(patient_id__in=patient_ids).delete()
+            ImagingOrder.objects.filter(patient_id__in=patient_ids).delete()
+            Allergy.objects.filter(patient_id__in=patient_ids).delete()
+            Admission.objects.filter(patient_id__in=patient_ids).delete()
+            Encounter.objects.filter(patient_id__in=patient_ids).delete()
             demo_patients.delete()
             self.stdout.write(self.style.WARNING(f"Cleared {count} demo patients and related data"))
         else:
@@ -729,6 +1560,19 @@ class Command(BaseCommand):
             is_staff=True,
         )
 
+    def _get_or_create_incoming_nurse(self):
+        """Get or create a second nurse for handover recipients."""
+        nurse = User.objects.filter(username="demo_nurse_incoming").first()
+        if nurse:
+            return nurse
+        return User.objects.create_user(
+            username="demo_nurse_incoming",
+            password="demo_nurse_incoming_pass",  # noqa: S106
+            first_name="Grace",
+            last_name="Njeri",
+            is_staff=True,
+        )
+
     def _get_or_create_location(self):
         county = County.objects.first()
         if not county:
@@ -739,7 +1583,11 @@ class Command(BaseCommand):
         return county, sub_county
 
     def _ensure_wards(self) -> dict:
-        """Ensure one ward per type exists; return mapping."""
+        """Ensure one ward per type exists; return mapping.
+
+        Prefers wards with gender_restriction=ANY that have available beds
+        so that both male and female patients can be admitted.
+        """
         ward_defs = [
             ("MEDICAL", "Medical Ward", "MED-01", Decimal("1500.00"), 20),
             ("SURGICAL", "Surgical Ward", "SUR-01", Decimal("2000.00"), 15),
@@ -751,6 +1599,14 @@ class Command(BaseCommand):
         wards = {}
         for wtype, name, code, rate, cap in ward_defs:
             ward = Ward.objects.filter(name=name).first()
+            if not ward:
+                # Prefer ANY-gender wards with available beds
+                ward = (
+                    Ward.objects.filter(ward_type=wtype, gender_restriction="ANY")
+                    .filter(beds__status="AVAILABLE")
+                    .distinct()
+                    .first()
+                )
             if not ward:
                 ward = Ward.objects.filter(ward_type=wtype).first()
             if not ward:
@@ -769,7 +1625,6 @@ class Command(BaseCommand):
         """Get an available bed, or a discharged bed for discharged scenarios."""
         bed = ward.beds.filter(status="AVAILABLE").first()
         if not bed and admission_status != "ACTIVE":
-            # For discharged scenarios, pick any bed (it'll be freed by discharge)
             bed = ward.beds.first()
         return bed
 
@@ -789,6 +1644,5 @@ class Command(BaseCommand):
             gender=gender,
             county=county,
             sub_county=sub_county,
-            # Deterministic tag for idempotency and cleanup
             phone_number=scenario["_demo_tag"],
         )
