@@ -366,6 +366,22 @@ export function CarePlanPanel({
     }
   }, [result, queryClient, storedParams]);
 
+  // Reset panel after care plan is successfully applied to Kardex
+  React.useEffect(() => {
+    if (appliedToKardexProp) {
+      reset();
+      setAppliedThisSession(false);
+      // Clean up stored result since it's now in the Kardex
+      if (latestStored?.id) {
+        aiApi.deleteStoredCarePlan(latestStored.id).then(() => {
+          queryClient.invalidateQueries({ queryKey: aiKeys.storedCarePlans(storedParams) });
+        }).catch(() => {
+          // Silent — stored result cleanup is best-effort
+        });
+      }
+    }
+  }, [appliedToKardexProp]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Auto-trigger from widget quick action
   React.useEffect(() => {
     if (autoTrigger && isAIEnabled && !isPending && !displayResult) {
