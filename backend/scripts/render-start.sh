@@ -34,7 +34,7 @@ else
   python manage.py seed_kenhdd_elements
   python manage.py seed_bed_assignment_rules
   python manage.py seed_allied_health_demo
-  python manage.py seed_inpatient_demo --clear
+  python manage.py seed_inpatient_demo
   python manage.py init_pki_ca
 fi
 
