@@ -80,7 +80,7 @@ export default function DischargeDetailPage() {
 
   const { data: admission, isLoading: admissionLoading } = useAdmission(admissionId);
   const { data: discharge, isLoading: dischargeLoading } = useDischargeByAdmission(admissionId);
-  const { facility } = useFacility();
+  const { facility, facilityDetail } = useFacility();
 
   const isLoading = admissionLoading || dischargeLoading;
 
@@ -266,6 +266,7 @@ export default function DischargeDetailPage() {
                   admittingDiagnosis: discharge.admission_diagnosis,
                   facilityName: facility?.name,
                   facilityMflCode: facility?.mfl_code,
+                  facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
                 })
               }
               className="gap-1.5 text-xs"
@@ -309,6 +310,7 @@ export default function DischargeDetailPage() {
                   admittingDiagnosis: discharge.admission_diagnosis,
                   facilityName: facility?.name,
                   facilityMflCode: facility?.mfl_code,
+                  facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
                 })
               }
               className="gap-1.5 text-xs"

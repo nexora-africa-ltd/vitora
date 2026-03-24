@@ -11,6 +11,21 @@ export function getApiBaseUrl(): string {
   return API_BASE_URL;
 }
 
+// ---------------------------------------------------------------------------
+// Facility scoping — set by FacilityProvider, read by request interceptor
+// ---------------------------------------------------------------------------
+let _activeFacilityId: number | null = null;
+
+/** Called by FacilityProvider when the active facility changes. */
+export function setActiveFacilityId(id: number | null): void {
+  _activeFacilityId = id;
+}
+
+/** Get the current active facility ID (for external use). */
+export function getActiveFacilityId(): number | null {
+  return _activeFacilityId;
+}
+
 // Create axios instance
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -43,6 +58,11 @@ const processQueue = (error: Error | null, token: string | null = null) => {
  */
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    // Attach facility ID header for multi-facility data scoping
+    if (_activeFacilityId != null) {
+      config.headers['X-Facility-Id'] = String(_activeFacilityId);
+    }
+
     const token = tokenStorage.getAccessToken();
 
     // Debug logging for auth issues (development only)

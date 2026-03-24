@@ -39,6 +39,7 @@ import {
 } from '@/components/ui/select';
 import { DischargeReadinessPanel } from '@/components/inpatient/discharge-readiness-panel';
 import { ClearanceStatusPanel } from '@/components/inpatient/clearance-status-panel';
+import { FacilityModuleWarning } from '@/components/shared/facility-module-warning';
 import { SectionCard } from '@/components/discharge/section-card';
 import { MedicationSuggestions } from '@/components/discharge/medication-suggestions';
 import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders, useClearanceStatus } from '@/lib/hooks/use-inpatient';
@@ -68,7 +69,7 @@ export default function DischargePage() {
   const { data: admission, isLoading } = useAdmission(admissionId);
   const { data: wardRounds } = useAdmissionWardRounds(admissionId);
   const { data: orders } = useAdmissionOrders(admissionId);
-  const { facility } = useFacility();
+  const { facility, facilityDetail } = useFacility();
   const patientContext = useOptionalPatientContext();
   const createDischarge = useCreateDischarge();
   const isAIEnabled = useAIEnabled();
@@ -656,6 +657,18 @@ export default function DischargePage() {
       {/* Automated Department Clearances */}
       <ClearanceStatusPanel admissionId={admissionId} />
 
+      {/* Facility module warnings for discharge workflows */}
+      <FacilityModuleWarning
+        module="pharmacy"
+        label="Pharmacy"
+        message="Pharmacy module is not enabled at this facility. Discharge medications will need to be dispensed through an external pharmacy."
+      />
+      <FacilityModuleWarning
+        module="laboratory"
+        label="Laboratory"
+        message="Laboratory module is not enabled at this facility. Ensure pending lab results from referral facilities are reviewed before discharge."
+      />
+
       {/* Discharge Form */}
       <Card>
         <CardHeader>
@@ -681,6 +694,7 @@ export default function DischargePage() {
                   admittingDiagnosis: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
                   facilityName: facility?.name,
                   facilityMflCode: facility?.mfl_code,
+                  facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
                 })}
                 className="gap-1.5 text-xs shrink-0"
               >
@@ -886,6 +900,7 @@ export default function DischargePage() {
                       admittingDiagnosis: admission.admitting_diagnosis_text || admission.admitting_diagnosis || '',
                       facilityName: facility?.name,
                       facilityMflCode: facility?.mfl_code,
+                      facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
                     })}
                     className="gap-1.5 text-xs"
                   >
