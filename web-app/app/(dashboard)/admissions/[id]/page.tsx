@@ -209,6 +209,8 @@ export default function AdmissionDetailPage() {
       }
       setAppliedAIToKardex(true);
       toast({ title: 'Care plan applied', description: `${entries.length} ADPIE entr${entries.length === 1 ? 'y' : 'ies'} created from AI care plan.` });
+      // Reset after the panel has had time to clear itself
+      setTimeout(() => setAppliedAIToKardex(false), 500);
     } catch {
       toast({ title: 'Failed to apply', description: 'Some entries may not have been created.', variant: 'destructive' });
     } finally {
