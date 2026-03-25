@@ -17,6 +17,7 @@ from .models import (
     Facility,
     FeatureFlag,
     NetworkStatus,
+    Organization,
     Role,
     StaffProfile,
     SubCounty,
@@ -717,6 +718,114 @@ class ExternalCodeMappingAdmin(admin.ModelAdmin):
 
 
 # ============================================================================
+# Organization Admin (Multitenancy – Phase 1)
+# ============================================================================
+
+
+class FacilityInline(admin.TabularInline):
+    """Inline for facilities within an organization."""
+
+    model = Facility
+    extra = 0
+    fields = ["mfl_code", "name", "level", "is_headquarters", "branch_code", "is_active"]
+    readonly_fields = ["mfl_code", "name"]
+    show_change_link = True
+
+
+@admin.register(Organization)
+class OrganizationAdmin(admin.ModelAdmin):
+    """Admin configuration for the Organization model."""
+
+    list_display = [
+        "name",
+        "slug",
+        "subscription_tier",
+        "is_active",
+        "facility_count",
+        "created_at",
+    ]
+    list_filter = ["subscription_tier", "is_active"]
+    search_fields = ["name", "slug", "contact_email"]
+    prepopulated_fields = {"slug": ("name",)}
+    ordering = ["name"]
+    readonly_fields = ["created_at", "updated_at"]
+    inlines = [FacilityInline]
+
+    fieldsets = (
+        (
+            "Identity",
+            {
+                "fields": (
+                    "name",
+                    "slug",
+                    "logo",
+                )
+            },
+        ),
+        (
+            "Contact",
+            {
+                "fields": (
+                    "contact_email",
+                    "contact_phone",
+                    "address",
+                )
+            },
+        ),
+        (
+            "Location (HQ)",
+            {
+                "fields": (
+                    "county",
+                    "sub_county",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Subscription & Limits",
+            {
+                "fields": (
+                    "subscription_tier",
+                    "max_facilities",
+                    "max_users",
+                )
+            },
+        ),
+        (
+            "Compliance",
+            {
+                "fields": ("data_retention_years",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Configuration",
+            {
+                "fields": ("settings",),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Status",
+            {
+                "fields": ("is_active",),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+
+# ============================================================================
 # Facility Admin (RBAC Capability Plan – Phase 1)
 # ============================================================================
 
@@ -737,13 +846,16 @@ class FacilityAdmin(admin.ModelAdmin):
     list_display = [
         "mfl_code",
         "name",
+        "organization",
         "level_badge",
         "ownership",
         "county",
+        "is_headquarters",
         "sha_contracted",
         "is_active",
     ]
     list_filter = [
+        "organization",
         "level",
         "ownership",
         "county",
@@ -757,8 +869,19 @@ class FacilityAdmin(admin.ModelAdmin):
     search_fields = ["name", "mfl_code", "sha_facility_code"]
     ordering = ["name"]
     readonly_fields = ["created_at", "updated_at"]
+    raw_id_fields = ["organization"]
 
     fieldsets = (
+        (
+            "Organization",
+            {
+                "fields": (
+                    "organization",
+                    "is_headquarters",
+                    "branch_code",
+                )
+            },
+        ),
         (
             "Identity",
             {

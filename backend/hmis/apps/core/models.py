@@ -1339,6 +1339,14 @@ class StaffProfile(models.Model):
     )
 
     # Facility assignment (Capability-Based Experience)
+    organization = models.ForeignKey(
+        "Organization",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="staff_profiles",
+        help_text="Parent organization (cached from primary_facility for query performance)",
+    )
     primary_facility = models.ForeignKey(
         "Facility",
         null=True,
@@ -1447,6 +1455,12 @@ class StaffProfile(models.Model):
     def __str__(self) -> str:
         """Return formatted name."""
         return self.get_full_name()
+
+    def save(self, *args, **kwargs):
+        """Auto-set organization from primary_facility on save."""
+        if self.primary_facility and self.primary_facility.organization:
+            self.organization = self.primary_facility.organization
+        super().save(*args, **kwargs)
 
     def get_full_name(self) -> str:
         """
@@ -2114,6 +2128,192 @@ class FeatureFlag(models.Model):
 
 
 # ============================================================================
+# Organization Model (Multitenancy – Phase 1)
+# ============================================================================
+
+
+class Organization(TimeStampedModel):
+    """
+    Top-level tenant in the Vitora HMIS multi-tenancy hierarchy.
+
+    An Organization represents a legal entity that operates one or more
+    healthcare Facilities (branches). All clinical data is scoped to an
+    Organization — patients are shared within an org, while encounters
+    and operational records are further scoped to individual Facilities.
+
+    Hierarchy::
+
+        Organization (tenant)
+        └── Facility (branch)  ← one-to-many
+
+    The Organization model supports:
+
+    * **Identity** – name, slug (for URLs / subdomains), contact details.
+    * **Subscription** – tier, user/facility limits (for SaaS licensing).
+    * **Compliance** – data retention period (Kenya DPA 2019).
+    * **Location** – optional HQ county/sub-county.
+    * **Configuration** – JSON settings for org-level defaults.
+    """
+
+    class SubscriptionTier(models.TextChoices):
+        """Subscription tiers for SaaS licensing."""
+
+        FREE = "FREE", "Free"
+        BASIC = "BASIC", "Basic"
+        PROFESSIONAL = "PROFESSIONAL", "Professional"
+        ENTERPRISE = "ENTERPRISE", "Enterprise"
+
+    # ------------------------------------------------------------------
+    # Identity
+    # ------------------------------------------------------------------
+
+    name = models.CharField(
+        max_length=200,
+        unique=True,
+        help_text="Official organization name.",
+    )
+    slug = models.SlugField(
+        max_length=100,
+        unique=True,
+        help_text="URL-safe identifier (used in subdomains and API routing).",
+    )
+    logo = models.ImageField(
+        upload_to="organizations/logos/",
+        null=True,
+        blank=True,
+        help_text="Organization logo for branding.",
+    )
+
+    # ------------------------------------------------------------------
+    # Contact
+    # ------------------------------------------------------------------
+
+    contact_email = models.EmailField(
+        blank=True,
+        default="",
+        help_text="Primary contact email for the organization.",
+    )
+    contact_phone = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="Primary contact phone number.",
+    )
+    address = models.TextField(
+        blank=True,
+        default="",
+        help_text="Physical address of the organization's headquarters.",
+    )
+
+    # ------------------------------------------------------------------
+    # Location (optional HQ)
+    # ------------------------------------------------------------------
+
+    county = models.ForeignKey(
+        "core.County",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="organizations",
+        help_text="HQ county.",
+    )
+    sub_county = models.ForeignKey(
+        "core.SubCounty",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="organizations",
+        help_text="HQ sub-county.",
+    )
+
+    # ------------------------------------------------------------------
+    # Subscription & Limits
+    # ------------------------------------------------------------------
+
+    subscription_tier = models.CharField(
+        max_length=20,
+        choices=SubscriptionTier.choices,
+        default=SubscriptionTier.BASIC,
+        help_text="Current subscription tier.",
+    )
+    max_facilities = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Maximum number of facilities allowed (null = unlimited).",
+    )
+    max_users = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Maximum number of staff users allowed (null = unlimited).",
+    )
+
+    # ------------------------------------------------------------------
+    # Compliance (Kenya DPA 2019)
+    # ------------------------------------------------------------------
+
+    data_retention_years = models.PositiveIntegerField(
+        default=7,
+        help_text="Minimum data retention period in years (Kenya DPA default: 7).",
+    )
+
+    # ------------------------------------------------------------------
+    # Configuration
+    # ------------------------------------------------------------------
+
+    settings = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Org-level configuration (branding, defaults, retention policy).",
+    )
+
+    # ------------------------------------------------------------------
+    # Status
+    # ------------------------------------------------------------------
+
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Whether this organization is currently active.",
+    )
+
+    # ------------------------------------------------------------------
+    # Meta & Methods
+    # ------------------------------------------------------------------
+
+    class Meta:
+        """Meta options for Organization."""
+
+        verbose_name = "Organization"
+        verbose_name_plural = "Organizations"
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        """Return the organization name."""
+        return self.name
+
+    @property
+    def facility_count(self) -> int:
+        """Return the number of facilities under this organization."""
+        return self.facilities.count()
+
+    @property
+    def staff_count(self) -> int:
+        """Return the number of staff members in this organization."""
+        return self.staff_profiles.count()
+
+    def can_add_facility(self) -> bool:
+        """Check if the organization can add another facility."""
+        if self.max_facilities is None:
+            return True
+        return self.facility_count < self.max_facilities
+
+    def can_add_user(self) -> bool:
+        """Check if the organization can add another user."""
+        if self.max_users is None:
+            return True
+        return self.staff_count < self.max_users
+
+
+# ============================================================================
 # Facility Model (RBAC Capability Plan – Phase 1)
 # ============================================================================
 
@@ -2183,6 +2383,14 @@ class Facility(TimeStampedModel):
     # Identity
     # ------------------------------------------------------------------
 
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.PROTECT,
+        related_name="facilities",
+        null=True,
+        blank=True,
+        help_text="Parent organization (tenant) that owns this facility.",
+    )
     mfl_code = models.CharField(
         max_length=20,
         unique=True,
@@ -2202,6 +2410,16 @@ class Facility(TimeStampedModel):
         max_length=20,
         choices=OwnershipType.choices,
         help_text="Ownership category (GOK, FBO, NGO, or Private).",
+    )
+    is_headquarters = models.BooleanField(
+        default=False,
+        help_text="Whether this is the main branch of the organization.",
+    )
+    branch_code = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Internal branch identifier within the organization.",
     )
 
     # ------------------------------------------------------------------

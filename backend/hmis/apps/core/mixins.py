@@ -8,7 +8,7 @@ This module provides mixins for:
 2. Transaction-safe operations with row locking
 """
 
-from django.db import transaction
+from django.db import models, transaction
 from rest_framework import status
 from rest_framework.response import Response
 
@@ -168,3 +168,104 @@ class ConcurrencyControlMixin:
         self.perform_update(serializer)
 
         return Response(serializer.data)
+
+
+# ============================================================================
+# Multitenancy Mixins (Organization / Facility scoping)
+# ============================================================================
+
+
+class OrganizationScopedModel(models.Model):
+    """
+    Abstract base for models scoped to an Organization (tenant).
+
+    Records with this mixin are visible across all facilities within the
+    same organization — e.g. Patient, Allergy, shared catalogues.
+    """
+
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="%(app_label)s_%(class)s_set",
+        null=True,
+        blank=True,
+        help_text="Owning organization (tenant).",
+    )
+
+    class Meta:
+        abstract = True
+
+
+class FacilityScopedModel(OrganizationScopedModel):
+    """
+    Abstract base for models scoped to a specific Facility (branch).
+
+    Records with this mixin are created at and primarily visible to a
+    single facility — e.g. Encounter, Triage, Invoice.
+
+    ``organization`` is auto-set from the facility on save.
+    """
+
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="%(app_label)s_%(class)s_set",
+        null=True,
+        blank=True,
+        help_text="Facility (branch) where this record was created.",
+    )
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        """Auto-set organization from facility before saving."""
+        if self.facility and self.facility.organization:
+            self.organization = self.facility.organization
+        super().save(*args, **kwargs)
+
+
+class TenantScopedViewMixin:
+    """
+    ViewSet mixin that scopes querysets and auto-sets tenant FKs on create.
+
+    Set ``tenant_scope`` on the viewset to control the isolation level:
+
+    * ``"organization"`` — filters by ``request.organization`` (org-wide data).
+    * ``"facility"`` — filters by ``request.facility`` (single-branch data).
+
+    Requirements:
+        * ``TenantMiddleware`` must be active.
+        * The underlying model must have the corresponding FK fields.
+    """
+
+    tenant_scope: str = "facility"  # "organization" or "facility"
+
+    def get_queryset(self):
+        """Filter queryset by the active tenant scope."""
+        qs = super().get_queryset()
+        request = self.request
+
+        org = getattr(request, "organization", None)
+        facility = getattr(request, "facility", None)
+
+        if self.tenant_scope == "facility" and facility:
+            qs = qs.filter(facility=facility)
+        elif org:
+            qs = qs.filter(organization=org)
+
+        return qs
+
+    def perform_create(self, serializer):
+        """Auto-set organization and facility from the request context."""
+        request = self.request
+        org = getattr(request, "organization", None)
+        facility = getattr(request, "facility", None)
+
+        extra = {}
+        if org:
+            extra["organization"] = org
+        if self.tenant_scope == "facility" and facility:
+            extra["facility"] = facility
+
+        serializer.save(**extra)
