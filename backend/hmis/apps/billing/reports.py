@@ -17,6 +17,35 @@ from .models import Invoice, InvoiceItem, Payment
 class BillingReportService:
     """Generate billing and financial reports."""
 
+    def __init__(self, facility=None, organization=None):
+        """
+        Initialize with optional tenant scoping.
+
+        Args:
+            facility: Scope reports to a specific facility.
+            organization: Scope reports to an organization (all its facilities).
+        """
+        self.facility = facility
+        self.organization = organization
+
+    def _scoped_payments(self, **filters):
+        """Return Payment queryset scoped to facility/organization."""
+        qs = Payment.objects.filter(**filters)
+        if self.facility:
+            qs = qs.filter(invoice__facility=self.facility)
+        elif self.organization:
+            qs = qs.filter(invoice__facility__organization=self.organization)
+        return qs
+
+    def _scoped_invoices(self, **filters):
+        """Return Invoice queryset scoped to facility/organization."""
+        qs = Invoice.objects.filter(**filters)
+        if self.facility:
+            qs = qs.filter(facility=self.facility)
+        elif self.organization:
+            qs = qs.filter(facility__organization=self.organization)
+        return qs
+
     def daily_collection_report(self, date: date) -> dict[str, Any]:
         """
         Daily cash collection report.
@@ -28,7 +57,7 @@ class BillingReportService:
             - Outstanding balances
         """
         # Get payments for the specified date
-        payments = Payment.objects.filter(payment_date__date=date, status=Payment.Status.COMPLETED)
+        payments = self._scoped_payments(payment_date__date=date, status=Payment.Status.COMPLETED)
 
         # Calculate total collections
         total_collections = payments.aggregate(total=Sum("amount"))["total"] or Decimal("0")
@@ -56,7 +85,9 @@ class BillingReportService:
         )
 
         # Outstanding balances (invoices not fully paid)
-        outstanding = Invoice.objects.filter(
+        outstanding = self._scoped_invoices(
+            **{"balance_due__gt": 0},
+        ).filter(
             Q(status=Invoice.Status.PENDING)
             | Q(status=Invoice.Status.PARTIAL)
             | Q(status=Invoice.Status.OVERDUE)
@@ -82,7 +113,7 @@ class BillingReportService:
             - Comparison to previous period
         """
         # Get completed payments in date range
-        payments = Payment.objects.filter(
+        payments = self._scoped_payments(
             payment_date__date__gte=start_date,
             payment_date__date__lte=end_date,
             status=Payment.Status.COMPLETED,
@@ -123,7 +154,7 @@ class BillingReportService:
         prev_start = start_date - timedelta(days=period_length)
         prev_end = start_date - timedelta(days=1)
 
-        prev_payments = Payment.objects.filter(
+        prev_payments = self._scoped_payments(
             payment_date__date__gte=prev_start,
             payment_date__date__lte=prev_end,
             status=Payment.Status.COMPLETED,
@@ -159,12 +190,12 @@ class BillingReportService:
         """
         # Get all invoices that are not fully paid or cancelled
         outstanding_invoices = (
-            Invoice.objects.filter(
+            self._scoped_invoices(balance_due__gt=0)
+            .filter(
                 Q(status=Invoice.Status.PENDING)
                 | Q(status=Invoice.Status.PARTIAL)
                 | Q(status=Invoice.Status.OVERDUE)
             )
-            .filter(balance_due__gt=0)
             .select_related("patient")
         )
 
@@ -211,11 +242,16 @@ class BillingReportService:
             - Trend analysis
         """
         # Get invoice items in date range
-        items = InvoiceItem.objects.filter(
+        items_qs = InvoiceItem.objects.filter(
             invoice__invoice_date__gte=start_date,
             invoice__invoice_date__lte=end_date,
             service__isnull=False,
-        ).select_related("service", "invoice")
+        )
+        if self.facility:
+            items_qs = items_qs.filter(invoice__facility=self.facility)
+        elif self.organization:
+            items_qs = items_qs.filter(invoice__facility__organization=self.organization)
+        items = items_qs.select_related("service", "invoice")
 
         # Aggregate by service
         service_data = {}

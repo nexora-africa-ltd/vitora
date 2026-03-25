@@ -381,8 +381,14 @@ class SurveillanceDashboardView(APIView):
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         week_start = today_start - timedelta(days=today_start.weekday())
 
-        # Base queryset
+        # Base queryset – scoped to facility/org from TenantMiddleware
         cases = NotifiableCase.objects.all()
+        facility = getattr(request, "facility", None)
+        organization = getattr(request, "organization", None)
+        if facility:
+            cases = cases.filter(encounter__facility=facility)
+        elif organization:
+            cases = cases.filter(encounter__facility__organization=organization)
 
         # Active cases (not closed or lost)
         active_cases = cases.exclude(
@@ -407,11 +413,16 @@ class SurveillanceDashboardView(APIView):
         # Cases this week
         cases_week = cases.filter(detected_at__gte=week_start).count()
 
-        # Outbreak alerts (unacknowledged)
-        outbreak_alerts = SurveillanceAlert.objects.filter(
+        # Outbreak alerts (unacknowledged) – scope similarly
+        alerts_qs = SurveillanceAlert.objects.filter(
             alert_type=SurveillanceAlert.AlertType.OUTBREAK,
             is_acknowledged=False,
-        ).count()
+        )
+        if facility:
+            alerts_qs = alerts_qs.filter(case__encounter__facility=facility)
+        elif organization:
+            alerts_qs = alerts_qs.filter(case__encounter__facility__organization=organization)
+        outbreak_alerts = alerts_qs.count()
 
         # Top diseases this week
         top_diseases = (
