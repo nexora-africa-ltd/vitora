@@ -1,4 +1,4 @@
-export type SubscriptionTier = 'free' | 'basic' | 'professional' | 'enterprise';
+export type SubscriptionTier = 'FREE' | 'BASIC' | 'PROFESSIONAL' | 'ENTERPRISE';
 
 export interface OrganizationListItem {
   id: number;

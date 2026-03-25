@@ -23,7 +23,7 @@ const mockOrg = {
   id: 1,
   name: 'Demo Health Group',
   slug: 'demo-health-group',
-  subscription_tier: 'professional' as const,
+  subscription_tier: 'PROFESSIONAL' as const,
   is_active: true,
   county_name: 'Nairobi',
   facility_count: 2,

@@ -22,10 +22,10 @@ import { organizationsApi } from '@/lib/api/organizations';
 import type { OrganizationListItem, SubscriptionTier } from '@/lib/types/organization';
 
 const tierColors: Record<SubscriptionTier, string> = {
-  free: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
-  basic: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-  professional: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
-  enterprise: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
+  FREE: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
+  BASIC: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+  PROFESSIONAL: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
+  ENTERPRISE: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300',
 };
 
 export default function OrganizationsPage() {
@@ -120,7 +120,7 @@ export default function OrganizationsPage() {
                 sortable: true,
                 cell: (org) => (
                   <Badge className={tierColors[org.subscription_tier]}>
-                    {org.subscription_tier}
+                    {org.subscription_tier.charAt(0) + org.subscription_tier.slice(1).toLowerCase()}
                   </Badge>
                 ),
               },
@@ -171,7 +171,7 @@ export default function OrganizationsPage() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge className={tierColors[org.subscription_tier]}>
-                    {org.subscription_tier}
+                    {org.subscription_tier.charAt(0) + org.subscription_tier.slice(1).toLowerCase()}
                   </Badge>
                 </div>
               </div>
