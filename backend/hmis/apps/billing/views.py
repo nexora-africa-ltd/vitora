@@ -798,6 +798,15 @@ class ReportViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = None  # No model serializer - all actions return dict responses
 
+    def _get_report_service(self, request):
+        """Create BillingReportService scoped to the current tenant."""
+        from hmis.apps.billing.reports import BillingReportService
+
+        return BillingReportService(
+            facility=getattr(request, "facility", None),
+            organization=getattr(request, "organization", None),
+        )
+
     @extend_schema(
         parameters=[
             OpenApiParameter(
@@ -809,8 +818,6 @@ class ReportViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="daily-collection")
     def daily_collection(self, request):
         """Get daily collection report."""
-        from hmis.apps.billing.reports import BillingReportService
-
         report_date = request.query_params.get("date")
         if not report_date:
             return Response(
@@ -824,7 +831,7 @@ class ReportViewSet(viewsets.ViewSet):
                 {"error": "Invalid date format. Use YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        service = BillingReportService()
+        service = self._get_report_service(request)
         report = service.daily_collection_report(report_date)
 
         return Response(report, status=status.HTTP_200_OK)
@@ -846,8 +853,6 @@ class ReportViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="revenue-summary")
     def revenue_summary(self, request):
         """Get revenue summary for date range."""
-        from hmis.apps.billing.reports import BillingReportService
-
         start_date = request.query_params.get("start_date")
         end_date = request.query_params.get("end_date")
 
@@ -865,7 +870,7 @@ class ReportViewSet(viewsets.ViewSet):
                 {"error": "Invalid date format. Use YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        service = BillingReportService()
+        service = self._get_report_service(request)
         report = service.revenue_summary(start_date, end_date)
 
         return Response(report, status=status.HTTP_200_OK)
@@ -876,9 +881,7 @@ class ReportViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="outstanding-balances")
     def outstanding_balances(self, request):
         """Get list of outstanding invoices."""
-        from hmis.apps.billing.reports import BillingReportService
-
-        service = BillingReportService()
+        service = self._get_report_service(request)
         report = service.outstanding_balances()
 
         return Response(report, status=status.HTTP_200_OK)
@@ -900,8 +903,6 @@ class ReportViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="service-utilization")
     def service_utilization(self, request):
         """Get service utilization report."""
-        from hmis.apps.billing.reports import BillingReportService
-
         start_date = request.query_params.get("start_date")
         end_date = request.query_params.get("end_date")
 
@@ -919,7 +920,7 @@ class ReportViewSet(viewsets.ViewSet):
                 {"error": "Invalid date format. Use YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        service = BillingReportService()
+        service = self._get_report_service(request)
         report = service.service_utilization(start_date, end_date)
 
         return Response(report, status=status.HTTP_200_OK)
@@ -941,8 +942,6 @@ class ReportViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="payment-analysis")
     def payment_analysis(self, request):
         """Get payment method analysis."""
-        from hmis.apps.billing.reports import BillingReportService
-
         start_date = request.query_params.get("start_date")
         end_date = request.query_params.get("end_date")
 
@@ -960,7 +959,7 @@ class ReportViewSet(viewsets.ViewSet):
                 {"error": "Invalid date format. Use YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        service = BillingReportService()
+        service = self._get_report_service(request)
         report = service.payment_method_analysis(start_date, end_date)
 
         return Response(report, status=status.HTTP_200_OK)
@@ -968,8 +967,6 @@ class ReportViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="daily-closure")
     def daily_closure(self, request):
         """Get end-of-day closure report."""
-        from hmis.apps.billing.reports import BillingReportService
-
         report_date = request.query_params.get("date")
         if not report_date:
             return Response(
@@ -983,7 +980,7 @@ class ReportViewSet(viewsets.ViewSet):
                 {"error": "Invalid date format. Use YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        service = BillingReportService()
+        service = self._get_report_service(request)
         report = service.daily_closure_report(report_date)
 
         return Response(report, status=status.HTTP_200_OK)
@@ -991,9 +988,7 @@ class ReportViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="discrepancies")
     def discrepancies(self, request):
         """Get billing discrepancies report."""
-        from hmis.apps.billing.reports import BillingReportService
-
-        service = BillingReportService()
+        service = self._get_report_service(request)
         report = service.billing_discrepancies()
 
         return Response(report, status=status.HTTP_200_OK)

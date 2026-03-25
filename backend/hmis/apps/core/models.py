@@ -188,6 +188,9 @@ class AuditLog(models.Model):
         user_agent: str = "",
         details: dict = None,
         patient_id: int = None,
+        facility=None,
+        organization=None,
+        request=None,
     ):
         """
         Create an audit log entry.
@@ -201,10 +204,19 @@ class AuditLog(models.Model):
             user_agent: Client user agent
             details: Additional context dictionary
             patient_id: Patient ID for sensitive access tracking
+            facility: Facility context (or auto-resolved from request)
+            organization: Organization context (or auto-resolved from request)
+            request: HTTP request to auto-resolve facility/organization from TenantMiddleware
 
         Returns:
             AuditLog: The created audit log entry
         """
+        # Auto-resolve facility/organization from request if not explicitly provided
+        if request is not None:
+            if facility is None:
+                facility = getattr(request, "facility", None)
+            if organization is None:
+                organization = getattr(request, "organization", None)
         resolved_details = details or {}
         with transaction.atomic():
             # Get the last entry's hash and sequence for chaining.
@@ -250,6 +262,8 @@ class AuditLog(models.Model):
                 user_agent=user_agent,
                 details=resolved_details,
                 patient_id=patient_id,
+                facility=facility,
+                organization=organization,
                 sequence_number=next_seq,
                 previous_hash=prev_hash,
                 entry_hash=entry_hash,
@@ -1170,6 +1184,11 @@ class Role(models.Model):
         ("ALLIED_HEALTH", "Allied Health"),
     ]
 
+    ROLE_SCOPES = [
+        ("ORG", "Organization-wide"),
+        ("FACILITY", "Facility-specific"),
+    ]
+
     code = models.CharField(
         max_length=30,
         unique=True,
@@ -1187,6 +1206,30 @@ class Role(models.Model):
     description = models.TextField(
         blank=True,
         help_text="Role description",
+    )
+
+    # Multitenancy scope
+    scope = models.CharField(
+        max_length=10,
+        choices=ROLE_SCOPES,
+        default="ORG",
+        help_text="Whether this role applies org-wide or to a specific facility.",
+    )
+    organization = models.ForeignKey(
+        "Organization",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="roles",
+        help_text="Organization this role belongs to (null = system-wide default).",
+    )
+    facility = models.ForeignKey(
+        "Facility",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="roles",
+        help_text="Facility this role is scoped to (only when scope=FACILITY).",
     )
 
     # Permission matrix (JSON for flexibility)
@@ -1241,6 +1284,12 @@ class Role(models.Model):
         verbose_name = "Role"
         verbose_name_plural = "Roles"
         ordering = ["hierarchy_level", "name"]
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(scope="FACILITY", facility__isnull=True),
+                name="role_facility_required_when_facility_scoped",
+            ),
+        ]
 
     def __str__(self) -> str:
         """Return role name."""
