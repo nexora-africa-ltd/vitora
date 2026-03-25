@@ -19,6 +19,8 @@ from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from hmis.apps.core.mixins import TenantScopedViewMixin
+
 from .models import (
     Clinic,
     ClinicEnrollment,
@@ -210,7 +212,7 @@ class ClinicEnrollmentFilter(filters.FilterSet):
 # =============================================================================
 
 
-class ClinicViewSet(viewsets.ModelViewSet):
+class ClinicViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for Clinic CRUD operations.
 
@@ -226,6 +228,8 @@ class ClinicViewSet(viewsets.ModelViewSet):
     - POST /api/clinics/{id}/queue/ - Add patient to queue
     - GET /api/clinics/{id}/queue/stats/ - Get queue statistics
     """
+
+    tenant_scope = "facility"  # Clinics are facility-scoped
 
     queryset = Clinic.objects.all()
     permission_classes = [permissions.IsAuthenticated, IsAdminOrReadOnly]
@@ -381,7 +385,7 @@ class ClinicViewSet(viewsets.ModelViewSet):
 # =============================================================================
 
 
-class ClinicSessionViewSet(viewsets.ModelViewSet):
+class ClinicSessionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for ClinicSession operations nested under clinic.
 
@@ -393,13 +397,16 @@ class ClinicSessionViewSet(viewsets.ModelViewSet):
     - POST /api/clinics/{clinic_pk}/sessions/today/close/ - Close today's session
     """
 
+    tenant_scope = "facility"  # Sessions are facility-scoped
+
+    queryset = ClinicSession.objects.select_related("clinic").all()
     serializer_class = ClinicSessionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """Filter sessions by clinic."""
+        """Filter sessions by clinic, scoped by tenant."""
         clinic_pk = self.kwargs.get("clinic_pk")
-        return ClinicSession.objects.filter(clinic_id=clinic_pk)
+        return super().get_queryset().filter(clinic_id=clinic_pk)
 
     def get_clinic(self):
         """Get the parent clinic."""
@@ -407,9 +414,9 @@ class ClinicSessionViewSet(viewsets.ModelViewSet):
         return Clinic.objects.get(pk=clinic_pk)
 
     def perform_create(self, serializer):
-        """Create session for the clinic."""
+        """Create session for the clinic with tenant context."""
         clinic = self.get_clinic()
-        serializer.save(clinic=clinic)
+        serializer.save(clinic=clinic, **self.get_tenant_save_kwargs())
 
     @action(detail=False, methods=["get"])
     def today(self, request, clinic_pk=None):
@@ -443,7 +450,7 @@ class ClinicSessionViewSet(viewsets.ModelViewSet):
 # =============================================================================
 
 
-class ClinicVisitViewSet(viewsets.ModelViewSet):
+class ClinicVisitViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for ClinicVisit CRUD and workflow actions.
 
@@ -457,6 +464,8 @@ class ClinicVisitViewSet(viewsets.ModelViewSet):
     - POST /api/clinic-visits/{id}/complete/ - Complete visit
     - POST /api/clinic-visits/{id}/refer/ - Refer to another clinic
     """
+
+    tenant_scope = "facility"  # Visits are facility-scoped
 
     queryset = ClinicVisit.objects.select_related(
         "session__clinic",
@@ -487,7 +496,7 @@ class ClinicVisitViewSet(viewsets.ModelViewSet):
         """Create a clinic visit and return full serialized data."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        visit = serializer.save()
+        visit = serializer.save(**self.get_tenant_save_kwargs())
         # Return full serializer data with queue_number
         return Response(
             ClinicVisitSerializer(visit).data,

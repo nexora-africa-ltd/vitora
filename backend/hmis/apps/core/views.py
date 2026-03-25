@@ -21,6 +21,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from .mixins import TenantScopedViewMixin
 from .models import (
     AuditLog,
     CertificateAuthority,
@@ -150,13 +151,15 @@ def _query_param_truthy(value: str | None) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-class AuditLogViewSet(ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):
+class AuditLogViewSet(TenantScopedViewMixin, ListModelMixin, RetrieveModelMixin, viewsets.GenericViewSet):
     """
     ViewSet for viewing audit logs (read-only).
 
     Staff can review all audit logs.
     Other authenticated users can only see their own audit logs.
     """
+
+    tenant_scope = "organization"  # Org admins see all facility logs
 
     queryset = AuditLog.objects.all()
     serializer_class = AuditLogSerializer

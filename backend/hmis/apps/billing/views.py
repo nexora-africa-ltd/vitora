@@ -25,6 +25,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.billing.filters import CreditNoteFilter, InvoiceFilter, PaymentFilter
+from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.billing.models import (
     CreditNote,
     Invoice,
@@ -85,12 +86,14 @@ class ServiceViewSet(viewsets.ModelViewSet):
         instance.save()
 
 
-class InvoiceViewSet(viewsets.ModelViewSet):
+class InvoiceViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for Invoice model.
 
     Provides CRUD operations for invoices with custom actions.
     """
+
+    tenant_scope = "facility"  # Invoices are facility-scoped
 
     queryset = (
         Invoice.objects.select_related("patient", "encounter", "created_by", "cancelled_by")
