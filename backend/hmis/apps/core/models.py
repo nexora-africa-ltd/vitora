@@ -73,6 +73,22 @@ class AuditLog(models.Model):
         related_name="audit_logs",
         help_text="User who performed the action",
     )
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_logs",
+        help_text="Organization context when action occurred.",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_logs",
+        help_text="Facility context when action occurred.",
+    )
     action = models.CharField(
         max_length=50,
         db_index=True,
@@ -553,6 +569,22 @@ class SyncQueue(models.Model):
         choices=OPERATION_CHOICES,
         db_index=True,
         help_text="Type of operation to sync",
+    )
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sync_queue_entries",
+        help_text="Organization context for this sync entry.",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sync_queue_entries",
+        help_text="Facility that generated this sync entry.",
     )
     model_name = models.CharField(
         max_length=100,

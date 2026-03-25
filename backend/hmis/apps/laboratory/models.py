@@ -290,6 +290,24 @@ class LabOrder(models.Model):
     # Identity
     order_number = models.CharField(max_length=30, unique=True, editable=False)
 
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="lab_orders",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="lab_orders",
+        null=True,
+        blank=True,
+        help_text="Facility where this lab order was placed.",
+    )
+
     # Relationships
     patient = models.ForeignKey(
         "patients.Patient", on_delete=models.PROTECT, related_name="lab_orders"
