@@ -13,8 +13,7 @@ from django.db import IntegrityError
 from django.test import RequestFactory
 from rest_framework.test import APIRequestFactory
 
-from hmis.apps.core.models import AuditLog, Organization, Facility, Role, SyncQueue
-
+from hmis.apps.core.models import AuditLog, Facility, Organization, Role, SyncQueue
 
 # ============================================================================
 # Fixtures
