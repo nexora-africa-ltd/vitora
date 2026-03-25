@@ -17,6 +17,8 @@ export const FacilityModulesSchema = z.object({
 
 export const FacilityListItemSchema = z.object({
   id: z.number(),
+  organization: z.number().nullable(),
+  organization_name: z.string().nullable(),
   mfl_code: z.string(),
   name: z.string(),
   level: z.string(),
@@ -25,6 +27,8 @@ export const FacilityListItemSchema = z.object({
   county_name: z.string(),
   sub_county: z.number(),
   sub_county_name: z.string(),
+  is_headquarters: z.boolean().default(false),
+  branch_code: z.string().default(''),
   sha_contracted: z.boolean(),
   is_active: z.boolean(),
 });

@@ -5,6 +5,8 @@ export type FacilityOwnership = 'GOK' | 'FBO' | 'NGO' | 'PRIVATE';
 
 export interface FacilityListItem {
   id: number;
+  organization: number | null;
+  organization_name: string | null;
   mfl_code: string;
   name: string;
   level: string;
@@ -13,6 +15,8 @@ export interface FacilityListItem {
   county_name: string;
   sub_county: number;
   sub_county_name: string;
+  is_headquarters: boolean;
+  branch_code: string;
   sha_contracted: boolean;
   is_active: boolean;
 }

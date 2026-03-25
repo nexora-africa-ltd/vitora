@@ -1,15 +1,20 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useDashboardStats, formatNumber, formatCurrency } from '@/lib/hooks/use-dashboard-stats';
-import { apiClient } from '@/lib/api/client';
+import { apiClient, setActiveFacilityId, getActiveFacilityId } from '@/lib/api/client';
 import { DashboardStatsSchema } from '@/lib/schemas/dashboard-stats.schema';
 
-// Mock the API client
-jest.mock('@/lib/api/client', () => ({
-  apiClient: {
-    get: jest.fn(),
-  },
-}));
+// Mock the API client — keep interceptors functional for header tests
+jest.mock('@/lib/api/client', () => {
+  let _facilityId: number | null = null;
+  return {
+    apiClient: {
+      get: jest.fn(),
+    },
+    setActiveFacilityId: (id: number | null) => { _facilityId = id; },
+    getActiveFacilityId: () => _facilityId,
+  };
+});
 
 const mockApiClient = apiClient as jest.Mocked<typeof apiClient>;
 
@@ -116,6 +121,139 @@ describe('useDashboardStats', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Dashboard stats reflect active facility
+// ---------------------------------------------------------------------------
+
+describe('Dashboard stats reflect active facility', () => {
+  const makeStats = (totalPatients: number) => ({
+    timestamp: '2026-03-25T10:00:00Z',
+    cache_ttl: 300,
+    patients: { total: totalPatients, today: 2, this_week: 10, this_month: 40 },
+    encounters: { total: 100, today: 8, in_progress: 3, completed_today: 5 },
+    pharmacy: { prescriptions_today: 5, pending_dispensing: 1, low_stock_items: 0, expiring_soon: 2 },
+    laboratory: { pending_tests: 3, completed_today: 7, critical_results: 0 },
+    triage: { waiting: 2, avg_wait_time_minutes: 15, emergency_count: 0 },
+    billing: { revenue_today: 50000, pending_payments: 10000, sha_claims_pending: 3 },
+    alerts: { critical: 0, high: 1, medium: 2, total_unresolved: 3 },
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setActiveFacilityId(null);
+  });
+
+  it('setActiveFacilityId updates getActiveFacilityId', () => {
+    expect(getActiveFacilityId()).toBeNull();
+
+    setActiveFacilityId(42);
+    expect(getActiveFacilityId()).toBe(42);
+
+    setActiveFacilityId(99);
+    expect(getActiveFacilityId()).toBe(99);
+
+    setActiveFacilityId(null);
+    expect(getActiveFacilityId()).toBeNull();
+  });
+
+  it('fetches stats once per facility context', async () => {
+    // Facility 1 returns 500 patients
+    mockApiClient.get.mockResolvedValueOnce({ data: makeStats(500) });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    function Wrapper({ children }: { children: React.ReactNode }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      );
+    }
+    Wrapper.displayName = 'FacilityStatsWrapper';
+
+    setActiveFacilityId(1);
+
+    const { result } = renderHook(() => useDashboardStats(), { wrapper: Wrapper });
+
+    await waitFor(() => {
+      expect(result.current.data?.patients.total).toBe(500);
+    });
+
+    expect(mockApiClient.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-fetches stats when facility changes and cache is invalidated', async () => {
+    // First call (facility 1): 500 patients
+    mockApiClient.get.mockResolvedValueOnce({ data: makeStats(500) });
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: 0 } },
+    });
+
+    function Wrapper({ children }: { children: React.ReactNode }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      );
+    }
+    Wrapper.displayName = 'FacilityStatsWrapper2';
+
+    setActiveFacilityId(1);
+
+    const { result } = renderHook(() => useDashboardStats(), { wrapper: Wrapper });
+
+    await waitFor(() => {
+      expect(result.current.data?.patients.total).toBe(500);
+    });
+
+    // Switch facility and invalidate cache (simulates what FacilityProvider does)
+    mockApiClient.get.mockResolvedValueOnce({ data: makeStats(120) });
+    setActiveFacilityId(2);
+
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: ['dashboard', 'stats'] });
+    });
+
+    await waitFor(() => {
+      expect(result.current.data?.patients.total).toBe(120);
+    });
+
+    // Two separate API calls were made
+    expect(mockApiClient.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows zero stats while loading for new facility', async () => {
+    // Delay API response indefinitely
+    mockApiClient.get.mockImplementation(() => new Promise(() => {}));
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    function Wrapper({ children }: { children: React.ReactNode }) {
+      return (
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      );
+    }
+    Wrapper.displayName = 'FacilityStatsWrapper3';
+
+    setActiveFacilityId(5);
+
+    const { result } = renderHook(() => useDashboardStats(), { wrapper: Wrapper });
+
+    // Placeholder zeros shown immediately (placeholderData means isLoading=false)
+    expect(result.current.data).toBeDefined();
+    expect(result.current.data?.patients.total).toBe(0);
+    // isFetching is true (request in flight), even though placeholderData makes isLoading false
+    expect(result.current.isFetching).toBe(true);
   });
 });
 

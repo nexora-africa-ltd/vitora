@@ -64,6 +64,8 @@ import {
   Fingerprint,
   Lock,
   BookCheck,
+  Landmark,
+  Hospital,
 } from 'lucide-react';
 
 import {
@@ -331,6 +333,8 @@ const _allNavItems: NavItemType[] = [
     moduleKey: 'admin',
     children: [
       { label: 'Overview', href: '/admin/overview', icon: LayoutDashboard, actionKey: 'admin.view_overview' },
+      { label: 'Organizations', href: '/admin/organizations', icon: Landmark, actionKey: 'admin.manage_departments' },
+      { label: 'Facilities', href: '/admin/facilities', icon: Hospital, actionKey: 'admin.manage_departments' },
       { label: 'Departments', href: '/admin/departments', icon: Building2, actionKey: 'admin.manage_departments' },
       { label: 'Roles', href: '/admin/roles', icon: ShieldUser, actionKey: 'admin.manage_roles' },
       { label: 'Staff', href: '/admin/staff', icon: UserCog, actionKey: 'admin.manage_staff' },
