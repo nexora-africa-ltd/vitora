@@ -63,6 +63,8 @@ export type RoleCategory =
   | 'COMMUNITY'
   | 'ALLIED_HEALTH';
 
+export type RoleScope = 'ORG' | 'FACILITY';
+
 export interface Role {
   id: number;
   name: string;
@@ -70,6 +72,12 @@ export interface Role {
   description: string;
   category: RoleCategory;
   category_display?: string | null;
+  scope: RoleScope;
+  scope_display?: string | null;
+  organization: number | null;
+  organization_name?: string | null;
+  facility: number | null;
+  facility_name?: string | null;
   permissions_matrix: Record<string, Record<string, boolean>>;
   hierarchy_level: number;
   parent_role: number | null;
@@ -88,6 +96,9 @@ export interface RoleCreateData {
   code: string;
   description?: string;
   category: RoleCategory;
+  scope?: RoleScope;
+  organization?: number | null;
+  facility?: number | null;
   permissions_matrix?: Record<string, Record<string, boolean>>;
   hierarchy_level?: number;
   parent_role?: number | null;
@@ -247,6 +258,10 @@ export interface AuditLogEntry {
   ip_address: string | null;
   user_agent: string;
   patient_id: number | null;
+  facility: number | null;
+  facility_name?: string | null;
+  organization: number | null;
+  organization_name?: string | null;
   timestamp: string;
 }
 

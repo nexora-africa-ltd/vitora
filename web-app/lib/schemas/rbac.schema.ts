@@ -67,6 +67,8 @@ export type DepartmentSchemaType = z.infer<typeof DepartmentSchema>;
 // ROLE SCHEMA
 // =============================================================================
 
+export const RoleScopeSchema = z.enum(['ORG', 'FACILITY']);
+
 export const RoleSchema = z.object({
   id: z.number(),
   name: z.string(),
@@ -74,6 +76,12 @@ export const RoleSchema = z.object({
   description: z.string(),
   category: RoleCategorySchema,
   category_display: z.string().optional().nullable(),
+  scope: RoleScopeSchema,
+  scope_display: z.string().optional().nullable(),
+  organization: z.number().nullable(),
+  organization_name: z.string().optional().nullable(),
+  facility: z.number().nullable(),
+  facility_name: z.string().optional().nullable(),
   permissions_matrix: z.record(z.record(z.boolean())),
   hierarchy_level: z.number(),
   parent_role: z.number().nullable(),
@@ -216,6 +224,10 @@ export const AuditLogEntrySchema = z.object({
   ip_address: z.string().nullable(),
   user_agent: z.string(),
   patient_id: z.number().nullable(),
+  facility: z.number().nullable(),
+  facility_name: z.string().optional().nullable(),
+  organization: z.number().nullable(),
+  organization_name: z.string().optional().nullable(),
   timestamp: z.string(),
 });
 
