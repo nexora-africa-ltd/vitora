@@ -20,6 +20,7 @@ from .models import (
     FeatureFlag,
     FrontendEvent,
     Notification,
+    Organization,
     Role,
     StaffProfile,
     SubCounty,
@@ -638,6 +639,89 @@ class FeatureFlagSerializer(serializers.ModelSerializer):
 
 
 # ============================================================================
+# Organization Serializers (Multitenancy – Phase 1)
+# ============================================================================
+
+
+class OrganizationListSerializer(serializers.ModelSerializer):
+    """Compact serializer for organization list views."""
+
+    facility_count = serializers.IntegerField(read_only=True, default=0)
+    staff_count = serializers.IntegerField(read_only=True, default=0)
+    county_name = serializers.CharField(source="county.name", read_only=True, default=None)
+
+    class Meta:
+        """Meta options for OrganizationListSerializer."""
+
+        model = Organization
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "subscription_tier",
+            "is_active",
+            "county_name",
+            "facility_count",
+            "staff_count",
+        ]
+        read_only_fields = ["id", "facility_count", "staff_count"]
+
+
+class OrganizationDetailSerializer(serializers.ModelSerializer):
+    """Full serializer for organization detail / create / update views."""
+
+    facility_count = serializers.IntegerField(read_only=True, default=0)
+    staff_count = serializers.IntegerField(read_only=True, default=0)
+    county_name = serializers.CharField(source="county.name", read_only=True, default=None)
+    sub_county_name = serializers.CharField(
+        source="sub_county.name", read_only=True, default=None
+    )
+
+    class Meta:
+        """Meta options for OrganizationDetailSerializer."""
+
+        model = Organization
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "logo",
+            # Contact
+            "contact_email",
+            "contact_phone",
+            "address",
+            # Location
+            "county",
+            "county_name",
+            "sub_county",
+            "sub_county_name",
+            # Subscription
+            "subscription_tier",
+            "max_facilities",
+            "max_users",
+            # Compliance
+            "data_retention_years",
+            # Config
+            "settings",
+            # Status
+            "is_active",
+            # Computed
+            "facility_count",
+            "staff_count",
+            # Timestamps
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "facility_count",
+            "staff_count",
+            "created_at",
+            "updated_at",
+        ]
+
+
+# ============================================================================
 # Facility Serializers (RBAC Capability Plan – Phase 1)
 # ============================================================================
 
@@ -655,6 +739,9 @@ class FacilityListSerializer(serializers.ModelSerializer):
 
     county_name = serializers.CharField(source="county.name", read_only=True)
     sub_county_name = serializers.CharField(source="sub_county.name", read_only=True)
+    organization_name = serializers.CharField(
+        source="organization.name", read_only=True, default=None
+    )
 
     class Meta:
         """Meta options for FacilityListSerializer."""
@@ -662,6 +749,8 @@ class FacilityListSerializer(serializers.ModelSerializer):
         model = Facility
         fields = [
             "id",
+            "organization",
+            "organization_name",
             "mfl_code",
             "name",
             "level",
@@ -670,6 +759,8 @@ class FacilityListSerializer(serializers.ModelSerializer):
             "county_name",
             "sub_county",
             "sub_county_name",
+            "is_headquarters",
+            "branch_code",
             "sha_contracted",
             "is_active",
         ]
@@ -691,6 +782,9 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
     ward_name = serializers.CharField(
         source="ward.name", read_only=True, default=None
     )
+    organization_name = serializers.CharField(
+        source="organization.name", read_only=True, default=None
+    )
     modules = serializers.DictField(read_only=True)
     enabled_module_names = serializers.ListField(
         child=serializers.CharField(), read_only=True
@@ -702,10 +796,14 @@ class FacilityDetailSerializer(serializers.ModelSerializer):
         model = Facility
         fields = [
             "id",
+            "organization",
+            "organization_name",
             "mfl_code",
             "name",
             "level",
             "ownership",
+            "is_headquarters",
+            "branch_code",
             # Location
             "county",
             "county_name",
@@ -764,10 +862,13 @@ class FacilityCreateSerializer(serializers.ModelSerializer):
 
         model = Facility
         fields = [
+            "organization",
             "mfl_code",
             "name",
             "level",
             "ownership",
+            "is_headquarters",
+            "branch_code",
             # Location
             "county",
             "sub_county",

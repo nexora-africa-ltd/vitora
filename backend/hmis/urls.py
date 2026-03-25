@@ -22,6 +22,7 @@ from hmis.apps.core.views import (
     DepartmentViewSet,
     FacilityViewSet,
     NotificationViewSet,
+    OrganizationViewSet,
     PermissionViewSet,
     RoleViewSet,
     StaffProfileViewSet,
@@ -99,6 +100,9 @@ router.register(r"notifications", NotificationViewSet, basename="notification")
 
 # Facility endpoint (Capability-Based Experience)
 router.register(r"facilities", FacilityViewSet, basename="facility")
+
+# Organization endpoint (Multitenancy)
+router.register(r"organizations", OrganizationViewSet, basename="organization")
 
 # Location routes under /api/locations/
 location_router = routers.DefaultRouter()

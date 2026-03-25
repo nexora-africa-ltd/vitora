@@ -32,6 +32,7 @@ from .models import (
     FeatureFlag,
     FrontendEvent,
     Notification,
+    Organization,
     Role,
     StaffProfile,
     SubCounty,
@@ -54,6 +55,8 @@ from .serializers import (
     FrontendEventBatchSerializer,
     FrontendEventSerializer,
     NotificationSerializer,
+    OrganizationDetailSerializer,
+    OrganizationListSerializer,
     OrgChartPayloadSerializer,
     PermissionSerializer,
     RevokeCertificateRequestSerializer,
@@ -1466,6 +1469,49 @@ class FeatureFlagViewSet(ListModelMixin, viewsets.GenericViewSet):
             return Response(FeatureFlagSerializer(flag).data)
         except FeatureFlag.DoesNotExist:
             return Response({"name": name, "is_enabled": False, "description": ""})
+
+
+# ============================================================================
+# Organization ViewSet (Multitenancy – Phase 1)
+# ============================================================================
+
+
+class OrganizationViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Organization (tenant) CRUD operations.
+
+    * All authenticated users can list and retrieve organizations.
+    * Only admin users can create, update, or delete organizations.
+    * The ``facilities`` action lists facilities belonging to an org.
+    """
+
+    queryset = Organization.objects.select_related("county", "sub_county").all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name", "slug"]
+    ordering_fields = ["name", "created_at"]
+    ordering = ["name"]
+
+    def get_permissions(self):
+        """Restrict write operations to admin users."""
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
+    def get_serializer_class(self):
+        """Return the appropriate serializer for the action."""
+        if self.action == "list":
+            return OrganizationListSerializer
+        return OrganizationDetailSerializer
+
+    @action(detail=True, methods=["get"])
+    def facilities(self, request, pk=None):
+        """List facilities under this organization."""
+        organization = self.get_object()
+        facilities = organization.facilities.select_related(
+            "county", "sub_county", "ward"
+        ).all()
+        serializer = FacilityListSerializer(facilities, many=True)
+        return Response(serializer.data)
 
 
 # ============================================================================
