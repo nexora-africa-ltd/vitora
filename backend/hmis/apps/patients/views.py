@@ -14,7 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.history_views import ModelHistoryMixin
-from hmis.apps.core.mixins import IdempotentCreateMixin
+from hmis.apps.core.mixins import IdempotentCreateMixin, TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog, IdempotencyKey
 from hmis.apps.core.permissions import SensitiveAccessPermission, get_client_ip
 from hmis.apps.encounters.models import Encounter
@@ -44,7 +44,8 @@ def _fire_cr_sync(patient_id: int) -> None:
         )
 
 
-class PatientViewSet(ModelHistoryMixin, IdempotentCreateMixin, viewsets.ModelViewSet):
+class PatientViewSet(TenantScopedViewMixin, ModelHistoryMixin, IdempotentCreateMixin, viewsets.ModelViewSet):
+    tenant_scope = "organization"  # Patients are org-scoped (visible across facilities)
     """
     ViewSet for Patient model.
 
@@ -131,8 +132,12 @@ class PatientViewSet(ModelHistoryMixin, IdempotentCreateMixin, viewsets.ModelVie
         with transaction.atomic():
             serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            # Set registered_by to current user
-            patient = serializer.save(registered_by=request.user)
+            # Set registered_by to current user + tenant context
+            patient = serializer.save(
+                registered_by=request.user,
+                registered_at_facility=getattr(request, "facility", None),
+                **self.get_tenant_save_kwargs(),
+            )
 
             # Create emergency contact if data provided
             emergency_contact_name = request.data.get("emergency_contact_name")
@@ -804,7 +809,7 @@ class EmergencyContactViewSet(viewsets.ModelViewSet):
         return response
 
 
-class AllergyViewSet(viewsets.ModelViewSet):
+class AllergyViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for Allergy model.
 
@@ -818,6 +823,8 @@ class AllergyViewSet(viewsets.ModelViewSet):
     - /api/patients/{patient_id}/allergies/  (nested)
     - /api/allergies/  (standalone)
     """
+
+    tenant_scope = "organization"  # Allergies are org-scoped (shared medical history)
 
     serializer_class = AllergySerializer
     permission_classes = [IsAuthenticated]

@@ -234,6 +234,10 @@ class TenantScopedViewMixin:
     * ``"organization"`` — filters by ``request.organization`` (org-wide data).
     * ``"facility"`` — filters by ``request.facility`` (single-branch data).
 
+    For ViewSets that override ``create()`` directly (instead of using
+    ``perform_create()``), call ``self.get_tenant_save_kwargs()`` and
+    unpack the result into ``serializer.save(**tenant_kwargs)``.
+
     Requirements:
         * ``TenantMiddleware`` must be active.
         * The underlying model must have the corresponding FK fields.
@@ -241,8 +245,54 @@ class TenantScopedViewMixin:
 
     tenant_scope: str = "facility"  # "organization" or "facility"
 
+    def _resolve_tenant_context(self):
+        """
+        Ensure ``request.facility`` and ``request.organization`` are set.
+
+        The ``TenantMiddleware`` normally sets these during the WSGI
+        pipeline.  However, in DRF test clients that use
+        ``force_authenticate`` the user is not available until the view
+        layer, so the middleware sees ``AnonymousUser``.  This helper
+        re-resolves lazily when the attributes are still ``None``.
+        """
+        request = self.request
+        if getattr(request, "facility", None) or getattr(request, "organization", None):
+            return  # Already resolved by middleware
+
+        user = getattr(request, "user", None)
+        if not user or not getattr(user, "is_authenticated", False):
+            return
+
+        from hmis.apps.core.models import Facility
+
+        # 1. Try X-Facility-Id header
+        facility_id = request.META.get("HTTP_X_FACILITY_ID")
+        if facility_id:
+            try:
+                facility = Facility.objects.select_related("organization").get(
+                    pk=int(facility_id), is_active=True
+                )
+                request.facility = facility
+                request.organization = facility.organization
+                return
+            except (Facility.DoesNotExist, ValueError, TypeError):
+                pass
+
+        # 2. Fallback to primary facility
+        profile = getattr(user, "staff_profile", None)
+        if profile and profile.primary_facility_id:
+            try:
+                facility = Facility.objects.select_related("organization").get(
+                    pk=profile.primary_facility_id, is_active=True
+                )
+                request.facility = facility
+                request.organization = facility.organization
+            except Facility.DoesNotExist:
+                pass
+
     def get_queryset(self):
         """Filter queryset by the active tenant scope."""
+        self._resolve_tenant_context()
         qs = super().get_queryset()
         request = self.request
 
@@ -256,16 +306,29 @@ class TenantScopedViewMixin:
 
         return qs
 
-    def perform_create(self, serializer):
-        """Auto-set organization and facility from the request context."""
+    def get_tenant_save_kwargs(self) -> dict:
+        """
+        Return a dict of tenant FK values to unpack into ``serializer.save()``.
+
+        Use this in ViewSets that override ``create()`` directly::
+
+            patient = serializer.save(
+                registered_by=request.user,
+                **self.get_tenant_save_kwargs(),
+            )
+        """
+        self._resolve_tenant_context()
         request = self.request
         org = getattr(request, "organization", None)
         facility = getattr(request, "facility", None)
 
-        extra = {}
+        extra: dict = {}
         if org:
             extra["organization"] = org
         if self.tenant_scope == "facility" and facility:
             extra["facility"] = facility
+        return extra
 
-        serializer.save(**extra)
+    def perform_create(self, serializer):
+        """Auto-set organization and facility from the request context."""
+        serializer.save(**self.get_tenant_save_kwargs())

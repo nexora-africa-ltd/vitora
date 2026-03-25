@@ -898,3 +898,325 @@ class TestCrossOrgIsolation:
         assert patient in org_patients
         # Patient is NOT filtered by facility — they're org-scoped
         assert org_patients.count() == 1
+
+
+# ============================================================================
+# Phase 3: API-Level Tenant Scoping Tests
+# ============================================================================
+
+
+@pytest.fixture
+def other_staff_user(db):
+    """Create a second user for cross-org tests."""
+    return User.objects.create_user(
+        username="drother", email="other@other.co.ke", password="testpass123"
+    )
+
+
+@pytest.fixture
+def other_staff_profile(
+    db, other_staff_user, other_org_facility, sample_department, sample_role
+):
+    """Create a StaffProfile at the other org's facility."""
+    return StaffProfile.objects.create(
+        user=other_staff_user,
+        employee_id="VH-2026-T99",
+        primary_role=sample_role,
+        primary_department=sample_department,
+        primary_facility=other_org_facility,
+        date_joined=date(2026, 1, 1),
+    )
+
+
+@pytest.fixture
+def staff_client(db, staff_user, staff_profile, sample_facility):
+    """API client authenticated as staff at sample_facility with facility header."""
+    from rest_framework.test import APIClient
+
+    client = APIClient()
+    client.force_authenticate(user=staff_user)
+    client.credentials(HTTP_X_FACILITY_ID=str(sample_facility.pk))
+    return client
+
+
+@pytest.fixture
+def other_staff_client(
+    db, other_staff_user, other_staff_profile, other_org_facility
+):
+    """API client authenticated as staff at the other org's facility."""
+    from rest_framework.test import APIClient
+
+    client = APIClient()
+    client.force_authenticate(user=other_staff_user)
+    client.credentials(HTTP_X_FACILITY_ID=str(other_org_facility.pk))
+    return client
+
+
+class TestPatientAPIScopping:
+    """Tests that Patient API respects organization scoping."""
+
+    def test_patient_list_scoped_to_org(
+        self, staff_client, sample_org, another_org, org_county, org_sub_county
+    ):
+        """Patient list should only return patients in the user's org."""
+        from hmis.apps.patients.models import Patient
+
+        Patient.objects.create(
+            first_name="OrgOne", last_name="Pat", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org,
+        )
+        Patient.objects.create(
+            first_name="OrgTwo", last_name="Pat", date_of_birth="1991-02-02",
+            gender="F", county=org_county, sub_county=org_sub_county,
+            organization=another_org,
+        )
+
+        response = staff_client.get("/api/patients/")
+        assert response.status_code == 200
+        results = response.data.get("results", response.data)
+        names = [p["first_name"] for p in results]
+        assert "OrgOne" in names
+        assert "OrgTwo" not in names
+
+    def test_patient_create_auto_sets_org(
+        self, staff_client, sample_org, sample_facility, org_county, org_sub_county
+    ):
+        """Creating a patient via API should auto-set organization."""
+        data = {
+            "first_name": "AutoOrg",
+            "last_name": "Patient",
+            "date_of_birth": "1990-01-01",
+            "gender": "M",
+            "county": org_county.pk,
+            "sub_county": org_sub_county.pk,
+        }
+        response = staff_client.post("/api/patients/", data, format="json")
+        assert response.status_code == 201
+        assert response.data["organization"] == sample_org.pk
+
+    def test_patient_visible_from_branch_facility(
+        self, sample_org, sample_facility, second_facility,
+        staff_user, staff_profile, org_county, org_sub_county
+    ):
+        """Patient created at HQ should be visible from branch facility."""
+        from rest_framework.test import APIClient
+
+        from hmis.apps.patients.models import Patient
+
+        Patient.objects.create(
+            first_name="HQPatient", last_name="Cross", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org, registered_at_facility=sample_facility,
+        )
+        # Staff assigned to second_facility
+        staff_profile.secondary_facilities.add(second_facility)
+        branch_client = APIClient()
+        branch_client.force_authenticate(user=staff_user)
+        branch_client.credentials(HTTP_X_FACILITY_ID=str(second_facility.pk))
+
+        response = branch_client.get("/api/patients/")
+        assert response.status_code == 200
+        results = response.data.get("results", response.data)
+        names = [p["first_name"] for p in results]
+        assert "HQPatient" in names
+
+
+class TestEncounterAPIScopping:
+    """Tests that Encounter API respects facility scoping."""
+
+    def test_encounter_list_scoped_to_facility(
+        self, staff_client, sample_org, another_org,
+        sample_facility, other_org_facility, org_county, org_sub_county
+    ):
+        """Encounter list should only return encounters at the user's facility."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        p1 = Patient.objects.create(
+            first_name="P1", last_name="E", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org,
+        )
+        p2 = Patient.objects.create(
+            first_name="P2", last_name="E", date_of_birth="1991-01-01",
+            gender="F", county=org_county, sub_county=org_sub_county,
+            organization=another_org,
+        )
+        Encounter.objects.create(
+            patient=p1, encounter_type="OPD", chief_complaint="At my facility",
+            organization=sample_org, facility=sample_facility,
+        )
+        Encounter.objects.create(
+            patient=p2, encounter_type="OPD", chief_complaint="At other facility",
+            organization=another_org, facility=other_org_facility,
+        )
+
+        response = staff_client.get("/api/encounters/")
+        assert response.status_code == 200
+        results = response.data.get("results", response.data)
+        complaints = [e["chief_complaint"] for e in results]
+        assert "At my facility" in complaints
+        assert "At other facility" not in complaints
+
+    def test_encounter_create_auto_sets_facility(
+        self, staff_client, sample_org, sample_facility, org_county, org_sub_county
+    ):
+        """Creating an encounter via API should auto-set facility and org."""
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="EncAuto", last_name="Pat", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org,
+        )
+        data = {
+            "patient": patient.pk,
+            "encounter_type": "OPD",
+            "chief_complaint": "Auto-set test",
+        }
+        response = staff_client.post("/api/encounters/", data, format="json")
+        assert response.status_code == 201
+        assert response.data["facility"] == sample_facility.pk
+        assert response.data["organization"] == sample_org.pk
+
+    def test_encounters_at_branch_not_visible_from_hq(
+        self, staff_client, sample_org, sample_facility, second_facility,
+        staff_user, staff_profile, org_county, org_sub_county
+    ):
+        """Encounters at branch should NOT be visible from HQ (facility-scoped)."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="BranchPat", last_name="Enc", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org,
+        )
+        Encounter.objects.create(
+            patient=patient, encounter_type="OPD",
+            chief_complaint="At branch only",
+            organization=sample_org, facility=second_facility,
+        )
+        # Staff at HQ (sample_facility)
+        response = staff_client.get("/api/encounters/")
+        assert response.status_code == 200
+        results = response.data.get("results", response.data)
+        complaints = [e["chief_complaint"] for e in results]
+        assert "At branch only" not in complaints
+
+
+class TestCrossOrgAPIIsolation:
+    """Tests that cross-org API access is denied."""
+
+    def test_other_org_patients_not_visible(
+        self, staff_client, other_staff_client,
+        sample_org, another_org, org_county, org_sub_county
+    ):
+        """Staff at org1 should not see org2 patients and vice versa."""
+        from hmis.apps.patients.models import Patient
+
+        Patient.objects.create(
+            first_name="Org1Only", last_name="Pat", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org,
+        )
+        Patient.objects.create(
+            first_name="Org2Only", last_name="Pat", date_of_birth="1991-02-02",
+            gender="F", county=org_county, sub_county=org_sub_county,
+            organization=another_org,
+        )
+
+        # Org1 staff
+        r1 = staff_client.get("/api/patients/")
+        names1 = [p["first_name"] for p in r1.data.get("results", r1.data)]
+        assert "Org1Only" in names1
+        assert "Org2Only" not in names1
+
+        # Org2 staff
+        r2 = other_staff_client.get("/api/patients/")
+        names2 = [p["first_name"] for p in r2.data.get("results", r2.data)]
+        assert "Org2Only" in names2
+        assert "Org1Only" not in names2
+
+    def test_other_org_encounters_not_visible(
+        self, staff_client, other_staff_client,
+        sample_org, another_org, sample_facility, other_org_facility,
+        org_county, org_sub_county
+    ):
+        """Staff at org1 should not see org2 encounters."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        p1 = Patient.objects.create(
+            first_name="E1", last_name="P", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org,
+        )
+        p2 = Patient.objects.create(
+            first_name="E2", last_name="P", date_of_birth="1991-01-01",
+            gender="F", county=org_county, sub_county=org_sub_county,
+            organization=another_org,
+        )
+        Encounter.objects.create(
+            patient=p1, encounter_type="OPD", chief_complaint="Org1 enc",
+            organization=sample_org, facility=sample_facility,
+        )
+        Encounter.objects.create(
+            patient=p2, encounter_type="OPD", chief_complaint="Org2 enc",
+            organization=another_org, facility=other_org_facility,
+        )
+
+        r1 = staff_client.get("/api/encounters/")
+        c1 = [e["chief_complaint"] for e in r1.data.get("results", r1.data)]
+        assert "Org1 enc" in c1
+        assert "Org2 enc" not in c1
+
+        r2 = other_staff_client.get("/api/encounters/")
+        c2 = [e["chief_complaint"] for e in r2.data.get("results", r2.data)]
+        assert "Org2 enc" in c2
+        assert "Org1 enc" not in c2
+
+    def test_no_facility_header_uses_primary(
+        self, api_client, staff_user, staff_profile,
+        sample_org, org_county, org_sub_county
+    ):
+        """Without X-Facility-Id, middleware falls back to primary_facility."""
+        from hmis.apps.patients.models import Patient
+
+        Patient.objects.create(
+            first_name="FallbackPat", last_name="Test", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org,
+        )
+        api_client.force_authenticate(user=staff_user)
+        # No X-Facility-Id header
+        response = api_client.get("/api/patients/")
+        assert response.status_code == 200
+        results = response.data.get("results", response.data)
+        names = [p["first_name"] for p in results]
+        assert "FallbackPat" in names
+
+    def test_superuser_no_facility_sees_all(
+        self, admin_client, sample_org, another_org, org_county, org_sub_county
+    ):
+        """Superuser without facility header should see all patients (no filter)."""
+        from hmis.apps.patients.models import Patient
+
+        Patient.objects.create(
+            first_name="Super1", last_name="A", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org,
+        )
+        Patient.objects.create(
+            first_name="Super2", last_name="B", date_of_birth="1991-01-01",
+            gender="F", county=org_county, sub_county=org_sub_county,
+            organization=another_org,
+        )
+        # Admin without facility header — no tenant filter applied
+        response = admin_client.get("/api/patients/")
+        assert response.status_code == 200
+        results = response.data.get("results", response.data)
+        names = [p["first_name"] for p in results]
+        assert "Super1" in names
+        assert "Super2" in names

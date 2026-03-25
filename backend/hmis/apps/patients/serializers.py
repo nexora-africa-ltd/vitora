@@ -32,6 +32,13 @@ class PatientSerializer(serializers.ModelSerializer):
     age = serializers.ReadOnlyField()
     full_name = serializers.ReadOnlyField()
     registered_by_username = serializers.CharField(source="registered_by.username", read_only=True)
+    # Tenant context (read-only)
+    organization_name = serializers.CharField(
+        source="organization.name", read_only=True, allow_null=True
+    )
+    registered_at_facility_name = serializers.CharField(
+        source="registered_at_facility.name", read_only=True, allow_null=True
+    )
     # Location display names (read-only)
     county_name = serializers.CharField(source="county.name", read_only=True)
     sub_county_name = serializers.CharField(source="sub_county.name", read_only=True)
@@ -105,6 +112,11 @@ class PatientSerializer(serializers.ModelSerializer):
             "referred_from_facility",
             "registered_by",
             "registered_by_username",
+            # Tenant context
+            "organization",
+            "organization_name",
+            "registered_at_facility",
+            "registered_at_facility_name",
             "created_at",
             "updated_at",
         ]
@@ -117,6 +129,10 @@ class PatientSerializer(serializers.ModelSerializer):
             "full_name",
             "registered_by",
             "registered_by_username",
+            "organization",
+            "organization_name",
+            "registered_at_facility",
+            "registered_at_facility_name",
             "county_name",
             "sub_county_name",
             "ward_name",

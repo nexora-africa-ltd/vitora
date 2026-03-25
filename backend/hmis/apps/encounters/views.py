@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 
 from hmis.apps.checkin.serializers import ClinicalSnapshotSerializer
 from hmis.apps.core.history_views import ModelHistoryMixin
+from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
@@ -249,7 +250,7 @@ class DiagnosisViewSet(viewsets.ModelViewSet):
         return self.update(request, *args, **kwargs)
 
 
-class EncounterViewSet(ModelHistoryMixin, viewsets.ModelViewSet):
+class EncounterViewSet(TenantScopedViewMixin, ModelHistoryMixin, viewsets.ModelViewSet):
     """
     ViewSet for Encounter model.
 
@@ -269,6 +270,8 @@ class EncounterViewSet(ModelHistoryMixin, viewsets.ModelViewSet):
     - GET /api/encounters/{id}/history/{version_id}/ - Get specific version
     - GET /api/encounters/{id}/history-count/ - Get version count
     """
+
+    tenant_scope = "facility"  # Encounters are facility-scoped
 
     queryset = Encounter.objects.select_related("patient").all()
     serializer_class = EncounterSerializer
@@ -336,6 +339,7 @@ class EncounterViewSet(ModelHistoryMixin, viewsets.ModelViewSet):
             created_by=self.request.user,
             assigned_clinician=self.request.user,
             claimed_at=timezone.now(),
+            **self.get_tenant_save_kwargs(),
         )
 
         # Link any existing waiting queue entries for this patient to this encounter
@@ -1566,7 +1570,7 @@ class EncounterViewSet(ModelHistoryMixin, viewsets.ModelViewSet):
         - patient_mrn: Filter by patient MRN
         - status: Filter by status (comma-separated for multiple)
         """
-        queryset = Encounter.objects.select_related("patient", "finalized_by").all()
+        queryset = super().get_queryset().select_related("finalized_by")
         user = self.request.user
 
         # Filter out encounters for sensitive patients unless user has permission

@@ -356,6 +356,14 @@ class EncounterSerializer(serializers.ModelSerializer):
     clinic_name = serializers.SerializerMethodField()
     clinic_type = serializers.SerializerMethodField()
 
+    # Tenant context (read-only)
+    organization_name = serializers.CharField(
+        source="organization.name", read_only=True, allow_null=True
+    )
+    facility_name = serializers.CharField(
+        source="facility.name", read_only=True, allow_null=True
+    )
+
     created_by_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -456,6 +464,11 @@ class EncounterSerializer(serializers.ModelSerializer):
             "visit_reason",
             "created_by",
             "created_by_name",
+            # Tenant context
+            "organization",
+            "organization_name",
+            "facility",
+            "facility_name",
             "created_at",
             "updated_at",
         ]
@@ -476,6 +489,11 @@ class EncounterSerializer(serializers.ModelSerializer):
             "systolic_bp",
             "diastolic_bp",
             "vitals_summary",
+            # Tenant fields are auto-set by middleware
+            "organization",
+            "organization_name",
+            "facility",
+            "facility_name",
             # Status fields are read-only - use actions to change status
             "status",
             "finalized_by",

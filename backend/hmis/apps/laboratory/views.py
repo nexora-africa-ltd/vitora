@@ -17,6 +17,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.mixins import TenantScopedViewMixin
+
 from .models import (
     AnalyzerRun,
     DiagnosticReport,
@@ -121,11 +123,13 @@ class TestCatalogViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset
 
 
-class LabOrderViewSet(viewsets.ModelViewSet):
+class LabOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for lab orders.
     Provides full CRUD operations plus workflow actions.
     """
+
+    tenant_scope = "facility"  # Lab orders are facility-scoped
 
     queryset = LabOrder.objects.all().select_related("patient", "encounter", "ordered_by")
     permission_classes = [IsAuthenticated]
@@ -142,7 +146,7 @@ class LabOrderViewSet(viewsets.ModelViewSet):
         """Create a new lab order."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        order = serializer.save()
+        order = serializer.save(**self.get_tenant_save_kwargs())
 
         # Return the full order representation
         output_serializer = LabOrderSerializer(order)

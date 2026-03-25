@@ -17,6 +17,7 @@ from rest_framework.permissions import BasePermission, IsAdminUser, IsAuthentica
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 
@@ -108,7 +109,7 @@ class HasViewQueuePermission(BasePermission):
         return request.user.has_perm("triage.view_triage_queue")
 
 
-class TriageAssessmentViewSet(viewsets.ModelViewSet):
+class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for TriageAssessment model.
 
@@ -118,6 +119,8 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
     - Queue integration
     - Audit logging
     """
+
+    tenant_scope = "facility"  # Triage is facility-scoped
 
     queryset = TriageAssessment.objects.all().select_related(
         "encounter__patient", "triaged_by", "assigned_clinician"
@@ -159,7 +162,7 @@ class TriageAssessmentViewSet(viewsets.ModelViewSet):
         # Use create serializer for validation and creation
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        instance = serializer.save()
+        instance = serializer.save(**self.get_tenant_save_kwargs())
 
         # Update the WaitingQueue entry for this encounter to mark as triaged
         encounter_id = instance.encounter_id

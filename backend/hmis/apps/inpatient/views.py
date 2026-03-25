@@ -13,6 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.core.models import AuditLog
+from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.permissions import get_client_ip
 from hmis.apps.patients.models import Patient
 
@@ -84,7 +85,8 @@ from .services.compatibility import ward_compatibility_service
 User = get_user_model()
 
 
-class WardViewSet(viewsets.ModelViewSet):
+class WardViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
+    tenant_scope = "facility"  # Wards are facility-scoped
     """
     ViewSet for Ward model.
 
@@ -1253,7 +1255,7 @@ class AdmissionRecommendationViewSet(viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class AdmissionViewSet(viewsets.ModelViewSet):
+class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for Admission model.
 
@@ -1269,6 +1271,8 @@ class AdmissionViewSet(viewsets.ModelViewSet):
     - POST /api/inpatient/admissions/ - Create admission
     - PATCH /api/inpatient/admissions/{id}/ - Update admission
     """
+
+    tenant_scope = "facility"  # Admissions are facility-scoped
 
     queryset = Admission.objects.select_related(
         "patient",
@@ -1411,6 +1415,9 @@ class AdmissionViewSet(viewsets.ModelViewSet):
         # If bed was auto-assigned, explicitly pass it to save
         if auto_assign_bed:
             save_kwargs["bed"] = bed
+
+        # Add tenant context
+        save_kwargs.update(self.get_tenant_save_kwargs())
 
         instance = serializer.save(**save_kwargs)
 

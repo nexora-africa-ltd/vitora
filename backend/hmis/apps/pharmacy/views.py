@@ -14,6 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.pharmacy.models import (
     Dispensing,
     Drug,
@@ -263,7 +264,7 @@ class StockAlertViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class PrescriptionViewSet(viewsets.ModelViewSet):
+class PrescriptionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for Prescription model.
 
@@ -274,6 +275,8 @@ class PrescriptionViewSet(viewsets.ModelViewSet):
     - PATCH /api/prescriptions/{id}/ - Update prescription
     - POST /api/prescriptions/{id}/cancel/ - Cancel prescription
     """
+
+    tenant_scope = "facility"  # Prescriptions are facility-scoped
 
     queryset = (
         Prescription.objects.select_related("patient", "encounter", "prescribed_by")
