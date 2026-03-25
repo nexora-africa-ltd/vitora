@@ -30,6 +30,7 @@ import { useNetworkStatus } from '@/lib/hooks/use-network-status';
 import { useSyncStatus, formatLastSync } from '@/lib/context/sync-context';
 import { usePageRefresh, formatLastFetch, formatLastFetchShort } from '@/lib/context/page-refresh-context';
 import { Breadcrumb } from '@/components/layout/breadcrumb';
+import { FacilitySwitcher } from '@/components/layout/facility-switcher';
 import { NotificationPanel } from '@/components/notifications/notification-panel';
 import { clearCacheAndReload } from '@/lib/utils/version-check';
 import { cn } from '@/lib/utils/cn';
@@ -221,6 +222,9 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+
+          {/* Facility switcher (multi-branch) */}
+          <FacilitySwitcher />
 
           {/* Search (tablet+) - smaller at lg, full width at xl */}
           <form

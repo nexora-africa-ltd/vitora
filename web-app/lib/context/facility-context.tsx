@@ -13,12 +13,16 @@ interface FacilityContextValue {
   facility: UserFacility | null;
   /** Full facility detail with location, SHA info, etc. (fetched via React Query) */
   facilityDetail: FacilityDetail | null;
+  /** Organization derived from active facility (null if no facility or facility has no org) */
+  organization: { id: number; name: string } | null;
   assignedFacility: UserFacility | null;
   facilityOverride: UserFacility | null;
   isUsingFacilityOverride: boolean;
   isLoading: boolean;
   /** Check if the user's primary facility has a specific module enabled */
   hasModule: (module: keyof FacilityModules) => boolean;
+  /** Switch to a different facility (persists in localStorage) */
+  switchFacility: (facility: UserFacility) => void;
   setFacilityOverride: (facility: UserFacility | null) => void;
   clearFacilityOverride: () => void;
 }
@@ -104,19 +108,32 @@ export function FacilityProvider({ children }: { children: ReactNode }) {
     };
   }, [user, facility]);
 
+  // Derive organization from facility detail
+  const organization = useMemo(() => {
+    if (!facilityDetail?.organization || !facilityDetail?.organization_name) return null;
+    return { id: facilityDetail.organization, name: facilityDetail.organization_name };
+  }, [facilityDetail]);
+
+  // switchFacility: convenience wrapper around setFacilityOverride for branch switching
+  const switchFacility = useCallback((target: UserFacility) => {
+    setFacilityOverride(target);
+  }, [setFacilityOverride]);
+
   const value = useMemo<FacilityContextValue>(
     () => ({
       facility,
       facilityDetail,
+      organization,
       assignedFacility,
       facilityOverride,
       isUsingFacilityOverride: canOverride && facilityOverride !== null,
       isLoading,
       hasModule,
+      switchFacility,
       setFacilityOverride,
       clearFacilityOverride,
     }),
-    [facility, facilityDetail, assignedFacility, facilityOverride, canOverride, isLoading, hasModule, setFacilityOverride, clearFacilityOverride],
+    [facility, facilityDetail, organization, assignedFacility, facilityOverride, canOverride, isLoading, hasModule, switchFacility, setFacilityOverride, clearFacilityOverride],
   );
 
   return (
