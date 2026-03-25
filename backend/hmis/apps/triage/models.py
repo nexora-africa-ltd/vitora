@@ -596,6 +596,22 @@ class TriageAssessment(models.Model):
     }
 
     # Core Relationship
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="triage_assessments",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="triage_assessments",
+        null=True,
+        blank=True,
+        help_text="Facility where triage was performed.",
+    )
     encounter = models.OneToOneField(
         "encounters.Encounter", on_delete=models.CASCADE, related_name="triage_assessment"
     )

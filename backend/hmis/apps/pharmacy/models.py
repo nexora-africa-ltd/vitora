@@ -570,6 +570,24 @@ class Prescription(HistoryMixin, models.Model):
         help_text="Prescription Number (auto-generated, format: RX-YYYYMMDD-XXXX)",
     )
 
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="prescriptions",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="prescriptions",
+        null=True,
+        blank=True,
+        help_text="Facility where this prescription was issued.",
+    )
+
     # Links
     encounter = models.ForeignKey(
         "encounters.Encounter",

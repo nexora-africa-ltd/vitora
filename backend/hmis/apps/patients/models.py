@@ -99,6 +99,22 @@ class Patient(HistoryMixin, models.Model):
     ]
 
     # Required fields
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="patients",
+        null=True,
+        blank=True,
+        help_text="Owning organization (tenant). Patient is visible across all org facilities.",
+    )
+    registered_at_facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.SET_NULL,
+        related_name="registered_patients",
+        null=True,
+        blank=True,
+        help_text="Facility where the patient was first registered.",
+    )
     mrn = models.CharField(
         max_length=50,
         unique=True,
@@ -537,6 +553,14 @@ class Allergy(models.Model):
     ]
 
     # Core fields
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="allergies",
+        null=True,
+        blank=True,
+        help_text="Owning organization. Allergies are shared across org facilities.",
+    )
     patient = models.ForeignKey(
         "patients.Patient",
         on_delete=models.CASCADE,

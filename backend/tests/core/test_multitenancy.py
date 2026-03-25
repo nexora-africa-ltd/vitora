@@ -1,8 +1,8 @@
 """
 Tests for multitenancy: Organization model, Facility linkage,
-TenantMiddleware, and Organization API.
+TenantMiddleware, Organization API, and clinical model scoping.
 
-Phase 1 of the Vitora HMIS multi-tenancy plan.
+Phase 1 + Phase 2 of the Vitora HMIS multi-tenancy plan.
 """
 
 from datetime import date
@@ -12,6 +12,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import status
 
 from hmis.apps.core.models import (
+    AuditLog,
     County,
     Department,
     Facility,
@@ -19,6 +20,7 @@ from hmis.apps.core.models import (
     Role,
     StaffProfile,
     SubCounty,
+    SyncQueue,
 )
 
 User = get_user_model()
@@ -510,3 +512,389 @@ class TestFacilityAPIOrganization:
         assert "branch_code" in response.data
         assert response.data["is_headquarters"] is True
         assert response.data["branch_code"] == "HQ"
+
+
+# ============================================================================
+# Phase 2: Clinical Model Scoping Tests
+# ============================================================================
+
+
+class TestPatientOrganizationScoping:
+    """Tests for Patient → Organization scoping."""
+
+    def test_patient_can_have_organization(self, sample_org, sample_facility):
+        """Patient should accept organization FK."""
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="Test",
+            last_name="Patient",
+            date_of_birth="1990-01-01",
+            gender="M",
+            county=sample_facility.county,
+            sub_county=sample_facility.sub_county,
+            organization=sample_org,
+            registered_at_facility=sample_facility,
+        )
+        assert patient.organization == sample_org
+        assert patient.registered_at_facility == sample_facility
+
+    def test_patient_without_organization(self, org_county, org_sub_county):
+        """Patient should work without organization (nullable)."""
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="Legacy",
+            last_name="Patient",
+            date_of_birth="1985-06-15",
+            gender="F",
+            county=org_county,
+            sub_county=org_sub_county,
+        )
+        assert patient.organization is None
+        assert patient.registered_at_facility is None
+
+    def test_org_patients_queryset(self, sample_org, sample_facility, org_county, org_sub_county):
+        """Organization.patients should list all org patients."""
+        from hmis.apps.patients.models import Patient
+
+        p1 = Patient.objects.create(
+            first_name="A", last_name="B", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org,
+        )
+        p2 = Patient.objects.create(
+            first_name="C", last_name="D", date_of_birth="1991-02-02",
+            gender="F", county=org_county, sub_county=org_sub_county,
+            organization=sample_org,
+        )
+        assert sample_org.patients.count() == 2
+        assert p1 in sample_org.patients.all()
+        assert p2 in sample_org.patients.all()
+
+
+class TestEncounterFacilityScoping:
+    """Tests for Encounter → Facility scoping."""
+
+    def test_encounter_can_have_facility(self, sample_org, sample_facility, org_county, org_sub_county):
+        """Encounter should accept facility + organization FKs."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="E", last_name="F", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org,
+        )
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Test",
+            organization=sample_org,
+            facility=sample_facility,
+        )
+        assert encounter.organization == sample_org
+        assert encounter.facility == sample_facility
+
+    def test_encounter_without_facility(self, org_county, org_sub_county):
+        """Encounter should work without facility (nullable FK)."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="G", last_name="H", date_of_birth="1987-03-03",
+            gender="F", county=org_county, sub_county=org_sub_county,
+        )
+        encounter = Encounter.objects.create(
+            patient=patient,
+            encounter_type="OPD",
+            chief_complaint="Legacy encounter",
+        )
+        assert encounter.facility is None
+        assert encounter.organization is None
+
+    def test_facility_encounters_queryset(
+        self, sample_org, sample_facility, second_facility, org_county, org_sub_county
+    ):
+        """Encounters should be scoped to specific facility."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="I", last_name="J", date_of_birth="1992-04-04",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org,
+        )
+        enc1 = Encounter.objects.create(
+            patient=patient, encounter_type="OPD", chief_complaint="At HQ",
+            organization=sample_org, facility=sample_facility,
+        )
+        enc2 = Encounter.objects.create(
+            patient=patient, encounter_type="OPD", chief_complaint="At branch",
+            organization=sample_org, facility=second_facility,
+        )
+        assert sample_facility.encounters.count() == 1
+        assert sample_facility.encounters.first() == enc1
+        assert second_facility.encounters.count() == 1
+        assert second_facility.encounters.first() == enc2
+        # But org sees all
+        assert sample_org.encounters.count() == 2
+
+
+class TestAllergyOrganizationScoping:
+    """Tests for Allergy → Organization scoping (shared medical history)."""
+
+    def test_allergy_can_have_organization(self, sample_org, org_county, org_sub_county):
+        """Allergy should accept organization FK."""
+        from hmis.apps.patients.models import Allergy, Patient
+
+        patient = Patient.objects.create(
+            first_name="K", last_name="L", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org,
+        )
+        allergy = Allergy.objects.create(
+            patient=patient,
+            substance="Penicillin",
+            substance_type="medication",
+            severity="moderate",
+            status="active",
+            organization=sample_org,
+        )
+        assert allergy.organization == sample_org
+
+
+class TestClinicalModelFKs:
+    """Tests that all clinical models accept facility/organization FKs."""
+
+    def test_ward_accepts_facility_fk(self, sample_org, sample_facility):
+        """Ward should accept facility + organization FKs."""
+        from hmis.apps.inpatient.models import Ward
+
+        ward = Ward.objects.create(
+            name="Test Ward MT",
+            code="TW-MT-01",
+            ward_type="GENERAL",
+            capacity=10,
+            daily_rate="500.00",
+            organization=sample_org,
+            facility=sample_facility,
+        )
+        assert ward.facility == sample_facility
+        assert ward.organization == sample_org
+
+    def test_audit_log_accepts_tenant_fks(self, sample_org, sample_facility):
+        """AuditLog should accept organization + facility FKs."""
+        log = AuditLog.objects.create(
+            action="test_action",
+            resource_type="Test",
+            organization=sample_org,
+            facility=sample_facility,
+        )
+        assert log.organization == sample_org
+        assert log.facility == sample_facility
+
+    def test_sync_queue_accepts_tenant_fks(self, sample_org, sample_facility):
+        """SyncQueue should accept organization + facility FKs."""
+        entry = SyncQueue.objects.create(
+            operation="CREATE",
+            model_name="Test",
+            data={"key": "value"},
+            organization=sample_org,
+            facility=sample_facility,
+        )
+        assert entry.organization == sample_org
+        assert entry.facility == sample_facility
+
+    def test_invoice_accepts_tenant_fks(self, sample_org, sample_facility, org_county, org_sub_county, staff_user):
+        """Invoice should accept facility + organization FKs."""
+        from hmis.apps.billing.models import Invoice
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="Bill", last_name="Payer", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+        )
+        invoice = Invoice.objects.create(
+            patient=patient,
+            created_by=staff_user,
+            organization=sample_org,
+            facility=sample_facility,
+        )
+        assert invoice.organization == sample_org
+        assert invoice.facility == sample_facility
+
+    def test_lab_order_accepts_tenant_fks(self, sample_org, sample_facility, org_county, org_sub_county, staff_user):
+        """LabOrder should accept facility + organization FKs."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.laboratory.models import LabOrder
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="Lab", last_name="Test", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+        )
+        encounter = Encounter.objects.create(
+            patient=patient, encounter_type="OPD", chief_complaint="Lab test",
+        )
+        order = LabOrder.objects.create(
+            patient=patient,
+            encounter=encounter,
+            ordered_by=staff_user,
+            organization=sample_org,
+            facility=sample_facility,
+        )
+        assert order.organization == sample_org
+        assert order.facility == sample_facility
+
+    def test_prescription_accepts_tenant_fks(
+        self, sample_org, sample_facility, org_county, org_sub_county, staff_user
+    ):
+        """Prescription should accept facility + organization FKs."""
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from hmis.apps.patients.models import Patient
+        from hmis.apps.pharmacy.models import Prescription
+
+        patient = Patient.objects.create(
+            first_name="Rx", last_name="Patient", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+        )
+        rx = Prescription.objects.create(
+            patient=patient,
+            prescribed_by=staff_user,
+            valid_until=(timezone.now() + timedelta(days=30)).date(),
+            organization=sample_org,
+            facility=sample_facility,
+        )
+        assert rx.organization == sample_org
+        assert rx.facility == sample_facility
+
+    def test_clinic_accepts_tenant_fks(self, sample_org, sample_facility):
+        """Clinic should accept facility + organization FKs."""
+        from hmis.apps.clinics.models import Clinic
+
+        clinic = Clinic.objects.create(
+            name="MT Clinic",
+            clinic_type="GENERAL_OPD",
+            code="MT-CLI-001",
+            organization=sample_org,
+            facility=sample_facility,
+        )
+        assert clinic.organization == sample_org
+        assert clinic.facility == sample_facility
+
+    def test_triage_accepts_tenant_fks(
+        self, sample_org, sample_facility, org_county, org_sub_county, staff_user
+    ):
+        """TriageAssessment should accept facility + organization FKs."""
+        from django.utils import timezone
+
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+        from hmis.apps.triage.models import TriageAssessment
+
+        patient = Patient.objects.create(
+            first_name="Tri", last_name="Age", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+        )
+        encounter = Encounter.objects.create(
+            patient=patient, encounter_type="OPD", chief_complaint="Triage test",
+        )
+        now = timezone.now()
+        triage = TriageAssessment.objects.create(
+            encounter=encounter,
+            chief_complaint="Triage test",
+            chief_complaint_category="FEVER",
+            mental_status="A",
+            mobility="AMBULATORY",
+            arrival_time=now,
+            triage_start_time=now,
+            triaged_by=staff_user,
+            triage_category="GREEN",
+            assigned_area="ER_ACUTE",
+            organization=sample_org,
+            facility=sample_facility,
+        )
+        assert triage.organization == sample_org
+        assert triage.facility == sample_facility
+
+
+class TestCrossOrgIsolation:
+    """Tests verifying data isolation between organizations."""
+
+    def test_patients_isolated_by_org(
+        self, sample_org, another_org, org_county, org_sub_county
+    ):
+        """Patients in different orgs should be isolated via queryset."""
+        from hmis.apps.patients.models import Patient
+
+        p_org1 = Patient.objects.create(
+            first_name="Org1", last_name="Pat", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org,
+        )
+        p_org2 = Patient.objects.create(
+            first_name="Org2", last_name="Pat", date_of_birth="1991-02-02",
+            gender="F", county=org_county, sub_county=org_sub_county,
+            organization=another_org,
+        )
+        org1_patients = Patient.objects.filter(organization=sample_org)
+        org2_patients = Patient.objects.filter(organization=another_org)
+
+        assert p_org1 in org1_patients
+        assert p_org2 not in org1_patients
+        assert p_org2 in org2_patients
+        assert p_org1 not in org2_patients
+
+    def test_encounters_isolated_by_facility(
+        self, sample_org, another_org, sample_facility, other_org_facility,
+        org_county, org_sub_county
+    ):
+        """Encounters at different facilities should be isolated."""
+        from hmis.apps.encounters.models import Encounter
+        from hmis.apps.patients.models import Patient
+
+        p1 = Patient.objects.create(
+            first_name="P1", last_name="F", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org,
+        )
+        p2 = Patient.objects.create(
+            first_name="P2", last_name="F", date_of_birth="1991-01-01",
+            gender="F", county=org_county, sub_county=org_sub_county,
+            organization=another_org,
+        )
+        enc1 = Encounter.objects.create(
+            patient=p1, encounter_type="OPD", chief_complaint="Org1",
+            organization=sample_org, facility=sample_facility,
+        )
+        enc2 = Encounter.objects.create(
+            patient=p2, encounter_type="OPD", chief_complaint="Org2",
+            organization=another_org, facility=other_org_facility,
+        )
+        fac1_encounters = Encounter.objects.filter(facility=sample_facility)
+        fac2_encounters = Encounter.objects.filter(facility=other_org_facility)
+
+        assert enc1 in fac1_encounters
+        assert enc2 not in fac1_encounters
+        assert enc2 in fac2_encounters
+
+    def test_patient_visible_across_facilities_in_same_org(
+        self, sample_org, sample_facility, second_facility, org_county, org_sub_county
+    ):
+        """Patient registered at HQ should be visible org-wide."""
+        from hmis.apps.patients.models import Patient
+
+        patient = Patient.objects.create(
+            first_name="Shared", last_name="Patient", date_of_birth="1990-01-01",
+            gender="M", county=org_county, sub_county=org_sub_county,
+            organization=sample_org, registered_at_facility=sample_facility,
+        )
+        # Org-wide query (used when user is at any facility in the org)
+        org_patients = Patient.objects.filter(organization=sample_org)
+        assert patient in org_patients
+        # Patient is NOT filtered by facility — they're org-scoped
+        assert org_patients.count() == 1

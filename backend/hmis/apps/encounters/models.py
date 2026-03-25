@@ -227,6 +227,22 @@ class Encounter(HistoryMixin, models.Model):
     ]
 
     # Required fields
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="encounters",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="encounters",
+        null=True,
+        blank=True,
+        help_text="Facility where this encounter took place.",
+    )
     patient = models.ForeignKey(
         "patients.Patient",
         on_delete=models.CASCADE,
