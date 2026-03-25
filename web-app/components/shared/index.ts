@@ -1,6 +1,7 @@
 export { LoadingSpinner, PageLoading } from './loading-spinner';
 export { EntityCard, EntityGrid, type Gender } from './entity-card';
 export { DemoBanner, DemoWatermark } from './demo-banner';
+export { FacilityBanner } from './facility-override-banner';
 export { OfflineBanner } from './offline-banner';
 export { EmptyState } from './empty-state';
 export { PageHeader } from './page-header';
