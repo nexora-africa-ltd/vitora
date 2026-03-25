@@ -30,7 +30,14 @@ class Command(BaseCommand):
         from django.contrib.auth import get_user_model
         from django.db import transaction
 
-        from hmis.apps.core.models import County, Department, Role, StaffProfile
+        from hmis.apps.core.models import (
+            County,
+            Department,
+            Facility,
+            Organization,
+            Role,
+            StaffProfile,
+        )
         from hmis.apps.patients.models import Patient
 
         User = get_user_model()
@@ -183,6 +190,8 @@ class Command(BaseCommand):
                 "employee_id": "VH-2026-001",
                 "title": "",
                 "phone": "0722000001",
+                "facility": "HQ",  # HQ = primary facility
+                "is_dept_head": True,
             },
             {
                 "username": "demo_receptionist",
@@ -197,6 +206,7 @@ class Command(BaseCommand):
                 "employee_id": "VH-2026-002",
                 "title": "",
                 "phone": "0722000002",
+                "facility": "HQ",
             },
             {
                 "username": "demo_nurse",
@@ -213,6 +223,7 @@ class Command(BaseCommand):
                 "phone": "0722000003",
                 "license_number": "NCK-RN-2020-12345",
                 "licensing_body": "Nursing Council of Kenya",
+                "facility": "HQ",
             },
             {
                 "username": "demo_doctor",
@@ -230,6 +241,8 @@ class Command(BaseCommand):
                 "license_number": "KMPDB-2018-54321",
                 "licensing_body": "Kenya Medical Practitioners and Dentists Board",
                 "specialization": "General Practice",
+                "facility": "HQ",
+                "is_dept_head": True,  # OPD Head
             },
             {
                 "username": "demo_pharmacist",
@@ -246,6 +259,8 @@ class Command(BaseCommand):
                 "phone": "0722000005",
                 "license_number": "PPB-2019-67890",
                 "licensing_body": "Pharmacy and Poisons Board",
+                "facility": "HQ",
+                "is_dept_head": True,  # Pharmacy Head
             },
             {
                 "username": "demo_labtech",
@@ -262,6 +277,8 @@ class Command(BaseCommand):
                 "phone": "0722000006",
                 "license_number": "KMLTTB-2021-11111",
                 "licensing_body": "Kenya Medical Laboratory Technicians and Technologists Board",
+                "facility": "HQ",
+                "is_dept_head": True,  # Lab Head
             },
             {
                 "username": "demo_billing",
@@ -276,6 +293,8 @@ class Command(BaseCommand):
                 "employee_id": "VH-2026-007",
                 "title": "",
                 "phone": "0722000007",
+                "facility": "HQ",
+                "is_dept_head": True,  # Finance Head
             },
             {
                 "username": "demo_records",
@@ -290,6 +309,8 @@ class Command(BaseCommand):
                 "employee_id": "VH-2026-008",
                 "title": "",
                 "phone": "0722000008",
+                "facility": "HQ",
+                "is_dept_head": True,  # Records Head
             },
             {
                 "username": "demo_clinical_officer",
@@ -306,6 +327,7 @@ class Command(BaseCommand):
                 "phone": "0722000009",
                 "license_number": "COC-2020-22222",
                 "licensing_body": "Clinical Officers Council",
+                "facility": "BRANCH",  # Assigned to branch
             },
             {
                 "username": "demo_ipd_nurse",
@@ -322,6 +344,8 @@ class Command(BaseCommand):
                 "phone": "0722000010",
                 "license_number": "NCK-RN-2019-54321",
                 "licensing_body": "Nursing Council of Kenya",
+                "facility": "HQ",
+                "is_dept_head": True,  # IPD Head
             },
             {
                 "username": "demo_radiographer",
@@ -339,6 +363,7 @@ class Command(BaseCommand):
                 "license_number": "KRCHRRD-2020-33333",
                 "licensing_body": "Kenya Radiographers and Clinical Health Records Registration Board",
                 "specialization": "Diagnostic Radiography",
+                "facility": "HQ",
             },
             {
                 "username": "demo_radiologist",
@@ -356,6 +381,8 @@ class Command(BaseCommand):
                 "license_number": "KMPDB-2015-RAD-001",
                 "licensing_body": "Kenya Medical Practitioners and Dentists Board",
                 "specialization": "Diagnostic Radiology",
+                "facility": "HQ",
+                "is_dept_head": True,  # Radiology Head
             },
             {
                 "username": "demo_sonographer",
@@ -373,6 +400,116 @@ class Command(BaseCommand):
                 "license_number": "KRCHRRD-2019-44444",
                 "licensing_body": "Kenya Radiographers and Clinical Health Records Registration Board",
                 "specialization": "Obstetric and Abdominal Ultrasound",
+                "facility": "BRANCH",
+            },
+        ]
+
+        # =================================================================
+        # Branch facility mirror users — key clinical staff duplicated
+        # at the branch facility with separate accounts
+        # =================================================================
+        BRANCH_USERS = [
+            {
+                "username": "demo_branch_doctor",
+                "email": "branch.doctor@demo.vitora.health",
+                "password": "DemoBranchDoc2026?!",
+                "first_name": "Alice",
+                "last_name": "Njoroge",
+                "is_staff": False,
+                "is_superuser": False,
+                "role_code": "DOCTOR",
+                "department_code": "OPD",
+                "employee_id": "VH-2026-B01",
+                "title": "Dr.",
+                "phone": "0733000001",
+                "license_number": "KMPDB-2019-77001",
+                "licensing_body": "Kenya Medical Practitioners and Dentists Board",
+                "specialization": "General Practice",
+                "facility": "BRANCH",
+                "is_dept_head": True,  # Branch OPD Head
+            },
+            {
+                "username": "demo_branch_nurse",
+                "email": "branch.nurse@demo.vitora.health",
+                "password": "DemoBranchNurse2026?!",
+                "first_name": "Helen",
+                "last_name": "Atieno",
+                "is_staff": False,
+                "is_superuser": False,
+                "role_code": "NURSE",
+                "department_code": "OPD",
+                "employee_id": "VH-2026-B02",
+                "title": "Nurse",
+                "phone": "0733000002",
+                "license_number": "NCK-RN-2021-88001",
+                "licensing_body": "Nursing Council of Kenya",
+                "facility": "BRANCH",
+            },
+            {
+                "username": "demo_branch_reception",
+                "email": "branch.reception@demo.vitora.health",
+                "password": "DemoBranchRec2026?!",
+                "first_name": "Caroline",
+                "last_name": "Muthoni",
+                "is_staff": False,
+                "is_superuser": False,
+                "role_code": "RECEPTIONIST",
+                "department_code": "OPD",
+                "employee_id": "VH-2026-B03",
+                "title": "",
+                "phone": "0733000003",
+                "facility": "BRANCH",
+            },
+            {
+                "username": "demo_branch_pharmacist",
+                "email": "branch.pharmacy@demo.vitora.health",
+                "password": "DemoBranchPharm2026?!",
+                "first_name": "Stephen",
+                "last_name": "Odhiambo",
+                "is_staff": False,
+                "is_superuser": False,
+                "role_code": "PHARMACIST",
+                "department_code": "PHARM",
+                "employee_id": "VH-2026-B04",
+                "title": "",
+                "phone": "0733000004",
+                "license_number": "PPB-2020-88002",
+                "licensing_body": "Pharmacy and Poisons Board",
+                "facility": "BRANCH",
+                "is_dept_head": True,  # Branch Pharmacy Head
+            },
+            {
+                "username": "demo_branch_labtech",
+                "email": "branch.lab@demo.vitora.health",
+                "password": "DemoBranchLab2026?!",
+                "first_name": "Patrick",
+                "last_name": "Wafula",
+                "is_staff": False,
+                "is_superuser": False,
+                "role_code": "LAB_TECH",
+                "department_code": "LAB",
+                "employee_id": "VH-2026-B05",
+                "title": "",
+                "phone": "0733000005",
+                "license_number": "KMLTTB-2022-88003",
+                "licensing_body": "Kenya Medical Laboratory Technicians and Technologists Board",
+                "facility": "BRANCH",
+                "is_dept_head": True,  # Branch Lab Head
+            },
+            {
+                "username": "demo_branch_billing",
+                "email": "branch.billing@demo.vitora.health",
+                "password": "DemoBranchBill2026?!",
+                "first_name": "Winnie",
+                "last_name": "Kerubo",
+                "is_staff": False,
+                "is_superuser": False,
+                "role_code": "BILLING_CLERK",
+                "department_code": "FIN",
+                "employee_id": "VH-2026-B06",
+                "title": "",
+                "phone": "0733000006",
+                "facility": "BRANCH",
             },
         ]
 
@@ -497,6 +634,104 @@ class Command(BaseCommand):
                 self.stdout.write(f"  {status}: {dept.name} ({dept.code})")
 
             # =============================================================
+            # Step 1b: Create Organization + 2 Facilities
+            # =============================================================
+            self.stdout.write(
+                self.style.MIGRATE_HEADING("\n1b. Creating Organization & Facilities...")
+            )
+
+            # Resolve a county + sub-county for location fields
+            demo_county = County.objects.first()
+            demo_sub_county = None
+            if demo_county:
+                demo_sub_county = demo_county.sub_counties.first()
+
+            demo_org, org_created = Organization.objects.update_or_create(
+                slug="demo-health-services",
+                defaults={
+                    "name": "Demo Health Services Ltd",
+                    "contact_email": "info@demo.vitora.health",
+                    "contact_phone": "0720000000",
+                    "address": "Moi Avenue, Nairobi",
+                    "subscription_tier": "PROFESSIONAL",
+                    "is_active": True,
+                },
+            )
+            if demo_county:
+                demo_org.county = demo_county
+                demo_org.sub_county = demo_sub_county
+                demo_org.save(update_fields=["county", "sub_county"])
+            self.stdout.write(
+                f"  {'Created' if org_created else 'Updated'}: {demo_org.name}"
+            )
+
+            # Headquarters facility
+            hq_defaults = {
+                "name": "Demo General Hospital",
+                "organization": demo_org,
+                "branch_code": "HQ",
+                "is_headquarters": True,
+                "level": "4",
+                "ownership": "PRIVATE",
+                "has_outpatient": True,
+                "has_pharmacy": True,
+                "has_inpatient": True,
+                "has_emergency": True,
+                "has_laboratory": True,
+                "has_imaging": True,
+                "has_maternity": True,
+                "sha_contracted": True,
+            }
+            if demo_county:
+                hq_defaults["county"] = demo_county
+            if demo_sub_county:
+                hq_defaults["sub_county"] = demo_sub_county
+
+            hq_facility, hq_created = Facility.objects.update_or_create(
+                mfl_code="DEMO-HQ-001",
+                defaults=hq_defaults,
+            )
+            self.stdout.write(
+                f"  {'Created' if hq_created else 'Updated'}: {hq_facility.name} (HQ)"
+            )
+
+            # Branch facility
+            branch_defaults = {
+                "name": "Demo Community Health Centre",
+                "organization": demo_org,
+                "branch_code": "BR01",
+                "is_headquarters": False,
+                "level": "3",
+                "ownership": "PRIVATE",
+                "has_outpatient": True,
+                "has_pharmacy": True,
+                "has_laboratory": True,
+                "has_maternity": False,
+                "has_inpatient": False,
+                "has_emergency": False,
+                "has_imaging": False,
+                "sha_contracted": True,
+            }
+            if demo_county:
+                branch_defaults["county"] = demo_county
+            if demo_sub_county:
+                branch_defaults["sub_county"] = demo_sub_county
+
+            branch_facility, br_created = Facility.objects.update_or_create(
+                mfl_code="DEMO-BR-001",
+                defaults=branch_defaults,
+            )
+            self.stdout.write(
+                f"  {'Created' if br_created else 'Updated'}: {branch_facility.name} (Branch)"
+            )
+
+            # Facility lookup for user assignment
+            facility_map = {
+                "HQ": hq_facility,
+                "BRANCH": branch_facility,
+            }
+
+            # =============================================================
             # Step 2: Create Wards with Beds
             # =============================================================
             self.stdout.write(self.style.MIGRATE_HEADING("\n2. Creating Wards and Beds..."))
@@ -543,8 +778,12 @@ class Command(BaseCommand):
                 self.style.MIGRATE_HEADING("\n3. Creating Demo Users with Staff Profiles...")
             )
 
-            for user_data in DEMO_USERS:
-                # Extract staff profile data (use .get() to avoid modifying original dict)
+            # Track department heads per facility for assignment after creation
+            # Key: (department_code, facility_key) -> StaffProfile
+            dept_head_candidates: dict[tuple[str, str], StaffProfile] = {}
+            all_user_defs = DEMO_USERS + BRANCH_USERS
+
+            for user_data in all_user_defs:
                 role_code = user_data["role_code"]
                 department_code = user_data["department_code"]
                 employee_id = user_data["employee_id"]
@@ -554,6 +793,7 @@ class Command(BaseCommand):
                 licensing_body = user_data.get("licensing_body", "")
                 specialization = user_data.get("specialization", "")
                 password = user_data["password"]
+                facility_key = user_data.get("facility", "HQ")
 
                 # Create/update user
                 user, created = User.objects.update_or_create(
@@ -572,9 +812,13 @@ class Command(BaseCommand):
                 # Get role and department
                 role = Role.objects.filter(code=role_code).first()
                 department = departments_map.get(department_code)
+                primary_facility = facility_map.get(facility_key)
+                # Admin gets the other facility as secondary
+                other_facility = facility_map.get(
+                    "BRANCH" if facility_key == "HQ" else "HQ"
+                )
 
                 if role and department:
-                    # Create/update StaffProfile
                     staff_profile, sp_created = StaffProfile.objects.update_or_create(
                         user=user,
                         defaults={
@@ -582,17 +826,26 @@ class Command(BaseCommand):
                             "title": title,
                             "primary_role": role,
                             "primary_department": department,
+                            "primary_facility": primary_facility,
+                            "organization": demo_org,
                             "phone_number": phone,
                             "license_number": license_number,
                             "licensing_body": licensing_body,
                             "specialization": specialization,
                             "employment_status": "ACTIVE",
                             "employment_type": "PERMANENT",
-                            "date_joined": date.today() - timedelta(days=365),  # Joined 1 year ago
+                            "date_joined": date.today() - timedelta(days=365),
                         },
                     )
 
-                    # Also add user to the role's Django group
+                    # Admin/superuser gets access to both facilities
+                    if user_data.get("is_superuser") and other_facility:
+                        staff_profile.secondary_facilities.add(other_facility)
+
+                    # Track department head candidates
+                    if user_data.get("is_dept_head"):
+                        dept_head_candidates[(department_code, facility_key)] = staff_profile
+
                     if role.django_group:
                         user.groups.add(role.django_group)
 
@@ -600,14 +853,34 @@ class Command(BaseCommand):
                     self.stdout.write(
                         f"  {'Created' if created else 'Updated'} user: {user.username} "
                         f"| Role: {role.code} | Dept: {department.code} "
+                        f"| Facility: {facility_key} "
                         f"| StaffProfile: {sp_status}"
                     )
                 else:
                     self.stdout.write(
                         self.style.WARNING(
                             f"  {'Created' if created else 'Updated'} user: {user.username} "
-                            f"| Role '{role_code}' or Dept '{department_code}' not found - no StaffProfile created"
+                            f"| Role '{role_code}' or Dept '{department_code}' not found"
                         )
+                    )
+
+            # =============================================================
+            # Step 3b: Assign Department Heads
+            # =============================================================
+            self.stdout.write(
+                self.style.MIGRATE_HEADING("\n3b. Assigning Department Heads...")
+            )
+            # Use HQ heads as the canonical department heads (since Department
+            # model has a single head FK, not per-facility).
+            for (dept_code, fac_key), staff_profile in dept_head_candidates.items():
+                if fac_key != "HQ":
+                    continue
+                dept = departments_map.get(dept_code)
+                if dept:
+                    dept.head = staff_profile
+                    dept.save(update_fields=["head"])
+                    self.stdout.write(
+                        f"  {dept.name} head -> {staff_profile.user.get_full_name()}"
                     )
 
             # =============================================================
@@ -873,17 +1146,31 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("✅ Demo data seeding completed successfully!"))
         self.stdout.write(self.style.SUCCESS("=" * 60))
 
-        self.stdout.write("\n📋 Demo Credentials:")
-        self.stdout.write("-" * 60)
-        self.stdout.write(f"{'Username':<25} {'Role':<20} {'Department'}")
-        self.stdout.write("-" * 60)
+        self.stdout.write("\n🏥 Organization: Demo Health Services Ltd")
+        self.stdout.write("   HQ: Demo General Hospital (DEMO-HQ-001)")
+        self.stdout.write("   Branch: Demo Community Health Centre (DEMO-BR-001)")
+
+        self.stdout.write("\n📋 Demo Credentials (HQ):")
+        self.stdout.write("-" * 75)
+        self.stdout.write(f"{'Username':<28} {'Role':<20} {'Dept':<10} {'Facility'}")
+        self.stdout.write("-" * 75)
         for user_data in DEMO_USERS:
             self.stdout.write(
-                f"{user_data['username']:<25} "
+                f"{user_data['username']:<28} "
                 f"{user_data.get('role_code', 'N/A'):<20} "
-                f"{user_data.get('department_code', 'N/A')}"
+                f"{user_data.get('department_code', 'N/A'):<10} "
+                f"{user_data.get('facility', 'HQ')}"
             )
-        self.stdout.write("-" * 60)
+        self.stdout.write("\n📋 Demo Credentials (Branch):")
+        self.stdout.write("-" * 75)
+        for user_data in BRANCH_USERS:
+            self.stdout.write(
+                f"{user_data['username']:<28} "
+                f"{user_data.get('role_code', 'N/A'):<20} "
+                f"{user_data.get('department_code', 'N/A'):<10} "
+                f"{user_data.get('facility', 'BRANCH')}"
+            )
+        self.stdout.write("-" * 75)
         self.stdout.write("\n🔑 All demo passwords follow the pattern: Demo<Role>2026!")
         self.stdout.write("   Example: DemoAdmin2026!, DemoNurse2026!, etc.")
 
@@ -978,15 +1265,27 @@ class Command(BaseCommand):
         self.stdout.write("  Creating Service Categories...")
         categories_map = {}
         for cat_data in SERVICE_CATEGORIES:
-            cat, created = ServiceCategory.objects.update_or_create(
-                code=cat_data["code"],
-                defaults={
-                    "name": cat_data["name"],
-                    "description": cat_data["description"],
-                    "display_order": cat_data["display_order"],
-                    "is_active": True,
-                },
-            )
+            # Both code and name are unique — try code first, fall back to name
+            cat = ServiceCategory.objects.filter(code=cat_data["code"]).first()
+            if not cat:
+                cat = ServiceCategory.objects.filter(name=cat_data["name"]).first()
+            if cat:
+                cat.code = cat_data["code"]
+                cat.name = cat_data["name"]
+                cat.description = cat_data["description"]
+                cat.display_order = cat_data["display_order"]
+                cat.is_active = True
+                cat.save()
+                created = False
+            else:
+                cat = ServiceCategory.objects.create(
+                    code=cat_data["code"],
+                    name=cat_data["name"],
+                    description=cat_data["description"],
+                    display_order=cat_data["display_order"],
+                    is_active=True,
+                )
+                created = True
             categories_map[cat_data["code"]] = cat
             status = "Created" if created else "Updated"
             self.stdout.write(f"    {status}: {cat.name}")
@@ -3690,7 +3989,7 @@ class Command(BaseCommand):
                         "notes": "Second PCR at 9 months.",
                     },
                 )
-                self.stdout.write(f"    PCR Tests: scheduled at 6wk and 9mo")
+                self.stdout.write("    PCR Tests: scheduled at 6wk and 9mo")
 
                 # Growth measurements for Blessing
                 blessing_growth = [
@@ -3732,7 +4031,9 @@ class Command(BaseCommand):
                 # Ensure immunization schedule exists for baby
                 if not ImmunizationRecord.objects.filter(patient=baby_for_hei).exists():
                     try:
-                        from hmis.apps.mch.services.immunization import generate_immunization_schedule
+                        from hmis.apps.mch.services.immunization import (
+                            generate_immunization_schedule,
+                        )
                         generate_immunization_schedule(baby_for_hei)
                         self.stdout.write("    Generated KEPI immunization schedule for baby")
                     except Exception as exc:
