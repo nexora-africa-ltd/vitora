@@ -3,7 +3,6 @@ Serializers for core app.
 """
 
 
-from typing import Optional
 
 from django.contrib.auth.models import Permission
 from rest_framework import serializers
@@ -48,6 +47,10 @@ class AuditLogSerializer(serializers.ModelSerializer):
 
     username = serializers.CharField(source="user.username", read_only=True, default="Anonymous")
     user_name = serializers.SerializerMethodField()
+    facility_name = serializers.CharField(source="facility.name", read_only=True, default=None)
+    organization_name = serializers.CharField(
+        source="organization.name", read_only=True, default=None
+    )
 
     class Meta:
         """Meta options for AuditLogSerializer."""
@@ -66,6 +69,10 @@ class AuditLogSerializer(serializers.ModelSerializer):
             "user_agent",
             "details",
             "patient_id",
+            "facility",
+            "facility_name",
+            "organization",
+            "organization_name",
             "sequence_number",
             "entry_hash",
             "previous_hash",
@@ -214,7 +221,7 @@ class DepartmentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["created_at", "updated_at", "staff_count"]
 
-    def get_head_name(self, obj) -> Optional[str]:
+    def get_head_name(self, obj) -> str | None:
         """Get department head name."""
         if obj.head:
             return obj.head.get_full_name()
@@ -231,6 +238,11 @@ class RoleSerializer(serializers.ModelSerializer):
     parent_role_name = serializers.CharField(source="parent_role.name", read_only=True)
     django_group_name = serializers.CharField(source="django_group.name", read_only=True)
     category_display = serializers.CharField(source="get_category_display", read_only=True)
+    scope_display = serializers.CharField(source="get_scope_display", read_only=True)
+    organization_name = serializers.CharField(
+        source="organization.name", read_only=True, default=None
+    )
+    facility_name = serializers.CharField(source="facility.name", read_only=True, default=None)
 
     class Meta:
         """Meta options for RoleSerializer."""
@@ -243,6 +255,12 @@ class RoleSerializer(serializers.ModelSerializer):
             "category",
             "category_display",
             "description",
+            "scope",
+            "scope_display",
+            "organization",
+            "organization_name",
+            "facility",
+            "facility_name",
             "permissions_matrix",
             "hierarchy_level",
             "parent_role",
