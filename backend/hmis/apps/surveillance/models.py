@@ -163,6 +163,24 @@ class NotifiableCase(models.Model):
         county: Patient's county for notification routing
     """
 
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="notifiable_cases",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="notifiable_cases",
+        null=True,
+        blank=True,
+        help_text="Facility where case was detected.",
+    )
+
     disease = models.ForeignKey(
         NotifiableDisease,
         on_delete=models.PROTECT,
@@ -309,7 +327,7 @@ class NotifiableCase(models.Model):
         return f"{self.disease.name} - {self.patient} ({self.get_notification_status_display()})"
 
     def save(self, *args, **kwargs):
-        """Calculate notification deadline on save."""
+        """Calculate notification deadline and auto-resolve tenant on save."""
         if not self.notification_deadline and self.disease:
             self.notification_deadline = self.detected_at + timedelta(
                 hours=self.disease.reporting_hours
@@ -317,6 +335,30 @@ class NotifiableCase(models.Model):
         if not self.county and self.patient:
             self.county = self.patient.county
             self.sub_county = self.patient.sub_county
+        # Auto-resolve tenant from encounter or patient
+        if not self.facility_id:
+            if self.encounter_id:
+                try:
+                    enc = self.encounter
+                    if enc.facility_id:
+                        self.facility_id = enc.facility_id
+                        self.organization_id = enc.organization_id
+                except Exception:
+                    pass
+            if not self.facility_id and self.patient_id:
+                try:
+                    patient = self.patient
+                    if patient.registered_at_facility_id:
+                        self.facility_id = patient.registered_at_facility_id
+                        self.organization_id = patient.organization_id
+                except Exception:
+                    pass
+        if self.facility_id and not self.organization_id:
+            try:
+                if self.facility and self.facility.organization_id:
+                    self.organization_id = self.facility.organization_id
+            except Exception:
+                pass
         super().save(*args, **kwargs)
 
     @property
@@ -371,6 +413,24 @@ class SurveillanceAlert(models.Model):
         sent_via_email: Whether email was sent
     """
 
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="surveillance_alerts",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from case).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="surveillance_alerts",
+        null=True,
+        blank=True,
+        help_text="Facility where alert originated.",
+    )
+
     class AlertType(models.TextChoices):
         NEW_CASE = "NEW_CASE", "New Case Detected"
         OVERDUE = "OVERDUE", "Notification Overdue"
@@ -423,6 +483,18 @@ class SurveillanceAlert(models.Model):
 
     def __str__(self) -> str:
         return f"{self.get_alert_type_display()} - {self.case.disease.name}"
+
+    def save(self, *args, **kwargs):
+        """Auto-resolve tenant from parent case."""
+        if not self.facility_id and self.case_id:
+            try:
+                case = self.case
+                if case.facility_id:
+                    self.facility_id = case.facility_id
+                    self.organization_id = case.organization_id
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
 
     def acknowledge(self, user) -> None:
         """Mark alert as acknowledged."""
@@ -561,7 +633,25 @@ class IDSRWeeklyReport(models.Model):
         help_text="Sunday of the epidemiological week",
     )
 
-    # Facility identification (from Django settings or facility model)
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="idsr_weekly_reports",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility_ref = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="idsr_weekly_reports",
+        null=True,
+        blank=True,
+        help_text="Facility FK for tenant scoping.",
+    )
+
+    # Legacy facility identification (kept for DHIS2 reporting)
     facility_code = models.CharField(
         max_length=50,
         blank=True,
@@ -714,6 +804,21 @@ class IDSRWeeklyReport(models.Model):
 
     def __str__(self) -> str:
         return f"IDSR Week {self.epi_week}/{self.epi_year} - {self.facility_name or self.facility_code}"
+
+    def save(self, *args, **kwargs):
+        """Auto-resolve tenant and populate facility_code/name."""
+        if self.facility_ref_id:
+            try:
+                fac = self.facility_ref
+                if not self.facility_code and fac.mfl_code:
+                    self.facility_code = fac.mfl_code
+                if not self.facility_name and fac.name:
+                    self.facility_name = fac.name
+                if not self.organization_id and fac.organization_id:
+                    self.organization_id = fac.organization_id
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
 
     @property
     def is_submitted(self) -> bool:
@@ -933,6 +1038,24 @@ class IHRNotification(models.Model):
         annex2_criteria: JSON storing Annex 2 decision instrument answers
     """
 
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="ihr_notifications",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="ihr_notifications",
+        null=True,
+        blank=True,
+        help_text="Facility where event was detected.",
+    )
+
     # Source reference
     disease = models.ForeignKey(
         NotifiableDisease,
@@ -1145,7 +1268,7 @@ class IHRNotification(models.Model):
         )
 
     def save(self, *args, **kwargs):
-        """Auto-populate county from case or patient on save."""
+        """Auto-populate county and tenant from case or patient on save."""
         if not self.county:
             if self.case and self.case.county:
                 self.county = self.case.county
@@ -1153,6 +1276,30 @@ class IHRNotification(models.Model):
             elif self.patient and self.patient.county:
                 self.county = self.patient.county
                 self.sub_county = self.patient.sub_county
+        # Auto-resolve tenant from case or patient
+        if not self.facility_id:
+            if self.case_id:
+                try:
+                    case = self.case
+                    if case.facility_id:
+                        self.facility_id = case.facility_id
+                        self.organization_id = case.organization_id
+                except Exception:
+                    pass
+            if not self.facility_id and self.patient_id:
+                try:
+                    patient = self.patient
+                    if patient.registered_at_facility_id:
+                        self.facility_id = patient.registered_at_facility_id
+                        self.organization_id = patient.organization_id
+                except Exception:
+                    pass
+        if self.facility_id and not self.organization_id:
+            try:
+                if self.facility and self.facility.organization_id:
+                    self.organization_id = self.facility.organization_id
+            except Exception:
+                pass
         super().save(*args, **kwargs)
 
     @property
