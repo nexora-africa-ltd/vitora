@@ -1171,8 +1171,8 @@ class Command(BaseCommand):
                 f"{user_data.get('facility', 'BRANCH')}"
             )
         self.stdout.write("-" * 75)
-        self.stdout.write("\n🔑 All demo passwords follow the pattern: Demo<Role>2026!")
-        self.stdout.write("   Example: DemoAdmin2026!, DemoNurse2026!, etc.")
+        self.stdout.write("\n🔑 All demo passwords follow the pattern: Demo<Role>2026?!")
+        self.stdout.write("   Example: DemoAdmin2026?!, DemoNurse2026?!, etc.")
 
     def _seed_billing_data(self, options):
         """Seed billing demo data: categories, services, payment points, invoices, payments."""

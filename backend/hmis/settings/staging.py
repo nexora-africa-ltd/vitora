@@ -75,7 +75,7 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "CORS_ALLOWED_ORIGINS",
-        "https://vitora.vercel.app,http://localhost:3009,https://staging.vitora.digital",
+        "https://vitora-navy.vercel.app,https://staging.vitora.digital,http://localhost:3009",
     ).split(",")
     if origin.strip()
 ]
@@ -98,7 +98,7 @@ CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "CSRF_TRUSTED_ORIGINS",
-        "https://vitora.vercel.app,https://staging.vitora.digital",
+        "https://vitora-navy.vercel.app,https://staging.vitora.digital",
     ).split(",")
     if origin.strip()
 ]
