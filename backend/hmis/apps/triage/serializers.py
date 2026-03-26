@@ -112,9 +112,14 @@ class WaitingQueueCreateSerializer(serializers.ModelSerializer):
         patient = Patient.objects.get(pk=patient_id)
         request = self.context.get("request")
 
-        # Resolve facility/organization from request context (TenantMiddleware)
-        facility = getattr(request, "facility", None) if request else None
-        organization = getattr(request, "organization", None) if request else None
+        # Resolve facility/organization from validated_data (set by
+        # TenantScopedViewMixin.get_tenant_save_kwargs) or request context
+        facility = validated_data.get("facility") or (
+            getattr(request, "facility", None) if request else None
+        )
+        organization = validated_data.get("organization") or (
+            getattr(request, "organization", None) if request else None
+        )
 
         # Use existing encounter if provided, otherwise create if requested
         encounter = None
