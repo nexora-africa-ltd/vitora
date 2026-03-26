@@ -418,3 +418,207 @@ class BillingAgentService:
 
         logger.info("Billing agent: submitted %d SHA claims", submitted)
         return submitted
+
+    @classmethod
+    def poll_sha_claim_statuses(cls) -> dict:
+        """Poll SHA API for status updates on submitted/under-review claims.
+
+        Called every 15 minutes by Celery beat. Checks claims that have been
+        submitted but not yet resolved (approved/rejected/paid).
+
+        Processes up to 50 claims per run. Creates ActivityFeed entries
+        for any status changes so billing staff see them on the dashboard.
+
+        Returns:
+            Dict with counts: {checked, updated, errors}.
+        """
+        from hmis.apps.billing.services.sha_claims import SHAClaimsService
+        from hmis.apps.core.models import ActivityFeed
+
+        pollable_statuses = [
+            SHAClaim.ClaimStatus.SUBMITTED,
+            SHAClaim.ClaimStatus.ACKNOWLEDGED,
+            SHAClaim.ClaimStatus.UNDER_REVIEW,
+            SHAClaim.ClaimStatus.QUERY,
+        ]
+
+        claims = (
+            SHAClaim.objects.filter(status__in=pollable_statuses)
+            .exclude(sha_claim_reference="")
+            .select_related("patient")
+            .order_by("submitted_at")[:50]
+        )
+
+        service = SHAClaimsService()
+        result = {"checked": 0, "updated": 0, "errors": 0}
+
+        for claim in claims:
+            result["checked"] += 1
+            try:
+                api_response = service.get_claim_status(claim.sha_claim_reference)
+                new_status = cls._map_sha_status(api_response)
+
+                if new_status and new_status != claim.status:
+                    old_status = claim.status
+                    cls._apply_status_update(claim, new_status, api_response)
+                    cls._notify_claim_status_change(claim, old_status, new_status)
+                    result["updated"] += 1
+                    logger.info(
+                        "Billing agent: claim %s status %s -> %s",
+                        claim.claim_number,
+                        old_status,
+                        new_status,
+                    )
+            except Exception:
+                result["errors"] += 1
+                logger.exception(
+                    "Billing agent: status poll failed for claim %s",
+                    claim.claim_number,
+                )
+
+        logger.info(
+            "Billing agent: polled %d claims, %d updated, %d errors",
+            result["checked"],
+            result["updated"],
+            result["errors"],
+        )
+        return result
+
+    @staticmethod
+    def _map_sha_status(api_response: dict) -> str | None:
+        """Map SHA API status response to internal ClaimStatus value.
+
+        The SHA API returns various status strings depending on the
+        response format (FHIR outcome or simple status field).
+        """
+        # Try FHIR outcome first
+        outcome = api_response.get("outcome", "")
+        fhir_map = {
+            "complete": SHAClaim.ClaimStatus.APPROVED,
+            "queued": SHAClaim.ClaimStatus.UNDER_REVIEW,
+            "error": SHAClaim.ClaimStatus.REJECTED,
+            "partial": SHAClaim.ClaimStatus.PARTIALLY_APPROVED,
+        }
+        if outcome in fhir_map:
+            return fhir_map[outcome]
+
+        # Try simple status field
+        status_str = api_response.get("status", "").lower()
+        simple_map = {
+            "approved": SHAClaim.ClaimStatus.APPROVED,
+            "rejected": SHAClaim.ClaimStatus.REJECTED,
+            "partially_approved": SHAClaim.ClaimStatus.PARTIALLY_APPROVED,
+            "partial": SHAClaim.ClaimStatus.PARTIALLY_APPROVED,
+            "under_review": SHAClaim.ClaimStatus.UNDER_REVIEW,
+            "query": SHAClaim.ClaimStatus.QUERY,
+            "paid": SHAClaim.ClaimStatus.PAID,
+            "acknowledged": SHAClaim.ClaimStatus.ACKNOWLEDGED,
+        }
+        return simple_map.get(status_str)
+
+    @staticmethod
+    def _apply_status_update(claim: SHAClaim, new_status: str, api_response: dict):
+        """Apply status update from SHA API response to the claim."""
+        from decimal import Decimal, InvalidOperation
+
+        update_fields = ["status", "submission_response", "updated_at"]
+        claim.status = new_status
+        claim.submission_response = api_response
+
+        # Extract approved amount
+        approved = api_response.get("approved_amount") or api_response.get("total", {}).get(
+            "value"
+        )
+        if approved is not None:
+            try:
+                claim.approved_amount = Decimal(str(approved))
+                update_fields.append("approved_amount")
+            except (InvalidOperation, TypeError, ValueError):
+                pass
+
+        # Extract adjudication info
+        disposition = api_response.get("disposition", "")
+        if disposition:
+            claim.adjudication_notes = disposition
+            update_fields.append("adjudication_notes")
+
+        # Set adjudication date for terminal statuses
+        terminal = {
+            SHAClaim.ClaimStatus.APPROVED,
+            SHAClaim.ClaimStatus.PARTIALLY_APPROVED,
+            SHAClaim.ClaimStatus.REJECTED,
+            SHAClaim.ClaimStatus.PAID,
+        }
+        if new_status in terminal and not claim.adjudication_date:
+            claim.adjudication_date = date.today()
+            update_fields.append("adjudication_date")
+
+        # Capture rejection details
+        rejection_reason = api_response.get("rejection_reason", "")
+        rejection_code = api_response.get("rejection_code", "")
+        if rejection_reason:
+            claim.rejection_reason = rejection_reason
+            update_fields.append("rejection_reason")
+        if rejection_code:
+            claim.rejection_code = rejection_code
+            update_fields.append("rejection_code")
+
+        # Payment info
+        payment_ref = api_response.get("payment_reference", "")
+        if payment_ref and new_status == SHAClaim.ClaimStatus.PAID:
+            claim.payment_reference = payment_ref
+            claim.payment_date = date.today()
+            update_fields.extend(["payment_reference", "payment_date"])
+
+        claim.save(update_fields=update_fields)
+
+    @staticmethod
+    def _notify_claim_status_change(claim: SHAClaim, old_status: str, new_status: str):
+        """Create an ActivityFeed entry for billing staff notification."""
+        from hmis.apps.core.models import ActivityFeed
+
+        status_labels = dict(SHAClaim.ClaimStatus.choices)
+        new_label = status_labels.get(new_status, new_status)
+        old_label = status_labels.get(old_status, old_status)
+
+        patient_name = ""
+        if claim.patient:
+            patient_name = f"{claim.patient.first_name} {claim.patient.last_name}"
+
+        # Determine severity/icon hint
+        if new_status in (SHAClaim.ClaimStatus.APPROVED, SHAClaim.ClaimStatus.PAID):
+            action = "claim_approved"
+            title = f"SHA Claim {claim.claim_number} — {new_label}"
+        elif new_status == SHAClaim.ClaimStatus.PARTIALLY_APPROVED:
+            action = "claim_partial"
+            title = f"SHA Claim {claim.claim_number} — Partially Approved"
+        elif new_status == SHAClaim.ClaimStatus.REJECTED:
+            action = "claim_rejected"
+            title = f"SHA Claim {claim.claim_number} — Rejected"
+        elif new_status == SHAClaim.ClaimStatus.QUERY:
+            action = "claim_query"
+            title = f"SHA Claim {claim.claim_number} — Query Raised"
+        else:
+            action = "claim_status_changed"
+            title = f"SHA Claim {claim.claim_number} — {new_label}"
+
+        description = f"Patient: {patient_name}. Status changed from {old_label} to {new_label}."
+        if claim.adjudication_notes:
+            description += f" Notes: {claim.adjudication_notes}"
+
+        ActivityFeed.objects.create(
+            activity_type="billing",
+            action=action,
+            title=title,
+            description=description,
+            resource_type="SHAClaim",
+            resource_id=claim.id,
+            metadata={
+                "claim_number": claim.claim_number,
+                "patient_name": patient_name,
+                "old_status": old_status,
+                "new_status": new_status,
+                "claimed_amount": str(claim.claimed_amount),
+                "approved_amount": str(claim.approved_amount) if claim.approved_amount else None,
+            },
+        )

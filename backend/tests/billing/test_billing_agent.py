@@ -774,3 +774,397 @@ class TestBillingBeatSchedule:
         schedule = app.conf.beat_schedule
         task_names = [v["task"] for v in schedule.values()]
         assert "hmis.apps.billing.tasks.submit_pending_sha_claims" in task_names
+
+    def test_poll_sha_claim_statuses_in_beat_schedule(self):
+        """Poll SHA claim statuses task should be in Celery beat schedule."""
+        from hmis.celery import app
+
+        schedule = app.conf.beat_schedule
+        task_names = [v["task"] for v in schedule.values()]
+        assert "hmis.apps.billing.tasks.poll_sha_claim_statuses" in task_names
+
+
+# ============================================================================
+# Test: poll_sha_claim_statuses (Celery beat)
+# ============================================================================
+
+
+class TestPollSHAClaimStatuses:
+    """Tests for BillingAgentService.poll_sha_claim_statuses."""
+
+    def _make_submitted_claim(
+        self, sample_patient, sample_encounter, sha_member, test_user, **overrides
+    ):
+        """Helper to create a submitted SHA claim with a SHA reference."""
+        invoice = Invoice.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            invoice_date=date.today(),
+            due_date=date.today() + timedelta(days=30),
+            status=Invoice.Status.PENDING,
+            payment_type=Invoice.PaymentType.INSURANCE,
+            created_by=test_user,
+        )
+
+        defaults = dict(
+            patient=sample_patient,
+            sha_member=sha_member,
+            encounter=sample_encounter,
+            invoice=invoice,
+            claim_type=SHAClaim.ClaimType.OUTPATIENT,
+            status=SHAClaim.ClaimStatus.SUBMITTED,
+            sha_claim_reference="SHA-REF-001",
+            claimed_amount=Decimal("5000.00"),
+            service_date=date.today(),
+            submitted_at=timezone.now(),
+            facility_code="12345",
+            facility_level="L4",
+            primary_diagnosis_code="J18.9",
+            primary_diagnosis_description="Pneumonia, unspecified",
+            created_by=test_user,
+        )
+        defaults.update(overrides)
+        return SHAClaim.objects.create(**defaults)
+
+    def test_polls_submitted_claims(
+        self, db, sample_patient, sample_encounter, sha_member, test_user
+    ):
+        """Should poll SHA API for submitted claims and update status."""
+        from hmis.apps.billing.agent import BillingAgentService
+
+        claim = self._make_submitted_claim(
+            sample_patient, sample_encounter, sha_member, test_user
+        )
+
+        with patch(
+            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
+        ) as MockService:
+            mock_instance = MockService.return_value
+            mock_instance.get_claim_status.return_value = {
+                "outcome": "complete",
+                "disposition": "Claim approved in full",
+                "approved_amount": 5000.00,
+            }
+
+            result = BillingAgentService.poll_sha_claim_statuses()
+
+        claim.refresh_from_db()
+        assert result["checked"] == 1
+        assert result["updated"] == 1
+        assert result["errors"] == 0
+        assert claim.status == SHAClaim.ClaimStatus.APPROVED
+        assert claim.approved_amount == Decimal("5000.00")
+        assert claim.adjudication_notes == "Claim approved in full"
+
+    def test_skips_claims_without_sha_reference(
+        self, db, sample_patient, sample_encounter, sha_member, test_user
+    ):
+        """Should skip claims that have no SHA reference to query."""
+        from hmis.apps.billing.agent import BillingAgentService
+
+        self._make_submitted_claim(
+            sample_patient,
+            sample_encounter,
+            sha_member,
+            test_user,
+            sha_claim_reference="",
+        )
+
+        with patch(
+            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
+        ) as MockService:
+            result = BillingAgentService.poll_sha_claim_statuses()
+
+        assert result["checked"] == 0
+        MockService.return_value.get_claim_status.assert_not_called()
+
+    def test_handles_rejected_claims(
+        self, db, sample_patient, sample_encounter, sha_member, test_user
+    ):
+        """Should update rejected claims with rejection details."""
+        from hmis.apps.billing.agent import BillingAgentService
+
+        claim = self._make_submitted_claim(
+            sample_patient, sample_encounter, sha_member, test_user
+        )
+
+        with patch(
+            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
+        ) as MockService:
+            mock_instance = MockService.return_value
+            mock_instance.get_claim_status.return_value = {
+                "outcome": "error",
+                "disposition": "Missing pre-authorization",
+                "rejection_reason": "Pre-auth required for this procedure",
+                "rejection_code": "AUTH_REQUIRED",
+            }
+
+            result = BillingAgentService.poll_sha_claim_statuses()
+
+        claim.refresh_from_db()
+        assert result["updated"] == 1
+        assert claim.status == SHAClaim.ClaimStatus.REJECTED
+        assert claim.rejection_reason == "Pre-auth required for this procedure"
+        assert claim.rejection_code == "AUTH_REQUIRED"
+        assert claim.adjudication_date == date.today()
+
+    def test_no_update_if_status_unchanged(
+        self, db, sample_patient, sample_encounter, sha_member, test_user
+    ):
+        """Should not update if SHA returns the same status."""
+        from hmis.apps.billing.agent import BillingAgentService
+
+        claim = self._make_submitted_claim(
+            sample_patient, sample_encounter, sha_member, test_user
+        )
+
+        with patch(
+            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
+        ) as MockService:
+            mock_instance = MockService.return_value
+            mock_instance.get_claim_status.return_value = {
+                "status": "submitted",
+            }
+
+            result = BillingAgentService.poll_sha_claim_statuses()
+
+        assert result["checked"] == 1
+        assert result["updated"] == 0
+
+    def test_creates_activity_feed_on_status_change(
+        self, db, sample_patient, sample_encounter, sha_member, test_user
+    ):
+        """Should create an ActivityFeed notification when claim status changes."""
+        from hmis.apps.billing.agent import BillingAgentService
+        from hmis.apps.core.models import ActivityFeed
+
+        claim = self._make_submitted_claim(
+            sample_patient, sample_encounter, sha_member, test_user
+        )
+
+        with patch(
+            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
+        ) as MockService:
+            mock_instance = MockService.return_value
+            mock_instance.get_claim_status.return_value = {
+                "outcome": "complete",
+                "approved_amount": 5000.00,
+            }
+
+            BillingAgentService.poll_sha_claim_statuses()
+
+        feed = ActivityFeed.objects.filter(
+            activity_type="billing",
+            resource_type="SHAClaim",
+            resource_id=claim.id,
+        ).first()
+        assert feed is not None
+        assert feed.action == "claim_approved"
+        assert claim.claim_number in feed.title
+        assert feed.metadata["new_status"] == SHAClaim.ClaimStatus.APPROVED
+
+    def test_handles_api_errors_gracefully(
+        self, db, sample_patient, sample_encounter, sha_member, test_user
+    ):
+        """Should handle API errors without crashing the batch."""
+        from hmis.apps.billing.agent import BillingAgentService
+
+        self._make_submitted_claim(
+            sample_patient, sample_encounter, sha_member, test_user
+        )
+
+        with patch(
+            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
+        ) as MockService:
+            mock_instance = MockService.return_value
+            mock_instance.get_claim_status.side_effect = Exception("Connection timed out")
+
+            result = BillingAgentService.poll_sha_claim_statuses()
+
+        assert result["checked"] == 1
+        assert result["errors"] == 1
+        assert result["updated"] == 0
+
+    def test_poll_task_calls_agent(self, db):
+        """Celery task should delegate to BillingAgentService."""
+        from hmis.apps.billing.tasks import poll_sha_claim_statuses
+
+        with patch(
+            "hmis.apps.billing.agent.BillingAgentService.poll_sha_claim_statuses"
+        ) as mock:
+            mock.return_value = {"checked": 0, "updated": 0, "errors": 0}
+            result = poll_sha_claim_statuses()
+            mock.assert_called_once()
+
+    def test_handles_partial_approval(
+        self, db, sample_patient, sample_encounter, sha_member, test_user
+    ):
+        """Should handle partial approval and record approved amount."""
+        from hmis.apps.billing.agent import BillingAgentService
+
+        claim = self._make_submitted_claim(
+            sample_patient, sample_encounter, sha_member, test_user
+        )
+
+        with patch(
+            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
+        ) as MockService:
+            mock_instance = MockService.return_value
+            mock_instance.get_claim_status.return_value = {
+                "outcome": "partial",
+                "approved_amount": 3000.00,
+                "disposition": "Optical excluded from coverage",
+            }
+
+            result = BillingAgentService.poll_sha_claim_statuses()
+
+        claim.refresh_from_db()
+        assert result["updated"] == 1
+        assert claim.status == SHAClaim.ClaimStatus.PARTIALLY_APPROVED
+        assert claim.approved_amount == Decimal("3000.00")
+
+    def test_handles_payment_status(
+        self, db, sample_patient, sample_encounter, sha_member, test_user
+    ):
+        """Should handle paid status with payment reference."""
+        from hmis.apps.billing.agent import BillingAgentService
+
+        claim = self._make_submitted_claim(
+            sample_patient, sample_encounter, sha_member, test_user
+        )
+
+        with patch(
+            "hmis.apps.billing.services.sha_claims.SHAClaimsService"
+        ) as MockService:
+            mock_instance = MockService.return_value
+            mock_instance.get_claim_status.return_value = {
+                "status": "paid",
+                "approved_amount": 5000.00,
+                "payment_reference": "SHA-PAY-2026-001",
+            }
+
+            result = BillingAgentService.poll_sha_claim_statuses()
+
+        claim.refresh_from_db()
+        assert result["updated"] == 1
+        assert claim.status == SHAClaim.ClaimStatus.PAID
+        assert claim.payment_reference == "SHA-PAY-2026-001"
+        assert claim.payment_date == date.today()
+
+
+# ============================================================================
+# Test: Webhook claim status update with notifications
+# ============================================================================
+
+
+class TestWebhookClaimNotifications:
+    """Tests for SHA webhook _update_claim_status with ActivityFeed."""
+
+    def test_webhook_creates_activity_feed(
+        self, db, sample_patient, sample_encounter, sha_member, test_user
+    ):
+        """Webhook status update should create ActivityFeed notification."""
+        from hmis.apps.billing.sha_views import SHAWebhookView
+        from hmis.apps.core.models import ActivityFeed
+
+        invoice = Invoice.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            invoice_date=date.today(),
+            due_date=date.today() + timedelta(days=30),
+            status=Invoice.Status.PENDING,
+            payment_type=Invoice.PaymentType.INSURANCE,
+            created_by=test_user,
+        )
+
+        claim = SHAClaim.objects.create(
+            patient=sample_patient,
+            sha_member=sha_member,
+            encounter=sample_encounter,
+            invoice=invoice,
+            claim_type=SHAClaim.ClaimType.OUTPATIENT,
+            status=SHAClaim.ClaimStatus.SUBMITTED,
+            sha_claim_reference="SHA-WH-001",
+            claimed_amount=Decimal("3000.00"),
+            service_date=date.today(),
+            submitted_at=timezone.now(),
+            facility_code="12345",
+            facility_level="L4",
+            primary_diagnosis_code="J18.9",
+            primary_diagnosis_description="Pneumonia",
+            created_by=test_user,
+        )
+
+        view = SHAWebhookView()
+        updated = view._update_claim_status(
+            claim_reference="SHA-WH-001",
+            new_status="approved",
+            disposition="Approved in full",
+            approved_amount=3000.00,
+            response_payload={"outcome": "complete"},
+        )
+
+        assert updated is True
+
+        claim.refresh_from_db()
+        assert claim.status == "approved"
+        assert claim.adjudication_notes == "Approved in full"
+
+        feed = ActivityFeed.objects.filter(
+            activity_type="billing",
+            resource_type="SHAClaim",
+            resource_id=claim.id,
+        ).first()
+        assert feed is not None
+        assert feed.action == "claim_approved"
+
+    def test_webhook_no_notification_if_status_unchanged(
+        self, db, sample_patient, sample_encounter, sha_member, test_user
+    ):
+        """Webhook should not create ActivityFeed if status didn't change."""
+        from hmis.apps.billing.sha_views import SHAWebhookView
+        from hmis.apps.core.models import ActivityFeed
+
+        invoice = Invoice.objects.create(
+            patient=sample_patient,
+            encounter=sample_encounter,
+            invoice_date=date.today(),
+            due_date=date.today() + timedelta(days=30),
+            status=Invoice.Status.PENDING,
+            payment_type=Invoice.PaymentType.INSURANCE,
+            created_by=test_user,
+        )
+
+        claim = SHAClaim.objects.create(
+            patient=sample_patient,
+            sha_member=sha_member,
+            encounter=sample_encounter,
+            invoice=invoice,
+            claim_type=SHAClaim.ClaimType.OUTPATIENT,
+            status=SHAClaim.ClaimStatus.APPROVED,
+            sha_claim_reference="SHA-WH-002",
+            claimed_amount=Decimal("2000.00"),
+            service_date=date.today(),
+            submitted_at=timezone.now(),
+            facility_code="12345",
+            facility_level="L4",
+            primary_diagnosis_code="J18.9",
+            primary_diagnosis_description="Pneumonia",
+            created_by=test_user,
+        )
+
+        view = SHAWebhookView()
+        view._update_claim_status(
+            claim_reference="SHA-WH-002",
+            new_status="approved",
+            disposition="",
+            approved_amount=2000.00,
+            response_payload={},
+        )
+
+        feed_count = ActivityFeed.objects.filter(
+            activity_type="billing",
+            resource_type="SHAClaim",
+            resource_id=claim.id,
+        ).count()
+        assert feed_count == 0
