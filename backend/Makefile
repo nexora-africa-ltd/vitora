@@ -1,4 +1,7 @@
-.PHONY: help install test lint format type-check security clean
+.PHONY: help install test lint format type-check security clean \
+	staging-status staging-logs staging-logs-100 staging-exec staging-seed \
+	staging-migrate staging-shell staging-restart staging-env staging-secrets \
+	staging-deploy staging-login-test
 
 help:
 	@echo "Vitora HMIS Backend - Make Commands"
@@ -81,6 +84,20 @@ help:
 	@echo ""
 	@echo "Git Workflow:"
 	@echo "  merge-to-main       - Merge current branch to main and push"
+	@echo ""
+	@echo "Staging (Azure Container Apps):"
+	@echo "  staging-status      - Show ACA health, revision, and env var count"
+	@echo "  staging-logs        - Tail live container logs"
+	@echo "  staging-logs-100    - Show last 100 log lines"
+	@echo "  staging-exec        - Open a bash shell in the container"
+	@echo "  staging-seed        - Run seed script in the container"
+	@echo "  staging-migrate     - Run Django migrations in the container"
+	@echo "  staging-shell       - Open Django shell in the container"
+	@echo "  staging-restart     - Restart the active revision"
+	@echo "  staging-env         - List all ACA env var names"
+	@echo "  staging-secrets     - List all ACA secret names"
+	@echo "  staging-deploy      - Build, push, and deploy image to ACA"
+	@echo "  staging-login-test  - Test login against the staging API"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  clean         - Remove generated files and caches"
@@ -461,3 +478,93 @@ merge-to-main:
 	git push origin main && \
 	git checkout $$CURRENT_BRANCH && \
 	echo "✅ Successfully merged $$CURRENT_BRANCH to main and pushed"
+
+# ============================================================================
+# Staging (Azure Container Apps) Commands
+# ============================================================================
+
+ACA_NAME     := vitora-api
+ACA_RG       := vitora-rg
+ACR_NAME     := vitoraacr
+ACR_IMAGE    := vitora-api
+ACA_API_URL  := https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io
+
+# Show container health, active revision, replica count, and env var count
+staging-status:
+	@echo "=== ACA Status ==="
+	@curl -sf $(ACA_API_URL)/api/health/ 2>/dev/null && echo "" || echo "❌ API unreachable"
+	@echo ""
+	@echo "Active Revision:"
+	@az containerapp revision list -n $(ACA_NAME) -g $(ACA_RG) \
+		--query "[?properties.active].{Name:name, Status:properties.runningState, Replicas:properties.replicas, Created:properties.createdTime}" \
+		-o table 2>/dev/null
+	@echo ""
+	@echo "Env Vars: $$(az containerapp show -n $(ACA_NAME) -g $(ACA_RG) \
+		--query 'length(properties.template.containers[0].env)' -o tsv 2>/dev/null)"
+	@echo "Secrets:  $$(az containerapp show -n $(ACA_NAME) -g $(ACA_RG) \
+		--query 'length(properties.configuration.secrets)' -o tsv 2>/dev/null)"
+
+# Tail live logs from the container
+staging-logs:
+	az containerapp logs show -n $(ACA_NAME) -g $(ACA_RG) --follow --tail 50
+
+# Show last 100 log lines (non-streaming)
+staging-logs-100:
+	az containerapp logs show -n $(ACA_NAME) -g $(ACA_RG) --tail 100
+
+# Open a bash shell inside the running container
+staging-exec:
+	az containerapp exec -n $(ACA_NAME) -g $(ACA_RG) --command bash
+
+# Run the seed script inside the container
+staging-seed:
+	az containerapp exec -n $(ACA_NAME) -g $(ACA_RG) --command "bash scripts/seed.sh"
+
+# Run Django migrations inside the container
+staging-migrate:
+	az containerapp exec -n $(ACA_NAME) -g $(ACA_RG) --command "python manage.py migrate"
+
+# Open Django shell inside the container
+staging-shell:
+	az containerapp exec -n $(ACA_NAME) -g $(ACA_RG) --command "python manage.py shell"
+
+# Restart the active revision (picks up secret changes)
+staging-restart:
+	az containerapp revision restart -n $(ACA_NAME) -g $(ACA_RG) \
+		--revision $$(az containerapp revision list -n $(ACA_NAME) -g $(ACA_RG) \
+			--query "[?properties.active].name" -o tsv 2>/dev/null)
+	@echo "✅ Restart triggered. Wait ~60s for new replica."
+
+# List all env var names on the container
+staging-env:
+	@az containerapp show -n $(ACA_NAME) -g $(ACA_RG) \
+		--query "properties.template.containers[0].env[].[name,value || 'secretref']" -o table
+
+# List all secret names on the container
+staging-secrets:
+	@az containerapp show -n $(ACA_NAME) -g $(ACA_RG) \
+		--query "properties.configuration.secrets[].name" -o tsv
+
+# Build, push, and deploy to ACA (manual deploy without CI)
+staging-deploy:
+	@echo "=== Building and deploying to ACA ==="
+	@TAG=$$(git rev-parse --short HEAD); \
+	echo "Image tag: $$TAG"; \
+	docker build -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG -t $(ACR_NAME).azurecr.io/$(ACR_IMAGE):latest . && \
+	az acr login --name $(ACR_NAME) && \
+	docker push $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG && \
+	docker push $(ACR_NAME).azurecr.io/$(ACR_IMAGE):latest && \
+	az containerapp update -n $(ACA_NAME) -g $(ACA_RG) \
+		--image $(ACR_NAME).azurecr.io/$(ACR_IMAGE):$$TAG \
+		--output none && \
+	echo "✅ Deployed $$TAG to ACA. Wait ~60s for rollout."
+
+# Quick login test against staging API
+staging-login-test:
+	@echo "Testing login..."
+	@curl -sf $(ACA_API_URL)/api/token/ \
+		-X POST -H "Content-Type: application/json" \
+		-d '{"username":"demo_admin","password":"DemoAdmin2026?!"}' \
+		| python3 -c "import sys,json; d=json.load(sys.stdin); \
+			print('✅ Login OK — user:', d.get('user',{}).get('username','?')) if 'access' in d \
+			else print('❌ Login failed:', d)" 2>/dev/null || echo "❌ API unreachable"

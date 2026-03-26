@@ -247,10 +247,40 @@ export const patientsApi = {
 
 ### Environment Variables
 \`\`\`bash
-# .env.local
+# .env.local (development)
 NEXT_PUBLIC_API_URL=http://127.0.0.1:9088
 NEXT_PUBLIC_APP_NAME=Vitora HMIS
 \`\`\`
+
+---
+
+## 🌐 Staging Deployment
+
+The web app is deployed to **Vercel** and connects to the backend on Azure Container Apps.
+
+| Resource | URL |
+|----------|-----|
+| Frontend | \`https://staging.vitora.digital\` (custom domain) |
+| Frontend | \`https://vitora-navy.vercel.app\` (Vercel default) |
+| Backend API | \`https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io\` |
+
+### Vercel Environment Variables
+Set these in **Vercel → Project Settings → Environment Variables**:
+
+| Variable | Value | Notes |
+|----------|-------|-------|
+| \`NEXT_PUBLIC_API_URL\` | \`https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io\` | Backend API base URL |
+| \`NEXT_PUBLIC_APP_NAME\` | \`Vitora HMIS\` | App display name |
+
+### Custom Domain (staging.vitora.digital)
+1. Add \`staging.vitora.digital\` in **Vercel → Project Settings → Domains**
+2. Add a DNS CNAME record: \`staging → cname.vercel-dns.com\`
+3. Vercel auto-provisions SSL after DNS propagates
+
+### Deployment Flow
+1. Push to \`main\` auto-deploys to Vercel (production)
+2. PRs create preview deployments
+3. The frontend reads \`NEXT_PUBLIC_API_URL\` to connect to the backend
 
 ### Key Dependencies
 - **next**: ^16.1.1
