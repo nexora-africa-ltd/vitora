@@ -748,7 +748,27 @@ class Encounter(HistoryMixin, models.Model):
                 pass  # New encounter, no validation needed
 
     def save(self, *args, **kwargs):
-        """Override save to auto-set triage fields based on encounter type."""
+        """Override save to auto-set triage and tenant fields."""
+        # --- Tenant auto-resolution ---
+        # If facility is not set, inherit from patient's registered facility.
+        # This prevents orphaned encounters when created outside
+        # TenantScopedViewMixin (e.g. triage check-in, inpatient admission).
+        if not self.facility_id and self.patient_id:
+            try:
+                patient = self.patient
+                if patient.registered_at_facility_id:
+                    self.facility_id = patient.registered_at_facility_id
+            except Exception:
+                pass  # patient not loaded yet (raw FK only)
+
+        # Auto-set organization from facility (mirrors FacilityScopedModel)
+        if self.facility_id and not self.organization_id:
+            try:
+                if self.facility and self.facility.organization_id:
+                    self.organization_id = self.facility.organization_id
+            except Exception:
+                pass
+
         # Auto-set triage_requirement based on encounter_type
         if self.encounter_type:
             expected_requirement = self.ENCOUNTER_TYPE_TRIAGE_MAP.get(
