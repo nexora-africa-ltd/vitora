@@ -574,6 +574,75 @@ export const PaginatedReceiptSchema = z.object({
 });
 
 // =============================================================================
+// FACILITY BILLING CONFIG SCHEMA
+// =============================================================================
+
+export const SHA_ACCREDITATION_STATUSES = ['ACCREDITED', 'PENDING', 'EXPIRED', 'REVOKED', 'NOT_APPLIED'] as const;
+export const SHA_SERVICE_LEVELS = ['BASIC', 'STANDARD', 'COMPREHENSIVE', 'SPECIALIST'] as const;
+
+export const SHAAccreditationStatusSchema = z.enum(SHA_ACCREDITATION_STATUSES);
+export const SHAServiceLevelSchema = z.enum(SHA_SERVICE_LEVELS);
+
+export const FacilityBillingConfigSchema = z.object({
+  id: z.number(),
+  facility: z.number(),
+  facility_name: z.string().optional(),
+  facility_mfl_code: z.string().optional(),
+  // Billing defaults
+  default_payment_type: z.string(),
+  default_due_days: z.number(),
+  auto_finalize_on_checkout: z.boolean(),
+  tax_rate: z.string(),
+  // SHA accreditation
+  sha_accreditation_status: z.string(),
+  sha_accreditation_date: z.string().nullable().optional(),
+  sha_accreditation_expiry: z.string().nullable().optional(),
+  is_sha_accredited: z.boolean(),
+  sha_accreditation_days_remaining: z.number().nullable(),
+  // SHA contract
+  sha_contract_number: z.string(),
+  sha_contract_start: z.string().nullable().optional(),
+  sha_contract_end: z.string().nullable().optional(),
+  sha_service_level: z.string(),
+  sha_max_claim_amount: z.string().nullable().optional(),
+  is_sha_contract_active: z.boolean(),
+  sha_contract_days_remaining: z.number().nullable(),
+  // Fee schedule
+  fee_schedule_name: z.string(),
+  fee_schedule_override: z.record(z.unknown()).nullable().optional(),
+  // Collection accounts
+  mpesa_paybill: z.string(),
+  mpesa_account_ref: z.string(),
+  bank_name: z.string(),
+  bank_account_number: z.string(),
+  bank_branch: z.string(),
+  // Timestamps
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const SHAContractSummarySchema = z.object({
+  facility_id: z.number(),
+  facility_name: z.string(),
+  facility_mfl_code: z.string(),
+  sha_accreditation_status: z.string(),
+  sha_accreditation_expiry: z.string().nullable(),
+  sha_contract_number: z.string(),
+  sha_contract_start: z.string().nullable(),
+  sha_contract_end: z.string().nullable(),
+  sha_service_level: z.string(),
+  is_sha_accredited: z.boolean(),
+  is_sha_contract_active: z.boolean(),
+});
+
+export const PaginatedFacilityBillingConfigSchema = z.object({
+  count: z.number(),
+  next: z.string().nullable(),
+  previous: z.string().nullable(),
+  results: z.array(FacilityBillingConfigSchema),
+});
+
+// =============================================================================
 // ARRAY RESPONSES
 // =============================================================================
 
@@ -626,6 +695,10 @@ export type DailyCollectionReport = z.infer<typeof DailyCollectionReportSchema>;
 export type RevenueSummary = z.infer<typeof RevenueSummarySchema>;
 export type PaymentMethodAnalysis = z.infer<typeof PaymentMethodAnalysisSchema>;
 export type DailyClosureReport = z.infer<typeof DailyClosureReportSchema>;
+export type FacilityBillingConfig = z.infer<typeof FacilityBillingConfigSchema>;
+export type SHAContractSummary = z.infer<typeof SHAContractSummarySchema>;
+export type SHAAccreditationStatus = z.infer<typeof SHAAccreditationStatusSchema>;
+export type SHAServiceLevel = z.infer<typeof SHAServiceLevelSchema>;
 
 // Paginated types
 export type PaginatedServiceCategories = z.infer<typeof PaginatedServiceCategorySchema>;
@@ -635,3 +708,4 @@ export type PaginatedPayments = z.infer<typeof PaginatedPaymentSchema>;
 export type PaginatedPaymentPoints = z.infer<typeof PaginatedPaymentPointSchema>;
 export type PaginatedCreditNotes = z.infer<typeof PaginatedCreditNoteSchema>;
 export type PaginatedReceipts = z.infer<typeof PaginatedReceiptSchema>;
+export type PaginatedFacilityBillingConfigs = z.infer<typeof PaginatedFacilityBillingConfigSchema>;

@@ -21,6 +21,8 @@ export type {
   CreditNoteReason,
   CreditNoteStatus,
   DiscountType,
+  SHAAccreditationStatus,
+  SHAServiceLevel,
   // Entity types
   ServiceCategory,
   Service,
@@ -41,6 +43,8 @@ export type {
   RevenueSummary,
   PaymentMethodAnalysis,
   DailyClosureReport,
+  FacilityBillingConfig,
+  SHAContractSummary,
   // Paginated types
   PaginatedServiceCategories,
   PaginatedServices,
@@ -49,6 +53,7 @@ export type {
   PaginatedPaymentPoints,
   PaginatedCreditNotes,
   PaginatedReceipts,
+  PaginatedFacilityBillingConfigs,
 } from '@/lib/schemas/billing.schema';
 
 // =============================================================================
@@ -232,6 +237,7 @@ export interface InvoiceListParams {
   page_size?: number;
   search?: string;
   status?: 'PROFORMA' | 'DRAFT' | 'PENDING' | 'PARTIAL' | 'PAID' | 'CANCELLED' | 'OVERDUE' | 'WRITTEN_OFF';
+  payment_type?: 'CASH' | 'MPESA' | 'INSURANCE' | 'CORPORATE' | 'MIXED';
   patient?: number;
   start_date?: string;
   end_date?: string;
@@ -276,4 +282,40 @@ export interface PaginatedResponse<T> {
   next: string | null;
   previous: string | null;
   results: T[];
+}
+
+// =============================================================================
+// FACILITY BILLING CONFIG INPUT TYPES
+// =============================================================================
+
+export interface FacilityBillingConfigCreateData {
+  facility: number;
+  default_payment_type?: string;
+  default_due_days?: number;
+  auto_finalize_on_checkout?: boolean;
+  tax_rate?: string;
+  sha_accreditation_status?: string;
+  sha_accreditation_date?: string;
+  sha_accreditation_expiry?: string;
+  sha_contract_number?: string;
+  sha_contract_start?: string;
+  sha_contract_end?: string;
+  sha_service_level?: string;
+  sha_max_claim_amount?: string;
+  fee_schedule_name?: string;
+  fee_schedule_override?: Record<string, unknown>;
+  mpesa_paybill?: string;
+  mpesa_account_ref?: string;
+  bank_name?: string;
+  bank_account_number?: string;
+  bank_branch?: string;
+}
+
+export interface FacilityBillingConfigUpdateData extends Partial<Omit<FacilityBillingConfigCreateData, 'facility'>> {}
+
+export interface FacilityBillingConfigListParams {
+  page?: number;
+  page_size?: number;
+  sha_accreditation_status?: string;
+  is_sha_contract_active?: boolean;
 }

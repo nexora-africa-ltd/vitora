@@ -38,6 +38,9 @@ import {
   PaginatedPaymentSchema,
   PaginatedPaymentPointSchema,
   PaginatedCreditNoteSchema,
+  FacilityBillingConfigSchema,
+  SHAContractSummarySchema,
+  PaginatedFacilityBillingConfigSchema,
 } from '@/lib/schemas/billing.schema';
 import type {
   // Service types
@@ -87,6 +90,13 @@ import type {
   OutstandingBalance,
   ServiceUtilization,
   PaymentMethodAnalysis,
+  // Facility billing config
+  FacilityBillingConfig,
+  FacilityBillingConfigCreateData,
+  FacilityBillingConfigUpdateData,
+  FacilityBillingConfigListParams,
+  SHAContractSummary,
+  PaginatedFacilityBillingConfigs,
 } from '@/lib/types/billing';
 
 // ============================================================================
@@ -524,9 +534,11 @@ export interface DailyClosureReport {
   transaction_count: number;
 }
 
-async function getDailyClosureReport(date: string): Promise<DailyClosureReport> {
+async function getDailyClosureReport(date: string, facility?: number): Promise<DailyClosureReport> {
+  const params = new URLSearchParams({ date });
+  if (facility) params.set('facility', String(facility));
   const response = await apiClient.get(
-    `/api/billing/reports/daily-closure/?date=${date}`
+    `/api/billing/reports/daily-closure/?${params.toString()}`
   );
   return parseResponse(DailyClosureReportSchema, response.data, { context: 'billingApi.getDailyClosureReport' });
 }
@@ -561,6 +573,36 @@ export interface UnbilledService {
 async function getUnbilledServices(): Promise<UnbilledService[]> {
   const response = await apiClient.get('/api/billing/reports/unbilled-services/');
   return parseResponse(z.array(UnbilledServiceSchema), response.data, { context: 'billingApi.getUnbilledServices' });
+}
+
+// ============================================================================
+// Facility Billing Config
+// ============================================================================
+
+async function getFacilityBillingConfigs(params?: FacilityBillingConfigListParams): Promise<PaginatedFacilityBillingConfigs> {
+  const qs = params ? `?${buildQueryString(params)}` : '';
+  const response = await apiClient.get(`/api/billing/facility-configs/${qs}`);
+  return parseResponse(PaginatedFacilityBillingConfigSchema, response.data, { context: 'billingApi.getFacilityBillingConfigs' });
+}
+
+async function getFacilityBillingConfig(id: number): Promise<FacilityBillingConfig> {
+  const response = await apiClient.get(`/api/billing/facility-configs/${id}/`);
+  return parseResponse(FacilityBillingConfigSchema, response.data, { context: 'billingApi.getFacilityBillingConfig' });
+}
+
+async function createFacilityBillingConfig(data: FacilityBillingConfigCreateData): Promise<FacilityBillingConfig> {
+  const response = await apiClient.post('/api/billing/facility-configs/', data);
+  return parseResponse(FacilityBillingConfigSchema, response.data, { context: 'billingApi.createFacilityBillingConfig' });
+}
+
+async function updateFacilityBillingConfig(id: number, data: FacilityBillingConfigUpdateData): Promise<FacilityBillingConfig> {
+  const response = await apiClient.patch(`/api/billing/facility-configs/${id}/`, data);
+  return parseResponse(FacilityBillingConfigSchema, response.data, { context: 'billingApi.updateFacilityBillingConfig' });
+}
+
+async function getSHAContractSummaries(): Promise<SHAContractSummary[]> {
+  const response = await apiClient.get('/api/billing/facility-configs/sha-contracts/');
+  return parseResponse(z.array(SHAContractSummarySchema), response.data, { context: 'billingApi.getSHAContractSummaries' });
 }
 
 // ============================================================================
@@ -628,4 +670,11 @@ export const billingApi = {
   getDailyClosureReport,
   getBillingDiscrepancies,
   getUnbilledServices,
+
+  // Facility Billing Config
+  getFacilityBillingConfigs,
+  getFacilityBillingConfig,
+  createFacilityBillingConfig,
+  updateFacilityBillingConfig,
+  getSHAContractSummaries,
 };

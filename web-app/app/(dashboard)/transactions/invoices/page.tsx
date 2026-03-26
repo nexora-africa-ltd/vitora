@@ -22,11 +22,13 @@ export default function TransactionsInvoicesPage() {
 
   const [invoiceSearch, setInvoiceSearch] = useState('');
   const [invoiceStatus, setInvoiceStatus] = useState<InvoiceStatus | undefined>();
+  const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(invoiceSearch, 300);
 
   const { data, isLoading, refetch, isFetching } = useInvoices({
     search: debouncedSearch || undefined,
     status: invoiceStatus,
+    page,
   });
   const finalizeInvoice = useFinalizeInvoice();
   const cancelInvoice = useCancelInvoice();
@@ -70,7 +72,12 @@ export default function TransactionsInvoicesPage() {
   const handleFilter = useCallback((filters: { status?: InvoiceStatus; search?: string }) => {
     setInvoiceSearch(filters.search ?? '');
     setInvoiceStatus(filters.status);
+    setPage(1);
   }, []);
+
+  const pageSize = 20;
+  const totalCount = data?.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   return (
     <PullToRefresh onRefresh={handleRefresh} isRefreshing={isFetching}>
@@ -95,6 +102,10 @@ export default function TransactionsInvoicesPage() {
           onReceivePayment={handleReceivePayment}
           onFinalize={handleFinalize}
           onCancel={handleCancel}
+          page={page}
+          totalPages={totalPages}
+          totalCount={totalCount}
+          onPageChange={setPage}
         />
       </div>
     </PullToRefresh>

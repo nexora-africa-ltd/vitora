@@ -21,6 +21,10 @@ import {
   ExternalLink,
   Copy,
   Check,
+  MessageSquare,
+  ShieldCheck,
+  Ban,
+  RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -96,6 +100,18 @@ export function ClaimStatusBadge({ status, className }: ClaimStatusBadgeProps) {
       icon: <FileText className="h-3 w-3" />,
       className: 'border-gray-400 text-gray-600',
     },
+    validated: {
+      label: 'Validated',
+      variant: 'outline',
+      icon: <ShieldCheck className="h-3 w-3" />,
+      className: 'border-teal-400 text-teal-600',
+    },
+    pending_submission: {
+      label: 'Queued',
+      variant: 'secondary',
+      icon: <Clock className="h-3 w-3" />,
+      className: 'bg-slate-100 text-slate-600 border-slate-300',
+    },
     pending: {
       label: 'Pending',
       variant: 'secondary',
@@ -108,6 +124,18 @@ export function ClaimStatusBadge({ status, className }: ClaimStatusBadgeProps) {
       icon: <Send className="h-3 w-3" />,
       className: 'bg-blue-100 text-blue-700 border-blue-300',
     },
+    acknowledged: {
+      label: 'Acknowledged',
+      variant: 'default',
+      icon: <CheckCircle2 className="h-3 w-3" />,
+      className: 'bg-blue-50 text-blue-600 border-blue-200',
+    },
+    under_review: {
+      label: 'Under Review',
+      variant: 'default',
+      icon: <Loader2 className="h-3 w-3 animate-spin" />,
+      className: 'bg-indigo-100 text-indigo-700 border-indigo-300',
+    },
     processing: {
       label: 'Processing',
       variant: 'default',
@@ -119,6 +147,12 @@ export function ClaimStatusBadge({ status, className }: ClaimStatusBadgeProps) {
       variant: 'default',
       icon: <CheckCircle2 className="h-3 w-3" />,
       className: 'bg-green-100 text-green-700 border-green-300',
+    },
+    query: {
+      label: 'Query Raised',
+      variant: 'secondary',
+      icon: <MessageSquare className="h-3 w-3" />,
+      className: 'bg-amber-100 text-amber-700 border-amber-300',
     },
     rejected: {
       label: 'Rejected',
@@ -137,6 +171,24 @@ export function ClaimStatusBadge({ status, className }: ClaimStatusBadgeProps) {
       variant: 'secondary',
       icon: <AlertCircle className="h-3 w-3" />,
       className: 'bg-orange-100 text-orange-700 border-orange-300',
+    },
+    partial: {
+      label: 'Partial',
+      variant: 'secondary',
+      icon: <AlertCircle className="h-3 w-3" />,
+      className: 'bg-orange-100 text-orange-700 border-orange-300',
+    },
+    appealed: {
+      label: 'Appealed',
+      variant: 'secondary',
+      icon: <RotateCcw className="h-3 w-3" />,
+      className: 'bg-purple-100 text-purple-700 border-purple-300',
+    },
+    written_off: {
+      label: 'Written Off',
+      variant: 'outline',
+      icon: <Ban className="h-3 w-3" />,
+      className: 'border-gray-400 text-gray-500',
     },
   };
 
@@ -325,13 +377,21 @@ export function ClaimStatusCard({
   const getProgressValue = () => {
     const statusProgress: Record<ClaimStatus, number> = {
       draft: 10,
+      validated: 15,
+      pending_submission: 20,
       pending: 25,
       submitted: 50,
+      acknowledged: 55,
+      under_review: 65,
       processing: 75,
+      query: 60,
       approved: 100,
-      rejected: 100,
-      paid: 100,
+      partial: 100,
       partial_approved: 100,
+      rejected: 100,
+      appealed: 40,
+      paid: 100,
+      written_off: 100,
     };
     return statusProgress[claim.status];
   };

@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Search, FileText, Clock, ArrowRightCircle, MoreHorizontal, CreditCard, FileCheck, FileX, Eye } from 'lucide-react';
+import { Search, FileText, Clock, ArrowRightCircle, MoreHorizontal, CreditCard, FileCheck, FileX, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { EmptyState } from '@/components/shared/empty-state';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import type { Invoice, InvoiceStatus } from '@/lib/types/billing';
@@ -43,6 +43,11 @@ interface InvoiceListProps {
   onReceivePayment?: (invoice: Invoice) => void;
   onFinalize?: (invoice: Invoice) => void;
   onCancel?: (invoice: Invoice) => void;
+  // Pagination
+  page?: number;
+  totalPages?: number;
+  totalCount?: number;
+  onPageChange?: (page: number) => void;
 }
 
 // ============================================================================
@@ -108,9 +113,14 @@ export function InvoiceList({
   onReceivePayment,
   onFinalize,
   onCancel,
+  page = 1,
+  totalPages = 1,
+  totalCount,
+  onPageChange,
 }: InvoiceListProps) {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
+  const [paymentTypeFilter, setPaymentTypeFilter] = React.useState<string>('all');
 
   const handleStatusChange = (value: string) => {
     setStatusFilter(value);
@@ -118,6 +128,10 @@ export function InvoiceList({
       status: value === 'all' ? undefined : (value as InvoiceStatus),
       search: searchQuery,
     });
+  };
+
+  const handlePaymentTypeChange = (value: string) => {
+    setPaymentTypeFilter(value);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,6 +142,11 @@ export function InvoiceList({
       search: value,
     });
   };
+
+  // Client-side payment type filter
+  const filteredInvoices = paymentTypeFilter === 'all'
+    ? invoices
+    : invoices.filter((inv) => inv.payment_type?.toLowerCase() === paymentTypeFilter.toLowerCase());
 
   return (
     <div className="space-y-4">
@@ -158,6 +177,19 @@ export function InvoiceList({
             <SelectItem value="CANCELLED">Cancelled</SelectItem>
           </SelectContent>
         </Select>
+
+        <Select value={paymentTypeFilter} onValueChange={handlePaymentTypeChange}>
+          <SelectTrigger className="w-full sm:w-40" aria-label="Payment type">
+            <SelectValue placeholder="Payment type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="cash">Cash</SelectItem>
+            <SelectItem value="mpesa">M-Pesa</SelectItem>
+            <SelectItem value="insurance">Insurance / SHA</SelectItem>
+            <SelectItem value="corporate">Corporate</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Table */}
@@ -170,7 +202,7 @@ export function InvoiceList({
         />
       ) : (
         <ResponsiveTable
-          data={invoices}
+          data={filteredInvoices}
           keyExtractor={(invoice) => invoice.id}
           isLoading={isLoading}
           emptyMessage="No invoices match your filters"
@@ -341,6 +373,35 @@ export function InvoiceList({
             </Card>
           )}
         />
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <p className="text-sm text-muted-foreground">
+            Page {page} of {totalPages}{totalCount != null && ` • ${totalCount} invoices`}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange?.(page - 1)}
+              disabled={page <= 1}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Previous</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange?.(page + 1)}
+              disabled={page >= totalPages}
+            >
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

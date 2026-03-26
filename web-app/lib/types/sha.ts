@@ -340,13 +340,21 @@ export interface DrugSearchParams extends TerminologySearchParams {
 
 export type ClaimStatus =
   | 'draft'
+  | 'validated'
+  | 'pending_submission'
   | 'pending'
   | 'submitted'
+  | 'acknowledged'
+  | 'under_review'
   | 'processing'
+  | 'query'
   | 'approved'
+  | 'partial'
+  | 'partial_approved'
   | 'rejected'
+  | 'appealed'
   | 'paid'
-  | 'partial_approved';
+  | 'written_off';
 
 /**
  * SHA Claim interface - matches backend SHAClaimSerializer.
