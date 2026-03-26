@@ -48,16 +48,86 @@ def assess_discharge_fallback(payload: dict[str, Any]) -> dict[str, Any]:
     # Vitals stability
     vitals_history = payload.get("vitals_history", [])
     vitals_stability = _check_vitals_stability(vitals_history)
-    vitals_stable = vitals_stability in ("stable", "improving")
-    criteria.append({
-        "name": "Vital signs stable",
-        "category": "vitals",
-        "met": vitals_stable,
-        "details": f"Vitals {vitals_stability or 'not assessed'}",
-    })
-    total_count += 1
-    if vitals_stable:
-        met_count += 1
+    if vitals_history:
+        vitals_stable = vitals_stability in ("stable", "improving")
+        criteria.append({
+            "name": "Vital signs stable",
+            "category": "vitals",
+            "met": vitals_stable,
+            "details": f"Vitals {vitals_stability or 'not assessed'}",
+        })
+        total_count += 1
+        if vitals_stable:
+            met_count += 1
+
+    # Lab results — flag elevated inflammatory markers
+    lab_results = payload.get("lab_results", [])
+    if lab_results:
+        for lab in lab_results:
+            test_name = lab.get("test_name", "").lower()
+            value = lab.get("value")
+            unit = lab.get("unit", "")
+            if value is None:
+                continue
+            # WBC
+            if "wbc" in test_name or "white blood" in test_name:
+                normal = 4.0 <= value <= 11.0
+                criteria.append({
+                    "name": "WBC within normal range",
+                    "category": "labs",
+                    "met": normal,
+                    "current_value": f"{value} {unit}",
+                    "target_value": "4.0–11.0 x10^9/L",
+                    "details": "Normal" if normal else f"Elevated at {value} {unit}",
+                })
+                total_count += 1
+                if normal:
+                    met_count += 1
+            # CRP
+            elif "crp" in test_name or "c-reactive" in test_name:
+                normal = value <= 10
+                criteria.append({
+                    "name": "CRP within normal range",
+                    "category": "labs",
+                    "met": normal,
+                    "current_value": f"{value} {unit}",
+                    "target_value": "≤10 mg/L",
+                    "details": "Normal" if normal else f"Elevated at {value} {unit}",
+                })
+                total_count += 1
+                if normal:
+                    met_count += 1
+            # Creatinine
+            elif "creatinine" in test_name:
+                normal = 44 <= value <= 115
+                criteria.append({
+                    "name": "Renal function adequate",
+                    "category": "labs",
+                    "met": normal,
+                    "current_value": f"{value} {unit}",
+                    "target_value": "44–115 µmol/L",
+                    "details": "Normal" if normal else f"Abnormal at {value} {unit}",
+                })
+                total_count += 1
+                if normal:
+                    met_count += 1
+
+    # Medications — check for IV medications (should transition to oral)
+    current_medications = payload.get("current_medications", [])
+    if current_medications:
+        iv_meds = [m for m in current_medications if " IV " in m.upper() or " IV" in m.upper()]
+        no_iv = len(iv_meds) == 0
+        criteria.append({
+            "name": "Transitioned from IV to oral medications",
+            "category": "medication",
+            "met": no_iv,
+            "current_value": f"{len(iv_meds)} IV medication(s)" if iv_meds else "All oral",
+            "target_value": "No IV medications",
+            "details": "All oral" if no_iv else f"Still on IV: {', '.join(iv_meds[:3])}",
+        })
+        total_count += 1
+        if no_iv:
+            met_count += 1
 
     # Functional status
     can_ambulate = payload.get("can_ambulate")
