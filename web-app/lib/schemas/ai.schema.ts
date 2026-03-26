@@ -256,7 +256,7 @@ export const AIDischargeCriterionSchema = z.object({
   criterion: z.string().optional(),
   category: z.string(),
   met: z.boolean(),
-  details: z.string().optional(),
+  details: z.string().nullable().optional(),
   current_value: z.unknown().optional(),
   target_value: z.unknown().optional(),
   notes: z.string().nullable().optional(),
