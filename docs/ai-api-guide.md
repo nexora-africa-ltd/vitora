@@ -606,7 +606,7 @@ X-API-Key: your-api-key
 
 | Type | Description |
 |------|-------------|
-| `discharge_summary` | Full discharge summary with hospital course, medications, follow-up |
+| `discharge_summary` | Full discharge summary with hospital course, significant findings, patient education, medications, follow-up |
 | `soap` | SOAP-format clinical note |
 | `progress_note` | Inpatient progress note |
 | `referral_letter` | Referral letter to another facility/specialist |
@@ -702,6 +702,16 @@ X-API-Key: your-api-key
       "content": "Patient admitted with 5-day history of urethral discharge..."
     },
     {
+      "section_id": "significant_findings",
+      "title": "Significant Findings",
+      "content": "GC culture: positive (2025-06-02). RPR: non-reactive (2025-06-01)."
+    },
+    {
+      "section_id": "patient_education",
+      "title": "Patient Education",
+      "content": "You were treated for a bacterial infection. Take all your antibiotics as prescribed. Watch for: fever, worsening discharge, or pain — seek care immediately if these occur. Ensure your partner(s) are also tested and treated."
+    },
+    {
       "section_id": "discharge_medications",
       "title": "Discharge Medications",
       "content": "1. Doxycycline 100mg BD × 7 days\n2. Continue TDF/3TC/DTG..."
@@ -717,7 +727,7 @@ X-API-Key: your-api-key
       "content": "1. STI clinic review in 7 days\n2. Partner notification counselling..."
     }
   ],
-  "full_text": "## Patient Information\n32-year-old male...\n\n## Hospital Course\n...",
+  "full_text": "## Patient Information\n32-year-old male...\n\n## Hospital Course\n...\n\n## Significant Findings\n...\n\n## Patient Education\n...",
   "suggested_icd10_codes": [
     {"code": "A54.0", "description": "Gonococcal infection of lower genitourinary tract", "confidence": 0.95}
   ],
@@ -1782,25 +1792,46 @@ X-API-Key: your-api-key
   "criteria": [
     {
       "criterion": "Afebrile for 24h",
+      "name": "Afebrile for 24h",
       "category": "vitals",
       "met": true,
       "current_value": "36.6°C",
-      "target_value": "<37.8°C for 24h",
+      "target_value": "< 38.0°C",
+      "notes": null
+    },
+    {
+      "criterion": "crp within safe-for-discharge range",
+      "name": "crp within safe-for-discharge range",
+      "category": "labs",
+      "met": false,
+      "current_value": "15.0 mg/L",
+      "target_value": "0-10 mg/L",
       "notes": null
     },
     {
       "criterion": "CHW referral arranged",
+      "name": "CHW referral arranged",
       "category": "social",
       "met": false,
-      "current_value": "Not arranged",
-      "target_value": "Referral to local CHW",
-      "notes": "Kenya MOH recommends CHW follow-up for pneumonia"
+      "current_value": "not met",
+      "target_value": "required",
+      "notes": "CHW follow-up for medication adherence and home monitoring"
+    },
+    {
+      "criterion": "Heart Rate stability trend",
+      "name": "Heart Rate stability trend",
+      "category": "vitals",
+      "met": true,
+      "current_value": "78.0 bpm (stable)",
+      "target_value": "50-100 bpm",
+      "notes": "Trend over 2 readings: stable"
     }
   ],
-  "unmet_criteria_count": 1,
+  "unmet_criteria_count": 2,
   "readmission_risk": null,
   "readmission_risk_level": null,
   "recommendations": [
+    "crp within safe-for-discharge range — current: 15.0 mg/L, target: 0-10 mg/L",
     "Arrange Community Health Worker referral for post-discharge follow-up"
   ],
   "vitals_stability": "stable"
@@ -1817,6 +1848,23 @@ X-API-Key: your-api-key
 | `readmission_risk_level` | string \| null | `"low"`, `"moderate"`, or `"high"` |
 | `recommendations` | string[] | Actions to address before discharge |
 | `vitals_stability` | string \| null | `"stable"`, `"improving"`, or `"unstable"` |
+
+**DischargeCriterion object:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `criterion` | string | Criterion description (e.g. `"Afebrile for 24h"`) |
+| `name` | string | Alias for `criterion` — always identical value, provided for serializer compatibility |
+| `category` | string | One of: `vitals`, `labs`, `functional`, `medication`, `social`, `follow_up` |
+| `met` | bool | Whether the criterion is satisfied |
+| `current_value` | string | Current observed value (always populated, e.g. `"8.5 K/µL"`, `"met"`) |
+| `target_value` | string | Target safe-for-discharge range (always populated, e.g. `"4-12 K/µL"`, `"required"`) |
+| `notes` | string \| null | Additional clinical context |
+
+**Clinical array evaluation:** Every item in the request arrays is individually assessed:
+- **`lab_results`** — Each lab is evaluated against safe-for-discharge reference ranges (e.g. WBC 4-12, lactate 0-2). Labs without a known range are flagged for clinician review.
+- **`current_medications`** — Each medication is checked for IV route; IV meds are flagged as needing oral transition before discharge.
+- **`vitals_history`** — Each vital sign series is assessed for stability trend (stable/improving/unstable).
 
 **Readiness Levels:**
 - `ready` — All critical criteria met, safe to discharge
