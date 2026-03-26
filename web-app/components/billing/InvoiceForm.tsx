@@ -32,7 +32,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Plus, Trash2, Loader2, FileText, Clock } from 'lucide-react';
 import { format, addDays } from 'date-fns';
-import type { Invoice, InvoiceCreateData, Service, ProformaCreateData } from '@/lib/types/billing';
+import type { Invoice, InvoiceCreateData, InvoicePaymentType, Service, ProformaCreateData } from '@/lib/types/billing';
 import { formatCurrency } from '@/lib/utils/format';
 
 // ============================================================================
@@ -69,12 +69,21 @@ const lineItemSchema = z.object({
   description: z.string().optional(),
 });
 
+const PAYMENT_TYPE_OPTIONS: { value: InvoicePaymentType; label: string }[] = [
+  { value: 'CASH', label: 'Cash' },
+  { value: 'MPESA', label: 'M-Pesa' },
+  { value: 'INSURANCE', label: 'Insurance / SHA' },
+  { value: 'CORPORATE', label: 'Corporate Account' },
+];
+
 const invoiceFormSchema = z.object({
   patient: z.number().min(1, 'Patient is required'),
   encounter: z.number().optional(),
   due_date: z.date({ required_error: 'Due date is required' }),
   notes: z.string().optional(),
   items: z.array(lineItemSchema).min(1, 'At least one item is required'),
+  // Payment type
+  payment_type: z.enum(['CASH', 'MPESA', 'INSURANCE', 'CORPORATE', 'MIXED']).default('CASH'),
   // Proforma-specific fields
   invoice_type: z.enum(['invoice', 'proforma']).default('invoice'),
   valid_until: z.date().optional(),
@@ -108,6 +117,7 @@ export function InvoiceForm({
       encounter: invoice?.encounter || undefined,
       due_date: invoice?.due_date ? new Date(invoice.due_date) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
       notes: invoice?.notes || '',
+      payment_type: (invoice?.payment_type?.toUpperCase() as InvoicePaymentType) || 'CASH',
       invoice_type: invoice?.status === 'PROFORMA' ? 'proforma' : defaultType,
       valid_until: invoice?.valid_until ? new Date(invoice.valid_until) : addDays(new Date(), 30),
       items: invoice?.items?.map((item) => ({
@@ -159,6 +169,7 @@ export function InvoiceForm({
         encounter: values.encounter,
         due_date: format(values.due_date, 'yyyy-MM-dd'),
         notes: values.notes,
+        payment_type: values.payment_type,
       };
       onSubmit(data);
     }
@@ -211,6 +222,49 @@ export function InvoiceForm({
                       <p className="text-sm text-muted-foreground mt-2">
                         Proforma invoices are quotations that can be converted to real invoices later.
                         They have a validity period and cannot receive payments directly.
+                      </p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Payment Type */}
+        {!isProforma && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment Type</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <FormField
+                control={form.control}
+                name="payment_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>How will this invoice be paid? *</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select payment type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PAYMENT_TYPE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {field.value === 'INSURANCE' && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Insurance invoices can be submitted to SHA for reimbursement after finalization.
                       </p>
                     )}
                     <FormMessage />

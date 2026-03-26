@@ -66,8 +66,13 @@ export default function InvoiceDetailPage() {
   const { data: invoice, isLoading, refetch: refetchInvoice } = useInvoice(invoiceId);
   const { data: servicesData } = useServices();
 
-  const { data: claimsData, refetch: refetchClaims } = useClaims({ invoice: invoiceId });
-  const linkedClaim = claimsData?.results?.[0] || null;
+  // Only fetch SHA claims for insurance invoices (avoid unnecessary API calls for cash invoices)
+  const isInsuranceInvoice = invoice?.payment_type === 'insurance' || !!invoice?.sha_claim_number;
+  const { data: claimsData, refetch: refetchClaims } = useClaims(
+    { invoice: invoiceId },
+    { enabled: isInsuranceInvoice }
+  );
+  const linkedClaim = isInsuranceInvoice ? (claimsData?.results?.[0] || null) : null;
 
   // Fetch receipt when we have a payment ID
   const { data: receiptData, isLoading: isReceiptLoading } = usePaymentReceipt(

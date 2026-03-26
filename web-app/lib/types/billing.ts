@@ -88,6 +88,7 @@ export interface InvoiceCreateData {
   encounter?: number;
   due_date: string;
   notes?: string;
+  payment_type?: InvoicePaymentType;
 }
 
 export interface InvoiceUpdateData {
