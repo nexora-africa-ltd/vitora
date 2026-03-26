@@ -373,7 +373,7 @@ class WaitingQueueViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     priority-based TriageQueue.
     """
 
-    tenant_scope = "facility"
+    tenant_scope = "none"
 
     queryset = WaitingQueue.objects.all().select_related("patient", "encounter", "checked_in_by")
     permission_classes = [IsAuthenticated]
@@ -394,8 +394,15 @@ class WaitingQueueViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return WaitingQueueSerializer
 
     def get_queryset(self):
-        """Return waiting patients by default."""
-        queryset = super().get_queryset()
+        """Return waiting patients, scoped to the active facility via encounter."""
+        # Skip TenantScopedViewMixin.get_queryset — WaitingQueue has no direct
+        # facility/organization FK; we scope through encounter__facility instead.
+        queryset = viewsets.ModelViewSet.get_queryset(self)
+
+        # Facility scoping through encounter (WaitingQueue has no direct facility FK)
+        facility = getattr(self.request, "facility", None)
+        if facility:
+            queryset = queryset.filter(encounter__facility=facility)
 
         # By default, show only patients waiting for triage
         show_all = self.request.query_params.get("show_all", "false").lower() == "true"
@@ -408,7 +415,7 @@ class WaitingQueueViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         """Check in a patient (add to waiting queue)."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        instance = serializer.save(**self.get_tenant_save_kwargs())
+        instance = serializer.save()
 
         # Log the check-in
         AuditLog.log(
