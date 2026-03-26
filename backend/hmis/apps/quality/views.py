@@ -69,7 +69,11 @@ class QuarterlyReportViewSet(viewsets.ModelViewSet):
     ordering = ["-year", "-quarter"]
 
     def get_queryset(self):
-        return QuarterlyReport.objects.select_related("clinic", "generated_by").all()
+        qs = QuarterlyReport.objects.select_related("clinic", "generated_by").all()
+        facility = getattr(self.request, "facility", None)
+        if facility:
+            qs = qs.filter(clinic__facility=facility)
+        return qs
 
     @extend_schema(
         summary="Generate quarterly report for a clinic",
@@ -163,7 +167,11 @@ class AnnualReportViewSet(viewsets.ModelViewSet):
     ordering = ["-year"]
 
     def get_queryset(self):
-        return AnnualReport.objects.select_related("clinic", "generated_by").all()
+        qs = AnnualReport.objects.select_related("clinic", "generated_by").all()
+        facility = getattr(self.request, "facility", None)
+        if facility:
+            qs = qs.filter(clinic__facility=facility)
+        return qs
 
     @extend_schema(
         summary="Generate annual report for a clinic",

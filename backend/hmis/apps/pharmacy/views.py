@@ -172,7 +172,7 @@ class DrugViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class StockBatchViewSet(viewsets.ModelViewSet):
+class StockBatchViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for StockBatch model.
 
@@ -210,7 +210,7 @@ class StockBatchViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class StockAlertViewSet(viewsets.ModelViewSet):
+class StockAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for StockAlert model.
 
@@ -342,7 +342,7 @@ class PrescriptionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class DispensingViewSet(viewsets.ModelViewSet):
+class DispensingViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for Dispensing model.
 

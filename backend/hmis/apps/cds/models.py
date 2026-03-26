@@ -301,6 +301,24 @@ class CDSAlert(models.Model):
         help_text="CDS rule that generated this alert",
     )
 
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="cds_alerts",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="cds_alerts",
+        null=True,
+        blank=True,
+        help_text="Facility where alert was generated.",
+    )
+
     # Context
     patient = models.ForeignKey(
         "patients.Patient",

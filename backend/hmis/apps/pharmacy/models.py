@@ -255,6 +255,24 @@ class StockBatch(models.Model):
 
     drug = models.ForeignKey(Drug, on_delete=models.PROTECT, related_name="batches")
 
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="stock_batches",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="stock_batches",
+        null=True,
+        blank=True,
+        help_text="Facility holding this stock.",
+    )
+
     # Batch identification
     batch_number = models.CharField(max_length=50)
     barcode = models.CharField(max_length=100, blank=True)
@@ -397,6 +415,24 @@ class StockAlert(models.Model):
 
     drug = models.ForeignKey(Drug, on_delete=models.CASCADE, related_name="alerts")
     batch = models.ForeignKey(StockBatch, on_delete=models.CASCADE, null=True, blank=True)
+
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="stock_alerts",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="stock_alerts",
+        null=True,
+        blank=True,
+        help_text="Facility where alert was raised.",
+    )
 
     alert_type = models.CharField(max_length=20, choices=ALERT_TYPES)
     severity = models.CharField(max_length=10, choices=ALERT_SEVERITY)
@@ -774,6 +810,24 @@ class PrescriptionItem(models.Model):
 
 class Dispensing(models.Model):
     """Drug dispensing record."""
+
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="dispensings",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="dispensings",
+        null=True,
+        blank=True,
+        help_text="Facility where dispensing occurred.",
+    )
 
     prescription_item = models.ForeignKey(
         PrescriptionItem,

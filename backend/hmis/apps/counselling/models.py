@@ -279,6 +279,24 @@ class CounsellingReferral(HistoryMixin, models.Model):
     # Identity - format: COUNS-YYYYMMDD-XXXX
     referral_number = models.CharField(max_length=30, unique=True, editable=False)
 
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="counselling_referrals",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="counselling_referrals",
+        null=True,
+        blank=True,
+        help_text="Facility where referral was created.",
+    )
+
     # Relationships
     patient = models.ForeignKey(
         "patients.Patient",
@@ -429,6 +447,9 @@ class CounsellingReferral(HistoryMixin, models.Model):
 
     def save(self, *args, **kwargs):
         """Override save to generate referral number and handle sensitive flags."""
+        from hmis.apps.core.mixins import resolve_tenant_from_related
+        resolve_tenant_from_related(self)
+
         # Generate referral number only on creation
         if not self.pk:
             if not self.referral_number:

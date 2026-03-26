@@ -225,6 +225,56 @@ class FacilityScopedModel(OrganizationScopedModel):
         super().save(*args, **kwargs)
 
 
+def resolve_tenant_from_related(instance, encounter_field="encounter", patient_field="patient"):
+    """
+    Auto-resolve facility/organization on a model instance from related objects.
+
+    Call this from any model's save() that has facility/organization FK fields.
+    Looks up the chain: encounter → patient.registered_at_facility → facility.organization.
+
+    Args:
+        instance: Model instance with facility_id / organization_id attrs.
+        encounter_field: Name of the FK to Encounter (or None to skip).
+        patient_field: Name of the FK to Patient (or None to skip).
+    """
+    if instance.facility_id:
+        # Already set — just ensure organization is populated
+        if not instance.organization_id:
+            try:
+                fac = instance.facility
+                if fac and fac.organization_id:
+                    instance.organization_id = fac.organization_id
+            except Exception:
+                pass
+        return
+
+    # Try encounter first
+    if encounter_field:
+        enc_fk = f"{encounter_field}_id"
+        if getattr(instance, enc_fk, None):
+            try:
+                enc = getattr(instance, encounter_field)
+                if enc.facility_id:
+                    instance.facility_id = enc.facility_id
+                    instance.organization_id = enc.organization_id
+                    return
+            except Exception:
+                pass
+
+    # Fall back to patient
+    if patient_field:
+        pat_fk = f"{patient_field}_id"
+        if getattr(instance, pat_fk, None):
+            try:
+                pat = getattr(instance, patient_field)
+                if pat.registered_at_facility_id:
+                    instance.facility_id = pat.registered_at_facility_id
+                    instance.organization_id = pat.organization_id
+                    return
+            except Exception:
+                pass
+
+
 class TenantScopedViewMixin:
     """
     ViewSet mixin that scopes querysets and auto-sets tenant FKs on create.
