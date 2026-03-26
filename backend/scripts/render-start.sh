@@ -20,7 +20,7 @@ else
   python manage.py seed_kepi_schedule
   echo "from hmis.apps.encounters.models import Encounter; Encounter.objects.filter(status__in=['DRAFT','COMPLETED']).update(status='CREATED')" | python manage.py shell
   python manage.py seed_facilities
-  python manage.py seed_demo_data --force
+  python manage.py seed_demo_data
   python manage.py seed_imaging_catalog
   python manage.py seed_pharmacy_stock
   python manage.py seed_notifiable_diseases
@@ -36,7 +36,7 @@ else
   python manage.py seed_allied_health_demo
   python manage.py seed_inpatient_demo
   python manage.py init_pki_ca
-  python manage.py backfill_org_facility
+  # python manage.py backfill_org_facility
 fi
 
 echo "==> Starting Daphne..."

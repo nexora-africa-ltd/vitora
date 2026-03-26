@@ -16,7 +16,14 @@ from .base import *  # noqa: F401, F403
 # =============================================================================
 DEBUG = False  # Production-like behavior
 
-ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "").split(",") if host.strip()]
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv(
+        "ALLOWED_HOSTS",
+        ".azurecontainerapps.io,.vercel.app,localhost",
+    ).split(",")
+    if host.strip()
+]
 
 # =============================================================================
 # Database - Can use SQLite for demos or PostgreSQL for Render
@@ -24,7 +31,7 @@ ALLOWED_HOSTS = [host.strip() for host in os.getenv("ALLOWED_HOSTS", "").split("
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
-    # PostgreSQL on Render
+    # PostgreSQL (Neon / Vercel Postgres / Render)
     DATABASES = {
         "default": dj_database_url.config(
             default=DATABASE_URL,
@@ -68,10 +75,11 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "CORS_ALLOWED_ORIGINS",
-        "https://vitora-staging.onrender.com,https://vitora-hmis-staging.onrender.com,http://localhost:3009",
+        "https://vitora.vercel.app,http://localhost:3009,https://staging.vitora.digital",
     ).split(",")
     if origin.strip()
 ]
+CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     "accept",
     "accept-encoding",
@@ -90,7 +98,7 @@ CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "CSRF_TRUSTED_ORIGINS",
-        "https://vitora-staging.onrender.com,https://vitora-hmis-staging.onrender.com",
+        "https://vitora.vercel.app,https://staging.vitora.digital",
     ).split(",")
     if origin.strip()
 ]
