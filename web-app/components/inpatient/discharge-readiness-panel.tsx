@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils/cn';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
+import { CircularProgress } from '@/components/ui/circular-progress';
 import { HelpPopover } from '@/components/shared/help-popover';
 import { useFacility } from '@/lib/context/facility-context';
 import { useAIDischargeAssess, useAIEnabled, useStoredDischargeResults, aiKeys } from '@/lib/hooks/use-ai';
@@ -310,33 +310,35 @@ export function DischargeReadinessPanel({
         {hasResult && readinessConfig && (
           <div className="space-y-3">
             {/* Readiness Score Banner */}
-            <div className={cn('rounded-lg p-3 border', readinessConfig.bgColor, readinessConfig.borderColor)}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
+            <div className={cn('rounded-lg p-4 border', readinessConfig.bgColor, readinessConfig.borderColor)}>
+              <div className="flex flex-col items-center gap-2 text-center">
+                <CircularProgress
+                  value={displayResult.readiness_score * 100}
+                  size={80}
+                  strokeWidth={6}
+                  indicatorClassName={cn(
+                    displayResult.readiness_level === 'ready'
+                      ? 'stroke-green-500 dark:stroke-green-400'
+                      : displayResult.readiness_level === 'near_ready'
+                        ? 'stroke-yellow-500 dark:stroke-yellow-400'
+                        : 'stroke-red-500 dark:stroke-red-400'
+                  )}
+                >
+                  <span className={cn('text-lg font-bold', readinessConfig.color)}>
+                    {Math.round(displayResult.readiness_score * 100)}%
+                  </span>
+                </CircularProgress>
+                <div>
                   <p className={cn('font-semibold', readinessConfig.color)}>
                     {readinessConfig.label}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Score: {Math.round(displayResult.readiness_score * 100)}%
-                    {displayResult.unmet_criteria_count > 0 && (
-                      <> &bull; {displayResult.unmet_criteria_count} unmet criteria</>
-                    )}
+                    {displayResult.unmet_criteria_count > 0
+                      ? `${displayResult.unmet_criteria_count} unmet criteria remaining`
+                      : 'All criteria met'}
                   </p>
                 </div>
-                <Badge
-                  className={cn(
-                    'shrink-0',
-                    displayResult.readiness_level === 'ready'
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300'
-                      : displayResult.readiness_level === 'near_ready'
-                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300'
-                        : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300'
-                  )}
-                >
-                  {Math.round(displayResult.readiness_score * 100)}%
-                </Badge>
               </div>
-              <Progress value={displayResult.readiness_score * 100} className="mt-2 h-2" />
             </div>
 
             {/* Vitals Stability */}
