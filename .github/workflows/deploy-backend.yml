@@ -65,5 +65,4 @@ jobs:
             CSRF_TRUSTED_ORIGINS=${{ vars.CSRF_TRUSTED_ORIGINS }}
             DEMO_MODE=true
             CELERY_TASK_ALWAYS_EAGER=true
-            SKIP_FULL_SEED=true
             PORT=8000

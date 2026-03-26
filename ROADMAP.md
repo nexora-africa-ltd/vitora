@@ -126,13 +126,13 @@ This roadmap outlines the complete development journey for Vitora HMIS from Janu
 ### Demo User Credentials
 | Role | Username | Password |
 |------|----------|----------|
-| System Administrator | `demo_admin` | `DemoAdmin2026!` |
-| Receptionist | `demo_receptionist` | `DemoReception2026!` |
-| Nurse (Triage) | `demo_nurse` | `DemoNurse2026!` |
-| Doctor | `demo_doctor` | `DemoDoctor2026!` |
-| Pharmacist | `demo_pharmacist` | `DemoPharmacy2026!` |
-| Lab Technician | `demo_labtech` | `DemoLab2026!` |
-| Billing Clerk | `demo_billing` | `DemoBilling2026!` |
+| System Administrator | `demo_admin` | `DemoAdmin2026?!` |
+| Receptionist | `demo_receptionist` | `DemoReception2026?!` |
+| Nurse (Triage) | `demo_nurse` | `DemoNurse2026?!` |
+| Doctor | `demo_doctor` | `DemoDoctor2026?!` |
+| Pharmacist | `demo_pharmacist` | `DemoPharmacy2026?!` |
+| Lab Technician | `demo_labtech` | `DemoLab2026?!` |
+| Billing Clerk | `demo_billing` | `DemoBilling2026?!` |
 
 ### Staging Configuration Files
 | File | Purpose |

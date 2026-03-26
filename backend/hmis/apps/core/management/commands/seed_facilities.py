@@ -53,7 +53,7 @@ class Command(BaseCommand):
                 "level": "4",
                 "ownership": "PUBLIC",
                 "county_name": "Machakos",
-                "sub_county_name": "Machakos",
+                "sub_county_name": "Mavoko",
                 "sha_contracted": True,
             },
             {
