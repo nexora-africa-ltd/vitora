@@ -876,7 +876,7 @@ export interface AIClinicalDocumentResponse {
   sections: ClinicalDocSection[];
   full_text: string;
   suggested_icd10_codes?: ClinicalDocICD10Suggestion[] | null;
-  safety_alerts?: string[] | null;
+  safety_alerts?: (string | Record<string, unknown>)[] | null;
   has_safety_concerns?: boolean;
   citations?: ClinicalDocCitation[];
   fhir_resource?: Record<string, unknown> | null;

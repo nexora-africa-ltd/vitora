@@ -397,7 +397,7 @@ export const AIClinicalDocumentResponseSchema = z.object({
   sections: z.array(ClinicalDocSectionSchema),
   full_text: z.string(),
   suggested_icd10_codes: z.array(ClinicalDocICD10SuggestionSchema).nullable().optional(),
-  safety_alerts: z.array(z.string()).nullable().optional(),
+  safety_alerts: z.array(z.union([z.string(), z.object({}).passthrough()])).nullable().optional(),
   has_safety_concerns: z.boolean().optional(),
   citations: z.array(ClinicalDocCitationSchema).optional(),
   fhir_resource: z.record(z.unknown()).nullable().optional(),
