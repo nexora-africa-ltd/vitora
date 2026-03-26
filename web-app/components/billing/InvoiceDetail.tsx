@@ -343,8 +343,9 @@ export function InvoiceDetail({
         </Card>
       </div>
 
-      {/* SHA Claim Status Card - Show for finalized invoices */}
-      {['PENDING', 'PARTIAL', 'PAID', 'OVERDUE'].includes(invoice.status) && (
+      {/* SHA Claim Status Card - Show only for insurance/SHA invoices */}
+      {['PENDING', 'PARTIAL', 'PAID', 'OVERDUE'].includes(invoice.status) &&
+        (invoice.payment_type === 'insurance' || invoice.sha_claim_number) && (
         <Card className="border-blue-200 dark:border-blue-800">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">

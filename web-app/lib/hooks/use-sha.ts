@@ -107,10 +107,11 @@ export function useCheckEligibility() {
 /**
  * Get list of claims
  */
-export function useClaims(params?: ClaimListParams) {
+export function useClaims(params?: ClaimListParams, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: shaQueryKeys.claimsList(params),
     queryFn: () => shaApi.getClaims(params),
+    enabled: options?.enabled,
   });
 }
 

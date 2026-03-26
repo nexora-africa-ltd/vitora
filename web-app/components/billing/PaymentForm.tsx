@@ -113,10 +113,7 @@ export function PaymentForm({
   onMpesaPayment,
 }: PaymentFormProps) {
   const isInsuranceOrSHAInvoice = Boolean(
-    (invoice as any).sha_claim_number ||
-      (invoice as any).payment_type === 'insurance' ||
-      ((invoice as any).insurance_provider && String((invoice as any).insurance_provider).trim()) ||
-      (invoice as any).insurance_amount
+    (invoice as any).payment_type === 'insurance'
   );
 
   const computedBalance = parseFloat(invoice.total_amount) - parseFloat(invoice.amount_paid || '0');
