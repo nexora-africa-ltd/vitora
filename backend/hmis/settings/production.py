@@ -79,6 +79,7 @@ CORS_ALLOW_HEADERS = [
     "x-csrftoken",
     "x-requested-with",
     "x-idempotency-key",  # Sprint 1.7: Idempotent API operations
+    "x-facility-id",  # Multi-facility: facility context header
 ]
 
 # CSRF trusted origins (required for Django 4.0+)
