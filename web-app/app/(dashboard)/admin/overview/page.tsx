@@ -6,8 +6,10 @@ import {
   AlertTriangle,
   ArrowRight,
   ArrowUpRight,
+  Building,
   Building2,
   FolderTree,
+  Hospital,
   Network,
   ScrollText,
   ShieldUser,
@@ -30,6 +32,9 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { useDepartmentOrgChart, useRoles } from '@/lib/hooks/use-rbac';
+import { organizationsApi } from '@/lib/api/organizations';
+import { useQuery } from '@tanstack/react-query';
+import type { OrganizationListItem } from '@/lib/types/organization';
 
 const AdminOrgChart = dynamic(
   () => import('@/components/admin/admin-org-chart').then((mod) => mod.AdminOrgChart),
@@ -45,6 +50,12 @@ const AdminOrgChart = dynamic(
 );
 
 const QUICK_LINKS = [
+  {
+    title: 'Organizations',
+    description: 'Manage healthcare organizations, subscription tiers, and facility assignments.',
+    href: '/admin/organizations',
+    icon: Building,
+  },
   {
     title: 'Departments',
     description: 'Shape reporting lines, parent-child structure, and departmental ownership.',
@@ -86,9 +97,25 @@ export default function AdminOverviewPage() {
     refetch: refetchOrgChart,
   } = useDepartmentOrgChart({ include_inactive: true });
 
+  const {
+    data: orgsData,
+    isLoading: orgsLoading,
+    error: orgsError,
+    refetch: refetchOrgs,
+  } = useQuery({
+    queryKey: ['organizations', { page_size: 200 }],
+    queryFn: () => organizationsApi.list({ page_size: 200 }),
+  });
+
   const departments = orgChartData?.departments ?? [];
   const roles = rolesData?.results ?? [];
   const staff = orgChartData?.staff ?? [];
+  const organizations = (orgsData?.results ?? []) as OrganizationListItem[];
+
+  const totalOrgs = organizations.length;
+  const activeOrgs = organizations.filter((o: OrganizationListItem) => o.is_active).length;
+  const totalFacilities = organizations.reduce((sum: number, o: OrganizationListItem) => sum + o.facility_count, 0);
+  const totalOrgStaff = organizations.reduce((sum: number, o: OrganizationListItem) => sum + o.staff_count, 0);
 
   const activeDepartments = departments.filter((department) => department.is_active).length;
   const assignedHeads = departments.filter((department) => department.head !== null).length;
@@ -113,8 +140,8 @@ export default function AdminOverviewPage() {
   const licensedRoleShare = roles.length > 0 ? Math.round((licensedRoles / roles.length) * 100) : 0;
   const headAssignmentRate = departments.length > 0 ? Math.round((assignedHeads / departments.length) * 100) : 0;
 
-  const isLoading = orgChartLoading || rolesLoading;
-  const hasError = orgChartError || rolesError;
+  const isLoading = orgChartLoading || rolesLoading || orgsLoading;
+  const hasError = orgChartError || rolesError || orgsError;
 
   const attentionItems = [
     {
@@ -149,7 +176,7 @@ export default function AdminOverviewPage() {
 
   const handleRefresh = async () => {
     await refresh();
-    await Promise.all([refetchOrgChart(), refetchRoles()]);
+    await Promise.all([refetchOrgChart(), refetchRoles(), refetchOrgs()]);
   };
 
   return (
@@ -347,6 +374,46 @@ export default function AdminOverviewPage() {
           />
         </div>
 
+        {/* Organization & Facility Stats */}
+        <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">
+          <AdminStatCard
+            eyebrow="Multitenancy"
+            title="Organizations"
+            value={isLoading ? '...' : totalOrgs}
+            description={`${activeOrgs} active organizations registered in the platform.`}
+            icon={<Building className="h-4 w-4 text-muted-foreground" />}
+            tone="primary"
+            meta={`${activeOrgs} active`}
+          />
+          <AdminStatCard
+            eyebrow="Infrastructure"
+            title="Facilities"
+            value={isLoading ? '...' : totalFacilities}
+            description="Healthcare facilities across all registered organizations."
+            icon={<Hospital className="h-4 w-4 text-muted-foreground" />}
+            tone="default"
+            meta="All orgs"
+          />
+          <AdminStatCard
+            eyebrow="Capacity"
+            title="Org Staff"
+            value={isLoading ? '...' : totalOrgStaff}
+            description="Staff members assigned across all organizations."
+            icon={<Users className="h-4 w-4 text-muted-foreground" />}
+            tone="default"
+            meta="All orgs"
+          />
+          <AdminStatCard
+            eyebrow="Coverage"
+            title="Avg Facilities/Org"
+            value={isLoading ? '...' : activeOrgs > 0 ? Math.round(totalFacilities / activeOrgs) : 0}
+            description="Average number of facilities per active organization."
+            icon={<Network className="h-4 w-4 text-muted-foreground" />}
+            tone="default"
+            meta="Mean"
+          />
+        </div>
+
         <div className="grid gap-4 2xl:grid-cols-[minmax(0,1.3fr)_minmax(300px,0.7fr)]">
           <Card variant="accent" className="overflow-hidden border-border/70">
             <CardHeader className="pb-4">
@@ -361,7 +428,7 @@ export default function AdminOverviewPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <AdminOrgChart departments={departments} staff={staff} />
+              <AdminOrgChart departments={departments} staff={staff} organizations={organizations} />
             </CardContent>
           </Card>
 
