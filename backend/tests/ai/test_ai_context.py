@@ -223,7 +223,7 @@ class TestClinicalChatEndpoint:
     @override_settings(TIBABOT_ENABLED=True)
     def test_forbids_unauthorized_roles(self, api_client, test_user):
         """Should reject authenticated users whose role is not allowed to use AI chat."""
-        test_user.role = "NURSE"
+        test_user.role = "RECORDS"
         api_client.force_authenticate(user=test_user)
 
         response = api_client.post(
@@ -360,7 +360,7 @@ class TestClinicalAssistEndpoint:
     @override_settings(TIBABOT_ENABLED=True)
     def test_forbids_unauthorized_roles(self, api_client, test_user):
         """Should reject authenticated users whose role is not allowed to use AI assist."""
-        test_user.role = "NURSE"
+        test_user.role = "RECORDS"
         api_client.force_authenticate(user=test_user)
 
         response = api_client.post(
@@ -891,7 +891,7 @@ class TestAIFeedbackEndpoint:
     @override_settings(TIBABOT_ENABLED=True)
     def test_forbids_unauthorized_roles(self, api_client, test_user):
         """Should reject authenticated users whose role is not allowed to use AI chat."""
-        test_user.role = "NURSE"
+        test_user.role = "RECORDS"
         api_client.force_authenticate(user=test_user)
 
         response = api_client.post(
