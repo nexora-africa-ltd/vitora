@@ -112,18 +112,27 @@ class WaitingQueueCreateSerializer(serializers.ModelSerializer):
         patient = Patient.objects.get(pk=patient_id)
         request = self.context.get("request")
 
+        # Resolve facility/organization from request context (TenantMiddleware)
+        facility = getattr(request, "facility", None) if request else None
+        organization = getattr(request, "organization", None) if request else None
+
         # Use existing encounter if provided, otherwise create if requested
         encounter = None
         if encounter_id:
             encounter = Encounter.objects.get(pk=encounter_id)
         elif create_encounter:
-            encounter = Encounter.objects.create(
-                patient=patient,
-                encounter_type="OPD",  # Default to OPD
-                encounter_date=timezone.now().date(),
-                chief_complaint=validated_data.get("reason_for_visit", "Check-in"),
-                status="CREATED",
-            )
+            encounter_kwargs = {
+                "patient": patient,
+                "encounter_type": "OPD",
+                "encounter_date": timezone.now().date(),
+                "chief_complaint": validated_data.get("reason_for_visit", "Check-in"),
+                "status": "CREATED",
+            }
+            if facility:
+                encounter_kwargs["facility"] = facility
+            if organization:
+                encounter_kwargs["organization"] = organization
+            encounter = Encounter.objects.create(**encounter_kwargs)
 
         # Create waiting queue entry
         waiting_entry = WaitingQueue.objects.create(
