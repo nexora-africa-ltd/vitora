@@ -15,6 +15,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 
 from .models import (
@@ -141,12 +142,14 @@ class NotifiableDiseaseViewSet(viewsets.ModelViewSet):
         )
 
 
-class NotifiableCaseViewSet(viewsets.ModelViewSet):
+class NotifiableCaseViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     API endpoint for NotifiableCase management.
 
     Provides CRUD operations for disease cases and notification workflow.
     """
+
+    tenant_scope = "facility"
 
     queryset = NotifiableCase.objects.select_related(
         "disease", "patient", "encounter", "county", "sub_county", "reported_by", "notified_by"
@@ -262,12 +265,14 @@ class NotifiableCaseViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class SurveillanceAlertViewSet(viewsets.ModelViewSet):
+class SurveillanceAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     API endpoint for SurveillanceAlert management.
 
     Provides listing and acknowledgment of surveillance alerts.
     """
+
+    tenant_scope = "facility"
 
     queryset = SurveillanceAlert.objects.select_related(
         "case", "case__disease", "case__patient", "case__county", "acknowledged_by"
@@ -591,7 +596,7 @@ class IDSRWeeklyReportFilter(filters.FilterSet):
         fields = ["epi_year", "epi_week", "status", "county", "outbreak", "start_date", "end_date"]
 
 
-class IDSRWeeklyReportViewSet(viewsets.ModelViewSet):
+class IDSRWeeklyReportViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     API endpoint for IDSR Weekly Reports.
 
@@ -603,6 +608,10 @@ class IDSRWeeklyReportViewSet(viewsets.ModelViewSet):
     - submit_to_dhis2: Submit approved report to DHIS2
     - dashboard: Get IDSR summary statistics
     """
+
+    # IDSRWeeklyReport uses 'facility_ref' not 'facility' for the FK
+    tenant_scope = "facility"
+    tenant_facility_field = "facility_ref"
 
     queryset = None  # Set in get_queryset
     serializer_class = None  # Set dynamically
@@ -959,7 +968,7 @@ class IHRNotificationFilter(filters.FilterSet):
         ]
 
 
-class IHRNotificationViewSet(viewsets.ModelViewSet):
+class IHRNotificationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     API endpoint for IHR Notification management.
 

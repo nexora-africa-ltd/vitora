@@ -288,7 +288,11 @@ class Clinic(TimeStampedModel):
         session, _ = ClinicSession.objects.get_or_create(
             clinic=self,
             session_date=today,
-            defaults={"status": "OPEN"},
+            defaults={
+                "status": "OPEN",
+                "facility": self.facility,
+                "organization": self.organization,
+            },
         )
         return session
 
@@ -297,7 +301,11 @@ class Clinic(TimeStampedModel):
         session, created = ClinicSession.objects.get_or_create(
             clinic=self,
             session_date=session_date,
-            defaults={"status": "SCHEDULED"},
+            defaults={
+                "status": "SCHEDULED",
+                "facility": self.facility,
+                "organization": self.organization,
+            },
         )
         return session, created
 
@@ -532,6 +540,25 @@ class ClinicSession(TimeStampedModel):
     def __str__(self):
         """Return string representation."""
         return f"{self.clinic.name} - {self.session_date}"
+
+    def save(self, *args, **kwargs):
+        """Auto-resolve tenant from parent clinic."""
+        if not self.facility_id and self.clinic_id:
+            try:
+                clinic = self.clinic
+                if clinic.facility_id:
+                    self.facility_id = clinic.facility_id
+                if clinic.organization_id:
+                    self.organization_id = clinic.organization_id
+            except Exception:
+                pass
+        if self.facility_id and not self.organization_id:
+            try:
+                if self.facility and self.facility.organization_id:
+                    self.organization_id = self.facility.organization_id
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
 
     def open_session(self, user):
         """Open the clinic session."""

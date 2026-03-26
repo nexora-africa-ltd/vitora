@@ -244,6 +244,7 @@ class TenantScopedViewMixin:
     """
 
     tenant_scope: str = "facility"  # "organization" or "facility"
+    tenant_facility_field: str = "facility"  # FK field name on the model
 
     def _resolve_tenant_context(self):
         """
@@ -300,7 +301,7 @@ class TenantScopedViewMixin:
         facility = getattr(request, "facility", None)
 
         if self.tenant_scope == "facility" and facility:
-            qs = qs.filter(facility=facility)
+            qs = qs.filter(**{self.tenant_facility_field: facility})
         elif org:
             qs = qs.filter(organization=org)
 
@@ -326,7 +327,7 @@ class TenantScopedViewMixin:
         if org:
             extra["organization"] = org
         if self.tenant_scope == "facility" and facility:
-            extra["facility"] = facility
+            extra[self.tenant_facility_field] = facility
         return extra
 
     def perform_create(self, serializer):
