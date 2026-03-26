@@ -36,6 +36,7 @@ else
   python manage.py seed_allied_health_demo
   python manage.py seed_inpatient_demo
   python manage.py init_pki_ca
+  python manage.py backfill_org_facility
 fi
 
 echo "==> Starting Daphne..."
