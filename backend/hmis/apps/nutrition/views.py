@@ -13,6 +13,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.nutrition.models import DietPlan, NutritionConsultation
 from hmis.apps.nutrition.serializers import (
@@ -62,7 +63,7 @@ class NutritionConsultationFilter(django_filters.FilterSet):
         ]
 
 
-class NutritionConsultationViewSet(viewsets.ModelViewSet):
+class NutritionConsultationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing nutrition consultations.
 

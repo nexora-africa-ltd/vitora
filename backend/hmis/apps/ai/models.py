@@ -34,6 +34,25 @@ class ChatSession(models.Model):
         on_delete=models.CASCADE,
         related_name="ai_chat_sessions",
     )
+
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="ai_chat_sessions",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="ai_chat_sessions",
+        null=True,
+        blank=True,
+        help_text="Facility context for this chat session.",
+    )
+
     title = models.CharField(
         max_length=255,
         default="New Chat",
@@ -110,6 +129,25 @@ class AIResultBase(models.Model):
         null=True,
         related_name="%(class)s_results",
     )
+
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="%(class)s_results_org",
+        null=True,
+        blank=True,
+        help_text="Owning organization.",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="%(class)s_results_fac",
+        null=True,
+        blank=True,
+        help_text="Facility context.",
+    )
+
     request_data = models.JSONField(
         help_text="Input payload sent to TibaBot (sanitized).",
     )

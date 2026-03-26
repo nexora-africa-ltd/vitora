@@ -13,6 +13,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.occupational_therapy.models import (
     OccupationalTherapyOrder,
@@ -104,7 +105,7 @@ class OccupationalTherapyOrderFilter(django_filters.FilterSet):
         ]
 
 
-class OccupationalTherapyOrderViewSet(viewsets.ModelViewSet):
+class OccupationalTherapyOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing occupational therapy orders.
 

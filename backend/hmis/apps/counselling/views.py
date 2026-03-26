@@ -15,6 +15,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.counselling.models import (
     CounsellingReferral,
@@ -111,7 +112,7 @@ class CounsellingReferralFilter(django_filters.FilterSet):
         ]
 
 
-class CounsellingReferralViewSet(viewsets.ModelViewSet):
+class CounsellingReferralViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing counselling referrals.
 

@@ -18,6 +18,7 @@ from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.encounters.models import Encounter
 
@@ -222,7 +223,7 @@ class CDSRuleViewSet(viewsets.ModelViewSet):
 # ──────────────────────────── Alert ViewSet ────────────────────────────
 
 
-class CDSAlertViewSet(viewsets.ModelViewSet):
+class CDSAlertViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     Manage CDS alerts.
 

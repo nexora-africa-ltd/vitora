@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from hmis.apps.clinics.models import Clinic, ClinicSession, ClinicVisit
+from hmis.apps.core.mixins import TenantScopedViewMixin
 from hmis.apps.core.models import AuditLog
 from hmis.apps.core.permissions import get_client_ip
 from hmis.apps.mch.models import (
@@ -228,7 +229,7 @@ class HEIFollowUpFilter(django_filters.FilterSet):
 # =============================================================================
 
 
-class MCHRegistrationViewSet(viewsets.ModelViewSet):
+class MCHRegistrationViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """ViewSet for MCH registrations."""
 
     queryset = MCHRegistration.objects.select_related(

@@ -139,6 +139,24 @@ class MCHRegistration(HistoryMixin, TimeStampedModel):
         help_text="Auto-generated MCH registration number (MCH-YYYYMMDD-XXXX)",
     )
 
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="mch_registrations",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="mch_registrations",
+        null=True,
+        blank=True,
+        help_text="Facility where registration was created.",
+    )
+
     # Mother
     mother = models.ForeignKey(
         "patients.Patient",
@@ -245,6 +263,9 @@ class MCHRegistration(HistoryMixin, TimeStampedModel):
 
     def save(self, *args, **kwargs):
         """Override save for auto-sensitivity and MCH number generation."""
+        from hmis.apps.core.mixins import resolve_tenant_from_related
+        resolve_tenant_from_related(self, encounter_field=None, patient_field="mother")
+
         if not self.mch_number:
             self.mch_number = generate_mch_number()
 

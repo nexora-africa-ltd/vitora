@@ -206,6 +206,24 @@ class PhysiotherapyOrder(HistoryMixin, models.Model):
     # Identity - format: PHYSIO-YYYYMMDD-XXXX
     order_number = models.CharField(max_length=30, unique=True, editable=False)
 
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="physiotherapy_orders",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="physiotherapy_orders",
+        null=True,
+        blank=True,
+        help_text="Facility where order was created.",
+    )
+
     # Relationships
     patient = models.ForeignKey(
         "patients.Patient",
@@ -346,6 +364,9 @@ class PhysiotherapyOrder(HistoryMixin, models.Model):
 
     def save(self, *args, **kwargs):
         """Override save to auto-generate order number and calculate costs."""
+        from hmis.apps.core.mixins import resolve_tenant_from_related
+        resolve_tenant_from_related(self)
+
         if not self.pk:
             # New instance - generate order number
             if not self.order_number:

@@ -178,6 +178,24 @@ class NutritionConsultation(HistoryMixin, models.Model):
         help_text="Auto-generated consultation number",
     )
 
+    # Tenant scoping
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="nutrition_consultations",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="nutrition_consultations",
+        null=True,
+        blank=True,
+        help_text="Facility where consultation occurred.",
+    )
+
     # Patient & Encounter
     patient = models.ForeignKey(
         "patients.Patient",
@@ -522,6 +540,9 @@ class NutritionConsultation(HistoryMixin, models.Model):
         return f"{self.consultation_number} - {self.patient}"
 
     def save(self, *args, **kwargs):
+        from hmis.apps.core.mixins import resolve_tenant_from_related
+        resolve_tenant_from_related(self)
+
         # Generate consultation number on creation
         if not self.consultation_number:
             self.consultation_number = generate_nutrition_consultation_number()
