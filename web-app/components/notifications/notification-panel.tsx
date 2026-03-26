@@ -27,6 +27,8 @@ import {
   Pill,
   Activity,
   Info,
+  CreditCard,
+  Shield,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -66,6 +68,15 @@ function getNotificationIconComponent(type: string) {
       return AlertTriangle;
     case 'critical_vital':
       return Activity;
+    case 'billing':
+    case 'invoice_overdue':
+    case 'payment_received':
+      return CreditCard;
+    case 'sha_claim':
+    case 'sha_claim_approved':
+    case 'sha_claim_rejected':
+    case 'sha_claim_paid':
+      return Shield;
     default:
       return Info;
   }
@@ -78,6 +89,16 @@ function getNotificationIconColor(type: string): string {
       return 'text-blue-500';
     case 'appointment':
       return 'text-green-500';
+    case 'billing':
+    case 'invoice_overdue':
+    case 'payment_received':
+      return 'text-emerald-500';
+    case 'sha_claim':
+    case 'sha_claim_approved':
+    case 'sha_claim_paid':
+      return 'text-blue-600';
+    case 'sha_claim_rejected':
+      return 'text-red-500';
     case 'prescription':
       return 'text-purple-500';
     case 'low_stock':
@@ -201,30 +222,30 @@ function ExpandedNotificationItem({
       <div
         className={cn(
           'w-10 h-10 rounded-lg flex items-center justify-center shrink-0',
-          notification.is_read ? 'bg-white/10' : getPriorityColor(notification.priority)
+          notification.is_read ? 'bg-background/10' : getPriorityColor(notification.priority)
         )}
       >
-        <Icon className={cn('h-5 w-5', notification.is_read ? 'text-white/70' : 'text-white')} />
+        <Icon className={cn('h-5 w-5', notification.is_read ? 'text-muted-foreground/70' : 'text-muted-foreground')} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className={cn('font-medium text-white truncate', !notification.is_read && 'font-semibold')}>
+            <p className={cn('font-medium text-muted-foreground truncate', !notification.is_read && 'font-semibold')}>
               {notification.title}
             </p>
-            <p className="text-sm text-white/70 line-clamp-2">{notification.message}</p>
+            <p className="text-sm text-muted-foreground/70 line-clamp-2">{notification.message}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {!notification.is_read && <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />}
             <Badge
               variant="outline"
-              className="bg-white/10 border-white/20 text-white/80 text-[10px]"
+              className="bg-background/10 border-background/20 text-muted-foreground/80 text-[10px]"
             >
               {notification.priority}
             </Badge>
           </div>
         </div>
-        <p className="text-xs text-white/50 mt-2">
+        <p className="text-xs text-muted-foreground/50 mt-2">
           {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
         </p>
       </div>
@@ -279,7 +300,7 @@ export function NotificationPanel() {
     const { collapse } = useExpandableScreen();
 
     return (
-      <div className="h-full w-full overflow-hidden rounded-3xl bg-gradient-to-br from-[#020817] to-[#021122] via-primary/90 shadow-2xl">
+      <div className="h-full w-full overflow-hidden rounded-3xl bg-background shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-cyan-300">
           <div className="flex items-center gap-4">
@@ -298,7 +319,7 @@ export function NotificationPanel() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-accent/80 hover:text-accent hover:bg-secondary/10"
+                className="text-foreground hover:text-accent hover:bg-secondary/10"
                 onClick={handleMarkAllRead}
                 disabled={markAllReadMutation.isPending}
               >
@@ -313,7 +334,7 @@ export function NotificationPanel() {
             <Button
               variant="ghost"
               size="icon"
-              className="text-white/80 hover:text-white hover:bg-white/10 rounded-full"
+              className="text-foreground hover:text-primary hover:bg-white/10 rounded-full"
               onClick={() => {
                 collapse();
                 setIsExpanded(false);
@@ -331,16 +352,16 @@ export function NotificationPanel() {
             {notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center mb-4">
-                  <Bell className="h-12 w-12 text-white/50" />
+                  <Bell className="h-12 w-12 text-muted-foreground/50" />
                 </div>
-                <p className="text-xl font-medium text-white">No notifications</p>
-                <p className="text-white/60 mt-1">Check back later for updates</p>
+                <p className="text-xl font-medium text-muted-foreground">No notifications</p>
+                <p className="text-muted-foreground/60 mt-1">Check back later for updates</p>
               </div>
             ) : (
               <>
                 {unreadNotifications.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-cyan-400" />
                       Unread ({unreadNotifications.length})
                     </h3>
@@ -363,7 +384,7 @@ export function NotificationPanel() {
 
                 {readNotifications.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                       Earlier
                     </h3>
                     <div className="space-y-2">

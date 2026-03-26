@@ -38,6 +38,9 @@ import type {
   PaginatedServices,
   PaginatedServiceCategories,
   PaginatedCreditNotes,
+  FacilityBillingConfigCreateData,
+  FacilityBillingConfigUpdateData,
+  FacilityBillingConfigListParams,
 } from '@/lib/types/billing';
 
 // ============================================================================
@@ -93,6 +96,12 @@ export const billingKeys = {
   // M-Pesa
   mpesa: () => [...billingKeys.all, 'mpesa'] as const,
   mpesaQuery: (checkoutRequestId: string) => [...billingKeys.mpesa(), 'query', checkoutRequestId] as const,
+
+  // Facility Billing Config
+  facilityConfigs: () => [...billingKeys.all, 'facility-configs'] as const,
+  facilityConfigsList: (params?: FacilityBillingConfigListParams) => [...billingKeys.facilityConfigs(), 'list', params] as const,
+  facilityConfigDetail: (id: number) => [...billingKeys.facilityConfigs(), 'detail', id] as const,
+  shaContracts: () => [...billingKeys.facilityConfigs(), 'sha-contracts'] as const,
 };
 
 // ============================================================================
@@ -570,10 +579,10 @@ export function usePaymentMethodAnalysis(startDate: string, endDate: string) {
 /**
  * Fetch daily closure report
  */
-export function useDailyClosureReport(date: string) {
+export function useDailyClosureReport(date: string, facility?: number) {
   return useQuery({
-    queryKey: [...billingKeys.reports(), 'daily-closure', date] as const,
-    queryFn: () => billingApi.getDailyClosureReport(date),
+    queryKey: [...billingKeys.reports(), 'daily-closure', date, facility] as const,
+    queryFn: () => billingApi.getDailyClosureReport(date, facility),
     enabled: !!date,
   });
 }
@@ -595,5 +604,67 @@ export function useUnbilledServices() {
   return useQuery({
     queryKey: [...billingKeys.reports(), 'unbilled-services'] as const,
     queryFn: () => billingApi.getUnbilledServices(),
+  });
+}
+
+// ============================================================================
+// Facility Billing Config Hooks
+// ============================================================================
+
+/**
+ * Fetch facility billing configurations
+ */
+export function useFacilityBillingConfigs(params?: FacilityBillingConfigListParams) {
+  return useQuery({
+    queryKey: billingKeys.facilityConfigsList(params),
+    queryFn: () => billingApi.getFacilityBillingConfigs(params),
+  });
+}
+
+/**
+ * Fetch a single facility billing config
+ */
+export function useFacilityBillingConfig(id: number | undefined) {
+  return useQuery({
+    queryKey: billingKeys.facilityConfigDetail(id!),
+    queryFn: () => billingApi.getFacilityBillingConfig(id!),
+    enabled: !!id,
+  });
+}
+
+/**
+ * Create facility billing config
+ */
+export function useCreateFacilityBillingConfig() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: FacilityBillingConfigCreateData) => billingApi.createFacilityBillingConfig(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.facilityConfigs() });
+    },
+  });
+}
+
+/**
+ * Update facility billing config
+ */
+export function useUpdateFacilityBillingConfig() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: FacilityBillingConfigUpdateData }) =>
+      billingApi.updateFacilityBillingConfig(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.facilityConfigs() });
+    },
+  });
+}
+
+/**
+ * Fetch SHA contract summaries across all facilities
+ */
+export function useSHAContractSummaries() {
+  return useQuery({
+    queryKey: billingKeys.shaContracts(),
+    queryFn: () => billingApi.getSHAContractSummaries(),
   });
 }

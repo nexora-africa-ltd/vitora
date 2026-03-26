@@ -40,13 +40,21 @@ export const CoverageTypeSchema = z.enum(['sha', 'pfms', 'both']);
 
 export const ClaimStatusSchema = z.enum([
   'draft',
+  'validated',
+  'pending_submission',
   'pending',
   'submitted',
+  'acknowledged',
+  'under_review',
   'processing',
+  'query',
   'approved',
-  'rejected',
-  'paid',
+  'partial',
   'partial_approved',
+  'rejected',
+  'appealed',
+  'paid',
+  'written_off',
 ]);
 
 export const ClaimItemStatusSchema = z.enum(['pending', 'approved', 'rejected', 'adjusted']);
