@@ -389,7 +389,7 @@ All tool configurations in \`pyproject.toml\`:
 ### Key Environment Variables
 \`\`\`bash
 # Django
-SECRET_KEY=your-secret-key
+DJANGO_SECRET_KEY=your-secret-key
 DEBUG=true
 ALLOWED_HOSTS=localhost,127.0.0.1
 
@@ -403,10 +403,91 @@ ENCRYPTION_KEY=your-32-byte-fernet-key
 # Celery
 CELERY_BROKER_URL=redis://localhost:6379/0
 
-# SHA (optional)
-SHA_BASE_URL=https://api.sha.go.ke
-SHA_CLIENT_ID=your-client-id
+# SHA (Social Health Authority)
+SHA_ENABLED=true
+SHA_API_BASE_URL=https://uat.dha.go.ke
+SHA_USERNAME=your-sha-username
+SHA_PASSWORD=your-sha-password
+SHA_CONSUMER_KEY=your-consumer-key
 SHA_CLIENT_SECRET=your-client-secret
+SHA_ENCRYPTED_PIN=your-encrypted-pin
+SHA_AGENT=your-agent-code
+SHA_FHIR_BASE_URL=https://qa-mis.apeiro-digital.com
+SHA_API_TIMEOUT=30
+
+# M-Pesa (Sandbox)
+MPESA_ENVIRONMENT=sandbox
+MPESA_CONSUMER_KEY=your-consumer-key
+MPESA_CONSUMER_SECRET=your-consumer-secret
+MPESA_SHORTCODE=174379
+MPESA_PASSKEY=your-passkey
+MPESA_CALLBACK_URL=https://your-domain/api/billing/mpesa/callback/
+
+# AfricasTalking SMS
+AT_API_KEY=your-api-key
+AT_USERNAME=sandbox
+
+# TibaBot AI
+TIBABOT_ENABLED=true
+TIBABOT_API_KEY=your-api-key
+TIBABOT_API_URL=https://tibabot.vitora.nexora.africa
+
+# KMS
+KMS_PROVIDER=local
+
+# DHIS2 (optional)
+DHIS2_API_URL=http://localhost:8082
+DHIS2_USERNAME=admin
+DHIS2_PASSWORD=your-password
+DHIS2_ORG_UNIT=your-org-unit
+\`\`\`
+
+---
+
+## 🌐 Staging Deployment
+
+The backend is deployed to **Azure Container Apps (ACA)** with a Neon PostgreSQL database.
+
+| Resource | URL |
+|----------|-----|
+| API | \`https://vitora-api.agreeabledune-6cc420cc.eastus.azurecontainerapps.io\` |
+| Frontend | \`https://staging.vitora.digital\` / \`https://vitora-navy.vercel.app\` |
+
+### How It Works
+1. Push to \`main\` triggers \`.github/workflows/deploy-backend.yml\`
+2. Docker image is built and pushed to Azure Container Registry
+3. ACA deploys the new image with all env vars (secrets stored as ACA secrets)
+4. \`entrypoint.sh\` runs migrations then starts Daphne (ASGI)
+
+### ACA Secrets (sensitive values)
+These are stored as ACA secrets and referenced via \`secretref:\`:
+\`\`\`
+database-url, encryption-key, django-secret-key,
+sha-username, sha-password, sha-consumer-key, sha-client-secret, sha-encrypted-pin,
+at-api-key, tibabot-api-key,
+mpesa-consumer-key, mpesa-consumer-secret, mpesa-passkey
+\`\`\`
+
+### ACA Environment Variables (non-sensitive)
+\`\`\`
+DJANGO_SETTINGS_MODULE, ALLOWED_HOSTS, CORS_ALLOWED_ORIGINS, CSRF_TRUSTED_ORIGINS,
+DEMO_MODE, CELERY_TASK_ALWAYS_EAGER, PORT, SHA_ENABLED, SHA_API_BASE_URL,
+SHA_AGENT, SHA_FHIR_BASE_URL, SHA_API_TIMEOUT, AT_USERNAME, KMS_PROVIDER,
+TIBABOT_ENABLED, TIBABOT_API_URL, MPESA_ENVIRONMENT, MPESA_SHORTCODE, MPESA_CALLBACK_URL
+\`\`\`
+
+### GitHub Actions Variables
+Set these in **Settings → Environments → staging → Variables**:
+- \`ALLOWED_HOSTS\` — ACA ingress FQDN
+- \`CORS_ALLOWED_ORIGINS\` — Comma-separated frontend origins
+- \`CSRF_TRUSTED_ORIGINS\` — Comma-separated trusted origins
+- \`MPESA_CALLBACK_URL\` — Public callback URL for M-Pesa
+
+### Seeding Demo Data
+Data persists in Neon PostgreSQL. Only seed once (or after a DB reset):
+\`\`\`bash
+az containerapp exec --name vitora-api --resource-group vitora-rg \
+  --command "bash scripts/seed.sh"
 \`\`\`
 
 ---
