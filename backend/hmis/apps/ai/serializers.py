@@ -1282,12 +1282,18 @@ class DischargeAssessRequestSerializer(serializers.Serializer):
 class DischargeCriterionSerializer(serializers.Serializer):
     """A single discharge criterion evaluation."""
 
-    name = serializers.CharField()
+    # TibaBot returns 'criterion', fallback returns 'name' — accept both
+    name = serializers.CharField(required=False, allow_blank=True)
+    criterion = serializers.CharField(required=False, allow_blank=True)
     category = serializers.CharField(
         help_text="vitals, labs, functional, medication, social, follow_up.",
     )
     met = serializers.BooleanField()
-    details = serializers.CharField(required=False, allow_blank=True)
+    details = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    current_value = serializers.CharField(required=False, allow_null=True)
+    target_value = serializers.CharField(required=False, allow_null=True)
+    notes = serializers.CharField(required=False, allow_null=True)
+    source = serializers.CharField(required=False)
 
 
 class DischargeAssessResponseSerializer(serializers.Serializer):
