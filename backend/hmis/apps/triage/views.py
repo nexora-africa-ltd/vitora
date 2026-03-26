@@ -364,7 +364,7 @@ class TriageAssessmentViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         return Response(visit_serializer.data, status=status.HTTP_201_CREATED)
 
 
-class WaitingQueueViewSet(viewsets.ModelViewSet):
+class WaitingQueueViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     """
     ViewSet for waiting queue (patients awaiting triage).
 
@@ -372,6 +372,8 @@ class WaitingQueueViewSet(viewsets.ModelViewSet):
     and are waiting to be triaged. Once triaged, they move to the
     priority-based TriageQueue.
     """
+
+    tenant_scope = "facility"
 
     queryset = WaitingQueue.objects.all().select_related("patient", "encounter", "checked_in_by")
     permission_classes = [IsAuthenticated]
@@ -406,7 +408,7 @@ class WaitingQueueViewSet(viewsets.ModelViewSet):
         """Check in a patient (add to waiting queue)."""
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        instance = serializer.save()
+        instance = serializer.save(**self.get_tenant_save_kwargs())
 
         # Log the check-in
         AuditLog.log(

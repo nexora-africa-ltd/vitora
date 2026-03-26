@@ -834,12 +834,30 @@ class ClinicVisit(TimeStampedModel):
         return f"{self.patient} - {self.session.clinic.name} #{self.queue_number}"
 
     def save(self, *args, **kwargs):
-        """Override save to auto-assign queue number if not set."""
+        """Override save to auto-assign queue number and tenant fields."""
         if not self.queue_number:
             last_visit = (
                 ClinicVisit.objects.filter(session=self.session).order_by("-queue_number").first()
             )
             self.queue_number = (last_visit.queue_number + 1) if last_visit else 1
+
+        # Auto-resolve tenant from session (Strategy B)
+        if not self.facility_id and self.session_id:
+            try:
+                session = self.session
+                if session.facility_id:
+                    self.facility_id = session.facility_id
+                if session.organization_id:
+                    self.organization_id = session.organization_id
+            except Exception:
+                pass
+        if self.facility_id and not self.organization_id:
+            try:
+                if self.facility and self.facility.organization_id:
+                    self.organization_id = self.facility.organization_id
+            except Exception:
+                pass
+
         super().save(*args, **kwargs)
 
         # Backward compatibility:
