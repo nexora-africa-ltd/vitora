@@ -1002,3 +1002,152 @@ class ReportViewSet(viewsets.ViewSet):
         report = service.unbilled_services()
 
         return Response(report, status=status.HTTP_200_OK)
+
+
+# ============================================================================
+# Facility Billing Config ViewSet
+# ============================================================================
+
+
+class FacilityBillingConfigViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for per-facility billing configuration.
+
+    Provides CRUD for FacilityBillingConfig, plus:
+    - SHA contract tracking across the organization
+    - Facility-scoped daily collection report
+
+    Permissions:
+    - List/retrieve: any authenticated user
+    - Create/update/delete: requires billing admin permissions
+    """
+
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_fields = ["sha_accreditation_status", "default_payment_type"]
+    search_fields = ["facility__name", "facility__mfl_code", "sha_contract_number"]
+
+    def get_queryset(self):
+        from hmis.apps.billing.models import FacilityBillingConfig
+
+        qs = FacilityBillingConfig.objects.select_related("facility").all()
+
+        # Organization-level scoping
+        org = getattr(self.request, "organization", None)
+        if org:
+            qs = qs.filter(facility__organization=org)
+
+        return qs
+
+    def get_serializer_class(self):
+        from hmis.apps.billing.serializers import (
+            FacilityBillingConfigCreateSerializer,
+            FacilityBillingConfigSerializer,
+        )
+
+        if self.action in ("create", "update", "partial_update"):
+            return FacilityBillingConfigCreateSerializer
+        return FacilityBillingConfigSerializer
+
+    @extend_schema(
+        responses={200: OpenApiTypes.OBJECT},
+        parameters=[
+            OpenApiParameter(
+                "status",
+                OpenApiTypes.STR,
+                description="Filter by accreditation status",
+            ),
+        ],
+    )
+    @action(detail=False, methods=["get"], url_path="sha-contracts")
+    def sha_contracts(self, request):
+        """
+        Get SHA contract tracking summary across all facilities.
+
+        GET /api/billing/facility-configs/sha-contracts/
+        GET /api/billing/facility-configs/sha-contracts/?status=accredited
+
+        Returns list of facilities with their SHA accreditation
+        and contract details for organization-level tracking.
+        """
+        from hmis.apps.billing.serializers import SHAContractSummarySerializer
+
+        queryset = self.get_queryset().exclude(
+            sha_accreditation_status="not_applied",
+        )
+
+        # Optional status filter
+        accreditation_status = request.query_params.get("status")
+        if accreditation_status:
+            queryset = queryset.filter(sha_accreditation_status=accreditation_status)
+
+        data = []
+        for config in queryset:
+            data.append(
+                {
+                    "facility_id": config.facility_id,
+                    "facility_name": config.facility.name,
+                    "facility_mfl_code": config.facility.mfl_code,
+                    "sha_accreditation_status": config.sha_accreditation_status,
+                    "sha_accreditation_expiry": config.sha_accreditation_expiry,
+                    "sha_contract_number": config.sha_contract_number,
+                    "sha_contract_start": config.sha_contract_start,
+                    "sha_contract_end": config.sha_contract_end,
+                    "sha_service_level": config.sha_service_level,
+                    "is_sha_accredited": config.is_sha_accredited,
+                    "is_sha_contract_active": config.is_sha_contract_active,
+                    "sha_accreditation_days_remaining": config.sha_accreditation_days_remaining,
+                    "sha_contract_days_remaining": config.sha_contract_days_remaining,
+                }
+            )
+
+        serializer = SHAContractSummarySerializer(data, many=True)
+        return Response(serializer.data)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "date",
+                OpenApiTypes.DATE,
+                description="Report date (YYYY-MM-DD)",
+                required=True,
+            ),
+        ],
+        responses={200: OpenApiTypes.OBJECT},
+    )
+    @action(detail=True, methods=["get"], url_path="daily-collection")
+    def daily_collection(self, request, pk=None):
+        """
+        Facility-scoped daily collection report.
+
+        GET /api/billing/facility-configs/{id}/daily-collection/?date=2026-03-26
+
+        Generates a daily collection report for the specific facility
+        referenced by this billing config.
+        """
+        from hmis.apps.billing.reports import BillingReportService
+
+        config = self.get_object()
+        report_date = request.query_params.get("date")
+        if not report_date:
+            return Response(
+                {"error": "date parameter is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            report_date = date.fromisoformat(report_date)
+        except (ValueError, TypeError):
+            return Response(
+                {"error": "Invalid date format. Use YYYY-MM-DD"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service = BillingReportService(facility=config.facility)
+        report = service.daily_collection_report(report_date)
+
+        # Add facility context to the report
+        report["facility_name"] = config.facility.name
+        report["facility_mfl_code"] = config.facility.mfl_code
+
+        return Response(report)

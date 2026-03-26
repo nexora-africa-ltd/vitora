@@ -530,3 +530,113 @@ class CreditNoteSerializer(serializers.ModelSerializer):
         # Set requested_by from request user
         validated_data["requested_by"] = self.context["request"].user
         return super().create(validated_data)
+
+
+# ============================================================================
+# Facility Billing Config Serializers
+# ============================================================================
+
+
+class FacilityBillingConfigSerializer(serializers.ModelSerializer):
+    """Serializer for FacilityBillingConfig model."""
+
+    facility_name = serializers.CharField(source="facility.name", read_only=True)
+    facility_mfl_code = serializers.CharField(source="facility.mfl_code", read_only=True)
+
+    # Computed properties
+    is_sha_accredited = serializers.BooleanField(read_only=True)
+    is_sha_contract_active = serializers.BooleanField(read_only=True)
+    sha_accreditation_days_remaining = serializers.IntegerField(read_only=True)
+    sha_contract_days_remaining = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        from hmis.apps.billing.models import FacilityBillingConfig
+
+        model = FacilityBillingConfig
+        fields = [
+            "id",
+            "facility",
+            "facility_name",
+            "facility_mfl_code",
+            # Billing defaults
+            "default_payment_type",
+            "default_due_days",
+            "auto_finalize_on_checkout",
+            "tax_rate",
+            # SHA accreditation
+            "sha_accreditation_status",
+            "sha_accreditation_date",
+            "sha_accreditation_expiry",
+            "is_sha_accredited",
+            "sha_accreditation_days_remaining",
+            # SHA contract
+            "sha_contract_number",
+            "sha_contract_start",
+            "sha_contract_end",
+            "sha_service_level",
+            "sha_max_claim_amount",
+            "is_sha_contract_active",
+            "sha_contract_days_remaining",
+            # Fee schedule
+            "fee_schedule_name",
+            "fee_schedule_override",
+            # Collection accounts
+            "mpesa_paybill",
+            "mpesa_account_ref",
+            "bank_name",
+            "bank_account_number",
+            "bank_branch",
+            # Timestamps
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class FacilityBillingConfigCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating FacilityBillingConfig."""
+
+    class Meta:
+        from hmis.apps.billing.models import FacilityBillingConfig
+
+        model = FacilityBillingConfig
+        fields = [
+            "facility",
+            "default_payment_type",
+            "default_due_days",
+            "auto_finalize_on_checkout",
+            "tax_rate",
+            "sha_accreditation_status",
+            "sha_accreditation_date",
+            "sha_accreditation_expiry",
+            "sha_contract_number",
+            "sha_contract_start",
+            "sha_contract_end",
+            "sha_service_level",
+            "sha_max_claim_amount",
+            "fee_schedule_name",
+            "fee_schedule_override",
+            "mpesa_paybill",
+            "mpesa_account_ref",
+            "bank_name",
+            "bank_account_number",
+            "bank_branch",
+        ]
+
+
+class SHAContractSummarySerializer(serializers.Serializer):
+    """Read-only serializer for SHA contract tracking across facilities."""
+
+    facility_id = serializers.IntegerField()
+    facility_name = serializers.CharField()
+    facility_mfl_code = serializers.CharField()
+    sha_accreditation_status = serializers.CharField()
+    sha_accreditation_expiry = serializers.DateField(allow_null=True)
+    sha_contract_number = serializers.CharField()
+    sha_contract_start = serializers.DateField(allow_null=True)
+    sha_contract_end = serializers.DateField(allow_null=True)
+    sha_service_level = serializers.CharField()
+    is_sha_accredited = serializers.BooleanField()
+    is_sha_contract_active = serializers.BooleanField()
+    sha_accreditation_days_remaining = serializers.IntegerField(allow_null=True)
+    sha_contract_days_remaining = serializers.IntegerField(allow_null=True)

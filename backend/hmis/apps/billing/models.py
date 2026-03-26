@@ -2829,3 +2829,231 @@ class SHAEligibilityCheck(models.Model):
                 member.status = SHAMember.MembershipStatus.INACTIVE
 
         member.save()
+
+
+# ============================================================================
+# Facility Billing Configuration
+# ============================================================================
+
+
+class FacilityBillingConfig(models.Model):
+    """
+    Per-facility billing configuration.
+
+    Stores billing-specific settings for each facility, including:
+    - Default payment type for new invoices
+    - SHA accreditation status and contract tracking
+    - Fee schedule overrides
+    - Collection account identifiers
+
+    Each facility has at most one config record (one-to-one).
+
+    Kenya Context:
+    - SHA-contracted facilities need accreditation tracking
+    - Different facilities may have different fee schedules
+    - Multi-facility organizations need isolated collection reporting
+    """
+
+    class SHAAccreditationStatus(models.TextChoices):
+        """SHA accreditation lifecycle statuses."""
+
+        NOT_APPLIED = "not_applied", "Not Applied"
+        PENDING = "pending", "Application Pending"
+        ACCREDITED = "accredited", "Accredited"
+        CONDITIONAL = "conditional", "Conditional Accreditation"
+        SUSPENDED = "suspended", "Suspended"
+        REVOKED = "revoked", "Revoked"
+        EXPIRED = "expired", "Expired"
+
+    id = models.BigAutoField(primary_key=True)
+
+    facility = models.OneToOneField(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="billing_config",
+        help_text="The facility this billing config belongs to.",
+    )
+
+    # ------------------------------------------------------------------
+    # Default Billing Settings
+    # ------------------------------------------------------------------
+
+    default_payment_type = models.CharField(
+        max_length=20,
+        choices=Invoice.PaymentType.choices,
+        default=Invoice.PaymentType.CASH,
+        help_text="Default payment type for new invoices at this facility.",
+    )
+    default_due_days = models.PositiveIntegerField(
+        default=30,
+        help_text="Default number of days until invoice is due.",
+    )
+    auto_finalize_on_checkout = models.BooleanField(
+        default=False,
+        help_text="Automatically finalize draft invoices when patient checks out.",
+    )
+    tax_rate = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Default tax rate (percentage) applied to invoices. 0 = exempt.",
+    )
+
+    # ------------------------------------------------------------------
+    # SHA Accreditation & Contract Tracking
+    # ------------------------------------------------------------------
+
+    sha_accreditation_status = models.CharField(
+        max_length=20,
+        choices=SHAAccreditationStatus.choices,
+        default=SHAAccreditationStatus.NOT_APPLIED,
+        help_text="Current SHA accreditation status for this facility.",
+    )
+    sha_accreditation_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date when SHA accreditation was granted.",
+    )
+    sha_accreditation_expiry = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date when current SHA accreditation expires.",
+    )
+    sha_contract_number = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="SHA contract reference number.",
+    )
+    sha_contract_start = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date when the SHA contract became effective.",
+    )
+    sha_contract_end = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date when the SHA contract expires.",
+    )
+    sha_service_level = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="SHA service level agreement tier (e.g., 'Comprehensive', 'Basic').",
+    )
+    sha_max_claim_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Maximum single claim amount allowed under this contract.",
+    )
+
+    # ------------------------------------------------------------------
+    # Fee Schedule
+    # ------------------------------------------------------------------
+
+    fee_schedule_name = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Name of the fee schedule applied at this facility.",
+    )
+    fee_schedule_override = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Service code → price overrides. Keys are service codes, values are unit prices.",
+    )
+
+    # ------------------------------------------------------------------
+    # Collection Accounts
+    # ------------------------------------------------------------------
+
+    mpesa_paybill = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="M-Pesa paybill number for this facility.",
+    )
+    mpesa_account_ref = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Default M-Pesa account reference / till number.",
+    )
+    bank_name = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Bank name for the facility's collection account.",
+    )
+    bank_account_number = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Bank account number for collections.",
+    )
+    bank_branch = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Bank branch name.",
+    )
+
+    # ------------------------------------------------------------------
+    # Audit
+    # ------------------------------------------------------------------
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Facility Billing Config"
+        verbose_name_plural = "Facility Billing Configs"
+
+    def __str__(self):
+        return f"Billing Config – {self.facility.name}"
+
+    @property
+    def is_sha_accredited(self) -> bool:
+        """Check if the facility currently has active SHA accreditation."""
+        if self.sha_accreditation_status != self.SHAAccreditationStatus.ACCREDITED:
+            return False
+        if self.sha_accreditation_expiry and self.sha_accreditation_expiry < date.today():
+            return False
+        return True
+
+    @property
+    def is_sha_contract_active(self) -> bool:
+        """Check if the facility has an active SHA contract."""
+        if not self.sha_contract_start:
+            return False
+        today = date.today()
+        if self.sha_contract_start > today:
+            return False
+        if self.sha_contract_end and self.sha_contract_end < today:
+            return False
+        return True
+
+    @property
+    def sha_accreditation_days_remaining(self) -> int | None:
+        """Days until SHA accreditation expires, or None if not accredited."""
+        if not self.sha_accreditation_expiry:
+            return None
+        delta = (self.sha_accreditation_expiry - date.today()).days
+        return max(delta, 0)
+
+    @property
+    def sha_contract_days_remaining(self) -> int | None:
+        """Days until SHA contract expires, or None if no contract."""
+        if not self.sha_contract_end:
+            return None
+        delta = (self.sha_contract_end - date.today()).days
+        return max(delta, 0)
+
+    def get_service_price(self, service_code: str) -> Decimal | None:
+        """Get overridden price for a service, or None to use default."""
+        price = self.fee_schedule_override.get(service_code)
+        if price is not None:
+            return Decimal(str(price))
+        return None

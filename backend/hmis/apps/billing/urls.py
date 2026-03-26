@@ -18,6 +18,7 @@ from hmis.apps.billing.sha_views import (
 )
 from hmis.apps.billing.views import (
     CreditNoteViewSet,
+    FacilityBillingConfigViewSet,
     InvoiceViewSet,
     MpesaViewSet,
     PaymentPointViewSet,
@@ -36,6 +37,7 @@ router.register(r"payment-points", PaymentPointViewSet, basename="paymentpoint")
 router.register(r"credit-notes", CreditNoteViewSet, basename="creditnote")
 router.register(r"mpesa", MpesaViewSet, basename="mpesa")
 router.register(r"reports", ReportViewSet, basename="reports")
+router.register(r"facility-configs", FacilityBillingConfigViewSet, basename="facilitybillingconfig")
 
 # SHA-related endpoints
 router.register(r"sha-members", SHAMemberViewSet, basename="sha-member")

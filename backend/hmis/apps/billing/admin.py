@@ -7,6 +7,7 @@ from django.utils.html import format_html
 
 from .models import (
     CreditNote,
+    FacilityBillingConfig,
     Invoice,
     InvoiceItem,
     Payment,
@@ -397,3 +398,104 @@ class CreditNoteAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+
+@admin.register(FacilityBillingConfig)
+class FacilityBillingConfigAdmin(admin.ModelAdmin):
+    """Admin configuration for FacilityBillingConfig model."""
+
+    list_display = [
+        "facility",
+        "default_payment_type",
+        "sha_accreditation_badge",
+        "sha_contract_active_badge",
+        "sha_contract_end",
+    ]
+    list_filter = [
+        "sha_accreditation_status",
+        "default_payment_type",
+    ]
+    search_fields = [
+        "facility__name",
+        "facility__mfl_code",
+        "sha_contract_number",
+    ]
+    raw_id_fields = ["facility"]
+
+    fieldsets = (
+        (
+            "Facility",
+            {"fields": ("facility",)},
+        ),
+        (
+            "Billing Defaults",
+            {
+                "fields": (
+                    "default_payment_type",
+                    "default_due_days",
+                    "auto_finalize_on_checkout",
+                    "tax_rate",
+                ),
+            },
+        ),
+        (
+            "SHA Accreditation",
+            {
+                "fields": (
+                    "sha_accreditation_status",
+                    "sha_accreditation_date",
+                    "sha_accreditation_expiry",
+                ),
+            },
+        ),
+        (
+            "SHA Contract",
+            {
+                "fields": (
+                    "sha_contract_number",
+                    "sha_contract_start",
+                    "sha_contract_end",
+                    "sha_service_level",
+                    "sha_max_claim_amount",
+                ),
+            },
+        ),
+        (
+            "Fee Schedule",
+            {
+                "fields": ("fee_schedule_name", "fee_schedule_override"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Collection Accounts",
+            {
+                "fields": (
+                    "mpesa_paybill",
+                    "mpesa_account_ref",
+                    "bank_name",
+                    "bank_account_number",
+                    "bank_branch",
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    @admin.display(description="SHA Accredited")
+    def sha_accreditation_badge(self, obj):
+        if obj.is_sha_accredited:
+            return format_html('<span style="color: green;">&#10004; Accredited</span>')
+        status_display = obj.get_sha_accreditation_status_display()
+        return format_html('<span style="color: gray;">{}</span>', status_display)
+
+    @admin.display(description="Contract Active")
+    def sha_contract_active_badge(self, obj):
+        if obj.is_sha_contract_active:
+            days = obj.sha_contract_days_remaining
+            if days is not None and days <= 30:
+                return format_html(
+                    '<span style="color: orange;">&#9888; {} days left</span>', days
+                )
+            return format_html('<span style="color: green;">&#10004; Active</span>')
+        return format_html('<span style="color: gray;">&#10008; Inactive</span>')

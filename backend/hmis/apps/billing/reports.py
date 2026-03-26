@@ -357,12 +357,12 @@ class BillingReportService:
             - Breakdown by department
             - Breakdown by payment method
         """
-        # Get all invoices created on this date
-        invoices = Invoice.objects.filter(invoice_date=report_date)
+        # Get all invoices created on this date (facility-scoped)
+        invoices = self._scoped_invoices(invoice_date=report_date)
         total_invoiced = invoices.aggregate(total=Sum("total_amount"))["total"] or Decimal("0")
 
-        # Get payments received on this date
-        payments = Payment.objects.filter(
+        # Get payments received on this date (facility-scoped)
+        payments = self._scoped_payments(
             payment_date__date=report_date, status=Payment.Status.COMPLETED
         )
         total_collected = payments.aggregate(total=Sum("amount"))["total"] or Decimal("0")
