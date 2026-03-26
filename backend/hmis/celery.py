@@ -45,6 +45,9 @@ app.conf.task_routes = {
     "hmis.apps.surveillance.tasks.check_overdue_notifications": {"queue": "monitoring"},
     "hmis.apps.surveillance.tasks.check_outbreak_thresholds": {"queue": "monitoring"},
     "hmis.apps.surveillance.tasks.submit_idsr_to_dhis2": {"queue": "reporting"},
+    # Billing tasks
+    "hmis.apps.billing.tasks.poll_sha_claim_statuses": {"queue": "billing"},
+    "hmis.apps.billing.tasks.submit_pending_sha_claims": {"queue": "billing"},
     # Quality reporting tasks
     "hmis.apps.quality.tasks.generate_quarterly_reports": {"queue": "reporting"},
     "hmis.apps.quality.tasks.generate_annual_reports": {"queue": "reporting"},
@@ -125,6 +128,11 @@ app.conf.beat_schedule = {
     "billing-submit-pending-sha-claims": {
         "task": "hmis.apps.billing.tasks.submit_pending_sha_claims",
         "schedule": crontab(minute=30, hour="*/1"),
+    },
+    # Billing agent: Poll SHA API for claim status updates every 15 minutes
+    "billing-poll-sha-claim-statuses": {
+        "task": "hmis.apps.billing.tasks.poll_sha_claim_statuses",
+        "schedule": crontab(minute="*/15"),
     },
     # Pharmacy: Expire overdue prescriptions daily at 1 AM
     "pharmacy-expire-prescriptions": {

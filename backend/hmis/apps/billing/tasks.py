@@ -32,3 +32,11 @@ def submit_pending_sha_claims():
     from hmis.apps.billing.agent import BillingAgentService
 
     return BillingAgentService.submit_pending_sha_claims()
+
+
+@shared_task(name="hmis.apps.billing.tasks.poll_sha_claim_statuses")
+def poll_sha_claim_statuses():
+    """Poll SHA API for status updates on submitted claims."""
+    from hmis.apps.billing.agent import BillingAgentService
+
+    return BillingAgentService.poll_sha_claim_statuses()

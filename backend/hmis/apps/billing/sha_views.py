@@ -2040,8 +2040,10 @@ class SHAWebhookView(APIView):
         approved_amount: float,
         response_payload: dict,
     ) -> bool:
-        """Update claim status in database."""
+        """Update claim status in database and notify billing staff."""
         from decimal import Decimal
+
+        from hmis.apps.billing.agent import BillingAgentService
 
         # Try to find claim by SHA reference or claim number
         claim = SHAClaim.objects.filter(sha_claim_reference=claim_reference).first()
@@ -2052,20 +2054,20 @@ class SHAWebhookView(APIView):
         if not claim:
             return False
 
-        # Update claim
-        claim.status = new_status
-        claim.disposition = disposition
-        claim.approved_amount = Decimal(str(approved_amount)) if approved_amount else None
-        claim.submission_response = response_payload
-        claim.save(
-            update_fields=[
-                "status",
-                "disposition",
-                "approved_amount",
-                "submission_response",
-                "updated_at",
-            ]
-        )
+        old_status = claim.status
+
+        # Build update using the shared helper
+        api_response = dict(response_payload)
+        if disposition:
+            api_response.setdefault("disposition", disposition)
+        if approved_amount:
+            api_response.setdefault("approved_amount", approved_amount)
+
+        BillingAgentService._apply_status_update(claim, new_status, api_response)
+
+        # Send notification if status actually changed
+        if new_status != old_status:
+            BillingAgentService._notify_claim_status_change(claim, old_status, new_status)
 
         return True
 
