@@ -683,7 +683,35 @@ export default function DischargePage() {
           patientAge={admission.patient_age ?? 0}
           primaryDiagnosis={admission.admitting_diagnosis_text || admission.admitting_diagnosis || ''}
           daysAdmitted={lengthOfStay}
+          vitalsHistory={wardRounds?.results?.map((wr) => {
+            const v = wr.vital_signs;
+            const bpStr = v?.blood_pressure || wr.blood_pressure;
+            const bp = bpStr?.split('/').map(Number);
+            return {
+              timestamp: `${wr.round_date}T${wr.round_time}`,
+              heart_rate: v?.pulse ?? wr.pulse ?? null,
+              systolic_bp: bp?.[0] ?? null,
+              diastolic_bp: bp?.[1] ?? null,
+              temperature: v?.temperature ?? wr.temperature ?? null,
+              respiratory_rate: v?.respiratory_rate ?? wr.respiratory_rate ?? null,
+              oxygen_saturation: v?.spo2 ?? wr.spo2 ?? null,
+            };
+          }).filter((v) =>
+            v.heart_rate != null || v.temperature != null || v.oxygen_saturation != null ||
+            v.systolic_bp != null || v.respiratory_rate != null
+          )}
+          labResults={orders?.lab_orders?.flatMap((lo) =>
+            lo.items
+              .filter((item) => item.has_result && item.result)
+              .map((item) => ({
+                test_name: item.test_name || 'Unknown',
+                value: item.result?.numeric_value ?? 0,
+                unit: item.result?.result_unit || '',
+              }))
+          )}
+          currentMedications={patientCtx.current_medications}
           hasFollowUpArranged={!!followUpDate}
+          hasNhifOrSha={patientContext?.hasSHA ?? null}
         />
       )}
 

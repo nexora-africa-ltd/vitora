@@ -252,11 +252,18 @@ export const AILabInterpretResponseSchema = z.object({
 
 /** Schema for a single discharge criterion */
 export const AIDischargeCriterionSchema = z.object({
-  name: z.string().optional().default('Unnamed criterion'),
+  name: z.string().optional(),
+  criterion: z.string().optional(),
   category: z.string(),
   met: z.boolean(),
   details: z.string().optional(),
-}).passthrough();
+  current_value: z.unknown().optional(),
+  target_value: z.unknown().optional(),
+  notes: z.string().nullable().optional(),
+}).passthrough().transform((data) => ({
+  ...data,
+  name: data.name || data.criterion || 'Unnamed criterion',
+}));
 
 /** Schema for POST /api/ai/discharge/assess/ response */
 export const AIDischargeAssessResponseSchema = z.object({

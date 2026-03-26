@@ -634,10 +634,15 @@ export interface AIDischargeAssessRequest {
 /** A single discharge criterion evaluation */
 export interface AIDischargeCriterion {
   name: string;
+  /** Raw field from TibaBot (aliased to name) */
+  criterion?: string;
   /** vitals, labs, functional, medication, social, follow_up */
   category: string;
   met: boolean;
   details?: string;
+  current_value?: unknown;
+  target_value?: unknown;
+  notes?: string | null;
 }
 
 /** Response from POST /api/ai/discharge/assess/ */
