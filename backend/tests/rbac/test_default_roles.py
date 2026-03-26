@@ -19,7 +19,7 @@ from django.core.management import call_command
 def _get_roles_fixture_path() -> Path:
     # Keep aligned with hmis.apps.core.management.commands.load_default_roles
     return (
-        Path(__file__).resolve().parent.parent
+        Path(__file__).resolve().parent.parent.parent
         / "hmis"
         / "apps"
         / "core"
@@ -131,7 +131,7 @@ class TestDefaultRolesFixture:
 
         call_command("load_default_roles", stdout=StringIO())
 
-        valid_categories = ["CLINICAL", "ADMINISTRATIVE", "TECHNICAL", "MANAGEMENT", "COMMUNITY"]
+        valid_categories = ["CLINICAL", "ADMINISTRATIVE", "TECHNICAL", "MANAGEMENT", "COMMUNITY", "ALLIED_HEALTH"]
 
         for role in Role.objects.all():
             assert role.category in valid_categories

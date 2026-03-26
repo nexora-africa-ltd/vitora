@@ -140,8 +140,15 @@ def notify_urgent_referral(sender, instance, created, **kwargs):
     try:
         from hmis.apps.core.models import Notification
 
+        # Only create notification if there's an assigned worker
+        if not instance.assigned_worker_id:
+            logger.info(
+                f"No assigned worker for SW referral {instance.referral_number}. "
+                f"Skipping notification."
+            )
+            return
+
         # Create notification for social work staff
-        # In a real implementation, this would target specific users/groups
         Notification.objects.create(
             title=f"{'🚨 EMERGENCY' if instance.urgency == 'EMERGENCY' else '⚠️ Urgent'} Social Work Referral",
             message=(

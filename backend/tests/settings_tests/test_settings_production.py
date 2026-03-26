@@ -60,8 +60,11 @@ class TestProductionSettings:
         """Database settings should come from environment."""
         original_name = os.environ.get("DB_NAME")
         original_user = os.environ.get("DB_USER")
+        original_db_url = os.environ.get("DATABASE_URL")
 
         try:
+            # Clear DATABASE_URL so the fallback branch using DB_* vars is used
+            os.environ.pop("DATABASE_URL", None)
             os.environ["DB_NAME"] = "test_db"
             os.environ["DB_USER"] = "test_user"
             os.environ["DB_PASSWORD"] = "test_pass"
@@ -82,7 +85,11 @@ class TestProductionSettings:
 
         finally:
             # Restore
-            for key, val in [("DB_NAME", original_name), ("DB_USER", original_user)]:
+            for key, val in [
+                ("DB_NAME", original_name),
+                ("DB_USER", original_user),
+                ("DATABASE_URL", original_db_url),
+            ]:
                 if val:
                     os.environ[key] = val
                 else:
