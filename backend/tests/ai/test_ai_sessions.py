@@ -279,7 +279,7 @@ class TestClinicalChatSessionListEndpoint:
 
     @override_settings(TIBABOT_ENABLED=True)
     def test_forbids_unauthorized_roles(self, api_client, test_user):
-        test_user.role = "NURSE"
+        test_user.role = "RECORDS"
         api_client.force_authenticate(user=test_user)
 
         response = api_client.get("/api/ai/clinical/chat/sessions/")
@@ -369,7 +369,7 @@ class TestClinicalChatSessionDetailEndpoint:
 
     @override_settings(TIBABOT_ENABLED=True)
     def test_forbids_unauthorized_roles(self, api_client, test_user):
-        test_user.role = "NURSE"
+        test_user.role = "RECORDS"
         api_client.force_authenticate(user=test_user)
         fake_id = str(uuid.uuid4())
 
