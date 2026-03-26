@@ -1475,6 +1475,44 @@ class DischargeAssessView(AIFeatureGatedMixin, APIView):
             client = get_tibabot_client()
             result = client.assess_discharge(data)
             result["mode"] = "tibabot"
+
+            # Supplement shallow TibaBot responses with local criteria
+            # for data categories the LLM ignored
+            from .services.discharge_fallback import assess_discharge_fallback
+
+            tibabot_categories = {
+                c.get("category") for c in result.get("criteria", [])
+            }
+            fallback = assess_discharge_fallback(data)
+            supplemented = []
+            for fc in fallback.get("criteria", []):
+                if fc["category"] not in tibabot_categories:
+                    fc["source"] = "local"
+                    supplemented.append(fc)
+            if supplemented:
+                result["criteria"] = result.get("criteria", []) + supplemented
+                # Recompute unmet count and score
+                all_criteria = result["criteria"]
+                met = sum(1 for c in all_criteria if c.get("met"))
+                total = len(all_criteria)
+                result["unmet_criteria_count"] = total - met
+                result["readiness_score"] = round(met / max(total, 1), 2)
+                if result["readiness_score"] >= 0.8:
+                    result["readiness_level"] = "ready"
+                elif result["readiness_score"] >= 0.5:
+                    result["readiness_level"] = "near_ready"
+                else:
+                    result["readiness_level"] = "not_ready"
+                # Merge recommendations
+                tibabot_recs = set(result.get("recommendations", []))
+                for fc in supplemented:
+                    if not fc["met"]:
+                        rec = f"Address: {fc.get('name', fc.get('criterion', ''))}"
+                        if rec not in tibabot_recs:
+                            result.setdefault("recommendations", []).append(rec)
+                # Use fallback vitals_stability if TibaBot didn't provide one
+                if not result.get("vitals_stability"):
+                    result["vitals_stability"] = fallback.get("vitals_stability")
         except TibaBotUnavailableError:
             logger.warning("TibaBot unavailable for discharge assess — using fallback")
             from .services.discharge_fallback import assess_discharge_fallback
