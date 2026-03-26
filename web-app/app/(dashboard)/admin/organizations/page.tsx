@@ -38,10 +38,10 @@ export default function OrganizationsPage() {
     queryFn: () => organizationsApi.list(search ? { search } : undefined),
   });
 
-  const organizations = data?.results ?? [];
+  const organizations = data?.results ?? [] as OrganizationListItem[];
   const totalOrgs = data?.count ?? 0;
-  const activeOrgs = organizations.filter((o) => o.is_active).length;
-  const totalFacilities = organizations.reduce((sum, o) => sum + o.facility_count, 0);
+  const activeOrgs = organizations.filter((o: OrganizationListItem) => o.is_active).length;
+  const totalFacilities = organizations.reduce((sum: number, o: OrganizationListItem) => sum + o.facility_count, 0);
 
   return (
     <PullToRefresh onRefresh={refresh} isRefreshing={isRefreshing}>

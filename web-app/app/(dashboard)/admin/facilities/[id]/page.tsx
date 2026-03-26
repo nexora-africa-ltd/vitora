@@ -1,14 +1,17 @@
 'use client';
 
 import { useRouter, useParams } from 'next/navigation';
-import { AlertTriangle, MapPin, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
+import { AlertTriangle, MapPin, Pencil, ShieldCheck } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '@/components/shared/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { facilitiesApi } from '@/lib/api/facilities';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 const levelLabels: Record<string, string> = {
   '1': 'Level 1 – Community',
@@ -45,6 +48,7 @@ export default function FacilityDetailPage() {
   const router = useRouter();
   const params = useParams();
   const facilityId = parseInt(params.id as string);
+  const { isSuperuser } = usePermissions();
 
   const { data: facility, isLoading, error } = useQuery({
     queryKey: ['facility', facilityId],
@@ -86,6 +90,16 @@ export default function FacilityDetailPage() {
       <PageHeader
         title={facility.name}
         helpContent="View facility information, modules, and SHA contract status."
+        actions={
+          isSuperuser ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/admin/facilities/${facilityId}/edit`}>
+                <Pencil className="h-4 w-4 mr-1" />
+                Edit
+              </Link>
+            </Button>
+          ) : undefined
+        }
       />
 
       {/* Summary Bar */}

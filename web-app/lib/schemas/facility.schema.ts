@@ -34,8 +34,8 @@ export const FacilityListItemSchema = z.object({
 });
 
 export const FacilityDetailSchema = FacilityListItemSchema.extend({
-  ward: z.number().nullable(),
-  ward_name: z.string().nullable(),
+  ward: z.number().nullable().optional(),
+  ward_name: z.string().nullable().optional(),
   sha_contract_expiry: z.string().nullable(),
   sha_facility_code: z.string(),
   modules: FacilityModulesSchema,
