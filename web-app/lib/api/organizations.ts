@@ -1,10 +1,11 @@
+import { z } from 'zod';
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
   OrganizationDetailSchema,
   PaginatedOrganizationListSchema,
 } from '@/lib/schemas/organization.schema';
-import { PaginatedFacilityListSchema } from '@/lib/schemas/facility.schema';
+import { FacilityListItemSchema } from '@/lib/schemas/facility.schema';
 import type { PaginatedResponse } from '@/lib/types';
 import type { FacilityListItem } from '@/lib/types/facility';
 import type {
@@ -45,6 +46,24 @@ export const organizationsApi = {
     });
   },
 
+  async uploadLogo(id: number, file: File): Promise<OrganizationDetail> {
+    const formData = new FormData();
+    formData.append('logo', file);
+    const response = await apiClient.patch(`/api/organizations/${id}/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return parseResponse(OrganizationDetailSchema, response.data, {
+      context: 'organizationsApi.uploadLogo',
+    });
+  },
+
+  async removeLogo(id: number): Promise<OrganizationDetail> {
+    const response = await apiClient.patch(`/api/organizations/${id}/`, { logo: null });
+    return parseResponse(OrganizationDetailSchema, response.data, {
+      context: 'organizationsApi.removeLogo',
+    });
+  },
+
   async delete(id: number): Promise<void> {
     await apiClient.delete(`/api/organizations/${id}/`);
   },
@@ -52,9 +71,9 @@ export const organizationsApi = {
   async listFacilities(
     orgId: number,
     params?: Record<string, string | number | boolean | undefined>,
-  ): Promise<PaginatedResponse<FacilityListItem>> {
+  ): Promise<FacilityListItem[]> {
     const response = await apiClient.get(`/api/organizations/${orgId}/facilities/`, { params });
-    return parseResponse(PaginatedFacilityListSchema, response.data, {
+    return parseResponse(z.array(FacilityListItemSchema), response.data, {
       context: 'organizationsApi.listFacilities',
     });
   },

@@ -1627,8 +1627,10 @@ class FacilityViewSet(viewsets.ModelViewSet):
 
         return qs
 
-    def perform_create(self, serializer):
-        """Create facility and log the action for audit compliance."""
+    def create(self, request, *args, **kwargs):
+        """Create facility and return the full detail representation."""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         facility = serializer.save()
         AuditLog.log(
             action="facility_created",
@@ -1643,6 +1645,10 @@ class FacilityViewSet(viewsets.ModelViewSet):
                 "level": facility.level,
             },
         )
+        # Re-serialize with FacilityDetailSerializer so the response
+        # includes id, modules, county_name, timestamps, etc.
+        read_serializer = FacilityDetailSerializer(facility)
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED)
 
     def perform_update(self, serializer):
         """Update facility and log the action for audit compliance."""

@@ -4,6 +4,8 @@ URL configuration for Vitora HMIS project.
 The `urlpatterns` list routes URLs to views.
 """
 
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import HttpResponse, JsonResponse
 from django.urls import include, path
@@ -276,3 +278,7 @@ urlpatterns = [
     # FHIR R4 Resource endpoints (for IPS testing)
     path("fhir/", include("hmis.apps.core.fhir.urls", namespace="fhir")),
 ]
+
+# Serve media files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

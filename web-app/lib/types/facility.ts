@@ -22,8 +22,8 @@ export interface FacilityListItem {
 }
 
 export interface FacilityDetail extends FacilityListItem {
-  ward: number | null;
-  ward_name: string | null;
+  ward?: number | null;
+  ward_name?: string | null;
   sha_contract_expiry: string | null;
   sha_facility_code: string;
   modules: FacilityModules;
@@ -49,6 +49,35 @@ export interface FacilityUpdateData {
   mfl_code?: string;
   level?: FacilityLevel;
   ownership?: FacilityOwnership;
+  sha_contracted?: boolean;
+  sha_contract_expiry?: string | null;
+  sha_facility_code?: string;
+  has_outpatient?: boolean;
+  has_inpatient?: boolean;
+  has_emergency?: boolean;
+  has_pharmacy?: boolean;
+  has_laboratory?: boolean;
+  has_imaging?: boolean;
+  has_theatre?: boolean;
+  has_dialysis?: boolean;
+  has_icu?: boolean;
+  has_maternity?: boolean;
+  has_mortuary?: boolean;
+  has_blood_bank?: boolean;
+  is_active?: boolean;
+}
+
+export interface FacilityCreateData {
+  organization?: number;
+  mfl_code: string;
+  name: string;
+  level: FacilityLevel;
+  ownership: FacilityOwnership;
+  is_headquarters?: boolean;
+  branch_code?: string;
+  county: number;
+  sub_county: number;
+  ward?: number | null;
   sha_contracted?: boolean;
   sha_contract_expiry?: string | null;
   sha_facility_code?: string;

@@ -6,7 +6,7 @@ import {
 } from '@/lib/schemas/facility.schema';
 import type { UserFacility } from '@/lib/auth/context';
 import type { PaginatedResponse } from '@/lib/types';
-import type { FacilityDetail, FacilityListItem, FacilityUpdateData } from '@/lib/types/facility';
+import type { FacilityCreateData, FacilityDetail, FacilityListItem, FacilityUpdateData } from '@/lib/types/facility';
 
 export const facilitiesApi = {
   async list(params?: Record<string, string | number | boolean | undefined>): Promise<PaginatedResponse<FacilityListItem>> {
@@ -29,6 +29,13 @@ export const facilitiesApi = {
     const response = await apiClient.patch<FacilityDetail>(`/api/facilities/${id}/`, data);
     return parseResponse(FacilityDetailSchema, response.data, {
       context: 'facilitiesApi.update',
+    });
+  },
+
+  async create(data: FacilityCreateData): Promise<FacilityDetail> {
+    const response = await apiClient.post<FacilityDetail>('/api/facilities/', data);
+    return parseResponse(FacilityDetailSchema, response.data, {
+      context: 'facilitiesApi.create',
     });
   },
 };

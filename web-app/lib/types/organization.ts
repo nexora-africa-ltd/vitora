@@ -19,8 +19,8 @@ export interface OrganizationDetail extends OrganizationListItem {
   county: number | null;
   sub_county: number | null;
   sub_county_name: string | null;
-  max_facilities: number;
-  max_users: number;
+  max_facilities: number | null;
+  max_users: number | null;
   data_retention_years: number;
   settings: Record<string, unknown>;
   created_at: string;
