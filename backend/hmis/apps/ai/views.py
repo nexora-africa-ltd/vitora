@@ -94,8 +94,10 @@ _AI_CHAT_ALLOWED_ROLES = {
     "DOCTOR",
     "CLINICAL_OFFICER",
     "PHARMACIST",
+    "LAB_TECH",
     "LAB_SCIENTIST",
     "ADMIN",
+    "NURSE",
 }
 
 

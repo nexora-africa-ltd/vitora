@@ -30,6 +30,21 @@ import {
   mergeContextWithEnrichment,
 } from '@/lib/utils/ai-context-sufficiency';
 import type { AIChatMessage, AIQuickAction } from '@/lib/types/ai';
+import { getApiErrorMessage } from '@/lib/api/client';
+
+// =============================================================================
+// Error helpers
+// =============================================================================
+
+/** Extract a user-friendly error message from a chat/assist API failure. */
+function formatChatError(error: unknown, fallback: string): string {
+  const msg = getApiErrorMessage(error);
+  // Surface specific backend messages (permission, rate-limit, service errors)
+  if (msg && msg !== 'An error occurred' && msg !== 'An unexpected error occurred') {
+    return `⚠️ ${msg}`;
+  }
+  return fallback;
+}
 
 // =============================================================================
 // Drag Hook — draggable floating button position
@@ -219,11 +234,11 @@ export function AIChatWidget() {
 
         // Update placeholder with actual response
         updateStreamingMessage(assistantMsgId, response.message.content, true, response.model);
-      } catch {
-        // Update placeholder with error message
+      } catch (error) {
+        // Update placeholder with backend error message (permission, rate-limit, etc.)
         updateStreamingMessage(
           assistantMsgId,
-          'Sorry, I couldn\'t process your request. Please try again.',
+          formatChatError(error, 'Sorry, I couldn\'t process your request. Please try again.'),
           true,
         );
       }
@@ -284,10 +299,10 @@ export function AIChatWidget() {
       });
 
       updateStreamingMessage(assistantMsgId, response.response, true);
-    } catch {
+    } catch (error) {
       updateStreamingMessage(
         assistantMsgId,
-        'Sorry, I couldn\'t analyze this patient\'s data. Please try again.',
+        formatChatError(error, 'Sorry, I couldn\'t analyze this patient\'s data. Please try again.'),
         true,
       );
     }
@@ -371,10 +386,10 @@ export function AIChatWidget() {
       });
 
       updateStreamingMessage(assistantMsgId, response.response, true);
-    } catch {
+    } catch (error) {
       updateStreamingMessage(
         assistantMsgId,
-        'Sorry, I couldn\'t process that request. Please try again.',
+        formatChatError(error, 'Sorry, I couldn\'t process that request. Please try again.'),
         true,
       );
     }

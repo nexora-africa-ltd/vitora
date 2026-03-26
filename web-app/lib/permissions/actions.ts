@@ -157,7 +157,11 @@ export const ACTION_PERMISSIONS = {
   'cds.override_alert': ['DOCTOR', 'CLINICAL_OFFICER'],
 
   // === AI Module ===
-  'ai.use_chat': ['DOCTOR', 'CLINICAL_OFFICER', 'PHARMACIST', 'LAB_TECH', 'LAB_SCIENTIST', 'ADMIN'],
+  'ai.use_chat': ['DOCTOR', 'CLINICAL_OFFICER', 'PHARMACIST', 'LAB_TECH', 'LAB_SCIENTIST', 'ADMIN', 'NURSE'],
+  // TODO: Wire ai.view_insights to /ai/insights page — proxies TibaBot stats
+  // (/stats, /clinical/chat/stats, /feedback/stats, /icd10/stats) + aggregates
+  // stored AI results & suggestion audit accept/reject rates. Backend proxy +
+  // aggregation endpoint needed first. See ai-api-guide.md for available endpoints.
   'ai.view_insights': ['DOCTOR', 'CLINICAL_OFFICER', 'ADMIN'],
 
   // === Admin Module ===
