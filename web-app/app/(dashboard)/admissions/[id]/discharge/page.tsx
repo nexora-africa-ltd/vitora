@@ -576,7 +576,7 @@ export default function DischargePage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-4 sm:space-y-6">
+    <div className="container mx-auto py-4 sm:py-6 px-3 sm:px-4 lg:px-8 space-y-4 sm:space-y-6 pb-24 sm:pb-6">
       <PageHeader
         title="Discharge Patient"
         helpContent={`Discharging ${admission.patient_name} from ${admission.ward_name}. Complete the discharge summary, medications, and clearances.`}
@@ -585,9 +585,9 @@ export default function DischargePage() {
       {/* Patient Summary with LOS */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-lg">Admission Summary</CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {patientContext?.hasSHA && (
                 <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">SHA</Badge>
               )}
@@ -601,7 +601,8 @@ export default function DischargePage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-5">
+          {/* Mobile: compact key-value list; sm+: grid */}
+          <div className="hidden sm:grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <p className="text-sm text-muted-foreground">Admission Number</p>
               <p className="font-medium">{admission.admission_number}</p>
@@ -627,6 +628,38 @@ export default function DischargePage() {
                 <Clock className="h-4 w-4" />
                 {lengthOfStay} days
               </p>
+            </div>
+          </div>
+          {/* Mobile compact layout */}
+          <div className="sm:hidden space-y-2 text-sm">
+            <div className="flex justify-between gap-2">
+              <span className="text-muted-foreground shrink-0">Patient</span>
+              <span className="font-medium text-right">{admission.patient_name}</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-muted-foreground shrink-0">Admission #</span>
+              <span className="font-medium text-right break-all">{admission.admission_number}</span>
+            </div>
+            {patientContext?.patient?.mrn && (
+              <div className="flex justify-between gap-2">
+                <span className="text-muted-foreground shrink-0">MRN</span>
+                <span className="font-medium text-right">{patientContext.patient.mrn}</span>
+              </div>
+            )}
+            <div className="flex justify-between gap-2">
+              <span className="text-muted-foreground shrink-0">Ward / Bed</span>
+              <span className="font-medium text-right">{admission.ward_name} - {admission.bed_number}</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-muted-foreground shrink-0">Diagnosis</span>
+              <span className="font-medium text-right">{admission.admitting_diagnosis_text || admission.admitting_diagnosis}</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-muted-foreground shrink-0">Length of Stay</span>
+              <span className="font-medium flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" />
+                {lengthOfStay} days
+              </span>
             </div>
           </div>
           {admission.mch_registration && (
@@ -672,7 +705,7 @@ export default function DischargePage() {
       {/* Discharge Form */}
       <Card>
         <CardHeader>
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <CardTitle className="text-lg">Discharge Summary</CardTitle>
               <CardDescription>
@@ -696,7 +729,7 @@ export default function DischargePage() {
                   facilityMflCode: facility?.mfl_code,
                   facilityLocation: facilityDetail ? `${facilityDetail.sub_county_name}, ${facilityDetail.county_name}` : undefined,
                 })}
-                className="gap-1.5 text-xs shrink-0"
+                className="gap-1.5 text-xs shrink-0 w-full sm:w-auto"
               >
                 <Printer className="h-3.5 w-3.5" />
                 Print
@@ -731,7 +764,7 @@ export default function DischargePage() {
                   <Label>Suggested Diagnoses</Label>
                   <HelpPopover content="Quick-add diagnoses from the admitting diagnosis, encounter record, or TibaBot care plans. Click + to add them to the discharge diagnoses below." />
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2">
                   {suggestedDiagnoses.map((suggestion, idx) => {
                     // Check if already added
                     const alreadyAdded = diagnoses.some((d) => {
@@ -745,7 +778,7 @@ export default function DischargePage() {
                         type="button"
                         disabled={alreadyAdded}
                         onClick={() => handleAddSuggestion(suggestion.entry)}
-                        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors ${
+                        className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm transition-colors max-w-full ${
                           alreadyAdded
                             ? 'border-muted bg-muted/50 text-muted-foreground cursor-not-allowed'
                             : 'border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40'
@@ -757,7 +790,7 @@ export default function DischargePage() {
                           </span>
                         )}
                         {alreadyAdded && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-600" />}
-                        <span className="truncate max-w-[240px]">{suggestion.label}</span>
+                        <span className="truncate min-w-0">{suggestion.label}</span>
                         <Badge variant="secondary" className="text-[10px] shrink-0">
                           {suggestion.source}
                         </Badge>
@@ -777,7 +810,7 @@ export default function DischargePage() {
 
           {/* Summary Sections */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <Label>Summary Sections *</Label>
                 <HelpPopover content="Add, remove, and customize sections. Use 'Generate with TibaBot' per section or 'Generate All' to draft the entire summary at once." />
@@ -805,7 +838,7 @@ export default function DischargePage() {
 
             {/* AI Mode Toggle */}
             {isAIEnabled && (
-              <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border bg-muted/30 px-3 py-2">
                 <div className="flex items-center gap-2">
                   <BrainCircuit className="h-4 w-4 text-purple-500" />
                   <span className="text-sm font-medium">TibaBot Mode</span>
@@ -882,7 +915,7 @@ export default function DischargePage() {
 
           {/* Patient Instructions */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <Label htmlFor="patient-instructions">Patient Instructions *</Label>
               <div className="flex items-center gap-1">
                 {patientInstructions && (
@@ -1033,21 +1066,21 @@ export default function DischargePage() {
       {/* Discharge Medications */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle className="text-lg">Discharge Medications</CardTitle>
               <CardDescription>
                 Medications to be taken at home after discharge
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               {isAIEnabled && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleGenerateMedSuggestions}
                   disabled={generatingMeds || clinicalDocument.isPending}
-                  className="gap-1.5 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400"
+                  className="gap-1.5 text-xs text-purple-600 hover:text-purple-700 dark:text-purple-400 w-full sm:w-auto"
                 >
                   {generatingMeds ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1057,7 +1090,7 @@ export default function DischargePage() {
                   Suggest with TibaBot
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={addMedication}>
+              <Button variant="outline" size="sm" onClick={addMedication} className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Medication
               </Button>
@@ -1087,7 +1120,7 @@ export default function DischargePage() {
               {medications.map((med, index) => (
                 <div key={index} className="p-4 border rounded-lg space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">Medication {index + 1}</span>
+                    <span className="font-medium text-sm sm:text-base">Medication {index + 1}</span>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1097,7 +1130,7 @@ export default function DischargePage() {
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="grid gap-4 md:grid-cols-3">
+                  <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
                     <div className="space-y-2">
                       <Label>Medication Name *</Label>
                       <Input
@@ -1123,7 +1156,7 @@ export default function DischargePage() {
                       />
                     </div>
                   </div>
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label>Duration</Label>
                       <Input
@@ -1149,13 +1182,14 @@ export default function DischargePage() {
       </Card>
 
       {/* Submit Button */}
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={() => router.back()}>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button variant="outline" onClick={() => router.back()} className="w-full sm:w-auto">
           Cancel
         </Button>
         <Button
           onClick={handleSubmit}
           disabled={createDischarge.isPending || cdsEvaluate.isPending || !dischargeSummary || !patientInstructions || !allClearancesComplete || (requiresScheduledFollowUpDate && !followUpDate)}
+          className="w-full sm:w-auto"
         >
           {cdsEvaluate.isPending ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1168,7 +1202,7 @@ export default function DischargePage() {
 
       {/* CDS Safety Check Dialog */}
       <AlertDialog open={showCdsDialog} onOpenChange={setShowCdsDialog}>
-        <AlertDialogContent className="max-w-lg">
+        <AlertDialogContent className="max-w-lg mx-4 sm:mx-auto">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <ShieldAlert className="h-5 w-5 text-amber-500" />
@@ -1204,7 +1238,7 @@ export default function DischargePage() {
               </div>
             ))}
           </div>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:gap-0">
             <AlertDialogCancel>Go Back & Review</AlertDialogCancel>
             <AlertDialogAction
               onClick={executeDischarge}
