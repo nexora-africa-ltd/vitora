@@ -134,8 +134,13 @@ function CriterionItem({ criterion }: { criterion: AIDischargeCriterion }) {
         <p className={cn('text-sm', criterion.met ? 'text-muted-foreground' : 'font-medium')}>
           {criterion.name}
         </p>
-        {criterion.details && (
-          <p className="text-xs text-muted-foreground">{criterion.details}</p>
+        {(criterion.details || criterion.notes) && (
+          <p className="text-xs text-muted-foreground">{criterion.details || criterion.notes}</p>
+        )}
+        {criterion.current_value != null && criterion.target_value != null && (
+          <p className="text-xs text-muted-foreground">
+            Current: {String(criterion.current_value)} · Target: {String(criterion.target_value)}
+          </p>
         )}
       </div>
     </div>
