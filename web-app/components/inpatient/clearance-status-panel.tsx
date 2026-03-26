@@ -36,7 +36,7 @@ function ClearanceRow({
 
   return (
     <div
-      className={`flex items-center justify-between gap-3 p-3 rounded-lg border ${
+      className={`flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border ${
         department.cleared
           ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30'
           : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30'
@@ -50,10 +50,10 @@ function ClearanceRow({
         )}
         <div className="min-w-0">
           <p className="text-sm font-medium">{label}</p>
-          <p className="text-xs text-muted-foreground truncate">{department.reason}</p>
+          <p className="text-xs text-muted-foreground break-words">{department.reason}</p>
         </div>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-2 shrink-0 ml-8 sm:ml-0">
         {department.cleared ? (
           <Badge variant="outline" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-green-300 dark:border-green-700">
             Cleared
@@ -86,10 +86,10 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5" />
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 shrink-0" />
               Department Clearances
             </CardTitle>
             <HelpPopover content="Clearances are checked automatically against each department's live records. Billing checks for outstanding invoices, pharmacy checks for undispensed prescriptions, laboratory checks for pending results, and nursing checks for active care plan entries." />
@@ -112,7 +112,7 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="flex items-center gap-3 p-3 rounded-lg border">
                 <Skeleton className="h-5 w-5 rounded-full" />
@@ -125,7 +125,7 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
           </div>
         ) : (
           <>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
               <ClearanceRow
                 label="Billing"
                 department={clearance?.billing}
