@@ -7,7 +7,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Building2, ArrowRight, Loader2, Search } from 'lucide-react';
+import { Building2, ArrowRight, Loader2, Search, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -29,10 +29,48 @@ import { toast } from '@/lib/hooks/use-toast';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { CheckinSuccessModal, type CheckinSuccessData } from '@/components/patients/checkin-success-modal';
 import type { TriageAssessment } from '@/lib/types/triage';
-import type { ClinicListItem, ClinicVisitSource } from '@/lib/types/clinic';
+import type { ClinicListItem, ClinicVisitSource, ClinicEligibilityRules } from '@/lib/types/clinic';
 import type { Patient } from '@/lib/types/patient';
 import { cn } from '@/lib/utils/cn';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+
+/**
+ * Check if a patient is eligible for a clinic based on its eligibility rules.
+ * Returns an array of reasons the patient is ineligible (empty = eligible).
+ */
+function checkClinicEligibility(
+  rules: ClinicEligibilityRules | null | undefined,
+  patient: { gender?: string; age?: number; date_of_birth?: string } | null | undefined,
+): string[] {
+  if (!rules || !patient) return [];
+
+  const reasons: string[] = [];
+
+  // Gender check
+  if (rules.gender && rules.gender.length > 0 && patient.gender) {
+    if (!rules.gender.includes(patient.gender)) {
+      const genderLabels: Record<string, string> = { M: 'Male', F: 'Female', O: 'Other' };
+      const allowed = rules.gender.map((g) => genderLabels[g] || g).join(', ');
+      reasons.push(`Gender restriction: ${allowed} only`);
+    }
+  }
+
+  // Age check
+  const patientAge = patient.age ?? (patient.date_of_birth
+    ? Math.floor((Date.now() - new Date(patient.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+    : undefined);
+
+  if (patientAge !== undefined) {
+    if (rules.min_age !== undefined && patientAge < rules.min_age) {
+      reasons.push(`Minimum age: ${rules.min_age} years`);
+    }
+    if (rules.max_age !== undefined && patientAge > rules.max_age) {
+      reasons.push(`Maximum age: ${rules.max_age} years`);
+    }
+  }
+
+  return reasons;
+}
 
 export interface DirectRouteToClinicPayload {
   clinic: ClinicListItem;
@@ -43,7 +81,7 @@ interface RouteToClinicDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   assessment?: TriageAssessment | null;
-  patient?: Pick<Patient, 'id' | 'first_name' | 'last_name' | 'mrn'> | null;
+  patient?: Pick<Patient, 'id' | 'first_name' | 'last_name' | 'mrn'> & Partial<Pick<Patient, 'gender' | 'age' | 'date_of_birth'>> | null;
   onSuccess?: () => void;
   onDirectRoute?: (payload: DirectRouteToClinicPayload) => Promise<CheckinSuccessData | null | void>;
 }
@@ -139,6 +177,30 @@ export function RouteToClinicDialog({
 
   const patientMrn = assessment?.encounter_mrn ?? patient?.mrn ?? '';
   const isDirectRoute = !assessment && !!patient;
+
+  // Build patient info for eligibility checking
+  const patientInfo = useMemo(() => {
+    if (assessment) {
+      return {
+        gender: assessment.patient_gender ?? undefined,
+        age: assessment.patient_age ?? undefined,
+      };
+    }
+    if (patient) {
+      return {
+        gender: patient.gender,
+        age: patient.age,
+        date_of_birth: patient.date_of_birth,
+      };
+    }
+    return null;
+  }, [assessment, patient]);
+
+  // Check eligibility for the selected clinic and warn user
+  const selectedClinicIneligibility = useMemo(() => {
+    if (!selectedClinic) return [];
+    return checkClinicEligibility(selectedClinic.eligibility_rules, patientInfo);
+  }, [selectedClinic, patientInfo]);
 
   const handleRoute = async () => {
     if (!selectedClinic || (!assessment && !patient)) return;
@@ -344,14 +406,22 @@ export function RouteToClinicDialog({
                           {type}
                         </div>
                         <div className="space-y-1">
-                          {typeClinic.map((clinic) => (
+                          {typeClinic.map((clinic) => {
+                            const ineligibleReasons = checkClinicEligibility(
+                              clinic.eligibility_rules,
+                              patientInfo,
+                            );
+                            const isIneligible = ineligibleReasons.length > 0;
+
+                            return (
                             <button
                               key={clinic.id}
                               onClick={() => setSelectedClinic(clinic)}
                               className={cn(
                                 'w-full flex items-center justify-between rounded-md p-2 text-sm transition-colors',
                                 'hover:bg-accent hover:text-accent-foreground',
-                                selectedClinic?.id === clinic.id && 'bg-primary text-primary-foreground'
+                                selectedClinic?.id === clinic.id && 'bg-primary text-primary-foreground',
+                                isIneligible && 'opacity-60'
                               )}
                             >
                               <div className="flex min-w-0 items-center gap-2">
@@ -361,15 +431,29 @@ export function RouteToClinicDialog({
                                   {clinic.location && (
                                     <div className="text-xs opacity-70 break-words">{clinic.location}</div>
                                   )}
+                                  {isIneligible && (
+                                    <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                                      <span>{ineligibleReasons[0]}</span>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
-                              {clinic.is_open_today && (
-                                <Badge variant="secondary" className="ml-2 shrink-0 text-xs">
-                                  Open
-                                </Badge>
-                              )}
+                              <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                                {isIneligible && (
+                                  <Badge variant="outline" className="text-xs border-amber-300 text-amber-700 dark:text-amber-400">
+                                    Restricted
+                                  </Badge>
+                                )}
+                                {clinic.is_open_today && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    Open
+                                  </Badge>
+                                )}
+                              </div>
                             </button>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
@@ -404,6 +488,24 @@ export function RouteToClinicDialog({
                 className="text-sm"
               />
             </div>
+
+            {/* Eligibility Warning */}
+            {selectedClinicIneligibility.length > 0 && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium text-amber-800 dark:text-amber-300">Patient may not meet clinic eligibility criteria</p>
+                    <ul className="mt-1 list-disc list-inside text-amber-700 dark:text-amber-400 text-xs space-y-0.5">
+                      {selectedClinicIneligibility.map((reason, i) => (
+                        <li key={i}>{reason}</li>
+                      ))}
+                    </ul>
+                    <p className="mt-1.5 text-xs text-amber-600 dark:text-amber-500">You can still route the patient if clinically appropriate.</p>
+                  </div>
+                </div>
+              </div>
+            )}
         </div>
 
         <div className="border-t px-4 py-3 sm:px-6">

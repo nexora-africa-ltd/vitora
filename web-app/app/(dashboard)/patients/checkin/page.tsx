@@ -37,13 +37,20 @@ import {
 } from '@/components/ui/popover';
 import { useToast } from '@/lib/hooks/use-toast';
 import { usePatientSearch, usePatientLookup, useTodayCheckins, useCheckinPatient } from '@/lib/hooks/use-checkin';
+import { useClinics } from '@/lib/hooks/use-clinics';
 import { useDebounce } from '@/lib/hooks/use-debounce';
-import { VISIT_REASON_OPTIONS, type VisitReason, type PatientLookupResponse, type PatientSearchResult, type CheckInResponse } from '@/lib/types/checkin';
+import { VISIT_REASON_OPTIONS, type VisitReason, type PatientLookupResponse, type PatientSearchResult } from '@/lib/types/checkin';
 import { cn } from '@/lib/utils';
-import { CheckinSuccessModal } from '@/components/patients/checkin-success-modal';
+import { CheckinSuccessModal, type CheckinSuccessData } from '@/components/patients/checkin-success-modal';
 import { QRScannerDialog } from '@/components/patients/qr-scanner-dialog';
 import { RouteToClinicDialog, type DirectRouteToClinicPayload } from '@/components/triage/route-to-clinic-dialog';
 import { SHAStatusIndicator } from '@/components/patients/sha-status-indicator';
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+const CHRONIC_CARE_CLINIC_TYPES = ['CCC', 'TB', 'DIABETIC', 'HYPERTENSION', 'MENTAL_HEALTH', 'ONCOLOGY', 'DIALYSIS'];
 
 // =============================================================================
 // Help Popover Component
@@ -81,14 +88,18 @@ function PatientCheckinCard({
 }: {
   patient: PatientLookupResponse;
   onTriageCheckin: (visitReason: VisitReason) => void;
-  onOpenDirectRoute: (context: { visitReason: VisitReason; skipTriage: boolean }) => void;
+  onOpenDirectRoute: (context: { visitReason: VisitReason; skipTriage: boolean; referralFacility?: string; chronicClinicId?: number }) => void;
   onEmergencyCheckin: (visitReason: VisitReason, chiefComplaint: string) => void;
   isLoading: boolean;
 }) {
   const [visitReason, setVisitReason] = useState<VisitReason>(patient.suggested_visit_reason);
   const [erComplaint, setErComplaint] = useState('');
+  const [referralFacility, setReferralFacility] = useState('');
+  const [chronicClinicId, setChronicClinicId] = useState<number | undefined>(undefined);
 
   const isEmergency = visitReason === 'EMERGENCY';
+  const isReferral = visitReason === 'REFERRAL_VISIT';
+  const isChronicCare = visitReason === 'CHRONIC_CARE';
 
   // Determine if this reason should skip triage
   const shouldSkipTriage = useMemo(() => {
@@ -96,12 +107,31 @@ function PatientCheckinCard({
     return option?.skipTriage ?? false;
   }, [visitReason]);
 
+  // Chronic care clinic types (stable reference outside component render)
+
+  // Fetch clinics for chronic care dropdown
+  const { data: chronicClinicsData } = useClinics({ status: 'ACTIVE', page_size: 100 });
+  const chronicClinics = useMemo(
+    () => (chronicClinicsData?.results ?? []).filter((c) => CHRONIC_CARE_CLINIC_TYPES.includes(c.clinic_type)),
+    [chronicClinicsData]
+  );
+
+  // Referral validation: facility name is required
+  const isReferralValid = !isReferral || referralFacility.trim().length > 0;
+  // Chronic care validation: clinic selection is required
+  const isChronicCareValid = !isChronicCare || chronicClinicId !== undefined;
+
   const handleTriageCheckin = () => {
     onTriageCheckin(visitReason);
   };
 
   const handleDirectCheckin = () => {
-    onOpenDirectRoute({ visitReason, skipTriage: shouldSkipTriage });
+    onOpenDirectRoute({
+      visitReason,
+      skipTriage: shouldSkipTriage,
+      ...(isReferral && referralFacility.trim() ? { referralFacility: referralFacility.trim() } : {}),
+      ...(isChronicCare && chronicClinicId ? { chronicClinicId } : {}),
+    });
   };
 
   const snapshot = patient.clinical_snapshot;
@@ -286,6 +316,56 @@ function PatientCheckinCard({
           )}
         </div>
 
+        {/* Referral details (shown when Referral from Another Facility is selected) */}
+        {isReferral && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Referring Facility Name <span className="text-destructive">*</span>
+            </label>
+            <Input
+              value={referralFacility}
+              onChange={(e) => setReferralFacility(e.target.value)}
+              placeholder="e.g., Kenyatta National Hospital, Moi Teaching & Referral..."
+              className="text-sm h-9"
+            />
+            {!referralFacility.trim() && (
+              <p className="text-xs text-destructive">Referral facility name is required</p>
+            )}
+          </div>
+        )}
+
+        {/* Chronic care clinic selection (shown when Chronic Care Review is selected) */}
+        {isChronicCare && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Chronic Care Clinic <span className="text-destructive">*</span>
+            </label>
+            <Select
+              value={chronicClinicId?.toString() ?? ''}
+              onValueChange={(value) => setChronicClinicId(parseInt(value, 10))}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select chronic care clinic" />
+              </SelectTrigger>
+              <SelectContent>
+                {chronicClinics.map((clinic) => (
+                  <SelectItem key={clinic.id} value={clinic.id.toString()}>
+                    {clinic.name}
+                  </SelectItem>
+                ))}
+                {chronicClinics.length === 0 && (
+                  <SelectItem value="_none">
+                    No chronic care clinics available
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            {!chronicClinicId && (
+              <p className="text-xs text-destructive">Please select a chronic care clinic</p>
+            )}
+          </div>
+        )}
+
         {/* Emergency chief complaint input (shown when Emergency is selected) */}
         {isEmergency && (
           <div className="space-y-2">
@@ -301,7 +381,7 @@ function PatientCheckinCard({
 
         {/* Check-in Actions */}
         <div className="space-y-3 pt-2">
-          {/* Primary action - transforms between Triage and Emergency */}
+          {/* Primary action - transforms between Triage, Emergency, or hidden for skip-triage */}
           {isEmergency ? (
             <Button
               variant="destructive"
@@ -312,32 +392,56 @@ function PatientCheckinCard({
               <Siren className="mr-2 h-4 w-4" />
               Check-in to Emergency
             </Button>
-          ) : (
-            <Button onClick={handleTriageCheckin} disabled={isLoading} className="w-full h-10 sm:h-11 text-sm">
-              <Stethoscope className="mr-2 h-4 w-4" />
-              Check-in to Triage
+          ) : shouldSkipTriage ? (
+            /* Skip-triage reasons: no triage button, promote direct route to primary */
+            <Button
+              onClick={handleDirectCheckin}
+              disabled={isLoading || !isReferralValid || !isChronicCareValid}
+              className="w-full h-10 sm:h-11 text-sm"
+            >
+              Select Clinic and Route
             </Button>
+          ) : isChronicCare ? (
+            /* Chronic care: route directly to selected chronic clinic */
+            <Button
+              onClick={handleDirectCheckin}
+              disabled={isLoading || !isChronicCareValid}
+              className="w-full h-10 sm:h-11 text-sm"
+            >
+              Route to Chronic Care Clinic
+            </Button>
+          ) : (
+            <>
+              <Button
+                onClick={handleTriageCheckin}
+                disabled={isLoading || !isReferralValid}
+                className="w-full h-10 sm:h-11 text-sm"
+              >
+                <Stethoscope className="mr-2 h-4 w-4" />
+                Check-in to Triage
+              </Button>
+
+              {/* Secondary action - Direct to clinic */}
+              <div className="relative py-1">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-[10px] sm:text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">or send directly to</span>
+                </div>
+              </div>
+
+              <Button
+                variant="secondary"
+                onClick={handleDirectCheckin}
+                disabled={isLoading || !isReferralValid}
+                aria-label="Direct to clinic"
+                className="w-full h-10 sm:h-11 text-sm"
+              >
+                Select Clinic and Route
+              </Button>
+            </>
           )}
-
-          {/* Secondary action - Direct to clinic */}
-          <div className="relative py-1">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-[10px] sm:text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">or send directly to</span>
-            </div>
-          </div>
-
-          <Button
-            variant="secondary"
-            onClick={handleDirectCheckin}
-            disabled={isLoading}
-            aria-label="Direct to clinic"
-            className="w-full h-10 sm:h-11 text-sm"
-          >
-            Select Clinic and Route
-          </Button>
         </div>
       </CardContent>
     </Card>
@@ -515,11 +619,13 @@ export default function PatientCheckinPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<PatientSearchResult | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [checkInResult, setCheckInResult] = useState<CheckInResponse | null>(null);
+  const [checkInResult, setCheckInResult] = useState<CheckinSuccessData | null>(null);
   const [isRouteDialogOpen, setIsRouteDialogOpen] = useState(false);
   const [pendingDirectRoute, setPendingDirectRoute] = useState<{
     visitReason: VisitReason;
     skipTriage: boolean;
+    referralFacility?: string;
+    chronicClinicId?: number;
   } | null>(null);
   const [resetAfterDirectRoute, setResetAfterDirectRoute] = useState(false);
   const debouncedQuery = useDebounce(searchQuery, 400);
@@ -587,8 +693,21 @@ export default function PatientCheckinPage() {
         },
       });
 
-      // Store result and show success modal
-      setCheckInResult(result);
+      // Build success data with link to the patient's triage assessment
+      const triageUrl = result.encounter_id
+        ? `/triage/assess/${patientDetails.id}/${result.encounter_id}/vitals`
+        : '/triage';
+
+      setCheckInResult({
+        patientName: result.patient_name,
+        patientMrn: result.patient_mrn,
+        destination: 'triage',
+        destinationName: 'Triage',
+        destinationUrl: triageUrl,
+        queuePosition: result.queue_position,
+        estimatedWaitMinutes: result.estimated_wait_minutes,
+        warning: result.warning,
+      });
       setShowSuccessModal(true);
 
       // Clear search and reset for next patient
@@ -603,7 +722,12 @@ export default function PatientCheckinPage() {
     }
   };
 
-  const handleOpenDirectRoute = (context: { visitReason: VisitReason; skipTriage: boolean }) => {
+  const handleOpenDirectRoute = (context: { visitReason: VisitReason; skipTriage: boolean; referralFacility?: string; chronicClinicId?: number }) => {
+    // If chronic care with a pre-selected clinic, route directly without dialog
+    if (context.chronicClinicId) {
+      handleDirectRouteToChronicClinic(context);
+      return;
+    }
     setPendingDirectRoute(context);
     setIsRouteDialogOpen(true);
   };
@@ -622,7 +746,16 @@ export default function PatientCheckinPage() {
         },
       });
 
-      setCheckInResult(result);
+      setCheckInResult({
+        patientName: result.patient_name,
+        patientMrn: result.patient_mrn,
+        destination: 'triage',
+        destinationName: 'Emergency',
+        destinationUrl: '/emergency',
+        queuePosition: result.queue_position,
+        estimatedWaitMinutes: result.estimated_wait_minutes,
+        warning: result.warning,
+      });
       setShowSuccessModal(true);
       setSearchQuery('');
       setSelectedPatient(null);
@@ -635,10 +768,54 @@ export default function PatientCheckinPage() {
     }
   };
 
+  const handleDirectRouteToChronicClinic = async (context: { visitReason: VisitReason; skipTriage: boolean; chronicClinicId?: number }) => {
+    if (!patientDetails || !context.chronicClinicId) return;
+
+    try {
+      const result = await checkinMutation.mutateAsync({
+        patientId: patientDetails.id,
+        data: {
+          destination: context.chronicClinicId,
+          visit_reason: context.visitReason,
+          skip_triage: true,
+        },
+      });
+
+      setCheckInResult({
+        patientName: result.patient_name,
+        patientMrn: result.patient_mrn,
+        destination: 'clinic',
+        destinationName: result.destination_clinic_name || result.destination,
+        destinationUrl: result.destination_clinic_id
+          ? `/clinics/${result.destination_clinic_id}/queue`
+          : '/clinics',
+        queuePosition: result.queue_position,
+        estimatedWaitMinutes: result.estimated_wait_minutes,
+        skippedTriage: true,
+        warning: result.warning,
+      });
+      setShowSuccessModal(true);
+      setSearchQuery('');
+      setSelectedPatient(null);
+    } catch (error) {
+      toast({
+        title: 'Check-in Failed',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleDirectRoute = async ({ clinic, notes }: DirectRouteToClinicPayload) => {
     if (!patientDetails || !pendingDirectRoute) {
       return null;
     }
+
+    // Prepend referral facility info to notes if present
+    const referralNote = pendingDirectRoute.referralFacility
+      ? `Referred from: ${pendingDirectRoute.referralFacility}`
+      : '';
+    const combinedNotes = [referralNote, notes].filter(Boolean).join('\n');
 
     const result = await checkinMutation.mutateAsync({
       patientId: patientDetails.id,
@@ -646,11 +823,21 @@ export default function PatientCheckinPage() {
         destination: clinic.id,
         visit_reason: pendingDirectRoute.visitReason,
         skip_triage: pendingDirectRoute.skipTriage,
-        notes,
+        notes: combinedNotes,
       },
     });
 
-    setCheckInResult(result);
+    setCheckInResult({
+      patientName: result.patient_name,
+      patientMrn: result.patient_mrn,
+      destination: 'clinic',
+      destinationName: clinic.name,
+      destinationUrl: `/clinics/${clinic.id}/queue`,
+      queuePosition: result.queue_position,
+      estimatedWaitMinutes: result.estimated_wait_minutes,
+      skippedTriage: pendingDirectRoute.skipTriage,
+      warning: result.warning,
+    });
     setShowSuccessModal(true);
     setResetAfterDirectRoute(true);
 
@@ -816,6 +1003,9 @@ export default function PatientCheckinPage() {
               first_name: patientDetails.first_name,
               last_name: patientDetails.last_name,
               mrn: patientDetails.mrn,
+              gender: patientDetails.gender as 'M' | 'F' | 'O',
+              age: patientDetails.age,
+              date_of_birth: patientDetails.date_of_birth,
             }
           : null}
         onDirectRoute={handleDirectRoute}

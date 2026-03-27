@@ -75,6 +75,14 @@ export const WhoClinicalStageSchema = z.enum(['1', '2', '3', '4']);
 // CLINIC SCHEMAS
 // =============================================================================
 
+export const ClinicEligibilityRulesSchema = z.object({
+  min_age: z.number().optional(),
+  max_age: z.number().optional(),
+  gender: z.array(z.string()).optional(),
+  conditions: z.array(z.string()).optional(),
+  required_enrollments: z.array(z.string()).optional(),
+});
+
 export const ClinicListItemSchema = z.object({
   id: z.number(),
   name: z.string(),
@@ -86,6 +94,7 @@ export const ClinicListItemSchema = z.object({
   is_sensitive: z.boolean().optional(),
   is_open_today: z.boolean(),
   is_scheduled_today: z.boolean(),
+  eligibility_rules: ClinicEligibilityRulesSchema.nullable(),
 });
 
 export const ClinicSchema = z.object({

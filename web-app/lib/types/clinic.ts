@@ -305,6 +305,20 @@ export interface ClinicListItem {
   is_sensitive?: boolean;
   is_open_today: boolean;
   is_scheduled_today: boolean;
+  eligibility_rules: ClinicEligibilityRules | null;
+}
+
+/**
+ * Eligibility rules for clinic enrollment/routing.
+ * Used to restrict which patients can be sent to a clinic based on
+ * gender and age.
+ */
+export interface ClinicEligibilityRules {
+  min_age?: number;
+  max_age?: number;
+  gender?: string[];
+  conditions?: string[];
+  required_enrollments?: string[];
 }
 
 // =============================================================================

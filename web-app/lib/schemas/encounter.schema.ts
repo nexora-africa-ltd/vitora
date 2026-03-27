@@ -51,6 +51,7 @@ export const VitalsSourceSchema = z.enum(['TRIAGE', 'CONSULTATION', 'NURSING']);
 export const VisitReasonSchema = z.enum([
   'NEW_COMPLAINT',
   'FOLLOW_UP',
+  'EMERGENCY',
   'CHRONIC_CARE',
   'PROCEDURE_REVIEW',
   'REFILL_ONLY',
