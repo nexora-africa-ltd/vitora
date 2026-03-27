@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Menu, Search, Settings, User, RefreshCw, Trash2 } from 'lucide-react';
+import { Menu, Search, Settings, User, RefreshCw, Trash2, Stethoscope } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -33,6 +33,8 @@ import { Breadcrumb } from '@/components/layout/breadcrumb';
 import { FacilitySwitcher } from '@/components/layout/facility-switcher';
 import { NotificationPanel } from '@/components/notifications/notification-panel';
 import { clearCacheAndReload } from '@/lib/utils/version-check';
+import { useNavigationMode } from '@/lib/context/navigation-mode-context';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils/cn';
 
 interface HeaderProps {
@@ -49,6 +51,8 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
   const { lastSyncTime, isSyncing, pendingChanges, lastError, triggerSync } = useSyncStatus();
   const { lastFetchTime, isRefreshing, refresh } = usePageRefresh();
   const [isClearingCache, setIsClearingCache] = useState(false);
+  const { navigationMode, setNavigationMode, isClinicalNavigationEligible } = useNavigationMode();
+  const isClinicalMode = navigationMode === 'clinical';
 
   const handleClearCache = async () => {
     setIsClearingCache(true);
@@ -292,6 +296,35 @@ export function Header({ onMenuClick, sidebarCollapsed }: HeaderProps) {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              {isClinicalNavigationEligible && (
+                <>
+                  <div className="px-2 py-1.5">
+                    <TooltipProvider delayDuration={300}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex items-center gap-2 w-full cursor-default">
+                            <Stethoscope className="mr-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                            <Switch
+                              checked={isClinicalMode}
+                              onCheckedChange={(checked) =>
+                                setNavigationMode(checked ? 'clinical' : 'standard')
+                              }
+                              aria-label="Toggle clinical navigation mode"
+                            />
+                            <span className="text-sm font-medium">
+                              {isClinicalMode ? 'Clinical Mode' : 'Standard Mode'}
+                            </span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          <p>Switch to {isClinicalMode ? 'Standard' : 'Clinical'} navigation</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuItem
                 onClick={handleClearCache}
                 disabled={isClearingCache}
