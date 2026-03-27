@@ -280,6 +280,17 @@ export function usePendingPrescriptions() {
 }
 
 /**
+ * Hook for fetching prescriptions for an admission (inpatient stay).
+ */
+export function useAdmissionPrescriptions(admissionId: number) {
+  return useQuery({
+    queryKey: ['admissions', admissionId, 'prescriptions'],
+    queryFn: () => pharmacyApi.getAdmissionPrescriptions(admissionId),
+    enabled: !!admissionId,
+  });
+}
+
+/**
  * Hook for creating a prescription.
  */
 export function useCreatePrescription() {
@@ -290,6 +301,9 @@ export function useCreatePrescription() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
       queryClient.invalidateQueries({ queryKey: ['patients', variables.patient, 'prescriptions'] });
+      if (variables.admission) {
+        queryClient.invalidateQueries({ queryKey: ['admissions', variables.admission, 'prescriptions'] });
+      }
     },
   });
 }
@@ -303,6 +317,21 @@ export function useCancelPrescription() {
   return useMutation({
     mutationFn: ({ id, reason }: { id: number; reason: string }) =>
       pharmacyApi.cancelPrescription(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
+    },
+  });
+}
+
+/**
+ * Hook for updating a prescription's discharge fields.
+ */
+export function useUpdatePrescription() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: { dispensing_type?: 'INTERNAL' | 'EXTERNAL'; is_discharge_medication?: boolean } }) =>
+      pharmacyApi.updatePrescription(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
     },

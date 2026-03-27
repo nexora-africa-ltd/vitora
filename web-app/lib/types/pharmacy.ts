@@ -72,6 +72,9 @@ export type PrescriptionStatus =
   | 'CANCELLED'
   | 'EXPIRED';
 
+// Dispensing type: where the prescription is filled
+export type DispensingType = 'INTERNAL' | 'EXTERNAL';
+
 // Dispensing status
 export type DispensingStatus = 'COMPLETED' | 'RETURNED' | 'CANCELLED';
 
@@ -238,6 +241,8 @@ export interface Prescription {
   cancelled_by?: number | null;
   cancelled_at?: string | null;
   items: PrescriptionItem[];
+  dispensing_type: DispensingType;
+  is_discharge_medication: boolean;
   is_valid: boolean;
   is_fully_dispensed: boolean;
   created_at: string;
@@ -378,7 +383,10 @@ export interface PrescriptionListParams {
   page_size?: number;
   patient?: number;
   encounter?: number;
+  admission?: number;
   status?: PrescriptionStatus;
+  dispensing_type?: DispensingType;
+  is_discharge_medication?: boolean;
   search?: string;
   prescriber?: number;
   date_from?: string;
@@ -476,7 +484,10 @@ export interface StockBatchCreateData {
 export interface PrescriptionCreateData {
   patient: number;
   encounter?: number;
+  admission?: number;
   valid_until?: string;  // ISO date string, defaults to 30 days from now
+  dispensing_type?: DispensingType;
+  is_discharge_medication?: boolean;
   clinical_notes?: string;
   items: PrescriptionItemCreateData[];
 }

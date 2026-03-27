@@ -262,6 +262,8 @@ export const DischargeMedicationSchema = z.object({
   frequency: z.string(),
   duration: z.string(),
   instructions: z.string().optional(),
+  prescription_id: z.number().optional(),
+  dispensing_type: z.enum(['INTERNAL', 'EXTERNAL']).optional(),
 });
 
 export type DischargeMedicationSchemaType = z.infer<typeof DischargeMedicationSchema>;

@@ -523,14 +523,16 @@ class DischargeSerializer(serializers.ModelSerializer):
                     f"Cannot discharge: KES {outstanding:,.2f} outstanding balance"
                 )
 
-            # Pharmacy: all prescriptions dispensed or cancelled
+            # Pharmacy: all INTERNAL prescriptions dispensed or cancelled
+            # EXTERNAL prescriptions are filled outside the hospital and don't require clearance
             pending_rx = Prescription.objects.filter(
                 admission=admission,
+                dispensing_type="INTERNAL",
             ).exclude(status__in=["DISPENSED", "CANCELLED"])
             pharmacy_cleared = not pending_rx.exists()
             if not pharmacy_cleared:
                 clearance_errors["pharmacy_cleared"] = (
-                    f"Cannot discharge: {pending_rx.count()} prescription(s) not yet dispensed"
+                    f"Cannot discharge: {pending_rx.count()} internal prescription(s) not yet dispensed"
                 )
 
             # Lab: all lab orders completed or cancelled

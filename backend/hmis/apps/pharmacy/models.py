@@ -598,6 +598,10 @@ class Prescription(HistoryMixin, models.Model):
         ("EXPIRED", "Expired"),
     ]
 
+    class DispensingType(models.TextChoices):
+        INTERNAL = "INTERNAL", "Internal (Hospital Pharmacy)"
+        EXTERNAL = "EXTERNAL", "External (Outside Pharmacy)"
+
     # Prescription number (auto-generated)
     prescription_number = models.CharField(
         max_length=50,
@@ -658,6 +662,21 @@ class Prescription(HistoryMixin, models.Model):
 
     # Status
     status = models.CharField(max_length=20, choices=PRESCRIPTION_STATUS, default="PENDING")
+
+    # Dispensing type: INTERNAL goes to hospital pharmacy, EXTERNAL is for outside pharmacies
+    dispensing_type = models.CharField(
+        max_length=10,
+        choices=DispensingType.choices,
+        default=DispensingType.INTERNAL,
+        help_text="INTERNAL prescriptions are dispensed at the hospital pharmacy; "
+        "EXTERNAL prescriptions are filled at an outside pharmacy.",
+    )
+
+    # Discharge medication flag
+    is_discharge_medication = models.BooleanField(
+        default=False,
+        help_text="If true, this prescription is intended as a take-home discharge medication.",
+    )
 
     # Notes
     clinical_notes = models.TextField(blank=True)  # For pharmacist
