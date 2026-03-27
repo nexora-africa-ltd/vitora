@@ -732,6 +732,31 @@ class FacilityInline(admin.TabularInline):
     show_change_link = True
 
 
+class OrgStaffInline(admin.TabularInline):
+    """Read-only inline showing staff assigned to this organization."""
+
+    model = StaffProfile
+    fk_name = "organization"
+    extra = 0
+    fields = [
+        "employee_id", "user", "primary_role",
+        "primary_department", "primary_facility", "employment_status",
+    ]
+    readonly_fields = fields
+    show_change_link = True
+    verbose_name = "Staff member"
+    verbose_name_plural = "Staff members"
+    classes = ["collapse"]
+
+    def has_add_permission(self, request, obj=None):
+        """Prevent adding staff from the org page — use StaffProfile admin instead."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Prevent removing staff from the org page."""
+        return False
+
+
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
     """Admin configuration for the Organization model."""
@@ -749,7 +774,7 @@ class OrganizationAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("name",)}
     ordering = ["name"]
     readonly_fields = ["created_at", "updated_at"]
-    inlines = [FacilityInline]
+    inlines = [FacilityInline, OrgStaffInline]
 
     fieldsets = (
         (
@@ -830,6 +855,31 @@ class OrganizationAdmin(admin.ModelAdmin):
 # ============================================================================
 
 
+class FacilityStaffInline(admin.TabularInline):
+    """Read-only inline showing staff assigned to this facility."""
+
+    model = StaffProfile
+    fk_name = "primary_facility"
+    extra = 0
+    fields = [
+        "employee_id", "user", "primary_role",
+        "primary_department", "employment_status",
+    ]
+    readonly_fields = fields
+    show_change_link = True
+    verbose_name = "Staff member"
+    verbose_name_plural = "Staff members"
+    classes = ["collapse"]
+
+    def has_add_permission(self, request, obj=None):
+        """Prevent adding staff from the facility page — use StaffProfile admin instead."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Prevent removing staff from the facility page."""
+        return False
+
+
 @admin.register(Facility)
 class FacilityAdmin(admin.ModelAdmin):
     """
@@ -870,6 +920,7 @@ class FacilityAdmin(admin.ModelAdmin):
     ordering = ["name"]
     readonly_fields = ["created_at", "updated_at"]
     raw_id_fields = ["organization"]
+    inlines = [FacilityStaffInline]
 
     fieldsets = (
         (
