@@ -36,9 +36,13 @@ export function IDSRDashboardWidget() {
 
   return (
     <Card className="overflow-hidden">
-      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <CardTitle className="text-base sm:text-lg">IDSR Weekly Reports</CardTitle>
-        <Button variant="ghost" size="sm" asChild className="self-start sm:self-auto">
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <CardTitle className="text-base sm:text-lg">
+          <Link href="/surveillance/idsr" className="underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-primary sm:no-underline">
+            IDSR Weekly Reports
+          </Link>
+        </CardTitle>
+        <Button variant="ghost" size="sm" asChild className="hidden shrink-0 sm:inline-flex">
           <Link href="/surveillance/idsr">View All</Link>
         </Button>
       </CardHeader>

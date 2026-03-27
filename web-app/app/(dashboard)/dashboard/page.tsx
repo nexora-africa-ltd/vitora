@@ -482,15 +482,17 @@ export default function DashboardPage() {
           <div className="space-y-6 xl:col-span-8">
             {canViewConsultations && (
               <Card className="overflow-hidden">
-                <CardHeader className="flex flex-col space-y-2 pb-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-                  <div className="min-w-0 flex-1">
-                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                      <UserCheck className="h-4 w-4 shrink-0 text-primary sm:h-5 sm:w-5" />
-                      <span className="truncate">My Active Consultations</span>
-                      <HelpPopover content="Encounters you have claimed and are currently handling." />
+                <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <CardTitle className="min-w-0 text-base sm:text-lg">
+                      <Link href="/encounters?filter=my_claimed" className="flex items-center gap-2 underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-primary sm:no-underline">
+                        <UserCheck className="h-4 w-4 shrink-0 text-primary sm:h-5 sm:w-5" />
+                        <span className="truncate">My Active Consultations</span>
+                      </Link>
                     </CardTitle>
+                    <HelpPopover content="Encounters you have claimed and are currently handling." />
                   </div>
-                  <Button variant="ghost" size="sm" asChild className="self-start shrink-0 sm:self-auto">
+                  <Button variant="ghost" size="sm" asChild className="hidden shrink-0 sm:inline-flex">
                     <Link href="/encounters?filter=my_claimed">
                       View All
                       <ArrowRight className="ml-1 h-4 w-4" />
@@ -505,15 +507,17 @@ export default function DashboardPage() {
 
             {isSupervisor && (
               <Card className="overflow-hidden">
-                <CardHeader className="flex flex-col space-y-2 pb-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-                  <div className="min-w-0 flex-1">
-                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                      <UserCheck className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-                      <span className="truncate">All Active Consultations</span>
-                      <HelpPopover content="Supervisor view of consultations currently assigned to clinicians." />
+                <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <CardTitle className="min-w-0 text-base sm:text-lg">
+                      <Link href="/encounters?filter=all_claimed" className="flex items-center gap-2 underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-primary sm:no-underline">
+                        <UserCheck className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
+                        <span className="truncate">All Active Consultations</span>
+                      </Link>
                     </CardTitle>
+                    <HelpPopover content="Supervisor view of consultations currently assigned to clinicians." />
                   </div>
-                  <Button variant="ghost" size="sm" asChild className="self-start shrink-0 sm:self-auto">
+                  <Button variant="ghost" size="sm" asChild className="hidden shrink-0 sm:inline-flex">
                     <Link href="/encounters?filter=all_claimed">
                       View All
                       <ArrowRight className="ml-1 h-4 w-4" />
@@ -528,14 +532,16 @@ export default function DashboardPage() {
 
             {canViewPatients && (
               <Card className="overflow-hidden">
-                <CardHeader className="flex flex-col space-y-2 pb-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-                  <div className="min-w-0 flex-1">
-                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                      <span className="truncate">Recent Patients</span>
-                      <HelpPopover content="Patients recently registered or checked in." />
+                <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <CardTitle className="min-w-0 text-base sm:text-lg">
+                      <Link href="/patients" className="flex items-center gap-2 underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-primary sm:no-underline">
+                        <span className="truncate">Recent Patients</span>
+                      </Link>
                     </CardTitle>
+                    <HelpPopover content="Patients recently registered or checked in." />
                   </div>
-                  <Button variant="ghost" size="sm" asChild className="self-start shrink-0 sm:self-auto">
+                  <Button variant="ghost" size="sm" asChild className="hidden shrink-0 sm:inline-flex">
                     <Link href="/patients">
                       View All
                       <ArrowRight className="ml-1 h-4 w-4" />
@@ -552,11 +558,13 @@ export default function DashboardPage() {
           <div className="space-y-6 xl:col-span-4">
             {canViewSurveillance && (
               <Card className="overflow-hidden">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                    <span>Active Alerts</span>
-                    <HelpPopover content="Critical items and escalation work requiring attention." />
+                <CardHeader className="flex flex-row items-center justify-between gap-2">
+                  <CardTitle className="text-base sm:text-lg">
+                    <Link href="/surveillance/alerts" className="underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-primary sm:no-underline">
+                      Active Alerts
+                    </Link>
                   </CardTitle>
+                  <HelpPopover content="Critical items and escalation work requiring attention." />
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
                   <AlertsWidget />
