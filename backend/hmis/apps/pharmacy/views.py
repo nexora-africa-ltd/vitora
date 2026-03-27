@@ -286,7 +286,7 @@ class PrescriptionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
     serializer_class = PrescriptionSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ["patient", "status", "encounter"]
+    filterset_fields = ["patient", "status", "encounter", "admission", "dispensing_type", "is_discharge_medication"]
     search_fields = [
         "patient__first_name",
         "patient__last_name",

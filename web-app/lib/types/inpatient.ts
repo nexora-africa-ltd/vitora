@@ -211,6 +211,10 @@ export interface DischargeMedication {
   frequency: string;
   duration: string;
   instructions?: string;
+  /** If linked to a pharmacy prescription, its ID. */
+  prescription_id?: number;
+  /** INTERNAL = hospital pharmacy, EXTERNAL = outside pharmacy. */
+  dispensing_type?: 'INTERNAL' | 'EXTERNAL';
 }
 
 export interface Discharge {

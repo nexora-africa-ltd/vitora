@@ -42,7 +42,9 @@ import { ClearanceStatusPanel } from '@/components/inpatient/clearance-status-pa
 import { FacilityModuleWarning } from '@/components/shared/facility-module-warning';
 import { SectionCard } from '@/components/discharge/section-card';
 import { MedicationSuggestions } from '@/components/discharge/medication-suggestions';
+import { AdmissionPrescriptionsPicker } from '@/components/discharge/admission-prescriptions-picker';
 import { useAdmission, useCreateDischarge, useAdmissionWardRounds, useAdmissionOrders, useClearanceStatus } from '@/lib/hooks/use-inpatient';
+import { useAdmissionPrescriptions, useUpdatePrescription } from '@/lib/hooks/use-pharmacy';
 import { useEncounterDiagnoses } from '@/lib/hooks/use-encounters';
 import { useAIEnabled, useAICDSEvaluate, useStoredCarePlans } from '@/lib/hooks/use-ai';
 import type { DiagnosisCodeValue } from '@/components/shared/diagnosis-code-input';
@@ -76,6 +78,10 @@ export default function DischargePage() {
   const isAIEnabled = useAIEnabled();
   const cdsEvaluate = useAICDSEvaluate();
 
+  // Fetch prescriptions for this admission
+  const { data: admissionPrescriptions = [] } = useAdmissionPrescriptions(admissionId);
+  const updatePrescription = useUpdatePrescription();
+
   // Fetch encounter diagnoses for pre-population suggestions
   const sourceEncounterId = admission?.source_encounter || admission?.opd_encounter || 0;
   const { data: encounterDiagnoses } = useEncounterDiagnoses(sourceEncounterId);
@@ -90,6 +96,31 @@ export default function DischargePage() {
   const [followUpDate, setFollowUpDate] = useState('');
   const [medications, setMedications] = useState<DischargeMedication[]>([]);
   const [maternityContinuityAction, setMaternityContinuityAction] = useState<MaternityContinuityAction>('NONE');
+
+  // Selected prescription IDs for discharge medications + dispensing type overrides
+  const [selectedRxIds, setSelectedRxIds] = useState<Set<number>>(new Set());
+  const [rxDispensingTypes, setRxDispensingTypes] = useState<Record<number, 'INTERNAL' | 'EXTERNAL'>>({});
+
+  // Auto-select prescriptions already marked as discharge medications
+  useEffect(() => {
+    if (admissionPrescriptions.length > 0) {
+      const alreadyMarked = admissionPrescriptions
+        .filter((rx) => rx.is_discharge_medication)
+        .map((rx) => rx.id);
+      if (alreadyMarked.length > 0) {
+        setSelectedRxIds((prev) => {
+          const next = new Set(prev);
+          alreadyMarked.forEach((id) => next.add(id));
+          return next;
+        });
+        const types: Record<number, 'INTERNAL' | 'EXTERNAL'> = {};
+        admissionPrescriptions
+          .filter((rx) => rx.is_discharge_medication)
+          .forEach((rx) => { types[rx.id] = rx.dispensing_type; });
+        setRxDispensingTypes((prev) => ({ ...prev, ...types }));
+      }
+    }
+  }, [admissionPrescriptions]);
 
   // Automated clearance status (live from backend)
   const { data: clearanceStatus } = useClearanceStatus(admissionId);
@@ -391,9 +422,26 @@ export default function DischargePage() {
       dosage: '',
       frequency: '',
       duration: '',
-      instructions: ''
+      instructions: '',
+      dispensing_type: 'INTERNAL',
     };
     setMedications([...medications, newMed]);
+  };
+
+  const toggleRxSelection = (rxId: number) => {
+    setSelectedRxIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(rxId)) {
+        next.delete(rxId);
+      } else {
+        next.add(rxId);
+      }
+      return next;
+    });
+  };
+
+  const changeRxDispensingType = (rxId: number, type: 'INTERNAL' | 'EXTERNAL') => {
+    setRxDispensingTypes((prev) => ({ ...prev, [rxId]: type }));
   };
 
   const updateMedication = (index: number, field: keyof DischargeMedication, value: string) => {
@@ -487,6 +535,47 @@ export default function DischargePage() {
     const primaryCode = primaryEntry ? getDiagCode(primaryEntry) : admission.admitting_diagnosis || '';
     const primaryText = primaryEntry ? getDiagDescription(primaryEntry) : admission.admitting_diagnosis_text || '';
     try {
+      // Mark selected prescriptions as discharge medications on the server
+      const rxUpdatePromises = Array.from(selectedRxIds).map((rxId) => {
+        const dispensingType = rxDispensingTypes[rxId] ?? 'INTERNAL';
+        return updatePrescription.mutateAsync({
+          id: rxId,
+          data: { is_discharge_medication: true, dispensing_type: dispensingType },
+        });
+      });
+      // Also unmark prescriptions that were previously marked but are now deselected
+      const previouslyMarked = admissionPrescriptions.filter((rx) => rx.is_discharge_medication);
+      const unmarkPromises = previouslyMarked
+        .filter((rx) => !selectedRxIds.has(rx.id))
+        .map((rx) =>
+          updatePrescription.mutateAsync({
+            id: rx.id,
+            data: { is_discharge_medication: false },
+          })
+        );
+      await Promise.all([...rxUpdatePromises, ...unmarkPromises]);
+
+      // Build discharge_medications list from selected prescriptions + manual entries
+      const rxMeds: DischargeMedication[] = admissionPrescriptions
+        .filter((rx) => selectedRxIds.has(rx.id))
+        .flatMap((rx) =>
+          rx.items
+            .filter((item) => !item.is_cancelled)
+            .map((item) => ({
+              drug_name: item.drug_name || `Drug #${item.drug}`,
+              dosage: item.dosage,
+              frequency: item.frequency,
+              duration: item.duration,
+              instructions: item.instructions || '',
+              prescription_id: rx.id,
+              dispensing_type: rxDispensingTypes[rx.id] ?? rx.dispensing_type ?? 'INTERNAL',
+            }))
+        );
+      const manualMeds = medications
+        .filter((m) => m.drug_name)
+        .map((m) => ({ ...m, dispensing_type: m.dispensing_type ?? 'EXTERNAL' as const }));
+      const allDischargeMeds = [...rxMeds, ...manualMeds];
+
       await createDischarge.mutateAsync({
         admission: admissionId,
         discharge_type: dischargeType,
@@ -507,7 +596,7 @@ export default function DischargePage() {
         maternity_continuity_action: admission.mch_registration ? maternityContinuityAction : undefined,
         follow_up_date: requiresScheduledFollowUpDate ? followUpDate || undefined : undefined,
         follow_up_instructions: followUpInstructions || undefined,
-        discharge_medications: medications.filter((m) => m.drug_name),
+        discharge_medications: allDischargeMeds,
       });
       toast({ title: 'Success', description: 'Patient discharged successfully' });
       clearDraft();
@@ -1152,7 +1241,7 @@ export default function DischargePage() {
             <div>
               <CardTitle className="text-lg">Discharge Medications</CardTitle>
               <CardDescription>
-                Medications to be taken at home after discharge
+                Select from existing prescriptions or add new take-home medications
               </CardDescription>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -1174,12 +1263,22 @@ export default function DischargePage() {
               )}
               <Button variant="outline" size="sm" onClick={addMedication} className="w-full sm:w-auto">
                 <Plus className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Add Medication</span>
+                <span className="hidden sm:inline">Add New</span>
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Existing admission prescriptions to select from */}
+          <AdmissionPrescriptionsPicker
+            prescriptions={admissionPrescriptions}
+            selectedIds={selectedRxIds}
+            dispensingTypes={rxDispensingTypes}
+            onToggle={toggleRxSelection}
+            onDispensingTypeChange={changeRxDispensingType}
+          />
+
+          {/* AI medication suggestions */}
           <MedicationSuggestions
             suggestedMeds={suggestedMeds}
             medications={medications}
@@ -1190,15 +1289,15 @@ export default function DischargePage() {
                 frequency: med.frequency,
                 duration: med.duration,
                 instructions: '',
+                dispensing_type: 'EXTERNAL',
               }]);
             }}
           />
-          {medications.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              No discharge medications added. Click &quot;Add Medication&quot; to add.
-            </p>
-          ) : (
+
+          {/* Manual medication entries */}
+          {medications.length > 0 && (
             <div className="space-y-3 sm:space-y-4">
+              <Label className="text-sm font-medium">Additional Medications</Label>
               {medications.map((med, index) => (
                 <div key={index} className="p-3 sm:p-4 border rounded-lg space-y-3 sm:space-y-4">
                   <div className="flex items-center justify-between">
@@ -1259,6 +1358,13 @@ export default function DischargePage() {
                 </div>
               ))}
             </div>
+          )}
+
+          {/* Empty state */}
+          {medications.length === 0 && selectedRxIds.size === 0 && suggestedMeds.length === 0 && admissionPrescriptions.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No discharge medications added. Click &quot;Add New&quot; to add manually.
+            </p>
           )}
         </CardContent>
       </Card>

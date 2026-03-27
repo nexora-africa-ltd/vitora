@@ -265,6 +265,8 @@ export type PrescriptionItemSchemaType = z.infer<typeof PrescriptionItemSchema>;
 // PRESCRIPTION SCHEMA
 // =============================================================================
 
+export const DispensingTypeSchema = z.enum(['INTERNAL', 'EXTERNAL']);
+
 export const PrescriptionSchema = z.object({
   id: z.number(),
   prescription_number: z.string(),
@@ -282,6 +284,8 @@ export const PrescriptionSchema = z.object({
   prescribed_at: z.string().optional().nullable(),
   valid_until: z.string(),
   days_until_expiry: z.number().nullable(),
+  dispensing_type: DispensingTypeSchema,
+  is_discharge_medication: z.boolean(),
   clinical_notes: z.string().optional().nullable(),
   cancelled_reason: z.string().optional().nullable(),
   cancelled_by: z.number().optional().nullable(),

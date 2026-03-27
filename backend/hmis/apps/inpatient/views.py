@@ -1912,9 +1912,10 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             "first_pending_id": first_unpaid_id,
         }
 
-        # ----- Pharmacy: all prescriptions dispensed or cancelled -----
+        # ----- Pharmacy: all INTERNAL prescriptions dispensed or cancelled -----
+        # EXTERNAL prescriptions don't require hospital pharmacy clearance
         q = self._admission_order_q(admission)
-        pending_rx = Prescription.objects.filter(q).exclude(
+        pending_rx = Prescription.objects.filter(q, dispensing_type="INTERNAL").exclude(
             status__in=["DISPENSED", "CANCELLED"]
         ).distinct()
         pharmacy_cleared = not pending_rx.exists()
@@ -1924,7 +1925,7 @@ class AdmissionViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             "reason": (
                 "All prescriptions dispensed"
                 if pharmacy_cleared
-                else f"{pending_rx.count()} prescription(s) not yet dispensed"
+                else f"{pending_rx.count()} internal prescription(s) not yet dispensed"
             ),
             "pending_count": pending_rx.count(),
             "first_pending_id": first_rx_id,

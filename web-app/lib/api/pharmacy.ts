@@ -281,6 +281,17 @@ export const pharmacyApi = {
   },
 
   /**
+   * Get prescriptions for an admission (inpatient stay).
+   */
+  async getAdmissionPrescriptions(admissionId: number): Promise<Prescription[]> {
+    const response = await apiClient.get<PaginatedResponse<Prescription>>('/api/pharmacy/prescriptions/', {
+      params: { admission: admissionId, page_size: 100 },
+    });
+    const parsed = parseResponse(PaginatedPrescriptionSchema, response.data, { context: 'pharmacyApi.getAdmissionPrescriptions' });
+    return parsed.results;
+  },
+
+  /**
    * Get pending prescriptions (for dispensing queue).
    * Filters out prescriptions whose effective_status is EXPIRED even if DB status is PENDING.
    */
@@ -308,6 +319,14 @@ export const pharmacyApi = {
       reason,
     });
     return parseResponse(PrescriptionSchema, response.data, { context: 'pharmacyApi.cancelPrescription' });
+  },
+
+  /**
+   * Update a prescription's discharge fields (dispensing_type, is_discharge_medication).
+   */
+  async updatePrescription(id: number, data: { dispensing_type?: 'INTERNAL' | 'EXTERNAL'; is_discharge_medication?: boolean }): Promise<Prescription> {
+    const response = await apiClient.patch<Prescription>(`/api/pharmacy/prescriptions/${id}/`, data);
+    return parseResponse(PrescriptionSchema, response.data, { context: 'pharmacyApi.updatePrescription' });
   },
 
   // ============ Dispensing ============
