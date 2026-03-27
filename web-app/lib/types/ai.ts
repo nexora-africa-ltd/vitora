@@ -639,7 +639,7 @@ export interface AIDischargeCriterion {
   /** vitals, labs, functional, medication, social, follow_up */
   category: string;
   met: boolean;
-  details?: string;
+  details?: string | null;
   current_value?: unknown;
   target_value?: unknown;
   notes?: string | null;
