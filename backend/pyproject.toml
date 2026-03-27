@@ -73,7 +73,7 @@ factory-boy = "^3.3"
 
 # Linting & Formatting
 ruff = "^0.15.4"
-black = "^23.12"
+black = "^26.3"
 isort = "^5.13"
 
 # Type Checking
