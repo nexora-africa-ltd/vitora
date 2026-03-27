@@ -313,6 +313,36 @@ def process_checkin(
         # Auto-detect skip triage based on visit reason even for TRIAGE destination
         skip_triage = should_skip_triage(visit_reason) or skip_triage
 
+    # =========================================================================
+    # Duplicate check — BEFORE creating encounter/checkin to avoid orphaned records
+    # =========================================================================
+    if destination_type in ("TRIAGE", "EMERGENCY"):
+        existing_entry = WaitingQueue.objects.filter(
+            patient=patient,
+            status__in=["WAITING_TRIAGE", "IN_TRIAGE"],
+        ).first()
+        if existing_entry:
+            dest_label = "Emergency triage" if destination_type == "EMERGENCY" else "Triage"
+            raise ValueError(
+                f"Patient is already in the {dest_label} waiting queue "
+                f"(status: {existing_entry.get_status_display()}). "
+                f"Please wait for the current triage to complete before checking in again."
+            )
+    elif destination_type == "CLINIC" and destination_clinic:
+        session = destination_clinic.get_current_session()
+        existing_visit = ClinicVisit.objects.filter(
+            session=session,
+            patient=patient,
+            status__in=["REGISTERED", "WAITING", "CALLED", "IN_CONSULTATION"],
+        ).first()
+        if existing_visit:
+            raise ValueError(
+                f"Patient is already in the {destination_clinic.name} queue "
+                f"(position #{existing_visit.queue_number}, "
+                f"status: {existing_visit.get_status_display()}). "
+                f"Please wait for the current visit to complete before checking in again."
+            )
+
     # Get linked encounter
     linked_encounter = None
     if linked_encounter_id:
@@ -353,21 +383,6 @@ def process_checkin(
 
     # Create queue entries based on destination
     if destination_type in ("TRIAGE", "EMERGENCY"):
-        # Check if patient is already waiting for triage
-        existing_entry = WaitingQueue.objects.filter(
-            patient=patient,
-            status__in=["WAITING_TRIAGE", "IN_TRIAGE"],
-        ).first()
-        if existing_entry:
-            encounter.delete()
-            checkin.delete()
-            dest_label = "Emergency triage" if destination_type == "EMERGENCY" else "Triage"
-            raise ValueError(
-                f"Patient is already in the {dest_label} waiting queue "
-                f"(status: {existing_entry.get_status_display()}). "
-                f"Please wait for the current triage to complete before checking in again."
-            )
-
         # Add to triage waiting queue (ER patients also go through triage per KETA)
         waiting_queue = WaitingQueue.objects.create(
             patient=patient,
@@ -382,23 +397,6 @@ def process_checkin(
     else:
         # Add directly to clinic queue
         session = destination_clinic.get_current_session()
-
-        # Check if patient already has an active visit in this session
-        existing_visit = ClinicVisit.objects.filter(
-            session=session,
-            patient=patient,
-            status__in=["REGISTERED", "WAITING", "CALLED", "IN_CONSULTATION"],
-        ).first()
-        if existing_visit:
-            # Clean up the encounter we just created since we're not proceeding
-            encounter.delete()
-            checkin.delete()
-            raise ValueError(
-                f"Patient is already in the {destination_clinic.name} queue "
-                f"(position #{existing_visit.queue_number}, "
-                f"status: {existing_visit.get_status_display()}). "
-                f"Please wait for the current visit to complete before checking in again."
-            )
 
         # Get next queue number
         last_visit = ClinicVisit.objects.filter(session=session).order_by("-queue_number").first()
@@ -417,9 +415,12 @@ def process_checkin(
                 registered_by=user,
             )
         except IntegrityError:
-            # Race condition: another request created a visit between our check and create
-            encounter.delete()
-            checkin.delete()
+            # Race condition: another request slipped in between our pre-check and create.
+            # Don't attempt to delete encounter (may have protected FKs from signals).
+            # Mark checkin as failed instead.
+            checkin.status = "CANCELLED"
+            checkin.notes = (checkin.notes or "") + "\n[System] Duplicate queue entry detected."
+            checkin.save(update_fields=["status", "notes"])
             raise ValueError(
                 f"Patient is already in the {destination_clinic.name} queue. "
                 f"Please wait for the current visit to complete before checking in again."
