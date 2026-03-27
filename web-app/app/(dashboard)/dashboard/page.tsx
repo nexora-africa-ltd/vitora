@@ -32,6 +32,7 @@ import { useMyStaffProfile } from '@/lib/hooks/use-rbac';
 import { useTriageWaitTimeStats } from '@/lib/hooks/use-triage';
 import { useEmergencySocket } from '@/lib/hooks/use-websocket';
 import { useIsSupervisor, useUser } from '@/lib/auth';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
 import { getClinicianHonorific } from '@/lib/utils/clinician-role';
 
@@ -133,6 +134,14 @@ export default function DashboardPage() {
   const { connectionState, reconnectAttempts, lastUpdate } = useEmergencySocket();
   const isSupervisor = useIsSupervisor();
   const user = useUser();
+  const { canAccessModule } = usePermissions();
+  const canViewPatients = canAccessModule('patients');
+  const canViewTriage = canAccessModule('triage');
+  const canViewConsultations = canAccessModule('encounters');
+  const canViewPharmacy = canAccessModule('pharmacy');
+  const canViewLaboratory = canAccessModule('laboratory');
+  const canViewBilling = canAccessModule('billing');
+  const canViewSurveillance = canAccessModule('surveillance');
   const { data: staffProfile } = useMyStaffProfile();
   const { refresh, isRefreshing } = usePageRefresh();
 
@@ -160,7 +169,7 @@ export default function DashboardPage() {
   }).format(new Date());
 
   const statCards: DashboardStatCard[] = [
-    {
+    ...(canViewPatients ? [{
       title: 'Total Patients',
       value: formatNumber(stats?.patients.total ?? 0),
       meta: `+${formatNumber(stats?.patients.today ?? 0)} registered today`,
@@ -169,8 +178,8 @@ export default function DashboardPage() {
       href: '/patients',
       ariaLabel: 'Open patient list',
       showTrendIndicator: false,
-    },
-    {
+    }] : []),
+    ...(canViewTriage ? [{
       title: 'Triage Queue',
       value: formatNumber(triageQueueCount),
       meta: `${formatNumber(triageAvgWait)} min average wait`,
@@ -178,11 +187,11 @@ export default function DashboardPage() {
       icon: Clock,
       href: '/triage',
       ariaLabel: 'Open triage queue',
-      variant: isTriageCritical ? 'destructive' : isTriageWarning ? 'warning' : 'default',
+      variant: (isTriageCritical ? 'destructive' : isTriageWarning ? 'warning' : 'default') as DashboardStatCard['variant'],
       loading: isLoading && isTriageLoading,
       showTrendIndicator: false,
-    },
-    {
+    }] : []),
+    ...(canViewConsultations ? [{
       title: "Today's Encounters",
       value: formatNumber(stats?.encounters.today ?? 0),
       meta: `${formatNumber(stats?.encounters.in_progress ?? 0)} in progress`,
@@ -191,8 +200,8 @@ export default function DashboardPage() {
       href: '/encounters',
       ariaLabel: 'Open encounters',
       showTrendIndicator: false,
-    },
-    {
+    }] : []),
+    ...(canViewPharmacy ? [{
       title: 'Pending Dispensing',
       value: formatNumber(stats?.pharmacy.pending_dispensing ?? 0),
       meta: `${formatNumber(stats?.pharmacy.prescriptions_today ?? 0)} prescriptions today`,
@@ -200,10 +209,10 @@ export default function DashboardPage() {
       icon: Pill,
       href: '/pharmacy',
       ariaLabel: 'Open pharmacy dashboard',
-      variant: (stats?.pharmacy.pending_dispensing ?? 0) > 10 ? 'warning' : 'default',
+      variant: ((stats?.pharmacy.pending_dispensing ?? 0) > 10 ? 'warning' : 'default') as DashboardStatCard['variant'],
       showTrendIndicator: false,
-    },
-    {
+    }] : []),
+    ...(canViewLaboratory ? [{
       title: 'Pending Lab Tests',
       value: formatNumber(stats?.laboratory.pending_tests ?? 0),
       meta: `${formatNumber(stats?.laboratory.completed_today ?? 0)} completed today`,
@@ -211,10 +220,10 @@ export default function DashboardPage() {
       icon: FlaskConical,
       href: '/laboratory',
       ariaLabel: 'Open laboratory dashboard',
-      variant: (stats?.laboratory.critical_results ?? 0) > 0 ? 'warning' : 'default',
+      variant: ((stats?.laboratory.critical_results ?? 0) > 0 ? 'warning' : 'default') as DashboardStatCard['variant'],
       showTrendIndicator: false,
-    },
-    {
+    }] : []),
+    ...(canViewPharmacy ? [{
       title: 'Low Stock Items',
       value: formatNumber(stats?.pharmacy.low_stock_items ?? 0),
       meta: `${formatNumber(stats?.pharmacy.expiring_soon ?? 0)} expiring soon`,
@@ -222,10 +231,10 @@ export default function DashboardPage() {
       icon: PackageSearch,
       href: '/pharmacy',
       ariaLabel: 'Open stock-sensitive pharmacy items',
-      variant: (stats?.pharmacy.low_stock_items ?? 0) > 0 ? 'warning' : 'default',
+      variant: ((stats?.pharmacy.low_stock_items ?? 0) > 0 ? 'warning' : 'default') as DashboardStatCard['variant'],
       showTrendIndicator: false,
-    },
-    {
+    }] : []),
+    ...(canViewBilling ? [{
       title: 'Revenue Today',
       value: formatCurrency(stats?.billing.revenue_today ?? 0),
       meta: `${formatCurrency(stats?.billing.pending_payments ?? 0)} pending payments`,
@@ -236,8 +245,8 @@ export default function DashboardPage() {
       variant: 'success' as const,
       showTrendIndicator: false,
       valueClassName: 'text-2xl sm:text-3xl',
-    },
-    {
+    }] : []),
+    ...(canViewSurveillance ? [{
       title: 'Active Alerts',
       value: formatNumber(stats?.alerts.total_unresolved ?? 0),
       meta: `${formatNumber(stats?.alerts.critical ?? 0)} critical`,
@@ -245,9 +254,9 @@ export default function DashboardPage() {
       icon: AlertTriangle,
       href: '/surveillance/alerts',
       ariaLabel: 'Open active alerts',
-      variant: (stats?.alerts.critical ?? 0) > 0 ? 'destructive' : (stats?.alerts.high ?? 0) > 0 ? 'warning' : 'default',
+      variant: ((stats?.alerts.critical ?? 0) > 0 ? 'destructive' : (stats?.alerts.high ?? 0) > 0 ? 'warning' : 'default') as DashboardStatCard['variant'],
       showTrendIndicator: false,
-    },
+    }] : []),
   ];
 
   return (
@@ -371,26 +380,28 @@ export default function DashboardPage() {
 
         <div className="grid gap-6 xl:grid-cols-12">
           <div className="space-y-6 xl:col-span-8">
-            <Card className="overflow-hidden">
-              <CardHeader className="flex flex-col space-y-2 pb-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-                <div className="min-w-0 flex-1">
-                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                    <UserCheck className="h-4 w-4 shrink-0 text-primary sm:h-5 sm:w-5" />
-                    <span className="truncate">My Active Consultations</span>
-                    <HelpPopover content="Encounters you have claimed and are currently handling." />
-                  </CardTitle>
-                </div>
-                <Button variant="ghost" size="sm" asChild className="self-start shrink-0 sm:self-auto">
-                  <Link href="/encounters?filter=my_claimed">
-                    View All
-                    <ArrowRight className="ml-1 h-4 w-4" />
-                  </Link>
-                </Button>
-              </CardHeader>
-              <CardContent className="overflow-x-auto">
-                <MyClaimedEncountersWidget />
-              </CardContent>
-            </Card>
+            {canViewConsultations && (
+              <Card className="overflow-hidden">
+                <CardHeader className="flex flex-col space-y-2 pb-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                      <UserCheck className="h-4 w-4 shrink-0 text-primary sm:h-5 sm:w-5" />
+                      <span className="truncate">My Active Consultations</span>
+                      <HelpPopover content="Encounters you have claimed and are currently handling." />
+                    </CardTitle>
+                  </div>
+                  <Button variant="ghost" size="sm" asChild className="self-start shrink-0 sm:self-auto">
+                    <Link href="/encounters?filter=my_claimed">
+                      View All
+                      <ArrowRight className="ml-1 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardHeader>
+                <CardContent className="overflow-x-auto">
+                  <MyClaimedEncountersWidget />
+                </CardContent>
+              </Card>
+            )}
 
             {isSupervisor && (
               <Card className="overflow-hidden">
@@ -415,41 +426,45 @@ export default function DashboardPage() {
               </Card>
             )}
 
-            <Card className="overflow-hidden">
-              <CardHeader className="flex flex-col space-y-2 pb-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-                <div className="min-w-0 flex-1">
-                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                    <span className="truncate">Recent Patients</span>
-                    <HelpPopover content="Patients recently registered or checked in." />
-                  </CardTitle>
-                </div>
-                <Button variant="ghost" size="sm" asChild className="self-start shrink-0 sm:self-auto">
-                  <Link href="/patients">
-                    View All
-                    <ArrowRight className="ml-1 h-4 w-4" />
-                  </Link>
-                </Button>
-              </CardHeader>
-              <CardContent className="overflow-x-auto">
-                <RecentPatients />
-              </CardContent>
-            </Card>
+            {canViewPatients && (
+              <Card className="overflow-hidden">
+                <CardHeader className="flex flex-col space-y-2 pb-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                      <span className="truncate">Recent Patients</span>
+                      <HelpPopover content="Patients recently registered or checked in." />
+                    </CardTitle>
+                  </div>
+                  <Button variant="ghost" size="sm" asChild className="self-start shrink-0 sm:self-auto">
+                    <Link href="/patients">
+                      View All
+                      <ArrowRight className="ml-1 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardHeader>
+                <CardContent className="overflow-x-auto">
+                  <RecentPatients />
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           <div className="space-y-6 xl:col-span-4">
-            <Card className="overflow-hidden">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                  <span>Active Alerts</span>
-                  <HelpPopover content="Critical items and escalation work requiring attention." />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="overflow-x-auto">
-                <AlertsWidget />
-              </CardContent>
-            </Card>
+            {canViewSurveillance && (
+              <Card className="overflow-hidden">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <span>Active Alerts</span>
+                    <HelpPopover content="Critical items and escalation work requiring attention." />
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="overflow-x-auto">
+                  <AlertsWidget />
+                </CardContent>
+              </Card>
+            )}
 
-            <IDSRDashboardWidget />
+            {canViewSurveillance && <IDSRDashboardWidget />}
           </div>
         </div>
       </div>
