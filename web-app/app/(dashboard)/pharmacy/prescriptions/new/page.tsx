@@ -20,7 +20,6 @@ import {
   Trash2,
   Pill,
   Loader2,
-  AlertTriangle,
   Search,
   Printer,
   Copy,
@@ -69,6 +68,7 @@ import {
 import { DrugProductSelect as DrugSelect } from '@/components/terminology';
 import { useToast } from '@/lib/hooks/use-toast';
 import { usePatient } from '@/lib/hooks/use-patients';
+import type { Patient } from '@/lib/types/patient';
 import { useEncounter } from '@/lib/hooks/use-encounters';
 import { useDrugs, useCreatePrescription } from '@/lib/hooks/use-pharmacy';
 import { useCheckDrugInteractions } from '@/lib/hooks/use-allergies';
@@ -88,6 +88,7 @@ import {
   type DosageSuggestion,
 } from '@/lib/utils/dosage';
 import { PageHeader } from '@/components/shared/page-header';
+import { PatientSelector } from '@/components/encounters/patient-selector';
 import type { Drug, PrescriptionItemCreateData } from '@/lib/types/pharmacy';
 
 // SHA Drug type for selected drug
@@ -131,22 +132,31 @@ export default function NewPrescriptionPage() {
     : undefined;
 
   // Resolve IDs: context takes priority over URL params
-  const resolvedPatientId = patientContext?.patient?.id || urlPatientId;
+  const initialPatientId = patientContext?.patient?.id || urlPatientId;
   const resolvedEncounterId = encounterContext?.encounter?.id || urlEncounterId;
+
+  // Walk-in flow: allow selecting a patient when none is pre-set
+  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
+  const [selectedPatientObj, setSelectedPatientObj] = useState<Patient | null>(null);
+
+  const resolvedPatientId = initialPatientId || selectedPatientId || undefined;
 
   // Fetch patient and encounter data (only if not from context)
   const { data: fetchedPatient, isLoading: patientLoading } = usePatient(
-    !patientContext?.patient && resolvedPatientId ? resolvedPatientId : 0
+    !patientContext?.patient && !selectedPatientObj && resolvedPatientId ? resolvedPatientId : 0
   );
   const { data: fetchedEncounter, isLoading: encounterLoading } = useEncounter(
     !encounterContext?.encounter && resolvedEncounterId ? resolvedEncounterId : 0
   );
 
-  // Use context data if available, otherwise fetched data
-  const patient = patientContext?.patient || fetchedPatient;
+  // Use context data if available, then selector pick, then fetched
+  const patient = patientContext?.patient || selectedPatientObj || fetchedPatient;
   const encounter = encounterContext?.encounter || fetchedEncounter;
   const patientId = resolvedPatientId;
   const encounterId = resolvedEncounterId;
+
+  // Whether the user arrived without a patient (walk-in flow)
+  const isWalkIn = !initialPatientId;
 
   // Check if orders can be placed (from encounter context)
   const canPlaceOrders = encounterContext?.canPlaceOrders ?? true;
@@ -641,17 +651,6 @@ Prescribed by: ${prescriberName}
     setPendingInteractions(null);
   }, []);
 
-  // Redirect if no patient ID
-  useEffect(() => {
-    if (!patientId) {
-      toast({
-        title: 'Error',
-        description: 'Patient ID is required to create a prescription',
-        variant: 'destructive',
-      });
-    }
-  }, [patientId, toast]);
-
   if (patientLoading || encounterLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -660,14 +659,31 @@ Prescribed by: ${prescriberName}
     );
   }
 
+  // Walk-in: no patient yet — show patient selector
   if (!patientId || !patient) {
     return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-        <h2 className="text-xl font-semibold">Patient Not Found</h2>
-        <p className="text-muted-foreground mt-2">
-          A valid patient ID is required to create a prescription.
-        </p>
+      <div className="max-w-4xl mx-auto">
+        <div className="space-y-4 sm:space-y-6">
+          <PageHeader
+            title="New Prescription"
+            helpContent="Select a patient first, then add medications to the prescription."
+          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Select Patient</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PatientSelector
+                value={selectedPatientId}
+                selectedPatient={selectedPatientObj}
+                onChange={(id, p) => {
+                  setSelectedPatientId(id);
+                  setSelectedPatientObj(p as Patient | null);
+                }}
+              />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
