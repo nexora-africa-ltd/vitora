@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { useCallback } from 'react';
 import { CheckCircle2, XCircle, Loader2, RefreshCcw, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { HelpPopover } from '@/components/shared/help-popover';
@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useClearanceStatus } from '@/lib/hooks/use-inpatient';
 import { useOptionalPatientContext } from '@/lib/context/patient-context';
 import { useFacility } from '@/lib/context/facility-context';
+import { useToast } from '@/lib/hooks/use-toast';
 import type { DepartmentClearance } from '@/lib/types/inpatient';
 
 interface ClearanceStatusPanelProps {
@@ -20,10 +21,12 @@ function ClearanceRow({
   label,
   department,
   resolveHref,
+  onResolveClick,
 }: {
   label: string;
   department: DepartmentClearance | undefined;
   resolveHref?: string;
+  onResolveClick?: (label: string, href: string) => void;
 }) {
   if (!department) {
     return (
@@ -64,11 +67,14 @@ function ClearanceRow({
               Pending
             </Badge>
             {resolveHref && (
-              <Button variant="ghost" size="sm" asChild className="h-7 px-2">
-                <Link href={resolveHref}>
-                  <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                  <span className="hidden sm:inline">Resolve</span>
-                </Link>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2"
+                onClick={() => onResolveClick?.(label, resolveHref)}
+              >
+                <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                <span className="hidden sm:inline">Resolve</span>
               </Button>
             )}
           </>
@@ -82,11 +88,20 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
   const { data: clearance, isLoading, refetch, isFetching } = useClearanceStatus(admissionId);
   const patientContext = useOptionalPatientContext();
   const { hasModule } = useFacility();
+  const { toast } = useToast();
 
   // Build search param from patient MRN or name for resolve links
   const patientSearchParam = patientContext?.patient?.mrn
     || (patientContext?.patient ? `${patientContext.patient.first_name} ${patientContext.patient.last_name}` : '');
   const searchQuery = patientSearchParam ? `?search=${encodeURIComponent(patientSearchParam)}` : '';
+
+  const handleResolveClick = useCallback((label: string, href: string) => {
+    window.open(href, '_blank', 'noopener,noreferrer');
+    toast({
+      title: `${label} opened in new tab`,
+      description: 'Resolve the pending items, then refresh clearances here.',
+    });
+  }, [toast]);
 
   return (
     <Card>
@@ -139,6 +154,7 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
                     ? `/transactions/invoices/${clearance.billing.first_pending_id}`
                     : `/transactions/invoices${searchQuery}`
                 }
+                onResolveClick={handleResolveClick}
               />
               {hasModule('pharmacy') && (
                 <ClearanceRow
@@ -149,6 +165,7 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
                       ? `/pharmacy/prescriptions/${clearance.pharmacy.first_pending_id}`
                       : `/pharmacy/prescriptions${searchQuery}`
                   }
+                  onResolveClick={handleResolveClick}
                 />
               )}
               {hasModule('laboratory') && (
@@ -160,12 +177,14 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
                       ? `/laboratory/orders/${clearance.laboratory.first_pending_order_number}`
                       : `/laboratory${searchQuery}`
                   }
+                  onResolveClick={handleResolveClick}
                 />
               )}
               <ClearanceRow
                 label="Nursing"
                 department={clearance?.nursing}
                 resolveHref={`/admissions/${admissionId}?tab=nursing`}
+                onResolveClick={handleResolveClick}
               />
             </div>
             {patientContext?.hasSHA && clearance?.billing && !clearance.billing.cleared && (

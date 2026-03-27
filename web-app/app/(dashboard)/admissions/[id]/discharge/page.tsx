@@ -58,6 +58,7 @@ import type { DischargeSummarySection, SuggestedMedication } from '@/lib/dischar
 import { DEFAULT_SECTION_TEMPLATES, DISCHARGE_TYPES, MATERNITY_CONTINUITY_ACTIONS } from '@/lib/discharge/types';
 import { createSectionId, assembleSectionsText } from '@/lib/discharge/utils';
 import { useDischargeAI } from '@/lib/discharge/use-discharge-ai';
+import { useDischargeDraft } from '@/lib/discharge/use-discharge-draft';
 
 export default function DischargePage() {
   const params = useParams();
@@ -115,6 +116,44 @@ export default function DischargePage() {
   const [generatingMeds, setGeneratingMeds] = useState(false);
   const [generatingFollowUp, setGeneratingFollowUp] = useState(false);
   const [generatingPatientInstructions, setGeneratingPatientInstructions] = useState(false);
+
+  // ---- Draft auto-save / restore ----
+  const draftSetters = useMemo(() => ({
+    setDischargeType,
+    setSections,
+    setDiagnoses,
+    setPatientInstructions,
+    setFollowUpInstructions,
+    setFollowUpDate,
+    setMedications,
+    setMaternityContinuityAction,
+    setGenerationMode,
+  }), []);
+
+  const draftValues = useMemo(() => ({
+    dischargeType,
+    sections,
+    diagnoses,
+    patientInstructions,
+    followUpInstructions,
+    followUpDate,
+    medications,
+    maternityContinuityAction,
+    generationMode,
+  }), [dischargeType, sections, diagnoses, patientInstructions, followUpInstructions, followUpDate, medications, maternityContinuityAction, generationMode]);
+
+  const { clearDraft, hasDraft } = useDischargeDraft(admissionId, draftValues, draftSetters);
+
+  // Show restored-draft toast once
+  useEffect(() => {
+    if (hasDraft) {
+      toast({
+        title: 'Draft Restored',
+        description: 'Your previous discharge form progress has been restored.',
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasDraft]);
 
   // Computed discharge summary from sections (for form submission and validation)
   const dischargeSummary = useMemo(() => assembleSectionsText(sections), [sections]);
@@ -471,6 +510,7 @@ export default function DischargePage() {
         discharge_medications: medications.filter((m) => m.drug_name),
       });
       toast({ title: 'Success', description: 'Patient discharged successfully' });
+      clearDraft();
       router.push('/admissions');
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to discharge patient', variant: 'destructive' });
@@ -843,7 +883,7 @@ export default function DischargePage() {
           </div>
 
           {/* Summary Sections */}
-          <div className="space-y-3">
+          <div className={`space-y-3 rounded-lg p-3 -m-3 transition-colors ${hasAttemptedSubmit && !dischargeSummary ? 'ring-2 ring-destructive/50 bg-destructive/5' : ''}`}>
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <Label className="shrink-0">Summary Sections *</Label>
@@ -951,7 +991,7 @@ export default function DischargePage() {
           </div>
 
           {/* Patient Instructions */}
-          <div className="space-y-2">
+          <div className={`space-y-2 rounded-lg p-3 -m-3 transition-colors ${hasAttemptedSubmit && !patientInstructions ? 'ring-2 ring-destructive/50 bg-destructive/5' : ''}`}>
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <Label htmlFor="patient-instructions" className="shrink-0">Patient Instructions *</Label>
