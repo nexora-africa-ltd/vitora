@@ -145,7 +145,7 @@ export const DrugSchema = z.object({
   default_reorder_quantity: z.number(),
   shelf_life_months: z.number().optional().nullable(),
   storage_requirements: z.string().optional().nullable(),
-  reference_price: z.number().optional().nullable(),
+  reference_price: z.union([z.number(), z.string().transform(Number)]).optional().nullable(),
   is_active: z.boolean(),
   current_stock: z.number(),
   created_at: z.string(),
