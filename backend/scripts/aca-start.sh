@@ -14,5 +14,11 @@ python manage.py collectstatic --noinput
 echo "==> Running migrations..."
 python manage.py migrate --noinput
 
+# One-time seed (remove after first successful deploy)
+if [ "${RUN_SEED:-false}" = "true" ]; then
+  echo "==> Running data seed..."
+  bash scripts/seed.sh
+fi
+
 echo "==> Starting Daphne (ASGI) on port ${PORT:-8000}..."
 exec daphne -b 0.0.0.0 -p "${PORT:-8000}" hmis.asgi:application
