@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, ClipboardList, Beaker, FileText, ClipboardClock, Shield, ExternalLink } from 'lucide-react';
@@ -16,11 +16,12 @@ import { LabOrderStatus, LabPriority } from '@/lib/types/laboratory';
 
 export default function LaboratoryPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { refresh, isRefreshing } = usePageRefresh();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<LabOrderStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<LabPriority | ''>('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') ?? '');
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const { data, isLoading, error } = useLabOrders({

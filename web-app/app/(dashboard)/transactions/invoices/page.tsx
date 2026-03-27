@@ -4,7 +4,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -18,9 +18,10 @@ import type { Invoice, InvoiceStatus } from '@/lib/types/billing';
 
 export default function TransactionsInvoicesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  const [invoiceSearch, setInvoiceSearch] = useState('');
+  const [invoiceSearch, setInvoiceSearch] = useState(searchParams.get('search') ?? '');
   const [invoiceStatus, setInvoiceStatus] = useState<InvoiceStatus | undefined>();
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(invoiceSearch, 300);
