@@ -376,6 +376,47 @@ def load_medicine_kenya(filepath: Path) -> dict:
     return drugs
 
 
+def _pick_best_form(forms: list, generic_key: str) -> str:
+    """Pick the most likely primary form from a set of forms.
+
+    Uses the generic name as a hint (e.g. 'cough syrup' -> SYRUP) and falls
+    back to a priority order that prefers oral solids over liquids.
+    """
+    if not forms:
+        return "OTHER"
+    if len(forms) == 1:
+        return forms[0]
+
+    # Hint from the generic name
+    name_lower = generic_key.lower()
+    name_hints = {
+        "syrup": "SYRUP",
+        "suspension": "SUSPENSION",
+        "cream": "CREAM",
+        "ointment": "OINTMENT",
+        "gel": "GEL",
+        "drops": "DROPS",
+        "inhaler": "INHALER",
+        "injection": "INJECTION",
+        "spray": "SPRAY",
+        "patch": "PATCH",
+    }
+    for keyword, form in name_hints.items():
+        if keyword in name_lower and form in forms:
+            return form
+
+    # Deterministic priority: prefer oral solids, then liquids, then topicals
+    priority = [
+        "TABLET", "CAPSULE", "SYRUP", "SUSPENSION", "SOLUTION",
+        "INJECTION", "CREAM", "OINTMENT", "GEL", "DROPS",
+        "INHALER", "SPRAY", "POWDER", "PATCH", "SUPPOSITORY",
+    ]
+    for p in priority:
+        if p in forms:
+            return p
+    return forms[0]
+
+
 def merge_datasets(keml: dict, market: dict) -> list:
     """Merge KEML and market datasets into unified drug catalog."""
     catalog = []
@@ -489,7 +530,7 @@ def merge_datasets(keml: dict, market: dict) -> list:
         strengths = list(market_data.get("strengths", set()))
         classes = list(market_data.get("classes", set()))
 
-        primary_form = forms[0] if forms else "OTHER"
+        primary_form = _pick_best_form(forms, key)
         primary_strength = strengths[0] if strengths else ""
 
         generic_name = clean_generic_name(key)

@@ -17,6 +17,46 @@ from django.db import transaction
 
 from hmis.apps.pharmacy.models import Drug
 
+# Common abbreviations / alternative spellings → canonical Drug.DRUG_FORMS value.
+# The import already tries row["form"].upper(), so only entries that DON'T match
+# a valid DRUG_FORMS choice end up here.
+FORM_ALIASES: dict[str, str] = {
+    # Tablets / capsules
+    "tab": "TABLET",
+    "tabs": "TABLET",
+    "cap": "CAPSULE",
+    "caps": "CAPSULE",
+    "capsules": "CAPSULE",
+    # Syrups / liquids
+    "syp": "SYRUP",
+    "oral liquid": "SYRUP",
+    "oral solution": "SYRUP",
+    "liquid": "SYRUP",
+    "elixir": "SYRUP",
+    "susp": "SUSPENSION",
+    "emulsion": "SUSPENSION",
+    # Injections
+    "inj": "INJECTION",
+    "pfi": "INJECTION",
+    "iv infusion": "INJECTION",
+    "infusion": "INJECTION",
+    # Topicals
+    "oint": "OINTMENT",
+    "lotion": "CREAM",
+    "paste": "OINTMENT",
+    # Eye / ear
+    "eye drops": "DROPS",
+    "eye oint": "OINTMENT",
+    "e/e drops": "DROPS",
+    # Inhalers
+    "nebulizer": "INHALER",
+    "inhalation": "INHALER",
+    "nasal spray": "SPRAY",
+    # Others
+    "granules": "POWDER",
+    "suppositories": "SUPPOSITORY",
+}
+
 
 class Command(BaseCommand):
     help = "Import drugs from the drug_catalog.csv file"
@@ -210,11 +250,11 @@ class Command(BaseCommand):
         if category not in valid_categories:
             category = "OTHER"
 
-        # Map form to valid choice
-        form = row.get("form", "TABLET").upper()
+        # Map form to valid choice (with alias normalization)
+        form = row.get("form", "TABLET").strip().upper()
         valid_forms = [f[0] for f in Drug.DRUG_FORMS]
         if form not in valid_forms:
-            form = "TABLET"
+            form = FORM_ALIASES.get(form.lower(), "TABLET")
 
         # Map schedule to valid choice
         schedule = row.get("schedule", "POM").upper()
