@@ -136,7 +136,7 @@ export function generateDosageSuggestions(drug: Drug): DosageSuggestion[] {
   const unitName = getUnitDisplayName(drug.form);
   const unitNamePlural = getUnitDisplayName(drug.form, true);
 
-  // For liquid formulations
+  // For liquid formulations with concentration (e.g., "50mg/5ml")
   if (parsed?.perVolume && parsed.volumeUnit) {
     const volumeMultipliers = [0.5, 1, 1.5, 2, 3];
     const baseVolume = parsed.perVolume;
@@ -155,6 +155,22 @@ export function generateDosageSuggestions(drug: Drug): DosageSuggestion[] {
       });
     }
 
+    return suggestions;
+  }
+
+  // For liquid forms without concentration (e.g., syrup "100ml", suspension "60ml")
+  // The strength is just the bottle size — suggest standard ml doses
+  if (['SYRUP', 'SUSPENSION', 'SOLUTION'].includes(drug.form) && (!parsed?.perVolume)) {
+    const mlDoses = [2.5, 5, 10, 15, 20];
+    for (const ml of mlDoses) {
+      const mlStr = Number.isInteger(ml) ? ml.toString() : ml.toFixed(1);
+      suggestions.push({
+        value: `${mlStr}ml`,
+        label: `${mlStr}ml`,
+        quantity: ml,
+        isDefault: ml === 5,
+      });
+    }
     return suggestions;
   }
 

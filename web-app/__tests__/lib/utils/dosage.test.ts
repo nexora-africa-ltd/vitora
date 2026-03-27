@@ -293,6 +293,41 @@ describe('generateDosageSuggestions', () => {
       const defaultSuggestion = suggestions.find((s) => s.isDefault);
       expect(defaultSuggestion?.value).toBe('5ml');
     });
+
+    it('should generate standard ml doses for volume-only syrup (e.g., "100ml" bottle)', () => {
+      const drug = createMockDrug({
+        form: 'SYRUP',
+        strength: '100ml',
+      });
+
+      const suggestions = generateDosageSuggestions(drug);
+
+      expect(suggestions.length).toBeGreaterThan(0);
+      expect(suggestions.some((s) => s.value === '5ml')).toBe(true);
+      expect(suggestions.some((s) => s.value === '10ml')).toBe(true);
+      expect(suggestions.some((s) => s.value === '2.5ml')).toBe(true);
+
+      // Default should be 5ml
+      const defaultSuggestion = suggestions.find((s) => s.isDefault);
+      expect(defaultSuggestion?.value).toBe('5ml');
+
+      // Should NOT have a 100ml dosage option
+      expect(suggestions.some((s) => s.value === '100ml')).toBe(false);
+    });
+
+    it('should generate standard ml doses for volume-only suspension (e.g., "60ml")', () => {
+      const drug = createMockDrug({
+        form: 'SUSPENSION',
+        strength: '60ml',
+      });
+
+      const suggestions = generateDosageSuggestions(drug);
+
+      expect(suggestions.length).toBeGreaterThan(0);
+      expect(suggestions.some((s) => s.value === '5ml')).toBe(true);
+      const defaultSuggestion = suggestions.find((s) => s.isDefault);
+      expect(defaultSuggestion?.value).toBe('5ml');
+    });
   });
 
   describe('inhalers', () => {
