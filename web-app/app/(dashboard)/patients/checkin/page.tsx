@@ -36,6 +36,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { useToast } from '@/lib/hooks/use-toast';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { usePatientSearch, usePatientLookup, useTodayCheckins, useCheckinPatient } from '@/lib/hooks/use-checkin';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -716,7 +717,7 @@ export default function PatientCheckinPage() {
     } catch (error) {
       toast({
         title: 'Check-in Failed',
-        description: error instanceof Error ? error.message : 'An error occurred',
+        description: getApiErrorMessage(error),
         variant: 'destructive',
       });
     }
@@ -762,7 +763,7 @@ export default function PatientCheckinPage() {
     } catch (error) {
       toast({
         title: 'ER Check-in Failed',
-        description: error instanceof Error ? error.message : 'An error occurred',
+        description: getApiErrorMessage(error),
         variant: 'destructive',
       });
     }
@@ -800,7 +801,7 @@ export default function PatientCheckinPage() {
     } catch (error) {
       toast({
         title: 'Check-in Failed',
-        description: error instanceof Error ? error.message : 'An error occurred',
+        description: getApiErrorMessage(error),
         variant: 'destructive',
       });
     }
