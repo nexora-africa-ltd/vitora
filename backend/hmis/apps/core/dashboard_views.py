@@ -44,6 +44,13 @@ def dashboard_stats(request):
     - Triage: waiting, avg_wait_time, emergency_count
     - Billing: revenue_today, pending_payments, sha_claims_pending
     - Alerts: critical, high, medium, total_unresolved
+    - Check-in: checked_in_today, waiting, completed_today
+    - Inpatient: current_admissions, available_beds, discharged_today, occupancy_rate
+    - Imaging: pending_orders, completed_today, urgent_orders
+    - Emergency: active_overrides, pending_review
+    - MCH: active_registrations, high_risk, deliveries_today
+    - Theatre: scheduled_today, in_progress, completed_today
+    - Allied Health: pending_referrals, sessions_today, open_cases
 
     Query Parameters:
         refresh (bool): Bypass cache and compute fresh stats
@@ -84,6 +91,13 @@ def _compute_dashboard_stats() -> dict:
         "triage": _get_triage_stats(today),
         "billing": _get_billing_stats(today),
         "alerts": _get_alert_stats(),
+        "checkin": _get_checkin_stats(today),
+        "inpatient": _get_inpatient_stats(today),
+        "imaging": _get_imaging_stats(today),
+        "emergency": _get_emergency_stats(),
+        "mch": _get_mch_stats(today),
+        "theatre": _get_theatre_stats(today),
+        "allied_health": _get_allied_health_stats(today),
     }
 
 
@@ -274,6 +288,226 @@ def _get_alert_stats() -> dict:
             "high": 0,
             "medium": 0,
             "total_unresolved": 0,
+        }
+
+
+def _get_checkin_stats(today) -> dict:
+    """Get check-in statistics."""
+    try:
+        from hmis.apps.checkin.models import CheckIn
+
+        today_checkins = CheckIn.objects.filter(checked_in_at__date=today)
+
+        return {
+            "checked_in_today": today_checkins.count(),
+            "waiting": today_checkins.filter(
+                status__in=["WAITING", "IN_TRIAGE"]
+            ).count(),
+            "completed_today": today_checkins.filter(status="COMPLETED").count(),
+        }
+    except Exception:
+        return {
+            "checked_in_today": 0,
+            "waiting": 0,
+            "completed_today": 0,
+        }
+
+
+def _get_inpatient_stats(today) -> dict:
+    """Get inpatient / bed occupancy statistics."""
+    try:
+        from hmis.apps.inpatient.models import Admission, Bed
+
+        current_admissions = Admission.objects.filter(
+            admission_status="ACTIVE"
+        ).count()
+
+        total_beds = Bed.objects.count()
+        available_beds = Bed.objects.filter(status="AVAILABLE").count()
+        occupancy_rate = round(
+            ((total_beds - available_beds) / total_beds * 100) if total_beds > 0 else 0, 1
+        )
+
+        discharged_today = Admission.objects.filter(
+            admission_status="DISCHARGED", discharge_date__date=today
+        ).count()
+
+        return {
+            "current_admissions": current_admissions,
+            "available_beds": available_beds,
+            "discharged_today": discharged_today,
+            "occupancy_rate": occupancy_rate,
+        }
+    except Exception:
+        return {
+            "current_admissions": 0,
+            "available_beds": 0,
+            "discharged_today": 0,
+            "occupancy_rate": 0,
+        }
+
+
+def _get_imaging_stats(today) -> dict:
+    """Get imaging / radiology statistics."""
+    try:
+        from hmis.apps.imaging.models import ImagingOrder
+
+        pending_orders = ImagingOrder.objects.filter(
+            status__in=["ORDERED", "SCHEDULED", "IN_PROGRESS"]
+        ).count()
+
+        completed_today = ImagingOrder.objects.filter(
+            status__in=["COMPLETED", "REPORTED"], completed_at__date=today
+        ).count()
+
+        urgent_orders = ImagingOrder.objects.filter(
+            status__in=["ORDERED", "SCHEDULED", "IN_PROGRESS"],
+            priority__in=["URGENT", "STAT"],
+        ).count()
+
+        return {
+            "pending_orders": pending_orders,
+            "completed_today": completed_today,
+            "urgent_orders": urgent_orders,
+        }
+    except Exception:
+        return {
+            "pending_orders": 0,
+            "completed_today": 0,
+            "urgent_orders": 0,
+        }
+
+
+def _get_emergency_stats() -> dict:
+    """Get emergency access override statistics."""
+    try:
+        from hmis.apps.core.emergency_access.models import EmergencyAccess
+
+        active_overrides = EmergencyAccess.objects.filter(
+            status="ACTIVE"
+        ).count()
+
+        pending_review = EmergencyAccess.objects.exclude(
+            status__in=["REVIEWED", "REVOKED"]
+        ).filter(
+            status__in=["ACTIVE", "EXPIRED"]
+        ).count()
+
+        return {
+            "active_overrides": active_overrides,
+            "pending_review": pending_review,
+        }
+    except Exception:
+        return {
+            "active_overrides": 0,
+            "pending_review": 0,
+        }
+
+
+def _get_mch_stats(today) -> dict:
+    """Get maternal and child health statistics."""
+    try:
+        from hmis.apps.mch.models import MCHRegistration
+
+        active_registrations = MCHRegistration.objects.filter(
+            status="ACTIVE"
+        ).count()
+
+        high_risk = MCHRegistration.objects.filter(
+            status="ACTIVE", is_high_risk=True
+        ).count()
+
+        deliveries_today = MCHRegistration.objects.filter(
+            status="DELIVERED", updated_at__date=today
+        ).count()
+
+        return {
+            "active_registrations": active_registrations,
+            "high_risk": high_risk,
+            "deliveries_today": deliveries_today,
+        }
+    except Exception:
+        return {
+            "active_registrations": 0,
+            "high_risk": 0,
+            "deliveries_today": 0,
+        }
+
+
+def _get_theatre_stats(today) -> dict:
+    """Get theatre / scheduling statistics."""
+    try:
+        from hmis.apps.scheduling.models import Appointment
+
+        today_appointments = Appointment.objects.filter(
+            scheduled_start__date=today,
+            appointment_type="PROCEDURE",
+        )
+
+        return {
+            "scheduled_today": today_appointments.count(),
+            "in_progress": today_appointments.filter(status="IN_PROGRESS").count(),
+            "completed_today": today_appointments.filter(status="COMPLETED").count(),
+        }
+    except Exception:
+        return {
+            "scheduled_today": 0,
+            "in_progress": 0,
+            "completed_today": 0,
+        }
+
+
+def _get_allied_health_stats(today) -> dict:
+    """Get allied health statistics (physio, nutrition, OT, social work)."""
+    try:
+        pending_referrals = 0
+        sessions_today = 0
+        open_cases = 0
+
+        try:
+            from hmis.apps.physiotherapy.models import PhysiotherapyOrder
+
+            pending_referrals += PhysiotherapyOrder.objects.filter(status="PENDING").count()
+            sessions_today += PhysiotherapyOrder.objects.filter(
+                status="IN_PROGRESS", updated_at__date=today
+            ).count()
+        except Exception:
+            pass
+
+        try:
+            from hmis.apps.nutrition.models import NutritionConsultation
+
+            pending_referrals += NutritionConsultation.objects.filter(status="PENDING").count()
+            sessions_today += NutritionConsultation.objects.filter(
+                consultation_date__date=today
+            ).count()
+        except Exception:
+            pass
+
+        try:
+            from hmis.apps.occupational_therapy.models import OTOrder
+
+            pending_referrals += OTOrder.objects.filter(status="PENDING").count()
+        except Exception:
+            pass
+
+        try:
+            from hmis.apps.social_work.models import SocialWorkCase
+
+            open_cases = SocialWorkCase.objects.filter(status="OPEN").count()
+        except Exception:
+            pass
+
+        return {
+            "pending_referrals": pending_referrals,
+            "sessions_today": sessions_today,
+            "open_cases": open_cases,
+        }
+    except Exception:
+        return {
+            "pending_referrals": 0,
+            "sessions_today": 0,
+            "open_cases": 0,
         }
 
 

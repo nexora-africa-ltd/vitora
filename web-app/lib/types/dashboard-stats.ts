@@ -50,6 +50,48 @@ export interface AlertStats {
   total_unresolved: number;
 }
 
+export interface CheckinStats {
+  checked_in_today: number;
+  waiting: number;
+  completed_today: number;
+}
+
+export interface InpatientStats {
+  current_admissions: number;
+  available_beds: number;
+  discharged_today: number;
+  occupancy_rate: number;
+}
+
+export interface ImagingStats {
+  pending_orders: number;
+  completed_today: number;
+  urgent_orders: number;
+}
+
+export interface EmergencyStats {
+  active_overrides: number;
+  pending_review: number;
+}
+
+export interface MCHStats {
+  active_registrations: number;
+  high_risk: number;
+  deliveries_today: number;
+}
+
+export interface TheatreStats {
+  scheduled_today: number;
+  in_progress: number;
+  completed_today: number;
+}
+
+export interface AlliedHealthStats {
+  pending_referrals: number;
+  sessions_today: number;
+  open_cases: number;
+}
+
 export interface DashboardStats {
   timestamp: string;
   cache_ttl: number;
@@ -60,4 +102,11 @@ export interface DashboardStats {
   triage: TriageStats;
   billing: BillingStats;
   alerts: AlertStats;
+  checkin: CheckinStats;
+  inpatient: InpatientStats;
+  imaging: ImagingStats;
+  emergency: EmergencyStats;
+  mch: MCHStats;
+  theatre: TheatreStats;
+  allied_health: AlliedHealthStats;
 }

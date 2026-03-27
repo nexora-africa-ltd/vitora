@@ -22,6 +22,13 @@ import {
   PackageSearch,
   UserPlus,
   ClipboardPlus,
+  ClipboardCheck,
+  BedDouble,
+  ScanLine,
+  ShieldAlert,
+  Baby,
+  Scissors,
+  HeartHandshake,
 } from 'lucide-react';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { RecentPatients } from '@/components/dashboard/recent-patients';
@@ -142,6 +149,13 @@ export default function DashboardPage() {
   const canViewLaboratory = canAccessModule('laboratory');
   const canViewBilling = canAccessModule('billing');
   const canViewSurveillance = canAccessModule('surveillance');
+  const canViewCheckin = canAccessModule('checkin');
+  const canViewInpatient = canAccessModule('inpatient');
+  const canViewImaging = canAccessModule('imaging');
+  const canViewEmergency = canAccessModule('emergency');
+  const canViewMCH = canAccessModule('mch');
+  const canViewTheatre = canAccessModule('theatre');
+  const canViewAlliedHealth = canAccessModule('allied_health');
   const { data: staffProfile } = useMyStaffProfile();
   const { refresh, isRefreshing } = usePageRefresh();
 
@@ -255,6 +269,80 @@ export default function DashboardPage() {
       href: '/surveillance/alerts',
       ariaLabel: 'Open active alerts',
       variant: ((stats?.alerts.critical ?? 0) > 0 ? 'destructive' : (stats?.alerts.high ?? 0) > 0 ? 'warning' : 'default') as DashboardStatCard['variant'],
+      showTrendIndicator: false,
+    }] : []),
+    ...(canViewCheckin ? [{
+      title: "Today's Check-ins",
+      value: formatNumber(stats?.checkin.checked_in_today ?? 0),
+      meta: `${formatNumber(stats?.checkin.waiting ?? 0)} waiting`,
+      description: `${formatNumber(stats?.checkin.completed_today ?? 0)} completed`,
+      icon: ClipboardCheck,
+      href: '/checkin',
+      ariaLabel: 'Open check-in queue',
+      showTrendIndicator: false,
+    }] : []),
+    ...(canViewInpatient ? [{
+      title: 'Bed Occupancy',
+      value: `${stats?.inpatient.occupancy_rate ?? 0}%`,
+      meta: `${formatNumber(stats?.inpatient.current_admissions ?? 0)} admitted`,
+      description: `${formatNumber(stats?.inpatient.available_beds ?? 0)} beds available`,
+      icon: BedDouble,
+      href: '/inpatient',
+      ariaLabel: 'Open inpatient dashboard',
+      variant: ((stats?.inpatient.occupancy_rate ?? 0) > 90 ? 'destructive' : (stats?.inpatient.occupancy_rate ?? 0) > 75 ? 'warning' : 'default') as DashboardStatCard['variant'],
+      showTrendIndicator: false,
+    }] : []),
+    ...(canViewImaging ? [{
+      title: 'Pending Imaging',
+      value: formatNumber(stats?.imaging.pending_orders ?? 0),
+      meta: `${formatNumber(stats?.imaging.urgent_orders ?? 0)} urgent`,
+      description: `${formatNumber(stats?.imaging.completed_today ?? 0)} completed today`,
+      icon: ScanLine,
+      href: '/imaging',
+      ariaLabel: 'Open imaging dashboard',
+      variant: ((stats?.imaging.urgent_orders ?? 0) > 0 ? 'warning' : 'default') as DashboardStatCard['variant'],
+      showTrendIndicator: false,
+    }] : []),
+    ...(canViewEmergency ? [{
+      title: 'Emergency Access',
+      value: formatNumber(stats?.emergency.active_overrides ?? 0),
+      meta: `${formatNumber(stats?.emergency.pending_review ?? 0)} pending review`,
+      description: 'Active overrides',
+      icon: ShieldAlert,
+      href: '/emergency',
+      ariaLabel: 'Open emergency access log',
+      variant: ((stats?.emergency.active_overrides ?? 0) > 0 ? 'warning' : 'default') as DashboardStatCard['variant'],
+      showTrendIndicator: false,
+    }] : []),
+    ...(canViewMCH ? [{
+      title: 'MCH Active',
+      value: formatNumber(stats?.mch.active_registrations ?? 0),
+      meta: `${formatNumber(stats?.mch.high_risk ?? 0)} high risk`,
+      description: `${formatNumber(stats?.mch.deliveries_today ?? 0)} deliveries today`,
+      icon: Baby,
+      href: '/mch',
+      ariaLabel: 'Open MCH dashboard',
+      variant: ((stats?.mch.high_risk ?? 0) > 0 ? 'warning' : 'default') as DashboardStatCard['variant'],
+      showTrendIndicator: false,
+    }] : []),
+    ...(canViewTheatre ? [{
+      title: 'Theatre Today',
+      value: formatNumber(stats?.theatre.scheduled_today ?? 0),
+      meta: `${formatNumber(stats?.theatre.in_progress ?? 0)} in progress`,
+      description: `${formatNumber(stats?.theatre.completed_today ?? 0)} completed`,
+      icon: Scissors,
+      href: '/theatre',
+      ariaLabel: 'Open theatre schedule',
+      showTrendIndicator: false,
+    }] : []),
+    ...(canViewAlliedHealth ? [{
+      title: 'Allied Health',
+      value: formatNumber(stats?.allied_health.pending_referrals ?? 0),
+      meta: `${formatNumber(stats?.allied_health.sessions_today ?? 0)} sessions today`,
+      description: `${formatNumber(stats?.allied_health.open_cases ?? 0)} open cases`,
+      icon: HeartHandshake,
+      href: '/allied-health',
+      ariaLabel: 'Open allied health dashboard',
       showTrendIndicator: false,
     }] : []),
   ];
