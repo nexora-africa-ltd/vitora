@@ -92,6 +92,12 @@ export interface AlliedHealthStats {
   open_cases: number;
 }
 
+export interface OrgAdminStats {
+  total_facilities: number;
+  active_facilities: number;
+  total_staff: number;
+}
+
 export interface DashboardStats {
   timestamp: string;
   cache_ttl: number;
@@ -109,4 +115,5 @@ export interface DashboardStats {
   mch: MCHStats;
   theatre: TheatreStats;
   allied_health: AlliedHealthStats;
+  org_admin?: OrgAdminStats;
 }

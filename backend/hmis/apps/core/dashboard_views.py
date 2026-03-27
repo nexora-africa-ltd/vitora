@@ -3,13 +3,17 @@ Dashboard Statistics API views.
 
 Provides real-time statistics for the HMIS dashboard with caching
 to maintain fast response times while reflecting actual database state.
+
+Stats are scoped to the active facility (via ``request.facility``,
+resolved by ``TenantMiddleware`` from the ``X-Facility-Id`` header).
+When no facility context is available, stats are org-wide or global.
 """
 
 from datetime import timedelta
 from decimal import Decimal
 
 from django.core.cache import cache
-from django.db.models import Sum
+from django.db.models import Count, Sum
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -51,101 +55,138 @@ def dashboard_stats(request):
     - MCH: active_registrations, high_risk, deliveries_today
     - Theatre: scheduled_today, in_progress, completed_today
     - Allied Health: pending_referrals, sessions_today, open_cases
+    - Org Admin: total_facilities, active_facilities, total_staff (org admins only)
+
+    Stats are scoped to the active facility (from X-Facility-Id header).
+    When no facility is set, falls back to organization-wide stats.
 
     Query Parameters:
         refresh (bool): Bypass cache and compute fresh stats
     """
+    facility = getattr(request, "facility", None)
+    organization = getattr(request, "organization", None)
+
+    # Scope cache key to facility (or org, or global) to prevent cross-tenant leaks
+    scope_suffix = ""
+    if facility:
+        scope_suffix = f":f{facility.pk}"
+    elif organization:
+        scope_suffix = f":o{organization.pk}"
+    cache_key = f"{DASHBOARD_STATS_CACHE_KEY}{scope_suffix}"
+
     # Check for cache bypass
     bypass_cache = request.query_params.get("refresh", "").lower() == "true"
 
     if not bypass_cache:
-        cached_stats = cache.get(DASHBOARD_STATS_CACHE_KEY)
+        cached_stats = cache.get(cache_key)
         if cached_stats:
             return Response(cached_stats)
 
     # Compute fresh statistics
-    stats = _compute_dashboard_stats()
+    stats = _compute_dashboard_stats(facility=facility, organization=organization)
 
     # Cache the result
-    cache.set(DASHBOARD_STATS_CACHE_KEY, stats, DASHBOARD_STATS_TTL)
+    cache.set(cache_key, stats, DASHBOARD_STATS_TTL)
 
     return Response(stats)
 
 
-def _compute_dashboard_stats() -> dict:
+def _build_scope_filter(facility, organization, facility_field="facility"):
+    """Build a queryset filter dict for tenant scoping."""
+    if facility:
+        return {facility_field: facility}
+    if organization:
+        return {"organization": organization}
+    return {}
+
+
+def _compute_dashboard_stats(*, facility=None, organization=None) -> dict:
     """Compute all dashboard statistics from the database."""
     now = timezone.now()
-    # Use localdate() to get the date in the configured TIME_ZONE (Africa/Nairobi)
-    # This ensures dashboard stats match what users expect locally
     today = timezone.localdate()
     week_ago = today - timedelta(days=7)
     month_start = today.replace(day=1)
 
-    return {
+    result = {
         "timestamp": now.isoformat(),
         "cache_ttl": DASHBOARD_STATS_TTL,
-        "patients": _get_patient_stats(today, week_ago, month_start),
-        "encounters": _get_encounter_stats(today),
-        "pharmacy": _get_pharmacy_stats(today),
-        "laboratory": _get_laboratory_stats(today),
-        "triage": _get_triage_stats(today),
-        "billing": _get_billing_stats(today),
-        "alerts": _get_alert_stats(),
-        "checkin": _get_checkin_stats(today),
-        "inpatient": _get_inpatient_stats(today),
-        "imaging": _get_imaging_stats(today),
-        "emergency": _get_emergency_stats(),
-        "mch": _get_mch_stats(today),
-        "theatre": _get_theatre_stats(today),
-        "allied_health": _get_allied_health_stats(today),
+        "patients": _get_patient_stats(today, week_ago, month_start, facility, organization),
+        "encounters": _get_encounter_stats(today, facility, organization),
+        "pharmacy": _get_pharmacy_stats(today, facility, organization),
+        "laboratory": _get_laboratory_stats(today, facility, organization),
+        "triage": _get_triage_stats(today, facility, organization),
+        "billing": _get_billing_stats(today, facility, organization),
+        "alerts": _get_alert_stats(facility, organization),
+        "checkin": _get_checkin_stats(today, facility, organization),
+        "inpatient": _get_inpatient_stats(today, facility, organization),
+        "imaging": _get_imaging_stats(today, facility, organization),
+        "emergency": _get_emergency_stats(facility, organization),
+        "mch": _get_mch_stats(today, facility, organization),
+        "theatre": _get_theatre_stats(today, facility, organization),
+        "allied_health": _get_allied_health_stats(today, facility, organization),
     }
 
+    # Add org-admin stats when scoped to an organization
+    if organization:
+        result["org_admin"] = _get_org_admin_stats(organization)
 
-def _get_patient_stats(today, week_ago, month_start) -> dict:
+    return result
+
+
+def _get_patient_stats(today, week_ago, month_start, facility=None, organization=None) -> dict:
     """Get patient statistics."""
     from hmis.apps.patients.models import Patient
 
+    scope = _build_scope_filter(facility, organization, facility_field="registered_at_facility")
+    qs = Patient.objects.filter(**scope)
+
     return {
-        "total": Patient.objects.count(),
-        "today": Patient.objects.filter(created_at__date=today).count(),
-        "this_week": Patient.objects.filter(created_at__date__gte=week_ago).count(),
-        "this_month": Patient.objects.filter(created_at__date__gte=month_start).count(),
+        "total": qs.count(),
+        "today": qs.filter(created_at__date=today).count(),
+        "this_week": qs.filter(created_at__date__gte=week_ago).count(),
+        "this_month": qs.filter(created_at__date__gte=month_start).count(),
     }
 
 
-def _get_encounter_stats(today) -> dict:
+def _get_encounter_stats(today, facility=None, organization=None) -> dict:
     """Get encounter statistics."""
     from hmis.apps.encounters.models import Encounter
 
-    today_encounters = Encounter.objects.filter(encounter_date=today)
+    scope = _build_scope_filter(facility, organization)
+    qs = Encounter.objects.filter(**scope)
+    today_encounters = qs.filter(encounter_date=today)
 
     return {
-        "total": Encounter.objects.count(),
+        "total": qs.count(),
         "today": today_encounters.count(),
         "in_progress": today_encounters.filter(status="IN_PROGRESS").count(),
         "completed_today": today_encounters.filter(status="COMPLETED").count(),
     }
 
 
-def _get_pharmacy_stats(today) -> dict:
+def _get_pharmacy_stats(today, facility=None, organization=None) -> dict:
     """Get pharmacy statistics."""
     try:
         from hmis.apps.pharmacy.models import InventoryItem, Prescription, StockAlert
 
+        scope = _build_scope_filter(facility, organization)
+
         prescriptions_today = Prescription.objects.filter(
-            created_at__date=today, status="DISPENSED"
+            created_at__date=today, status="DISPENSED", **scope
         ).count()
 
         pending_dispensing = Prescription.objects.filter(
-            status__in=["PENDING", "PARTIALLY_DISPENSED"]
+            status__in=["PENDING", "PARTIALLY_DISPENSED"], **scope
         ).count()
 
-        low_stock_items = StockAlert.objects.filter(resolved=False, alert_type="LOW_STOCK").count()
+        low_stock_items = StockAlert.objects.filter(
+            resolved=False, alert_type="LOW_STOCK", **scope
+        ).count()
 
         # Items expiring in next 90 days
         expiry_threshold = today + timedelta(days=90)
         expiring_soon = InventoryItem.objects.filter(
-            expiry_date__lte=expiry_threshold, expiry_date__gt=today, quantity__gt=0
+            expiry_date__lte=expiry_threshold, expiry_date__gt=today, quantity__gt=0, **scope
         ).count()
 
         return {
@@ -164,22 +205,24 @@ def _get_pharmacy_stats(today) -> dict:
         }
 
 
-def _get_laboratory_stats(today) -> dict:
+def _get_laboratory_stats(today, facility=None, organization=None) -> dict:
     """Get laboratory statistics."""
     try:
         from hmis.apps.laboratory.models import LabOrder, LabResult
 
+        scope = _build_scope_filter(facility, organization)
+
         pending_tests = LabOrder.objects.filter(
-            status__in=["PENDING", "SAMPLE_COLLECTED", "IN_PROGRESS"]
+            status__in=["PENDING", "SAMPLE_COLLECTED", "IN_PROGRESS"], **scope
         ).count()
 
         completed_today = LabOrder.objects.filter(
-            status="COMPLETED", updated_at__date=today
+            status="COMPLETED", updated_at__date=today, **scope
         ).count()
 
         # Critical results are flagged results from today
         critical_results = LabResult.objects.filter(
-            is_abnormal=True, created_at__date=today
+            is_abnormal=True, created_at__date=today, **scope
         ).count()
 
         return {
@@ -195,19 +238,22 @@ def _get_laboratory_stats(today) -> dict:
         }
 
 
-def _get_triage_stats(today) -> dict:
+def _get_triage_stats(today, facility=None, organization=None) -> dict:
     """Get triage statistics."""
     try:
         from hmis.apps.triage.models import TriageAssessment
 
-        waiting = TriageAssessment.objects.filter(status="WAITING").count()
+        scope = _build_scope_filter(facility, organization)
+        qs = TriageAssessment.objects.filter(**scope)
 
-        emergency_count = TriageAssessment.objects.filter(
+        waiting = qs.filter(status="WAITING").count()
+
+        emergency_count = qs.filter(
             status="WAITING", category="EMERGENCY"
         ).count()
 
         # Calculate average wait time for completed assessments today
-        completed_today = TriageAssessment.objects.filter(
+        completed_today = qs.filter(
             status="COMPLETED", updated_at__date=today, started_at__isnull=False
         )
 
@@ -236,24 +282,26 @@ def _get_triage_stats(today) -> dict:
         }
 
 
-def _get_billing_stats(today) -> dict:
+def _get_billing_stats(today, facility=None, organization=None) -> dict:
     """Get billing statistics."""
     try:
         from hmis.apps.billing.models import Invoice, Payment, SHAClaim
 
+        scope = _build_scope_filter(facility, organization)
+
         # Revenue today (from completed payments)
         revenue_today = Payment.objects.filter(
-            payment_date__date=today, status="COMPLETED"
+            payment_date__date=today, status="COMPLETED", **scope
         ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
 
         # Pending payments (unpaid invoices)
         pending_payments = Invoice.objects.filter(
-            status__in=["PENDING", "PARTIALLY_PAID"]
+            status__in=["PENDING", "PARTIALLY_PAID"], **scope
         ).aggregate(total=Sum("balance_due"))["total"] or Decimal("0")
 
         # SHA claims pending
         sha_claims_pending = SHAClaim.objects.filter(
-            status__in=["PENDING", "SUBMITTED", "UNDER_REVIEW"]
+            status__in=["PENDING", "SUBMITTED", "UNDER_REVIEW"], **scope
         ).count()
 
         return {
@@ -269,12 +317,13 @@ def _get_billing_stats(today) -> dict:
         }
 
 
-def _get_alert_stats() -> dict:
+def _get_alert_stats(facility=None, organization=None) -> dict:
     """Get alert statistics across all modules."""
     try:
         from hmis.apps.pharmacy.models import StockAlert
 
-        alerts = StockAlert.objects.filter(resolved=False)
+        scope = _build_scope_filter(facility, organization)
+        alerts = StockAlert.objects.filter(resolved=False, **scope)
 
         return {
             "critical": alerts.filter(severity="CRITICAL").count(),
@@ -291,12 +340,14 @@ def _get_alert_stats() -> dict:
         }
 
 
-def _get_checkin_stats(today) -> dict:
+def _get_checkin_stats(today, facility=None, organization=None) -> dict:
     """Get check-in statistics."""
     try:
         from hmis.apps.checkin.models import CheckIn
 
-        today_checkins = CheckIn.objects.filter(checked_in_at__date=today)
+        # CheckIn has no facility FK; scope through encounter__facility
+        scope = _build_scope_filter(facility, organization, facility_field="encounter__facility")
+        today_checkins = CheckIn.objects.filter(checked_in_at__date=today, **scope)
 
         return {
             "checked_in_today": today_checkins.count(),
@@ -313,23 +364,26 @@ def _get_checkin_stats(today) -> dict:
         }
 
 
-def _get_inpatient_stats(today) -> dict:
+def _get_inpatient_stats(today, facility=None, organization=None) -> dict:
     """Get inpatient / bed occupancy statistics."""
     try:
         from hmis.apps.inpatient.models import Admission, Bed
 
+        scope = _build_scope_filter(facility, organization)
+        bed_scope = _build_scope_filter(facility, organization, facility_field="ward__facility")
+
         current_admissions = Admission.objects.filter(
-            admission_status="ACTIVE"
+            admission_status="ACTIVE", **scope
         ).count()
 
-        total_beds = Bed.objects.count()
-        available_beds = Bed.objects.filter(status="AVAILABLE").count()
+        total_beds = Bed.objects.filter(**bed_scope).count()
+        available_beds = Bed.objects.filter(status="AVAILABLE", **bed_scope).count()
         occupancy_rate = round(
             ((total_beds - available_beds) / total_beds * 100) if total_beds > 0 else 0, 1
         )
 
         discharged_today = Admission.objects.filter(
-            admission_status="DISCHARGED", discharge_date__date=today
+            admission_status="DISCHARGED", discharge_date__date=today, **scope
         ).count()
 
         return {
@@ -347,22 +401,24 @@ def _get_inpatient_stats(today) -> dict:
         }
 
 
-def _get_imaging_stats(today) -> dict:
+def _get_imaging_stats(today, facility=None, organization=None) -> dict:
     """Get imaging / radiology statistics."""
     try:
         from hmis.apps.imaging.models import ImagingOrder
 
+        scope = _build_scope_filter(facility, organization)
+
         pending_orders = ImagingOrder.objects.filter(
-            status__in=["ORDERED", "SCHEDULED", "IN_PROGRESS"]
+            status__in=["ORDERED", "SCHEDULED", "IN_PROGRESS"], **scope
         ).count()
 
         completed_today = ImagingOrder.objects.filter(
-            status__in=["COMPLETED", "REPORTED"], completed_at__date=today
+            status__in=["COMPLETED", "REPORTED"], completed_at__date=today, **scope
         ).count()
 
         urgent_orders = ImagingOrder.objects.filter(
             status__in=["ORDERED", "SCHEDULED", "IN_PROGRESS"],
-            priority__in=["URGENT", "STAT"],
+            priority__in=["URGENT", "STAT"], **scope
         ).count()
 
         return {
@@ -378,19 +434,21 @@ def _get_imaging_stats(today) -> dict:
         }
 
 
-def _get_emergency_stats() -> dict:
+def _get_emergency_stats(facility=None, organization=None) -> dict:
     """Get emergency access override statistics."""
     try:
         from hmis.apps.core.emergency_access.models import EmergencyAccess
 
+        scope = _build_scope_filter(facility, organization)
+
         active_overrides = EmergencyAccess.objects.filter(
-            status="ACTIVE"
+            status="ACTIVE", **scope
         ).count()
 
         pending_review = EmergencyAccess.objects.exclude(
             status__in=["REVIEWED", "REVOKED"]
         ).filter(
-            status__in=["ACTIVE", "EXPIRED"]
+            status__in=["ACTIVE", "EXPIRED"], **scope
         ).count()
 
         return {
@@ -404,20 +462,23 @@ def _get_emergency_stats() -> dict:
         }
 
 
-def _get_mch_stats(today) -> dict:
+def _get_mch_stats(today, facility=None, organization=None) -> dict:
     """Get maternal and child health statistics."""
     try:
         from hmis.apps.mch.models import MCHRegistration
 
-        active_registrations = MCHRegistration.objects.filter(
+        scope = _build_scope_filter(facility, organization)
+        qs = MCHRegistration.objects.filter(**scope)
+
+        active_registrations = qs.filter(
             status="ACTIVE"
         ).count()
 
-        high_risk = MCHRegistration.objects.filter(
+        high_risk = qs.filter(
             status="ACTIVE", is_high_risk=True
         ).count()
 
-        deliveries_today = MCHRegistration.objects.filter(
+        deliveries_today = qs.filter(
             status="DELIVERED", updated_at__date=today
         ).count()
 
@@ -434,11 +495,12 @@ def _get_mch_stats(today) -> dict:
         }
 
 
-def _get_theatre_stats(today) -> dict:
+def _get_theatre_stats(today, facility=None, organization=None) -> dict:
     """Get theatre / scheduling statistics."""
     try:
         from hmis.apps.scheduling.models import Appointment
 
+        # Appointment has no facility FK; skip facility scoping
         today_appointments = Appointment.objects.filter(
             scheduled_start__date=today,
             appointment_type="PROCEDURE",
@@ -457,19 +519,20 @@ def _get_theatre_stats(today) -> dict:
         }
 
 
-def _get_allied_health_stats(today) -> dict:
+def _get_allied_health_stats(today, facility=None, organization=None) -> dict:
     """Get allied health statistics (physio, nutrition, OT, social work)."""
     try:
         pending_referrals = 0
         sessions_today = 0
         open_cases = 0
+        scope = _build_scope_filter(facility, organization)
 
         try:
             from hmis.apps.physiotherapy.models import PhysiotherapyOrder
 
-            pending_referrals += PhysiotherapyOrder.objects.filter(status="PENDING").count()
+            pending_referrals += PhysiotherapyOrder.objects.filter(status="PENDING", **scope).count()
             sessions_today += PhysiotherapyOrder.objects.filter(
-                status="IN_PROGRESS", updated_at__date=today
+                status="IN_PROGRESS", updated_at__date=today, **scope
             ).count()
         except Exception:
             pass
@@ -477,9 +540,9 @@ def _get_allied_health_stats(today) -> dict:
         try:
             from hmis.apps.nutrition.models import NutritionConsultation
 
-            pending_referrals += NutritionConsultation.objects.filter(status="PENDING").count()
+            pending_referrals += NutritionConsultation.objects.filter(status="PENDING", **scope).count()
             sessions_today += NutritionConsultation.objects.filter(
-                consultation_date__date=today
+                consultation_date__date=today, **scope
             ).count()
         except Exception:
             pass
@@ -487,14 +550,14 @@ def _get_allied_health_stats(today) -> dict:
         try:
             from hmis.apps.occupational_therapy.models import OTOrder
 
-            pending_referrals += OTOrder.objects.filter(status="PENDING").count()
+            pending_referrals += OTOrder.objects.filter(status="PENDING", **scope).count()
         except Exception:
             pass
 
         try:
             from hmis.apps.social_work.models import SocialWorkCase
 
-            open_cases = SocialWorkCase.objects.filter(status="OPEN").count()
+            open_cases = SocialWorkCase.objects.filter(status="OPEN", **scope).count()
         except Exception:
             pass
 
@@ -508,6 +571,31 @@ def _get_allied_health_stats(today) -> dict:
             "pending_referrals": 0,
             "sessions_today": 0,
             "open_cases": 0,
+        }
+
+
+def _get_org_admin_stats(organization) -> dict:
+    """Get organization-level statistics for org admins."""
+    try:
+        from hmis.apps.core.models import Facility, StaffProfile
+
+        facilities = Facility.objects.filter(organization=organization)
+        total_facilities = facilities.count()
+        active_facilities = facilities.filter(is_active=True).count()
+        total_staff = StaffProfile.objects.filter(
+            organization=organization, employment_status="ACTIVE"
+        ).count()
+
+        return {
+            "total_facilities": total_facilities,
+            "active_facilities": active_facilities,
+            "total_staff": total_staff,
+        }
+    except Exception:
+        return {
+            "total_facilities": 0,
+            "active_facilities": 0,
+            "total_staff": 0,
         }
 
 

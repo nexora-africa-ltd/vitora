@@ -88,6 +88,12 @@ export const AlliedHealthStatsSchema = z.object({
   open_cases: z.number(),
 });
 
+export const OrgAdminStatsSchema = z.object({
+  total_facilities: z.number(),
+  active_facilities: z.number(),
+  total_staff: z.number(),
+});
+
 export const DashboardStatsSchema = z.object({
   timestamp: z.string(),
   cache_ttl: z.number(),
@@ -105,4 +111,5 @@ export const DashboardStatsSchema = z.object({
   mch: MCHStatsSchema,
   theatre: TheatreStatsSchema,
   allied_health: AlliedHealthStatsSchema,
+  org_admin: OrgAdminStatsSchema.optional(),
 });
