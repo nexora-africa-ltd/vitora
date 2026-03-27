@@ -1146,7 +1146,7 @@ export default function DischargePage() {
       </Card>
 
       {/* Discharge Medications */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -1198,39 +1198,39 @@ export default function DischargePage() {
               No discharge medications added. Click &quot;Add Medication&quot; to add.
             </p>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {medications.map((med, index) => (
-                <div key={index} className="p-4 border rounded-lg space-y-4">
+                <div key={index} className="p-3 sm:p-4 border rounded-lg space-y-3 sm:space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-sm sm:text-base">Medication {index + 1}</span>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => removeMedication(index)}
-                      className="text-destructive"
+                      className="text-destructive h-7 w-7 p-0 sm:h-8 sm:w-auto sm:px-3"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
-                    <div className="space-y-2">
-                      <Label>Medication Name *</Label>
+                  <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3">
+                    <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                      <Label className="text-xs sm:text-sm">Medication Name *</Label>
                       <Input
                         value={med.drug_name}
                         onChange={(e) => updateMedication(index, 'drug_name', e.target.value)}
                         placeholder="e.g., Amoxicillin"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Dosage *</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs sm:text-sm">Dosage *</Label>
                       <Input
                         value={med.dosage}
                         onChange={(e) => updateMedication(index, 'dosage', e.target.value)}
                         placeholder="e.g., 500mg"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Frequency *</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs sm:text-sm">Frequency *</Label>
                       <Input
                         value={med.frequency}
                         onChange={(e) => updateMedication(index, 'frequency', e.target.value)}
@@ -1238,21 +1238,21 @@ export default function DischargePage() {
                       />
                     </div>
                   </div>
-                  <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Duration</Label>
+                  <div className="grid gap-2.5 sm:gap-4 grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs sm:text-sm">Duration</Label>
                       <Input
                         value={med.duration}
                         onChange={(e) => updateMedication(index, 'duration', e.target.value)}
                         placeholder="e.g., 7 days"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Special Instructions</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs sm:text-sm">Instructions</Label>
                       <Input
                         value={med.instructions || ''}
                         onChange={(e) => updateMedication(index, 'instructions', e.target.value)}
-                        placeholder="e.g., Take after meals"
+                        placeholder="e.g., After meals"
                       />
                     </div>
                   </div>
