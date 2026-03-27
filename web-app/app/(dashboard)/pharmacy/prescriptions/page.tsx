@@ -11,6 +11,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/shared/page-header';
@@ -23,11 +24,12 @@ import { PrescriptionStatus } from '@/lib/types/pharmacy';
 
 export default function PrescriptionsPage() {
   const { refresh, isRefreshing } = usePageRefresh();
+  const searchParams = useSearchParams();
 
   // Prescriptions state
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState<PrescriptionStatus | ''>('');
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') ?? '');
   const debouncedSearch = useDebounce(search, 300);
   const pageSize = 20;
 

@@ -98,6 +98,7 @@ export default function DischargePage() {
 
   const [instructionsGenerated, setInstructionsGenerated] = useState(false);
   const [showCdsDialog, setShowCdsDialog] = useState(false);
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
 
   // AI generation mode: 'suggest' = rich draft, 'generate' = strict facts-only
   const [generationMode, setGenerationMode] = useState<ClinicalDocGenerationMode>('suggest');
@@ -478,10 +479,15 @@ export default function DischargePage() {
   };
 
   const handleSubmit = async () => {
+    setHasAttemptedSubmit(true);
+
     if (!admission || !dischargeSummary || !patientInstructions) {
+      const missing: string[] = [];
+      if (!dischargeSummary) missing.push('Discharge Summary');
+      if (!patientInstructions) missing.push('Patient Instructions');
       toast({
-        title: 'Validation Error',
-        description: 'Please fill in all required fields',
+        title: 'Required Fields Missing',
+        description: `Please complete: ${missing.join(', ')}`,
         variant: 'destructive',
       });
       return;
@@ -838,12 +844,15 @@ export default function DischargePage() {
 
           {/* Summary Sections */}
           <div className="space-y-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2">
-                <Label>Summary Sections *</Label>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Label className="shrink-0">Summary Sections *</Label>
+                {hasAttemptedSubmit && !dischargeSummary && (
+                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 shrink-0">Required</Badge>
+                )}
                 <HelpPopover content="Add, remove, and customize sections. Use 'Generate with TibaBot' per section or 'Generate All' to draft the entire summary at once." />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 {isAIEnabled && (
                   <Button
                     type="button"
@@ -858,7 +867,7 @@ export default function DischargePage() {
                     ) : (
                       <BrainCircuit className="h-3.5 w-3.5" />
                     )}
-                    Generate All
+                    <span className="hidden sm:inline">Generate All</span>
                   </Button>
                 )}
               </div>
@@ -936,16 +945,21 @@ export default function DischargePage() {
               onClick={handleAddSection}
               className="w-full border-dashed"
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Section
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add Section</span>
             </Button>
           </div>
 
           {/* Patient Instructions */}
           <div className="space-y-2">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <Label htmlFor="patient-instructions">Patient Instructions *</Label>
-              <div className="flex items-center gap-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Label htmlFor="patient-instructions" className="shrink-0">Patient Instructions *</Label>
+                {hasAttemptedSubmit && !patientInstructions && (
+                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 shrink-0">Required</Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
                 {patientInstructions && (
                   <Button
                     type="button"
@@ -983,7 +997,7 @@ export default function DischargePage() {
                     ) : (
                       <BrainCircuit className="h-3.5 w-3.5" />
                     )}
-                    {patientInstructions ? 'Regenerate' : 'Generate'}
+                    <span className="hidden sm:inline">{patientInstructions ? 'Regenerate' : 'Generate'}</span>
                   </Button>
                 )}
               </div>
@@ -1076,7 +1090,7 @@ export default function DischargePage() {
                     ) : (
                       <BrainCircuit className="h-3.5 w-3.5" />
                     )}
-                    Generate
+                    <span className="hidden sm:inline">Generate</span>
                   </Button>
                 )}
               </div>
@@ -1115,12 +1129,12 @@ export default function DischargePage() {
                   ) : (
                     <BrainCircuit className="h-3.5 w-3.5" />
                   )}
-                  Suggest with TibaBot
+                  <span className="hidden sm:inline">Suggest with TibaBot</span>
                 </Button>
               )}
               <Button variant="outline" size="sm" onClick={addMedication} className="w-full sm:w-auto">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Medication
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Add Medication</span>
               </Button>
             </div>
           </div>

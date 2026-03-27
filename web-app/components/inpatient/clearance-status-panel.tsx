@@ -83,6 +83,11 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
   const patientContext = useOptionalPatientContext();
   const { hasModule } = useFacility();
 
+  // Build search param from patient MRN or name for resolve links
+  const patientSearchParam = patientContext?.patient?.mrn
+    || (patientContext?.patient ? `${patientContext.patient.first_name} ${patientContext.patient.last_name}` : '');
+  const searchQuery = patientSearchParam ? `?search=${encodeURIComponent(patientSearchParam)}` : '';
+
   return (
     <Card>
       <CardHeader>
@@ -131,8 +136,8 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
                 department={clearance?.billing}
                 resolveHref={
                   clearance?.billing?.first_pending_id
-                    ? `/billing/invoices/${clearance.billing.first_pending_id}`
-                    : `/billing/invoices?admission=${admissionId}`
+                    ? `/transactions/invoices/${clearance.billing.first_pending_id}`
+                    : `/transactions/invoices${searchQuery}`
                 }
               />
               {hasModule('pharmacy') && (
@@ -142,7 +147,7 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
                   resolveHref={
                     clearance?.pharmacy?.first_pending_id
                       ? `/pharmacy/prescriptions/${clearance.pharmacy.first_pending_id}`
-                      : `/pharmacy/prescriptions?admission=${admissionId}`
+                      : `/pharmacy/prescriptions${searchQuery}`
                   }
                 />
               )}
@@ -153,7 +158,7 @@ export function ClearanceStatusPanel({ admissionId }: ClearanceStatusPanelProps)
                   resolveHref={
                     clearance?.laboratory?.first_pending_order_number
                       ? `/laboratory/orders/${clearance.laboratory.first_pending_order_number}`
-                      : `/laboratory/orders?admission=${admissionId}`
+                      : `/laboratory${searchQuery}`
                   }
                 />
               )}

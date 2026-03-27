@@ -152,8 +152,8 @@ export function MultiDiagnosisInput({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <Label>{label}</Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label className="shrink-0">{label}</Label>
         <div className="flex items-center gap-2">
           {hasPrimary && (
             <Select value={addingRole} onValueChange={(v) => setAddingRole(v as DiagnosisRole)}>
@@ -178,7 +178,7 @@ export function MultiDiagnosisInput({
             className="gap-1.5 shrink-0"
           >
             <Plus className="h-3.5 w-3.5" />
-            {!hasPrimary ? 'Add Primary' : 'Add Diagnosis'}
+            <span className="hidden sm:inline">{!hasPrimary ? 'Add Primary' : 'Add Diagnosis'}</span>
           </Button>
         </div>
       </div>

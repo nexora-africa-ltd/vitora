@@ -106,7 +106,7 @@ export default function AdmissionsPage() {
         />
 
         {/* Stats Section */}
-        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 sm:gap-4 grid-cols-2 lg:grid-cols-4">
           <StatsCard
             title="Active Admissions"
             value={admissionsLoading ? '-' : stats.activeAdmissions}
