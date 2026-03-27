@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -40,7 +40,6 @@ import {
 import { PageHeader } from '@/components/shared/page-header';
 import { useDrugs, useCreateStockBatch } from '@/lib/hooks/use-pharmacy';
 import { useToast } from '@/lib/hooks/use-toast';
-import { useDebounce } from '@/lib/hooks/use-debounce';
 import type { StockBatchCreateData } from '@/lib/types/pharmacy';
 
 // Form validation schema - matches StockBatchCreateData type
@@ -70,15 +69,10 @@ export default function ReceiveStockPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Drug search state with debounce
-  const [drugSearch, setDrugSearch] = useState('');
-  const debouncedDrugSearch = useDebounce(drugSearch, 300);
-
-  // Fetch drugs with server-side search
+  // Fetch all active drugs (client-side filtering via cmdk)
   const { data: drugsData, isLoading: drugsLoading } = useDrugs({
     is_active: true,
-    search: debouncedDrugSearch || undefined,
-    page_size: 50, // Reasonable page size with search
+    page_size: 100,
   });
 
   // Create stock batch mutation
@@ -103,11 +97,6 @@ export default function ReceiveStockPage() {
       value: drug.id.toString(),
     }));
   }, [drugsData?.results]);
-
-  // Handle drug search input change
-  const handleDrugSearchChange = useCallback((value: string) => {
-    setDrugSearch(value);
-  }, []);
 
   const onSubmit = async (data: ReceiveStockFormValues) => {
     try {
@@ -149,7 +138,7 @@ export default function ReceiveStockPage() {
       />
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6 max-w-2xl" role="form" data-testid="stock-receive-form">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6 max-w-2xl mx-auto" role="form" data-testid="stock-receive-form">
           {/* Drug & Batch Details */}
           <Card>
             <CardHeader className="pb-3">
@@ -172,40 +161,35 @@ export default function ReceiveStockPage() {
                       <FormControl>
                         <ComboboxTrigger
                           className="w-full justify-between"
-                          disabled={drugsLoading && !drugSearch}
+                          disabled={drugsLoading}
                           aria-label="Select drug"
                         />
                       </FormControl>
-                      <ComboboxContent shouldFilter={false}>
-                        <ComboboxInput
-                          placeholder="Search drugs..."
-                          value={drugSearch}
-                          onValueChange={handleDrugSearchChange}
-                        />
+                      <ComboboxContent>
+                        <ComboboxInput placeholder="Search drugs..." />
                         <ComboboxList className="max-h-[300px]">
                           {drugsLoading ? (
                             <div className="flex items-center justify-center py-6">
                               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                              <span className="ml-2 text-sm text-muted-foreground">Searching...</span>
-                            </div>
-                          ) : drugOptions.length === 0 ? (
-                            <div className="py-6 text-center text-sm text-muted-foreground">
-                              {drugSearch ? 'No drugs found.' : 'Type to search for drugs...'}
+                              <span className="ml-2 text-sm text-muted-foreground">Loading drugs...</span>
                             </div>
                           ) : (
-                            <ComboboxGroup>
-                              {drugOptions.map((drug) => (
-                                <ComboboxItem key={drug.value} value={drug.value}>
-                                  {drug.label}
-                                </ComboboxItem>
-                              ))}
-                            </ComboboxGroup>
+                            <>
+                              <ComboboxEmpty>No drugs found.</ComboboxEmpty>
+                              <ComboboxGroup>
+                                {drugOptions.map((drug) => (
+                                  <ComboboxItem key={drug.value} value={drug.value} keywords={[drug.label]}>
+                                    {drug.label}
+                                  </ComboboxItem>
+                                ))}
+                              </ComboboxGroup>
+                            </>
                           )}
                         </ComboboxList>
                       </ComboboxContent>
                     </Combobox>
                     <FormDescription>
-                      Type to search for a drug from the catalog
+                      Search from {drugsData?.count ?? '...'} drugs in catalog
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

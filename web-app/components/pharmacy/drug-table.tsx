@@ -36,7 +36,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Drug, DrugCategory, DrugForm, DrugSchedule } from '@/lib/types/pharmacy';
-import { useDebounce } from '@/lib/hooks/use-debounce';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 
 interface DrugTableProps {
@@ -124,7 +123,6 @@ export function DrugTable({
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  useDebounce(searchValue, 300);
 
   const handleSearchChange = (value: string) => {
     setSearchValue(value);
