@@ -36,6 +36,13 @@ const DEFAULT_STATS: DashboardStats = {
   triage: { waiting: 0, avg_wait_time_minutes: 0, emergency_count: 0 },
   billing: { revenue_today: 0, pending_payments: 0, sha_claims_pending: 0 },
   alerts: { critical: 0, high: 0, medium: 0, total_unresolved: 0 },
+  checkin: { checked_in_today: 0, waiting: 0, completed_today: 0 },
+  inpatient: { current_admissions: 0, available_beds: 0, discharged_today: 0, occupancy_rate: 0 },
+  imaging: { pending_orders: 0, completed_today: 0, urgent_orders: 0 },
+  emergency: { active_overrides: 0, pending_review: 0 },
+  mch: { active_registrations: 0, high_risk: 0, deliveries_today: 0 },
+  theatre: { scheduled_today: 0, in_progress: 0, completed_today: 0 },
+  allied_health: { pending_referrals: 0, sessions_today: 0, open_cases: 0 },
 };
 
 /**

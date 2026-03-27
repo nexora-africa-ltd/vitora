@@ -46,6 +46,48 @@ export const AlertStatsSchema = z.object({
   total_unresolved: z.number(),
 });
 
+export const CheckinStatsSchema = z.object({
+  checked_in_today: z.number(),
+  waiting: z.number(),
+  completed_today: z.number(),
+});
+
+export const InpatientStatsSchema = z.object({
+  current_admissions: z.number(),
+  available_beds: z.number(),
+  discharged_today: z.number(),
+  occupancy_rate: z.number(),
+});
+
+export const ImagingStatsSchema = z.object({
+  pending_orders: z.number(),
+  completed_today: z.number(),
+  urgent_orders: z.number(),
+});
+
+export const EmergencyStatsSchema = z.object({
+  active_overrides: z.number(),
+  pending_review: z.number(),
+});
+
+export const MCHStatsSchema = z.object({
+  active_registrations: z.number(),
+  high_risk: z.number(),
+  deliveries_today: z.number(),
+});
+
+export const TheatreStatsSchema = z.object({
+  scheduled_today: z.number(),
+  in_progress: z.number(),
+  completed_today: z.number(),
+});
+
+export const AlliedHealthStatsSchema = z.object({
+  pending_referrals: z.number(),
+  sessions_today: z.number(),
+  open_cases: z.number(),
+});
+
 export const DashboardStatsSchema = z.object({
   timestamp: z.string(),
   cache_ttl: z.number(),
@@ -56,4 +98,11 @@ export const DashboardStatsSchema = z.object({
   triage: TriageStatsSchema,
   billing: BillingStatsSchema,
   alerts: AlertStatsSchema,
+  checkin: CheckinStatsSchema,
+  inpatient: InpatientStatsSchema,
+  imaging: ImagingStatsSchema,
+  emergency: EmergencyStatsSchema,
+  mch: MCHStatsSchema,
+  theatre: TheatreStatsSchema,
+  allied_health: AlliedHealthStatsSchema,
 });
