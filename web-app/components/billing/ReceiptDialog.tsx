@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, X } from 'lucide-react';
 import { ReceiptView } from './ReceiptView';
@@ -40,7 +41,7 @@ export function ReceiptDialog({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-600" />
@@ -51,12 +52,14 @@ export function ReceiptDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Use ReceiptView as the single source of truth */}
-        <ReceiptView
-          receipt={receipt}
-          isLoading={isLoading}
-          showActionButtons={false}
-        />
+        <ScrollArea className="flex-1 -mx-6 px-6 overflow-y-auto">
+          {/* Use ReceiptView as the single source of truth */}
+          <ReceiptView
+            receipt={receipt}
+            isLoading={isLoading}
+            showActionButtons={false}
+          />
+        </ScrollArea>
 
         {/* Dialog-specific close button */}
         {!isLoading && receipt && (
