@@ -29,6 +29,7 @@ import {
   Baby,
   Scissors,
   HeartHandshake,
+  Building2,
 } from 'lucide-react';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { RecentPatients } from '@/components/dashboard/recent-patients';
@@ -156,6 +157,7 @@ export default function DashboardPage() {
   const canViewMCH = canAccessModule('mch');
   const canViewTheatre = canAccessModule('theatre');
   const canViewAlliedHealth = canAccessModule('allied_health');
+  const canViewAdmin = canAccessModule('admin');
   const { data: staffProfile } = useMyStaffProfile();
   const { refresh, isRefreshing } = usePageRefresh();
 
@@ -343,6 +345,16 @@ export default function DashboardPage() {
       icon: HeartHandshake,
       href: '/allied-health',
       ariaLabel: 'Open allied health dashboard',
+      showTrendIndicator: false,
+    }] : []),
+    ...(canViewAdmin && stats?.org_admin ? [{
+      title: 'Facilities',
+      value: formatNumber(stats.org_admin.active_facilities),
+      meta: `${formatNumber(stats.org_admin.total_facilities)} total`,
+      description: `${formatNumber(stats.org_admin.total_staff)} active staff`,
+      icon: Building2,
+      href: '/admin/facilities',
+      ariaLabel: 'Open facilities management',
       showTrendIndicator: false,
     }] : []),
   ];
