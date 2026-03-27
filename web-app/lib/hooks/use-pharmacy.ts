@@ -3,7 +3,7 @@
  * Sprint 1.3-1.4 Track A: Pharmacy Module
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { pharmacyApi } from '@/lib/api/pharmacy';
 import {
   DrugListParams,
@@ -27,6 +27,7 @@ export function useDrugs(params?: DrugListParams) {
   return useQuery({
     queryKey: ['drugs', params],
     queryFn: () => pharmacyApi.listDrugs(params),
+    placeholderData: keepPreviousData,
   });
 }
 
