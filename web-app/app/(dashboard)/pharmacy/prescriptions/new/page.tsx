@@ -217,8 +217,8 @@ export default function NewPrescriptionPage() {
 
   // Auto-calculate quantity when dosage, frequency, or duration changes
   const autoQuantity = useMemo(() => {
-    return calculateQuantity(unitsPerDose, currentItem.frequency, currentItem.duration);
-  }, [unitsPerDose, currentItem.frequency, currentItem.duration]);
+    return calculateQuantity(unitsPerDose, currentItem.frequency, currentItem.duration, selectedDrug?.form);
+  }, [unitsPerDose, currentItem.frequency, currentItem.duration, selectedDrug?.form]);
 
   useEffect(() => {
     if (autoQuantity !== null && !quantityManualOverride) {

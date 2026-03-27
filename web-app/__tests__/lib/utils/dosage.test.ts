@@ -11,6 +11,7 @@ import {
   getRouteOptions,
   getFrequencyOptions,
   getDurationOptions,
+  calculateQuantity,
 } from '@/lib/utils/dosage';
 import type { Drug, DrugForm } from '@/lib/types/pharmacy';
 
@@ -498,5 +499,117 @@ describe('getDurationOptions', () => {
     const durations = getDurationOptions();
 
     expect(durations.some((d) => d.value === 'Ongoing')).toBe(true);
+  });
+});
+
+describe('calculateQuantity', () => {
+  describe('countable forms (tablets, capsules)', () => {
+    it('should calculate tablets: 1 tab × OD × 7 days = 7', () => {
+      expect(calculateQuantity(1, 'OD', '7 days', 'TABLET')).toBe(7);
+    });
+
+    it('should calculate tablets: 2 tabs × TDS × 5 days = 30', () => {
+      expect(calculateQuantity(2, 'TDS', '5 days', 'TABLET')).toBe(30);
+    });
+
+    it('should calculate capsules: 1 cap × BD × 14 days = 28', () => {
+      expect(calculateQuantity(1, 'BD', '14 days', 'CAPSULE')).toBe(28);
+    });
+
+    it('should round up fractional quantities', () => {
+      // 0.5 tablet × TDS × 7 days = 10.5 → 11
+      expect(calculateQuantity(0.5, 'TDS', '7 days', 'TABLET')).toBe(11);
+    });
+
+    it('should work without drugForm (backward compat)', () => {
+      expect(calculateQuantity(1, 'OD', '7 days')).toBe(7);
+    });
+  });
+
+  describe('topicals (cream, ointment, gel)', () => {
+    it('should dispense 1 tube for ≤14 days', () => {
+      expect(calculateQuantity(1, 'BD', '7 days', 'CREAM')).toBe(1);
+      expect(calculateQuantity(1, 'TDS', '14 days', 'OINTMENT')).toBe(1);
+      expect(calculateQuantity(1, 'OD', '10 days', 'GEL')).toBe(1);
+    });
+
+    it('should dispense 2 tubes for 15-28 days', () => {
+      expect(calculateQuantity(1, 'BD', '21 days', 'CREAM')).toBe(2);
+      expect(calculateQuantity(1, 'OD', '28 days', 'GEL')).toBe(2);
+    });
+
+    it('should dispense 3 tubes for 30 days', () => {
+      expect(calculateQuantity(1, 'OD', '30 days', 'OINTMENT')).toBe(3);
+    });
+
+    it('should NOT multiply by frequency for topicals', () => {
+      // 14 days GEL applied TDS should still be 1 tube, not 42
+      expect(calculateQuantity(1, 'TDS', '14 days', 'GEL')).toBe(1);
+    });
+  });
+
+  describe('liquids (syrup, suspension, solution)', () => {
+    it('should calculate bottles: 5ml × TDS × 7 days = 105ml → 2 bottles', () => {
+      expect(calculateQuantity(5, 'TDS', '7 days', 'SYRUP')).toBe(2);
+    });
+
+    it('should calculate bottles: 5ml × OD × 7 days = 35ml → 1 bottle', () => {
+      expect(calculateQuantity(5, 'OD', '7 days', 'SUSPENSION')).toBe(1);
+    });
+
+    it('should calculate bottles: 10ml × TDS × 14 days = 420ml → 5 bottles', () => {
+      expect(calculateQuantity(10, 'TDS', '14 days', 'SOLUTION')).toBe(5);
+    });
+
+    it('should return at least 1 bottle even for tiny amounts', () => {
+      expect(calculateQuantity(2.5, 'OD', '1 day', 'SYRUP')).toBe(1);
+    });
+  });
+
+  describe('inhalers and sprays', () => {
+    it('should dispense 1 device for ≤30 days', () => {
+      expect(calculateQuantity(2, 'BD', '14 days', 'INHALER')).toBe(1);
+      expect(calculateQuantity(1, 'OD', '30 days', 'SPRAY')).toBe(1);
+    });
+
+    it('should dispense 2 devices for 31-60 days', () => {
+      expect(calculateQuantity(2, 'BD', '3 months', 'INHALER')).toBe(3);
+    });
+  });
+
+  describe('drops', () => {
+    it('should dispense 1 bottle for ≤30 days', () => {
+      expect(calculateQuantity(2, 'TDS', '14 days', 'DROPS')).toBe(1);
+    });
+
+    it('should dispense 2 bottles for 31-60 days', () => {
+      expect(calculateQuantity(1, 'OD', '3 months', 'DROPS')).toBe(3);
+    });
+  });
+
+  describe('suppositories and patches (countable)', () => {
+    it('should count suppositories: 1 × BD × 5 days = 10', () => {
+      expect(calculateQuantity(1, 'BD', '5 days', 'SUPPOSITORY')).toBe(10);
+    });
+
+    it('should count patches: 1 × OD × 30 days = 30', () => {
+      expect(calculateQuantity(1, 'OD', '30 days', 'PATCH')).toBe(30);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should return null for missing inputs', () => {
+      expect(calculateQuantity(null, 'OD', '7 days')).toBeNull();
+      expect(calculateQuantity(1, undefined, '7 days')).toBeNull();
+      expect(calculateQuantity(1, 'OD', undefined)).toBeNull();
+    });
+
+    it('should return null for PRN frequency', () => {
+      expect(calculateQuantity(1, 'PRN', '7 days', 'TABLET')).toBeNull();
+    });
+
+    it('should return null for Ongoing duration', () => {
+      expect(calculateQuantity(1, 'OD', 'Ongoing', 'TABLET')).toBeNull();
+    });
   });
 });

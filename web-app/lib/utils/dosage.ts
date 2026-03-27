@@ -416,17 +416,38 @@ export function parseDurationDays(duration: string): number | null {
 }
 
 /**
- * Calculate total quantity to dispense based on dosage, frequency, and duration.
+ * Drug forms dispensed as whole containers (tubes, bottles, devices)
+ * rather than counted per-dose units.
+ */
+const TUBE_FORMS: DrugForm[] = ['CREAM', 'OINTMENT', 'GEL'];
+const BOTTLE_FORMS: DrugForm[] = ['SYRUP', 'SUSPENSION', 'SOLUTION'];
+const DEVICE_FORMS: DrugForm[] = ['INHALER', 'SPRAY'];
+const BOTTLE_DROP_FORMS: DrugForm[] = ['DROPS'];
+
+/** Standard bottle volume in ml for liquid oral formulations */
+const STANDARD_BOTTLE_ML = 100;
+
+/**
+ * Calculate total quantity to dispense based on dosage, frequency, duration,
+ * and optionally the drug form for non-countable dispensing units.
+ *
+ * For tablets/capsules/suppositories: units × doses/day × days
+ * For topicals (cream/ointment/gel): 1 tube for ≤14 days, 2 for ≤30, etc.
+ * For liquids (syrup/suspension/solution): total ml → number of bottles
+ * For inhalers/sprays: 1 device for ≤30 days, 2 for ≤60, etc.
+ * For drops: 1 bottle for ≤30 days, 2 for ≤60, etc.
  *
  * @param unitsPerDose - Number of units per dose (from DosageSuggestion.quantity)
  * @param frequency - Frequency abbreviation (e.g., "TDS")
  * @param duration - Duration string (e.g., "7 days")
+ * @param drugForm - Optional drug form for container-based dispensing
  * @returns Calculated quantity (rounded up) or null if calculation is not possible
  */
 export function calculateQuantity(
   unitsPerDose: number | null | undefined,
   frequency: string | undefined,
   duration: string | undefined,
+  drugForm?: DrugForm | null,
 ): number | null {
   if (!unitsPerDose || !frequency || !duration) return null;
 
@@ -436,5 +457,27 @@ export function calculateQuantity(
   const days = parseDurationDays(duration);
   if (days === null) return null;
 
+  // Topicals: dispense whole tubes (1 per ~14 days of use)
+  if (drugForm && TUBE_FORMS.includes(drugForm)) {
+    return Math.max(1, Math.ceil(days / 14));
+  }
+
+  // Inhalers / sprays: dispense whole devices (1 per ~30 days)
+  if (drugForm && DEVICE_FORMS.includes(drugForm)) {
+    return Math.max(1, Math.ceil(days / 30));
+  }
+
+  // Drops: dispense whole bottles (1 per ~30 days)
+  if (drugForm && BOTTLE_DROP_FORMS.includes(drugForm)) {
+    return Math.max(1, Math.ceil(days / 30));
+  }
+
+  // Liquids: total ml → number of standard bottles
+  if (drugForm && BOTTLE_FORMS.includes(drugForm)) {
+    const totalMl = unitsPerDose * dosesPerDay * days;
+    return Math.max(1, Math.ceil(totalMl / STANDARD_BOTTLE_ML));
+  }
+
+  // Countable forms (tablets, capsules, suppositories, patches, injections, etc.)
   return Math.ceil(unitsPerDose * dosesPerDay * days);
 }
