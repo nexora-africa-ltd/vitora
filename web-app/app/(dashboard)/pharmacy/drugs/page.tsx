@@ -15,6 +15,7 @@ import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { DrugTable } from '@/components/pharmacy';
 import { useDrugs } from '@/lib/hooks/use-pharmacy';
 import { usePageRefresh } from '@/lib/context/page-refresh-context';
+import { useDebounce } from '@/lib/hooks/use-debounce';
 import type { DrugCategory, DrugForm, DrugSchedule } from '@/lib/types/pharmacy';
 
 export default function DrugCatalogPage() {
@@ -23,6 +24,7 @@ export default function DrugCatalogPage() {
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [filters, setFilters] = useState<{
     category?: DrugCategory;
     form?: DrugForm;
@@ -39,7 +41,7 @@ export default function DrugCatalogPage() {
   } = useDrugs({
     page,
     page_size: pageSize,
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     ...filters,
   });
 
@@ -69,8 +71,8 @@ export default function DrugCatalogPage() {
           totalPages={totalPages}
           totalCount={totalCount}
           onPageChange={setPage}
-          onSearch={setSearch}
-          onFiltersChange={setFilters}
+          onSearch={(q) => { setSearch(q); setPage(1); }}
+          onFiltersChange={(f) => { setFilters(f); setPage(1); }}
         />
       </div>
     </PullToRefresh>
