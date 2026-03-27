@@ -303,6 +303,10 @@ def process_checkin(
         destination_clinic = destination
         destination_type = "CLINIC"
         skip_triage = should_skip_triage(visit_reason, destination_clinic) or skip_triage
+    elif destination == "EMERGENCY":
+        destination_type = "EMERGENCY"
+        visit_type = "EMERGENCY"
+        skip_triage = False  # ER patients must be triaged (KETA protocol)
     elif destination == "TRIAGE":
         destination_type = "TRIAGE"
         # Auto-detect skip triage based on visit reason even for TRIAGE destination
@@ -315,7 +319,9 @@ def process_checkin(
 
     # Create encounter
     encounter_type = "OPD"
-    if visit_reason == "FOLLOW_UP" or visit_type == "FOLLOW_UP":
+    if destination_type == "EMERGENCY":
+        encounter_type = "EMERGENCY"
+    elif visit_reason == "FOLLOW_UP" or visit_type == "FOLLOW_UP":
         encounter_type = "FOLLOW_UP"
 
     encounter = Encounter.objects.create(
@@ -345,13 +351,14 @@ def process_checkin(
     )
 
     # Create queue entries based on destination
-    if destination_type == "TRIAGE":
-        # Add to triage waiting queue
+    if destination_type in ("TRIAGE", "EMERGENCY"):
+        # Add to triage waiting queue (ER patients also go through triage per KETA)
         waiting_queue = WaitingQueue.objects.create(
             patient=patient,
             encounter=encounter,
             reason_for_visit=chief_complaint,
             status="WAITING_TRIAGE",
+            priority_hint="EMERGENCY" if destination_type == "EMERGENCY" else "",
             checked_in_by=user,
         )
         checkin.waiting_queue_entry = waiting_queue

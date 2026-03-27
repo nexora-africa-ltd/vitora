@@ -15,6 +15,7 @@ import {
   UserCheck,
   Activity,
   Stethoscope,
+  Siren,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,14 +76,19 @@ function PatientCheckinCard({
   patient,
   onTriageCheckin,
   onOpenDirectRoute,
+  onEmergencyCheckin,
   isLoading,
 }: {
   patient: PatientLookupResponse;
   onTriageCheckin: (visitReason: VisitReason) => void;
   onOpenDirectRoute: (context: { visitReason: VisitReason; skipTriage: boolean }) => void;
+  onEmergencyCheckin: (visitReason: VisitReason, chiefComplaint: string) => void;
   isLoading: boolean;
 }) {
   const [visitReason, setVisitReason] = useState<VisitReason>(patient.suggested_visit_reason);
+  const [erComplaint, setErComplaint] = useState('');
+
+  const isEmergency = visitReason === 'EMERGENCY';
 
   // Determine if this reason should skip triage
   const shouldSkipTriage = useMemo(() => {
@@ -264,7 +270,7 @@ function PatientCheckinCard({
               <SelectContent>
                 {VISIT_REASON_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                    {option.emergency ? '🚨 ' : ''}{option.label}
                     {option.skipTriage && ' (Skip Triage)'}
                   </SelectItem>
                 ))}
@@ -280,13 +286,38 @@ function PatientCheckinCard({
           )}
         </div>
 
+        {/* Emergency chief complaint input (shown when Emergency is selected) */}
+        {isEmergency && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-destructive">Chief Complaint</label>
+            <Input
+              value={erComplaint}
+              onChange={(e) => setErComplaint(e.target.value)}
+              placeholder="e.g., chest pain, difficulty breathing, trauma..."
+              className="text-sm h-9 border-destructive/30 focus-visible:ring-destructive/30"
+            />
+          </div>
+        )}
+
         {/* Check-in Actions */}
         <div className="space-y-3 pt-2">
-          {/* Primary action - Triage check-in */}
-          <Button onClick={handleTriageCheckin} disabled={isLoading} className="w-full h-10 sm:h-11 text-sm">
-            <Stethoscope className="mr-2 h-4 w-4" />
-            Check-in to Triage
-          </Button>
+          {/* Primary action - transforms between Triage and Emergency */}
+          {isEmergency ? (
+            <Button
+              variant="destructive"
+              onClick={() => onEmergencyCheckin(visitReason, erComplaint)}
+              disabled={isLoading}
+              className="w-full h-10 sm:h-11 text-sm"
+            >
+              <Siren className="mr-2 h-4 w-4" />
+              Check-in to Emergency
+            </Button>
+          ) : (
+            <Button onClick={handleTriageCheckin} disabled={isLoading} className="w-full h-10 sm:h-11 text-sm">
+              <Stethoscope className="mr-2 h-4 w-4" />
+              Check-in to Triage
+            </Button>
+          )}
 
           {/* Secondary action - Direct to clinic */}
           <div className="relative py-1">
@@ -577,6 +608,33 @@ export default function PatientCheckinPage() {
     setIsRouteDialogOpen(true);
   };
 
+  const handleEmergencyCheckin = async (visitReason: VisitReason, chiefComplaint: string) => {
+    if (!patientDetails) return;
+
+    try {
+      const result = await checkinMutation.mutateAsync({
+        patientId: patientDetails.id,
+        data: {
+          destination: 'EMERGENCY',
+          visit_reason: visitReason,
+          skip_triage: false,
+          chief_complaint: chiefComplaint,
+        },
+      });
+
+      setCheckInResult(result);
+      setShowSuccessModal(true);
+      setSearchQuery('');
+      setSelectedPatient(null);
+    } catch (error) {
+      toast({
+        title: 'ER Check-in Failed',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleDirectRoute = async ({ clinic, notes }: DirectRouteToClinicPayload) => {
     if (!patientDetails || !pendingDirectRoute) {
       return null;
@@ -714,6 +772,7 @@ export default function PatientCheckinPage() {
                   patient={patientDetails}
                   onTriageCheckin={handleTriageCheckin}
                   onOpenDirectRoute={handleOpenDirectRoute}
+                  onEmergencyCheckin={handleEmergencyCheckin}
                   isLoading={checkinMutation.isPending}
                 />
               ) : null}

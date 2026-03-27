@@ -202,9 +202,12 @@ class CheckInRequestSerializer(serializers.Serializer):
     )
 
     def validate_destination(self, value):
-        """Validate destination is either TRIAGE or valid clinic ID."""
-        if value.upper() == "TRIAGE":
+        """Validate destination is TRIAGE, EMERGENCY, or valid clinic ID."""
+        upper_value = value.upper()
+        if upper_value == "TRIAGE":
             return "TRIAGE"
+        if upper_value == "EMERGENCY":
+            return "EMERGENCY"
 
         # Try to parse as clinic ID
         try:
@@ -215,7 +218,9 @@ class CheckInRequestSerializer(serializers.Serializer):
                 )
             return clinic_id
         except ValueError:
-            raise serializers.ValidationError("Destination must be 'TRIAGE' or a valid clinic ID.")
+            raise serializers.ValidationError(
+                "Destination must be 'TRIAGE', 'EMERGENCY', or a valid clinic ID."
+            )
 
     def validate_linked_encounter_id(self, value):
         """Validate linked encounter exists."""
@@ -287,6 +292,8 @@ class CheckInResponseSerializer(serializers.ModelSerializer):
         """Get human-readable destination."""
         if obj.destination_type == "TRIAGE":
             return "TRIAGE"
+        elif obj.destination_type == "EMERGENCY":
+            return "EMERGENCY"
         elif obj.destination_clinic:
             return obj.destination_clinic.name
         return obj.destination_type
@@ -364,6 +371,8 @@ class TodayCheckinSerializer(serializers.ModelSerializer):
         """Get human-readable destination."""
         if obj.destination_type == "TRIAGE":
             return "Triage"
+        elif obj.destination_type == "EMERGENCY":
+            return "Emergency"
         elif obj.destination_clinic:
             return obj.destination_clinic.name
         return obj.destination_type

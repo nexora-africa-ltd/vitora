@@ -99,7 +99,7 @@ export type VisitType = 'NEW' | 'RETURN' | 'FOLLOW_UP' | 'EMERGENCY' | 'SCHEDULE
  * Check-in request data
  */
 export interface CheckInRequest {
-  destination: 'TRIAGE' | number;
+  destination: 'TRIAGE' | 'EMERGENCY' | number;
   visit_type?: VisitType;
   visit_reason?: VisitReason;
   skip_triage?: boolean;
@@ -173,9 +173,10 @@ export const VISIT_TYPE_OPTIONS: { value: VisitType; label: string }[] = [
 /**
  * Visit reason options for UI dropdowns
  */
-export const VISIT_REASON_OPTIONS: { value: VisitReason; label: string; skipTriage?: boolean }[] = [
+export const VISIT_REASON_OPTIONS: { value: VisitReason; label: string; skipTriage?: boolean; emergency?: boolean }[] = [
   { value: 'NEW_COMPLAINT', label: 'New Complaint' },
   { value: 'FOLLOW_UP', label: 'Follow-up' },
+  { value: 'EMERGENCY', label: 'Emergency', emergency: true },
   { value: 'CHRONIC_CARE', label: 'Chronic Care Review' },
   { value: 'PROCEDURE_REVIEW', label: 'Post-Procedure Review' },
   { value: 'REFILL_ONLY', label: 'Medication Refill Only', skipTriage: true },
