@@ -131,7 +131,7 @@ export function AllClaimedEncountersWidget({ enabled = true }: AllClaimedEncount
                       {encounter.claimed_at && (
                         <Badge variant="secondary" className="w-fit shrink-0 gap-1">
                           <Clock className="h-3 w-3" aria-hidden="true" />
-                          Claimed {formatRelativeTime(encounter.claimed_at)}
+                          {formatRelativeTime(encounter.claimed_at)}
                         </Badge>
                       )}
                     </div>
