@@ -63,16 +63,48 @@ class Command(BaseCommand):
 
         # ── Models with both organization + facility ──────────────────
         MODELS_ORG_AND_FACILITY = [
+            # Clinical
             ("encounters", "Encounter", "organization", "facility"),
-            ("billing", "Invoice", "organization", "facility"),
+            ("triage", "TriageAssessment", "organization", "facility"),
             ("clinics", "Clinic", "organization", "facility"),
             ("clinics", "ClinicSession", "organization", "facility"),
             ("clinics", "ClinicVisit", "organization", "facility"),
-            ("laboratory", "LabOrder", "organization", "facility"),
+            # Pharmacy & stock
             ("pharmacy", "Prescription", "organization", "facility"),
+            ("pharmacy", "StockBatch", "organization", "facility"),
+            ("pharmacy", "StockAlert", "organization", "facility"),
+            ("pharmacy", "Dispensing", "organization", "facility"),
+            # Laboratory
+            ("laboratory", "LabOrder", "organization", "facility"),
+            # Inpatient
             ("inpatient", "Admission", "organization", "facility"),
             ("inpatient", "Ward", "organization", "facility"),
-            ("triage", "TriageAssessment", "organization", "facility"),
+            # Billing
+            ("billing", "Invoice", "organization", "facility"),
+            # Surveillance
+            ("surveillance", "NotifiableCase", "organization", "facility"),
+            ("surveillance", "SurveillanceAlert", "organization", "facility"),
+            ("surveillance", "IHRNotification", "organization", "facility"),
+            # MCH
+            ("mch", "MCHRegistration", "organization", "facility"),
+            # Allied health
+            ("nutrition", "NutritionConsultation", "organization", "facility"),
+            ("counselling", "CounsellingReferral", "organization", "facility"),
+            ("physiotherapy", "PhysiotherapyOrder", "organization", "facility"),
+            ("occupational_therapy", "OccupationalTherapyOrder", "organization", "facility"),
+            ("social_work", "SocialWorkReferral", "organization", "facility"),
+            # AI & CDS
+            ("ai", "ChatSession", "organization", "facility"),
+            ("ai", "AICarePlanResult", "organization", "facility"),
+            ("ai", "AICDSResult", "organization", "facility"),
+            ("ai", "AILabInterpretResult", "organization", "facility"),
+            ("ai", "AIDischargeResult", "organization", "facility"),
+            ("ai", "AIICURiskResult", "organization", "facility"),
+            ("cds", "CDSAlert", "organization", "facility"),
+            # Core
+            ("core", "AuditLog", "organization", "facility"),
+            ("core", "SyncQueue", "organization", "facility"),
+            ("core", "Role", "organization", "facility"),
         ]
 
         for app_label, model_name, org_field, fac_field in MODELS_ORG_AND_FACILITY:
@@ -118,6 +150,52 @@ class Command(BaseCommand):
                 self.stdout.write(
                     f"  patients.Patient: "
                     f"org={count_org}, registered_at_facility={count_fac}"
+                )
+                total_updated += max(count_org, count_fac)
+        except LookupError:
+            pass
+
+        # ── IDSRWeeklyReport uses facility_ref (not facility) ─────────
+        try:
+            IDSRWeeklyReport = apps.get_model("surveillance", "IDSRWeeklyReport")
+
+            qs_org = IDSRWeeklyReport.objects.filter(organization__isnull=True)
+            count_org = qs_org.count()
+            if count_org and not dry_run:
+                qs_org.update(organization=demo_org)
+
+            qs_fac = IDSRWeeklyReport.objects.filter(facility_ref__isnull=True)
+            count_fac = qs_fac.count()
+            if count_fac and not dry_run:
+                qs_fac.update(facility_ref=hq_facility)
+
+            if count_org or count_fac:
+                self.stdout.write(
+                    f"  surveillance.IDSRWeeklyReport: "
+                    f"org={count_org}, facility_ref={count_fac}"
+                )
+                total_updated += max(count_org, count_fac)
+        except LookupError:
+            pass
+
+        # ── StaffProfile uses primary_facility (not facility) ─────────
+        try:
+            StaffProfile = apps.get_model("core", "StaffProfile")
+
+            qs_org = StaffProfile.objects.filter(organization__isnull=True)
+            count_org = qs_org.count()
+            if count_org and not dry_run:
+                qs_org.update(organization=demo_org)
+
+            qs_fac = StaffProfile.objects.filter(primary_facility__isnull=True)
+            count_fac = qs_fac.count()
+            if count_fac and not dry_run:
+                qs_fac.update(primary_facility=hq_facility)
+
+            if count_org or count_fac:
+                self.stdout.write(
+                    f"  core.StaffProfile: "
+                    f"org={count_org}, primary_facility={count_fac}"
                 )
                 total_updated += max(count_org, count_fac)
         except LookupError:
