@@ -33,6 +33,7 @@ class CheckIn(TimeStampedModel):
     DESTINATION_TYPE_CHOICES = [
         ("TRIAGE", "Triage Queue"),
         ("CLINIC", "Direct to Clinic"),
+        ("EMERGENCY", "Emergency Department"),
     ]
 
     # =========================================================================
@@ -52,6 +53,7 @@ class CheckIn(TimeStampedModel):
     VISIT_REASON_CHOICES = [
         ("NEW_COMPLAINT", "New Complaint"),
         ("FOLLOW_UP", "Follow-up"),
+        ("EMERGENCY", "Emergency"),
         ("CHRONIC_CARE", "Chronic Care Review"),
         ("PROCEDURE_REVIEW", "Post-Procedure Review"),
         ("REFILL_ONLY", "Medication Refill Only"),

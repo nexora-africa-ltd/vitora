@@ -288,6 +288,7 @@ export type VisitReason =
   | 'REFILL_ONLY'
   | 'LAB_REVIEW'
   | 'REFERRAL_VISIT'
+  | 'EMERGENCY'
   | 'OTHER';
 
 export const VISIT_REASON_DISPLAY: Record<VisitReason, string> = {
@@ -298,6 +299,7 @@ export const VISIT_REASON_DISPLAY: Record<VisitReason, string> = {
   REFILL_ONLY: 'Medication Refill Only',
   LAB_REVIEW: 'Lab Results Review',
   REFERRAL_VISIT: 'Referral from Another Facility',
+  EMERGENCY: 'Emergency',
   OTHER: 'Other',
 };
 
