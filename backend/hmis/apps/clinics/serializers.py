@@ -119,6 +119,7 @@ class ClinicListSerializer(serializers.ModelSerializer):
             "is_sensitive",
             "is_open_today",
             "is_scheduled_today",
+            "eligibility_rules",
         ]
 
     def get_is_open_today(self, obj) -> bool:
