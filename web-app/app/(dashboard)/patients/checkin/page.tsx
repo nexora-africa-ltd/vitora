@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils';
 import { CheckinSuccessModal } from '@/components/patients/checkin-success-modal';
 import { QRScannerDialog } from '@/components/patients/qr-scanner-dialog';
 import { RouteToClinicDialog, type DirectRouteToClinicPayload } from '@/components/triage/route-to-clinic-dialog';
+import { SHAStatusIndicator } from '@/components/patients/sha-status-indicator';
 
 // =============================================================================
 // Help Popover Component
@@ -125,6 +126,11 @@ function PatientCheckinCard({
                 {patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other'},{' '}
                 {patient.age}y
               </span>
+              <span className="hidden xs:inline">•</span>
+              <SHAStatusIndicator
+                patientId={patient.id}
+                identificationNumber={patient.identification_number}
+              />
             </div>
           </div>
         </div>
