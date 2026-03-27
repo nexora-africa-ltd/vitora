@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Optional
 
+from django.db import IntegrityError
 from django.db.models import Max
 from django.utils import timezone
 
@@ -352,6 +353,21 @@ def process_checkin(
 
     # Create queue entries based on destination
     if destination_type in ("TRIAGE", "EMERGENCY"):
+        # Check if patient is already waiting for triage
+        existing_entry = WaitingQueue.objects.filter(
+            patient=patient,
+            status__in=["WAITING_TRIAGE", "IN_TRIAGE"],
+        ).first()
+        if existing_entry:
+            encounter.delete()
+            checkin.delete()
+            dest_label = "Emergency triage" if destination_type == "EMERGENCY" else "Triage"
+            raise ValueError(
+                f"Patient is already in the {dest_label} waiting queue "
+                f"(status: {existing_entry.get_status_display()}). "
+                f"Please wait for the current triage to complete before checking in again."
+            )
+
         # Add to triage waiting queue (ER patients also go through triage per KETA)
         waiting_queue = WaitingQueue.objects.create(
             patient=patient,
@@ -367,21 +383,47 @@ def process_checkin(
         # Add directly to clinic queue
         session = destination_clinic.get_current_session()
 
+        # Check if patient already has an active visit in this session
+        existing_visit = ClinicVisit.objects.filter(
+            session=session,
+            patient=patient,
+            status__in=["REGISTERED", "WAITING", "CALLED", "IN_CONSULTATION"],
+        ).first()
+        if existing_visit:
+            # Clean up the encounter we just created since we're not proceeding
+            encounter.delete()
+            checkin.delete()
+            raise ValueError(
+                f"Patient is already in the {destination_clinic.name} queue "
+                f"(position #{existing_visit.queue_number}, "
+                f"status: {existing_visit.get_status_display()}). "
+                f"Please wait for the current visit to complete before checking in again."
+            )
+
         # Get next queue number
         last_visit = ClinicVisit.objects.filter(session=session).order_by("-queue_number").first()
         next_queue_number = (last_visit.queue_number + 1) if last_visit else 1
 
-        clinic_visit = ClinicVisit.objects.create(
-            session=session,
-            patient=patient,
-            queue_number=next_queue_number,
-            status="REGISTERED",
-            priority="STANDARD",
-            visit_type=visit_type,
-            source="DIRECT",
-            encounter=encounter,
-            registered_by=user,
-        )
+        try:
+            clinic_visit = ClinicVisit.objects.create(
+                session=session,
+                patient=patient,
+                queue_number=next_queue_number,
+                status="REGISTERED",
+                priority="STANDARD",
+                visit_type=visit_type,
+                source="DIRECT",
+                encounter=encounter,
+                registered_by=user,
+            )
+        except IntegrityError:
+            # Race condition: another request created a visit between our check and create
+            encounter.delete()
+            checkin.delete()
+            raise ValueError(
+                f"Patient is already in the {destination_clinic.name} queue. "
+                f"Please wait for the current visit to complete before checking in again."
+            )
         checkin.clinic_visit = clinic_visit
         checkin.save(update_fields=["clinic_visit"])
 

@@ -352,6 +352,17 @@ class PatientCheckinView(views.APIView):
                 linked_encounter_id=data.get("linked_encounter_id"),
                 identity_method=data.get("identity_method", "MRN"),
             )
+        except ValueError as e:
+            # Duplicate check-in or business rule violation
+            error_msg = str(e)
+            is_duplicate = "already in" in error_msg
+            return Response(
+                {
+                    "detail": error_msg,
+                    "code": "DUPLICATE_CHECKIN" if is_duplicate else "CHECKIN_ERROR",
+                },
+                status=status.HTTP_409_CONFLICT if is_duplicate else status.HTTP_400_BAD_REQUEST,
+            )
         except Exception as e:
             return Response(
                 {"detail": str(e)},

@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/lib/hooks/use-toast';
+import { getApiErrorMessage } from '@/lib/api/client';
 import { useCheckinPatient, usePatientLookup } from '@/lib/hooks/use-checkin';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { VISIT_REASON_OPTIONS, type VisitReason, type CheckInResponse } from '@/lib/types/checkin';
@@ -108,7 +109,7 @@ export function QuickCheckinDialog({
     } catch (error) {
       toast({
         title: 'Check-in Failed',
-        description: error instanceof Error ? error.message : 'An error occurred',
+        description: getApiErrorMessage(error),
         variant: 'destructive',
       });
     }
