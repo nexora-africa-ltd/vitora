@@ -30,6 +30,7 @@ export const MODULE_PERMISSIONS = {
     'inpatient.view_wardround',
     'inpatient.receive_critical_alerts',
   ],
+  last_office: 'patients.view_deathrecord',
   pharmacy: 'pharmacy.view_prescription',
   laboratory: 'laboratory.view_laborder',
   imaging: 'imaging.view_imagingorder',

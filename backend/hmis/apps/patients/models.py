@@ -284,6 +284,17 @@ class Patient(HistoryMixin, models.Model):
         help_text="Patient's village/estate (optional, free text)",
     )
 
+    # Deceased status (denormalized from DeathRecord for query efficiency)
+    is_deceased = models.BooleanField(
+        default=False,
+        help_text="Whether the patient is deceased (auto-set from DeathRecord)",
+    )
+    date_of_death = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date of death (auto-set from DeathRecord)",
+    )
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -304,6 +315,7 @@ class Patient(HistoryMixin, models.Model):
             models.Index(fields=["last_name", "first_name"]),
             models.Index(fields=["date_of_birth"]),
             models.Index(fields=["is_sensitive"]),
+            models.Index(fields=["is_deceased"]),
             models.Index(fields=["identification_type", "identification_number"]),
         ]
         verbose_name = "Patient"
@@ -471,6 +483,381 @@ class Patient(HistoryMixin, models.Model):
             "adult": "Adult",
         }
         return display_names.get(category, category.replace("_", " ").title())
+
+
+class DeathRecord(models.Model):
+    """
+    Detailed death record for a patient (Last Office / morgue management).
+
+    Source of truth for deceased status. When created, auto-sets
+    Patient.is_deceased=True and Patient.date_of_death.
+
+    Compliant with:
+    - Kenya Civil Registration and Vital Statistics (CRVS) requirements
+    - WHO International Form of Medical Certificate of Cause of Death
+    - D1 Notification of Death form fields
+    """
+
+    MANNER_OF_DEATH_CHOICES = [
+        ("NATURAL", "Natural"),
+        ("ACCIDENT", "Accident"),
+        ("SUICIDE", "Suicide"),
+        ("HOMICIDE", "Homicide"),
+        ("UNDETERMINED", "Undetermined"),
+        ("PENDING_INVESTIGATION", "Pending Investigation"),
+    ]
+
+    PLACE_OF_DEATH_CHOICES = [
+        ("INPATIENT", "Inpatient Ward"),
+        ("EMERGENCY", "Emergency Department"),
+        ("THEATRE", "Operating Theatre"),
+        ("ICU", "Intensive Care Unit"),
+        ("BROUGHT_IN_DEAD", "Brought in Dead (BID)"),
+        ("OTHER", "Other"),
+    ]
+
+    NOTIFICATION_SOURCE_CHOICES = [
+        ("INPATIENT_DISCHARGE", "Inpatient Discharge"),
+        ("EMERGENCY", "Emergency Department"),
+        ("MANUAL_ENTRY", "Manual Entry"),
+        ("CLIENT_REGISTRY", "Client Registry Sync"),
+    ]
+
+    STATUS_CHOICES = [
+        ("PENDING_CERTIFICATION", "Pending Certification"),
+        ("CERTIFIED", "Certified"),
+        ("REPORTED_TO_CIVIL_REGISTRY", "Reported to Civil Registry"),
+        ("RELEASED_TO_FAMILY", "Released to Family"),
+        ("VOIDED", "Voided (Entered in Error)"),
+    ]
+
+    BODY_STATUS_CHOICES = [
+        ("IN_MORGUE", "In Morgue"),
+        ("RELEASED", "Released to Family"),
+        ("TRANSFERRED", "Transferred to Another Facility"),
+        ("PENDING_COLLECTION", "Pending Collection"),
+    ]
+
+    # ── Core ───────────────────────────────────────────────
+    patient = models.OneToOneField(
+        Patient,
+        on_delete=models.PROTECT,
+        related_name="death_record",
+        help_text="The deceased patient",
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="PENDING_CERTIFICATION",
+        help_text="Current status of this death record",
+    )
+
+    # ── Death Details ──────────────────────────────────────
+    date_of_death = models.DateField(
+        help_text="Date of death",
+    )
+    time_of_death = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Time of death (if known)",
+    )
+    manner_of_death = models.CharField(
+        max_length=25,
+        choices=MANNER_OF_DEATH_CHOICES,
+        default="NATURAL",
+        help_text="Manner of death",
+    )
+    place_of_death = models.CharField(
+        max_length=20,
+        choices=PLACE_OF_DEATH_CHOICES,
+        default="INPATIENT",
+        help_text="Where the death occurred",
+    )
+    place_of_death_detail = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Ward name, room number, or other detail",
+    )
+    notification_source = models.CharField(
+        max_length=20,
+        choices=NOTIFICATION_SOURCE_CHOICES,
+        default="MANUAL_ENTRY",
+        help_text="How this death record was initiated",
+    )
+
+    # ── Cause of Death (WHO Certificate of Cause of Death) ─
+    primary_cause = models.TextField(
+        help_text="Immediate cause of death (Line a)",
+    )
+    primary_cause_icd10 = models.ForeignKey(
+        "encounters.ICD10Code",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="death_records_primary",
+        help_text="ICD-10 code for primary cause of death",
+    )
+    antecedent_cause = models.TextField(
+        blank=True,
+        default="",
+        help_text="Due to / antecedent cause (Line b)",
+    )
+    antecedent_cause_icd10 = models.ForeignKey(
+        "encounters.ICD10Code",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="death_records_antecedent",
+        help_text="ICD-10 code for antecedent cause",
+    )
+    underlying_cause = models.TextField(
+        blank=True,
+        default="",
+        help_text="Underlying cause of death (Line c)",
+    )
+    underlying_cause_icd10 = models.ForeignKey(
+        "encounters.ICD10Code",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="death_records_underlying",
+        help_text="ICD-10 code for underlying cause",
+    )
+    contributing_conditions = models.TextField(
+        blank=True,
+        default="",
+        help_text="Other significant conditions contributing to death (Part II)",
+    )
+
+    # ── Certification ──────────────────────────────────────
+    certified_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="death_certifications",
+        help_text="Clinician who certified the death",
+    )
+    certified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the death was certified",
+    )
+    death_certificate_number = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Death certificate number (civil registry)",
+    )
+
+    # ── Last Office / Morgue Details ──────────────────────
+    body_status = models.CharField(
+        max_length=20,
+        choices=BODY_STATUS_CHOICES,
+        default="IN_MORGUE",
+        help_text="Current status of the body",
+    )
+    morgue_admission_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the body was admitted to the morgue",
+    )
+    morgue_compartment = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Morgue compartment/refrigerator number",
+    )
+    released_to = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Name of person the body was released to",
+    )
+    released_to_id_number = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="ID number of person collecting the body",
+    )
+    released_to_relationship = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Relationship of collector to deceased",
+    )
+    release_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the body was released",
+    )
+    burial_permit_number = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Burial permit number",
+    )
+
+    # ── Linked Records ─────────────────────────────────────
+    admission = models.ForeignKey(
+        "inpatient.Admission",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="death_records",
+        help_text="Linked inpatient admission (if died while admitted)",
+    )
+    encounter = models.ForeignKey(
+        "encounters.Encounter",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="death_records",
+        help_text="Linked encounter (if died during visit)",
+    )
+
+    # ── Audit ──────────────────────────────────────────────
+    recorded_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.PROTECT,
+        related_name="death_records_recorded",
+        help_text="Staff who recorded this death",
+    )
+    notes = models.TextField(
+        blank=True,
+        default="",
+        help_text="Additional notes",
+    )
+    voided_by = models.ForeignKey(
+        "auth.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="death_records_voided",
+        help_text="Staff who voided this record (if entered in error)",
+    )
+    voided_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the record was voided",
+    )
+    void_reason = models.TextField(
+        blank=True,
+        default="",
+        help_text="Reason for voiding the record",
+    )
+
+    # ── Timestamps ─────────────────────────────────────────
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date_of_death"]
+        verbose_name = "Death Record"
+        verbose_name_plural = "Death Records"
+        permissions = [
+            ("certify_death", "Can certify a death"),
+            ("release_body", "Can release a body from morgue"),
+            ("void_death_record", "Can void a death record"),
+        ]
+
+    def __str__(self):
+        return f"Death Record: {self.patient.mrn} - {self.date_of_death}"
+
+    def save(self, *args, **kwargs):
+        """Auto-propagate deceased status to Patient on create."""
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+
+        if is_new and self.status != "VOIDED":
+            # Mark patient as deceased
+            Patient.objects.filter(pk=self.patient_id).update(
+                is_deceased=True,
+                date_of_death=self.date_of_death,
+            )
+
+    def clean(self):
+        """Validate death record fields."""
+        from django.core.exceptions import ValidationError
+
+        super().clean()
+
+        if self.date_of_death and self.patient_id:
+            if self.date_of_death > date.today():
+                raise ValidationError({"date_of_death": "Date of death cannot be in the future."})
+            if self.patient.date_of_birth and self.date_of_death < self.patient.date_of_birth:
+                raise ValidationError(
+                    {"date_of_death": "Date of death cannot be before date of birth."}
+                )
+
+    # ── State Transition Methods ──────────────────────────
+
+    def certify(self, user, certificate_number=""):
+        """Certify this death record."""
+        from django.utils import timezone
+
+        self.status = "CERTIFIED"
+        self.certified_by = user
+        self.certified_at = timezone.now()
+        if certificate_number:
+            self.death_certificate_number = certificate_number
+        self.save(
+            update_fields=["status", "certified_by", "certified_at", "death_certificate_number", "updated_at"]
+        )
+
+    def report_to_civil_registry(self):
+        """Mark as reported to civil registry."""
+        self.status = "REPORTED_TO_CIVIL_REGISTRY"
+        self.save(update_fields=["status", "updated_at"])
+
+    def release_body(self, released_to, id_number="", relationship="", burial_permit=""):
+        """Release body to family."""
+        from django.utils import timezone
+
+        self.body_status = "RELEASED"
+        self.status = "RELEASED_TO_FAMILY"
+        self.released_to = released_to
+        self.released_to_id_number = id_number
+        self.released_to_relationship = relationship
+        self.release_date = timezone.now()
+        if burial_permit:
+            self.burial_permit_number = burial_permit
+        self.save(
+            update_fields=[
+                "body_status", "status", "released_to", "released_to_id_number",
+                "released_to_relationship", "release_date", "burial_permit_number", "updated_at",
+            ]
+        )
+
+    def void(self, user, reason):
+        """Void this death record (entered in error). Reverses Patient.is_deceased."""
+        from django.utils import timezone
+
+        self.status = "VOIDED"
+        self.voided_by = user
+        self.voided_at = timezone.now()
+        self.void_reason = reason
+        self.save(
+            update_fields=["status", "voided_by", "voided_at", "void_reason", "updated_at"]
+        )
+        # Reverse patient deceased status
+        Patient.objects.filter(pk=self.patient_id).update(
+            is_deceased=False,
+            date_of_death=None,
+        )
+
+    @property
+    def is_voided(self):
+        return self.status == "VOIDED"
+
+    @property
+    def is_certified(self):
+        return self.status in ("CERTIFIED", "REPORTED_TO_CIVIL_REGISTRY", "RELEASED_TO_FAMILY")
+
+    @property
+    def is_released(self):
+        return self.body_status == "RELEASED"
 
 
 class Allergy(models.Model):

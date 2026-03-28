@@ -20,10 +20,16 @@ from hmis.apps.core.permissions import SensitiveAccessPermission, get_client_ip
 from hmis.apps.encounters.models import Encounter
 
 from .filters import PatientFilter
-from .models import Allergy, EmergencyContact, Patient
+from .models import Allergy, DeathRecord, EmergencyContact, Patient
 from .serializers import (
     AllergyListSerializer,
     AllergySerializer,
+    DeathRecordCertifySerializer,
+    DeathRecordCreateSerializer,
+    DeathRecordDetailSerializer,
+    DeathRecordListSerializer,
+    DeathRecordReleaseBodySerializer,
+    DeathRecordVoidSerializer,
     EmergencyContactSerializer,
     PatientSerializer,
 )
@@ -1217,3 +1223,204 @@ class AllergyViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             "has_high_risk": any(i["is_high_risk"] for i in interactions),
             "interactions": interactions,
         })
+
+
+class DeathRecordViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Death Records (Last Office / Morgue management).
+
+    Provides CRUD + workflow actions:
+    - certify: Certify a death record
+    - release_body: Release body to family
+    - report_to_civil_registry: Mark as reported to CRVS
+    - void: Void a record entered in error
+    """
+
+    queryset = DeathRecord.objects.select_related(
+        "patient",
+        "recorded_by",
+        "certified_by",
+        "voided_by",
+        "primary_cause_icd10",
+        "antecedent_cause_icd10",
+        "underlying_cause_icd10",
+        "admission",
+        "encounter",
+    ).all()
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ["status", "body_status", "manner_of_death", "place_of_death", "patient"]
+    search_fields = [
+        "patient__first_name",
+        "patient__last_name",
+        "patient__mrn",
+        "death_certificate_number",
+        "morgue_compartment",
+    ]
+    ordering_fields = ["date_of_death", "created_at", "status"]
+    ordering = ["-date_of_death"]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return DeathRecordCreateSerializer
+        if self.action == "list":
+            return DeathRecordListSerializer
+        if self.action == "certify":
+            return DeathRecordCertifySerializer
+        if self.action == "release_body":
+            return DeathRecordReleaseBodySerializer
+        if self.action == "void":
+            return DeathRecordVoidSerializer
+        return DeathRecordDetailSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(recorded_by=self.request.user)
+        # Audit log
+        record = serializer.instance
+        AuditLog.log(
+            action="death_record_create",
+            user=self.request.user,
+            resource_type="DeathRecord",
+            resource_id=record.id,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=record.patient_id,
+            details={
+                "patient_mrn": record.patient.mrn,
+                "date_of_death": str(record.date_of_death),
+                "manner_of_death": record.manner_of_death,
+            },
+        )
+
+    @action(detail=True, methods=["post"])
+    def certify(self, request, pk=None):
+        """Certify a death record."""
+        record = self.get_object()
+        if record.is_voided:
+            return Response(
+                {"error": "Cannot certify a voided record."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if record.is_certified:
+            return Response(
+                {"error": "This record is already certified."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = DeathRecordCertifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        record.certify(
+            user=request.user,
+            certificate_number=serializer.validated_data.get("certificate_number", ""),
+        )
+        AuditLog.log(
+            action="death_record_certify",
+            user=request.user,
+            resource_type="DeathRecord",
+            resource_id=record.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=record.patient_id,
+            details={"patient_mrn": record.patient.mrn},
+        )
+        return Response(DeathRecordDetailSerializer(record).data)
+
+    @action(detail=True, methods=["post"], url_path="release-body")
+    def release_body(self, request, pk=None):
+        """Release body to family."""
+        record = self.get_object()
+        if record.is_voided:
+            return Response(
+                {"error": "Cannot release body from a voided record."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if record.is_released:
+            return Response(
+                {"error": "Body has already been released."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not record.is_certified:
+            return Response(
+                {"error": "Death must be certified before body can be released."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = DeathRecordReleaseBodySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        record.release_body(
+            released_to=serializer.validated_data["released_to"],
+            id_number=serializer.validated_data.get("id_number", ""),
+            relationship=serializer.validated_data.get("relationship", ""),
+            burial_permit=serializer.validated_data.get("burial_permit_number", ""),
+        )
+        AuditLog.log(
+            action="death_record_release_body",
+            user=request.user,
+            resource_type="DeathRecord",
+            resource_id=record.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=record.patient_id,
+            details={
+                "patient_mrn": record.patient.mrn,
+                "released_to": serializer.validated_data["released_to"],
+            },
+        )
+        return Response(DeathRecordDetailSerializer(record).data)
+
+    @action(detail=True, methods=["post"], url_path="report-to-civil-registry")
+    def report_to_civil_registry(self, request, pk=None):
+        """Mark death as reported to civil registry."""
+        record = self.get_object()
+        if record.is_voided:
+            return Response(
+                {"error": "Cannot report a voided record."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not record.is_certified:
+            return Response(
+                {"error": "Death must be certified before reporting to civil registry."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        record.report_to_civil_registry()
+        AuditLog.log(
+            action="death_record_report_civil_registry",
+            user=request.user,
+            resource_type="DeathRecord",
+            resource_id=record.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=record.patient_id,
+            details={"patient_mrn": record.patient.mrn},
+        )
+        return Response(DeathRecordDetailSerializer(record).data)
+
+    @action(detail=True, methods=["post"])
+    def void(self, request, pk=None):
+        """Void a death record (entered in error)."""
+        record = self.get_object()
+        if record.is_voided:
+            return Response(
+                {"error": "Record is already voided."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if record.is_released:
+            return Response(
+                {"error": "Cannot void a record after body has been released."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = DeathRecordVoidSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        record.void(user=request.user, reason=serializer.validated_data["reason"])
+        AuditLog.log(
+            action="death_record_void",
+            user=request.user,
+            resource_type="DeathRecord",
+            resource_id=record.id,
+            ip_address=get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=record.patient_id,
+            details={
+                "patient_mrn": record.patient.mrn,
+                "reason": serializer.validated_data["reason"],
+            },
+        )
+        return Response(DeathRecordDetailSerializer(record).data)

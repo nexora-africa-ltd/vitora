@@ -47,7 +47,7 @@ from hmis.apps.laboratory.views import (
     PatientLabOrderViewSet,
     PatientLabResultViewSet,
 )
-from hmis.apps.patients.views import AllergyViewSet, EmergencyContactViewSet, PatientViewSet
+from hmis.apps.patients.views import AllergyViewSet, DeathRecordViewSet, EmergencyContactViewSet, PatientViewSet
 
 
 @csrf_exempt
@@ -86,6 +86,7 @@ router = routers.DefaultRouter()
 # Register viewsets
 router.register(r"patients", PatientViewSet, basename="patient")
 router.register(r"allergies", AllergyViewSet, basename="allergy")
+router.register(r"death-records", DeathRecordViewSet, basename="deathrecord")
 router.register(r"encounters", EncounterViewSet, basename="encounter")
 router.register(r"auditlogs", AuditLogViewSet, basename="auditlog")
 router.register(r"icd10-codes", ICD10CodeViewSet, basename="icd10code")
