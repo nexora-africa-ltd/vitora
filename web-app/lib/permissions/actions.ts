@@ -62,6 +62,13 @@ export const ACTION_PERMISSIONS = {
   'inpatient.transfer': ['DOCTOR', 'CLINICAL_OFFICER', 'NURSE'],
   'inpatient.view_alerts': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
 
+  // === Last Office (Death Records) Module ===
+  'last_office.view_records': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN', 'MORTUARY_ATTENDANT'],
+  'last_office.record_death': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'ADMIN'],
+  'last_office.certify': ['DOCTOR', 'CONSULTANT'],
+  'last_office.release_body': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'ADMIN', 'MORTUARY_ATTENDANT'],
+  'last_office.void_record': ['DOCTOR', 'CONSULTANT', 'ADMIN'],
+
   // === Pharmacy Module ===
   'pharmacy.view_dashboard': ['PHARMACIST', 'PHARMACY_TECH', 'ADMIN'],
   'pharmacy.view_prescriptions': ['PHARMACIST', 'PHARMACY_TECH', 'NURSE', 'DOCTOR'],

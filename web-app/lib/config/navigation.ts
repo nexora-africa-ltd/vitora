@@ -66,6 +66,7 @@ import {
   BookCheck,
   Landmark,
   Hospital,
+  Skull,
 } from 'lucide-react';
 
 import {
@@ -212,6 +213,15 @@ const _allNavItems: NavItemType[] = [
       { label: 'Kardex', href: '/inpatient/kardex', icon: ClipboardList, actionKey: 'inpatient.view_kardex' },
       { label: 'Rounds', href: '/inpatient/rounds', icon: Stethoscope, actionKey: 'inpatient.make_rounds' },
       { label: 'Supervisor Alerts', href: '/inpatient/alerts', icon: AlertTriangle, actionKey: 'inpatient.view_alerts' },
+    ],
+  },
+  {
+    label: 'Last Office',
+    icon: Skull,
+    moduleKey: 'last_office',
+    children: [
+      { label: 'Records', href: '/last-office', icon: ClipboardList, actionKey: 'last_office.view_records' },
+      { label: 'Record Death', href: '/last-office/new', icon: Skull, actionKey: 'last_office.record_death' },
     ],
   },
   {

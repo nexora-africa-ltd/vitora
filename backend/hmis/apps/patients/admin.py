@@ -4,7 +4,7 @@ Django admin configuration for patients app.
 
 from django.contrib import admin
 
-from .models import Allergy, EmergencyContact, Patient
+from .models import Allergy, DeathRecord, EmergencyContact, Patient
 
 
 class EmergencyContactInline(admin.TabularInline):
@@ -178,6 +178,122 @@ class AllergyAdmin(admin.ModelAdmin):
                     "recorded_by",
                     "notes",
                 ),
+            },
+        ),
+        (
+            "Timestamps",
+            {
+                "fields": ("created_at", "updated_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+
+@admin.register(DeathRecord)
+class DeathRecordAdmin(admin.ModelAdmin):
+    """Admin configuration for DeathRecord model."""
+
+    list_display = [
+        "patient",
+        "date_of_death",
+        "manner_of_death",
+        "status",
+        "body_status",
+        "certified_by",
+        "created_at",
+    ]
+    list_filter = ["status", "body_status", "manner_of_death", "place_of_death"]
+    search_fields = [
+        "patient__mrn",
+        "patient__first_name",
+        "patient__last_name",
+        "death_certificate_number",
+        "morgue_compartment",
+    ]
+    readonly_fields = [
+        "created_at",
+        "updated_at",
+        "certified_at",
+        "voided_at",
+        "release_date",
+    ]
+    raw_id_fields = ["patient", "admission", "encounter", "recorded_by", "certified_by", "voided_by"]
+    ordering = ["-date_of_death"]
+
+    fieldsets = (
+        (
+            "Patient & Death Details",
+            {
+                "fields": (
+                    "patient",
+                    "status",
+                    "date_of_death",
+                    "time_of_death",
+                    "manner_of_death",
+                    "place_of_death",
+                    "place_of_death_detail",
+                    "notification_source",
+                ),
+            },
+        ),
+        (
+            "Cause of Death (WHO Certificate)",
+            {
+                "fields": (
+                    "primary_cause",
+                    "primary_cause_icd10",
+                    "antecedent_cause",
+                    "antecedent_cause_icd10",
+                    "underlying_cause",
+                    "underlying_cause_icd10",
+                    "contributing_conditions",
+                ),
+            },
+        ),
+        (
+            "Certification",
+            {
+                "fields": (
+                    "certified_by",
+                    "certified_at",
+                    "death_certificate_number",
+                ),
+            },
+        ),
+        (
+            "Morgue / Last Office",
+            {
+                "fields": (
+                    "body_status",
+                    "morgue_admission_date",
+                    "morgue_compartment",
+                    "released_to",
+                    "released_to_id_number",
+                    "released_to_relationship",
+                    "release_date",
+                    "burial_permit_number",
+                ),
+            },
+        ),
+        (
+            "Linked Records",
+            {
+                "fields": ("admission", "encounter"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Audit",
+            {
+                "fields": (
+                    "recorded_by",
+                    "notes",
+                    "voided_by",
+                    "voided_at",
+                    "void_reason",
+                ),
+                "classes": ("collapse",),
             },
         ),
         (

@@ -6,7 +6,7 @@ from datetime import date
 
 from rest_framework import serializers
 
-from .models import Allergy, EmergencyContact, Patient
+from .models import Allergy, DeathRecord, EmergencyContact, Patient
 
 
 class EmergencyContactSerializer(serializers.ModelSerializer):
@@ -107,6 +107,9 @@ class PatientSerializer(serializers.ModelSerializer):
             # Clinical summary (read-only, computed)
             "allergy_summary",
             "chronic_conditions_summary",
+            # Deceased status
+            "is_deceased",
+            "date_of_death",
             # Other fields
             "referral_source",
             "referred_from_facility",
@@ -142,6 +145,8 @@ class PatientSerializer(serializers.ModelSerializer):
             "emergency_contact_relationship",
             "allergy_summary",
             "chronic_conditions_summary",
+            "is_deceased",
+            "date_of_death",
         ]
 
     def get_emergency_contact_name(self, obj) -> str:
@@ -384,3 +389,229 @@ class AllergyListSerializer(serializers.ModelSerializer):
             "is_high_risk",
             "onset_date",
         ]
+
+
+# =============================================================================
+# DEATH RECORD SERIALIZERS (Last Office / Morgue)
+# =============================================================================
+
+
+class DeathRecordCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating a death record."""
+
+    class Meta:
+        model = DeathRecord
+        fields = [
+            "patient",
+            "date_of_death",
+            "time_of_death",
+            "manner_of_death",
+            "place_of_death",
+            "place_of_death_detail",
+            "notification_source",
+            "primary_cause",
+            "primary_cause_icd10",
+            "antecedent_cause",
+            "antecedent_cause_icd10",
+            "underlying_cause",
+            "underlying_cause_icd10",
+            "contributing_conditions",
+            "admission",
+            "encounter",
+            "morgue_compartment",
+            "notes",
+        ]
+
+    def validate_date_of_death(self, value):
+        if value and value > date.today():
+            raise serializers.ValidationError("Date of death cannot be in the future.")
+        return value
+
+    def validate_patient(self, value):
+        if value.is_deceased:
+            raise serializers.ValidationError("This patient already has a death record.")
+        return value
+
+    def validate(self, data):
+        patient = data.get("patient")
+        dod = data.get("date_of_death")
+        if patient and dod and patient.date_of_birth and dod < patient.date_of_birth:
+            raise serializers.ValidationError(
+                {"date_of_death": "Date of death cannot be before date of birth."}
+            )
+        return data
+
+
+class DeathRecordListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for death record listing."""
+
+    patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
+    patient_name = serializers.CharField(source="patient.full_name", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    body_status_display = serializers.CharField(source="get_body_status_display", read_only=True)
+    manner_of_death_display = serializers.CharField(source="get_manner_of_death_display", read_only=True)
+    recorded_by_username = serializers.CharField(source="recorded_by.username", read_only=True)
+    is_voided = serializers.ReadOnlyField()
+    is_certified = serializers.ReadOnlyField()
+
+    class Meta:
+        model = DeathRecord
+        fields = [
+            "id",
+            "patient",
+            "patient_mrn",
+            "patient_name",
+            "date_of_death",
+            "time_of_death",
+            "manner_of_death",
+            "manner_of_death_display",
+            "place_of_death",
+            "status",
+            "status_display",
+            "body_status",
+            "body_status_display",
+            "is_voided",
+            "is_certified",
+            "recorded_by_username",
+            "created_at",
+        ]
+
+
+class DeathRecordDetailSerializer(serializers.ModelSerializer):
+    """Full detail serializer for a death record."""
+
+    patient_mrn = serializers.CharField(source="patient.mrn", read_only=True)
+    patient_name = serializers.CharField(source="patient.full_name", read_only=True)
+    patient_date_of_birth = serializers.DateField(source="patient.date_of_birth", read_only=True)
+    patient_gender = serializers.CharField(source="patient.gender", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    body_status_display = serializers.CharField(source="get_body_status_display", read_only=True)
+    manner_of_death_display = serializers.CharField(source="get_manner_of_death_display", read_only=True)
+    place_of_death_display = serializers.CharField(source="get_place_of_death_display", read_only=True)
+    notification_source_display = serializers.CharField(
+        source="get_notification_source_display", read_only=True
+    )
+    primary_cause_icd10_code = serializers.CharField(
+        source="primary_cause_icd10.code", read_only=True, allow_null=True
+    )
+    primary_cause_icd10_description = serializers.CharField(
+        source="primary_cause_icd10.description", read_only=True, allow_null=True
+    )
+    antecedent_cause_icd10_code = serializers.CharField(
+        source="antecedent_cause_icd10.code", read_only=True, allow_null=True
+    )
+    antecedent_cause_icd10_description = serializers.CharField(
+        source="antecedent_cause_icd10.description", read_only=True, allow_null=True
+    )
+    underlying_cause_icd10_code = serializers.CharField(
+        source="underlying_cause_icd10.code", read_only=True, allow_null=True
+    )
+    underlying_cause_icd10_description = serializers.CharField(
+        source="underlying_cause_icd10.description", read_only=True, allow_null=True
+    )
+    recorded_by_username = serializers.CharField(source="recorded_by.username", read_only=True)
+    certified_by_username = serializers.CharField(
+        source="certified_by.username", read_only=True, allow_null=True
+    )
+    voided_by_username = serializers.CharField(
+        source="voided_by.username", read_only=True, allow_null=True
+    )
+    is_voided = serializers.ReadOnlyField()
+    is_certified = serializers.ReadOnlyField()
+    is_released = serializers.ReadOnlyField()
+
+    class Meta:
+        model = DeathRecord
+        fields = [
+            "id",
+            # Patient
+            "patient",
+            "patient_mrn",
+            "patient_name",
+            "patient_date_of_birth",
+            "patient_gender",
+            # Status
+            "status",
+            "status_display",
+            # Death details
+            "date_of_death",
+            "time_of_death",
+            "manner_of_death",
+            "manner_of_death_display",
+            "place_of_death",
+            "place_of_death_display",
+            "place_of_death_detail",
+            "notification_source",
+            "notification_source_display",
+            # Cause of death
+            "primary_cause",
+            "primary_cause_icd10",
+            "primary_cause_icd10_code",
+            "primary_cause_icd10_description",
+            "antecedent_cause",
+            "antecedent_cause_icd10",
+            "antecedent_cause_icd10_code",
+            "antecedent_cause_icd10_description",
+            "underlying_cause",
+            "underlying_cause_icd10",
+            "underlying_cause_icd10_code",
+            "underlying_cause_icd10_description",
+            "contributing_conditions",
+            # Certification
+            "certified_by",
+            "certified_by_username",
+            "certified_at",
+            "death_certificate_number",
+            # Morgue / Last Office
+            "body_status",
+            "body_status_display",
+            "morgue_admission_date",
+            "morgue_compartment",
+            "released_to",
+            "released_to_id_number",
+            "released_to_relationship",
+            "release_date",
+            "burial_permit_number",
+            # Linked records
+            "admission",
+            "encounter",
+            # Audit
+            "recorded_by",
+            "recorded_by_username",
+            "notes",
+            "voided_by",
+            "voided_by_username",
+            "voided_at",
+            "void_reason",
+            # Computed
+            "is_voided",
+            "is_certified",
+            "is_released",
+            # Timestamps
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class DeathRecordCertifySerializer(serializers.Serializer):
+    """Serializer for the certify action."""
+
+    certificate_number = serializers.CharField(required=False, default="", allow_blank=True)
+
+
+class DeathRecordReleaseBodySerializer(serializers.Serializer):
+    """Serializer for the release_body action."""
+
+    released_to = serializers.CharField(max_length=200)
+    id_number = serializers.CharField(required=False, default="", allow_blank=True, max_length=50)
+    relationship = serializers.CharField(required=False, default="", allow_blank=True, max_length=100)
+    burial_permit_number = serializers.CharField(
+        required=False, default="", allow_blank=True, max_length=50
+    )
+
+
+class DeathRecordVoidSerializer(serializers.Serializer):
+    """Serializer for the void action."""
+
+    reason = serializers.CharField(min_length=10)
