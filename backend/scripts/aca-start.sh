@@ -14,6 +14,9 @@ python manage.py collectstatic --noinput
 echo "==> Running migrations..."
 python manage.py migrate --noinput
 
+# Backfill death records for historical DECEASED discharges (idempotent)
+python manage.py backfill_death_records --apply
+
 # One-time seed (remove after first successful deploy)
 if [ "${RUN_SEED:-false}" = "true" ]; then
   echo "==> Running data seed..."
