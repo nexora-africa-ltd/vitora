@@ -251,6 +251,8 @@ export interface Discharge {
   billing_cleared: boolean;
   lab_results_acknowledged: boolean;
   length_of_stay?: number;
+  /** Death record ID, populated for DECEASED discharges */
+  death_record_id?: number | null;
   created_at?: string;
   updated_at?: string;
 }

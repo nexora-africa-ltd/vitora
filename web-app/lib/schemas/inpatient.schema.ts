@@ -312,6 +312,7 @@ export const DischargeSchema = z.object({
   billing_cleared: z.boolean(),
   lab_results_acknowledged: z.boolean(),
   length_of_stay: z.number().optional(),
+  death_record_id: z.number().nullable().optional(),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
 });

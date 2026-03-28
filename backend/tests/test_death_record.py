@@ -383,3 +383,127 @@ class TestPatientDeceasedStatus:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["is_deceased"] is True
         assert response.data["date_of_death"] == "2026-03-27"
+
+
+@pytest.mark.django_db
+class TestDeceasedDischargeAutoCreation:
+    """Tests for auto-creation of DeathRecord from DECEASED inpatient discharge."""
+
+    def test_deceased_discharge_creates_death_record(
+        self, sample_admission, test_user
+    ):
+        """DECEASED discharge should auto-create a DeathRecord."""
+        from django.utils import timezone
+
+        from hmis.apps.inpatient.models import Discharge
+        from hmis.apps.patients.models import DeathRecord
+
+        Discharge.objects.create(
+            admission=sample_admission,
+            discharge_type="DECEASED",
+            discharge_date=timezone.now(),
+            discharged_by=test_user,
+            admission_diagnosis="J18.9",
+            final_diagnosis="J18.9",
+            final_diagnosis_text="Pneumonia, unspecified",
+            treatment_summary="Patient deteriorated despite treatment",
+            patient_instructions="N/A - deceased",
+        )
+
+        # Death record should exist
+        patient = sample_admission.patient
+        patient.refresh_from_db()
+        assert patient.is_deceased is True
+        assert hasattr(patient, "death_record")
+
+        death_record = patient.death_record
+        assert death_record.notification_source == "INPATIENT_DISCHARGE"
+        assert death_record.primary_cause == "Pneumonia, unspecified"
+        assert death_record.admission == sample_admission
+        assert death_record.recorded_by == test_user
+        assert death_record.status == "PENDING_CERTIFICATION"
+
+    def test_deceased_discharge_skips_existing_death_record(
+        self, sample_admission, test_user
+    ):
+        """If patient already has a death record, discharge should not duplicate."""
+        from django.utils import timezone
+
+        from hmis.apps.inpatient.models import Discharge
+        from hmis.apps.patients.models import DeathRecord
+
+        # Create death record first (e.g., manual entry)
+        patient = sample_admission.patient
+        DeathRecord.objects.create(
+            patient=patient,
+            date_of_death=timezone.now().date(),
+            primary_cause="Cardiac arrest",
+            recorded_by=test_user,
+            notification_source="MANUAL_ENTRY",
+        )
+
+        # Discharge should not create a second one
+        Discharge.objects.create(
+            admission=sample_admission,
+            discharge_type="DECEASED",
+            discharge_date=timezone.now(),
+            discharged_by=test_user,
+            admission_diagnosis="J18.9",
+            final_diagnosis="I46.9",
+            final_diagnosis_text="Cardiac arrest",
+            treatment_summary="Resuscitation unsuccessful",
+            patient_instructions="N/A - deceased",
+        )
+
+        assert DeathRecord.objects.filter(patient=patient).count() == 1
+        assert patient.death_record.notification_source == "MANUAL_ENTRY"
+
+    def test_normal_discharge_does_not_create_death_record(
+        self, sample_admission, test_user
+    ):
+        """Non-DECEASED discharge should NOT create a DeathRecord."""
+        from django.utils import timezone
+
+        from hmis.apps.inpatient.models import Discharge
+        from hmis.apps.patients.models import DeathRecord
+
+        Discharge.objects.create(
+            admission=sample_admission,
+            discharge_type="NORMAL",
+            discharge_date=timezone.now(),
+            discharged_by=test_user,
+            admission_diagnosis="J18.9",
+            final_diagnosis="J18.9",
+            final_diagnosis_text="Pneumonia, resolved",
+            treatment_summary="Completed IV antibiotics",
+            patient_instructions="Continue oral antibiotics for 5 days",
+        )
+
+        assert not DeathRecord.objects.filter(
+            patient=sample_admission.patient
+        ).exists()
+        sample_admission.patient.refresh_from_db()
+        assert sample_admission.patient.is_deceased is False
+
+    def test_deceased_discharge_api_returns_death_record_id(
+        self, authenticated_client, sample_admission, test_user
+    ):
+        """API response for DECEASED discharge should include death_record_id."""
+        response = authenticated_client.post(
+            "/api/inpatient/discharges/",
+            {
+                "admission": sample_admission.id,
+                "discharge_type": "DECEASED",
+                "discharge_date": "2026-03-28T10:00:00Z",
+                "discharged_by": test_user.id,
+                "admission_diagnosis": "J18.9",
+                "final_diagnosis": "J18.9",
+                "final_diagnosis_text": "Pneumonia, unspecified",
+                "treatment_summary": "Patient deteriorated",
+                "patient_instructions": "N/A - deceased",
+            },
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["death_record_id"] is not None
+        assert isinstance(response.data["death_record_id"], int)

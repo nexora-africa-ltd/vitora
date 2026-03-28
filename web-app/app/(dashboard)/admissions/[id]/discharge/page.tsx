@@ -576,7 +576,7 @@ export default function DischargePage() {
         .map((m) => ({ ...m, dispensing_type: m.dispensing_type ?? 'EXTERNAL' as const }));
       const allDischargeMeds = [...rxMeds, ...manualMeds];
 
-      await createDischarge.mutateAsync({
+      const result = await createDischarge.mutateAsync({
         admission: admissionId,
         discharge_type: dischargeType,
         discharge_date: new Date().toISOString(),
@@ -598,9 +598,17 @@ export default function DischargePage() {
         follow_up_instructions: followUpInstructions || undefined,
         discharge_medications: allDischargeMeds,
       });
-      toast({ title: 'Success', description: 'Patient discharged successfully' });
       clearDraft();
-      router.push('/admissions');
+
+      // Redirect to Last Office for deceased discharges so clinician can complete
+      // cause of death, certification, and morgue details
+      if (dischargeType === 'DECEASED' && result.death_record_id) {
+        toast({ title: 'Patient Deceased', description: 'Redirecting to Last Office to complete death record...' });
+        router.push(`/last-office/${result.death_record_id}`);
+      } else {
+        toast({ title: 'Success', description: 'Patient discharged successfully' });
+        router.push('/admissions');
+      }
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to discharge patient', variant: 'destructive' });
       console.error(error);

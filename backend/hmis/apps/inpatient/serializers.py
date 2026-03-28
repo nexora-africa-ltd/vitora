@@ -438,6 +438,7 @@ class DischargeSerializer(serializers.ModelSerializer):
     pnc_clinic_visit = serializers.IntegerField(source="pnc_clinic_visit_id", read_only=True)
     pnc_appointment = serializers.IntegerField(source="pnc_appointment_id", read_only=True)
     length_of_stay = serializers.ReadOnlyField()
+    death_record_id = serializers.SerializerMethodField()
 
     class Meta:
         model = Discharge
@@ -475,6 +476,7 @@ class DischargeSerializer(serializers.ModelSerializer):
             "billing_cleared",
             "lab_results_acknowledged",
             "length_of_stay",
+            "death_record_id",
             "created_at",
             "updated_at",
         ]
@@ -676,6 +678,13 @@ class DischargeSerializer(serializers.ModelSerializer):
         """Get patient full name."""
         patient = obj.admission.patient
         return f"{patient.first_name} {patient.last_name}"
+
+    def get_death_record_id(self, obj) -> int | None:
+        """Return the auto-created death record ID for DECEASED discharges."""
+        if obj.discharge_type != "DECEASED":
+            return None
+        death_record = getattr(obj.admission.patient, "death_record", None)
+        return death_record.id if death_record else None
 
 
 class TransferSerializer(serializers.ModelSerializer):

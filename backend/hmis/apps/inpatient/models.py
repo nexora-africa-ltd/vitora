@@ -1149,7 +1149,8 @@ class Discharge(TimeStampedModel):
         return f"Discharge: {self.admission.admission_number} - {self.discharge_type}"
 
     def save(self, *args, **kwargs):
-        """Override save to update admission and bed status."""
+        """Override save to update admission and bed status, auto-create death record."""
+        is_new = self._state.adding
         # Call parent save first
         super().save(*args, **kwargs)
 
@@ -1173,6 +1174,41 @@ class Discharge(TimeStampedModel):
                 self.discharged_by,
                 reason=f"Patient discharged on {self.discharge_date.isoformat()} - awaiting housekeeping",
             )
+
+        # Auto-create DeathRecord for deceased discharges
+        if is_new and self.discharge_type == "DECEASED":
+            self._create_death_record()
+
+    def _create_death_record(self):
+        """Create a DeathRecord linked to this discharge's admission."""
+        from hmis.apps.patients.models import DeathRecord
+
+        patient = self.admission.patient
+        # Skip if patient already has a death record (e.g., created manually first)
+        if hasattr(patient, "death_record"):
+            return
+
+        ward_name = ""
+        if self.admission.ward:
+            ward_name = self.admission.ward.name
+        elif self.admission.bed and self.admission.bed.ward:
+            ward_name = self.admission.bed.ward.name
+
+        DeathRecord.objects.create(
+            patient=patient,
+            date_of_death=self.discharge_date.date(),
+            time_of_death=self.discharge_date.time(),
+            manner_of_death="NATURAL",
+            place_of_death="INPATIENT",
+            place_of_death_detail=ward_name,
+            notification_source="INPATIENT_DISCHARGE",
+            primary_cause=self.final_diagnosis_text or "To be determined",
+            primary_cause_icd10=None,
+            admission=self.admission,
+            encounter=self.admission.ipd_encounter,
+            recorded_by=self.discharged_by,
+            notes=f"Auto-created from inpatient discharge {self.admission.admission_number}",
+        )
 
     def clean(self):
         """Validate discharge data."""
