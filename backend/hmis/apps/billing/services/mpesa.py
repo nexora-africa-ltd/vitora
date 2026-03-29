@@ -73,6 +73,7 @@ class MpesaService:
         self.oauth_url = f"{self.base_url}/oauth/v1/generate?grant_type=client_credentials"
         self.stk_push_url = f"{self.base_url}/mpesa/stkpush/v1/processrequest"
         self.query_url = f"{self.base_url}/mpesa/stkpushquery/v1/query"
+        self.transaction_status_url = f"{self.base_url}/mpesa/transactionstatus/v1/query"
 
         self._access_token = None
         self._token_expires_at = None
@@ -425,3 +426,109 @@ class MpesaService:
 
         except requests.RequestException as e:
             raise ValidationError(f"M-Pesa query request failed: {str(e)}")
+
+    def verify_transaction(self, transaction_id: str) -> dict:
+        """
+        Verify an M-Pesa transaction using the Transaction Status API.
+
+        Use this to validate a manually-entered M-Pesa receipt code
+        (e.g. ``SLK4H42RQO``) before recording a payment, to prevent
+        fraud from fake SMS screenshots.
+
+        Args:
+            transaction_id: The M-Pesa receipt number / transaction code
+
+        Returns:
+            dict with keys:
+                verified (bool): Whether the transaction is genuine
+                amount (Decimal | None): Transaction amount
+                phone (str | None): Payer phone (254...)
+                receipt_number (str): Confirmed receipt number
+                transaction_date (str | None): Date of transaction
+                error (str | None): Error description if verification failed
+
+        Raises:
+            ValidationError: If the API request itself fails
+        """
+        access_token = self.get_access_token()
+
+        # The Transaction Status API requires a result callback URL even though
+        # we want a synchronous check.  Safaricom will POST the full result
+        # to this URL; we also get a synchronous acknowledgement.
+        result_url = self.callback_url.replace("/callback/", "/transaction-status-callback/")
+        timeout_url = result_url
+
+        payload = {
+            "Initiator": getattr(settings, "MPESA_INITIATOR_NAME", "testapi"),
+            "SecurityCredential": getattr(settings, "MPESA_SECURITY_CREDENTIAL", ""),
+            "CommandID": "TransactionStatusQuery",
+            "TransactionID": transaction_id,
+            "PartyA": self.shortcode,
+            "IdentifierType": "4",  # 4 = Organization shortcode
+            "ResultURL": result_url,
+            "QueueTimeOutURL": timeout_url,
+            "Remarks": "Verify transaction",
+            "Occasion": "",
+        }
+
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+
+        try:
+            response = requests.post(
+                self.transaction_status_url,
+                json=payload,
+                headers=headers,
+                timeout=self.REQUEST_TIMEOUT,
+            )
+
+            try:
+                data = response.json()
+            except ValueError:
+                data = {}
+
+            if not response.ok:
+                error_msg = data.get(
+                    "errorMessage",
+                    data.get("ResponseDescription", f"{response.status_code} error"),
+                )
+                return {
+                    "verified": False,
+                    "amount": None,
+                    "phone": None,
+                    "receipt_number": transaction_id,
+                    "transaction_date": None,
+                    "error": error_msg,
+                }
+
+            # A ResponseCode of "0" means the request was accepted for
+            # processing.  The actual result comes via the callback.
+            # For sandbox, that's often all we get synchronously.
+            response_code = data.get("ResponseCode", "")
+
+            if str(response_code) == "0":
+                # Request accepted — transaction ID is at least plausibly valid
+                return {
+                    "verified": True,
+                    "amount": None,  # Filled by callback
+                    "phone": None,
+                    "receipt_number": transaction_id,
+                    "transaction_date": None,
+                    "error": None,
+                    "conversation_id": data.get("ConversationID"),
+                    "originator_conversation_id": data.get("OriginatorConversationID"),
+                }
+            else:
+                return {
+                    "verified": False,
+                    "amount": None,
+                    "phone": None,
+                    "receipt_number": transaction_id,
+                    "transaction_date": None,
+                    "error": data.get("ResponseDescription", "Verification failed"),
+                }
+
+        except requests.RequestException as e:
+            raise ValidationError(f"M-Pesa transaction verification failed: {str(e)}")

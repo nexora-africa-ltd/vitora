@@ -417,6 +417,19 @@ async function queryMpesaTransaction(
   return parseResponse(MpesaQueryResponseSchema, response.data, { context: 'billingApi.queryMpesaTransaction' });
 }
 
+/**
+ * Verify an M-Pesa transaction code (receipt number) before recording a manual payment.
+ * Checks for duplicates and validates against Safaricom.
+ */
+async function verifyMpesaTransaction(
+  transactionId: string
+): Promise<{ verified: boolean; receipt_number: string; error: string | null }> {
+  const response = await apiClient.post('/api/billing/mpesa/verify/', {
+    transaction_id: transactionId,
+  });
+  return response.data;
+}
+
 // ============================================================================
 // Credit Notes API
 // ============================================================================
@@ -652,6 +665,7 @@ export const billingApi = {
   // M-Pesa
   initiateMpesaSTKPush,
   queryMpesaTransaction,
+  verifyMpesaTransaction,
 
   // Credit Notes
   getCreditNotes,

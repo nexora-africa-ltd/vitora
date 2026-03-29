@@ -398,6 +398,15 @@ export function useMpesaQuery(
   });
 }
 
+/**
+ * Verify an M-Pesa transaction code (for manual payments)
+ */
+export function useVerifyMpesaTransaction() {
+  return useMutation({
+    mutationFn: (transactionId: string) => billingApi.verifyMpesaTransaction(transactionId),
+  });
+}
+
 // ============================================================================
 // Service Hooks
 // ============================================================================
