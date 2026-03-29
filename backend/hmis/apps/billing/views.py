@@ -843,6 +843,88 @@ class MpesaViewSet(viewsets.ViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+    @extend_schema(
+        request=inline_serializer(
+            name="MpesaVerifyRequest",
+            fields={
+                "transaction_id": serializers.CharField(
+                    help_text="M-Pesa receipt number / transaction code to verify"
+                ),
+            },
+        ),
+        responses={
+            200: inline_serializer(
+                name="MpesaVerifyResponse",
+                fields={
+                    "verified": serializers.BooleanField(),
+                    "receipt_number": serializers.CharField(),
+                    "error": serializers.CharField(allow_null=True),
+                },
+            )
+        },
+    )
+    @action(detail=False, methods=["post"], url_path="verify")
+    def verify(self, request):
+        """
+        Verify an M-Pesa transaction code before recording a manual payment.
+
+        POST /api/billing/mpesa/verify/
+        { "transaction_id": "SLK4H42RQO" }
+
+        Returns whether the transaction ID is recognised by Safaricom,
+        helping prevent fraud from fake M-Pesa SMS screenshots.
+        """
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        from hmis.apps.billing.services import MpesaService
+
+        transaction_id = request.data.get("transaction_id", "").strip().upper()
+        if not transaction_id:
+            return Response(
+                {"error": "transaction_id is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Basic format validation — M-Pesa codes are 10 alphanumeric chars
+        if not transaction_id.isalnum() or len(transaction_id) < 8 or len(transaction_id) > 12:
+            return Response(
+                {
+                    "verified": False,
+                    "receipt_number": transaction_id,
+                    "error": "Invalid M-Pesa transaction code format. Expected 8-12 alphanumeric characters.",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # Check for duplicate — has this code already been recorded?
+        existing = Payment.objects.filter(mpesa_receipt_number=transaction_id).first()
+        if existing:
+            return Response(
+                {
+                    "verified": False,
+                    "receipt_number": transaction_id,
+                    "error": (
+                        f"This transaction code has already been used on payment "
+                        f"{existing.payment_reference} for invoice "
+                        f"{existing.invoice.invoice_number}."
+                    ),
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        try:
+            mpesa_service = MpesaService()
+            result = mpesa_service.verify_transaction(transaction_id)
+            return Response(result, status=status.HTTP_200_OK)
+
+        except DjangoValidationError as e:
+            msg = e.message if hasattr(e, "message") else "; ".join(e.messages) if hasattr(e, "messages") else str(e)
+            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(
+                {"error": f"Verification failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
 
 @extend_schema_view()
 class ReportViewSet(viewsets.ViewSet):

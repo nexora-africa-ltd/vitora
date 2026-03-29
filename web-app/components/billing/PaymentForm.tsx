@@ -29,7 +29,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Loader2, CreditCard, Smartphone, Banknote, Building, Receipt, Lock, Info } from 'lucide-react';
+import { Loader2, CreditCard, Smartphone, Banknote, Building, Receipt, Lock, Info, ShieldCheck, ShieldX } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
@@ -38,7 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { usePaymentPoints } from '@/lib/hooks/billing';
+import { usePaymentPoints, useVerifyMpesaTransaction } from '@/lib/hooks/billing';
 import type { Invoice, PaymentMethod, PaymentCreateData } from '@/lib/types/billing';
 import { formatCurrency } from '@/lib/utils/format';
 
@@ -66,6 +66,7 @@ const paymentFormSchema = z.object({
   reference_number: z.string().optional(),
   notes: z.string().optional(),
   phone_number: z.string().optional(),
+  mpesa_mode: z.enum(['stk_push', 'manual'] as const).optional(),
   cash_received: z.number().optional(),
   card_last_four: z.string().optional(),
   card_type: z.string().optional(),
@@ -129,6 +130,7 @@ export function PaymentForm({
       reference_number: '',
       notes: '',
       phone_number: '',
+      mpesa_mode: 'stk_push',
       cash_received: balance,
       card_last_four: '',
       card_type: '',
@@ -138,6 +140,14 @@ export function PaymentForm({
   const watchedMethod = form.watch('payment_method');
   const watchedAmount = form.watch('amount');
   const watchedCashReceived = form.watch('cash_received');
+  const watchedMpesaMode = form.watch('mpesa_mode');
+
+  // M-Pesa manual verification
+  const verifyMpesa = useVerifyMpesaTransaction();
+  const [verificationResult, setVerificationResult] = React.useState<{
+    verified: boolean;
+    error: string | null;
+  } | null>(null);
 
   // Force bank transfer for SHA/insurance invoices
   React.useEffect(() => {
@@ -195,12 +205,23 @@ export function PaymentForm({
     }
 
     if (values.payment_method === 'MPESA') {
-      if (!values.phone_number || !isValidKenyanPhoneNumber(values.phone_number)) {
-        form.setError('phone_number', {
-          type: 'manual',
-          message: 'Enter a valid Kenyan phone number',
-        });
-        return;
+      if (values.mpesa_mode === 'stk_push') {
+        if (!values.phone_number || !isValidKenyanPhoneNumber(values.phone_number)) {
+          form.setError('phone_number', {
+            type: 'manual',
+            message: 'Enter a valid Kenyan phone number',
+          });
+          return;
+        }
+      } else {
+        // Manual mode — transaction code is required
+        if (!values.reference_number || !values.reference_number.trim()) {
+          form.setError('reference_number', {
+            type: 'manual',
+            message: 'Enter the M-Pesa transaction code from the confirmation SMS',
+          });
+          return;
+        }
       }
     }
 
@@ -234,9 +255,10 @@ export function PaymentForm({
       data.payment_details = paymentDetails;
     }
 
-    // Optional M-Pesa flow: allow the UI to initiate STK push when provided
+    // M-Pesa STK Push flow: only when in stk_push mode
     if (
       values.payment_method === 'MPESA' &&
+      values.mpesa_mode === 'stk_push' &&
       onMpesaPayment &&
       values.phone_number &&
       values.payment_point
@@ -249,6 +271,17 @@ export function PaymentForm({
       });
       return;
     }
+
+    // For manual M-Pesa, store the transaction code as mpesa receipt number
+    if (values.payment_method === 'MPESA' && values.mpesa_mode === 'manual') {
+      if (values.reference_number?.trim()) {
+        data.mpesa_receipt_number = values.reference_number.trim();
+      }
+      if (values.phone_number?.trim()) {
+        data.mpesa_phone = values.phone_number.trim();
+      }
+    }
+
     onSubmit(data);
   };
 
@@ -435,28 +468,174 @@ export function PaymentForm({
           )}
         />
 
-        {/* M-Pesa Phone Number */}
+        {/* M-Pesa Mode & Fields */}
         {watchedMethod === 'MPESA' && (
-          <FormField
-            control={form.control}
-            name="phone_number"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Phone Number *</FormLabel>
-                <FormControl>
-                  <Input
-                    type="tel"
-                    placeholder="0712345678"
-                    {...field}
-                  />
-                </FormControl>
-                <FormDescription>
-                  Enter the M-Pesa registered phone number
-                </FormDescription>
-                <FormMessage />
-              </FormItem>
+          <div className="space-y-4">
+            {/* M-Pesa mode selector */}
+            <FormField
+              control={form.control}
+              name="mpesa_mode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>M-Pesa Payment Mode *</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      className="grid gap-3"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <RadioGroupItem value="stk_push" id="mpesa-stk" />
+                        <label htmlFor="mpesa-stk" className="text-sm font-medium cursor-pointer">
+                          <span>Send STK Push</span>
+                          <span className="block text-xs text-muted-foreground font-normal">
+                            Send a payment prompt to the patient&apos;s phone
+                          </span>
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <RadioGroupItem value="manual" id="mpesa-manual" />
+                        <label htmlFor="mpesa-manual" className="text-sm font-medium cursor-pointer">
+                          <span>Record M-Pesa Payment</span>
+                          <span className="block text-xs text-muted-foreground font-normal">
+                            Patient already paid — enter the transaction code
+                          </span>
+                        </label>
+                      </div>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* STK Push: phone number required */}
+            {watchedMpesaMode === 'stk_push' && (
+              <FormField
+                control={form.control}
+                name="phone_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="tel"
+                        placeholder="0712345678"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Enter the M-Pesa registered phone number to receive the prompt
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
-          />
+
+            {/* Manual: transaction code required, phone optional */}
+            {watchedMpesaMode === 'manual' && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="reference_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>M-Pesa Transaction Code *</FormLabel>
+                      <div className="flex gap-2">
+                        <FormControl>
+                          <Input
+                            placeholder="e.g. SLK4H42RQO"
+                            className="uppercase"
+                            {...field}
+                            onChange={(e) => {
+                              field.onChange(e.target.value.toUpperCase());
+                              setVerificationResult(null);
+                            }}
+                          />
+                        </FormControl>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          disabled={!field.value?.trim() || verifyMpesa.isPending}
+                          onClick={async () => {
+                            const code = field.value?.trim();
+                            if (!code) return;
+                            try {
+                              const result = await verifyMpesa.mutateAsync(code);
+                              setVerificationResult(result);
+                              if (!result.verified && result.error) {
+                                form.setError('reference_number', {
+                                  type: 'manual',
+                                  message: result.error,
+                                });
+                              }
+                            } catch {
+                              setVerificationResult({ verified: false, error: 'Verification request failed' });
+                            }
+                          }}
+                        >
+                          {verifyMpesa.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <ShieldCheck className="h-4 w-4 mr-1" />
+                              Verify
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      {verificationResult && (
+                        <div className={`flex items-center gap-1.5 text-xs mt-1 ${
+                          verificationResult.verified ? 'text-green-600' : 'text-destructive'
+                        }`}>
+                          {verificationResult.verified ? (
+                            <>
+                              <ShieldCheck className="h-3.5 w-3.5" />
+                              Transaction code verified
+                            </>
+                          ) : (
+                            <>
+                              <ShieldX className="h-3.5 w-3.5" />
+                              {verificationResult.error || 'Verification failed'}
+                            </>
+                          )}
+                        </div>
+                      )}
+                      {!verificationResult && (
+                        <FormDescription>
+                          Enter the code from the patient&apos;s M-Pesa confirmation SMS and verify it
+                        </FormDescription>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="phone_number"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="tel"
+                          placeholder="0712345678"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Optional — for record-keeping
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
+          </div>
         )}
 
         {/* Card Details */}
@@ -531,23 +710,17 @@ export function PaymentForm({
           </>
         )}
 
-        {/* Reference Number (for non-cash) */}
-        {watchedMethod !== 'CASH' && (
+        {/* Reference Number (for non-cash, non-mpesa) */}
+        {watchedMethod !== 'CASH' && watchedMethod !== 'MPESA' && (
           <FormField
             control={form.control}
             name="reference_number"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>
-                  {watchedMethod === 'MPESA' ? 'M-Pesa Transaction Code' : 'Reference Number'}
-                </FormLabel>
+                <FormLabel>Reference Number</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder={
-                      watchedMethod === 'MPESA'
-                        ? 'e.g., QK12ABC456'
-                        : 'Transaction reference'
-                    }
+                    placeholder="Transaction reference"
                     {...field}
                   />
                 </FormControl>
@@ -587,7 +760,7 @@ export function PaymentForm({
             disabled={isLoading || paymentPointsQuery.isLoading || paymentPoints.length === 0}
           >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {watchedMethod === 'MPESA' && onMpesaPayment
+            {watchedMethod === 'MPESA' && watchedMpesaMode === 'stk_push' && onMpesaPayment
               ? 'Send M-Pesa Request'
               : 'Record Payment'}
           </Button>

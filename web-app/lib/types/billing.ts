@@ -158,6 +158,7 @@ export interface PaymentCreateData {
   payment_point?: number;
   payment_details?: Record<string, unknown>;
   mpesa_phone?: string;
+  mpesa_receipt_number?: string;
   card_last_four?: string;
   card_type?: string;
   insurance_claim_number?: string;
