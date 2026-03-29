@@ -49,6 +49,10 @@ export const receiptSchema: DocumentDefinition = {
     '{{payment.amount}}': 'receipt.amount',
     '{{payment.amount_words}}': 'receipt.amount_in_words',
 
+    // M-Pesa details (only rendered for M-Pesa payments)
+    '{{mpesa.phone}}': 'receipt.mpesa_phone_display',
+    '{{mpesa.receipt}}': 'receipt.mpesa_receipt_number',
+
     // Staff info
     '{{staff.served_by}}': 'receipt.received_by_username',
     '{{staff.payment_point}}': 'receipt.payment_point_name',

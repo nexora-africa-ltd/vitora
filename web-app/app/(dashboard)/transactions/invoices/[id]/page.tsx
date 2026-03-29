@@ -88,7 +88,7 @@ export default function InvoiceDetailPage() {
 
   const mpesaSTKPush = useMpesaSTKPush();
   const mpesaQuery = useMpesaQuery(mpesaCheckoutRequestId, {
-    refetchInterval: mpesaStatus === 'waiting' ? 2000 : false,
+    refetchInterval: mpesaStatus === 'waiting' ? 5000 : false,
   });
 
   React.useEffect(() => {
@@ -102,8 +102,14 @@ export default function InvoiceDetailPage() {
       return;
     }
 
-    // If the API reports a definite failure/cancel, surface it
-    if (!data.success && typeof data.result_code === 'number' && data.result_code !== 0) {
+    // Only treat as a definite failure when the backend says it's no longer
+    // pending. A null result_code or pending=true means still processing.
+    if (
+      !data.success &&
+      data.pending === false &&
+      typeof data.result_code === 'number' &&
+      data.result_code !== 0
+    ) {
       setMpesaErrorMessage(data.result_description || 'M-Pesa payment failed');
       setMpesaStatus('failed');
     }
