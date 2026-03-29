@@ -66,6 +66,14 @@ const RECEIPT_TEMPLATE = `
       <span>Payment Method:</span>
       <span>{{payment.method}}</span>
     </div>
+    <div class="row mpesa-phone">
+      <span>M-Pesa Phone:</span>
+      <span>{{mpesa.phone}}</span>
+    </div>
+    <div class="row mpesa-ref">
+      <span>M-Pesa Ref:</span>
+      <span>{{mpesa.receipt}}</span>
+    </div>
     <div class="row served-by">
       <span>Served By:</span>
       <span>{{staff.served_by}}</span>
@@ -349,6 +357,8 @@ export async function printReceipt(options: PrintReceiptOptions): Promise<Window
       payment_method: formatPaymentMethod(receipt.payment_method),
       received_by_username: receipt.received_by_username || receipt.issued_by_username || '',
       payment_point_name: receipt.payment_point_name || receipt.payment_point_code || '',
+      mpesa_phone_display: receipt.mpesa_phone_display || '',
+      mpesa_receipt_number: receipt.mpesa_receipt_number || '',
       line_items: receipt.line_items || [],
     },
 
@@ -385,6 +395,12 @@ export async function printReceipt(options: PrintReceiptOptions): Promise<Window
   }
   if (!receipt.payment_point_name && !receipt.payment_point_code) {
     bodyHtml = bodyHtml.replace(/<div class="row payment-point">[\s\S]*?<\/div>/, '');
+  }
+  if (!receipt.mpesa_phone_display) {
+    bodyHtml = bodyHtml.replace(/<div class="row mpesa-phone">[\s\S]*?<\/div>/, '');
+  }
+  if (!receipt.mpesa_receipt_number) {
+    bodyHtml = bodyHtml.replace(/<div class="row mpesa-ref">[\s\S]*?<\/div>/, '');
   }
 
   // Build complete HTML with CSS
@@ -429,6 +445,8 @@ export async function previewReceipt(options: PrintReceiptOptions): Promise<stri
       payment_method: formatPaymentMethod(receipt.payment_method),
       received_by_username: receipt.received_by_username || receipt.issued_by_username || '',
       payment_point_name: receipt.payment_point_name || receipt.payment_point_code || '',
+      mpesa_phone_display: receipt.mpesa_phone_display || '',
+      mpesa_receipt_number: receipt.mpesa_receipt_number || '',
       line_items: receipt.line_items || [],
     },
     system_name: receiptDefaults.system_name,
@@ -447,6 +465,14 @@ export async function previewReceipt(options: PrintReceiptOptions): Promise<stri
     /<tbody>[\s\S]*?<\/tbody>/,
     `<tbody>\n${lineItemsHtml}\n</tbody>`
   );
+
+  // Hide optional rows if empty
+  if (!receipt.mpesa_phone_display) {
+    bodyHtml = bodyHtml.replace(/<div class="row mpesa-phone">[\s\S]*?<\/div>/, '');
+  }
+  if (!receipt.mpesa_receipt_number) {
+    bodyHtml = bodyHtml.replace(/<div class="row mpesa-ref">[\s\S]*?<\/div>/, '');
+  }
 
   const title = `Payment Receipt - ${receipt.receipt_number}`;
   return buildPrintDocument(bodyHtml, title, layout, theme, RECEIPT_CSS);

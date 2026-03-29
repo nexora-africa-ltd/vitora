@@ -398,9 +398,10 @@ export const MpesaSTKPushResponseSchema = z.object({
 
 export const MpesaQueryResponseSchema = z.object({
   success: z.boolean(),
-  result_code: z.number(),
+  result_code: z.number().nullable(),
   result_description: z.string(),
   checkout_request_id: z.string(),
+  pending: z.boolean().optional(),
   amount: z.string().optional(),
   mpesa_receipt_number: z.string().optional(),
   transaction_date: z.string().optional(),

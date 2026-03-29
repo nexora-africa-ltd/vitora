@@ -394,6 +394,22 @@ class MpesaService:
 
         try:
             response = requests.post(self.query_url, json=payload, headers=headers, timeout=30)
+
+            # Handle rate limiting and expired tokens gracefully — return a
+            # "still pending" response so the frontend keeps polling.
+            if response.status_code in (429, 403):
+                # 403 = stale/expired token; clear cache so next poll refreshes
+                if response.status_code == 403:
+                    self._access_token = None
+                    self._token_expires_at = None
+                return {
+                    "ResponseCode": "1",
+                    "ResponseDescription": "Retrying — token refreshed" if response.status_code == 403 else "Rate limited — will retry",
+                    "CheckoutRequestID": checkout_request_id,
+                    "ResultCode": None,
+                    "ResultDesc": "Pending",
+                }
+
             response.raise_for_status()
 
             data = response.json()

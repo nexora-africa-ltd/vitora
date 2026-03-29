@@ -795,13 +795,33 @@ class MpesaViewSet(viewsets.ViewSet):
             mpesa_service = MpesaService(facility=facility)
             result = mpesa_service.query_transaction_status(checkout_request_id)
 
+            result_code_raw = result.get("ResultCode")
+            result_desc = result.get("ResultDesc") or result.get("ResponseDescription") or ""
+
+            # Safaricom signals "still processing" in two ways:
+            # 1. ResultCode is absent/None
+            # 2. ResultCode is non-zero BUT ResultDesc contains "being processed"
+            #    or "still under processing" (observed in sandbox)
+            still_processing = result_code_raw is None or (
+                "processing" in result_desc.lower() or "being processed" in result_desc.lower()
+            )
+
+            if still_processing:
+                return Response(
+                    {
+                        "success": False,
+                        "result_code": None,
+                        "result_description": result_desc or "Transaction is being processed",
+                        "checkout_request_id": result.get("CheckoutRequestID") or checkout_request_id,
+                        "pending": True,
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
             try:
-                result_code_raw = result.get("ResultCode")
-                result_code = int(result_code_raw) if result_code_raw is not None else 1
+                result_code = int(result_code_raw)
             except (TypeError, ValueError):
                 result_code = 1
-
-            result_desc = result.get("ResultDesc") or result.get("ResponseDescription") or ""
 
             return Response(
                 {
@@ -809,6 +829,7 @@ class MpesaViewSet(viewsets.ViewSet):
                     "result_code": result_code,
                     "result_description": result_desc,
                     "checkout_request_id": result.get("CheckoutRequestID") or checkout_request_id,
+                    "pending": False,
                 },
                 status=status.HTTP_200_OK,
             )

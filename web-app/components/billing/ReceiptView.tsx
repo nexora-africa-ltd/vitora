@@ -217,7 +217,7 @@ export function ReceiptView({
             {receipt.mpesa_phone_display && (
               <>
                 <div className="text-muted-foreground">M-Pesa Phone:</div>
-                <div className="text-right font-mono text-xs sm:text-sm">
+                <div className="text-right">
                   {receipt.mpesa_phone_display}
                 </div>
               </>
@@ -226,7 +226,7 @@ export function ReceiptView({
             {receipt.mpesa_receipt_number && (
               <>
                 <div className="text-muted-foreground">M-Pesa Ref:</div>
-                <div className="text-right font-mono text-xs sm:text-sm font-medium">
+                <div className="text-right font-medium">
                   {receipt.mpesa_receipt_number}
                 </div>
               </>
