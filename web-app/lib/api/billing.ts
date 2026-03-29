@@ -45,6 +45,8 @@ import {
 import type {
   // Service types
   ServiceCategory,
+  ServiceCategoryCreateData,
+  ServiceCategoryUpdateData,
   Service,
   ServiceCreateData,
   ServiceUpdateData,
@@ -71,6 +73,8 @@ import type {
   // Payment points
   PaymentPoint,
   PaymentPointListParams,
+  PaymentPointCreateData,
+  PaymentPointUpdateData,
   PaginatedPaymentPoints,
   // M-Pesa types
   MpesaSTKPushRequest,
@@ -140,15 +144,29 @@ async function getServiceCategories(
 ): Promise<PaginatedServiceCategories> {
   const queryString = params ? buildQueryString(params) : '';
   const url = queryString
-    ? `/api/billing/categories/?${queryString}`
-    : '/api/billing/categories/';
+    ? `/api/billing/service-categories/?${queryString}`
+    : '/api/billing/service-categories/';
   const response = await apiClient.get(url);
   return parseResponse(PaginatedServiceCategorySchema, response.data, { context: 'billingApi.getServiceCategories' });
 }
 
 async function getServiceCategory(id: number): Promise<ServiceCategory> {
-  const response = await apiClient.get(`/api/billing/categories/${id}/`);
+  const response = await apiClient.get(`/api/billing/service-categories/${id}/`);
   return parseResponse(ServiceCategorySchema, response.data, { context: 'billingApi.getServiceCategory' });
+}
+
+async function createServiceCategory(data: ServiceCategoryCreateData): Promise<ServiceCategory> {
+  const response = await apiClient.post('/api/billing/service-categories/', data);
+  return parseResponse(ServiceCategorySchema, response.data, { context: 'billingApi.createServiceCategory' });
+}
+
+async function updateServiceCategory(id: number, data: ServiceCategoryUpdateData): Promise<ServiceCategory> {
+  const response = await apiClient.patch(`/api/billing/service-categories/${id}/`, data);
+  return parseResponse(ServiceCategorySchema, response.data, { context: 'billingApi.updateServiceCategory' });
+}
+
+async function deleteServiceCategory(id: number): Promise<void> {
+  await apiClient.delete(`/api/billing/service-categories/${id}/`);
 }
 
 // ============================================================================
@@ -405,6 +423,25 @@ async function getPaymentPoints(
   };
 }
 
+async function createPaymentPoint(data: PaymentPointCreateData): Promise<PaymentPoint> {
+  const payload = { ...data, method: paymentMethodToBackend(data.method) };
+  const response = await apiClient.post('/api/billing/payment-points/', payload);
+  const validated = parseResponse(PaymentPointSchema, response.data, { context: 'billingApi.createPaymentPoint' });
+  return { ...validated, method: paymentMethodFromBackend(validated.method) as PaymentPoint['method'] };
+}
+
+async function updatePaymentPoint(id: number, data: PaymentPointUpdateData): Promise<PaymentPoint> {
+  const payload: Record<string, unknown> = { ...data };
+  if (data.method) payload.method = paymentMethodToBackend(data.method);
+  const response = await apiClient.patch(`/api/billing/payment-points/${id}/`, payload);
+  const validated = parseResponse(PaymentPointSchema, response.data, { context: 'billingApi.updatePaymentPoint' });
+  return { ...validated, method: paymentMethodFromBackend(validated.method) as PaymentPoint['method'] };
+}
+
+async function deletePaymentPoint(id: number): Promise<void> {
+  await apiClient.delete(`/api/billing/payment-points/${id}/`);
+}
+
 // ============================================================================
 // M-Pesa API
 // ============================================================================
@@ -634,6 +671,9 @@ export const billingApi = {
   // Service Categories
   getServiceCategories,
   getServiceCategory,
+  createServiceCategory,
+  updateServiceCategory,
+  deleteServiceCategory,
 
   // Services
   getServices,
@@ -670,6 +710,9 @@ export const billingApi = {
 
   // Payment points
   getPaymentPoints,
+  createPaymentPoint,
+  updatePaymentPoint,
+  deletePaymentPoint,
 
   // M-Pesa
   initiateMpesaSTKPush,

@@ -147,6 +147,8 @@ export interface ApplyDiscountData {
 // ----------------------------------------------------------------------------
 
 export interface PaymentPointListParams {
+  page?: number;
+  page_size?: number;
   method?: 'CASH' | 'MPESA' | 'CARD' | 'INSURANCE' | 'BANK_TRANSFER' | 'CORPORATE' | 'CHEQUE';
   is_active?: boolean;
 }
@@ -284,6 +286,41 @@ export interface PaginatedResponse<T> {
   previous: string | null;
   results: T[];
 }
+
+// =============================================================================
+// SERVICE CATEGORY INPUT TYPES
+// =============================================================================
+
+export interface ServiceCategoryCreateData {
+  code: string;
+  name: string;
+  description?: string;
+  display_order?: number;
+  is_active?: boolean;
+}
+
+export interface ServiceCategoryUpdateData extends Partial<ServiceCategoryCreateData> {}
+
+// =============================================================================
+// PAYMENT POINT INPUT TYPES
+// =============================================================================
+
+export interface PaymentPointCreateData {
+  name: string;
+  code: string;
+  method: 'CASH' | 'MPESA' | 'CARD' | 'INSURANCE' | 'BANK_TRANSFER' | 'CORPORATE' | 'CHEQUE';
+  till_number?: string;
+  paybill_number?: string;
+  paybill_account_number?: string;
+  bank_name?: string;
+  bank_account_name?: string;
+  bank_account_number?: string;
+  bank_branch?: string;
+  is_active?: boolean;
+  notes?: string;
+}
+
+export interface PaymentPointUpdateData extends Partial<PaymentPointCreateData> {}
 
 // =============================================================================
 // FACILITY BILLING CONFIG INPUT TYPES
