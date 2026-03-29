@@ -213,6 +213,25 @@ export function ReceiptView({
               {receipt.payment_method.replace('_', ' ')}
             </div>
 
+            {/* M-Pesa details */}
+            {receipt.mpesa_phone_display && (
+              <>
+                <div className="text-muted-foreground">M-Pesa Phone:</div>
+                <div className="text-right font-mono text-xs sm:text-sm">
+                  {receipt.mpesa_phone_display}
+                </div>
+              </>
+            )}
+
+            {receipt.mpesa_receipt_number && (
+              <>
+                <div className="text-muted-foreground">M-Pesa Ref:</div>
+                <div className="text-right font-mono text-xs sm:text-sm font-medium">
+                  {receipt.mpesa_receipt_number}
+                </div>
+              </>
+            )}
+
             {/* Served By */}
             {(receipt.received_by_username || receipt.issued_by_username) && (
               <>

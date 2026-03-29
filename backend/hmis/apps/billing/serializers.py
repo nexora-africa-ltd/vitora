@@ -394,6 +394,9 @@ class ReceiptSerializer(serializers.ModelSerializer):
     line_items = serializers.SerializerMethodField()
     # QR code for validation
     qr_code = serializers.SerializerMethodField()
+    # M-Pesa details (phone obscured for privacy)
+    mpesa_phone_display = serializers.SerializerMethodField()
+    mpesa_receipt_number = serializers.SerializerMethodField()
 
     class Meta:
         model = Receipt
@@ -423,6 +426,8 @@ class ReceiptSerializer(serializers.ModelSerializer):
             "payment_point_code",
             "line_items",
             "qr_code",
+            "mpesa_phone_display",
+            "mpesa_receipt_number",
             "created_at",
         ]
         read_only_fields = [
@@ -440,8 +445,30 @@ class ReceiptSerializer(serializers.ModelSerializer):
             "payment_point_code",
             "line_items",
             "qr_code",
+            "mpesa_phone_display",
+            "mpesa_receipt_number",
             "created_at",
         ]
+
+    def get_mpesa_phone_display(self, obj) -> str | None:
+        """Return obscured M-Pesa phone number, e.g. 0712****5678."""
+        if not obj.payment or not obj.payment.mpesa_phone:
+            return None
+        phone = obj.payment.mpesa_phone
+        # Normalise to 07XX format for display
+        if phone.startswith("254") and len(phone) == 12:
+            phone = "0" + phone[3:]
+        if len(phone) >= 8:
+            # Show first 4 and last 4, mask the middle
+            visible = 4
+            return phone[:visible] + "*" * (len(phone) - visible * 2) + phone[-visible:]
+        return phone
+
+    def get_mpesa_receipt_number(self, obj) -> str | None:
+        """Return M-Pesa receipt/transaction number from the payment."""
+        if not obj.payment:
+            return None
+        return obj.payment.mpesa_receipt_number or None
 
     def get_qr_code(self, obj) -> str:
         """Generate QR code data URI containing a verification URL."""
