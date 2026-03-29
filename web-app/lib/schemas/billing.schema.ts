@@ -327,6 +327,10 @@ export const ReceiptSchema = z.object({
   // QR code
   qr_code: z.string().optional().nullable(),
 
+  // M-Pesa details (phone obscured for privacy)
+  mpesa_phone_display: z.string().optional().nullable(),
+  mpesa_receipt_number: z.string().optional().nullable(),
+
   // Void info
   is_voided: z.boolean(),
   voided_at: z.string().optional().nullable(),
