@@ -16,10 +16,16 @@ import type {
   PaymentCreateData,
   PaymentListParams,
   PaymentPointListParams,
+  PaymentPointCreateData,
+  PaymentPointUpdateData,
   PaginatedPaymentPoints,
   Service,
+  ServiceCreateData,
+  ServiceUpdateData,
   ServiceListParams,
   ServiceCategory,
+  ServiceCategoryCreateData,
+  ServiceCategoryUpdateData,
   CreditNote,
   CreditNoteCreateData,
   CreditNoteListParams,
@@ -457,6 +463,127 @@ export function useServiceCategories(params?: { is_active?: boolean }) {
   return useQuery({
     queryKey: billingKeys.categoriesList(),
     queryFn: () => billingApi.getServiceCategories(params),
+  });
+}
+
+/**
+ * Create a new service
+ */
+export function useCreateService() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ServiceCreateData) => billingApi.createService(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.services() });
+    },
+  });
+}
+
+/**
+ * Update an existing service
+ */
+export function useUpdateService() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ServiceUpdateData }) =>
+      billingApi.updateService(id, data),
+    onSuccess: (_, { id }) => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.serviceDetail(id) });
+      queryClient.invalidateQueries({ queryKey: billingKeys.services() });
+    },
+  });
+}
+
+/**
+ * Delete a service
+ */
+export function useDeleteService() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => billingApi.deleteService(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.services() });
+    },
+  });
+}
+
+/**
+ * Create a new service category
+ */
+export function useCreateServiceCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: ServiceCategoryCreateData) => billingApi.createServiceCategory(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.categories() });
+    },
+  });
+}
+
+/**
+ * Update a service category
+ */
+export function useUpdateServiceCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: ServiceCategoryUpdateData }) =>
+      billingApi.updateServiceCategory(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.categories() });
+    },
+  });
+}
+
+/**
+ * Delete a service category
+ */
+export function useDeleteServiceCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => billingApi.deleteServiceCategory(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.categories() });
+    },
+  });
+}
+
+/**
+ * Create a new payment point
+ */
+export function useCreatePaymentPoint() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: PaymentPointCreateData) => billingApi.createPaymentPoint(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.paymentPoints() });
+    },
+  });
+}
+
+/**
+ * Update an existing payment point
+ */
+export function useUpdatePaymentPoint() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: PaymentPointUpdateData }) =>
+      billingApi.updatePaymentPoint(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.paymentPoints() });
+    },
+  });
+}
+
+/**
+ * Delete a payment point
+ */
+export function useDeletePaymentPoint() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => billingApi.deletePaymentPoint(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.paymentPoints() });
+    },
   });
 }
 

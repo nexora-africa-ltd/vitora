@@ -67,6 +67,8 @@ import {
   Landmark,
   Hospital,
   Skull,
+  Tag,
+  Wallet,
 } from 'lucide-react';
 
 import {
@@ -306,6 +308,8 @@ const _allNavItems: NavItemType[] = [
       { label: 'Insurance', href: '/insurance', icon: Shield, actionKey: 'billing.view_insurance' },
       { label: 'Reports', href: '/transactions/reports', icon: BarChart3, actionKey: 'billing.view_reports' },
       { label: 'Reconciliation', href: '/transactions/reconciliation', icon: Scale, actionKey: 'billing.reconcile' },
+      { label: 'Services', href: '/finance/services', icon: Tag, actionKey: 'billing.view_dashboard' },
+      { label: 'Payment Points', href: '/finance/payment-points', icon: Wallet, actionKey: 'billing.view_dashboard' },
       { label: 'Payments Config', href: '/finance/payments-config', icon: Settings, actionKey: 'billing.view_dashboard' },
     ],
   },
