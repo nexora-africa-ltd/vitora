@@ -552,6 +552,24 @@ export function PaymentForm({
                               field.onChange(e.target.value.toUpperCase());
                               setVerificationResult(null);
                             }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const code = field.value?.trim();
+                                if (!code || verifyMpesa.isPending) return;
+                                verifyMpesa.mutateAsync(code).then((result) => {
+                                  setVerificationResult(result);
+                                  if (!result.verified && result.error) {
+                                    form.setError('reference_number', {
+                                      type: 'manual',
+                                      message: result.error,
+                                    });
+                                  }
+                                }).catch(() => {
+                                  setVerificationResult({ verified: false, error: 'Verification request failed' });
+                                });
+                              }
+                            }}
                           />
                         </FormControl>
                         <Button
