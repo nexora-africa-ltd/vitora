@@ -16,7 +16,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
-import { Receipt, Smartphone, CreditCard, Banknote, Building } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Receipt, Smartphone, CreditCard, Banknote, Building, MoreHorizontal, Undo2 } from 'lucide-react';
 import type { Payment, PaymentMethod, PaymentStatus } from '@/lib/types/billing';
 import { formatCurrency, formatDateTime } from '@/lib/utils/format';
 
@@ -28,6 +34,7 @@ interface PaymentListProps {
   payments: Payment[];
   isLoading: boolean;
   onViewReceipt: (payment: Payment) => void;
+  onReversePayment?: (payment: Payment) => void;
   onFilter?: (filters: { method?: PaymentMethod; status?: PaymentStatus }) => void;
 }
 
@@ -61,6 +68,7 @@ export function PaymentList({
   payments,
   isLoading,
   onViewReceipt,
+  onReversePayment,
   onFilter,
 }: PaymentListProps) {
   const [methodFilter, setMethodFilter] = React.useState<string>('all');
@@ -181,19 +189,38 @@ export function PaymentList({
             key: 'actions',
             header: '',
             cell: (payment) => (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewReceipt(payment);
-                }}
-              >
-                <Receipt className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">Receipt</span>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="sm">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewReceipt(payment);
+                    }}
+                  >
+                    <Receipt className="h-4 w-4 mr-2" />
+                    View Receipt
+                  </DropdownMenuItem>
+                  {payment.status === 'COMPLETED' && onReversePayment && (
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onReversePayment(payment);
+                      }}
+                    >
+                      <Undo2 className="h-4 w-4 mr-2" />
+                      Reverse Payment
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             ),
-            className: 'w-24',
+            className: 'w-16',
           },
         ]}
         mobileCard={(payment) => (

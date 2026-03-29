@@ -370,6 +370,24 @@ export function usePaymentReceipt(paymentId: number | undefined) {
   });
 }
 
+/**
+ * Reverse a completed payment
+ */
+export function useReversePayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ paymentId, reason }: { paymentId: number; reason: string }) =>
+      billingApi.reversePayment(paymentId, reason),
+    onSuccess: (payment) => {
+      queryClient.invalidateQueries({ queryKey: billingKeys.payments() });
+      queryClient.invalidateQueries({ queryKey: billingKeys.invoiceDetail(payment.invoice) });
+      queryClient.invalidateQueries({ queryKey: billingKeys.invoices() });
+      queryClient.invalidateQueries({ queryKey: billingKeys.reports() });
+    },
+  });
+}
+
 // ============================================================================
 // M-Pesa Hooks
 // ============================================================================

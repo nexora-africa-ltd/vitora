@@ -367,6 +367,14 @@ async function downloadReceiptPdf(paymentId: number): Promise<Blob> {
   return response.data as Blob;
 }
 
+async function reversePayment(paymentId: number, reason: string): Promise<Payment> {
+  const response = await apiClient.post(
+    `/api/billing/payments/${paymentId}/reverse/`,
+    { reason }
+  );
+  return parseResponse(PaymentSchema, response.data, { context: 'billingApi.reversePayment' });
+}
+
 // ============================================================================
 // Payment Points API
 // ============================================================================
@@ -656,6 +664,7 @@ export const billingApi = {
   getPayments,
   getPayment,
   createPayment,
+  reversePayment,
   getPaymentReceipt,
   downloadReceiptPdf,
 

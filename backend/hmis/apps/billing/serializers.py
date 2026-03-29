@@ -306,6 +306,17 @@ class PaymentPointSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class PaymentReverseSerializer(serializers.Serializer):
+    """Serializer for the payment reverse action."""
+
+    reason = serializers.CharField(
+        required=True,
+        min_length=3,
+        max_length=500,
+        help_text="Reason for reversing this payment",
+    )
+
+
 class PaymentSerializer(serializers.ModelSerializer):
     """Serializer for Payment model."""
 
