@@ -548,6 +548,7 @@ class FacilityBillingConfigSerializer(serializers.ModelSerializer):
     is_sha_contract_active = serializers.BooleanField(read_only=True)
     sha_accreditation_days_remaining = serializers.IntegerField(read_only=True)
     sha_contract_days_remaining = serializers.IntegerField(read_only=True)
+    has_mpesa_credentials = serializers.BooleanField(read_only=True)
 
     class Meta:
         from hmis.apps.billing.models import FacilityBillingConfig
@@ -586,11 +587,19 @@ class FacilityBillingConfigSerializer(serializers.ModelSerializer):
             "bank_name",
             "bank_account_number",
             "bank_branch",
+            # M-Pesa API credentials
+            "mpesa_consumer_key",
+            "mpesa_consumer_secret",
+            "mpesa_passkey",
+            "mpesa_shortcode",
+            "mpesa_callback_url",
+            "mpesa_environment",
+            "has_mpesa_credentials",
             # Timestamps
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at", "has_mpesa_credentials"]
 
 
 class FacilityBillingConfigCreateSerializer(serializers.ModelSerializer):
@@ -621,6 +630,13 @@ class FacilityBillingConfigCreateSerializer(serializers.ModelSerializer):
             "bank_name",
             "bank_account_number",
             "bank_branch",
+            # M-Pesa API credentials
+            "mpesa_consumer_key",
+            "mpesa_consumer_secret",
+            "mpesa_passkey",
+            "mpesa_shortcode",
+            "mpesa_callback_url",
+            "mpesa_environment",
         ]
 
 

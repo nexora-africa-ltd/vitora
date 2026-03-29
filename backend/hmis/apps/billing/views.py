@@ -542,8 +542,8 @@ class MpesaViewSet(viewsets.ViewSet):
             # Convert amount to Decimal
             amount_decimal = Decimal(str(amount))
 
-            # Initiate STK Push
-            mpesa_service = MpesaService()
+            # Initiate STK Push (resolve credentials from invoice's facility)
+            mpesa_service = MpesaService(facility=invoice.facility)
             normalized_phone = mpesa_service.format_phone(str(phone_number))
 
             stk_result = mpesa_service.initiate_stk_push(
@@ -620,14 +620,32 @@ class MpesaViewSet(viewsets.ViewSet):
         from hmis.apps.billing.services import MpesaService
 
         try:
-            # Process callback
-            mpesa_service = MpesaService()
+            # Look up the pending payment first to resolve the facility
+            # for credential loading (callback data contains the CheckoutRequestID)
+            body = request.data.get("Body", {})
+            stk_cb = body.get("stkCallback", {})
+            cb_checkout_id = stk_cb.get("CheckoutRequestID")
+
+            # Resolve facility from existing payment record
+            facility = None
+            pending_payment = None
+            if cb_checkout_id:
+                pending_payment = (
+                    Payment.objects.filter(mpesa_transaction_id=cb_checkout_id)
+                    .select_related("invoice__facility")
+                    .first()
+                )
+                if pending_payment and pending_payment.invoice:
+                    facility = pending_payment.invoice.facility
+
+            # Process callback (facility used for credential context)
+            mpesa_service = MpesaService(facility=facility)
             payment_data = mpesa_service.process_callback(request.data)
 
             checkout_request_id = payment_data.get("checkout_request_id")
 
-            payment = None
-            if checkout_request_id:
+            payment = pending_payment
+            if not payment and checkout_request_id:
                 payment = Payment.objects.filter(mpesa_transaction_id=checkout_request_id).first()
 
             # If payment successful, update the pending Payment record
@@ -731,7 +749,11 @@ class MpesaViewSet(viewsets.ViewSet):
             )
 
         try:
-            payment = Payment.objects.filter(mpesa_transaction_id=checkout_request_id).first()
+            payment = (
+                Payment.objects.filter(mpesa_transaction_id=checkout_request_id)
+                .select_related("invoice__facility")
+                .first()
+            )
             if payment and payment.status == Payment.Status.COMPLETED:
                 return Response(
                     {
@@ -757,7 +779,12 @@ class MpesaViewSet(viewsets.ViewSet):
                     status=status.HTTP_200_OK,
                 )
 
-            mpesa_service = MpesaService()
+            # Resolve facility for credential loading
+            facility = None
+            if payment and payment.invoice:
+                facility = payment.invoice.facility
+
+            mpesa_service = MpesaService(facility=facility)
             result = mpesa_service.query_transaction_status(checkout_request_id)
 
             try:
@@ -1024,7 +1051,7 @@ class FacilityBillingConfigViewSet(viewsets.ModelViewSet):
 
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ["sha_accreditation_status", "default_payment_type"]
+    filterset_fields = ["facility", "sha_accreditation_status", "default_payment_type"]
     search_fields = ["facility__name", "facility__mfl_code", "sha_contract_number"]
 
     def get_queryset(self):
@@ -1048,6 +1075,31 @@ class FacilityBillingConfigViewSet(viewsets.ModelViewSet):
         if self.action in ("create", "update", "partial_update"):
             return FacilityBillingConfigCreateSerializer
         return FacilityBillingConfigSerializer
+
+    def create(self, request, *args, **kwargs):
+        """Create config and return full read serializer response."""
+        from hmis.apps.billing.serializers import FacilityBillingConfigSerializer
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        read_serializer = FacilityBillingConfigSerializer(serializer.instance)
+        headers = self.get_success_headers(read_serializer.data)
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        """Update config and return full read serializer response."""
+        from hmis.apps.billing.serializers import FacilityBillingConfigSerializer
+
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        if getattr(instance, "_prefetched_objects_cache", None):
+            instance._prefetched_objects_cache = {}
+        read_serializer = FacilityBillingConfigSerializer(serializer.instance)
+        return Response(read_serializer.data)
 
     @extend_schema(
         responses={200: OpenApiTypes.OBJECT},

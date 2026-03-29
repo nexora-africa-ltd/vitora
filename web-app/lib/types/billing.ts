@@ -309,6 +309,13 @@ export interface FacilityBillingConfigCreateData {
   bank_name?: string;
   bank_account_number?: string;
   bank_branch?: string;
+  // M-Pesa API credentials (per-facility)
+  mpesa_consumer_key?: string;
+  mpesa_consumer_secret?: string;
+  mpesa_passkey?: string;
+  mpesa_shortcode?: string;
+  mpesa_callback_url?: string;
+  mpesa_environment?: string;
 }
 
 export interface FacilityBillingConfigUpdateData extends Partial<Omit<FacilityBillingConfigCreateData, 'facility'>> {}
@@ -316,6 +323,7 @@ export interface FacilityBillingConfigUpdateData extends Partial<Omit<FacilityBi
 export interface FacilityBillingConfigListParams {
   page?: number;
   page_size?: number;
+  facility?: number;
   sha_accreditation_status?: string;
   is_sha_contract_active?: boolean;
 }

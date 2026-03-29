@@ -24,7 +24,12 @@ class MpesaService:
     - Payment callback processing
     - Transaction status queries
 
-    Configuration in settings:
+    Multi-tenant support:
+    - Pass a ``facility`` to load credentials from FacilityBillingConfig.
+    - Falls back to global settings when no facility is given or when
+      the facility's config has no M-Pesa credentials.
+
+    Configuration in settings (global fallback):
     - MPESA_CONSUMER_KEY
     - MPESA_CONSUMER_SECRET
     - MPESA_PASSKEY
@@ -35,24 +40,90 @@ class MpesaService:
     # Request timeout in seconds
     REQUEST_TIMEOUT = 30
 
-    def __init__(self):
-        """Initialize M-Pesa service with sandbox credentials."""
-        self.consumer_key = getattr(settings, "MPESA_CONSUMER_KEY", "")
-        self.consumer_secret = getattr(settings, "MPESA_CONSUMER_SECRET", "")
-        self.passkey = getattr(settings, "MPESA_PASSKEY", "")
-        self.shortcode = getattr(settings, "MPESA_SHORTCODE", "174379")
-        self.callback_url = getattr(
-            settings, "MPESA_CALLBACK_URL", "https://example.com/api/billing/mpesa/callback/"
-        )
+    # Daraja base URLs per environment
+    _BASE_URLS = {
+        "sandbox": "https://sandbox.safaricom.co.ke",
+        "production": "https://api.safaricom.co.ke",
+    }
 
-        # Daraja API endpoints (sandbox)
-        self.base_url = getattr(settings, "MPESA_BASE_URL", "https://sandbox.safaricom.co.ke")
+    def __init__(self, facility=None):
+        """
+        Initialize M-Pesa service.
+
+        Args:
+            facility: Optional Facility instance. When provided, credentials
+                      are loaded from the facility's FacilityBillingConfig
+                      if it has complete M-Pesa credentials. Otherwise
+                      falls back to global django settings.
+        """
+        self.facility = facility
+        config = self._resolve_config(facility)
+
+        self.consumer_key = config["consumer_key"]
+        self.consumer_secret = config["consumer_secret"]
+        self.passkey = config["passkey"]
+        self.shortcode = config["shortcode"]
+        self.callback_url = config["callback_url"]
+
+        environment = config["environment"]
+        self.base_url = self._BASE_URLS.get(
+            environment,
+            getattr(settings, "MPESA_BASE_URL", "https://sandbox.safaricom.co.ke"),
+        )
         self.oauth_url = f"{self.base_url}/oauth/v1/generate?grant_type=client_credentials"
         self.stk_push_url = f"{self.base_url}/mpesa/stkpush/v1/processrequest"
         self.query_url = f"{self.base_url}/mpesa/stkpushquery/v1/query"
 
         self._access_token = None
         self._token_expires_at = None
+
+    @staticmethod
+    def _resolve_config(facility) -> dict:
+        """
+        Resolve M-Pesa credentials from facility config or global settings.
+
+        Priority:
+        1. FacilityBillingConfig with all required credentials populated.
+        2. Global django settings (MPESA_* env vars).
+        """
+        if facility is not None:
+            try:
+                billing_config = facility.billing_config
+                if billing_config.has_mpesa_credentials:
+                    # In sandbox, shortcode/passkey may be empty — fall back to
+                    # global defaults (Safaricom shared sandbox credentials).
+                    return {
+                        "consumer_key": billing_config.mpesa_consumer_key,
+                        "consumer_secret": billing_config.mpesa_consumer_secret,
+                        "passkey": (
+                            billing_config.mpesa_passkey
+                            or getattr(settings, "MPESA_PASSKEY", "")
+                        ),
+                        "shortcode": (
+                            billing_config.mpesa_shortcode
+                            or getattr(settings, "MPESA_SHORTCODE", "174379")
+                        ),
+                        "callback_url": (
+                            billing_config.mpesa_callback_url
+                            or getattr(settings, "MPESA_CALLBACK_URL", "")
+                        ),
+                        "environment": billing_config.mpesa_environment or "sandbox",
+                    }
+            except Exception:
+                # No billing_config (RelatedObjectDoesNotExist) — fall through
+                pass
+
+        # Global fallback
+        return {
+            "consumer_key": getattr(settings, "MPESA_CONSUMER_KEY", ""),
+            "consumer_secret": getattr(settings, "MPESA_CONSUMER_SECRET", ""),
+            "passkey": getattr(settings, "MPESA_PASSKEY", ""),
+            "shortcode": getattr(settings, "MPESA_SHORTCODE", "174379"),
+            "callback_url": getattr(
+                settings, "MPESA_CALLBACK_URL", "https://example.com/api/billing/mpesa/callback/"
+            ),
+            "environment": getattr(settings, "MPESA_ENVIRONMENT", "sandbox"),
+        }
 
     def format_phone(self, phone: str) -> str:
         """

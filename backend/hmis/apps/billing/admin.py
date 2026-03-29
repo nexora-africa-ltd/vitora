@@ -480,6 +480,21 @@ class FacilityBillingConfigAdmin(admin.ModelAdmin):
                 "classes": ("collapse",),
             },
         ),
+        (
+            "M-Pesa API Credentials",
+            {
+                "fields": (
+                    "mpesa_consumer_key",
+                    "mpesa_consumer_secret",
+                    "mpesa_passkey",
+                    "mpesa_shortcode",
+                    "mpesa_callback_url",
+                    "mpesa_environment",
+                ),
+                "classes": ("collapse",),
+                "description": "Per-facility Daraja API credentials. Leave blank to use global settings.",
+            },
+        ),
     )
 
     @admin.display(description="SHA Accredited")
