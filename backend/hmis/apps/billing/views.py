@@ -586,7 +586,15 @@ class MpesaViewSet(viewsets.ViewSet):
             )
 
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            # Django ValidationError wraps messages in a list; extract a
+            # clean string so the frontend doesn't see ['...'] brackets.
+            if hasattr(e, "message"):
+                msg = e.message
+            elif hasattr(e, "messages"):
+                msg = "; ".join(e.messages)
+            else:
+                msg = str(e)
+            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response(
                 {"error": f"Failed to initiate M-Pesa payment: {str(e)}"},
@@ -806,7 +814,8 @@ class MpesaViewSet(viewsets.ViewSet):
             )
 
         except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            msg = e.message if hasattr(e, "message") else "; ".join(e.messages) if hasattr(e, "messages") else str(e)
+            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response(
                 {"error": f"Failed to query transaction status: {str(e)}"},

@@ -281,9 +281,22 @@ class MpesaService:
 
         try:
             response = requests.post(self.stk_push_url, json=payload, headers=headers, timeout=30)
-            response.raise_for_status()
 
-            data = response.json()
+            # Parse response body before raise_for_status so we can get
+            # Safaricom's actual error message on 4xx/5xx responses.
+            try:
+                data = response.json()
+            except ValueError:
+                data = {}
+
+            if not response.ok:
+                error_msg = data.get(
+                    "errorMessage",
+                    data.get("ResponseDescription", f"{response.status_code} error from Safaricom"),
+                )
+                error_code = data.get("errorCode", "")
+                detail = f"{error_msg} (code: {error_code})" if error_code else error_msg
+                raise ValidationError(f"M-Pesa STK Push failed: {detail}")
 
             # Check response code
             if data.get("ResponseCode") != "0":
