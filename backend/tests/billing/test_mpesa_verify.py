@@ -197,7 +197,7 @@ class TestMpesaVerifyAPI:
     def test_code_uppercased(self, authenticated_client):
         """Should uppercase the transaction code before processing."""
         with patch(
-            "hmis.apps.billing.views.MpesaService"
+            "hmis.apps.billing.services.MpesaService"
         ) as MockService:
             mock_instance = MockService.return_value
             mock_instance.verify_transaction.return_value = {
@@ -236,7 +236,7 @@ class TestMpesaVerifyAPI:
         assert response.data["verified"] is False
         assert "already been used" in response.data["error"]
 
-    @patch("hmis.apps.billing.views.MpesaService")
+    @patch("hmis.apps.billing.services.MpesaService")
     def test_successful_verification(self, MockService, authenticated_client):
         """Should return verified=True from Safaricom."""
         mock_instance = MockService.return_value
@@ -256,7 +256,7 @@ class TestMpesaVerifyAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["verified"] is True
 
-    @patch("hmis.apps.billing.views.MpesaService")
+    @patch("hmis.apps.billing.services.MpesaService")
     def test_failed_verification(self, MockService, authenticated_client):
         """Should return verified=False with error from Safaricom."""
         mock_instance = MockService.return_value

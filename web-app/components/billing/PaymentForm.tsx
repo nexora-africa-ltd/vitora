@@ -214,11 +214,18 @@ export function PaymentForm({
           return;
         }
       } else {
-        // Manual mode — transaction code is required
+        // Manual mode — transaction code is required and must be verified
         if (!values.reference_number || !values.reference_number.trim()) {
           form.setError('reference_number', {
             type: 'manual',
             message: 'Enter the M-Pesa transaction code from the confirmation SMS',
+          });
+          return;
+        }
+        if (!verificationResult?.verified) {
+          form.setError('reference_number', {
+            type: 'manual',
+            message: 'Verify the M-Pesa transaction code before recording payment',
           });
           return;
         }
@@ -775,7 +782,12 @@ export function PaymentForm({
           </Button>
           <Button
             type="submit"
-            disabled={isLoading || paymentPointsQuery.isLoading || paymentPoints.length === 0}
+            disabled={
+              isLoading ||
+              paymentPointsQuery.isLoading ||
+              paymentPoints.length === 0 ||
+              (watchedMethod === 'MPESA' && watchedMpesaMode === 'manual' && !verificationResult?.verified)
+            }
           >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {watchedMethod === 'MPESA' && watchedMpesaMode === 'stk_push' && onMpesaPayment

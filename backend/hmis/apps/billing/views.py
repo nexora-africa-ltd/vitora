@@ -40,12 +40,14 @@ from hmis.apps.billing.serializers import (
     InvoiceItemSerializer,
     InvoiceSerializer,
     PaymentPointSerializer,
+    PaymentReverseSerializer,
     PaymentSerializer,
     ReceiptSerializer,
     ServiceCategorySerializer,
     ServiceSerializer,
 )
 from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.models import AuditLog
 
 
 class ServiceCategoryViewSet(viewsets.ModelViewSet):
@@ -374,6 +376,56 @@ class PaymentViewSet(viewsets.ModelViewSet):
             f'attachment; filename="receipt-{receipt.receipt_number}.pdf"'
         )
         return response
+
+    def perform_create(self, serializer):
+        """Create payment and audit log the event."""
+        payment = serializer.save()
+        AuditLog.log(
+            action="payment_create",
+            user=self.request.user,
+            resource_type="Payment",
+            resource_id=payment.id,
+            details={
+                "payment_reference": payment.payment_reference,
+                "invoice_id": payment.invoice_id,
+                "invoice_number": payment.invoice.invoice_number,
+                "amount": str(payment.amount),
+                "method": payment.method,
+                "mpesa_receipt_number": payment.mpesa_receipt_number or "",
+            },
+        )
+
+    @extend_schema(request=PaymentReverseSerializer)
+    @action(detail=True, methods=["post"])
+    def reverse(self, request, pk=None):
+        """Reverse a completed payment."""
+        payment = self.get_object()
+
+        serializer = PaymentReverseSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        reason = serializer.validated_data["reason"]
+
+        try:
+            payment.reverse(reason)
+        except ValidationError as e:
+            msg = e.message if hasattr(e, "message") else str(e)
+            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
+
+        AuditLog.log(
+            action="payment_reverse",
+            user=request.user,
+            resource_type="Payment",
+            resource_id=payment.id,
+            details={
+                "payment_reference": payment.payment_reference,
+                "invoice_id": payment.invoice_id,
+                "invoice_number": payment.invoice.invoice_number,
+                "amount": str(payment.amount),
+                "reason": reason,
+            },
+        )
+
+        return Response(PaymentSerializer(payment).data)
 
 
 class PaymentPointViewSet(viewsets.ModelViewSet):
