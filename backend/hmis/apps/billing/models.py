@@ -3001,6 +3001,51 @@ class FacilityBillingConfig(models.Model):
     )
 
     # ------------------------------------------------------------------
+    # M-Pesa API Credentials (per-facility multi-tenant support)
+    # ------------------------------------------------------------------
+
+    class MpesaEnvironment(models.TextChoices):
+        SANDBOX = "sandbox", "Sandbox"
+        PRODUCTION = "production", "Production"
+
+    mpesa_consumer_key = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Daraja API consumer key for this facility.",
+    )
+    mpesa_consumer_secret = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Daraja API consumer secret for this facility.",
+    )
+    mpesa_passkey = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Lipa Na M-Pesa Online passkey for this facility.",
+    )
+    mpesa_shortcode = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="M-Pesa business shortcode (paybill/till) for STK Push.",
+    )
+    mpesa_callback_url = models.URLField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="Callback URL Safaricom will POST payment results to.",
+    )
+    mpesa_environment = models.CharField(
+        max_length=20,
+        choices=MpesaEnvironment.choices,
+        default=MpesaEnvironment.SANDBOX,
+        help_text="Daraja API environment (sandbox or production).",
+    )
+
+    # ------------------------------------------------------------------
     # Audit
     # ------------------------------------------------------------------
 
@@ -3013,6 +3058,21 @@ class FacilityBillingConfig(models.Model):
 
     def __str__(self):
         return f"Billing Config – {self.facility.name}"
+
+    @property
+    def has_mpesa_credentials(self) -> bool:
+        """Return True if the minimum required M-Pesa API credentials are configured.
+
+        Sandbox only needs consumer_key + consumer_secret (Safaricom provides
+        shared shortcode 174379 and a public test passkey).
+        Production requires all four fields.
+        """
+        core = bool(self.mpesa_consumer_key and self.mpesa_consumer_secret)
+        if not core:
+            return False
+        if self.mpesa_environment == self.MpesaEnvironment.PRODUCTION:
+            return bool(self.mpesa_shortcode and self.mpesa_passkey)
+        return True
 
     @property
     def is_sha_accredited(self) -> bool:

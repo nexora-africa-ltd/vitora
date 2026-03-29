@@ -306,6 +306,7 @@ const _allNavItems: NavItemType[] = [
       { label: 'Insurance', href: '/insurance', icon: Shield, actionKey: 'billing.view_insurance' },
       { label: 'Reports', href: '/transactions/reports', icon: BarChart3, actionKey: 'billing.view_reports' },
       { label: 'Reconciliation', href: '/transactions/reconciliation', icon: Scale, actionKey: 'billing.reconcile' },
+      { label: 'Payments Config', href: '/finance/payments-config', icon: Settings, actionKey: 'billing.view_dashboard' },
     ],
   },
   {
