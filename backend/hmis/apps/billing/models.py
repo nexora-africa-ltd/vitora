@@ -377,6 +377,12 @@ class Invoice(models.Model):
         Recomputes discount_amount from discount_type/discount_value,
         then derives total_amount and balance_due.
         """
+        # Clear any prefetch cache so we get fresh items from the DB.
+        # Without this, prefetch_related("items") on the queryset causes
+        # stale data when items are added/removed in the same request.
+        if hasattr(self, "_prefetched_objects_cache"):
+            self._prefetched_objects_cache.pop("items", None)
+
         items = self.items.all()
         self.subtotal = sum(item.line_total for item in items) if items else Decimal("0.00")
 
