@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, ChevronLeft, ChevronRight, Loader2, Search, Syringe, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -21,9 +21,9 @@ import { proceduresApi } from '@/lib/api/procedures';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { toast } from '@/lib/hooks/use-toast';
+import { getClinicTypesForCategory, getAllProcedureClinicTypes } from '@/lib/config/procedure-clinic-mapping';
 import { useQuery } from '@tanstack/react-query';
 
-const PROCEDURE_CLINIC_TYPES = ['PROCEDURE', 'DRESSING', 'INJECTION', 'SURGICAL', 'OT'];
 const PAGE_SIZE = 20;
 
 /** Lightweight type matching the list serializer shape */
@@ -86,8 +86,20 @@ export default function ClinicMappingsPage() {
     page_size: 100,
   });
 
-  const procedureClinics = useMemo(
-    () => (clinicsData?.results ?? []).filter((c) => PROCEDURE_CLINIC_TYPES.includes(c.clinic_type)),
+  // All clinic types that could be relevant to any procedure
+  const allProcedureClinicTypes = getAllProcedureClinicTypes();
+
+  const allProcedureClinics = useMemo(
+    () => (clinicsData?.results ?? []).filter((c) => allProcedureClinicTypes.includes(c.clinic_type)),
+    [clinicsData, allProcedureClinicTypes]
+  );
+
+  // Per-entry: get clinics relevant to that procedure's category
+  const getClinicsForCategory = useCallback(
+    (category: string) => {
+      const types = getClinicTypesForCategory(category);
+      return (clinicsData?.results ?? []).filter((c) => types.includes(c.clinic_type));
+    },
     [clinicsData]
   );
 
@@ -229,21 +241,21 @@ export default function ClinicMappingsPage() {
           </SelectContent>
         </Select>
 
-        {procedureClinics.length > 0 && (
+        {allProcedureClinics.length > 0 && (
           <div className="text-sm text-muted-foreground">
-            {procedureClinics.length} procedure room{procedureClinics.length !== 1 ? 's' : ''} available
+            {allProcedureClinics.length} clinic{allProcedureClinics.length !== 1 ? 's' : ''} available for procedures
           </div>
         )}
       </div>
 
       {/* Info banner when no procedure clinics exist */}
-      {!isLoading && procedureClinics.length === 0 && (
+      {!isLoading && allProcedureClinics.length === 0 && (
         <Card className="border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20">
           <CardContent className="py-4">
             <p className="text-sm text-amber-800 dark:text-amber-200">
-              No procedure-type clinics found. Create clinics with type <strong>Procedure Room</strong>,{' '}
-              <strong>Dressing</strong>, <strong>Injection Room</strong>, <strong>Surgical</strong>, or{' '}
-              <strong>OT</strong> to enable automatic slot-based scheduling.
+              No procedure-compatible clinics found. Create clinics with type <strong>Procedure Room</strong>,{' '}
+              <strong>Dental</strong>, <strong>Eye</strong>, <strong>ENT</strong>, <strong>Surgical</strong>, or{' '}
+              other specialized types to enable automatic slot-based scheduling.
             </p>
           </CardContent>
         </Card>
@@ -273,8 +285,15 @@ export default function ClinicMappingsPage() {
 
           {catalogEntries.map((entry) => {
             const clinicIds = getClinicIds(entry);
-            const selectedClinics = procedureClinics.filter((c) => clinicIds.includes(c.id));
-            const availableClinics = procedureClinics.filter((c) => !clinicIds.includes(c.id));
+            const categoryClinics = getClinicsForCategory(entry.category);
+            const selectedClinics = categoryClinics.filter((c) => clinicIds.includes(c.id));
+            // Also include already-selected clinics that might not match current category
+            const allClinics = clinicsData?.results ?? [];
+            const extraSelected = allClinics.filter(
+              (c) => clinicIds.includes(c.id) && !categoryClinics.some((cc) => cc.id === c.id)
+            );
+            const allSelectedClinics = [...selectedClinics, ...extraSelected];
+            const availableClinics = categoryClinics.filter((c) => !clinicIds.includes(c.id));
             const changed = hasChanges(entry.id);
             const isSaving = savingIds.has(entry.id);
 
@@ -298,7 +317,7 @@ export default function ClinicMappingsPage() {
 
                       {/* Assigned clinics */}
                       <div className="flex flex-wrap gap-1.5 mt-2">
-                        {selectedClinics.map((clinic) => (
+                        {allSelectedClinics.map((clinic) => (
                           <Badge key={clinic.id} variant="secondary" className="gap-1 pr-1 text-xs">
                             {clinic.name}
                             <button
