@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronLeft, ChevronRight, Loader2, Search, Syringe, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Loader2, Search, Syringe, Wand2, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,7 +21,8 @@ import { proceduresApi } from '@/lib/api/procedures';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { toast } from '@/lib/hooks/use-toast';
-import { getClinicTypesForCategory, getAllProcedureClinicTypes } from '@/lib/config/procedure-clinic-mapping';
+import { getClinicTypesForCategory, getBestFitClinicTypes, getAllProcedureClinicTypes } from '@/lib/config/procedure-clinic-mapping';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useQuery } from '@tanstack/react-query';
 
 const PAGE_SIZE = 20;
@@ -43,6 +44,8 @@ interface CatalogListEntry {
 
 export default function ClinicMappingsPage() {
   const queryClient = useQueryClient();
+  const { canPerformAction } = usePermissions();
+  const canManageCatalog = canPerformAction('procedures.manage_catalog');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
@@ -198,8 +201,53 @@ export default function ClinicMappingsPage() {
     }
   };
 
+  /**
+   * Auto-assign best-fit clinics to all visible procedures that have no clinics assigned.
+   * Uses the category→clinic type mapping to find matches.
+   * Only creates pending changes — user must still review and save.
+   */
+  const autoAssignAll = () => {
+    const allClinics = clinicsData?.results ?? [];
+    let assignedCount = 0;
+
+    for (const entry of catalogEntries) {
+      const currentIds = getClinicIds(entry);
+      // Skip entries that already have assignments
+      if (currentIds.length > 0) continue;
+
+      // Find best-fit clinics for this procedure's category
+      const matchingTypes = getBestFitClinicTypes(entry.category);
+      const matches = allClinics.filter(
+        (c) => matchingTypes.includes(c.clinic_type) && c.status === 'ACTIVE'
+      );
+
+      if (matches.length > 0) {
+        setPendingChanges((prev) => ({
+          ...prev,
+          [entry.id]: matches.map((c) => c.id),
+        }));
+        assignedCount++;
+      }
+    }
+
+    if (assignedCount > 0) {
+      toast({
+        title: `Auto-assigned ${assignedCount} procedure${assignedCount !== 1 ? 's' : ''}`,
+        description: 'Review the assignments below, then save to apply.',
+      });
+    } else {
+      toast({
+        title: 'No unassigned procedures',
+        description: 'All visible procedures already have clinics assigned.',
+      });
+    }
+  };
+
   const pendingCount = Object.keys(pendingChanges).length;
   const isLoading = isCatalogLoading || isClinicsLoading;
+  const unassignedCount = catalogEntries.filter(
+    (e) => getClinicIds(e).length === 0
+  ).length;
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -207,12 +255,26 @@ export default function ClinicMappingsPage() {
         title="Procedure Room Assignments"
         helpContent="Assign procedure-type clinics to catalog entries. Procedures with assigned clinics will show available time slots during scheduling. Procedures without assignments use manual scheduling."
         actions={
-          pendingCount > 0 ? (
-            <Button onClick={saveAllPending} disabled={savingIds.size > 0}>
-              {savingIds.size > 0 && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Save All ({pendingCount})
-            </Button>
-          ) : undefined
+          <div className="flex items-center gap-2">
+            {canManageCatalog && unassignedCount > 0 && allProcedureClinics.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={autoAssignAll}
+                disabled={savingIds.size > 0}
+              >
+                <Wand2 className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Auto-Assign</span>
+                <span className="sm:hidden">Auto</span>
+                <Badge variant="secondary" className="ml-1.5">{unassignedCount}</Badge>
+              </Button>
+            )}
+            {pendingCount > 0 && (
+              <Button onClick={saveAllPending} disabled={savingIds.size > 0}>
+                {savingIds.size > 0 && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Save All ({pendingCount})
+              </Button>
+            )}
+          </div>
         }
       />
 

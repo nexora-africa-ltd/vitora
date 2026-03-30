@@ -2,8 +2,8 @@
 
 > **Module**: `backend/hmis/apps/procedures/` + `web-app/app/(dashboard)/procedures/`
 > **Status**: ✅ Implemented (Sprint 1.7, Q1 2026)
-> **Tests**: 85 passing | **Coverage**: Module-scoped
-> **Last Updated**: March 30, 2026
+> **Tests**: 106 passing | **Coverage**: Module-scoped
+> **Last Updated**: March 31, 2026
 
 ---
 
@@ -41,6 +41,8 @@ The Procedures module manages the full lifecycle of outpatient and minor clinica
 | **Auto-Billing** | Automatic invoice item creation on completion via `BillingAgentService` |
 | **Outcome Assessment** | Multiple follow-up recordings per procedure for healing progress tracking |
 | **Procedure Kits** | Pre-defined consumable kits for quick addition during procedures |
+| **Clinic Integration** | Category-aware clinic matching, slot-based scheduling from assigned clinics, auto-assign via Room Assignments page |
+| **Check-in Auto-Transition** | Patient check-in at a procedure clinic auto-transitions matching orders to READY |
 
 ### Key Numbers
 
@@ -48,10 +50,10 @@ The Procedures module manages the full lifecycle of outpatient and minor clinica
 |--------|-------|
 | Models | 8 |
 | ViewSets / API Views | 3 |
-| Custom @actions | 12 |
+| Custom @actions | 13 |
 | Seeded Procedures | 46 |
-| Backend Tests | 85 |
-| Frontend Pages | 8 |
+| Backend Tests | 106 |
+| Frontend Pages | 10 |
 
 ---
 
@@ -82,6 +84,7 @@ web-app/
 │   ├── catalog/
 │   │   ├── page.tsx                      # Catalog list (paginated, filterable)
 │   │   ├── new/page.tsx                  # Create new catalog entry
+│   │   ├── clinic-mappings/page.tsx      # Bulk clinic↔procedure room assignments (admin)
 │   │   └── [id]/
 │   │       ├── page.tsx                  # Catalog entry detail
 │   │       └── edit/page.tsx             # Edit catalog entry
@@ -90,9 +93,10 @@ web-app/
 │       ├── new/page.tsx                  # Create new order (patient + procedure picker)
 │       └── [orderId]/page.tsx            # Order detail (4 tabs: Overview, Consent, Perform, Outcomes)
 ├── components/procedures/
-│   └── procedure-form.tsx                # Shared form for create/edit catalog entries
+│   └── procedure-form.tsx                # Shared form for create/edit catalog entries (incl. clinic picker)
 └── lib/
     ├── api/procedures.ts                 # API client with Zod validation
+    ├── config/procedure-clinic-mapping.ts # Category→clinic type mapping logic
     └── types/procedure.ts                # TypeScript interfaces + status color maps
 ```
 
@@ -101,7 +105,9 @@ web-app/
 ```
 procedures ──→ patients      (ProcedureOrder.patient FK)
            ──→ encounters    (ProcedureOrder.encounter FK)
-           ──→ clinics       (ProcedureOrder.clinic_visit FK, ProcedureCatalog.follow_up_clinic FK)
+           ──→ clinics       (ProcedureOrder.clinic_visit FK, ProcedureCatalog.follow_up_clinic FK,
+           │                  ProcedureCatalog.default_clinics M2M, ProcedureOrder.scheduled_clinic FK)
+           ──→ checkin       (CheckIn.procedure_order FK — auto-transition on check-in)
            ──→ inpatient     (ProcedureOrder.admission FK)
            ──→ pharmacy      (ProcedureConsumable.drug FK, ProcedureKitItem.drug FK)
            ──→ billing       (ProcedureCatalog.billing_service FK, auto-billing on complete)
@@ -147,6 +153,7 @@ Master catalog of procedure definitions. Shared across all facilities in an orga
 | `requires_follow_up` | BooleanField | |
 | `default_follow_up_days` | PositiveIntegerField | Default: 7 |
 | `follow_up_clinic` | FK → clinics.Clinic | Default follow-up clinic |
+| `default_clinics` | M2M → clinics.Clinic | Clinics where this procedure can be performed (enables slot-based scheduling) |
 | `is_active` | BooleanField | Default: True |
 | `organization` | FK → core.Organization | Tenant scoping |
 | `facility` | FK → core.Facility | Tenant scoping |
@@ -217,7 +224,8 @@ Clinical request for a procedure. Central entity that owns the workflow state ma
 | `appointment` | FK → scheduling.Appointment | Optional scheduling link |
 | `scheduled_date` | DateField | Scheduled procedure date |
 | `scheduled_time` | TimeField | Scheduled procedure time |
-| `scheduled_location` | CharField(100) | Procedure room/location |
+| `scheduled_location` | CharField(100) | Procedure room/location (legacy text field) |
+| `scheduled_clinic` | FK → clinics.Clinic | Scheduled procedure clinic (enables auto-transition on check-in) |
 | `estimated_duration_minutes` | PositiveIntegerField | Override from catalog |
 | `ordered_by` | FK → User | Clinician who ordered |
 | `ordered_at` | DateTimeField (auto) | |
@@ -240,7 +248,7 @@ ORDERED → CONSENT_PENDING → SCHEDULED → READY → IN_PROGRESS → COMPLETE
 | Method | Transition | Side Effects |
 |--------|-----------|--------------|
 | `request_consent()` | → CONSENT_PENDING | — |
-| `schedule(date, time, location, duration)` | → SCHEDULED | Sets scheduling fields |
+| `schedule(date, time, location, duration, clinic)` | → SCHEDULED | Sets scheduling fields; if `clinic` provided and no `assigned_performer`, auto-assigns from `ClinicStaff` |
 | `mark_ready()` | → READY | — |
 | `start_procedure(performed_by)` | → IN_PROGRESS | Creates ProcedureLog |
 | `complete()` | → COMPLETED | Called by ProcedureLog.complete() |
@@ -376,8 +384,9 @@ Base path: `/api/procedures/`
 | GET | `/catalog/` | CatalogList | List procedures (paginated, filterable) |
 | POST | `/catalog/` | CatalogDetail | Create catalog entry |
 | GET | `/catalog/{id}/` | CatalogDetail | Get catalog entry detail |
-| PATCH | `/catalog/{id}/` | CatalogDetail | Update catalog entry |
+| PATCH | `/catalog/{id}/` | CatalogDetail | Update catalog entry (incl. `default_clinics` M2M) |
 | DELETE | `/catalog/{id}/` | — | Delete catalog entry |
+| GET | `/catalog/{id}/available-slots/?date=YYYY-MM-DD` | — | Available scheduling slots from `default_clinics` |
 
 **Tenant Scope**: `organization` (shared across all facilities in the org).
 
@@ -392,9 +401,9 @@ Base path: `/api/procedures/`
 | `facility` | integer | Facility ID |
 | `search` | string | Searches code, name, ichi_code, cpt_code |
 
-**List Serializer Fields**: `id`, `code`, `name`, `category`, `body_system`, `risk_level`, `base_fee`, `typical_duration_minutes`, `consent_required`, `is_active`.
+**List Serializer Fields**: `id`, `code`, `name`, `category`, `body_system`, `risk_level`, `base_fee`, `typical_duration_minutes`, `consent_required`, `is_active`, `default_clinics`, `default_clinics_detail`.
 
-**Detail Serializer Fields**: All model fields + `billing_price` (read-only), `billing_service_name` (read-only).
+**Detail Serializer Fields**: All model fields + `billing_price` (read-only), `billing_service_name` (read-only), `default_clinics_detail` (read-only list of `{id, name, clinic_type}`).
 
 ### 4.2 Order Endpoints
 
@@ -455,7 +464,7 @@ Base path: `/api/procedures/`
 
 | Method | Path | Request Body | Description |
 |--------|------|-------------|-------------|
-| POST | `/orders/{id}/schedule/` | `{ scheduled_date, scheduled_time?, scheduled_location?, estimated_duration_minutes? }` | Schedule the procedure |
+| POST | `/orders/{id}/schedule/` | `{ scheduled_date, scheduled_time?, scheduled_location?, estimated_duration_minutes?, scheduled_clinic? }` | Schedule the procedure (clinic enables auto-staff-assignment) |
 | POST | `/orders/{id}/start/` | `{}` | Start procedure (creates ProcedureLog) |
 | POST | `/orders/{id}/complete/` | `{ status?, immediate_outcome?, complications_occurred?, complication_details? }` | Complete procedure |
 | POST | `/orders/{id}/cancel/` | `{ reason }` | Cancel with reason (required) |
@@ -785,8 +794,9 @@ python manage.py seed_service_catalog
 | Dashboard | `/procedures` | Stats cards (total orders, pending, in-progress, completed today) |
 | Catalog List | `/procedures/catalog` | Paginated list with search, category/risk filters, "New Procedure" button |
 | Catalog Detail | `/procedures/catalog/{id}` | Full procedure details, coding, consent requirements, "Edit" button |
-| Catalog New | `/procedures/catalog/new` | Create form (7 cards: Basic Info, Coding, Clinical, Consent, Billing, Follow-up, Actions) |
+| Catalog New | `/procedures/catalog/new` | Create form (8 cards: Basic Info, Coding, Clinical, Consent, Billing, Follow-up, Procedure Rooms, Actions) |
 | Catalog Edit | `/procedures/catalog/{id}/edit` | Edit form (same layout, code field disabled) |
+| Room Assignments | `/procedures/catalog/clinic-mappings` | Bulk clinic↔procedure mapping with auto-assign (admin-only action) |
 | Orders List | `/procedures/orders` | Paginated list with status/priority filters, "New Order" button |
 | New Order | `/procedures/orders/new` | 3-step form: Patient selector → Procedure search → Order details |
 | Order Detail | `/procedures/orders/{orderId}` | 4-tab view (see below) |
@@ -837,7 +847,8 @@ python manage.py seed_service_catalog
 
 | Component | File | Description |
 |-----------|------|-------------|
-| `ProcedureForm` | `components/procedures/procedure-form.tsx` | Shared create/edit form with 7 card sections, Zod validation |
+| `ProcedureForm` | `components/procedures/procedure-form.tsx` | Shared create/edit form with 8 card sections, Zod validation, incl. Procedure Rooms picker |
+| `ClinicAssignmentCard` | Inline in procedure-form.tsx | Multi-select clinic picker with category-aware filtering |
 | `ConsentCard` | Inline in order detail | Displays consent status, checklist, sign/decline buttons |
 | `PerformanceCard` | Inline in order detail | Shows procedure log with timing, technique, outcome |
 | `OutcomesTab` | Inline in order detail | Lists outcomes + inline add form |
@@ -874,7 +885,7 @@ Location: `lib/types/procedure.ts`
 
 | Interface | Used For |
 |-----------|----------|
-| `ProcedureCatalogEntry` | Catalog list items |
+| `ProcedureCatalogEntry` | Catalog list items (incl. `default_clinics`, `default_clinics_detail`) |
 | `ProcedureCatalogDetail` | Catalog detail (all fields) |
 | `ProcedureOrderListItem` | Order list items |
 | `ProcedureOrder` | Order detail (nested procedure, consent, log) |
@@ -885,6 +896,62 @@ Location: `lib/types/procedure.ts`
 | `ProcedureDashboard` | Dashboard stats |
 
 **Color Maps**: `PROCEDURE_STATUS_COLORS`, `PROCEDURE_STATUS_LABELS`, `PROCEDURE_PRIORITY_COLORS`, `RISK_LEVEL_COLORS`.
+
+### 8.8 Clinic Integration & Room Assignments
+
+#### Category → Clinic Type Mapping
+
+Location: `lib/config/procedure-clinic-mapping.ts`
+
+The system matches procedure categories to clinic types using a two-tier approach:
+
+**Tier 1 — Category-specific matches (exact fit)**:
+
+| Procedure Category | Clinic Type(s) |
+|-------------------|----------------|
+| DENTAL | DENTAL |
+| OPHTHALMIC | EYE |
+| ENT | ENT |
+| OBSTETRIC | ANC, PNC |
+| WOUND_CARE | DRESSING |
+| INJECTION | INJECTION |
+
+**Tier 2 — Generic procedure rooms (fallback)**:
+`PROCEDURE`, `SURGICAL`, `OT`, `DRESSING`, `INJECTION`
+
+**Two functions** serve different use cases:
+- `getClinicTypesForCategory(category)` — Returns specific + generic types (used by manual "Add room..." dropdown)
+- `getBestFitClinicTypes(category)` — Returns *only* specific types if available, else generic fallback (used by Auto-Assign)
+
+#### Room Assignments Page (`/procedures/catalog/clinic-mappings`)
+
+Bulk admin page for managing which clinics are assigned to which procedures.
+
+**Features**:
+- Server-side paginated list (20 per page) with search and category filter
+- Per-row clinic badges with add/remove controls
+- Inline undo and per-row save buttons
+- "Save All" button for batch saving all pending changes
+- **Auto-Assign** button (role-gated to `procedures.manage_catalog` → ADMIN only):
+  - Scans all visible procedures that have no clinics assigned
+  - Uses `getBestFitClinicTypes()` for best-fit matching (e.g., DENTAL procedures → DENTAL clinic only)
+  - Creates pending changes for review — admin must still click Save All
+  - Shows count badge of unassigned procedures
+
+#### Procedure Form Clinic Picker
+
+The create/edit form (`procedure-form.tsx`) includes a "Procedure Rooms" card:
+- Fetches active clinics filtered by the category-aware `getClinicTypesForCategory()`
+- Shows assigned clinics as removable badges
+- "Add a procedure room..." dropdown showing only compatible clinics
+- Persists via `default_clinics` (M2M PK array) on create/update
+
+#### RBAC
+
+| Action Key | Allowed Roles | Description |
+|-----------|---------------|-------------|
+| `procedures.view_catalog` | DOCTOR, CONSULTANT, CLINICAL_OFFICER, NURSE, ADMIN | View catalog and Room Assignments page |
+| `procedures.manage_catalog` | ADMIN | Auto-Assign button, bulk catalog writes |
 
 ---
 
@@ -914,7 +981,8 @@ All 7 data models are registered in Django admin (`admin.py`):
 | `tests/procedures/test_procedure_models.py` | 20 | State transitions, auto-MRN, computed properties |
 | `tests/procedures/test_procedure_serializers.py` | 18 | Validation rules, nested serializer output |
 | `tests/procedures/test_procedure_billing.py` | 16 | Billing integration, auto-invoicing, price resolution |
-| **Total** | **85** | |
+| `tests/test_procedure_clinic_integration.py` | 21 | Clinic integration: default_clinics M2M, available-slots, auto-transition on check-in |
+| **Total** | **106** | |
 
 ### 10.2 Running Tests
 
