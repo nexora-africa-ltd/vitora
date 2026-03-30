@@ -33,12 +33,18 @@ export default function NewProcedureOrderPage() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
-  // Pre-fill from URL params (e.g., linked from encounter or clinic visit)
+  // Pre-fill from URL params (e.g., linked from encounter, clinic visit, or admission)
   const prePatientId = searchParams.get('patient')
     ? parseInt(searchParams.get('patient')!)
     : null;
   const preEncounterId = searchParams.get('encounter')
     ? parseInt(searchParams.get('encounter')!)
+    : null;
+  const preClinicVisitId = searchParams.get('clinic_visit')
+    ? parseInt(searchParams.get('clinic_visit')!)
+    : null;
+  const preAdmissionId = searchParams.get('admission')
+    ? parseInt(searchParams.get('admission')!)
     : null;
 
   // Patient selection
@@ -99,6 +105,8 @@ export default function NewProcedureOrderPage() {
         body_site: bodySite,
         laterality,
         ...(preEncounterId ? { encounter: preEncounterId } : {}),
+        ...(preClinicVisitId ? { clinic_visit: preClinicVisitId } : {}),
+        ...(preAdmissionId ? { admission: preAdmissionId } : {}),
       }),
     onSuccess: (data) => {
       toast({ title: 'Procedure ordered', description: `Order ${data.order_number} created.` });
