@@ -1,7 +1,7 @@
-from datetime import date
+from datetime import date, datetime, time, timedelta
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, status, viewsets
+from rest_framework import filters, serializers as drf_serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -59,6 +59,88 @@ class ProcedureCatalogViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if self.action == "list":
             return ProcedureCatalogListSerializer
         return ProcedureCatalogDetailSerializer
+
+    @action(detail=True, methods=["get"], url_path="available-slots")
+    def available_slots(self, request, pk=None):
+        """Return available time slots for scheduling this procedure.
+
+        Derives slots from ClinicSchedule of each ``default_clinic`` for the
+        requested date, then subtracts already-booked procedure orders.
+
+        Query params:
+            date (required): YYYY-MM-DD
+        """
+        catalog = self.get_object()
+        date_str = request.query_params.get("date")
+        if not date_str:
+            return Response(
+                {"error": "date query parameter is required (YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return Response(
+                {"error": "Invalid date format. Use YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        clinics = catalog.default_clinics.filter(status="ACTIVE")
+        if not clinics.exists():
+            return Response(
+                {"slots": [], "message": "No clinics configured for this procedure. Use manual scheduling."},
+            )
+
+        from hmis.apps.clinics.models import ClinicSchedule
+
+        day_of_week = target_date.weekday()  # 0=Monday
+        duration = catalog.typical_duration_minutes or 30
+        slots = []
+
+        for clinic in clinics:
+            schedules = ClinicSchedule.objects.filter(
+                clinic=clinic,
+                day_of_week=day_of_week,
+                is_active=True,
+            )
+            if not schedules.exists():
+                continue
+
+            # Get already booked slots for this clinic on this date
+            booked_times = set(
+                ProcedureOrder.objects.filter(
+                    scheduled_clinic=clinic,
+                    scheduled_date=target_date,
+                    status__in=[
+                        ProcedureOrder.Status.SCHEDULED,
+                        ProcedureOrder.Status.READY,
+                        ProcedureOrder.Status.IN_PROGRESS,
+                    ],
+                )
+                .exclude(scheduled_time__isnull=True)
+                .values_list("scheduled_time", flat=True)
+            )
+
+            for schedule in schedules:
+                current = datetime.combine(target_date, schedule.start_time)
+                end = datetime.combine(target_date, schedule.end_time)
+
+                while current + timedelta(minutes=duration) <= end:
+                    slot_time = current.time()
+                    slots.append(
+                        {
+                            "clinic_id": clinic.id,
+                            "clinic_name": clinic.name,
+                            "date": date_str,
+                            "start_time": slot_time.strftime("%H:%M"),
+                            "end_time": (current + timedelta(minutes=duration)).time().strftime("%H:%M"),
+                            "duration_minutes": duration,
+                            "available": slot_time not in booked_times,
+                        }
+                    )
+                    current += timedelta(minutes=duration)
+
+        return Response({"slots": slots})
 
 
 class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
@@ -154,10 +236,12 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             time=data.get("scheduled_time"),
             location=data.get("scheduled_location", ""),
             duration=data.get("estimated_duration_minutes"),
+            clinic=data.get("scheduled_clinic"),
         )
         self._audit(
             "procedure_order_schedule", order,
             scheduled_date=str(data["scheduled_date"]),
+            scheduled_clinic=data["scheduled_clinic"].name if data.get("scheduled_clinic") else None,
         )
         return Response(ProcedureOrderDetailSerializer(order).data)
 
@@ -185,12 +269,15 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             order.scheduled_location = data["scheduled_location"]
         if data.get("estimated_duration_minutes"):
             order.estimated_duration_minutes = data["estimated_duration_minutes"]
+        if "scheduled_clinic" in data:
+            order.scheduled_clinic = data.get("scheduled_clinic")
         # Stay in current status (SCHEDULED or READY)
         order.save(
             update_fields=[
                 "scheduled_date",
                 "scheduled_time",
                 "scheduled_location",
+                "scheduled_clinic",
                 "estimated_duration_minutes",
                 "updated_at",
             ]

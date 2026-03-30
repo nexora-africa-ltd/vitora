@@ -32,6 +32,8 @@ export interface ProcedureCatalogDetail extends ProcedureCatalogEntry {
   requires_follow_up: boolean;
   default_follow_up_days: number;
   follow_up_clinic: number | null;
+  default_clinics: number[];
+  default_clinics_detail: { id: number; name: string; clinic_type: string }[];
   billing_service: number | null;
   billing_price: number | null;
   billing_service_name: string | null;
@@ -81,6 +83,8 @@ export interface ProcedureOrder {
   scheduled_date: string | null;
   scheduled_time: string | null;
   scheduled_location: string;
+  scheduled_clinic: number | null;
+  scheduled_clinic_name: string | null;
   ordered_at: string;
   ordered_by: number;
   assigned_performer: number | null;
@@ -185,3 +189,19 @@ export const RISK_LEVEL_COLORS: Record<string, string> = {
   MEDIUM: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
   HIGH: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
 };
+
+/** A time slot returned by GET /api/procedures/catalog/{id}/available-slots/ */
+export interface ProcedureAvailableSlot {
+  clinic_id: number;
+  clinic_name: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+  available: boolean;
+}
+
+export interface ProcedureAvailableSlotsResponse {
+  slots: ProcedureAvailableSlot[];
+  message?: string;
+}

@@ -168,6 +168,15 @@ class ProcedureCatalog(TimeStampedModel):
         help_text="Default clinic for follow-up",
     )
 
+    # Procedure Clinics (where this procedure can be performed)
+    default_clinics = models.ManyToManyField(
+        "clinics.Clinic",
+        blank=True,
+        related_name="procedure_catalog_entries",
+        help_text="Clinics where this procedure can be performed. "
+        "When set, scheduling auto-lists available slots from these clinics.",
+    )
+
     # Status
     is_active = models.BooleanField(default=True, help_text="Whether procedure is currently offered")
 
@@ -359,8 +368,17 @@ class ProcedureOrder(TimeStampedModel):
     )
     scheduled_date = models.DateField(null=True, blank=True, help_text="Scheduled procedure date")
     scheduled_time = models.TimeField(null=True, blank=True, help_text="Scheduled procedure time")
+    scheduled_clinic = models.ForeignKey(
+        "clinics.Clinic",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="scheduled_procedures",
+        help_text="Clinic/procedure room where procedure is scheduled",
+    )
     scheduled_location = models.CharField(
-        max_length=100, blank=True, default="", help_text="Procedure room/location"
+        max_length=100, blank=True, default="",
+        help_text="Free-text location (fallback when scheduled_clinic is not set)",
     )
     estimated_duration_minutes = models.PositiveIntegerField(
         null=True, blank=True, help_text="Estimated duration (override from catalog)"
@@ -421,6 +439,7 @@ class ProcedureOrder(TimeStampedModel):
             models.Index(fields=["patient", "status"]),
             models.Index(fields=["scheduled_date"]),
             models.Index(fields=["facility", "status"]),
+            models.Index(fields=["scheduled_clinic", "scheduled_date", "status"]),
         ]
 
     def __str__(self) -> str:
@@ -462,24 +481,75 @@ class ProcedureOrder(TimeStampedModel):
         time: "models.TimeField | None" = None,
         location: str = "",
         duration: int | None = None,
+        clinic=None,
     ) -> None:
-        """Transition → SCHEDULED after consent obtained (or if not required)."""
+        """Transition → SCHEDULED after consent obtained (or if not required).
+
+        Args:
+            date: Scheduled procedure date.
+            time: Scheduled procedure time.
+            location: Free-text location (fallback).
+            duration: Override estimated duration.
+            clinic: Clinic instance to schedule in. When set,
+                auto-assigns a performer from ClinicStaff if none is set.
+        """
         self.status = self.Status.SCHEDULED
         self.scheduled_date = date
         self.scheduled_time = time
         self.scheduled_location = location
         if duration:
             self.estimated_duration_minutes = duration
-        self.save(
-            update_fields=[
-                "status",
-                "scheduled_date",
-                "scheduled_time",
-                "scheduled_location",
-                "estimated_duration_minutes",
-                "updated_at",
-            ]
-        )
+        if clinic is not None:
+            self.scheduled_clinic = clinic
+
+        # Auto-assign performer from clinic staff if not already set
+        if self.scheduled_clinic_id and not self.assigned_performer_id:
+            self.assigned_performer = self._auto_assign_performer()
+
+        update_fields = [
+            "status",
+            "scheduled_date",
+            "scheduled_time",
+            "scheduled_location",
+            "estimated_duration_minutes",
+            "scheduled_clinic",
+            "assigned_performer",
+            "updated_at",
+        ]
+        self.save(update_fields=update_fields)
+
+    def _auto_assign_performer(self):
+        """Pick the least-busy eligible staff member from the scheduled clinic for the scheduled date."""
+        from django.db.models import Count, Q
+
+        from hmis.apps.clinics.models import ClinicStaff
+
+        candidates = ClinicStaff.objects.filter(
+            clinic=self.scheduled_clinic,
+            role__in=["LEAD", "DOCTOR", "NURSE"],
+            is_active=True,
+        ).select_related("user")
+
+        if not candidates.exists():
+            return None
+
+        # Count procedures already assigned to each candidate on the same date
+        candidates = candidates.annotate(
+            procedure_count=Count(
+                "user__assigned_procedures",
+                filter=Q(
+                    user__assigned_procedures__scheduled_date=self.scheduled_date,
+                    user__assigned_procedures__status__in=[
+                        self.Status.SCHEDULED,
+                        self.Status.READY,
+                        self.Status.IN_PROGRESS,
+                    ],
+                ),
+            )
+        ).order_by("procedure_count")
+
+        best = candidates.first()
+        return best.user if best else None
 
     def mark_ready(self) -> None:
         """Transition SCHEDULED → READY (patient arrived, prep complete)."""

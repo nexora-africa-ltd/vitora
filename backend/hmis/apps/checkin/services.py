@@ -251,6 +251,7 @@ def process_checkin(
     notes: str = "",
     linked_encounter_id: Optional[int] = None,
     identity_method: str = "MRN",
+    procedure_order_id: Optional[int] = None,
 ):
     """
     Process a patient check-in.
@@ -272,6 +273,7 @@ def process_checkin(
         notes: Additional notes
         linked_encounter_id: ID of previous encounter for follow-up
         identity_method: How identity was verified
+        procedure_order_id: ID of procedure order for SCHEDULED_PROCEDURE visits
 
     Returns:
         tuple: (CheckIn, warning_message or None)
@@ -279,6 +281,7 @@ def process_checkin(
     from hmis.apps.checkin.models import CheckIn
     from hmis.apps.clinics.models import Clinic, ClinicVisit
     from hmis.apps.encounters.models import Encounter
+    from hmis.apps.procedures.models import ProcedureOrder
     from hmis.apps.triage.models import WaitingQueue
 
     warning = None
@@ -348,6 +351,11 @@ def process_checkin(
     if linked_encounter_id:
         linked_encounter = Encounter.objects.filter(id=linked_encounter_id).first()
 
+    # Resolve procedure order if provided
+    linked_procedure_order = None
+    if procedure_order_id:
+        linked_procedure_order = ProcedureOrder.objects.filter(id=procedure_order_id).first()
+
     # Create encounter
     encounter_type = "OPD"
     if destination_type == "EMERGENCY":
@@ -379,6 +387,7 @@ def process_checkin(
         notes=notes,
         chief_complaint=chief_complaint,
         status="WAITING",
+        procedure_order=linked_procedure_order,
     )
 
     # Create queue entries based on destination
@@ -448,4 +457,61 @@ def process_checkin(
         Encounter.objects.filter(pk=encounter.pk).update(**update_kwargs)
         encounter.refresh_from_db()
 
+        # =====================================================================
+        # Auto-transition procedure orders when checked into a procedure clinic
+        # =====================================================================
+        _link_procedure_orders_on_checkin(
+            patient=patient,
+            destination_clinic=destination_clinic,
+            clinic_visit=clinic_visit,
+            linked_procedure_order=linked_procedure_order,
+        )
+
     return checkin, warning
+
+
+def _link_procedure_orders_on_checkin(
+    patient,
+    destination_clinic,
+    clinic_visit,
+    linked_procedure_order=None,
+):
+    """
+    After a patient is checked into a clinic, auto-transition matching
+    ProcedureOrders to READY and link them to the ClinicVisit.
+
+    If a specific procedure_order was passed at check-in, that order is
+    transitioned directly. Otherwise, we look for SCHEDULED/READY orders
+    matching the patient + clinic + today's date.
+    """
+    from hmis.apps.procedures.models import ProcedureOrder
+
+    today = timezone.localdate()
+    orders_to_transition = []
+
+    if linked_procedure_order:
+        # Explicit procedure order passed with the check-in
+        if linked_procedure_order.status in (
+            ProcedureOrder.Status.SCHEDULED,
+            ProcedureOrder.Status.READY,
+        ):
+            orders_to_transition.append(linked_procedure_order)
+    else:
+        # Auto-discover: look for orders scheduled at this clinic today
+        orders_to_transition = list(
+            ProcedureOrder.objects.filter(
+                patient=patient,
+                scheduled_clinic=destination_clinic,
+                scheduled_date=today,
+                status__in=[
+                    ProcedureOrder.Status.SCHEDULED,
+                    ProcedureOrder.Status.READY,
+                ],
+            )
+        )
+
+    for order in orders_to_transition:
+        if order.status == ProcedureOrder.Status.SCHEDULED:
+            order.status = ProcedureOrder.Status.READY
+        order.clinic_visit = clinic_visit
+        order.save(update_fields=["status", "clinic_visit", "updated_at"])

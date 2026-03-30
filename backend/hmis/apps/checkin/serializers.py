@@ -200,6 +200,11 @@ class CheckInRequestSerializer(serializers.Serializer):
         required=False,
         default="MRN",
     )
+    procedure_order = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        help_text="ID of scheduled procedure order (for SCHEDULED_PROCEDURE visits)",
+    )
 
     def validate_destination(self, value):
         """Validate destination is TRIAGE, EMERGENCY, or valid clinic ID."""
@@ -227,6 +232,22 @@ class CheckInRequestSerializer(serializers.Serializer):
         if value is not None:
             if not Encounter.objects.filter(id=value).exists():
                 raise serializers.ValidationError(f"Encounter with ID {value} not found.")
+        return value
+
+    def validate_procedure_order(self, value):
+        """Validate procedure order exists and is in a schedulable state."""
+        if value is None:
+            return None
+        from hmis.apps.procedures.models import ProcedureOrder
+
+        try:
+            order = ProcedureOrder.objects.get(id=value)
+        except ProcedureOrder.DoesNotExist:
+            raise serializers.ValidationError(f"Procedure order with ID {value} not found.")
+        if order.status in ("COMPLETED", "CANCELLED"):
+            raise serializers.ValidationError(
+                f"Procedure order {order.order_number} is {order.status} and cannot be linked."
+            )
         return value
 
 

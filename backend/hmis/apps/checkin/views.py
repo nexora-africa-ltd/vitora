@@ -351,6 +351,7 @@ class PatientCheckinView(views.APIView):
                 notes=data.get("notes", ""),
                 linked_encounter_id=data.get("linked_encounter_id"),
                 identity_method=data.get("identity_method", "MRN"),
+                procedure_order_id=data.get("procedure_order"),
             )
         except ValueError as e:
             # Duplicate check-in or business rule violation
