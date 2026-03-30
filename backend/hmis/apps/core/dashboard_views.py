@@ -172,6 +172,7 @@ def _compute_dashboard_stats(*, facility=None, organization=None) -> dict:
         "mch": _get_mch_stats(today, facility, organization),
         "theatre": _get_theatre_stats(today, facility, organization),
         "allied_health": _get_allied_health_stats(today, facility, organization),
+        "procedures": _get_procedure_stats(today, facility, organization),
     }
 
     # Add org-admin stats when scoped to an organization
@@ -562,6 +563,35 @@ def _get_theatre_stats(today, facility=None, organization=None) -> dict:
     except Exception:
         return {
             "scheduled_today": 0,
+            "in_progress": 0,
+            "completed_today": 0,
+        }
+
+
+def _get_procedure_stats(today, facility=None, organization=None) -> dict:
+    """Get minor/outpatient procedure statistics."""
+    try:
+        from hmis.apps.procedures.models import ProcedureOrder
+
+        scope = _build_scope_filter(facility, organization)
+        orders = ProcedureOrder.objects.filter(**scope)
+
+        return {
+            "scheduled_today": orders.filter(
+                scheduled_date=today,
+                status__in=["SCHEDULED", "READY"],
+            ).count(),
+            "pending_consent": orders.filter(status="CONSENT_PENDING").count(),
+            "in_progress": orders.filter(status="IN_PROGRESS").count(),
+            "completed_today": orders.filter(
+                status="COMPLETED",
+                updated_at__date=today,
+            ).count(),
+        }
+    except Exception:
+        return {
+            "scheduled_today": 0,
+            "pending_consent": 0,
             "in_progress": 0,
             "completed_today": 0,
         }

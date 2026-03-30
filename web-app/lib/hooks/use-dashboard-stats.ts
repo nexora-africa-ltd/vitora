@@ -43,6 +43,7 @@ const DEFAULT_STATS: DashboardStats = {
   mch: { active_registrations: 0, high_risk: 0, deliveries_today: 0 },
   theatre: { scheduled_today: 0, in_progress: 0, completed_today: 0 },
   allied_health: { pending_referrals: 0, sessions_today: 0, open_cases: 0 },
+  procedures: { scheduled_today: 0, pending_consent: 0, in_progress: 0, completed_today: 0 },
 };
 
 /**

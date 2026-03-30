@@ -88,6 +88,13 @@ export const AlliedHealthStatsSchema = z.object({
   open_cases: z.number(),
 });
 
+export const ProceduresStatsSchema = z.object({
+  scheduled_today: z.number(),
+  pending_consent: z.number(),
+  in_progress: z.number(),
+  completed_today: z.number(),
+});
+
 export const OrgAdminStatsSchema = z.object({
   total_facilities: z.number(),
   active_facilities: z.number(),
@@ -111,5 +118,6 @@ export const DashboardStatsSchema = z.object({
   mch: MCHStatsSchema,
   theatre: TheatreStatsSchema,
   allied_health: AlliedHealthStatsSchema,
+  procedures: ProceduresStatsSchema,
   org_admin: OrgAdminStatsSchema.optional(),
 });
