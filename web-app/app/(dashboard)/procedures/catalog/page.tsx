@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Syringe } from 'lucide-react';
+import { Plus, Search, Syringe } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
 import { ResponsiveTable } from '@/components/ui/responsive-table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -53,26 +55,41 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function ProcedureCatalogPage() {
+  const router = useRouter();
   const { refresh, isRefreshing } = usePageRefresh();
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [riskFilter, setRiskFilter] = useState<string>('');
+  const [page, setPage] = useState(1);
   const debouncedSearch = useDebounce(search, 300);
 
+  const PAGE_SIZE = 25;
+
   const { data, isLoading } = useQuery({
-    queryKey: ['procedure-catalog', debouncedSearch, categoryFilter, riskFilter],
+    queryKey: ['procedure-catalog', debouncedSearch, categoryFilter, riskFilter, page],
     queryFn: () =>
       proceduresApi.listCatalog({
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
-        ...(categoryFilter ? { category: categoryFilter } : {}),
-        ...(riskFilter ? { risk_level: riskFilter } : {}),
+        ...(categoryFilter && categoryFilter !== 'all' ? { category: categoryFilter } : {}),
+        ...(riskFilter && riskFilter !== 'all' ? { risk_level: riskFilter } : {}),
         is_active: 'true',
         ordering: 'category,name',
+        page: String(page),
+        page_size: String(PAGE_SIZE),
       }),
     staleTime: 60000,
   });
 
   const catalog = useMemo(() => (data?.results || []) as ProcedureCatalogEntry[], [data]);
+  const totalCount = data?.count ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const hasNext = !!data?.next;
+  const hasPrev = page > 1;
+
+  const handleFilterChange = (setter: (v: string) => void) => (v: string) => {
+    setter(v);
+    setPage(1);
+  };
 
   const columns = [
     {
@@ -153,6 +170,12 @@ export default function ProcedureCatalogPage() {
         <PageHeader
           title="Procedure Catalog"
           helpContent="Browse all available procedures. Filter by category and risk level. View procedure codes, fees, and consent requirements."
+          actions={
+            <Button onClick={() => router.push('/procedures/catalog/new')}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Procedure
+            </Button>
+          }
         />
 
         {/* Filters */}
@@ -167,7 +190,7 @@ export default function ProcedureCatalogPage() {
             />
           </div>
           <div className="flex gap-2">
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select value={categoryFilter} onValueChange={handleFilterChange(setCategoryFilter)}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
@@ -180,7 +203,7 @@ export default function ProcedureCatalogPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={riskFilter} onValueChange={setRiskFilter}>
+            <Select value={riskFilter} onValueChange={handleFilterChange(setRiskFilter)}>
               <SelectTrigger className="w-[130px]">
                 <SelectValue placeholder="Risk" />
               </SelectTrigger>
@@ -200,10 +223,27 @@ export default function ProcedureCatalogPage() {
           columns={columns}
           keyExtractor={(item) => item.id}
           isLoading={isLoading}
+          onRowClick={(item) => router.push(`/procedures/catalog/${item.id}`)}
           emptyMessage="No procedures found"
           defaultSortColumn="name"
           defaultSortDirection="asc"
         />
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <Button variant="outline" size="sm" onClick={() => setPage((p) => p - 1)} disabled={!hasPrev}>
+              Previous
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              <span className="hidden sm:inline">Page {page} of {totalPages} ({totalCount} procedures)</span>
+              <span className="sm:hidden">{page}/{totalPages}</span>
+            </span>
+            <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={!hasNext}>
+              Next
+            </Button>
+          </div>
+        )}
       </div>
     </PullToRefresh>
   );
