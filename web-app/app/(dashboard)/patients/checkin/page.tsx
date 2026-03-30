@@ -10,6 +10,7 @@ import {
   FlaskConical,
   HelpCircle,
   Pill,
+  Scissors,
   Search,
   User,
   UserCheck,
@@ -36,7 +37,9 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { useToast } from '@/lib/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 import { getApiErrorMessage } from '@/lib/api/client';
+import { proceduresApi } from '@/lib/api/procedures';
 import { usePatientSearch, usePatientLookup, useTodayCheckins, useCheckinPatient } from '@/lib/hooks/use-checkin';
 import { useClinics } from '@/lib/hooks/use-clinics';
 import { useDebounce } from '@/lib/hooks/use-debounce';
@@ -89,7 +92,7 @@ function PatientCheckinCard({
 }: {
   patient: PatientLookupResponse;
   onTriageCheckin: (visitReason: VisitReason) => void;
-  onOpenDirectRoute: (context: { visitReason: VisitReason; skipTriage: boolean; referralFacility?: string; chronicClinicId?: number }) => void;
+  onOpenDirectRoute: (context: { visitReason: VisitReason; skipTriage: boolean; referralFacility?: string; chronicClinicId?: number; procedureOrderId?: number }) => void;
   onEmergencyCheckin: (visitReason: VisitReason, chiefComplaint: string) => void;
   isLoading: boolean;
 }) {
@@ -97,10 +100,12 @@ function PatientCheckinCard({
   const [erComplaint, setErComplaint] = useState('');
   const [referralFacility, setReferralFacility] = useState('');
   const [chronicClinicId, setChronicClinicId] = useState<number | undefined>(undefined);
+  const [procedureOrderId, setProcedureOrderId] = useState<number | undefined>(undefined);
 
   const isEmergency = visitReason === 'EMERGENCY';
   const isReferral = visitReason === 'REFERRAL_VISIT';
   const isChronicCare = visitReason === 'CHRONIC_CARE';
+  const isScheduledProcedure = visitReason === 'SCHEDULED_PROCEDURE';
 
   // Determine if this reason should skip triage
   const shouldSkipTriage = useMemo(() => {
@@ -121,6 +126,22 @@ function PatientCheckinCard({
   const isReferralValid = !isReferral || referralFacility.trim().length > 0;
   // Chronic care validation: clinic selection is required
   const isChronicCareValid = !isChronicCare || chronicClinicId !== undefined;
+  // Scheduled procedure validation: procedure order selection is required
+  const isProcedureValid = !isScheduledProcedure || procedureOrderId !== undefined;
+
+  // Fetch scheduled/ordered procedure orders for this patient (today)
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const { data: procedureOrdersData } = useQuery({
+    queryKey: ['procedure-orders', 'checkin', patient.id, today],
+    queryFn: () =>
+      proceduresApi.listOrders({
+        patient: String(patient.id),
+        status: 'SCHEDULED',
+        page_size: '20',
+      }),
+    enabled: isScheduledProcedure,
+  });
+  const scheduledProcedures = procedureOrdersData?.results ?? [];
 
   const handleTriageCheckin = () => {
     onTriageCheckin(visitReason);
@@ -132,6 +153,7 @@ function PatientCheckinCard({
       skipTriage: shouldSkipTriage,
       ...(isReferral && referralFacility.trim() ? { referralFacility: referralFacility.trim() } : {}),
       ...(isChronicCare && chronicClinicId ? { chronicClinicId } : {}),
+      ...(isScheduledProcedure && procedureOrderId ? { procedureOrderId } : {}),
     });
   };
 
@@ -181,7 +203,7 @@ function PatientCheckinCard({
               <Alert
                 key={index}
                 variant={alert.includes('SEVERE') ? 'destructive' : 'default'}
-                className="py-2"
+                className="py-2 [&>svg]:top-2.5"
               >
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription className="text-sm">{alert}</AlertDescription>
@@ -367,6 +389,49 @@ function PatientCheckinCard({
           </div>
         )}
 
+        {/* Scheduled procedure selection (shown when Scheduled Procedure is selected) */}
+        {isScheduledProcedure && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">
+              Scheduled Procedure <span className="text-destructive">*</span>
+            </label>
+            <Select
+              value={procedureOrderId?.toString() ?? ''}
+              onValueChange={(value) => setProcedureOrderId(parseInt(value, 10))}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select scheduled procedure" />
+              </SelectTrigger>
+              <SelectContent>
+                {scheduledProcedures.map((order) => (
+                  <SelectItem key={order.id} value={order.id.toString()}>
+                    <div className="flex items-center gap-2">
+                      <Scissors className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span>{order.procedure_name}</span>
+                      <span className="text-muted-foreground text-xs">
+                        ({order.order_number})
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+                {scheduledProcedures.length === 0 && (
+                  <SelectItem value="_none">
+                    No scheduled procedures found
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            {!procedureOrderId && scheduledProcedures.length > 0 && (
+              <p className="text-xs text-destructive">Please select a procedure</p>
+            )}
+            {scheduledProcedures.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                No scheduled procedures found for this patient. Check the procedures module or select a different visit reason.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Emergency chief complaint input (shown when Emergency is selected) */}
         {isEmergency && (
           <div className="space-y-2">
@@ -392,6 +457,16 @@ function PatientCheckinCard({
             >
               <Siren className="mr-2 h-4 w-4" />
               Check-in to Emergency
+            </Button>
+          ) : isScheduledProcedure ? (
+            /* Scheduled procedure: route to procedure area / clinic */
+            <Button
+              onClick={handleDirectCheckin}
+              disabled={isLoading || !isProcedureValid}
+              className="w-full h-10 sm:h-11 text-sm"
+            >
+              <Scissors className="mr-2 h-4 w-4" />
+              Route to Procedure Area
             </Button>
           ) : shouldSkipTriage ? (
             /* Skip-triage reasons: no triage button, promote direct route to primary */
@@ -627,6 +702,7 @@ export default function PatientCheckinPage() {
     skipTriage: boolean;
     referralFacility?: string;
     chronicClinicId?: number;
+    procedureOrderId?: number;
   } | null>(null);
   const [resetAfterDirectRoute, setResetAfterDirectRoute] = useState(false);
   const debouncedQuery = useDebounce(searchQuery, 400);
@@ -723,7 +799,7 @@ export default function PatientCheckinPage() {
     }
   };
 
-  const handleOpenDirectRoute = (context: { visitReason: VisitReason; skipTriage: boolean; referralFacility?: string; chronicClinicId?: number }) => {
+  const handleOpenDirectRoute = (context: { visitReason: VisitReason; skipTriage: boolean; referralFacility?: string; chronicClinicId?: number; procedureOrderId?: number }) => {
     // If chronic care with a pre-selected clinic, route directly without dialog
     if (context.chronicClinicId) {
       handleDirectRouteToChronicClinic(context);
@@ -816,7 +892,10 @@ export default function PatientCheckinPage() {
     const referralNote = pendingDirectRoute.referralFacility
       ? `Referred from: ${pendingDirectRoute.referralFacility}`
       : '';
-    const combinedNotes = [referralNote, notes].filter(Boolean).join('\n');
+    const procedureNote = pendingDirectRoute.procedureOrderId
+      ? `Procedure Order ID: ${pendingDirectRoute.procedureOrderId}`
+      : '';
+    const combinedNotes = [referralNote, procedureNote, notes].filter(Boolean).join('\n');
 
     const result = await checkinMutation.mutateAsync({
       patientId: patientDetails.id,

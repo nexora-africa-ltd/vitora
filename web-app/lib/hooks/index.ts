@@ -166,6 +166,12 @@ export {
   useCancelImagingOrder,
 } from './use-imaging';
 
+// Procedure hooks
+export {
+  procedureKeys,
+  useEncounterProcedureOrders,
+} from './use-procedures';
+
 // Triage hooks
 export {
   triageKeys,
