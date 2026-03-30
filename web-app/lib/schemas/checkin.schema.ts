@@ -51,6 +51,7 @@ export const VisitReasonSchema = z.enum([
   'REFILL_ONLY',
   'LAB_REVIEW',
   'REFERRAL_VISIT',
+  'SCHEDULED_VISIT',
   'OTHER',
 ]);
 

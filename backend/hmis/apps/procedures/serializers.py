@@ -16,6 +16,8 @@ from .models import (
 class ProcedureCatalogListSerializer(serializers.ModelSerializer):
     """Compact list view for search/dropdowns."""
 
+    default_clinics_detail = serializers.SerializerMethodField()
+
     class Meta:
         model = ProcedureCatalog
         fields = [
@@ -29,6 +31,14 @@ class ProcedureCatalogListSerializer(serializers.ModelSerializer):
             "typical_duration_minutes",
             "consent_required",
             "is_active",
+            "default_clinics",
+            "default_clinics_detail",
+        ]
+
+    def get_default_clinics_detail(self, obj: ProcedureCatalog) -> list[dict]:
+        return [
+            {"id": c.id, "name": c.name, "clinic_type": c.clinic_type}
+            for c in obj.default_clinics.all()
         ]
 
 

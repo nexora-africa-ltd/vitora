@@ -13,6 +13,8 @@ export interface ProcedureCatalogEntry {
   base_fee: number | null;
   sha_tariff_code: string;
   is_active: boolean;
+  default_clinics: number[];
+  default_clinics_detail: { id: number; name: string; clinic_type: string }[];
 }
 
 /** Full detail returned by GET /api/procedures/catalog/{id}/ */

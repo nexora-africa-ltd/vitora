@@ -11,6 +11,12 @@ export const ProcedureCatalogListSchema = z.object({
   typical_duration_minutes: z.number(),
   consent_required: z.boolean(),
   is_active: z.boolean(),
+  default_clinics: z.array(z.number()).optional().default([]),
+  default_clinics_detail: z.array(z.object({
+    id: z.number(),
+    name: z.string(),
+    clinic_type: z.string(),
+  })).optional().default([]),
 });
 
 export const ProcedureOrderListSchema = z.object({
