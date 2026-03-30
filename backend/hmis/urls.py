@@ -252,6 +252,8 @@ urlpatterns = [
     path("api/allied-health/", include("hmis.apps.allied_health.urls", namespace="allied_health")),
     # Referrals API
     path("api/referrals/", include("hmis.apps.referrals.urls", namespace="referrals")),
+    # Procedures API
+    path("api/procedures/", include("hmis.apps.procedures.urls", namespace="procedures")),
     # Quality Measures & Reporting API
     path("api/quality/", include("hmis.apps.quality.urls", namespace="quality")),
     # Clinical Decision Support (CDS) API

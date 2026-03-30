@@ -24,6 +24,7 @@ export const MODULE_PERMISSIONS = {
   clinics: 'clinics.view_clinic',
   mch: 'mch.view_mchregistration',
   encounters: 'encounters.view_encounter',
+  procedures: 'procedures.view_procedureorder',
   inpatient: [
     'inpatient.view_admission',
     'inpatient.view_ward',

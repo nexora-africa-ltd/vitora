@@ -1,15 +1,46 @@
 # Procedures Module Implementation Plan
 
-**Version**: 1.0
+**Version**: 2.0
 **Created**: January 24, 2026
-**Status**: Proposed
+**Revised**: March 30, 2026
+**Status**: Revised — aligned with codebase conventions (ready for implementation)
 **Target Phase**: Phase 2 (Sprint 2.3-2.4)
+
+### Revision Summary (v2.0)
+
+| Change | Detail |
+|--------|--------|
+| Multi-tenancy | Added `organization` + `facility` FKs to all tenant-scoped models |
+| TextChoices enums | Converted all raw choice tuples to `models.TextChoices` inner classes |
+| User FK convention | Replaced `"auth.User"` with `settings.AUTH_USER_MODEL` throughout |
+| Pharmacy references | Changed `pharmacy.StockItem` → `pharmacy.Drug` (actual model name) |
+| Stock deduction | Replaced `StockMovement` (does not exist) with `StockBatch` deduction pattern |
+| State-transition methods | Added full lifecycle methods on `ProcedureOrder` and `ProcedureLog` |
+| Scheduling integration | Added optional `scheduling.Appointment` FK on `ProcedureOrder` |
+| Theatre boundary | Documented scope split — minor/outpatient here, major surgical in future `theatre` app |
+| Frontend structure | Flattened nested routes to detail-page-with-tabs convention |
+| Serializer specs | Added serializer class definitions (list, detail, create, action) |
+| Admin specs | Added admin class definitions with fieldsets and colored badges |
+| Implementation phases | Aligned with 13-step full-stack pattern from copilot-instructions |
 
 ---
 
 ## Executive Summary
 
 This document outlines the implementation plan for a standalone **Procedures Module** in Vitora HMIS. The module handles discrete clinical actions (circumcision, wound care, minor surgery, eye irrigation, etc.) that are distinct from diagnoses and require proper consent tracking, consumable usage, outcome documentation, and billing.
+
+### Scope Boundary: Procedures vs Theatre
+
+| Concern | Procedures Module (this plan) | Theatre Module (separate, future) |
+|---------|-------------------------------|-----------------------------------|
+| **Type** | Minor / outpatient procedures | Major surgical operations |
+| **Setting** | Procedure room, consultation room, ward | Operating theatre / OR suite |
+| **Anesthesia** | Local / topical / none | General / regional / spinal |
+| **Staffing** | 1-2 clinicians | Full surgical team |
+| **Duration** | Minutes to ~1 hour | Hours |
+| **Examples** | Wound dressing, suturing, I&D, circumcision, injections, catheterization | Laparotomy, C-section, appendectomy, orthopaedic fixation |
+
+> **Note**: The existing frontend `web-app/app/(dashboard)/theatre/` handles surgical cases and is **out of scope** for this module. When the theatre backend is built, it will share `ProcedureCatalog` as a reference but have its own `SurgicalCase`, `OperatingSlot`, and `SurgicalChecklist` models. Categories `MINOR`, `WOUND_CARE`, `INJECTION`, `DIAGNOSTIC`, `THERAPEUTIC`, `PREVENTIVE`, `DENTAL`, `OPHTHALMIC`, `ENT`, `OBSTETRIC`, and `OTHER` belong to **this module**. Category `SURGICAL` is **reserved for theatre**.
 
 ### Why a Separate Module?
 
@@ -20,7 +51,7 @@ This document outlines the implementation plan for a standalone **Procedures Mod
 | **Consumables** | Manual stock adjustment | Auto-deduct from pharmacy inventory |
 | **Billing** | Manual service charges | Auto-generate billing from procedure catalog |
 | **Outcomes** | Not tracked | Structured outcome tracking (success/complication) |
-| **Follow-up** | Manual scheduling | Auto-schedule based on procedure type |
+| **Follow-up** | Manual scheduling | Auto-schedule via scheduling app |
 | **Reporting** | Not possible | DHIS2 service counts, SHA claims |
 
 ---
@@ -41,13 +72,18 @@ This document outlines the implementation plan for a standalone **Procedures Mod
 │  │   (exists)   │    │    (NEW)     │    │    (NEW)     │                  │
 │  └──────────────┘    └──────┬───────┘    └──────┬───────┘                  │
 │                             │                    │                          │
-│         ┌───────────────────┴────────────────────┴─────────┐               │
-│         │                                                   │               │
-│         ▼                                                   ▼               │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐                  │
-│  │   Consent    │    │ Consumables  │    │   Outcome    │                  │
-│  │    (NEW)     │    │    Used      │    │    (NEW)     │                  │
-│  └──────────────┘    └──────────────┘    └──────────────┘                  │
+│         ┌───────────────────┼────────────────────┼─────────┐               │
+│         │                   │                    │         │               │
+│         ▼                   ▼                    ▼         ▼               │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ ┌──────────┐       │
+│  │   Consent    │  │ Consumables  │  │   Outcome    │ │Scheduling│       │
+│  │    (NEW)     │  │    Used      │  │    (NEW)     │ │ (exists) │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘ └──────────┘       │
+│                                                                             │
+│  Cross-module integrations:                                                 │
+│  • billing.Service ← ProcedureCatalog (billing linkage)                     │
+│  • pharmacy.Drug + StockBatch ← ProcedureConsumable (stock deduction)       │
+│  • scheduling.Appointment ← ProcedureOrder (optional appointment link)      │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -56,13 +92,13 @@ This document outlines the implementation plan for a standalone **Procedures Mod
 
 ```
 ProcedureCatalog (Reference Data)
-├── ProcedureConsent (Per-procedure consent record)
+├── ProcedureKit (Standard consumable sets)
+│   └── ProcedureKitItem (Individual items in a kit)
 ├── ProcedureOrder (Request/Order)
+│   ├── ProcedureConsent (Per-procedure consent record)
 │   └── ProcedureLog (Performance Record)
 │       ├── ProcedureConsumable (Stock used)
-│       ├── ProcedureOutcome (Result)
-│       └── ProcedureFollowUp (Scheduled follow-up)
-└── ProcedureKit (Standard consumable sets)
+│       └── ProcedureOutcome (Result/follow-up tracking)
 ```
 
 ---
@@ -74,7 +110,10 @@ ProcedureCatalog (Reference Data)
 ```python
 # backend/hmis/apps/procedures/models.py
 
+from django.conf import settings
 from django.db import models
+from django.utils import timezone
+
 from hmis.apps.core.models import TimeStampedModel
 
 
@@ -84,54 +123,47 @@ class ProcedureCatalog(TimeStampedModel):
 
     Links to standard coding systems (ICHI, CPT) and defines
     consent requirements, typical consumables, and billing codes.
+
+    NOTE: Category "SURGICAL" is reserved for the future theatre module.
+    This module covers minor/outpatient procedures only.
     """
 
     # =========================================================================
-    # Category Choices
+    # TextChoices Enums (codebase convention)
     # =========================================================================
-    CATEGORY_CHOICES = [
-        ("MINOR", "Minor Procedure"),
-        ("SURGICAL", "Surgical Procedure"),
-        ("DIAGNOSTIC", "Diagnostic Procedure"),
-        ("THERAPEUTIC", "Therapeutic Procedure"),
-        ("PREVENTIVE", "Preventive Procedure"),
-        ("EMERGENCY", "Emergency Procedure"),
-        ("DENTAL", "Dental Procedure"),
-        ("OPHTHALMIC", "Ophthalmic Procedure"),
-        ("ENT", "ENT Procedure"),
-        ("OBSTETRIC", "Obstetric Procedure"),
-        ("WOUND_CARE", "Wound Care"),
-        ("INJECTION", "Injection/Infusion"),
-        ("OTHER", "Other"),
-    ]
+    class Category(models.TextChoices):
+        MINOR = "MINOR", "Minor Procedure"
+        DIAGNOSTIC = "DIAGNOSTIC", "Diagnostic Procedure"
+        THERAPEUTIC = "THERAPEUTIC", "Therapeutic Procedure"
+        PREVENTIVE = "PREVENTIVE", "Preventive Procedure"
+        EMERGENCY = "EMERGENCY", "Emergency Procedure"
+        DENTAL = "DENTAL", "Dental Procedure"
+        OPHTHALMIC = "OPHTHALMIC", "Ophthalmic Procedure"
+        ENT = "ENT", "ENT Procedure"
+        OBSTETRIC = "OBSTETRIC", "Obstetric Procedure"
+        WOUND_CARE = "WOUND_CARE", "Wound Care"
+        INJECTION = "INJECTION", "Injection/Infusion"
+        OTHER = "OTHER", "Other"
 
-    # =========================================================================
-    # Body System Choices (for filtering)
-    # =========================================================================
-    BODY_SYSTEM_CHOICES = [
-        ("INTEGUMENTARY", "Integumentary (Skin)"),
-        ("MUSCULOSKELETAL", "Musculoskeletal"),
-        ("RESPIRATORY", "Respiratory"),
-        ("CARDIOVASCULAR", "Cardiovascular"),
-        ("DIGESTIVE", "Digestive"),
-        ("URINARY", "Urinary"),
-        ("REPRODUCTIVE", "Reproductive"),
-        ("NERVOUS", "Nervous"),
-        ("ENDOCRINE", "Endocrine"),
-        ("LYMPHATIC", "Lymphatic"),
-        ("SENSORY", "Sensory (Eye/Ear)"),
-        ("DENTAL", "Dental"),
-        ("GENERAL", "General/Multiple"),
-    ]
+    class BodySystem(models.TextChoices):
+        INTEGUMENTARY = "INTEGUMENTARY", "Integumentary (Skin)"
+        MUSCULOSKELETAL = "MUSCULOSKELETAL", "Musculoskeletal"
+        RESPIRATORY = "RESPIRATORY", "Respiratory"
+        CARDIOVASCULAR = "CARDIOVASCULAR", "Cardiovascular"
+        DIGESTIVE = "DIGESTIVE", "Digestive"
+        URINARY = "URINARY", "Urinary"
+        REPRODUCTIVE = "REPRODUCTIVE", "Reproductive"
+        NERVOUS = "NERVOUS", "Nervous"
+        ENDOCRINE = "ENDOCRINE", "Endocrine"
+        LYMPHATIC = "LYMPHATIC", "Lymphatic"
+        SENSORY = "SENSORY", "Sensory (Eye/Ear)"
+        DENTAL = "DENTAL", "Dental"
+        GENERAL = "GENERAL", "General/Multiple"
 
-    # =========================================================================
-    # Risk Level Choices
-    # =========================================================================
-    RISK_LEVEL_CHOICES = [
-        ("LOW", "Low Risk"),
-        ("MEDIUM", "Medium Risk"),
-        ("HIGH", "High Risk"),
-    ]
+    class RiskLevel(models.TextChoices):
+        LOW = "LOW", "Low Risk"
+        MEDIUM = "MEDIUM", "Medium Risk"
+        HIGH = "HIGH", "High Risk"
 
     # =========================================================================
     # Core Fields
@@ -152,18 +184,18 @@ class ProcedureCatalog(TimeStampedModel):
     )
     category = models.CharField(
         max_length=20,
-        choices=CATEGORY_CHOICES,
-        default="MINOR"
+        choices=Category.choices,
+        default=Category.MINOR,
     )
     body_system = models.CharField(
         max_length=20,
-        choices=BODY_SYSTEM_CHOICES,
-        default="GENERAL"
+        choices=BodySystem.choices,
+        default=BodySystem.GENERAL,
     )
     risk_level = models.CharField(
         max_length=10,
-        choices=RISK_LEVEL_CHOICES,
-        default="LOW"
+        choices=RiskLevel.choices,
+        default=RiskLevel.LOW,
     )
 
     # =========================================================================
@@ -305,6 +337,26 @@ class ProcedureCatalog(TimeStampedModel):
         help_text="Whether procedure is currently offered"
     )
 
+    # =========================================================================
+    # Multi-tenancy (codebase convention)
+    # =========================================================================
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="procedure_catalog_entries",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="procedure_catalog_entries",
+        null=True,
+        blank=True,
+        help_text="Facility offering this procedure.",
+    )
+
     class Meta:
         ordering = ["category", "name"]
         verbose_name = "Procedure Catalog Entry"
@@ -313,6 +365,7 @@ class ProcedureCatalog(TimeStampedModel):
             models.Index(fields=["code"]),
             models.Index(fields=["ichi_code"]),
             models.Index(fields=["category"]),
+            models.Index(fields=["facility", "is_active"]),
         ]
 
     def __str__(self):
@@ -365,10 +418,10 @@ class ProcedureKitItem(models.Model):
         on_delete=models.CASCADE,
         related_name="items"
     )
-    stock_item = models.ForeignKey(
-        "pharmacy.StockItem",
+    drug = models.ForeignKey(
+        "pharmacy.Drug",
         on_delete=models.CASCADE,
-        help_text="Item from pharmacy inventory"
+        help_text="Drug/consumable item from pharmacy catalog"
     )
     quantity = models.PositiveIntegerField(
         default=1,
@@ -385,11 +438,11 @@ class ProcedureKitItem(models.Model):
     )
 
     class Meta:
-        ordering = ["kit", "-is_optional", "stock_item__name"]
-        unique_together = ["kit", "stock_item"]
+        ordering = ["kit", "-is_optional", "drug__name"]
+        unique_together = ["kit", "drug"]
 
     def __str__(self):
-        return f"{self.kit.name} - {self.stock_item.name} x{self.quantity}"
+        return f"{self.kit.name} - {self.drug.name} x{self.quantity}"
 ```
 
 ### 2.2 Procedure Order Model
@@ -400,30 +453,32 @@ class ProcedureOrder(TimeStampedModel):
     Order/request for a procedure to be performed.
 
     Created when a clinician orders a procedure during an encounter.
+    State transitions are owned by the model (codebase convention).
     """
 
     # =========================================================================
-    # Status Choices
+    # TextChoices Enums
     # =========================================================================
-    STATUS_CHOICES = [
-        ("ORDERED", "Ordered - Awaiting consent/scheduling"),
-        ("CONSENT_PENDING", "Consent Pending"),
-        ("SCHEDULED", "Scheduled"),
-        ("READY", "Ready to Perform"),
-        ("IN_PROGRESS", "In Progress"),
-        ("COMPLETED", "Completed"),
-        ("CANCELLED", "Cancelled"),
-    ]
+    class Status(models.TextChoices):
+        ORDERED = "ORDERED", "Ordered"
+        CONSENT_PENDING = "CONSENT_PENDING", "Consent Pending"
+        SCHEDULED = "SCHEDULED", "Scheduled"
+        READY = "READY", "Ready to Perform"
+        IN_PROGRESS = "IN_PROGRESS", "In Progress"
+        COMPLETED = "COMPLETED", "Completed"
+        CANCELLED = "CANCELLED", "Cancelled"
 
-    # =========================================================================
-    # Priority Choices
-    # =========================================================================
-    PRIORITY_CHOICES = [
-        ("EMERGENCY", "Emergency - Immediate"),
-        ("URGENT", "Urgent - Within 24 hours"),
-        ("ROUTINE", "Routine - Scheduled"),
-        ("ELECTIVE", "Elective - Non-urgent"),
-    ]
+    class Priority(models.TextChoices):
+        EMERGENCY = "EMERGENCY", "Emergency — Immediate"
+        URGENT = "URGENT", "Urgent — Within 24 hours"
+        ROUTINE = "ROUTINE", "Routine — Scheduled"
+        ELECTIVE = "ELECTIVE", "Elective — Non-urgent"
+
+    class Laterality(models.TextChoices):
+        LEFT = "LEFT", "Left"
+        RIGHT = "RIGHT", "Right"
+        BILATERAL = "BILATERAL", "Bilateral"
+        NA = "NA", "Not Applicable"
 
     # =========================================================================
     # Core Fields
@@ -478,13 +533,13 @@ class ProcedureOrder(TimeStampedModel):
     # =========================================================================
     status = models.CharField(
         max_length=20,
-        choices=STATUS_CHOICES,
-        default="ORDERED"
+        choices=Status.choices,
+        default=Status.ORDERED,
     )
     priority = models.CharField(
         max_length=20,
-        choices=PRIORITY_CHOICES,
-        default="ROUTINE"
+        choices=Priority.choices,
+        default=Priority.ROUTINE,
     )
     indication = models.TextField(
         help_text="Clinical indication / reason for procedure"
@@ -498,13 +553,6 @@ class ProcedureOrder(TimeStampedModel):
     # =========================================================================
     # Site/Laterality
     # =========================================================================
-    LATERALITY_CHOICES = [
-        ("LEFT", "Left"),
-        ("RIGHT", "Right"),
-        ("BILATERAL", "Bilateral"),
-        ("NA", "Not Applicable"),
-    ]
-
     body_site = models.CharField(
         max_length=100,
         blank=True,
@@ -513,13 +561,21 @@ class ProcedureOrder(TimeStampedModel):
     )
     laterality = models.CharField(
         max_length=20,
-        choices=LATERALITY_CHOICES,
-        default="NA"
+        choices=Laterality.choices,
+        default=Laterality.NA,
     )
 
     # =========================================================================
-    # Scheduling
+    # Scheduling (inline for minor procedures; link to scheduling app optional)
     # =========================================================================
+    appointment = models.ForeignKey(
+        "scheduling.Appointment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="procedure_orders",
+        help_text="Optional link to scheduling.Appointment for formal booking"
+    )
     scheduled_date = models.DateField(
         null=True,
         blank=True,
@@ -546,7 +602,7 @@ class ProcedureOrder(TimeStampedModel):
     # Staff
     # =========================================================================
     ordered_by = models.ForeignKey(
-        "auth.User",
+        settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="procedure_orders_created",
         help_text="Clinician who ordered the procedure"
@@ -555,7 +611,7 @@ class ProcedureOrder(TimeStampedModel):
         auto_now_add=True
     )
     assigned_performer = models.ForeignKey(
-        "auth.User",
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -567,7 +623,7 @@ class ProcedureOrder(TimeStampedModel):
     # Cancellation
     # =========================================================================
     cancelled_by = models.ForeignKey(
-        "auth.User",
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -575,6 +631,26 @@ class ProcedureOrder(TimeStampedModel):
     )
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancellation_reason = models.TextField(blank=True, default="")
+
+    # =========================================================================
+    # Multi-tenancy
+    # =========================================================================
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="procedure_orders",
+        null=True,
+        blank=True,
+        help_text="Owning organization (auto-set from facility).",
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="procedure_orders",
+        null=True,
+        blank=True,
+        help_text="Facility where procedure was ordered.",
+    )
 
     class Meta:
         ordering = ["-ordered_at"]
@@ -584,6 +660,7 @@ class ProcedureOrder(TimeStampedModel):
             models.Index(fields=["order_number"]),
             models.Index(fields=["patient", "status"]),
             models.Index(fields=["scheduled_date"]),
+            models.Index(fields=["facility", "status"]),
         ]
 
     def __str__(self):
@@ -596,7 +673,6 @@ class ProcedureOrder(TimeStampedModel):
 
     def _generate_order_number(self):
         """Generate unique order number: PROC-YYYYMMDD-XXXX"""
-        from django.utils import timezone
         today = timezone.now().date()
         prefix = f"PROC-{today.strftime('%Y%m%d')}-"
 
@@ -612,25 +688,85 @@ class ProcedureOrder(TimeStampedModel):
 
         return f"{prefix}{next_num:04d}"
 
-    def can_perform(self):
+    # =========================================================================
+    # State-transition methods (model owns workflow logic)
+    # =========================================================================
+    def request_consent(self) -> None:
+        """Transition ORDERED → CONSENT_PENDING."""
+        self.status = self.Status.CONSENT_PENDING
+        self.save(update_fields=["status", "updated_at"])
+
+    def schedule(self, date, time=None, location="", duration=None) -> None:
+        """Transition → SCHEDULED after consent obtained (or if not required)."""
+        self.status = self.Status.SCHEDULED
+        self.scheduled_date = date
+        self.scheduled_time = time
+        self.scheduled_location = location
+        if duration:
+            self.estimated_duration_minutes = duration
+        self.save(update_fields=[
+            "status", "scheduled_date", "scheduled_time",
+            "scheduled_location", "estimated_duration_minutes", "updated_at",
+        ])
+
+    def mark_ready(self) -> None:
+        """Transition SCHEDULED → READY (patient arrived, prep complete)."""
+        self.status = self.Status.READY
+        self.save(update_fields=["status", "updated_at"])
+
+    def start_procedure(self, performed_by) -> "ProcedureLog":
+        """Transition READY/SCHEDULED → IN_PROGRESS and create ProcedureLog."""
+        self.status = self.Status.IN_PROGRESS
+        self.save(update_fields=["status", "updated_at"])
+
+        log = ProcedureLog.objects.create(
+            order=self,
+            started_at=timezone.now(),
+            performed_by=performed_by,
+            location=self.scheduled_location,
+            organization=self.organization,
+            facility=self.facility,
+        )
+        return log
+
+    def complete(self) -> None:
+        """Transition IN_PROGRESS → COMPLETED (called by ProcedureLog.complete)."""
+        self.status = self.Status.COMPLETED
+        self.save(update_fields=["status", "updated_at"])
+
+    def cancel(self, user, reason: str) -> None:
+        """Cancel the procedure order."""
+        self.status = self.Status.CANCELLED
+        self.cancelled_by = user
+        self.cancelled_at = timezone.now()
+        self.cancellation_reason = reason
+        self.save(update_fields=[
+            "status", "cancelled_by", "cancelled_at",
+            "cancellation_reason", "updated_at",
+        ])
+
+    # =========================================================================
+    # Computed properties
+    # =========================================================================
+    def can_perform(self) -> tuple[bool, str]:
         """Check if procedure can be performed."""
-        if self.status not in ["SCHEDULED", "READY"]:
+        if self.status not in [self.Status.SCHEDULED, self.Status.READY]:
             return False, "Order not in performable status"
 
         if self.procedure.consent_required:
-            if not hasattr(self, 'consent') or self.consent.status != "SIGNED":
+            if not hasattr(self, "consent") or self.consent.status != ProcedureConsent.Status.SIGNED:
                 return False, "Consent not obtained"
 
         return True, "Ready to perform"
 
-    def cancel(self, user, reason):
-        """Cancel the procedure order."""
-        from django.utils import timezone
-        self.status = "CANCELLED"
-        self.cancelled_by = user
-        self.cancelled_at = timezone.now()
-        self.cancellation_reason = reason
-        self.save()
+    @property
+    def is_overdue(self) -> bool:
+        """True if scheduled_date is in the past and still not completed."""
+        if self.status in [self.Status.COMPLETED, self.Status.CANCELLED]:
+            return False
+        if self.scheduled_date and self.scheduled_date < timezone.now().date():
+            return True
+        return False
 ```
 
 ### 2.3 Procedure Consent Model
@@ -644,18 +780,16 @@ class ProcedureConsent(TimeStampedModel):
     witness signature (if required), and guardian consent for minors.
     """
 
-    STATUS_CHOICES = [
-        ("PENDING", "Pending - Not yet signed"),
-        ("SIGNED", "Signed - Consent given"),
-        ("DECLINED", "Declined - Consent refused"),
-        ("WITHDRAWN", "Withdrawn - Consent withdrawn"),
-    ]
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending — Not yet signed"
+        SIGNED = "SIGNED", "Signed — Consent given"
+        DECLINED = "DECLINED", "Declined — Consent refused"
+        WITHDRAWN = "WITHDRAWN", "Withdrawn — Consent withdrawn"
 
-    CONSENT_TYPE_CHOICES = [
-        ("WRITTEN", "Written Consent"),
-        ("VERBAL", "Verbal Consent (documented)"),
-        ("EMERGENCY", "Emergency (implied consent)"),
-    ]
+    class ConsentType(models.TextChoices):
+        WRITTEN = "WRITTEN", "Written Consent"
+        VERBAL = "VERBAL", "Verbal Consent (documented)"
+        EMERGENCY = "EMERGENCY", "Emergency (implied consent)"
 
     order = models.OneToOneField(
         ProcedureOrder,
@@ -668,13 +802,13 @@ class ProcedureConsent(TimeStampedModel):
     # =========================================================================
     status = models.CharField(
         max_length=20,
-        choices=STATUS_CHOICES,
-        default="PENDING"
+        choices=Status.choices,
+        default=Status.PENDING,
     )
     consent_type = models.CharField(
         max_length=20,
-        choices=CONSENT_TYPE_CHOICES,
-        default="WRITTEN"
+        choices=ConsentType.choices,
+        default=ConsentType.WRITTEN,
     )
     consent_text = models.TextField(
         help_text="Full consent form text presented to patient"
@@ -766,7 +900,7 @@ class ProcedureConsent(TimeStampedModel):
         blank=True
     )
     witnessed_by = models.ForeignKey(
-        "auth.User",
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -778,7 +912,7 @@ class ProcedureConsent(TimeStampedModel):
     # Staff who obtained consent
     # =========================================================================
     obtained_by = models.ForeignKey(
-        "auth.User",
+        settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="consents_obtained",
         help_text="Staff who obtained consent"
@@ -806,9 +940,27 @@ class ProcedureConsent(TimeStampedModel):
     def __str__(self):
         return f"Consent for {self.order}"
 
-    def is_valid(self):
+    # =========================================================================
+    # Multi-tenancy
+    # =========================================================================
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="procedure_consents",
+        null=True,
+        blank=True,
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="procedure_consents",
+        null=True,
+        blank=True,
+    )
+
+    def is_valid(self) -> bool:
         """Check if consent is valid."""
-        if self.status != "SIGNED":
+        if self.status != self.Status.SIGNED:
             return False
 
         if not self.procedure_explained or not self.risks_explained:
@@ -825,6 +977,32 @@ class ProcedureConsent(TimeStampedModel):
 
         return True
 
+    # =========================================================================
+    # State-transition methods
+    # =========================================================================
+    def sign(self, user) -> None:
+        """Mark consent as signed and transition order to SCHEDULED or READY."""
+        self.status = self.Status.SIGNED
+        self.obtained_by = user
+        self.obtained_at = timezone.now()
+        self.save(update_fields=[
+            "status", "obtained_by", "obtained_at", "updated_at",
+        ])
+
+    def decline(self, reason: str = "") -> None:
+        """Mark consent as declined."""
+        self.status = self.Status.DECLINED
+        self.decline_reason = reason
+        self.declined_at = timezone.now()
+        self.save(update_fields=["status", "decline_reason", "declined_at", "updated_at"])
+
+    def withdraw(self, reason: str = "") -> None:
+        """Withdraw previously given consent."""
+        self.status = self.Status.WITHDRAWN
+        self.decline_reason = reason
+        self.declined_at = timezone.now()
+        self.save(update_fields=["status", "decline_reason", "declined_at", "updated_at"])
+
 
 class ProcedureLog(TimeStampedModel):
     """
@@ -834,13 +1012,12 @@ class ProcedureLog(TimeStampedModel):
     staff involved, findings, and immediate outcome.
     """
 
-    STATUS_CHOICES = [
-        ("IN_PROGRESS", "In Progress"),
-        ("COMPLETED", "Completed Successfully"),
-        ("PARTIAL", "Partially Completed"),
-        ("ABANDONED", "Abandoned"),
-        ("COMPLICATED", "Completed with Complications"),
-    ]
+    class Status(models.TextChoices):
+        IN_PROGRESS = "IN_PROGRESS", "In Progress"
+        COMPLETED = "COMPLETED", "Completed Successfully"
+        PARTIAL = "PARTIAL", "Partially Completed"
+        ABANDONED = "ABANDONED", "Abandoned"
+        COMPLICATED = "COMPLICATED", "Completed with Complications"
 
     order = models.OneToOneField(
         ProcedureOrder,
@@ -869,13 +1046,13 @@ class ProcedureLog(TimeStampedModel):
     # Staff Involved
     # =========================================================================
     performed_by = models.ForeignKey(
-        "auth.User",
+        settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="procedures_performed",
         help_text="Primary performer"
     )
     assistant = models.ForeignKey(
-        "auth.User",
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -941,8 +1118,8 @@ class ProcedureLog(TimeStampedModel):
     # =========================================================================
     status = models.CharField(
         max_length=20,
-        choices=STATUS_CHOICES,
-        default="IN_PROGRESS"
+        choices=Status.choices,
+        default=Status.IN_PROGRESS,
     )
     immediate_outcome = models.TextField(
         blank=True,
@@ -977,6 +1154,24 @@ class ProcedureLog(TimeStampedModel):
         default=""
     )
 
+    # =========================================================================
+    # Multi-tenancy
+    # =========================================================================
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="procedure_logs",
+        null=True,
+        blank=True,
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="procedure_logs",
+        null=True,
+        blank=True,
+    )
+
     class Meta:
         ordering = ["-started_at"]
         verbose_name = "Procedure Log"
@@ -991,24 +1186,36 @@ class ProcedureLog(TimeStampedModel):
             self.actual_duration_minutes = int(delta.total_seconds() / 60)
         super().save(*args, **kwargs)
 
-    def complete(self, user, status="COMPLETED"):
-        """Mark procedure as completed."""
-        from django.utils import timezone
+    # =========================================================================
+    # State-transition methods
+    # =========================================================================
+    def complete(self, status: str = "COMPLETED", outcome: str = "") -> None:
+        """Mark procedure as completed and update the parent order."""
         self.ended_at = timezone.now()
         self.status = status
-        self.save()
+        if outcome:
+            self.immediate_outcome = outcome
+        self.save(update_fields=[
+            "ended_at", "status", "immediate_outcome",
+            "actual_duration_minutes", "updated_at",
+        ])
+        self.order.complete()
 
-        # Update order status
-        self.order.status = "COMPLETED"
-        self.order.save()
+    def abandon(self, reason: str = "") -> None:
+        """Mark procedure as abandoned."""
+        self.ended_at = timezone.now()
+        self.status = self.Status.ABANDONED
+        self.notes = reason
+        self.save(update_fields=["ended_at", "status", "notes", "actual_duration_minutes", "updated_at"])
+        self.order.cancel(user=self.performed_by, reason=f"Procedure abandoned: {reason}")
 
 
 class ProcedureConsumable(models.Model):
     """
     Consumables used during a procedure.
 
-    Tracks stock items used for inventory management
-    and billing purposes.
+    Tracks drugs/items used for inventory management
+    and billing purposes. Stock is deducted via StockBatch.
     """
 
     log = models.ForeignKey(
@@ -1016,17 +1223,17 @@ class ProcedureConsumable(models.Model):
         on_delete=models.CASCADE,
         related_name="consumables"
     )
-    stock_item = models.ForeignKey(
-        "pharmacy.StockItem",
+    drug = models.ForeignKey(
+        "pharmacy.Drug",
         on_delete=models.PROTECT,
-        help_text="Item from pharmacy inventory"
+        help_text="Drug/consumable from pharmacy catalog"
     )
     batch = models.ForeignKey(
         "pharmacy.StockBatch",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        help_text="Specific batch used"
+        help_text="Specific batch used (for FEFO tracking)"
     )
     quantity = models.PositiveIntegerField(
         help_text="Quantity used"
@@ -1052,42 +1259,43 @@ class ProcedureConsumable(models.Model):
     )
     recorded_at = models.DateTimeField(auto_now_add=True)
     recorded_by = models.ForeignKey(
-        "auth.User",
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True
     )
 
     class Meta:
-        ordering = ["log", "stock_item__name"]
+        ordering = ["log", "drug__name"]
         verbose_name = "Procedure Consumable"
         verbose_name_plural = "Procedure Consumables"
 
     def __str__(self):
-        return f"{self.stock_item.name} x{self.quantity} for {self.log.order}"
+        return f"{self.drug.name} x{self.quantity} for {self.log.order}"
 
     def save(self, *args, **kwargs):
         if self.unit_cost and self.quantity:
             self.total_cost = self.unit_cost * self.quantity
+        is_new = self.pk is None
         super().save(*args, **kwargs)
 
-        # Deduct from inventory (if not already done)
-        if not self.pk:  # New record
+        # Deduct from inventory on first save only
+        if is_new:
             self._deduct_stock()
 
     def _deduct_stock(self):
-        """Deduct consumable from pharmacy stock."""
-        from hmis.apps.pharmacy.models import StockMovement
+        """
+        Deduct consumable from pharmacy stock.
 
-        StockMovement.objects.create(
-            stock_item=self.stock_item,
-            batch=self.batch,
-            movement_type="PROCEDURE",
-            quantity=-self.quantity,
-            reference_type="ProcedureLog",
-            reference_id=self.log.id,
-            notes=f"Used in {self.log.order.order_number}",
-            performed_by=self.recorded_by,
-        )
+        Uses StockBatch directly — the pharmacy app does NOT have a
+        StockMovement model. StockBatch tracks quantity_available and
+        provides dispense()/return_stock() methods.
+        """
+        if self.batch:
+            # Deduct from specific batch
+            self.batch.quantity_available = max(
+                0, self.batch.quantity_available - self.quantity
+            )
+            self.batch.save(update_fields=["quantity_available"])
 
 
 class ProcedureOutcome(TimeStampedModel):
@@ -1098,16 +1306,15 @@ class ProcedureOutcome(TimeStampedModel):
     and any delayed complications.
     """
 
-    OUTCOME_CHOICES = [
-        ("SUCCESSFUL", "Successful - Full recovery"),
-        ("PARTIAL_SUCCESS", "Partial Success"),
-        ("HEALING", "Healing as expected"),
-        ("DELAYED_HEALING", "Delayed Healing"),
-        ("INFECTION", "Infection"),
-        ("COMPLICATION", "Post-procedure Complication"),
-        ("RE_PROCEDURE_NEEDED", "Re-procedure Needed"),
-        ("REFERRED", "Referred for Further Care"),
-    ]
+    class OutcomeStatus(models.TextChoices):
+        SUCCESSFUL = "SUCCESSFUL", "Successful — Full recovery"
+        PARTIAL_SUCCESS = "PARTIAL_SUCCESS", "Partial Success"
+        HEALING = "HEALING", "Healing as expected"
+        DELAYED_HEALING = "DELAYED_HEALING", "Delayed Healing"
+        INFECTION = "INFECTION", "Infection"
+        COMPLICATION = "COMPLICATION", "Post-procedure Complication"
+        RE_PROCEDURE_NEEDED = "RE_PROCEDURE_NEEDED", "Re-procedure Needed"
+        REFERRED = "REFERRED", "Referred for Further Care"
 
     log = models.ForeignKey(
         ProcedureLog,
@@ -1119,7 +1326,7 @@ class ProcedureOutcome(TimeStampedModel):
     )
     outcome = models.CharField(
         max_length=30,
-        choices=OUTCOME_CHOICES
+        choices=OutcomeStatus.choices,
     )
     findings = models.TextField(
         help_text="Clinical findings"
@@ -1129,7 +1336,7 @@ class ProcedureOutcome(TimeStampedModel):
         default=""
     )
     assessed_by = models.ForeignKey(
-        "auth.User",
+        settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="procedure_outcomes_assessed"
     )
@@ -1151,6 +1358,22 @@ class ProcedureOutcome(TimeStampedModel):
         help_text="List of image file references"
     )
 
+    # Multi-tenancy
+    organization = models.ForeignKey(
+        "core.Organization",
+        on_delete=models.CASCADE,
+        related_name="procedure_outcomes",
+        null=True,
+        blank=True,
+    )
+    facility = models.ForeignKey(
+        "core.Facility",
+        on_delete=models.CASCADE,
+        related_name="procedure_outcomes",
+        null=True,
+        blank=True,
+    )
+
     class Meta:
         ordering = ["-assessment_date"]
         verbose_name = "Procedure Outcome"
@@ -1162,102 +1385,597 @@ class ProcedureOutcome(TimeStampedModel):
 
 ---
 
-## 3. API Endpoints
+## 3. Serializers
 
-```
-# Procedure Catalog (Reference)
-GET    /api/procedures/catalog/                    # List all procedures
-GET    /api/procedures/catalog/{id}/               # Get procedure details
-GET    /api/procedures/catalog/search/?q=          # Search procedures
-GET    /api/procedures/catalog/by-category/{cat}/  # Filter by category
+```python
+# backend/hmis/apps/procedures/serializers.py
 
-# Procedure Orders
-GET    /api/procedures/orders/                     # List orders (filtered)
-POST   /api/procedures/orders/                     # Create order
-GET    /api/procedures/orders/{id}/                # Get order details
-PATCH  /api/procedures/orders/{id}/                # Update order
-DELETE /api/procedures/orders/{id}/cancel/         # Cancel order
+from rest_framework import serializers
 
-# Procedure Consent
-GET    /api/procedures/orders/{id}/consent/        # Get consent
-POST   /api/procedures/orders/{id}/consent/        # Create/submit consent
-PATCH  /api/procedures/orders/{id}/consent/        # Update consent
 
-# Procedure Performance
-POST   /api/procedures/orders/{id}/start/          # Start procedure
-PATCH  /api/procedures/orders/{id}/log/            # Update procedure log
-POST   /api/procedures/orders/{id}/complete/       # Complete procedure
-POST   /api/procedures/orders/{id}/consumables/    # Add consumable
+# ---------------------------------------------------------------------------
+# Catalog
+# ---------------------------------------------------------------------------
+class ProcedureCatalogListSerializer(serializers.ModelSerializer):
+    """Compact list view for search/dropdowns."""
+    class Meta:
+        model = ProcedureCatalog
+        fields = [
+            "id", "code", "name", "category", "body_system",
+            "risk_level", "base_fee", "typical_duration_minutes",
+            "consent_required", "is_active",
+        ]
 
-# Procedure Outcomes
-GET    /api/procedures/orders/{id}/outcomes/       # List outcomes
-POST   /api/procedures/orders/{id}/outcomes/       # Add outcome
 
-# Dashboard/Reports
-GET    /api/procedures/dashboard/                  # Procedure statistics
-GET    /api/procedures/scheduled/                  # Scheduled procedures
-GET    /api/procedures/pending-consent/            # Orders awaiting consent
+class ProcedureCatalogDetailSerializer(serializers.ModelSerializer):
+    """Full detail including coding, consent template, and requirements."""
+    class Meta:
+        model = ProcedureCatalog
+        fields = "__all__"
+
+
+# ---------------------------------------------------------------------------
+# Order
+# ---------------------------------------------------------------------------
+class ProcedureOrderListSerializer(serializers.ModelSerializer):
+    procedure_name = serializers.CharField(source="procedure.name", read_only=True)
+    patient_name = serializers.SerializerMethodField()
+    is_overdue = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = ProcedureOrder
+        fields = [
+            "id", "order_number", "procedure", "procedure_name",
+            "patient", "patient_name", "status", "priority",
+            "scheduled_date", "scheduled_time", "is_overdue",
+            "ordered_at",
+        ]
+
+    def get_patient_name(self, obj):
+        return f"{obj.patient.first_name} {obj.patient.last_name}"
+
+
+class ProcedureOrderCreateSerializer(serializers.ModelSerializer):
+    """Used for POST /api/procedures/orders/."""
+    class Meta:
+        model = ProcedureOrder
+        fields = [
+            "procedure", "patient", "encounter", "clinic_visit",
+            "admission", "priority", "indication", "clinical_notes",
+            "body_site", "laterality", "scheduled_date", "scheduled_time",
+            "scheduled_location", "estimated_duration_minutes",
+            "assigned_performer",
+        ]
+
+
+class ProcedureOrderDetailSerializer(serializers.ModelSerializer):
+    procedure = ProcedureCatalogListSerializer(read_only=True)
+    consent = serializers.SerializerMethodField()
+    log = serializers.SerializerMethodField()
+    is_overdue = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = ProcedureOrder
+        fields = "__all__"
+
+    def get_consent(self, obj):
+        if hasattr(obj, "consent"):
+            return ProcedureConsentSerializer(obj.consent).data
+        return None
+
+    def get_log(self, obj):
+        if hasattr(obj, "log"):
+            return ProcedureLogSerializer(obj.log).data
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Action serializers (for @action endpoints)
+# ---------------------------------------------------------------------------
+class ProcedureScheduleSerializer(serializers.Serializer):
+    """POST /api/procedures/orders/{id}/schedule/"""
+    scheduled_date = serializers.DateField()
+    scheduled_time = serializers.TimeField(required=False)
+    scheduled_location = serializers.CharField(required=False, default="")
+    estimated_duration_minutes = serializers.IntegerField(required=False)
+
+
+class ProcedureCancelSerializer(serializers.Serializer):
+    """POST /api/procedures/orders/{id}/cancel/"""
+    reason = serializers.CharField()
+
+
+class ProcedureStartSerializer(serializers.Serializer):
+    """POST /api/procedures/orders/{id}/start/"""
+    location = serializers.CharField(required=False, default="")
+
+
+class ProcedureCompleteSerializer(serializers.Serializer):
+    """POST /api/procedures/orders/{id}/complete/"""
+    status = serializers.ChoiceField(
+        choices=["COMPLETED", "PARTIAL", "COMPLICATED"],
+        default="COMPLETED",
+    )
+    immediate_outcome = serializers.CharField(required=False, default="")
+    complications_occurred = serializers.BooleanField(required=False, default=False)
+    complication_details = serializers.CharField(required=False, default="")
+
+
+# ---------------------------------------------------------------------------
+# Consent, Log, Consumable, Outcome serializers
+# ---------------------------------------------------------------------------
+class ProcedureConsentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProcedureConsent
+        fields = "__all__"
+
+
+class ProcedureConsentCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProcedureConsent
+        fields = [
+            "consent_type", "consent_text",
+            "procedure_explained", "risks_explained",
+            "alternatives_explained", "questions_answered",
+            "signed_by_patient", "patient_signature",
+            "signed_by_guardian", "guardian_name",
+            "guardian_relationship", "guardian_id_number",
+            "guardian_signature", "witness_required",
+            "witness_name", "witness_signature",
+        ]
+
+
+class ProcedureLogSerializer(serializers.ModelSerializer):
+    consumables = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProcedureLog
+        fields = "__all__"
+
+    def get_consumables(self, obj):
+        return ProcedureConsumableSerializer(obj.consumables.all(), many=True).data
+
+
+class ProcedureConsumableSerializer(serializers.ModelSerializer):
+    drug_name = serializers.CharField(source="drug.name", read_only=True)
+
+    class Meta:
+        model = ProcedureConsumable
+        fields = "__all__"
+
+
+class ProcedureConsumableCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProcedureConsumable
+        fields = ["drug", "batch", "quantity", "notes"]
+
+
+class ProcedureOutcomeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProcedureOutcome
+        fields = "__all__"
+
+
+class ProcedureOutcomeCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProcedureOutcome
+        fields = [
+            "assessment_date", "outcome", "findings",
+            "notes", "next_follow_up", "follow_up_notes", "images",
+        ]
 ```
 
 ---
 
-## 4. Frontend Implementation
+## 4. Admin
 
-### 4.1 Navigation
+```python
+# backend/hmis/apps/procedures/admin.py
 
-Procedures are accessed from multiple locations:
+from django.contrib import admin
+from django.utils.html import format_html
 
-1. **During Encounter/Consultation** → Order Procedure button
-2. **Clinic Queue** → Procedure Room clinic
-3. **Inpatient Ward** → Order Procedure from ward round
-4. **Dedicated Procedures Page** → Surgical OPD / Procedure Room view
+from .models import (
+    ProcedureCatalog, ProcedureKit, ProcedureKitItem,
+    ProcedureOrder, ProcedureConsent, ProcedureLog,
+    ProcedureConsumable, ProcedureOutcome,
+)
 
-### 4.2 Page Structure
+
+class ProcedureKitItemInline(admin.TabularInline):
+    model = ProcedureKitItem
+    extra = 1
+
+
+@admin.register(ProcedureCatalog)
+class ProcedureCatalogAdmin(admin.ModelAdmin):
+    list_display = ["code", "name", "category_badge", "risk_badge", "base_fee", "is_active"]
+    list_filter = ["category", "risk_level", "body_system", "is_active", "facility"]
+    search_fields = ["code", "name", "ichi_code", "cpt_code"]
+    fieldsets = (
+        ("Identification", {"fields": ("code", "name", "description", "category", "body_system", "risk_level")}),
+        ("Standard Coding", {"fields": ("ichi_code", "cpt_code", "icd10_pcs_code")}),
+        ("Consent", {"fields": ("consent_required", "consent_template", "guardian_consent_required", "witness_required")}),
+        ("Clinical", {"fields": ("requires_anesthesia", "anesthesia_type", "typical_duration_minutes", "requires_fasting")}),
+        ("Billing & SHA", {"fields": ("base_fee", "sha_tariff_code", "sha_package_code")}),
+        ("Tenant", {"fields": ("organization", "facility")}),
+    )
+
+    @admin.display(description="Category")
+    def category_badge(self, obj):
+        colors = {"MINOR": "#3b82f6", "EMERGENCY": "#ef4444", "DIAGNOSTIC": "#8b5cf6"}
+        bg = colors.get(obj.category, "#6b7280")
+        return format_html('<span style="background:{}; color:#fff; padding:2px 8px; border-radius:4px;">{}</span>', bg, obj.get_category_display())
+
+    @admin.display(description="Risk")
+    def risk_badge(self, obj):
+        colors = {"LOW": "#22c55e", "MEDIUM": "#f59e0b", "HIGH": "#ef4444"}
+        bg = colors.get(obj.risk_level, "#6b7280")
+        return format_html('<span style="background:{}; color:#fff; padding:2px 8px; border-radius:4px;">{}</span>', bg, obj.get_risk_level_display())
+
+
+@admin.register(ProcedureKit)
+class ProcedureKitAdmin(admin.ModelAdmin):
+    list_display = ["name", "procedure", "is_default", "is_active"]
+    list_filter = ["is_default", "is_active"]
+    inlines = [ProcedureKitItemInline]
+
+
+@admin.register(ProcedureOrder)
+class ProcedureOrderAdmin(admin.ModelAdmin):
+    list_display = ["order_number", "procedure", "patient", "status_badge", "priority", "scheduled_date", "ordered_at"]
+    list_filter = ["status", "priority", "facility"]
+    search_fields = ["order_number", "patient__first_name", "patient__last_name"]
+    raw_id_fields = ["patient", "encounter", "clinic_visit", "admission", "ordered_by", "assigned_performer"]
+    readonly_fields = ["order_number", "ordered_at"]
+
+    @admin.display(description="Status")
+    def status_badge(self, obj):
+        colors = {
+            "ORDERED": "#3b82f6", "CONSENT_PENDING": "#f59e0b",
+            "SCHEDULED": "#8b5cf6", "READY": "#06b6d4",
+            "IN_PROGRESS": "#f97316", "COMPLETED": "#22c55e",
+            "CANCELLED": "#ef4444",
+        }
+        bg = colors.get(obj.status, "#6b7280")
+        return format_html('<span style="background:{}; color:#fff; padding:2px 8px; border-radius:4px;">{}</span>', bg, obj.get_status_display())
+
+
+@admin.register(ProcedureLog)
+class ProcedureLogAdmin(admin.ModelAdmin):
+    list_display = ["order", "performed_by", "status", "started_at", "ended_at", "actual_duration_minutes"]
+    list_filter = ["status", "facility"]
+    raw_id_fields = ["order", "performed_by", "assistant"]
+```
+
+---
+
+## 5. API Endpoints
+
+```
+# Procedure Catalog (Reference)
+GET    /api/procedures/catalog/                    # List (filterable by category, body_system, is_active)
+GET    /api/procedures/catalog/{id}/               # Detail
+GET    /api/procedures/catalog/?search=            # Search by name/code
+
+# Procedure Orders
+GET    /api/procedures/orders/                     # List (filterable by status, patient, date range)
+POST   /api/procedures/orders/                     # Create order
+GET    /api/procedures/orders/{id}/                # Detail (includes nested consent + log)
+PATCH  /api/procedures/orders/{id}/                # Update order fields
+
+# Order workflow @actions
+POST   /api/procedures/orders/{id}/schedule/       # Schedule procedure
+POST   /api/procedures/orders/{id}/start/          # Start → creates ProcedureLog
+POST   /api/procedures/orders/{id}/complete/       # Complete procedure
+POST   /api/procedures/orders/{id}/cancel/         # Cancel with reason
+
+# Consent (nested under order)
+GET    /api/procedures/orders/{id}/consent/        # Get consent
+POST   /api/procedures/orders/{id}/consent/        # Create consent
+POST   /api/procedures/orders/{id}/consent/sign/   # Sign consent
+POST   /api/procedures/orders/{id}/consent/decline/ # Decline consent
+
+# Consumables (nested under order's log)
+GET    /api/procedures/orders/{id}/consumables/    # List consumables used
+POST   /api/procedures/orders/{id}/consumables/    # Add consumable
+
+# Outcomes (nested under order's log)
+GET    /api/procedures/orders/{id}/outcomes/       # List outcomes
+POST   /api/procedures/orders/{id}/outcomes/       # Add outcome
+
+# Dashboard
+GET    /api/procedures/dashboard/                  # Stats: scheduled_today, pending_consent, in_progress, completed_today
+```
+
+---
+
+## 6. Frontend Implementation
+
+### 6.1 TypeScript Types
+
+```typescript
+// web-app/lib/types/procedure.ts
+
+export interface ProcedureCatalogEntry {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+  category: string;
+  body_system: string;
+  risk_level: string;
+  ichi_code: string;
+  cpt_code: string;
+  consent_required: boolean;
+  typical_duration_minutes: number;
+  base_fee: number | null;
+  sha_tariff_code: string;
+  is_active: boolean;
+}
+
+export interface ProcedureOrder {
+  id: number;
+  order_number: string;
+  procedure: ProcedureCatalogEntry;
+  patient: number;
+  patient_name: string;
+  status: ProcedureOrderStatus;
+  priority: string;
+  indication: string;
+  body_site: string;
+  laterality: string;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
+  scheduled_location: string;
+  ordered_at: string;
+  is_overdue: boolean;
+  consent: ProcedureConsent | null;
+  log: ProcedureLog | null;
+}
+
+export type ProcedureOrderStatus =
+  | "ORDERED"
+  | "CONSENT_PENDING"
+  | "SCHEDULED"
+  | "READY"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED";
+
+export interface ProcedureConsent {
+  id: number;
+  status: "PENDING" | "SIGNED" | "DECLINED" | "WITHDRAWN";
+  consent_type: string;
+  procedure_explained: boolean;
+  risks_explained: boolean;
+  signed_by_patient: boolean;
+  patient_signed_at: string | null;
+  signed_by_guardian: boolean;
+}
+
+export interface ProcedureLog {
+  id: number;
+  started_at: string;
+  ended_at: string | null;
+  actual_duration_minutes: number | null;
+  status: string;
+  immediate_outcome: string;
+  complications_occurred: boolean;
+  consumables: ProcedureConsumable[];
+}
+
+export interface ProcedureConsumable {
+  id: number;
+  drug: number;
+  drug_name: string;
+  quantity: number;
+  unit_cost: number | null;
+  total_cost: number | null;
+}
+
+export interface ProcedureOutcome {
+  id: number;
+  assessment_date: string;
+  outcome: string;
+  findings: string;
+  next_follow_up: string | null;
+}
+
+export interface ProcedureDashboard {
+  scheduled_today: number;
+  pending_consent: number;
+  in_progress: number;
+  completed_today: number;
+}
+```
+
+### 6.2 Zod Schemas
+
+```typescript
+// web-app/lib/schemas/procedure.schema.ts
+
+import { z } from "zod";
+
+export const ProcedureCatalogListSchema = z.object({
+  id: z.number(),
+  code: z.string(),
+  name: z.string(),
+  category: z.string(),
+  body_system: z.string(),
+  risk_level: z.string(),
+  base_fee: z.number().nullable(),
+  typical_duration_minutes: z.number(),
+  consent_required: z.boolean(),
+  is_active: z.boolean(),
+});
+
+export const ProcedureOrderListSchema = z.object({
+  id: z.number(),
+  order_number: z.string(),
+  procedure_name: z.string(),
+  patient_name: z.string(),
+  status: z.string(),
+  priority: z.string(),
+  scheduled_date: z.string().nullable(),
+  is_overdue: z.boolean(),
+  ordered_at: z.string(),
+});
+
+export const ProcedureDashboardSchema = z.object({
+  scheduled_today: z.number(),
+  pending_consent: z.number(),
+  in_progress: z.number(),
+  completed_today: z.number(),
+});
+```
+
+### 6.3 API Client
+
+```typescript
+// web-app/lib/api/procedures.ts
+
+import { apiClient } from "./client";
+import { parseResponse } from "@/lib/schemas/validation";
+import {
+  ProcedureCatalogListSchema,
+  ProcedureOrderListSchema,
+  ProcedureDashboardSchema,
+} from "@/lib/schemas/procedure.schema";
+
+export const proceduresApi = {
+  // Catalog
+  listCatalog: async (params?: Record<string, string>) => {
+    const response = await apiClient.get("/api/procedures/catalog/", { params });
+    return parseResponse(
+      z.array(ProcedureCatalogListSchema),
+      response.data.results ?? response.data,
+      { context: "proceduresApi.listCatalog" },
+    );
+  },
+
+  // Orders
+  listOrders: async (params?: Record<string, string>) => {
+    const response = await apiClient.get("/api/procedures/orders/", { params });
+    return parseResponse(
+      z.array(ProcedureOrderListSchema),
+      response.data.results ?? response.data,
+      { context: "proceduresApi.listOrders" },
+    );
+  },
+  createOrder: async (data: Record<string, unknown>) => {
+    const response = await apiClient.post("/api/procedures/orders/", data);
+    return response.data;
+  },
+  getOrder: async (id: number) => {
+    const response = await apiClient.get(`/api/procedures/orders/${id}/`);
+    return response.data;
+  },
+
+  // Workflow actions
+  scheduleOrder: async (id: number, data: { scheduled_date: string; scheduled_time?: string }) => {
+    const response = await apiClient.post(`/api/procedures/orders/${id}/schedule/`, data);
+    return response.data;
+  },
+  startProcedure: async (id: number) => {
+    const response = await apiClient.post(`/api/procedures/orders/${id}/start/`);
+    return response.data;
+  },
+  completeProcedure: async (id: number, data: Record<string, unknown>) => {
+    const response = await apiClient.post(`/api/procedures/orders/${id}/complete/`, data);
+    return response.data;
+  },
+  cancelOrder: async (id: number, reason: string) => {
+    const response = await apiClient.post(`/api/procedures/orders/${id}/cancel/`, { reason });
+    return response.data;
+  },
+
+  // Consent
+  getConsent: async (orderId: number) => {
+    const response = await apiClient.get(`/api/procedures/orders/${orderId}/consent/`);
+    return response.data;
+  },
+  createConsent: async (orderId: number, data: Record<string, unknown>) => {
+    const response = await apiClient.post(`/api/procedures/orders/${orderId}/consent/`, data);
+    return response.data;
+  },
+
+  // Consumables
+  addConsumable: async (orderId: number, data: Record<string, unknown>) => {
+    const response = await apiClient.post(`/api/procedures/orders/${orderId}/consumables/`, data);
+    return response.data;
+  },
+
+  // Outcomes
+  addOutcome: async (orderId: number, data: Record<string, unknown>) => {
+    const response = await apiClient.post(`/api/procedures/orders/${orderId}/outcomes/`, data);
+    return response.data;
+  },
+
+  // Dashboard
+  getDashboard: async () => {
+    const response = await apiClient.get("/api/procedures/dashboard/");
+    return parseResponse(ProcedureDashboardSchema, response.data, {
+      context: "proceduresApi.getDashboard",
+    });
+  },
+};
+```
+
+### 6.4 Navigation Entry
+
+```typescript
+// Add to web-app/lib/config/navigation.ts
+{
+  title: "Procedures",
+  href: "/procedures",
+  icon: Scissors,           // from lucide-react
+  moduleKey: "procedures",
+  facilityModule: "procedures",
+}
+```
+
+### 6.5 Page Structure (flattened — detail page with tabs, not nested routes)
 
 ```
 web-app/app/(dashboard)/procedures/
-├── page.tsx                        # Procedures dashboard
+├── page.tsx                        # Dashboard: stats cards + today's list + quick order
 ├── orders/
-│   ├── page.tsx                    # All orders list
-│   ├── [orderId]/
-│   │   ├── page.tsx                # Order details
-│   │   ├── consent/
-│   │   │   └── page.tsx            # Consent form
-│   │   └── perform/
-│   │       └── page.tsx            # Perform procedure
+│   ├── page.tsx                    # All orders list (filterable, paginated)
+│   └── [orderId]/
+│       └── page.tsx                # Order detail with tabs: Overview | Consent | Perform | Outcomes
 ├── catalog/
-│   ├── page.tsx                    # Procedure catalog
-│   └── [procedureId]/
-│       └── page.tsx                # Catalog entry details
-├── scheduled/
-│   └── page.tsx                    # Scheduled procedures
+│   └── page.tsx                    # Procedure catalog browser
 └── reports/
-    └── page.tsx                    # Procedure reports
+    └── page.tsx                    # Procedure reports / DHIS2 export
 ```
 
-### 4.3 Key Components
+> **Convention note**: Consent and performance are handled as **tabs or dialogs** on the order detail page, not as separate nested routes. This matches the `billing/invoices/[id]` and `inpatient/admissions/[id]` patterns.
+
+### 6.6 Key Components
 
 ```typescript
-// Order Procedure Modal (used in Encounter)
-interface OrderProcedureModalProps {
-  encounter: Encounter;
+// Order Procedure Dialog (used in Encounter and Clinic Visit)
+interface OrderProcedureDialogProps {
+  encounter?: Encounter;
+  clinicVisit?: ClinicVisit;
   patient: Patient;
   onSuccess: (order: ProcedureOrder) => void;
 }
 
-// Consent Form Component
+// Consent Tab/Dialog (on order detail page)
 interface ConsentFormProps {
   order: ProcedureOrder;
   onConsentObtained: (consent: ProcedureConsent) => void;
 }
 
-// Procedure Performance Form
+// Perform Tab (on order detail page)
 interface ProcedurePerformanceProps {
   order: ProcedureOrder;
   onComplete: (log: ProcedureLog) => void;
 }
 
-// Consumable Picker
+// Consumable Picker (within Perform tab)
 interface ConsumablePickerProps {
   log: ProcedureLog;
   defaultKit?: ProcedureKit;
@@ -1265,7 +1983,7 @@ interface ConsumablePickerProps {
 }
 ```
 
-### 4.4 Procedure Dashboard Wireframe
+### 6.7 Procedure Dashboard Wireframe
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -1302,67 +2020,75 @@ interface ConsumablePickerProps {
 
 ---
 
-## 5. Integration Points
+## 7. Integration Points
 
-### 5.1 Encounter Integration
+### 7.1 Encounter Integration
 
 ```python
-# In encounter consultation view
+# In encounter consultation view — thin view delegates to model
 class EncounterViewSet:
     @action(detail=True, methods=["post"])
     def order_procedure(self, request, pk=None):
         """Order a procedure from an encounter."""
         encounter = self.get_object()
+        serializer = ProcedureOrderCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        order = ProcedureOrder.objects.create(
-            procedure_id=request.data["procedure_id"],
-            patient=encounter.patient,
+        order = serializer.save(
             encounter=encounter,
-            indication=request.data["indication"],
-            priority=request.data.get("priority", "ROUTINE"),
+            patient=encounter.patient,
             ordered_by=request.user,
+            organization=request.facility.organization if request.facility else None,
+            facility=request.facility,
         )
 
-        # Auto-generate billing
-        self._generate_procedure_billing(order)
-
-        return Response(ProcedureOrderSerializer(order).data)
+        return Response(ProcedureOrderDetailSerializer(order).data, status=201)
 ```
 
-### 5.2 Pharmacy Integration
+### 7.2 Pharmacy Integration
 
 ```python
-# When consumables are used, stock is automatically deducted
-# See ProcedureConsumable._deduct_stock()
-
-# Pharmacy can query procedure-related stock movements
-StockMovement.objects.filter(movement_type="PROCEDURE")
+# Consumable stock deduction uses StockBatch directly.
+# The pharmacy app does NOT have a StockMovement model.
+# StockBatch.quantity_available is decremented in ProcedureConsumable._deduct_stock().
+#
+# To query procedure-related consumption:
+ProcedureConsumable.objects.filter(
+    log__order__facility=facility,
+    recorded_at__date=date.today(),
+)
 ```
 
-### 5.3 Billing Integration
+### 7.3 Billing Integration
 
 ```python
 def _generate_procedure_billing(order):
     """Generate billing line items for procedure."""
-    from hmis.apps.billing.models import BillingLineItem, Invoice
+    from hmis.apps.billing.models import Invoice, InvoiceItem
 
-    invoice = Invoice.get_or_create_for_patient(order.patient)
+    invoice = Invoice.objects.filter(
+        patient=order.patient,
+        status__in=["proforma", "draft", "pending"],
+    ).first()
 
-    # Procedure fee
+    if not invoice:
+        invoice = Invoice.objects.create(
+            patient=order.patient,
+            organization=order.organization,
+            facility=order.facility,
+            created_by=order.ordered_by,
+        )
+
     if order.procedure.base_fee:
-        BillingLineItem.objects.create(
+        InvoiceItem.objects.create(
             invoice=invoice,
-            service_type="PROCEDURE",
             description=f"Procedure: {order.procedure.name}",
             quantity=1,
             unit_price=order.procedure.base_fee,
-            sha_code=order.procedure.sha_tariff_code,
-            reference_type="ProcedureOrder",
-            reference_id=order.id,
         )
 ```
 
-### 5.4 SHA Claims Integration
+### 7.4 SHA Claims Integration
 
 ```python
 # Include procedure in FHIR claim bundle
@@ -1386,42 +2112,83 @@ def add_procedure_to_claim(claim_bundle, procedure_log):
     claim_bundle["entry"].append({"resource": procedure_entry})
 ```
 
+### 7.5 Scheduling Integration
+
+```python
+# For procedures that need formal appointment booking, link to scheduling app:
+from hmis.apps.scheduling.models import Appointment, Resource
+
+# Create appointment, then link to order
+appointment = Appointment.objects.create(
+    resource=procedure_room_resource,  # scheduling.Resource (type=PLACE)
+    patient=order.patient,
+    start_time=...,
+    end_time=...,
+)
+order.appointment = appointment
+order.save(update_fields=["appointment"])
+```
+
 ---
 
-## 6. Implementation Phases
+## 8. Implementation Phases (13-step full-stack pattern)
 
-### Phase 2.3 (Weeks 5-6): Core Models & API
+### Phase 2.3a (Week 5): Backend Models & Migration
 
-- [ ] Create `procedures` Django app
-- [ ] Implement ProcedureCatalog, ProcedureOrder models
-- [ ] Implement ProcedureConsent model
-- [ ] Implement ProcedureLog, ProcedureConsumable, ProcedureOutcome
-- [ ] Create migrations
-- [ ] Implement serializers and viewsets
-- [ ] Write unit tests (target: 80+ tests)
-- [ ] Seed initial procedure catalog (common procedures)
+| Step | Task | Deliverable |
+|------|------|-------------|
+| 1 | Create `procedures` Django app | `hmis/apps/procedures/` with `apps.py` |
+| 2 | Implement models with TextChoices + multi-tenancy | `models.py` — all 8 models |
+| 3 | Register in `INSTALLED_APPS` | `settings/base.py` |
+| 4 | Create & apply migration | `0001_initial.py` |
+| 5 | Implement serializers | `serializers.py` — list, detail, create, action serializers |
+| 6 | Implement ViewSets with `get_serializer_class()` | `views.py` |
+| 7 | Register URLs | `urls.py` + include in `hmis/urls.py` |
+| 8 | Implement admin | `admin.py` with colored badges, fieldsets |
 
-### Phase 2.4 (Weeks 7-8): Frontend & Integration
+### Phase 2.3b (Week 6): Backend Tests & Seed Data
 
-- [ ] Create procedure dashboard page
-- [ ] Build order procedure modal
-- [ ] Implement consent form (with signature capture)
-- [ ] Build procedure performance form
-- [ ] Implement consumable picker
-- [ ] Integrate with Encounter order flow
-- [ ] Integrate with Pharmacy stock deduction
-- [ ] Integrate with Billing
+| Step | Task | Target |
+|------|------|--------|
+| 9 | Model tests (creation, state transitions, validation) | 30+ tests |
+| 10 | Serializer validation tests | 20+ tests |
+| 11 | API endpoint tests (CRUD + workflow actions) | 30+ tests |
+| 12 | Seed initial procedure catalog | Management command |
+| 13 | Verify: `make test` ≥80% coverage | CI gate |
 
-### Phase 2.5 (Weeks 9-10): Reporting & Testing
+### Phase 2.4a (Week 7): Frontend Types, Schemas, API Client
 
-- [ ] Implement procedure reports
-- [ ] Add SHA claims integration
+| Step | Task | Deliverable |
+|------|------|-------------|
+| 1 | TypeScript interfaces | `lib/types/procedure.ts` |
+| 2 | Zod schemas | `lib/schemas/procedure.schema.ts` |
+| 3 | API client with `parseResponse()` | `lib/api/procedures.ts` |
+| 4 | Navigation entry | `lib/config/navigation.ts` |
+
+### Phase 2.4b (Week 8): Frontend Pages
+
+| Step | Task | Deliverable |
+|------|------|-------------|
+| 5 | Procedures dashboard page | `procedures/page.tsx` |
+| 6 | Orders list page | `procedures/orders/page.tsx` |
+| 7 | Order detail page (tabs: Overview, Consent, Perform, Outcomes) | `procedures/orders/[orderId]/page.tsx` |
+| 8 | Procedure catalog browser | `procedures/catalog/page.tsx` |
+| 9 | Order Procedure dialog (reusable from encounters/clinics) | `components/procedures/` |
+| 10 | Verify: `npx tsc --noEmit` | No type errors |
+
+### Phase 2.5 (Weeks 9-10): Integration & Testing
+
+- [ ] Encounter → Order Procedure integration
+- [ ] Billing auto-generation on order
+- [ ] Pharmacy stock deduction on consumable add
+- [ ] SHA claims integration
+- [ ] Procedure reports page
 - [ ] E2E testing
-- [ ] Performance optimization
+- [ ] Update DHA compliance roadmap
 
 ---
 
-## 7. Seed Data: Initial Procedure Catalog
+## 9. Seed Data: Initial Procedure Catalog
 
 ```python
 INITIAL_PROCEDURES = [
@@ -1497,15 +2264,19 @@ INITIAL_PROCEDURES = [
 
 ---
 
-## 8. Success Criteria
+## 10. Success Criteria
 
 | Metric | Target |
 |--------|--------|
 | Unit test coverage | ≥80% |
+| Backend tests | 80+ (model, serializer, API) |
+| `make quality` | Passes (ruff + mypy + bandit) |
 | Procedure ordering time | <1 min |
 | Consent completion time | <3 min |
 | Consumable deduction accuracy | 100% |
 | Billing generation accuracy | 100% |
+| Frontend type-check | `npx tsc --noEmit` passes |
+| Zod validation | All API responses validated |
 
 ---
 
@@ -1515,9 +2286,25 @@ INITIAL_PROCEDURES = [
 - [ROADMAP.md](../ROADMAP.md)
 - [ideal-patient-flow.md](ideal-patient-flow.md)
 - [SHA Integration Guide](sha-frontend-integration-guide.md)
+- [Coding Standards](coding-standards.md)
+- [TDD Guidelines](tdd-guidelines.md)
+
+## Appendix B: Key Compatibility Notes
+
+| Convention | How this plan aligns |
+|---|---|
+| **Multi-tenancy** (`organization` + `facility`) | Added to ProcedureCatalog, ProcedureOrder, ProcedureConsent, ProcedureLog, ProcedureOutcome |
+| **TextChoices enums** | All choice fields use inner `TextChoices` classes |
+| **User FK** | `settings.AUTH_USER_MODEL` (not `"auth.User"`) |
+| **Pharmacy integration** | Uses `pharmacy.Drug` (catalog) + `pharmacy.StockBatch` (inventory) — not phantom `StockItem`/`StockMovement` |
+| **State-transition methods on model** | `ProcedureOrder`: `request_consent()`, `schedule()`, `mark_ready()`, `start_procedure()`, `complete()`, `cancel()` |
+| **Serializer-per-action** | `get_serializer_class()` returns list/detail/create/action serializers |
+| **Frontend route convention** | Flat routes with detail-page tabs (not nested `/consent/`, `/perform/` routes) |
+| **Scheduling app** | Optional `scheduling.Appointment` FK on ProcedureOrder |
+| **Theatre boundary** | Category `SURGICAL` reserved for future theatre app; this module covers minor/outpatient only |
 
 ---
 
-**Document Status**: Draft
-**Next Review**: January 31, 2026
+**Document Status**: Revised v2.0
+**Last Review**: March 30, 2026
 **Owner**: Engineering Lead

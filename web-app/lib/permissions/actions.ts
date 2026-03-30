@@ -41,6 +41,14 @@ export const ACTION_PERMISSIONS = {
   'encounters.diagnose': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
   'encounters.refer': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE'],
 
+  // === Procedures Module ===
+  'procedures.view_dashboard': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'procedures.view_orders': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'procedures.create_order': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER'],
+  'procedures.perform': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE'],
+  'procedures.view_catalog': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
+  'procedures.manage_consent': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE'],
+
   // === Emergency Module ===
   'emergency.view_dashboard': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
   'emergency.view_bed_board': ['DOCTOR', 'CONSULTANT', 'CLINICAL_OFFICER', 'NURSE', 'ADMIN'],
