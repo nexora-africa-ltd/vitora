@@ -21,6 +21,7 @@ import {
   X,
   Save,
   Loader2,
+  Pencil,
 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/page-header';
 import { PullToRefresh } from '@/components/shared/pull-to-refresh';
@@ -244,8 +245,14 @@ export default function ClinicSettingsPage() {
         {/* General Settings */}
         <TabsContent value="general" className="space-y-4">
           <Card>
-            <CardHeader className="p-3 sm:p-6">
+            <CardHeader className="p-3 sm:p-6 flex flex-row items-center justify-between">
               <CardTitle className="text-base sm:text-lg">Clinic Information</CardTitle>
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/clinics/${clinicId}/edit`}>
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  Edit
+                </Link>
+              </Button>
             </CardHeader>
             <CardContent className="p-3 sm:p-6 pt-0 space-y-4">
               <div className="grid gap-3 sm:gap-4 sm:grid-cols-2">

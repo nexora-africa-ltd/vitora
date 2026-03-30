@@ -30,10 +30,9 @@ import { Badge } from '@/components/ui/badge';
 import { proceduresApi } from '@/lib/api/procedures';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { useClinics } from '@/lib/hooks/use-clinics';
+import { getClinicTypesForCategory } from '@/lib/config/procedure-clinic-mapping';
 import { toast } from '@/lib/hooks/use-toast';
 import type { ProcedureCatalogDetail } from '@/lib/types/procedure';
-
-const PROCEDURE_CLINIC_TYPES = ['PROCEDURE', 'DRESSING', 'INJECTION', 'SURGICAL', 'OT'];
 
 const CATEGORIES = [
   { value: 'MINOR', label: 'Minor Procedure' },
@@ -636,11 +635,15 @@ function ClinicAssignmentCard({
   procedure?: ProcedureCatalogDetail;
 }) {
   const selectedIds: number[] = form.watch('default_clinics');
+  const category: string = form.watch('category');
 
-  // Fetch PROCEDURE-type clinics
+  // Determine which clinic types are relevant for the selected procedure category
+  const allowedClinicTypes = getClinicTypesForCategory(category);
+
+  // Fetch active clinics
   const { data: clinicsData } = useClinics({ status: 'ACTIVE', page_size: 100 });
   const procedureClinics = (clinicsData?.results ?? []).filter((c) =>
-    PROCEDURE_CLINIC_TYPES.includes(c.clinic_type)
+    allowedClinicTypes.includes(c.clinic_type)
   );
 
   const selectedClinics = procedureClinics.filter((c) => selectedIds.includes(c.id));
