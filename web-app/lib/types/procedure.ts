@@ -67,6 +67,8 @@ export interface ProcedureOrderListItem {
   priority: ProcedurePriority;
   scheduled_date: string | null;
   scheduled_time: string | null;
+  scheduled_clinic: number | null;
+  scheduled_clinic_name: string | null;
   is_overdue: boolean;
   ordered_at: string;
 }
@@ -90,6 +92,7 @@ export interface ProcedureOrder {
   ordered_at: string;
   ordered_by: number;
   assigned_performer: number | null;
+  assigned_performer_name: string | null;
   is_overdue: boolean;
   consent: ProcedureConsent | null;
   log: ProcedureLog | null;

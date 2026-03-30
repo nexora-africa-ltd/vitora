@@ -48,6 +48,7 @@ const statusConfig: Record<ClinicVisitStatus, { label: string; className: string
   REFERRED: { label: 'Referred', className: 'bg-indigo-100 text-indigo-800', icon: ArrowRight },
   NO_SHOW: { label: 'No Show', className: 'bg-gray-100 text-gray-800', icon: XCircle },
   CANCELLED: { label: 'Cancelled', className: 'bg-red-100 text-red-800', icon: XCircle },
+  CLOSED: { label: 'Closed', className: 'bg-gray-100 text-gray-800', icon: CheckCircle },
 };
 
 const priorityConfig: Record<ClinicVisitPriority, { label: string; className: string }> = {

@@ -329,6 +329,7 @@ export default function ClinicSessionsPage() {
             keyExtractor={(session) => session.id}
             isLoading={sessionsLoading}
             emptyMessage="No sessions recorded for the selected date range."
+            onRowClick={(session) => router.push(`/clinics/${clinicId}/sessions/${session.id}`)}
             columns={[
               {
                 key: 'session_date',

@@ -30,6 +30,8 @@ export const ProcedureOrderListSchema = z.object({
   priority: z.string(),
   scheduled_date: z.string().nullable(),
   scheduled_time: z.string().nullable(),
+  scheduled_clinic: z.number().nullable(),
+  scheduled_clinic_name: z.string().nullable(),
   is_overdue: z.boolean(),
   ordered_at: z.string(),
 });

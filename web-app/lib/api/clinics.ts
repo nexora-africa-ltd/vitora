@@ -118,6 +118,14 @@ export const clinicsApi = {
   },
 
   /**
+   * Get a specific session by ID
+   */
+  getSession: async (clinicId: number, sessionId: number): Promise<ClinicSession> => {
+    const response = await apiClient.get<ClinicSession>(`/api/clinics/${clinicId}/sessions/${sessionId}/`);
+    return parseResponse(ClinicSessionSchema, response.data, { context: 'clinicsApi.getSession' });
+  },
+
+  /**
    * Get today's session for a clinic
    */
   getTodaySession: async (clinicId: number): Promise<ClinicSession> => {

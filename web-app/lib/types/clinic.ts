@@ -70,7 +70,8 @@ export type ClinicVisitStatus =
   | 'COMPLETED'
   | 'REFERRED'
   | 'NO_SHOW'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'CLOSED';
 
 /**
  * Clinical priority levels (used in queue statistics)

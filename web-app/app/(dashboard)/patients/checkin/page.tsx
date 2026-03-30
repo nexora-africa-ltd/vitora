@@ -92,7 +92,7 @@ function PatientCheckinCard({
 }: {
   patient: PatientLookupResponse;
   onTriageCheckin: (visitReason: VisitReason) => void;
-  onOpenDirectRoute: (context: { visitReason: VisitReason; skipTriage: boolean; referralFacility?: string; chronicClinicId?: number; procedureOrderId?: number }) => void;
+  onOpenDirectRoute: (context: { visitReason: VisitReason; skipTriage: boolean; referralFacility?: string; chronicClinicId?: number; procedureOrderId?: number; scheduledClinicId?: number }) => void;
   onEmergencyCheckin: (visitReason: VisitReason, chiefComplaint: string) => void;
   isLoading: boolean;
 }) {
@@ -148,12 +148,17 @@ function PatientCheckinCard({
   };
 
   const handleDirectCheckin = () => {
+    // If a scheduled procedure has an assigned clinic, pass it so the dialog can be skipped
+    const selectedOrder = scheduledProcedures.find((p) => p.id === procedureOrderId);
+    const scheduledClinicId = selectedOrder?.scheduled_clinic ?? undefined;
+
     onOpenDirectRoute({
       visitReason,
       skipTriage: shouldSkipTriage,
       ...(isReferral && referralFacility.trim() ? { referralFacility: referralFacility.trim() } : {}),
       ...(isChronicCare && chronicClinicId ? { chronicClinicId } : {}),
       ...(isScheduledProcedure && procedureOrderId ? { procedureOrderId } : {}),
+      ...(scheduledClinicId ? { scheduledClinicId } : {}),
     });
   };
 
@@ -703,6 +708,7 @@ export default function PatientCheckinPage() {
     referralFacility?: string;
     chronicClinicId?: number;
     procedureOrderId?: number;
+    scheduledClinicId?: number;
   } | null>(null);
   const [resetAfterDirectRoute, setResetAfterDirectRoute] = useState(false);
   const debouncedQuery = useDebounce(searchQuery, 400);
@@ -799,10 +805,15 @@ export default function PatientCheckinPage() {
     }
   };
 
-  const handleOpenDirectRoute = (context: { visitReason: VisitReason; skipTriage: boolean; referralFacility?: string; chronicClinicId?: number; procedureOrderId?: number }) => {
+  const handleOpenDirectRoute = (context: { visitReason: VisitReason; skipTriage: boolean; referralFacility?: string; chronicClinicId?: number; procedureOrderId?: number; scheduledClinicId?: number }) => {
     // If chronic care with a pre-selected clinic, route directly without dialog
     if (context.chronicClinicId) {
       handleDirectRouteToChronicClinic(context);
+      return;
+    }
+    // If scheduled procedure already has an assigned clinic, route directly
+    if (context.scheduledClinicId) {
+      handleDirectRouteToProcedureClinic(context);
       return;
     }
     setPendingDirectRoute(context);
@@ -855,6 +866,45 @@ export default function PatientCheckinPage() {
           destination: context.chronicClinicId,
           visit_reason: context.visitReason,
           skip_triage: true,
+        },
+      });
+
+      setCheckInResult({
+        patientName: result.patient_name,
+        patientMrn: result.patient_mrn,
+        destination: 'clinic',
+        destinationName: result.destination_clinic_name || result.destination,
+        destinationUrl: result.destination_clinic_id
+          ? `/clinics/${result.destination_clinic_id}/queue`
+          : '/clinics',
+        queuePosition: result.queue_position,
+        estimatedWaitMinutes: result.estimated_wait_minutes,
+        skippedTriage: true,
+        warning: result.warning,
+      });
+      setShowSuccessModal(true);
+      setSearchQuery('');
+      setSelectedPatient(null);
+    } catch (error) {
+      toast({
+        title: 'Check-in Failed',
+        description: getApiErrorMessage(error),
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDirectRouteToProcedureClinic = async (context: { visitReason: VisitReason; skipTriage: boolean; procedureOrderId?: number; scheduledClinicId?: number }) => {
+    if (!patientDetails || !context.scheduledClinicId) return;
+
+    try {
+      const result = await checkinMutation.mutateAsync({
+        patientId: patientDetails.id,
+        data: {
+          destination: context.scheduledClinicId,
+          visit_reason: context.visitReason,
+          skip_triage: true,
+          ...(context.procedureOrderId ? { procedure_order: context.procedureOrderId } : {}),
         },
       });
 
