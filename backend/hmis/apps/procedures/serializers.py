@@ -41,10 +41,17 @@ class ProcedureCatalogDetailSerializer(serializers.ModelSerializer):
     billing_service_name = serializers.CharField(
         source="billing_service.name", read_only=True, default=None
     )
+    default_clinics_detail = serializers.SerializerMethodField()
 
     class Meta:
         model = ProcedureCatalog
         fields = "__all__"
+
+    def get_default_clinics_detail(self, obj: ProcedureCatalog) -> list[dict]:
+        return [
+            {"id": c.id, "name": c.name, "clinic_type": c.clinic_type}
+            for c in obj.default_clinics.all()
+        ]
 
 
 # ---------------------------------------------------------------------------
@@ -181,6 +188,7 @@ class ProcedureOrderCreateSerializer(serializers.ModelSerializer):
             "scheduled_date",
             "scheduled_time",
             "scheduled_location",
+            "scheduled_clinic",
             "estimated_duration_minutes",
             "assigned_performer",
         ]
@@ -218,7 +226,23 @@ class ProcedureScheduleSerializer(serializers.Serializer):
     scheduled_date = serializers.DateField()
     scheduled_time = serializers.TimeField(required=False)
     scheduled_location = serializers.CharField(required=False, default="")
+    scheduled_clinic = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        help_text="ID of clinic/procedure room to schedule in",
+    )
     estimated_duration_minutes = serializers.IntegerField(required=False)
+
+    def validate_scheduled_clinic(self, value):
+        """Validate the clinic exists and is active."""
+        if value is None:
+            return None
+        from hmis.apps.clinics.models import Clinic
+
+        try:
+            return Clinic.objects.get(id=value, status="ACTIVE")
+        except Clinic.DoesNotExist:
+            raise serializers.ValidationError(f"Clinic with ID {value} not found or not active.")
 
 
 class ProcedureCancelSerializer(serializers.Serializer):

@@ -23,6 +23,7 @@ class ProcedureCatalogAdmin(admin.ModelAdmin):
     list_display = ["code", "name", "category_badge", "risk_badge", "base_fee", "is_active"]
     list_filter = ["category", "risk_level", "body_system", "is_active", "facility"]
     search_fields = ["code", "name", "ichi_code", "cpt_code"]
+    filter_horizontal = ("default_clinics",)
     fieldsets = (
         (
             "Identification",
@@ -56,6 +57,7 @@ class ProcedureCatalogAdmin(admin.ModelAdmin):
             },
         ),
         ("Follow-up", {"fields": ("requires_follow_up", "default_follow_up_days", "follow_up_clinic")}),
+        ("Procedure Clinics", {"fields": ("default_clinics",), "description": "Clinics where this procedure can be performed. When set, scheduling auto-lists available slots."}),
         ("Billing & SHA", {"fields": ("base_fee", "sha_tariff_code", "sha_package_code")}),
         ("Tenant", {"fields": ("organization", "facility")}),
     )
@@ -115,6 +117,7 @@ class ProcedureOrderAdmin(admin.ModelAdmin):
         "admission",
         "ordered_by",
         "assigned_performer",
+        "scheduled_clinic",
     ]
     readonly_fields = ["order_number", "ordered_at"]
 

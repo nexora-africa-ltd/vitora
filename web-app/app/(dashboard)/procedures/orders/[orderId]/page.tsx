@@ -54,6 +54,7 @@ import type {
   ProcedureConsumable,
   ProcedureOutcome,
   ProcedureOrderStatus,
+  ProcedureAvailableSlot,
 } from '@/lib/types/procedure';
 import {
   PROCEDURE_STATUS_COLORS,
@@ -102,6 +103,17 @@ export default function ProcedureOrderDetailPage() {
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleTime, setScheduleTime] = useState('');
   const [scheduleLocation, setScheduleLocation] = useState('');
+  const [scheduleClinicId, setScheduleClinicId] = useState<number | null>(null);
+
+  // Fetch available slots when the catalog has default clinics and a date is picked
+  const hasClinics = (order?.procedure as any)?.default_clinics_detail?.length > 0;
+  const catalogId = order?.procedure?.id;
+  const { data: slotsData, isLoading: loadingSlots } = useQuery({
+    queryKey: ['procedure-available-slots', catalogId, scheduleDate],
+    queryFn: () => proceduresApi.getAvailableSlots(catalogId!, scheduleDate),
+    enabled: !!catalogId && !!scheduleDate && hasClinics,
+  });
+  const availableSlots = (slotsData?.slots ?? []).filter((s: ProcedureAvailableSlot) => s.available);
 
   // Reschedule form
   const [rescheduleDate, setRescheduleDate] = useState('');
@@ -130,6 +142,7 @@ export default function ProcedureOrderDetailPage() {
         scheduled_date: scheduleDate,
         ...(scheduleTime ? { scheduled_time: scheduleTime } : {}),
         ...(scheduleLocation ? { scheduled_location: scheduleLocation } : {}),
+        ...(scheduleClinicId ? { scheduled_clinic: scheduleClinicId } : {}),
       }),
     onSuccess: () => {
       toast({ title: 'Procedure scheduled', description: 'The procedure has been scheduled.' });
@@ -530,7 +543,10 @@ export default function ProcedureOrderDetailPage() {
           <DialogHeader>
             <div className="flex items-center gap-2">
               <DialogTitle>Schedule Procedure</DialogTitle>
-              <HelpPopover content="Set the date, time, and location for this procedure." />
+              <HelpPopover content={hasClinics
+                ? "Select a date to see available slots from configured procedure clinics. Staff will be auto-assigned."
+                : "Set the date, time, and location for this procedure."
+              } />
             </div>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -541,28 +557,87 @@ export default function ProcedureOrderDetailPage() {
                   id="scheduled_date"
                   type="date"
                   value={scheduleDate}
-                  onChange={(e) => setScheduleDate(e.target.value)}
+                  onChange={(e) => {
+                    setScheduleDate(e.target.value);
+                    setScheduleClinicId(null);
+                    setScheduleTime('');
+                  }}
                 />
               </div>
+              {!hasClinics && (
+                <div>
+                  <Label htmlFor="scheduled_time">Time</Label>
+                  <Input
+                    id="scheduled_time"
+                    type="time"
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {hasClinics && scheduleDate && (
               <div>
-                <Label htmlFor="scheduled_time">Time</Label>
+                <Label>Available Slots</Label>
+                {loadingSlots ? (
+                  <div className="space-y-2 mt-2">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ) : availableSlots.length === 0 ? (
+                  <p className="text-sm text-muted-foreground mt-2">
+                    No available slots for this date. Try a different date or use manual scheduling below.
+                  </p>
+                ) : (
+                  <div className="grid gap-2 mt-2 max-h-48 overflow-y-auto">
+                    {availableSlots.map((slot: ProcedureAvailableSlot, idx: number) => (
+                      <button
+                        key={`${slot.clinic_id}-${slot.start_time}-${idx}`}
+                        type="button"
+                        onClick={() => {
+                          setScheduleClinicId(slot.clinic_id);
+                          setScheduleTime(slot.start_time);
+                          setScheduleLocation(slot.clinic_name);
+                        }}
+                        className={`flex items-center justify-between p-2.5 rounded-lg border text-left text-sm transition-colors ${
+                          scheduleClinicId === slot.clinic_id && scheduleTime === slot.start_time
+                            ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                            : 'hover:bg-muted/50'
+                        }`}
+                      >
+                        <span className="font-medium">{slot.start_time} – {slot.end_time}</span>
+                        <span className="text-muted-foreground">{slot.clinic_name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!hasClinics && (
+              <div>
+                <Label htmlFor="scheduled_location">Location</Label>
                 <Input
-                  id="scheduled_time"
+                  id="scheduled_location"
+                  placeholder="e.g., Procedure Room 1"
+                  value={scheduleLocation}
+                  onChange={(e) => setScheduleLocation(e.target.value)}
+                />
+              </div>
+            )}
+
+            {hasClinics && availableSlots.length === 0 && scheduleDate && !loadingSlots && (
+              <div>
+                <Label htmlFor="scheduled_time_fallback">Time (manual)</Label>
+                <Input
+                  id="scheduled_time_fallback"
                   type="time"
                   value={scheduleTime}
                   onChange={(e) => setScheduleTime(e.target.value)}
                 />
               </div>
-            </div>
-            <div>
-              <Label htmlFor="scheduled_location">Location</Label>
-              <Input
-                id="scheduled_location"
-                placeholder="e.g., Procedure Room 1"
-                value={scheduleLocation}
-                onChange={(e) => setScheduleLocation(e.target.value)}
-              />
-            </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" className="w-full sm:w-auto" onClick={() => setScheduleOpen(false)}>

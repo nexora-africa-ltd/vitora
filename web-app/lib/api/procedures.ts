@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import type { ProcedureAvailableSlotsResponse } from '@/lib/types/procedure';
 import { apiClient } from './client';
 import { parseResponse } from '@/lib/schemas/validation';
 import {
@@ -53,7 +54,7 @@ export const proceduresApi = {
   // ---- Workflow Actions ----
   scheduleOrder: async (
     id: number,
-    data: { scheduled_date: string; scheduled_time?: string; scheduled_location?: string },
+    data: { scheduled_date: string; scheduled_time?: string; scheduled_location?: string; scheduled_clinic?: number | null },
   ) => {
     const response = await apiClient.post(
       `/api/procedures/orders/${id}/schedule/`,
@@ -64,7 +65,7 @@ export const proceduresApi = {
 
   rescheduleOrder: async (
     id: number,
-    data: { scheduled_date: string; scheduled_time?: string; scheduled_location?: string },
+    data: { scheduled_date: string; scheduled_time?: string; scheduled_location?: string; scheduled_clinic?: number | null },
   ) => {
     const response = await apiClient.post(
       `/api/procedures/orders/${id}/reschedule/`,
@@ -166,5 +167,14 @@ export const proceduresApi = {
     return parseResponse(ProcedureDashboardSchema, response.data, {
       context: 'proceduresApi.getDashboard',
     });
+  },
+
+  // ---- Slot Discovery ----
+  getAvailableSlots: async (catalogId: number, date: string): Promise<ProcedureAvailableSlotsResponse> => {
+    const response = await apiClient.get(
+      `/api/procedures/catalog/${catalogId}/available-slots/`,
+      { params: { date } },
+    );
+    return response.data;
   },
 };

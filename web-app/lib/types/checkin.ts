@@ -107,6 +107,7 @@ export interface CheckInRequest {
   notes?: string;
   linked_encounter_id?: number;
   identity_method?: 'MRN' | 'NATIONAL_ID' | 'PHONE' | 'BIOMETRIC' | 'MANUAL';
+  procedure_order?: number;
 }
 
 /**

@@ -904,6 +904,7 @@ export default function PatientCheckinPage() {
         visit_reason: pendingDirectRoute.visitReason,
         skip_triage: pendingDirectRoute.skipTriage,
         notes: combinedNotes,
+        ...(pendingDirectRoute.procedureOrderId ? { procedure_order: pendingDirectRoute.procedureOrderId } : {}),
       },
     });
 

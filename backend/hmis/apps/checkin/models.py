@@ -224,6 +224,14 @@ class CheckIn(TimeStampedModel):
         related_name="checkin",
         help_text="Link to clinic visit queue entry",
     )
+    procedure_order = models.ForeignKey(
+        "procedures.ProcedureOrder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="checkins",
+        help_text="Linked procedure order for SCHEDULED_PROCEDURE visits",
+    )
 
     class Meta:
         ordering = ["-checked_in_at"]
