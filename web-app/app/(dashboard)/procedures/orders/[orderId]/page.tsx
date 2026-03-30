@@ -80,6 +80,7 @@ export default function ProcedureOrderDetailPage() {
 
   // Dialog states
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
   const [createConsentOpen, setCreateConsentOpen] = useState(false);
@@ -101,6 +102,11 @@ export default function ProcedureOrderDetailPage() {
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleTime, setScheduleTime] = useState('');
   const [scheduleLocation, setScheduleLocation] = useState('');
+
+  // Reschedule form
+  const [rescheduleDate, setRescheduleDate] = useState('');
+  const [rescheduleTime, setRescheduleTime] = useState('');
+  const [rescheduleLocation, setRescheduleLocation] = useState('');
 
   // Cancel form
   const [cancelReason, setCancelReason] = useState('');
@@ -132,6 +138,23 @@ export default function ProcedureOrderDetailPage() {
     },
     onError: (err) => {
       toast({ title: 'Schedule failed', description: getApiErrorMessage(err), variant: 'destructive' });
+    },
+  });
+
+  const { mutateAsync: rescheduleOrder, isPending: rescheduling } = useMutation({
+    mutationFn: () =>
+      proceduresApi.rescheduleOrder(orderId, {
+        scheduled_date: rescheduleDate,
+        ...(rescheduleTime ? { scheduled_time: rescheduleTime } : {}),
+        ...(rescheduleLocation ? { scheduled_location: rescheduleLocation } : {}),
+      }),
+    onSuccess: () => {
+      toast({ title: 'Procedure rescheduled', description: 'The schedule has been updated.' });
+      invalidateOrder();
+      setRescheduleOpen(false);
+    },
+    onError: (err) => {
+      toast({ title: 'Reschedule failed', description: getApiErrorMessage(err), variant: 'destructive' });
     },
   });
 
@@ -239,6 +262,7 @@ export default function ProcedureOrderDetailPage() {
 
   const canSchedule = ['ORDERED', 'CONSENT_PENDING'].includes(order.status) &&
     (!order.procedure.consent_required || order.consent?.status === 'SIGNED');
+  const canReschedule = ['SCHEDULED', 'READY'].includes(order.status);
   const canStart = ['SCHEDULED', 'READY'].includes(order.status) &&
     (!order.procedure.consent_required || order.consent?.status === 'SIGNED');
   const canComplete = order.status === 'IN_PROGRESS' && order.log;
@@ -290,6 +314,17 @@ export default function ProcedureOrderDetailPage() {
           <Button variant="outline" onClick={() => setScheduleOpen(true)}>
             <Calendar className="h-4 w-4 mr-2" />
             Schedule
+          </Button>
+        )}
+        {canReschedule && (
+          <Button variant="outline" onClick={() => {
+            setRescheduleDate(order.scheduled_date || '');
+            setRescheduleTime(order.scheduled_time || '');
+            setRescheduleLocation(order.scheduled_location || '');
+            setRescheduleOpen(true);
+          }}>
+            <Calendar className="h-4 w-4 mr-2" />
+            Reschedule
           </Button>
         )}
         {canStart && (
@@ -491,7 +526,7 @@ export default function ProcedureOrderDetailPage() {
 
       {/* Schedule Dialog */}
       <Dialog open={scheduleOpen} onOpenChange={setScheduleOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-2">
               <DialogTitle>Schedule Procedure</DialogTitle>
@@ -499,23 +534,25 @@ export default function ProcedureOrderDetailPage() {
             </div>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div>
-              <Label htmlFor="scheduled_date">Date *</Label>
-              <Input
-                id="scheduled_date"
-                type="date"
-                value={scheduleDate}
-                onChange={(e) => setScheduleDate(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="scheduled_time">Time</Label>
-              <Input
-                id="scheduled_time"
-                type="time"
-                value={scheduleTime}
-                onChange={(e) => setScheduleTime(e.target.value)}
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="scheduled_date">Date *</Label>
+                <Input
+                  id="scheduled_date"
+                  type="date"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="scheduled_time">Time</Label>
+                <Input
+                  id="scheduled_time"
+                  type="time"
+                  value={scheduleTime}
+                  onChange={(e) => setScheduleTime(e.target.value)}
+                />
+              </div>
             </div>
             <div>
               <Label htmlFor="scheduled_location">Location</Label>
@@ -528,11 +565,62 @@ export default function ProcedureOrderDetailPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setScheduleOpen(false)}>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setScheduleOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => scheduleOrder()} disabled={scheduling || !scheduleDate}>
+            <Button className="w-full sm:w-auto" onClick={() => scheduleOrder()} disabled={scheduling || !scheduleDate}>
               {scheduling ? 'Scheduling...' : 'Schedule'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule Dialog */}
+      <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <DialogTitle>Reschedule Procedure</DialogTitle>
+              <HelpPopover content="Change the scheduled date, time, or location for this procedure." />
+            </div>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="reschedule_date">New Date *</Label>
+                <Input
+                  id="reschedule_date"
+                  type="date"
+                  value={rescheduleDate}
+                  onChange={(e) => setRescheduleDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="reschedule_time">New Time</Label>
+                <Input
+                  id="reschedule_time"
+                  type="time"
+                  value={rescheduleTime}
+                  onChange={(e) => setRescheduleTime(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="reschedule_location">Location</Label>
+              <Input
+                id="reschedule_location"
+                placeholder="e.g., Procedure Room 1"
+                value={rescheduleLocation}
+                onChange={(e) => setRescheduleLocation(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setRescheduleOpen(false)}>
+              Cancel
+            </Button>
+            <Button className="w-full sm:w-auto" onClick={() => rescheduleOrder()} disabled={rescheduling || !rescheduleDate}>
+              {rescheduling ? 'Rescheduling...' : 'Reschedule'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -540,7 +628,7 @@ export default function ProcedureOrderDetailPage() {
 
       {/* Cancel Dialog */}
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Cancel Procedure Order</DialogTitle>
           </DialogHeader>
@@ -556,11 +644,12 @@ export default function ProcedureOrderDetailPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelOpen(false)}>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setCancelOpen(false)}>
               Back
             </Button>
             <Button
               variant="destructive"
+              className="w-full sm:w-auto"
               onClick={() => cancelOrder()}
               disabled={cancelling || !cancelReason.trim()}
             >
@@ -572,7 +661,7 @@ export default function ProcedureOrderDetailPage() {
 
       {/* Complete Dialog */}
       <Dialog open={completeOpen} onOpenChange={setCompleteOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-2">
               <DialogTitle>Complete Procedure</DialogTitle>
@@ -603,14 +692,12 @@ export default function ProcedureOrderDetailPage() {
               />
             </div>
             <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 id="complications"
                 checked={complications}
-                onChange={(e) => setComplications(e.target.checked)}
-                className="rounded border-gray-300"
+                onCheckedChange={(v) => setComplications(!!v)}
               />
-              <Label htmlFor="complications">Complications occurred</Label>
+              <Label htmlFor="complications" className="!mt-0">Complications occurred</Label>
             </div>
             {complications && (
               <div>
@@ -625,10 +712,10 @@ export default function ProcedureOrderDetailPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCompleteOpen(false)}>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setCompleteOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => completeProcedure()} disabled={completing}>
+            <Button className="w-full sm:w-auto" onClick={() => completeProcedure()} disabled={completing}>
               {completing ? 'Completing...' : 'Complete Procedure'}
             </Button>
           </DialogFooter>
@@ -784,10 +871,11 @@ export default function ProcedureOrderDetailPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateConsentOpen(false)}>
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setCreateConsentOpen(false)}>
               Cancel
             </Button>
             <Button
+              className="w-full sm:w-auto"
               onClick={() => createConsent()}
               disabled={
                 creatingConsent ||
