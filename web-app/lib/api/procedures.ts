@@ -62,6 +62,17 @@ export const proceduresApi = {
     return response.data;
   },
 
+  rescheduleOrder: async (
+    id: number,
+    data: { scheduled_date: string; scheduled_time?: string; scheduled_location?: string },
+  ) => {
+    const response = await apiClient.post(
+      `/api/procedures/orders/${id}/reschedule/`,
+      data,
+    );
+    return response.data;
+  },
+
   startProcedure: async (id: number, data?: { location?: string }) => {
     const response = await apiClient.post(
       `/api/procedures/orders/${id}/start/`,

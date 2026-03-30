@@ -8,6 +8,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from hmis.apps.core.mixins import TenantScopedViewMixin
+from hmis.apps.core.models import AuditLog
+from hmis.apps.core.permissions import get_client_ip
 
 from .filters import ProcedureCatalogFilter, ProcedureOrderFilter
 from .models import (
@@ -81,12 +83,32 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         "priority",
     ]
 
+    # ── helpers ──────────────────────────────────────────────────────
+
+    def _audit(self, action_name: str, order: ProcedureOrder, **extra):
+        """Create an audit log entry for a procedure order action."""
+        AuditLog.log(
+            action=action_name,
+            user=self.request.user,
+            resource_type="ProcedureOrder",
+            resource_id=order.pk,
+            ip_address=get_client_ip(self.request),
+            user_agent=self.request.META.get("HTTP_USER_AGENT", ""),
+            patient_id=order.patient_id,
+            details={
+                "order_number": order.order_number,
+                "procedure": order.procedure.name,
+                "status": order.status,
+                **extra,
+            },
+        )
+
     def get_serializer_class(self):
         if self.action == "list":
             return ProcedureOrderListSerializer
         if self.action == "create":
             return ProcedureOrderCreateSerializer
-        if self.action == "schedule":
+        if self.action in ("schedule", "reschedule"):
             return ProcedureScheduleSerializer
         if self.action == "cancel":
             return ProcedureCancelSerializer
@@ -114,6 +136,7 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         self.perform_create(serializer)
         # Return detail serializer for the created object
         detail = ProcedureOrderDetailSerializer(serializer.instance)
+        self._audit("procedure_order_create", serializer.instance, priority=serializer.instance.priority)
         return Response(detail.data, status=status.HTTP_201_CREATED)
 
     # ----- Workflow Actions -----
@@ -131,6 +154,51 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             time=data.get("scheduled_time"),
             location=data.get("scheduled_location", ""),
             duration=data.get("estimated_duration_minutes"),
+        )
+        self._audit(
+            "procedure_order_schedule", order,
+            scheduled_date=str(data["scheduled_date"]),
+        )
+        return Response(ProcedureOrderDetailSerializer(order).data)
+
+    @action(detail=True, methods=["post"])
+    def reschedule(self, request, pk=None):
+        """Reschedule a SCHEDULED or READY procedure order."""
+        order = self.get_object()
+        if order.status not in [
+            ProcedureOrder.Status.SCHEDULED,
+            ProcedureOrder.Status.READY,
+        ]:
+            return Response(
+                {"error": "Only SCHEDULED or READY orders can be rescheduled."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = ProcedureScheduleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        old_date = str(order.scheduled_date) if order.scheduled_date else None
+        data = serializer.validated_data
+        order.scheduled_date = data["scheduled_date"]
+        order.scheduled_time = data.get("scheduled_time")
+        if data.get("scheduled_location"):
+            order.scheduled_location = data["scheduled_location"]
+        if data.get("estimated_duration_minutes"):
+            order.estimated_duration_minutes = data["estimated_duration_minutes"]
+        # Stay in current status (SCHEDULED or READY)
+        order.save(
+            update_fields=[
+                "scheduled_date",
+                "scheduled_time",
+                "scheduled_location",
+                "estimated_duration_minutes",
+                "updated_at",
+            ]
+        )
+        self._audit(
+            "procedure_order_reschedule", order,
+            old_date=old_date,
+            new_date=str(data["scheduled_date"]),
         )
         return Response(ProcedureOrderDetailSerializer(order).data)
 
@@ -154,6 +222,7 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         if location:
             order.scheduled_location = location
         log = order.start_procedure(performed_by=request.user)
+        self._audit("procedure_start", order)
         return Response(
             ProcedureOrderDetailSerializer(order).data,
             status=status.HTTP_200_OK,
@@ -182,6 +251,11 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         )
 
         order.refresh_from_db()
+        self._audit(
+            "procedure_complete", order,
+            outcome_status=data.get("status", "COMPLETED"),
+            complications=data.get("complications_occurred", False),
+        )
         return Response(ProcedureOrderDetailSerializer(order).data)
 
     @action(detail=True, methods=["post"])
@@ -201,6 +275,7 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         order.cancel(user=request.user, reason=serializer.validated_data["reason"])
+        self._audit("procedure_order_cancel", order, reason=serializer.validated_data["reason"])
         return Response(ProcedureOrderDetailSerializer(order).data)
 
     # ----- Consent -----
@@ -236,6 +311,10 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             **self.get_tenant_save_kwargs(),
         )
         order.request_consent()
+        self._audit(
+            "procedure_consent_create", order,
+            consent_type=consent.consent_type,
+        )
         return Response(
             ProcedureConsentSerializer(consent).data,
             status=status.HTTP_201_CREATED,
@@ -259,6 +338,7 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
             )
 
         consent.sign(user=request.user)
+        self._audit("procedure_consent_sign", order)
         return Response(ProcedureConsentSerializer(consent).data)
 
     @action(
@@ -280,6 +360,7 @@ class ProcedureOrderViewSet(TenantScopedViewMixin, viewsets.ModelViewSet):
 
         reason = request.data.get("reason", "")
         consent.decline(reason=reason)
+        self._audit("procedure_consent_decline", order, reason=reason)
         return Response(ProcedureConsentSerializer(consent).data)
 
     # ----- Consumables -----

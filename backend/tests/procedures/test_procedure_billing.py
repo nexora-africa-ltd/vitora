@@ -3,6 +3,8 @@
 import pytest  # type: ignore
 from decimal import Decimal
 
+from django.utils import timezone
+
 from hmis.apps.billing.models import Invoice, InvoiceItem, Service, ServiceCategory
 from hmis.apps.procedures.models import (
     ProcedureCatalog,
@@ -72,7 +74,7 @@ class TestProcedureBillingIntegration:
 
         log = ProcedureLog.objects.create(
             order=order,
-            started_at="2026-03-30T09:00:00Z",
+            started_at=timezone.now(),
             performed_by=test_user,
             location="Procedure Room 1",
         )
@@ -108,7 +110,7 @@ class TestProcedureBillingIntegration:
 
         log = ProcedureLog.objects.create(
             order=order,
-            started_at="2026-03-30T09:00:00Z",
+            started_at=timezone.now(),
             performed_by=test_user,
             location="Procedure Room 1",
         )
