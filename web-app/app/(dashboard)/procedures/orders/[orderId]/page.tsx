@@ -10,6 +10,7 @@ import {
   Clock,
   FileText,
   PlayCircle,
+  Plus,
   Syringe,
   User,
   XCircle,
@@ -484,7 +485,7 @@ export default function ProcedureOrderDetailPage() {
 
         {/* Outcomes Tab */}
         <TabsContent value="outcomes" className="space-y-4">
-          <OutcomesTab orderId={orderId} />
+          <OutcomesTab orderId={orderId} orderStatus={order.status} />
         </TabsContent>
       </Tabs>
 
@@ -1002,51 +1003,200 @@ function PerformanceCard({ log }: { log: ProcedureLog }) {
   );
 }
 
-function OutcomesTab({ orderId }: { orderId: number }) {
+function OutcomesTab({ orderId, orderStatus }: { orderId: number; orderStatus: string }) {
+  const queryClient = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [assessmentDate, setAssessmentDate] = useState(
+    new Date().toISOString().split('T')[0],
+  );
+  const [outcome, setOutcome] = useState('SUCCESSFUL');
+  const [findings, setFindings] = useState('');
+  const [notes, setNotes] = useState('');
+  const [nextFollowUp, setNextFollowUp] = useState('');
+  const [followUpNotes, setFollowUpNotes] = useState('');
+
   const { data: outcomes, isLoading } = useQuery<ProcedureOutcome[]>({
     queryKey: ['procedure-outcomes', orderId],
     queryFn: () => proceduresApi.listOutcomes(orderId),
   });
 
+  const { mutateAsync: addOutcome, isPending: adding } = useMutation({
+    mutationFn: () =>
+      proceduresApi.addOutcome(orderId, {
+        assessment_date: assessmentDate,
+        outcome,
+        findings,
+        ...(notes ? { notes } : {}),
+        ...(nextFollowUp ? { next_follow_up: nextFollowUp } : {}),
+        ...(followUpNotes ? { follow_up_notes: followUpNotes } : {}),
+      }),
+    onSuccess: () => {
+      toast({ title: 'Outcome recorded' });
+      queryClient.invalidateQueries({ queryKey: ['procedure-outcomes', orderId] });
+      setShowForm(false);
+      setFindings('');
+      setNotes('');
+      setNextFollowUp('');
+      setFollowUpNotes('');
+    },
+    onError: (err) => {
+      toast({ title: 'Failed to record outcome', description: getApiErrorMessage(err), variant: 'destructive' });
+    },
+  });
+
+  const canAddOutcome = orderStatus === 'COMPLETED';
+
   if (isLoading) {
     return <Skeleton className="h-32 w-full" />;
   }
 
-  if (!outcomes || outcomes.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-8 text-center text-muted-foreground">
-          <CheckCircle2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
-          <p>No outcomes recorded yet.</p>
-          <p className="text-xs mt-1">
-            Outcomes can be added after the procedure is completed.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
-    <div className="space-y-3">
-      {outcomes.map((outcome) => (
-        <Card key={outcome.id}>
-          <CardContent className="pt-4 space-y-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="font-medium">{formatDate(outcome.assessment_date)}</span>
-              <Badge variant="outline" className="w-fit">{outcome.outcome}</Badge>
+    <div className="space-y-4">
+      {/* Add Outcome button */}
+      {canAddOutcome && !showForm && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setShowForm(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">Add Outcome Assessment</span>
+            <span className="sm:hidden">Add Outcome</span>
+          </Button>
+        </div>
+      )}
+
+      {/* Add Outcome Form */}
+      {showForm && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base">Record Outcome</CardTitle>
+              <HelpPopover content="Record a follow-up assessment. Track healing progress, complications, or schedule the next follow-up." />
             </div>
-            <p>{outcome.findings}</p>
-            {outcome.notes && (
-              <p className="text-muted-foreground">{outcome.notes}</p>
-            )}
-            {outcome.next_follow_up && (
-              <p className="text-xs text-muted-foreground">
-                Next follow-up: {formatDate(outcome.next_follow_up)}
-              </p>
-            )}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="assessment_date">Assessment Date *</Label>
+                <Input
+                  id="assessment_date"
+                  type="date"
+                  value={assessmentDate}
+                  onChange={(e) => setAssessmentDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="outcome_status">Outcome *</Label>
+                <Select value={outcome} onValueChange={setOutcome}>
+                  <SelectTrigger id="outcome_status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SUCCESSFUL">Successful — Full recovery</SelectItem>
+                    <SelectItem value="PARTIAL_SUCCESS">Partial Success</SelectItem>
+                    <SelectItem value="HEALING">Healing as expected</SelectItem>
+                    <SelectItem value="DELAYED_HEALING">Delayed Healing</SelectItem>
+                    <SelectItem value="INFECTION">Infection</SelectItem>
+                    <SelectItem value="COMPLICATION">Post-procedure Complication</SelectItem>
+                    <SelectItem value="RE_PROCEDURE_NEEDED">Re-procedure Needed</SelectItem>
+                    <SelectItem value="REFERRED">Referred for Further Care</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="findings">Clinical Findings *</Label>
+              <Textarea
+                id="findings"
+                value={findings}
+                onChange={(e) => setFindings(e.target.value)}
+                placeholder="Describe the clinical findings at follow-up (e.g., wound healing well, no signs of infection)..."
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label htmlFor="outcome_notes">Notes</Label>
+              <Textarea
+                id="outcome_notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Additional notes..."
+                rows={2}
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="next_follow_up">Next Follow-up Date</Label>
+                <Input
+                  id="next_follow_up"
+                  type="date"
+                  value={nextFollowUp}
+                  onChange={(e) => setNextFollowUp(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="follow_up_notes">Follow-up Instructions</Label>
+                <Input
+                  id="follow_up_notes"
+                  value={followUpNotes}
+                  onChange={(e) => setFollowUpNotes(e.target.value)}
+                  placeholder="e.g., Return for suture removal"
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <Button variant="outline" onClick={() => setShowForm(false)} disabled={adding}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => addOutcome()}
+                disabled={adding || !assessmentDate || !findings.trim()}
+              >
+                {adding ? 'Saving...' : 'Save Outcome'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
-      ))}
+      )}
+
+      {/* Empty state */}
+      {(!outcomes || outcomes.length === 0) && !showForm && (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            <CheckCircle2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p>No outcomes recorded yet.</p>
+            <p className="text-xs mt-1">
+              {canAddOutcome
+                ? 'Click "Add Outcome Assessment" to record a follow-up.'
+                : 'Outcomes can be added after the procedure is completed.'}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Outcome cards */}
+      {outcomes && outcomes.length > 0 && (
+        <div className="space-y-3">
+          {outcomes.map((outcomeItem) => (
+            <Card key={outcomeItem.id}>
+              <CardContent className="pt-4 space-y-2 text-sm">
+                <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="font-medium">{formatDate(outcomeItem.assessment_date)}</span>
+                  <Badge variant="outline" className="w-fit shrink-0">{outcomeItem.outcome}</Badge>
+                </div>
+                <p>{outcomeItem.findings}</p>
+                {outcomeItem.notes && (
+                  <p className="text-muted-foreground">{outcomeItem.notes}</p>
+                )}
+                {outcomeItem.next_follow_up && (
+                  <p className="text-xs text-muted-foreground">
+                    Next follow-up: {formatDate(outcomeItem.next_follow_up)}
+                    {outcomeItem.follow_up_notes && ` — ${outcomeItem.follow_up_notes}`}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
